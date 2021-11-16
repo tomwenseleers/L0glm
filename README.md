@@ -47,7 +47,7 @@ ctrl.l0 <- control.l0.gen() # default
 ```
 Fit a GLM with Poisson error structure and identity link, with nonnegativity constraints on the coefficients, and L0 penalty
 ```r
-L0glm.out <- L0glm(X = X, y = y, family = poisson(identity), intercept = FALSE,
+L0glm.out <- L0glm(y~0+X, family = poisson(identity), intercept = FALSE,
                   lambda = 1, tune.meth = "none", nonnegative = TRUE,
                   control.iwls = ctrl.iwls, control.l0 = ctrl.l0,
                   control.fit = ctrl.fit)
