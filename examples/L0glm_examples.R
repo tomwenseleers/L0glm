@@ -82,7 +82,7 @@ plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm8, a.true = sim$a,
 }
 
 # Case IX: fit nonnegative identity link Poisson GLM with L0 penalty and a
-#          prespecify lambda using BIC
+#          prespecied lambda using BIC
 L0glm9 <- L0glm(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                 lambda = "aic", # set lambda that minimize the expected BIC
                 nonnegative = TRUE, normalize = FALSE,

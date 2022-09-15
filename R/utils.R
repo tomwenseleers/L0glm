@@ -441,7 +441,7 @@ plot_L0glm_benchmark <- function(x, y, fit, inference = NULL, a.true, ...){
 # Prints progress of a loop to the console
 print.progress <- function(current, total, before = "Progress: ", after = "", ...){
   if(length(current)!=1 && length(total) != 1) stop("Arguments \'current\' and \'total\' must have length 1.")
-  perc <- format(current/total*100, digits = 0,...)
+  perc <- format(current/total*100, digits = 1,...)
   cat(paste0("\r", before, perc, " %", after, "   "))
   if(current == total) cat ("\n")
   flush.console()
