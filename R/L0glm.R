@@ -3,6 +3,7 @@
 #' @import nnls
 #' @import Matrix
 #' @import glmnet
+#' @impott osqp
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'
@@ -91,7 +92,7 @@
 #' A function that performs post filtering to the coefficients at the end of the
 #' fit. It should require a single argument that is the vector of coefficients.
 #' Note that lambda tuning will be performed with the processed coefficients, so
-#' the selected lambda will be influence by the filtering step. Default: no
+#' the selected lambda will be influenced by the filtering step. Default: no
 #' filtering.
 #' @param tune.meth
 #' lambda selection method (see details). It should be one of \code{"none"},
@@ -364,6 +365,7 @@ L0glm <- function(formula,
     lambda <- lambda[lambda < lam.max]
     if(length(lambda) == 0) stop("No valid lambda supplied, try using lower lambda values.")
   }
+
   if(tune.meth %in% c("none", "preset")){
     tune.crit <- NA
     if(length(lambda) > 1){
@@ -546,6 +548,7 @@ L0glm.fit <- function(X, y,
     # Sys.sleep(0.5)
     if(stop.loop) break
   }
+
   if(control.l0$warn && control.l0$maxit > 1 && !stop.loop)
     warning("Best subset algorithm did not converge, maybe increase control.l0$maxit")
 
@@ -640,7 +643,7 @@ glm.iwls <- function(X, y, weights, family,
     }
 
     # Update partial residuals
-    # We work on partial residuals on trasnformed scale z, ie the scaled model
+    # We work on partial residuals on transformed scale z, ie the scaled model
     # predictions minus the predictions for covariates with nonzero coefficients
     # that already converged. This allows for a dramatic speed up after the 1st iteration.
     z <- z - as.vector(X[, converged_set & nonzero, drop=F] %*% beta[converged_set & nonzero])
@@ -715,12 +718,46 @@ glm.iwls <- function(X, y, weights, family,
               iter.iwls = j))
 }
 
+#' @describeIn L0glm
+#'
+#' This function utilizes the OSQP package to carry out a constrained least squares regression.
+#' It is called by the upper code \code{L0glm.iwls}.
+#'
+#' @export
+L0glm.osqp <- function(X,
+                       y,
+                       lower = rep(-.Machine$double.xmax,ncol(X)),
+                       upper=rep(.Machine$double.xmax,ncol(X)),
+                       nonnegative = FALSE,
+                       verbose){
+
+  n <- nrow(X)
+  p <- ncol(X)
+
+  # If nonnegative is true and no lower bound is provided, or the lower bound is smaller than 0, it is clipped to 0
+  if(nonnegative && all(lower < 0)) lower <- rep(0, n)u
+
+  XtX = crossprod(X,X)
+  Xty = crossprod(X,y)
+
+  #Obtain settings  and create model
+  settings <- osqpSettings(eps_abs = 1e-8, eps_rel = 1e-8,
+                           linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
+  model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
+
+  #Solve model
+  coefs <- result$solve()$x
+  coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+
+  return(coefs)
+}
+
 
 # TODO
 # - allow for an offset ?
 # - allow for some covariates to be constrained to nonnegativity, use QP for this
 # - make super function to perform nn.reg, nn.ridge, nn.adaptive.ridge
-# - Explore standardization of y and X and inlfuence on lambda selection vs theoretical lambda
+# - Explore standardization of y and X and influence on lambda selection vs theoretical lambda
 
 
 #' Set parameters for L0glm algorithm
