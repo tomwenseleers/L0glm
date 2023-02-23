@@ -3,7 +3,7 @@
 #' @import nnls
 #' @import Matrix
 #' @import glmnet
-#' @impott osqp
+#' @import osqp
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'
@@ -263,6 +263,9 @@ L0glm <- function(formula,
                   contrasts = NULL,
                   lambda = 0, no.pen = 0,
                   nonnegative = FALSE,
+                  solver = "osqp", #TODO: document
+                  lower = rep(-.Machine$double.xmax,ncol(X)), ##TODO: document
+                  upper = rep(.Machine$double.xmax,ncol(X)), ##TODO: document
                   normalize = TRUE,
                   control.l0 = list(),
                   control.iwls = list(),
@@ -373,7 +376,7 @@ L0glm <- function(formula,
         l <- rep(l, p)
         l[no.pen] <- 0
         fit <- L0glm.fit(X = X, y = y, weights = weights, family = family,
-                         lambda = l, start = start, nonnegative = nonnegative,
+                         lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
                          post.filter.fn = post.filter.fn)
       })
@@ -460,7 +463,7 @@ L0glm <- function(formula,
   # Compute deviance
   int.ind <- grepl("intercept", colnames(X), ignore.case = TRUE)
   dev.res <- sum(fit$family$dev.resids(y = y, mu = fit$fitted.values, wt = fit$prior.weights))
-  fit.null <- glm.iwls(X = X[,int.ind, drop = F],
+  fit.null <- glm.iwls(X = X[,int.ind, drop = F], #### TODO: adapt this to new glm.iwls
                        y = y, weights = fit$prior.weights, family = family,
                        lambda = 0, start = NULL, nonnegative = nonnegative,
                        control.iwls = control.iwls, control.fit = control.fit)
@@ -511,6 +514,9 @@ L0glm.fit <- function(X, y,
                       family = poisson(identity),
                       lambda = 0,
                       start = NULL,
+                      lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
+                      upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
+                      solver = "osqp", #TODO document
                       nonnegative = FALSE,
                       post.filter.fn = function(u) return(u),
                       control.l0 = list(maxit = 100, rel.tol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
@@ -531,7 +537,7 @@ L0glm.fit <- function(X, y,
     lambda_adap <- lambda * AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma) # ridge penalty with adaptive weights
 
     # Fit the model with current adaptive weights.
-    fit <- glm.iwls(X = X, y = y, weights = weights, family = family, start = start,
+    fit <- glm.iwls(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, family = family, start = start,
                     lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
                     control.iwls = control.iwls, control.fit = control.fit)
     iter.iwls[i] <- fit$iter.iwls
@@ -572,17 +578,20 @@ L0glm.fit <- function(X, y,
 #' \code{lambda} should be a vector of length \code{p} and no lambda tuning is
 #' performed.
 #'
-glm.iwls <- function(X, y, weights, family,
+glm.iwls <- function(X, y, weights, family, solver,
                      start = NULL,
                      lambda = rep(0, ncol(X)),
                      nonnegative = FALSE,
+                     lower = rep(-.Machine$double.xmax,ncol(X)),
+                     upper = rep(.Machine$double.xmax,ncol(X)),
                      control.iwls = list(maxit = 1, rel.tol = 1E-4, thresh = 1E-5, warn = FALSE),
-                     control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
-                     converged_set = rep(FALSE, ncol(X))){
+                     #control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
+                     converged_set = rep(FALSE, ncol(X)),
+                     verbose = FALSE){ # TODO match
   n <- N <- nrow(X)
   p <- ncol(X)
 
-  if (p == 0) { # IN case a NULL model is fit, this chunk is taken from 'glm'
+  if (p == 0) { # IN case a NULL model is fit, code taken from 'glm'
     return(list(coefficients = numeric(),
                 weights = numeric(),
                 prior.weights = weights,
@@ -590,16 +599,6 @@ glm.iwls <- function(X, y, weights, family,
                 family = family,
                 converged.iwls = TRUE,
                 iter.iwls = 0))
-  }
-
-  # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
-  # Ref :
-  # https://stats.stackexchange.com/a/164546/27340
-  # https://stats.stackexchange.com/a/203699/27340
-  if (sum(lambda) != 0){
-    Xaug <- rbind(X, diag(sqrt(lambda),ncol(X)))
-  } else {
-    Xaug <- X
   }
 
   # Initialize coefficients
@@ -627,8 +626,9 @@ glm.iwls <- function(X, y, weights, family,
   # Initialize iteration control variables
   niters_nochange <- converged_set * control.iwls$maxit # nr of iterations over which coefficients showed less than rel.tol relative change.
   nonzero <- rep(TRUE, ncol(X)) # nonzero coefficients
-  for(j in 1:control.iwls$maxit) {
 
+  # Start loop
+  for(j in 1:control.iwls$maxit) {
     # Linearize the response and adapt weights
     # The updates use Fisher scoring, which is Newton-Raphson with
     # the expected Hessian, see
@@ -660,15 +660,19 @@ glm.iwls <- function(X, y, weights, family,
     good <- is.finite(W) & W>0
     betaold <- beta
 
+    beta[!converged_set] <- lmridge(X, y, lambda = lambda, weights = W, lower = lower, upper = upper,
+                                    nonnegative = nonnegative, solver = solver, start = betaold, verbose = verbose)
+
     # Weighted LS update, with optional nonnegativity constraints
-    # TODO talk with Tom
-    if(is.null(control.fit$block.size)) control.fit$block.size <- p
-    block.ids <- ceiling((1:p)/control.fit$block.size)
-    beta[!converged_set] <- block.fit(X = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
-                                      y = zaug[good]*sqrt(W[good]),
-                                      block.id = block.ids[!converged_set],
-                                      nonnegative = nonnegative,
-                                      control = control.fit)
+    # if(is.null(control.fit$block.size)) control.fit$block.size <- p
+    # block.ids <- ceiling((1:p)/control.fit$block.size)
+    # beta[!converged_set] <- block.fit(X = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
+    #                                   y = zaug[good]*sqrt(W[good]),
+    #                                   block.id = block.ids[!converged_set],
+    #                                   nonnegative = nonnegative,
+    #                                   control = control.fit)
+
+
     # TODO clean this
     # if(F){
     #   if(nonnegative){
@@ -720,34 +724,51 @@ glm.iwls <- function(X, y, weights, family,
 
 #' @describeIn L0glm
 #'
-#' This function utilizes the OSQP package to carry out a constrained least squares regression.
+#' Implementation of different solvers
 #' It is called by the upper code \code{L0glm.iwls}.
 #'
 #' @export
-L0glm.osqp <- function(X,
-                       y,
-                       lower = rep(-.Machine$double.xmax,ncol(X)),
-                       upper=rep(.Machine$double.xmax,ncol(X)),
-                       nonnegative = FALSE,
-                       verbose){
+lmridge <- function(X, y, lambda, weights,
+                    lower = rep(-.Machine$double.xmax,ncol(X)),
+                    upper = rep(.Machine$double.xmax,ncol(X)),
+                    nonnegative = FALSE,
+                    solver = "osqp",
+                    start = NULL,
+                    verbose){
 
   n <- nrow(X)
   p <- ncol(X)
 
-  # If nonnegative is true and no lower bound is provided, or the lower bound is smaller than 0, it is clipped to 0
+  # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative && all(lower < 0)) lower <- rep(0, n)u
 
-  XtX = crossprod(X,X)
-  Xty = crossprod(X,y)
 
-  #Obtain settings  and create model
-  settings <- osqpSettings(eps_abs = 1e-8, eps_rel = 1e-8,
-                           linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
-  model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
+  # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
+  # Ref :
+  # https://stats.stackexchange.com/a/164546/27340
+  # https://stats.stackexchange.com/a/203699/27340
+  if (sum(lambda) != 0){
+    Xaug <- rbind(X, diag(sqrt(lambda),ncol(X)))
+  } else {
+    Xaug <- X
+  }
 
-  #Solve model
-  coefs <- result$solve()$x
-  coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+  if (solver == "osqp") {
+    XtX = crossprod(Xaug, Xaug)
+    Xty = crossprod(Xaug, y)
+    #Obtain settings  and create model
+    settings <- osqpSettings(eps_abs = 1e-8, eps_rel = 1e-8,
+                             linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
+    model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
+
+    #Solve model
+    coefs <- result$solve()$x
+    coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+
+  } else if (solver == "LSCG") {
+    # TODO: Implement LSCG solver
+  } else {
+    stop("Invalid solver choice")}
 
   return(coefs)
 }
