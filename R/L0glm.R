@@ -578,16 +578,19 @@ L0glm.fit <- function(X, y,
 #' \code{lambda} should be a vector of length \code{p} and no lambda tuning is
 #' performed.
 #'
-glm.iwls <- function(X, y, weights, family, solver,
+glm.iwls <- function(X, y, weights, family,
+                     solver = "osqp",
                      start = NULL,
                      lambda = rep(0, ncol(X)),
                      nonnegative = FALSE,
                      lower = rep(-.Machine$double.xmax,ncol(X)),
                      upper = rep(.Machine$double.xmax,ncol(X)),
                      control.iwls = list(maxit = 1, rel.tol = 1E-4, thresh = 1E-5, warn = FALSE),
-                     #control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
+                     control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # remove ?
                      converged_set = rep(FALSE, ncol(X)),
                      verbose = FALSE){ # TODO match
+
+
   n <- N <- nrow(X)
   p <- ncol(X)
 
@@ -663,29 +666,6 @@ glm.iwls <- function(X, y, weights, family, solver,
     beta[!converged_set] <- lmridge(X, y, lambda = lambda, weights = W, lower = lower, upper = upper,
                                     nonnegative = nonnegative, solver = solver, start = betaold, verbose = verbose)
 
-    # Weighted LS update, with optional nonnegativity constraints
-    # if(is.null(control.fit$block.size)) control.fit$block.size <- p
-    # block.ids <- ceiling((1:p)/control.fit$block.size)
-    # beta[!converged_set] <- block.fit(X = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
-    #                                   y = zaug[good]*sqrt(W[good]),
-    #                                   block.id = block.ids[!converged_set],
-    #                                   nonnegative = nonnegative,
-    #                                   control = control.fit)
-
-
-    # TODO clean this
-    # if(F){
-    #   if(nonnegative){
-    #     beta[!converged_set] <- nnls(A = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
-    #                                  b = zaug[good]*sqrt(W[good]))$x
-    #   } else {
-    #     beta[!converged_set] <- lm.fit(x = as.matrix(Xaug[good,!converged_set,drop=F]*sqrt(W[good])),
-    #                                    y = zaug[good]*sqrt(W[good]),
-    #                                    tol = 1E-07)$coefficients
-    #     beta[is.na(beta) | is.infinite(beta)] <- 0
-    #   }
-    # }
-
     beta[abs(beta) < control.iwls$thresh] <- 0
     nonzero <- beta != 0
 
@@ -740,7 +720,7 @@ lmridge <- function(X, y, lambda, weights,
   p <- ncol(X)
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
-  if(nonnegative && all(lower < 0)) lower <- rep(0, n)u
+  if(nonnegative && all(lower < 0)) lower <- rep(0, n)
 
 
   # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
@@ -748,28 +728,83 @@ lmridge <- function(X, y, lambda, weights,
   # https://stats.stackexchange.com/a/164546/27340
   # https://stats.stackexchange.com/a/203699/27340
   if (sum(lambda) != 0){
-    Xaug <- rbind(X, diag(sqrt(lambda),ncol(X)))
+    Xaug <- rbind(X, diag(sqrt(lambda),p))
   } else {
     Xaug <- X
   }
 
   if (solver == "osqp") {
-    XtX = crossprod(Xaug, Xaug)
-    Xty = crossprod(Xaug, y)
-    #Obtain settings  and create model
-    settings <- osqpSettings(eps_abs = 1e-8, eps_rel = 1e-8,
-                             linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
-    model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
+    if(p>n){ #if p > n we use Woodbury identity
+      #TODO: make sure that this works
+      # calculate (X'WX)^-1
+      XtWX_inv <- solve(crossprod(Xaug, weights))
 
-    #Solve model
-    coefs <- result$solve()$x
-    coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+      # calculate lambda*I + X * (X'WX)^-1 * X'
+      lambdaI_plus_X_XtWX_inv_Xt <- lambda*diag(p) + crossprod(Xaug, XtWX_inv)
+
+      # calculate (lambda*I + X * (X'WX)^-1 * X')^-1
+      lambdaI_plus_X_XtWX_inv_Xt_inv <- solve(lambdaI_plus_X_XtWX_inv_Xt)
+
+      # calculate X' * (lambda*I + X * (X'WX)^-1 * X')^-1
+      Xt_lambdaI_plus_X_XtWX_inv_Xt_inv <- tcrossprod(X, lambdaI_plus_X_XtWX_inv_Xt_inv)
+
+      # calculate (X'WX + lambda*I)^-1 = (X'WX)^-1 - (X'WX)^-1 * X' * (lambda*I + X * (X'WX)^-1 * X')^-1 * X * (X'WX)^-1
+      inv_XtWX_lambdaI <- XtWX_inv - XtWX_inv %*% Xt_lambdaI_plus_X_XtWX_inv_Xt_inv %*% X %*% XtWX_inv
+
+      # calculate crossprod(X,W*y)
+      XtWy <- crossprod(X,W*y)
+
+      # set up quadratic programming problem
+      pff <- .sparseDiagonal(ncol(X))
+      model <- osqp(inv_XtWX_lambdaI, -XtWy, pff, l=lower, u=upper, pars=settings)
+
+      # solve
+      coefs = model$Solve()$x
+      coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+
+    } else {
+      XtX = crossprod(Xaug, Xaug)
+      Xty = crossprod(Xaug, y)
+      #Obtain settings  and create model
+      settings <- osqpSettings()#eps_abs = 1e-8, eps_rel = 1e-8,
+      #linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
+      model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
+
+      #Solve model
+      coefs <- model$solve()$x
+      coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+    }
 
   } else if (solver == "LSCG") {
     # TODO: Implement LSCG solver
+  } else if (solver == "glmnet") {
+    # TODO: Implement glmnet solver
   } else {
     stop("Invalid solver choice")}
 
+  ###Old solvers###
+  # Weighted LS update, with optional nonnegativity constraints
+  # if(is.null(control.fit$block.size)) control.fit$block.size <- p
+  # block.ids <- ceiling((1:p)/control.fit$block.size)
+  # beta[!converged_set] <- block.fit(X = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
+  #                                   y = zaug[good]*sqrt(W[good]),
+  #                                   block.id = block.ids[!converged_set],
+  #                                   nonnegative = nonnegative,
+  #                                   control = control.fit)
+
+
+  # TODO clean this
+  # if(F){
+  #   if(nonnegative){
+  #     beta[!converged_set] <- nnls(A = Xaug[good,!converged_set,drop=F]*sqrt(W[good]),
+  #                                  b = zaug[good]*sqrt(W[good]))$x
+  #   } else {
+  #     beta[!converged_set] <- lm.fit(x = as.matrix(Xaug[good,!converged_set,drop=F]*sqrt(W[good])),
+  #                                    y = zaug[good]*sqrt(W[good]),
+  #                                    tol = 1E-07)$coefficients
+  #     beta[is.na(beta) | is.infinite(beta)] <- 0
+  #   }
+  # }
   return(coefs)
 }
 
