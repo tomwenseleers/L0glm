@@ -464,8 +464,8 @@ L0glm <- function(formula,
   # Compute deviance
   int.ind <- grepl("intercept", colnames(X), ignore.case = TRUE)
   dev.res <- sum(fit$family$dev.resids(y = y, mu = fit$fitted.values, wt = fit$prior.weights))
-  fit.null <- glm.iwls(X = X[,int.ind, drop = F], #### TODO: adapt this to new glm.iwls
-                       y = y, weights = fit$prior.weights, family = family,
+  fit.null <- glm.iwls(X = X[,int.ind, drop = F],
+                       y = y, weights = fit$prior.weights, family = family, solver = solver,
                        lambda = 0, start = NULL, nonnegative = nonnegative,
                        control.iwls = control.iwls, control.fit = control.fit)
   dev.null <- sum(family$dev.resids(y = y, mu = fit.null$fitted.values, wt = fit.null$prior.weights))
@@ -664,7 +664,7 @@ glm.iwls <- function(X, y, weights, family,
     good <- is.finite(W) & W>0
     betaold <- beta
 
-    beta[!converged_set] <- lmridge(X, y, lambda = lambda, weights = W, lower = lower, upper = upper,
+    beta[!converged_set] <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
                                     nonnegative = nonnegative, solver = solver, start = betaold, verbose = verbose)
 
     beta[abs(beta) < control.iwls$thresh] <- 0
@@ -720,6 +720,7 @@ lmridge <- function(X, y, lambda, weights,
 
   n <- nrow(X)
   p <- ncol(X)
+  w <- weights
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative && all(lower < 0)) lower <- rep(0, p)
@@ -734,14 +735,14 @@ lmridge <- function(X, y, lambda, weights,
     Xaug <- X
   }
 
-  if (solver == "osqp" || lower < 0 || upper == rep(.Machine$double.xmax,ncol(X))) { #TODO add a warning that solver is set to OSQP if box constraints?
-    if(p > n){ #if p > n we use Woodbury identity
-      #TODO: make sure that this works
+
+  if (solver == "osqp") { #TODO solver gets set to osqp if there are box constraints
+    if(4==2){#(p > n){ #if p > n we use Woodbury identity
       # calculate (X'WX)^-1
-      XtWX_inv <- solve(crossprod(Xaug , weights))
+      XtWX_inv <- solve(crossprod(X , weights))
 
       # calculate lambda*I + X * (X'WX)^-1 * X'
-      lambdaI_plus_X_XtWX_inv_Xt <- lambda*diag(p) + crossprod(Xaug, XtWX_inv)
+      lambdaI_plus_X_XtWX_inv_Xt <- lambda*diag(p) + crossprod(X, XtWX_inv)
 
       # calculate (lambda*I + X * (X'WX)^-1 * X')^-1
       lambdaI_plus_X_XtWX_inv_Xt_inv <- solve(lambdaI_plus_X_XtWX_inv_Xt)
@@ -772,16 +773,16 @@ lmridge <- function(X, y, lambda, weights,
       model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
 
       #Solve model
-      coefs <- model$solve()$x
-      coefs = pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+      coefs <- model$Solve()$x
+      coefs <- pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
     }
-  } else if (solver == "LSCG") {
+  } else if (solver == "cg") {
     Xw <- Xaug * sqrt(w)
     yw <- y * sqrt(w)
     A <- t(Xw) %*% Xw
     b <- t(Xw) %*% yw
     if (is.null(start)) start <- numeric(ncol(X))
-    result <- sanic_cg(A, b, start = start, verbose = verbose)
+    result <- solve_cg(A, b, start = start, verbose = verbose)
     return(result$solution)
 
   } else if (solver == "glmnet") {
