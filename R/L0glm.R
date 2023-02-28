@@ -4,6 +4,7 @@
 #' @import Matrix
 #' @import glmnet
 #' @import osqp
+#' @import sanic
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'
@@ -375,7 +376,7 @@ L0glm <- function(formula,
       fits <- lapply(lambda, function(l){
         l <- rep(l, p)
         l[no.pen] <- 0
-        fit <- L0glm.fit(X = X, y = y, weights = weights, family = family,
+        fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver,
                          lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
                          post.filter.fn = post.filter.fn)
@@ -429,7 +430,7 @@ L0glm <- function(formula,
   if(verbose) cat(paste0("==== Model fitting ====\n\n",
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
-  fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, lambda = lambda,
+  fit <- L0glm.fit(X = X, y = y, weights = weights, solver = solver, family = family, lambda = lambda,
                    start = start, nonnegative = nonnegative, control.l0 = control.l0,
                    control.iwls = control.iwls, control.fit = control.fit,
                    post.filter.fn = post.filter.fn)
@@ -714,6 +715,7 @@ lmridge <- function(X, y, lambda, weights,
                     nonnegative = FALSE,
                     solver = "osqp",
                     start = NULL,
+                    #max iter and tol?
                     verbose){
 
   n <- nrow(X)
@@ -721,7 +723,6 @@ lmridge <- function(X, y, lambda, weights,
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative && all(lower < 0)) lower <- rep(0, p)
-
 
   # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
   # Ref :
@@ -733,12 +734,11 @@ lmridge <- function(X, y, lambda, weights,
     Xaug <- X
   }
 
-  if (solver == "osqp") {
-    #if(p>n){ #if p > n we use Woodbury identity
-    if(3 == 4){
+  if (solver == "osqp" || lower < 0 || upper == rep(.Machine$double.xmax,ncol(X))) { #TODO add a warning that solver is set to OSQP if box constraints?
+    if(p > n){ #if p > n we use Woodbury identity
       #TODO: make sure that this works
       # calculate (X'WX)^-1
-      XtWX_inv <- solve(crossprod(Xaug, weights))
+      XtWX_inv <- solve(crossprod(Xaug , weights))
 
       # calculate lambda*I + X * (X'WX)^-1 * X'
       lambdaI_plus_X_XtWX_inv_Xt <- lambda*diag(p) + crossprod(Xaug, XtWX_inv)
@@ -773,11 +773,17 @@ lmridge <- function(X, y, lambda, weights,
 
       #Solve model
       coefs <- model$solve()$x
-      coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+      coefs = pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
     }
-
   } else if (solver == "LSCG") {
-    # TODO: Implement LSCG solver
+    Xw <- Xaug * sqrt(w)
+    yw <- y * sqrt(w)
+    A <- t(Xw) %*% Xw
+    b <- t(Xw) %*% yw
+    if (is.null(start)) start <- numeric(ncol(X))
+    result <- sanic_cg(A, b, start = start, verbose = verbose)
+    return(result$solution)
+
   } else if (solver == "glmnet") {
     # TODO: Implement glmnet solver
   } else {
