@@ -720,7 +720,7 @@ lmridge <- function(X, y, lambda, weights,
   p <- ncol(X)
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
-  if(nonnegative && all(lower < 0)) lower <- rep(0, n)
+  if(nonnegative && all(lower < 0)) lower <- rep(0, p)
 
 
   # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
@@ -734,7 +734,8 @@ lmridge <- function(X, y, lambda, weights,
   }
 
   if (solver == "osqp") {
-    if(p>n){ #if p > n we use Woodbury identity
+    #if(p>n){ #if p > n we use Woodbury identity
+    if(3 == 4){
       #TODO: make sure that this works
       # calculate (X'WX)^-1
       XtWX_inv <- solve(crossprod(Xaug, weights))
