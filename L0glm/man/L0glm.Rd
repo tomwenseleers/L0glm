@@ -69,12 +69,12 @@ lmridge(
   X,
   y,
   lambda,
-  weights,
+  weights = NULL,
   lower = rep(-.Machine$double.xmax, ncol(X)),
   upper = rep(.Machine$double.xmax, ncol(X)),
   nonnegative = FALSE,
   solver = "osqp",
-  start = NULL,
+  start = rep(0, ncol(X)),
   verbose
 )
 }

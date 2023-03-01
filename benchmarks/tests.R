@@ -1,7 +1,8 @@
 # Simulate data p > n
 set.seed(1)
-sim <- simulate_spike_train(n=500, npeaks=10, peakhrange = c(100, 10000))
+sim <- simulate_spike_train(n=10000, npeaks=300, peakhrange = c(100, 10000))
 X <- sim$X
+library(Matrix)
 Xsp <- Matrix(X, sparse=TRUE)
 y <- sim$y
 coef_true <- sim$a
@@ -10,21 +11,27 @@ weights <- 1/(y+0.1)
 lower <- rep(0, ncol(X))
 upper <- rep(Inf, ncol(X))
 nonnegative <- TRUE
-solver <- "osqp"
 start <- NULL
 verbose <- FALSE
 
 X <- Xsp
 
-coefs = lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver)
+system.time(coefs_LSCG <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="LSCG"))
+lines(coefs_LSCG, col="blue", type="h")
 
-# coefs = nnls(X*sqrt(weights), y*sqrt(weights))$x
-lines(coefs, col="blue", type="h")
+system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="osqp"))
+lines(coefs_osqp, col="blue", type="h")
+
+library(nnls)
+system.time(coefs_nnls <- nnls(X*sqrt(weights), y*sqrt(weights))$x)
+lines(coefs_nnls, col="blue", type="h")
 
 
 
-norm((coef_osqp-coef_true),type="2")
-plot(coef_osqp, coef_true)
+
+
+
+
 
 
 

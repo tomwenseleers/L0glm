@@ -3,7 +3,6 @@
 #' @import nnls
 #' @import Matrix
 #' @import glmnet
-#' @import sanic
 #' @importFrom osqp osqpSettings osqp solve_osqp
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
@@ -715,7 +714,7 @@ lmridge <- function(X, y, lambda,
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
                     solver = "osqp",
-                    start = NULL,
+                    start = rep(0, ncol(X)),
                     #max iter and tol?
                     verbose){
 
@@ -749,7 +748,7 @@ lmridge <- function(X, y, lambda,
       Xty = crossprod(Xaug, yaug)
       #Obtain settings  and create model
       settings <- osqpSettings(verbose = FALSE, eps_abs = 1e-8, eps_rel = 1e-8, max_iter = 4000, linsys_solver = 0L)
-      if (!is.null(start)) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
+      if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
 
       model <- osqp(XtX, -Xty, .sparseDiagonal(p), l = lower, u = upper, pars = settings)
 
@@ -788,8 +787,8 @@ lmridge <- function(X, y, lambda,
 
     }
   } else if (solver == "LSCG") {
-    coefs <- sanic::solve_cg(a = Xaug, b = yaug, x0 = start, type = "LSCG", verbose = verbose)
-
+    if (issparse) { coefs <- solve_sparse_lsconjgrad(list(m1 = Xaug, v1 = yaug, x = start))$res } else
+                  { coefs <- solve_dense_lsconjgrad(list(m1 = Xaug, v1 = yaug, x = start))$res }
   } else if (solver == "glmnet") {
     # TODO: Implement glmnet solver
   } else {
