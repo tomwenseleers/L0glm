@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564736817760.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "690962747",
+    "id" : "6F14879A",
+    "lastKnownWriteTime" : 1565084951,
+    "last_content_update" : 1565084951,
+    "path" : "~/GitHub/L0glm/Paper/L0glm script.R",
+    "project_path" : "Paper/L0glm script.R",
+    "properties" : {
+        "cursorPosition" : "18,16",
+        "scrollLine" : "9"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

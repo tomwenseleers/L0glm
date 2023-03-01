@@ -1,0 +1,20 @@
+[
+    {
+        "file": "D:/Documents/GitHub/L0glm/L0glm/src/solve_dense_lsconjgrad.cpp",
+        "file_last_write": 1677678312.0,
+        "definitions": [],
+        "hidden": false
+    },
+    {
+        "file": "D:/Documents/GitHub/L0glm/L0glm/src/solve_sparse_LDLT.cpp",
+        "file_last_write": 1677678312.0,
+        "definitions": [],
+        "hidden": false
+    },
+    {
+        "file": "D:/Documents/GitHub/L0glm/L0glm/src/solve_sparse_lsconjgrad.cpp",
+        "file_last_write": 1677678312.0,
+        "definitions": [],
+        "hidden": false
+    }
+]
