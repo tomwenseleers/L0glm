@@ -22,7 +22,7 @@ sessionInfo()
 
 ``` r
 library(devtools)
-devtools::install_github("tomwenseleers/L0glm")
+devtools::install_github("tomwenseleers/L0glm/L0glm")
 ```
 
 ## Getting Started
