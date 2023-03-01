@@ -4,8 +4,13 @@
 \alias{simulate_spike_train}
 \title{Simulate example data}
 \usage{
-simulate_spike_train(n = 200, npeaks = 20, peakhrange = c(10, 1000),
-  seed = 123, Plot = TRUE)
+simulate_spike_train(
+  n = 200,
+  npeaks = 20,
+  peakhrange = c(10, 1000),
+  seed = 123,
+  Plot = TRUE
+)
 }
 \arguments{
 \item{n}{the problem size.}

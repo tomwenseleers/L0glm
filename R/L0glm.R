@@ -3,8 +3,8 @@
 #' @import nnls
 #' @import Matrix
 #' @import glmnet
-#' @import osqp
 #' @import sanic
+#' @importFrom osqp osqpSettings osqp solve_osqp
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'
@@ -709,7 +709,8 @@ glm.iwls <- function(X, y, weights, family,
 #' It is called by the upper code \code{L0glm.iwls}.
 #'
 #' @export
-lmridge <- function(X, y, lambda, weights,
+lmridge <- function(X, y, lambda,
+                    weights = NULL,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
@@ -718,26 +719,47 @@ lmridge <- function(X, y, lambda, weights,
                     #max iter and tol?
                     verbose){
 
+  if (!is.null(weights)) {
+    X <- X * sqrt(weights)
+    y <- y * sqrt(weights)
+  }
   n <- nrow(X)
   p <- ncol(X)
-  w <- weights
+  issparse <- class(X) %in% c("dgCMatrix", "dsCMatrix")
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
-  if(nonnegative && all(lower < 0)) lower <- rep(0, p)
+  if (nonnegative && all(lower < 0)) lower <- rep(0, p)
 
   # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
   # Ref :
   # https://stats.stackexchange.com/a/164546/27340
   # https://stats.stackexchange.com/a/203699/27340
-  if (sum(lambda) != 0){
-    Xaug <- rbind(X, diag(sqrt(lambda),p))
+  if (sum(lambda) != 0) {
+    if (issparse) { Xaug <- rbind(X, .sparseDiagonal(p, sqrt(lambda)) )
+                    yaug <- c(y, rep(0, p)) }  else { Xaug <- rbind(X, diag(sqrt(lambda),p) )
+                                                      yaug <- c(y, rep(0, p))}
   } else {
     Xaug <- X
+    yaug <- y
   }
 
-
   if (solver == "osqp") { #TODO solver gets set to osqp if there are box constraints
-    if(4==2){#(p > n){ #if p > n we use Woodbury identity
+    if (p<=n) {
+      XtX = crossprod(Xaug, Xaug)
+      Xty = crossprod(Xaug, yaug)
+      #Obtain settings  and create model
+      settings <- osqpSettings(verbose = FALSE, eps_abs = 1e-8, eps_rel = 1e-8, max_iter = 4000, linsys_solver = 0L)
+      if (!is.null(start)) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
+
+      model <- osqp(XtX, -Xty, .sparseDiagonal(p), l = lower, u = upper, pars = settings)
+
+      if (!is.null(start)) model$WarmStart(x=start)
+
+      #Solve model
+      coefs <- model$Solve()$x
+      coefs <- pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+
+      } else { #if p > n we use Woodbury identity
       # calculate (X'WX)^-1
       XtWX_inv <- solve(crossprod(X , weights))
 
@@ -764,26 +786,9 @@ lmridge <- function(X, y, lambda, weights,
       coefs = model$Solve()$x
       coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
 
-    } else {
-      XtX = crossprod(Xaug, Xaug)
-      Xty = crossprod(Xaug, y)
-      #Obtain settings  and create model
-      settings <- osqpSettings()#eps_abs = 1e-8, eps_rel = 1e-8,
-      #linsys_solver = 0L, warm_start = FALSE, verbose = verbose)
-      model <- osqp(XtX, -Xty, t(as.matrix(.sparseDiagonal(p))), l = lower, u = upper, pars = settings)
-
-      #Solve model
-      coefs <- model$Solve()$x
-      coefs <- pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
     }
-  } else if (solver == "cg") {
-    Xw <- Xaug * sqrt(w)
-    yw <- y * sqrt(w)
-    A <- t(Xw) %*% Xw
-    b <- t(Xw) %*% yw
-    if (is.null(start)) start <- numeric(ncol(X))
-    result <- solve_cg(A, b, start = start, verbose = verbose)
-    return(result$solution)
+  } else if (solver == "LSCG") {
+    coefs <- sanic::solve_cg(a = Xaug, b = yaug, x0 = start, type = "LSCG", verbose = verbose)
 
   } else if (solver == "glmnet") {
     # TODO: Implement glmnet solver

@@ -6,11 +6,15 @@
 \alias{control.fit.gen}
 \title{Set parameters for L0glm algorithm}
 \usage{
-control.l0.gen(maxit = 100, rel.tol = 1e-04, delta = 1e-05,
-  gamma = 2, warn = FALSE)
+control.l0.gen(
+  maxit = 100,
+  rel.tol = 1e-04,
+  delta = 1e-05,
+  gamma = 2,
+  warn = FALSE
+)
 
-control.iwls.gen(maxit = 1, rel.tol = 1e-04, thresh = 1e-05,
-  warn = FALSE)
+control.iwls.gen(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE)
 
 control.fit.gen(maxit = 10, block.size = NULL, tol = 1e-07)
 }
@@ -51,11 +55,11 @@ least squares fitting (\code{control.fit.gen}).
 }
 \section{Functions}{
 \itemize{
-\item \code{control.iwls.gen}: Generate parameters that control the IWLS iteration.
+\item \code{control.iwls.gen()}: Generate parameters that control the IWLS iteration.
 
-\item \code{control.fit.gen}: Generates parameters that control the least square fit.
+\item \code{control.fit.gen()}: Generates parameters that control the least square fit.
+
 }}
-
 \examples{
 
 control.l0.gen()

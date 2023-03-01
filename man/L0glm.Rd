@@ -4,27 +4,79 @@
 \alias{L0glm}
 \alias{L0glm.fit}
 \alias{glm.iwls}
+\alias{lmridge}
 \title{Fitting Constrained L0 Penalized Generalized Linear Models}
 \usage{
-L0glm(formula, data = NULL, weights = rep(1, length(y)),
-  family = gaussian(identity), start = NULL, contrasts = NULL,
-  lambda = 0, no.pen = 0, nonnegative = FALSE, normalize = TRUE,
-  control.l0 = list(), control.iwls = list(), control.fit = list(),
-  post.filter.fn = function(u) return(u), tune.meth = "none",
-  tune.crit = "bic", seed = NULL, verbose = TRUE)
+L0glm(
+  formula,
+  data = NULL,
+  weights = rep(1, length(y)),
+  family = gaussian(identity),
+  start = NULL,
+  contrasts = NULL,
+  lambda = 0,
+  no.pen = 0,
+  nonnegative = FALSE,
+  solver = "osqp",
+  lower = rep(-.Machine$double.xmax, ncol(X)),
+  upper = rep(.Machine$double.xmax, ncol(X)),
+  normalize = TRUE,
+  control.l0 = list(),
+  control.iwls = list(),
+  control.fit = list(),
+  post.filter.fn = function(u) return(u),
+  tune.meth = "none",
+  tune.crit = "bic",
+  seed = NULL,
+  verbose = TRUE
+)
 
-L0glm.fit(X, y, weights = rep(1, length(y)),
-  family = poisson(identity), lambda = 0, start = NULL,
-  nonnegative = FALSE, post.filter.fn = function(u) return(u),
-  control.l0 = list(maxit = 100, rel.tol = 1e-04, delta = 1e-05, gamma =
-  2, warn = FALSE), control.iwls = list(maxit = 1, rel.tol = 1e-04,
-  thresh = 1e-05, warn = FALSE), control.fit = list(maxit = 10,
-  block.size = NULL, tol = 1e-07))
+L0glm.fit(
+  X,
+  y,
+  weights = rep(1, length(y)),
+  family = poisson(identity),
+  lambda = 0,
+  start = NULL,
+  lower = rep(-.Machine$double.xmax, ncol(X)),
+  upper = rep(.Machine$double.xmax, ncol(X)),
+  solver = "osqp",
+  nonnegative = FALSE,
+  post.filter.fn = function(u) return(u),
+  control.l0 = list(maxit = 100, rel.tol = 1e-04, delta = 1e-05, gamma = 2, warn = FALSE),
+  control.iwls = list(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE),
+  control.fit = list(maxit = 10, block.size = NULL, tol = 1e-07)
+)
 
-glm.iwls(X, y, weights, family, start = NULL, lambda = rep(0, ncol(X)),
-  nonnegative = FALSE, control.iwls = list(maxit = 1, rel.tol = 1e-04,
-  thresh = 1e-05, warn = FALSE), control.fit = list(maxit = 10,
-  block.size = NULL, tol = 1e-07), converged_set = rep(FALSE, ncol(X)))
+glm.iwls(
+  X,
+  y,
+  weights,
+  family,
+  solver = "osqp",
+  start = NULL,
+  lambda = rep(0, ncol(X)),
+  nonnegative = FALSE,
+  lower = rep(-.Machine$double.xmax, ncol(X)),
+  upper = rep(.Machine$double.xmax, ncol(X)),
+  control.iwls = list(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE),
+  control.fit = list(maxit = 10, block.size = NULL, tol = 1e-07),
+  converged_set = rep(FALSE, ncol(X)),
+  verbose = FALSE
+)
+
+lmridge(
+  X,
+  y,
+  lambda,
+  weights,
+  lower = rep(-.Machine$double.xmax, ncol(X)),
+  upper = rep(.Machine$double.xmax, ncol(X)),
+  nonnegative = FALSE,
+  solver = "osqp",
+  start = NULL,
+  verbose
+)
 }
 \arguments{
 \item{formula}{a formula object describing the model to fit. See \code{\link{stats::formula}}
@@ -105,7 +157,7 @@ Missing values will be filled with defaults (see \code{\link{control.fit.gen}})}
 \item{post.filter.fn}{A function that performs post filtering to the coefficients at the end of the
 fit. It should require a single argument that is the vector of coefficients.
 Note that lambda tuning will be performed with the processed coefficients, so
-the selected lambda will be influence by the filtering step. Default: no
+the selected lambda will be influenced by the filtering step. Default: no
 filtering.}
 
 \item{tune.meth}{lambda selection method (see details). It should be one of \code{"none"},
@@ -248,15 +300,18 @@ which all coefficients are 0. This is given by
 }
 \section{Functions}{
 \itemize{
-\item \code{L0glm.fit}: fits an L0 penalized regression using the adaptive ridge algorithm (Frommlet
+\item \code{L0glm.fit()}: fits an L0 penalized regression using the adaptive ridge algorithm (Frommlet
 et Nuel 2016). The function contains minimal code for fitting the adaptive
 ridge and is called by the higher level \code{L0glm}.
 
-\item \code{glm.iwls}: fits a GLM using iteratively weighted least squares (McCullagh and Nelder 1989). Note that
+\item \code{glm.iwls()}: fits a GLM using iteratively weighted least squares (McCullagh and Nelder 1989). Note that
 \code{lambda} should be a vector of length \code{p} and no lambda tuning is
 performed.
-}}
 
+\item \code{lmridge()}: Implementation of different solvers
+It is called by the upper code \code{L0glm.iwls}.
+
+}}
 \note{
 When a lambda is supplied as vector with no tuning method (\code{tune.meth == "none"}),
 the function returns an object of class \code{tune.L0glm}. This contains
@@ -348,7 +403,7 @@ plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm8, a.true = sim$a,
 }
 
 # Case IX: fit nonnegative identity link Poisson GLM with L0 penalty and a
-#          prespecify lambda using BIC
+#          prespecied lambda using BIC
 L0glm9 <- L0glm(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                 lambda = "aic", # set lambda that minimize the expected BIC
                 nonnegative = TRUE, normalize = FALSE,

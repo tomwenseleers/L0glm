@@ -4,8 +4,15 @@
 \alias{L0glm.inference}
 \title{Inference on L0glm Models}
 \usage{
-L0glm.inference(fit, level = 0.95, boot.repl = 200, control.l0,
-  control.iwls, control.fit, verbose = TRUE)
+L0glm.inference(
+  fit,
+  level = 0.95,
+  boot.repl = 200,
+  control.l0,
+  control.iwls,
+  control.fit,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{fit}{an \code{L0glm} object (see \code{\link{L0glm}}).}
