@@ -11,8 +11,8 @@ Depends: R (>= 3.0)
 Imports: boot (>= 1.3),
           Matrix (>= 1.2),
           nnls (>= 1.4),
-          Rcpp (>= 1.0.3)
-LinkingTo: Rcpp, RcppEigen
+          Rcpp (>= 1.0.5)
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Maintainer: The package maintainer <yourself@somewhere.net>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.

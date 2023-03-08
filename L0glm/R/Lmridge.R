@@ -33,9 +33,9 @@ lmridge <- function(X, y, lambda,
     X <- X * sqrt(weights)
     y <- y * sqrt(weights)
   }
-  n <- nrow(X)
-  p <- ncol(X)
   issparse <- class(X) %in% c("dgCMatrix", "dsCMatrix")
+
+  p <- ncol(X)
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, p)
@@ -45,20 +45,25 @@ lmridge <- function(X, y, lambda,
   # https://stats.stackexchange.com/a/164546/27340
   # https://stats.stackexchange.com/a/203699/27340
   if (sum(lambda) != 0) {
-    if (issparse) { Xaug <- rbind(X, .sparseDiagonal(p, sqrt(lambda)) )
-    yaug <- c(y, rep(0, p)) }  else { Xaug <- rbind(X, diag(sqrt(lambda),p) )
-    yaug <- c(y, rep(0, p))}
+    if (issparse) {
+    Xaug <- rbind(X, .sparseDiagonal(p, sqrt(lambda)) )
+    yaug <- c(y, rep(0, p)) }  else {
+      Xaug <- rbind(X, diag(sqrt(lambda),p) )
+      yaug <- c(y, rep(0, p))}
   } else {
     Xaug <- X
     yaug <- y
   }
 
-  if (solver == "osqp") { #TODO solver gets set to osqp if there are box constraints
+  n <- nrow(Xaug)
+
+  if (solver == "osqp") {
     if (p<=n) {
       XtX = crossprod(Xaug, Xaug)
       Xty = crossprod(Xaug, yaug)
       #Obtain settings  and create model
-      settings <- osqpSettings(verbose = FALSE, eps_abs = 1e-8, eps_rel = 1e-8, max_iter = 4000, linsys_solver = 0L)
+      settings <- osqpSettings(verbose = FALSE, eps_abs = 1e-5, eps_rel = 1e-5,
+                               max_iter = 4000, linsys_solver = 0L)
       if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
 
       model <- osqp(XtX, -Xty, .sparseDiagonal(p), l = lower, u = upper, pars = settings)
@@ -69,7 +74,7 @@ lmridge <- function(X, y, lambda,
       coefs <- model$Solve()$x
       coefs <- pmax(lower, pmin(coefs, upper)) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
 
-    } else { #if p > n we use Woodbury identity
+    } else { # if p > n we use Woodbury identity
       # calculate (X'WX)^-1
       XtWX_inv <- solve(crossprod(X , weights))
 
@@ -97,12 +102,23 @@ lmridge <- function(X, y, lambda,
       coefs = pmax(lower, pmin(coefs, upper) ) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
     }
   } else if (solver == "LSCG") {
-    if (issparse) { coefs <- solve_sparse_lsconjgrad(list(m1 = Xaug, v1 = yaug, x = start))$res } else
-    { coefs <- solve_dense_lsconjgrad(list(m1 = Xaug, v1 = yaug, x = start))$res }
-  } else if (solver == "glmnet") {
-    # TODO: Implement glmnet solver
-  } else {
-    stop("Invalid solver choice")}
+    if (issparse) { coefs <- solve_sparse_LSCG(A = Xaug, b = yaug, x = start)$coefficients } else
+                  { coefs <- solve_dense_LSCG(A = Xaug, b = yaug, x = start)$coefficients }
+    coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
+  } else if (solver == "QR") {
+    if (issparse) { coefs <- solve_sparse_QR(A = Xaug, b = yaug)$coefficients } else
+    { coefs <- solve_dense_QR(A = Xaug, b = yaug)$coefficients }
+    coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
+    } else if (solver == "glmnet") {
+    model <- bigGlm(x = Xaug, y = yaug,
+                    alpha = 0, lambda = 0, intercept = FALSE, standardize = FALSE, standardize.response = FALSE,
+                    lower.limits = c(-Inf, lower), upper.limits = c(Inf, upper),
+                    family = "gaussian", path = FALSE)
+    coefs <- coef(model)[-1]
+  } else if (solver == "nnls") {
+    coefs <- nnls(A=Xaug, b=yaug)$x
+    } else {
+    stop("Invalid solver choice") }
 
   ###Old solvers###
   # Weighted LS update, with optional nonnegativity constraints
