@@ -271,9 +271,13 @@ cor(coefs_glmnet_unbounded, coefs_solve_dense) # 1
 
 # solvers with box or nonnegativity constraints
 # glmnet (bounded): FAST, but LSCG still a bit faster?? Fastest method with explicit box constraints though.
-system.time(coefs_glmnet <- lmridge(X=Xsp, y, lambda, weights,
+system.time(coefs_glmnet <- lmridge(X=Xsp, y, lambda = lambdas, weights,
                                     lower, upper, nonnegative,
                                     solver="glmnet")) # 0.11s with p=n=10000, 0.06s with p=5000 & n=1000 with MRO/IntelMKL
+
+
+cor(coefs_glmnet, coefs_glmnet2)
+plot(coefs_glmnet, coefs_glmnet2)
 
 system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
                                           lower, upper, nonnegative,
@@ -281,12 +285,13 @@ system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
 
 
 # osqp: FASTER if  n > p & IntelMKL is installed, otherwise rather slow
-system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
+system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda=lambdas, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
+# 6.78s when using Xaug, 7.09s when using Xw * diag(lambda), coefs are the same
+
 lines(coefs_osqp, col="green", type="h")
 cor(coefs_osqp, coefs_glmnet) # 0.9999903
 plot(coefs_osqp, coefs_glmnet) # correct...
 # TO DO check how to optimise for p > n
-
 
 # nnls: SLOW
 system.time(coefs_nnls <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="nnls")) # 1841s for n=p=10000

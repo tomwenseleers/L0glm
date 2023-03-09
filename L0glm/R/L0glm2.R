@@ -50,7 +50,7 @@
 #' \itemize{
 #' \item{\code{maxit}: maximum number of iterations. Set to 1 for ridge penalty
 #' (if \code{start == NULL}) or adaptive ridge penalty (if \code{start} != NULL).}
-#' \item{\code{rel.tol}: coefficients are update until the relative difference
+#' \item{\code{reltol}: coefficients are update until the relative difference
 #' between two iteration is smaller than this threshold. The relative difference
 #' is defined as
 #' \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}}
@@ -64,7 +64,7 @@
 #' contain the following elements:
 #' \itemize{
 #' \item{\code{maxit}: maximum number of iterations}
-#' \item{\code{rel.tol}: coefficients are update until the relative difference
+#' \item{\code{reltol}: coefficients are update until the relative difference
 #' between two iteration is smaller than this threshold. The relative difference
 #' is defined as
 #' \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}}
@@ -519,8 +519,8 @@ L0glm.fit2 <- function(X, y,
                        solver = "osqp", #TODO document
                        nonnegative = FALSE,
                        post.filter.fn = function(u) return(u),
-                       control.l0 = list(maxit = 100, rel.tol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
-                       control.iwls = list(maxit = 1, rel.tol = 1E-4, thresh = 1E-5, warn = FALSE),
+                       control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
+                       control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
                        control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7)){
   n <- nrow(X)
   p <- ncol(X)
@@ -545,7 +545,7 @@ L0glm.fit2 <- function(X, y,
 
     # Control iteration
     reldiff <- 2*abs((beta-beta0)/(beta+beta0))
-    mask <- reldiff <= control.l0$rel.tol # keep coefficients fixed in subsequent iterations if they converged
+    mask <- reldiff <= control.l0$reltol # keep coefficients fixed in subsequent iterations if they converged
     mask[is.na(mask)] <- TRUE
     stop.loop <- sum(mask) >= (p-1)
 
@@ -585,7 +585,7 @@ glm.iwls2 <- function(X, y, weights, family,
                       nonnegative = FALSE,
                       lower = rep(-.Machine$double.xmax,ncol(X)),
                       upper = rep(.Machine$double.xmax,ncol(X)),
-                      control.iwls = list(maxit = 1, rel.tol = 1E-4, thresh = 1E-5, warn = FALSE),
+                      control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
                       control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # remove ?
                       converged_set = rep(FALSE, ncol(X)),
                       verbose = FALSE){ # TODO match
@@ -627,7 +627,7 @@ glm.iwls2 <- function(X, y, weights, family,
   }
 
   # Initialize iteration control variables
-  niters_nochange <- converged_set * control.iwls$maxit # nr of iterations over which coefficients showed less than rel.tol relative change.
+  niters_nochange <- converged_set * control.iwls$maxit # nr of iterations over which coefficients showed less than reltol relative change.
   nonzero <- rep(TRUE, ncol(X)) # nonzero coefficients
 
   # Start loop
@@ -676,8 +676,8 @@ glm.iwls2 <- function(X, y, weights, family,
     # Update iteration control
     reldiff <- 2*abs((beta-betaold)/(beta+betaold)) # Vector of relative differences in coefficient estimates
     reldiff[is.na(reldiff)] <- 0
-    niters_nochange <- niters_nochange + (reldiff <= control.iwls$rel.tol)*1
-    # if coefficients stay within rel.tol in terms of relative difference over
+    niters_nochange <- niters_nochange + (reldiff <= control.iwls$reltol)*1
+    # if coefficients stay within reltol in terms of relative difference over
     # 2 subsequent iterations we consider they converged. If initial estimates
     # are supplied, we look only at previous iteration
     # This is perfromed only when working with identity link
@@ -721,7 +721,7 @@ glm.iwls2 <- function(X, y, weights, family,
 #'
 #' @param maxit
 #' The maximum number of iterations.
-#' @param rel.tol
+#' @param reltol
 #' Coefficients are update until the relative difference between two iteration
 #' is smaller than this threshold. The relative difference is defined as
 #' \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}
@@ -764,8 +764,8 @@ glm.iwls2 <- function(X, y, weights, family,
 #' control.fit.gen2()
 #'
 #' @export
-control.l0.gen2 <- function(maxit = 100, rel.tol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE){
-  l <- list(maxit = maxit, rel.tol = rel.tol, delta = delta, gamma = gamma, warn = warn)
+control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE){
+  l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
   return(l)
 }
 
@@ -775,8 +775,8 @@ control.l0.gen2 <- function(maxit = 100, rel.tol = 1E-4, delta = 1E-5, gamma = 2
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen2 <- function(maxit = 1, rel.tol = 1E-4, thresh = 1E-5, warn = FALSE){
-  l <- list(maxit = maxit, rel.tol = rel.tol, thresh = thresh, warn = warn)
+control.iwls.gen2 <- function(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE){
+  l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
 
@@ -797,7 +797,46 @@ control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-7){
 #' Generates parameters that control the solver (lmridge function).
 #'
 #' @export
-control.solver.gen <- function(maxit = 4000, block.size = NULL){
-  l <- list(block.size = block.size, maxit = maxit, tol = tol)
+control.solver.gen <- function(solver, method = NULL, 
+                               maxit = NULL, 
+                               blocksize = NULL,
+                               reltol = 1E-5,
+                               abstol = 1E-5,
+                               verbose = FALSE){
+  if(!is.null(method) && solver != "eigen"){
+    warning("A method is only required when using an eigen solver")
+  }
+  
+  if(solver == "osqp"){
+    if(is.null(maxit)) maxit <- 4000
+    if(is.null(abstol)) maxit <- 4000
+
+    l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L)
+    
+  } else if (solver == "glmnet") {
+    if(is.null(maxit)) maxit <- 1e+05
+    if(is.null(abstol)) maxit <- 1e-07
+    
+    l <- list(thresh = abstol, maxit = maxit)
+    
+  } else { # if solver == "eigen"
+    if (is.null(method)){
+      warning("No method for Eigen solvers was provided. Method is set to 1.")
+      method <- 1
+    }
+      
+    if (method == 1){
+      
+    } else if (method == 2){
+      
+    } else if (method == 3){
+      
+    } else if (method == 4){
+      
+    } else {
+      warning("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
+      stop #TODO ??
+    }
+  }
   return(l)
 }
