@@ -269,7 +269,7 @@ L0glm2 <- function(formula,
                    control.l0 = list(),
                    control.iwls = list(),
                    control.fit = list(),
-                   control.solver = list(), ##TODO: document
+                   control.solver = NULL, ##TODO: document
                    post.filter.fn = function(u) return(u),
                    # TODO make CV arguments a single list, eg tune.control ?
                    tune.meth = "none",
@@ -377,7 +377,7 @@ L0glm2 <- function(formula,
         l[no.pen] <- 0
         fit <- L0glm.fit2(X = X, y = y, weights = weights, family = family, solver = solver,
                           lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
-                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
+                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver,
                           post.filter.fn = post.filter.fn)
       })
       fit <- list()
@@ -430,7 +430,7 @@ L0glm2 <- function(formula,
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
   fit <- L0glm.fit2(X = X, y = y, weights = weights, solver = solver, family = family, lambda = lambda,
-                    start = start, nonnegative = nonnegative, control.l0 = control.l0,
+                    start = start, nonnegative = nonnegative, control.l0 = control.l0, control.solver = control.solver,
                     control.iwls = control.iwls, control.fit = control.fit,
                     post.filter.fn = post.filter.fn)
   fit$timing <- proc.time()[3] - t1
@@ -466,7 +466,7 @@ L0glm2 <- function(formula,
   fit.null <- glm.iwls2(X = X[,int.ind, drop = F],
                         y = y, weights = fit$prior.weights, family = family, solver = solver,
                         lambda = 0, start = NULL, nonnegative = nonnegative,
-                        control.iwls = control.iwls, control.fit = control.fit)
+                        control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
   dev.null <- sum(family$dev.resids(y = y, mu = fit.null$fitted.values, wt = fit.null$prior.weights))
   if(is.infinite(dev.null)) dev.null <- NA
   fit$deviance <- list(residual.df = fit$df$rdf,
@@ -518,6 +518,7 @@ L0glm.fit2 <- function(X, y,
                        upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
                        solver = "osqp", #TODO document
                        nonnegative = FALSE,
+                       control.solver = NULL,
                        post.filter.fn = function(u) return(u),
                        control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
                        control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
@@ -539,7 +540,7 @@ L0glm.fit2 <- function(X, y,
     # Fit the model with current adaptive weights.
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, family = family, start = start,
                      lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
-                     control.iwls = control.iwls, control.fit = control.fit)
+                     control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
 
@@ -578,6 +579,7 @@ L0glm.fit2 <- function(X, y,
 #' \code{lambda} should be a vector of length \code{p} and no lambda tuning is
 #' performed.
 #'
+
 glm.iwls2 <- function(X, y, weights, family,
                       solver = "osqp",
                       start = NULL,
@@ -587,6 +589,7 @@ glm.iwls2 <- function(X, y, weights, family,
                       upper = rep(.Machine$double.xmax,ncol(X)),
                       control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
                       control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # remove ?
+                      control.solver = NULL,
                       converged_set = rep(FALSE, ncol(X)),
                       verbose = FALSE){ # TODO match
 
@@ -608,7 +611,7 @@ glm.iwls2 <- function(X, y, weights, family,
   beta <- if(!is.null(start)){
     start
   } else {
-    rep(1,ncol(X))
+    rep(1, ncol(X))
   }
   names(beta) <- colnames(X)
 
@@ -651,20 +654,19 @@ glm.iwls2 <- function(X, y, weights, family,
     # that already converged. This allows for a dramatic speed up after the 1st iteration.
     z <- z - as.vector(X[, converged_set & nonzero, drop=F] %*% beta[converged_set & nonzero])
 
-    # Row augmentation of the updated weights and observations
-    if(sum(lambda) != 0) {
-      W <- c(W, rep(1,p))
-      zaug <- c(z, rep(0,p))
-    } else {
-      zaug <- z
-    }
-
     # Update the observation subset
     good <- is.finite(W) & W>0
     betaold <- beta
 
-    beta[!converged_set] <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                    nonnegative = nonnegative, solver = solver, start = betaold, verbose = verbose)
+    beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
+                                    y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
+                                    nonnegative = nonnegative, solver = solver, start = betaold,
+                                    control.solver = control.solver, verbose = verbose)
+    
+    
+    # beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+    #                 nonnegative = nonnegative, solver = solver, start = betaold, 
+    #                 control.solver = control.solver, verbose = verbose)
 
     beta[abs(beta) < control.iwls$thresh] <- 0
     nonzero <- beta != 0

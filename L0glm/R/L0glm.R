@@ -666,6 +666,7 @@ glm.iwls <- function(X, y, weights, family,
                                       block.id = block.ids[!converged_set],
                                       nonnegative = nonnegative,
                                       control = control.fit)
+    
     # TODO clean this
     # if(F){
     #   if(nonnegative){

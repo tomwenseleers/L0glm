@@ -24,6 +24,7 @@ n <- 10000
 p <- 10000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
+# sim <- simulate_spike_train(n = )
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
 
 coefs_true <- sim$beta_true
@@ -49,6 +50,35 @@ nonnegative <- TRUE
 start <- NULL
 verbose <- FALSE
 
+
+family <- poisson(identity)
+converged_set = rep(FALSE, ncol(X))
+control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE)
+control.solver = NULL
+solver = "osqp"
+
+a <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
+          solver = "osqp",
+          lambda = lambdas,
+          nonnegative = nonnegative,
+          lower = lower,
+          upper = upper,
+          verbose = verbose)
+plot_L0glm_benchmark(x = sim$x, y = y, fit = a, a.true = sim$a,
+                     main="Ground truth vs L0glm estimates")
+
+b <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
+               solver = "glmnet",
+               lambda = lambdas,
+               nonnegative = nonnegative,
+               lower = lower,
+               upper = upper,
+               verbose = verbose)
+plot_L0glm_benchmark(x = sim$x, y = y, fit = b, a.true = sim$a,
+                     main="Ground truth vs L0glm estimates")
+
+
+
 # # example of multichannel signal
 # yvect <- c(Y)
 # library(Matrix)
@@ -63,7 +93,6 @@ verbose <- FALSE
 # W <- Diagonal(sqrt(1/(yvect+0.1)))
 # # create the block diagonal matrix
 # Xblock <- bKMatrix(W, X)
-
 
 
 # 1. TESTS WITH SOME DEFAULT SOLVE METHODS TO SOLVE RIDGE REGRESSION, EITHER WITH DIRECT SOLVE OR VIA ROW AUGMENTATION ####
@@ -276,7 +305,9 @@ system.time(coefs_glmnet <- lmridge(X=Xsp, y, lambda = lambdas, weights,
                                     solver="glmnet")) # 0.11s with p=n=10000, 0.06s with p=5000 & n=1000 with MRO/IntelMKL
 
 
-cor(coefs_glmnet, coefs_glmnet2)
+cor(coefs_glmnet, coefs_true)
+lines(coefs_glmnet, col="blue", type="h")
+
 plot(coefs_glmnet, coefs_glmnet2)
 
 system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
@@ -289,7 +320,7 @@ system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda=lambdas, weights, lower, uppe
 # 6.78s when using Xaug, 7.09s when using Xw * diag(lambda), coefs are the same
 
 lines(coefs_osqp, col="green", type="h")
-cor(coefs_osqp, coefs_glmnet) # 0.9999903
+cor(coefs_osqp, coefs_true) # 0.9999903
 plot(coefs_osqp, coefs_glmnet) # correct...
 # TO DO check how to optimise for p > n
 

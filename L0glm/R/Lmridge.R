@@ -102,7 +102,7 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, control.solver){
   
   Xwaug <- row_augX(Xw, lambda)
   ywaug <- row_augY(yw, lambda)
-  
+
   XtX = crossprod(Xwaug)
   Xty = crossprod(Xwaug, ywaug)
   
@@ -196,11 +196,10 @@ diaglambdas <- function(lambdas, sparse){
   if(sparse) {
     dlambdas <- .sparseDiagonal(p, lambdas)
   } else {
-    dlambdas <- diag(p, lambdas)
+    dlambdas <- diag(lambdas, p)
   }
   return (dlambdas)
 }
-
 issparse <- function(X){
-  return(class(X) %in% c("dgCMatrix", "dsCMatrix"))
+  return(any(class(X) %in% c("dgCMatrix", "dsCMatrix")))
 }
