@@ -279,7 +279,6 @@ L0glm2 <- function(formula,
                    verbose = TRUE){
 
   call0 <- match.call()
-
   # Extract data structure from the formula (code taken from stats::glm)
   if (is.null(data)) data <- environment(formula)
   mf <- match.call(expand.dots = FALSE)
@@ -657,7 +656,8 @@ glm.iwls2 <- function(X, y, weights, family,
     # Update the observation subset
     good <- is.finite(W) & W>0
     betaold <- beta
-
+    
+    browser()
     beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
                                     y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
                                     nonnegative = nonnegative, solver = solver, start = betaold,
@@ -703,6 +703,7 @@ glm.iwls2 <- function(X, y, weights, family,
               converged.iwls = all(converged_set) || control.iwls$maxit == 1,
               iter.iwls = j))
 }
+
 
 
 # TODO

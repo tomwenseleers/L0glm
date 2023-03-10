@@ -39,7 +39,6 @@ lmridge <- function(X, y, lambda,
   }
   
   if (solver == "osqp") {
-    
     control.solver <- do.call("control.solver.gen", control.solver)
     coefs <- lmridge_osqp(X = X, y = y, weights = weights, lambdas = lambda,
                           lower = lower, upper = upper, control.solver = control.solver)
@@ -97,20 +96,20 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, control.solver){
   Xw <- Xweights(X, weights)
   yw <- Yweights(y, weights)
   
-  # XtX = crossprod(Xw) + diaglambdas(lambdas, issparse(Xw))
-  # Xty = crossprod(Xw, yw)
+  XtX = crossprod(Xw) + diaglambdas(lambdas, issparse(Xw), ncol(Xw))
+  Xty = crossprod(Xw, yw)
   
-  Xwaug <- row_augX(Xw, lambda)
-  ywaug <- row_augY(yw, lambda)
-
-  XtX = crossprod(Xwaug)
-  Xty = crossprod(Xwaug, ywaug)
+  # Xwaug <- row_augX(Xw, lambdas)
+  # ywaug <- row_augY(yw, lambdas)
+  # 
+  # XtX = crossprod(Xwaug)
+  # Xty = crossprod(Xwaug, ywaug)
   
   #Obtain settings  and create model
   settings <- do.call(osqpSettings, control.solver)
   if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
   
-  model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(p), l = lower, u = upper, pars = settings)
+  model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(X)), l = lower, u = upper, pars = settings)
   
   if (!is.null(start)) model$WarmStart(x=start)
   
@@ -174,7 +173,7 @@ row_augX <- function(Xw, lambda){
   p <- ncol(Xw)
   lambda <- sqrt(lambda)
   if (sum(lambda) != 0) {
-    Xaug <- rbind(Xw, diaglambdas(lambda, issparse(Xw)))
+    Xaug <- rbind(Xw, diaglambdas(lambda, issparse(Xw), p))
   } else {
     Xaug <- Xw
   }
@@ -192,7 +191,7 @@ row_augY <- function(yw, lambda){
   return(yaug)
 }
 
-diaglambdas <- function(lambdas, sparse){
+diaglambdas <- function(lambdas, sparse, p){
   if(sparse) {
     dlambdas <- .sparseDiagonal(p, lambdas)
   } else {

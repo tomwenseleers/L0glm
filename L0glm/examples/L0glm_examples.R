@@ -8,7 +8,7 @@ L0glm1 <- L0glm(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poi
                 lambda = 0, tune.meth = "none", nonnegative = TRUE, normalize = FALSE,
                 control.iwls = list(maxit = 100),
                 control.l0 = list(maxit = 1, delta = 1E-2, gamma = 1.8))
-plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
+plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$beta_true,
                      main="Ground truth vs L0glm estimates")
 
 # Case II: fit nonnegative identity link Poisson GLM with ridge penalty

@@ -67,6 +67,7 @@ a <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
 plot_L0glm_benchmark(x = sim$x, y = y, fit = a, a.true = sim$a,
                      main="Ground truth vs L0glm estimates")
 
+
 b <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
                solver = "glmnet",
                lambda = lambdas,
@@ -316,8 +317,9 @@ system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
 
 
 # osqp: FASTER if  n > p & IntelMKL is installed, otherwise rather slow
-system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda=lambdas, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
+system.time(coefs_osqp0 <- lmridge(X=Xsp, y, lambda=0.1, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
 # 6.78s when using Xaug, 7.09s when using Xw * diag(lambda), coefs are the same
+cor(coefs_osqp, coefs_osqp0)
 
 lines(coefs_osqp, col="green", type="h")
 cor(coefs_osqp, coefs_true) # 0.9999903
