@@ -263,6 +263,7 @@ L0glm2 <- function(formula,
                    lambda = 0, no.pen = 0,
                    nonnegative = FALSE,
                    solver = "osqp", #TODO: document
+                   method = NULL,
                    lower = rep(-.Machine$double.xmax,ncol(X)), ##TODO: document
                    upper = rep(.Machine$double.xmax,ncol(X)), ##TODO: document
                    normalize = TRUE,
@@ -374,7 +375,7 @@ L0glm2 <- function(formula,
       fits <- lapply(lambda, function(l){
         l <- rep(l, p)
         l[no.pen] <- 0
-        fit <- L0glm.fit2(X = X, y = y, weights = weights, family = family, solver = solver,
+        fit <- L0glm.fit2(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
                           lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
                           control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver,
                           post.filter.fn = post.filter.fn)
@@ -428,7 +429,7 @@ L0glm2 <- function(formula,
   if(verbose) cat(paste0("==== Model fitting ====\n\n",
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
-  fit <- L0glm.fit2(X = X, y = y, weights = weights, solver = solver, family = family, lambda = lambda,
+  fit <- L0glm.fit2(X = X, y = y, weights = weights, solver = solver, method = method, family = family, lambda = lambda,
                     start = start, nonnegative = nonnegative, control.l0 = control.l0, control.solver = control.solver,
                     control.iwls = control.iwls, control.fit = control.fit,
                     post.filter.fn = post.filter.fn)
@@ -516,6 +517,7 @@ L0glm.fit2 <- function(X, y,
                        lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
                        upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
                        solver = "osqp", #TODO document
+                       method = NULL,
                        nonnegative = FALSE,
                        control.solver = NULL,
                        post.filter.fn = function(u) return(u),
@@ -537,7 +539,8 @@ L0glm.fit2 <- function(X, y,
     lambda_adap <- lambda * AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma) # ridge penalty with adaptive weights
 
     # Fit the model with current adaptive weights.
-    fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, family = family, start = start,
+    fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
+                     family = family, start = start,
                      lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
                      control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
     iter.iwls[i] <- fit$iter.iwls
@@ -581,6 +584,7 @@ L0glm.fit2 <- function(X, y,
 
 glm.iwls2 <- function(X, y, weights, family,
                       solver = "osqp",
+                      method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
                       nonnegative = FALSE,
@@ -657,16 +661,16 @@ glm.iwls2 <- function(X, y, weights, family,
     good <- is.finite(W) & W>0
     betaold <- beta
     
-    browser()
-    beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
-                                    y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                    nonnegative = nonnegative, solver = solver, start = betaold,
-                                    control.solver = control.solver, verbose = verbose)
+    # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
+    #                                 y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
+    #                                 nonnegative = nonnegative, solver = solver, start = betaold,
+    #                                 control.solver = control.solver, verbose = verbose)
+    # 
     
     
-    # beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-    #                 nonnegative = nonnegative, solver = solver, start = betaold, 
-    #                 control.solver = control.solver, verbose = verbose)
+    beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                    nonnegative = nonnegative, solver = solver, method = method, start = betaold,
+                    control.solver = control.solver, verbose = verbose)
 
     beta[abs(beta) < control.iwls$thresh] <- 0
     nonzero <- beta != 0
@@ -778,7 +782,7 @@ control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2,
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen2 <- function(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE){
+control.iwls.gen2 <- function(maxit = 1, reltol = 1E-4, thresh = 1E-7, warn = FALSE){
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -789,7 +793,7 @@ control.iwls.gen2 <- function(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FA
 #' Generates parameters that control the least square fit.
 #'
 #' @export
-control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-7){
+control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-10){
   l <- list(block.size = block.size, maxit = maxit, tol = tol)
   return(l)
 }
@@ -800,14 +804,14 @@ control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-7){
 #' Generates parameters that control the solver (lmridge function).
 #'
 #' @export
-control.solver.gen <- function(solver, method = NULL, 
+control.solver.gen <- function(solver, method, 
                                maxit = NULL, 
                                blocksize = NULL,
                                reltol = 1E-5,
                                abstol = 1E-5,
                                verbose = FALSE){
   if(!is.null(method) && solver != "eigen"){
-    warning("A method is only required when using an eigen solver")
+    warning("A method is only required when using an Eigen solver")
   }
   
   if(solver == "osqp"){
@@ -822,6 +826,10 @@ control.solver.gen <- function(solver, method = NULL,
     
     l <- list(thresh = abstol, maxit = maxit)
     
+  } else if (solver == "nnls"){
+    l <- list()
+  }
+    
   } else { # if solver == "eigen"
     if (is.null(method)){
       warning("No method for Eigen solvers was provided. Method is set to 1.")
@@ -829,17 +837,33 @@ control.solver.gen <- function(solver, method = NULL,
     }
       
     if (method == 1){
+      l <- list(method = "QR", pivot = 0L)
       
     } else if (method == 2){
+      l <- list(method = "QR", pivot = 1)
       
     } else if (method == 3){
+      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
       
     } else if (method == 4){
+      l <- list(method = "LSGC", tol = 0, maxit = 0L, precond = 1L)
       
+    } else if (method == 5){
+      l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)
+      
+    } else if (method == 6){
+      l <- list(method = "CG", tol = 0, maxit = 0L, precond = 1L)
+      
+    } else if (method == 7){
+      l <- list(method = "chol", pivot = 0L, ordering = 0L)
+      
+    } else if (method == 8){
+      l <- list(method = "chol", pivot = 1L, ordering = 0L)
     } else {
-      warning("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
-      stop #TODO ??
+      stop("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
+      
     }
   }
   return(l)
 }
+

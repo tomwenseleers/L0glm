@@ -3,7 +3,9 @@ library(nnls)
 library(microbenchmark)
 # devtools::install_github("nk027/sanic")
 library(sanic)
+library(osqp)
 library(devtools)
+library(glmnet)
 devtools::load_all()
 
 # couple of solves (also: QR decomposition based solve = solve.qr(a=X, b=y))
@@ -20,11 +22,10 @@ chol.solve = function (X, y, tol=.Machine$double.eps^(2/3)) {
 
 # Simulate data
 set.seed(1)
-n <- 10000
-p <- 10000
+n <- 1000
+p <- 1000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
-# sim <- simulate_spike_train(n = )
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
 
 coefs_true <- sim$beta_true
@@ -57,24 +58,25 @@ control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE)
 control.solver = NULL
 solver = "osqp"
 
-a <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
+system.time(c <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
           solver = "osqp",
           lambda = lambdas,
           nonnegative = nonnegative,
           lower = lower,
           upper = upper,
-          verbose = verbose)
-plot_L0glm_benchmark(x = sim$x, y = y, fit = a, a.true = sim$a,
+          verbose = verbose))
+
+cor(b$coefficients, coefs_true)
+
+plot_L0glm_benchmark(x = sim$x, y = y, fit = a, a.true = sim$beta_true,
                      main="Ground truth vs L0glm estimates")
 
 
-b <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
-               solver = "glmnet",
+system.time(b <- glm.iwls(X = X, y = y, weights = weights, family = poisson(identity),
                lambda = lambdas,
-               nonnegative = nonnegative,
-               lower = lower,
-               upper = upper,
-               verbose = verbose)
+               nonnegative = nonnegative))
+
+
 plot_L0glm_benchmark(x = sim$x, y = y, fit = b, a.true = sim$a,
                      main="Ground truth vs L0glm estimates")
 
@@ -269,7 +271,7 @@ cor(coefs_solve_dense, coefs_solveCG_largep_sparse) # 1
 # we would not have the same covariate matrix for all channels, only the sparsity structure would be the same)
 # Vectorizing
 
-system.time(coefs_QR <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="QR")) # 19.97s for p=5000 & n=1000
+system.time(coefs_QR <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative, solver="eigen", method = 6)) # 19.97s for p=5000 & n=1000
 lines(coefs_QR, col="blue", type="h")
 cor(coefs_QR, coefs_solve_dense) # 0.9990464
 plot(coefs_QR, coefs_solve_sparse)
@@ -317,7 +319,7 @@ system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
 
 
 # osqp: FASTER if  n > p & IntelMKL is installed, otherwise rather slow
-system.time(coefs_osqp0 <- lmridge(X=Xsp, y, lambda=0.1, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
+system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda=0.1, weights, lower, upper, nonnegative, solver="osqp")) # 3.6s with p=n=10000, 48.57s with p=5000 & n=1000, 3.7s for n=p=10000 with MRO/IntelMKL
 # 6.78s when using Xaug, 7.09s when using Xw * diag(lambda), coefs are the same
 cor(coefs_osqp, coefs_osqp0)
 
