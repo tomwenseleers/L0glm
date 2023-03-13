@@ -310,7 +310,7 @@ L0glm2 <- function(formula,
   control.iwls <- do.call("control.iwls.gen2", control.iwls)
   control.fit <- do.call("control.fit.gen2", control.fit)
 
-  n <- nrow(X) # nr of obersvations
+  n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
 
   # Normalize data
@@ -808,7 +808,7 @@ control.solver.gen <- function(solver, method,
                                maxit = NULL, 
                                blocksize = NULL,
                                reltol = 1E-5,
-                               abstol = 1E-5,
+                               abstol = NULL,
                                verbose = FALSE){
   if(!is.null(method) && solver != "eigen"){
     warning("A method is only required when using an Eigen solver")
@@ -816,20 +816,18 @@ control.solver.gen <- function(solver, method,
   
   if(solver == "osqp"){
     if(is.null(maxit)) maxit <- 4000
-    if(is.null(abstol)) maxit <- 4000
+    if(is.null(abstol)) abstol <- 1e-10
 
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L)
     
   } else if (solver == "glmnet") {
     if(is.null(maxit)) maxit <- 1e+05
-    if(is.null(abstol)) maxit <- 1e-07
+    if(is.null(abstol)) abstol <- 1e-10
     
     l <- list(thresh = abstol, maxit = maxit)
     
   } else if (solver == "nnls"){
     l <- list()
-  }
-    
   } else { # if solver == "eigen"
     if (is.null(method)){
       warning("No method for Eigen solvers was provided. Method is set to 1.")

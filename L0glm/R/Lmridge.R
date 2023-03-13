@@ -75,7 +75,7 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, control.solver){
   # Xty = crossprod(Xw, yw)
   
   Xwaug <- row_augX(Xw, lambdas)
-  ywaug <- row_augY(yw, lambdas)
+  ywaug <- augY(yw, lambdas, ncol(Xw))
 
   XtX = crossprod(Xwaug)
   Xty = crossprod(Xwaug, ywaug)
@@ -107,7 +107,7 @@ lmridge_glmnet <- function(X, y, weights, lambdas, lower, upper, control.solver)
   yw <- Yweights(y, weights)
   
   Xwaug <- row_augX(Xw, lambdas)
-  ywaug <- row_augY(yw, lambdas)
+  ywaug <- augY(yw, lambdas, ncol(Xw))
   
   model <- bigGlm(x = Xwaug, y = ywaug,
                   intercept = FALSE, standardize = FALSE, standardize.response = FALSE,
@@ -125,9 +125,9 @@ lmridge_nnls <- function(X, y, weights, lambdas, lower, upper, control.solver){
   yw <- Yweights(y, weights)
   
   Xwaug <- row_augX(Xw, lambdas)
-  ywaug <- row_augY(yw, lambdas)
+  ywaug <- augY(yw, lambdas, ncol(Xw))
   
-  coefs <- nnls(A=Xaug, b=yaug)$x
+  coefs <- nnls(A=Xwaug, b=ywaug)$x
   return(coefs)
 }
 
@@ -136,41 +136,41 @@ lmridge_eigen <- function(X, y, weights, lambdas, lower, upper, control.solver){
   yw <- Yweights(y, weights)
   
   Xwaug <- row_augX(Xw, lambdas)
-  ywaug <- row_augY(yw, lambdas)
+  ywaug <- augY(yw, lambdas, ncol(Xw))
   
   if(control.solver$method == "LSCG") {
     if(issparse(X)){
-      coefs <- solve_sparse_LSCG(A = Xaug, b = yaug, x = start, tol = control.solver$tol,
+      coefs <- solve_sparse_LSCG(A = Xwaug, b = ywaug, x = start, tol = control.solver$tol,
                                  maxit = control.solver$maxit, precond = control.solver$precond)$coefficients
     } else {
-      coefs <- solve_dense_LSCG(A = Xaug, b = yaug, x = start, tol = control.solver$tol,
+      coefs <- solve_dense_LSCG(A = Xwaug, b = ywaug, x = start, tol = control.solver$tol,
                                 maxit = control.solver$maxit, precond = control.solver$precond)$coefficients
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
     
   } else if (control.solver$method == "QR") {
     if(issparse(X)){
-      coefs <- solve_sparse_QR(A = Xaug, b = yaug, pivot = control.solver$pivot)$coefficients
+      coefs <- solve_sparse_QR(A = Xwaug, b = ywaug)$coefficients
     } else {
-      coefs <- solve_dense_QR(A = Xaug, b = yaug, pivot = control.solver$pivot)$coefficients
+      coefs <- solve_dense_QR(A = Xwaug, b = ywaug, pivot = control.solver$pivot)$coefficients
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
     
   } else if (control.solver$method == "CG") {
     if(issparse(X)){
-      coefs <- solve_sparse_CG(A = Xaug, b = yaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
+      coefs <- solve_sparse_CG(A = Xwaug, b = ywaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
                                maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
     } else {
-      coefs <- solve_dense_CG(A = Xaug, b = yaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
+      coefs <- solve_dense_CG(A = Xwaug, b = ywaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
                               maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
     
   } else if (control.solver$method == "chol"){
     if(issparse(X)){
-      coefs <- solver_sparse_chol(A = Xaug, b = yaug, pivot = control.solver$pivot, ordering = control.solver$ordering)
+      coefs <- solver_sparse_chol(A = Xwaug, b = ywaug, pivot = control.solver$pivot, ordering = control.solver$ordering)
     } else {
-      coefs <- solver_dense_chol(A = Xaug, b = yaug, pivot = control.solver$pivot, ordering = control.solver$ordering)
+      coefs <- solver_dense_chol(A = Xwaug, b = ywaug, pivot = control.solver$pivot, ordering = control.solver$ordering)
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
   }
@@ -212,14 +212,8 @@ row_augX <- function(Xw, lambda){
   return(Xaug)
 }
 
-row_augY <- function(yw, lambda){
-  p <- length(yw)
-  if (sum(lambda) != 0) {
-    yaug <- c(yw, rep(0, p))
-  } else {
-    yaug <- yw
-  }
-  return(yaug)
+augY <- function(yw, lambdas, p){
+  return(if (sum(lambdas)>0) c(yw, rep(0, p)) else yw )
 }
 
 diaglambdas <- function(lambdas, sparse, p){

@@ -398,15 +398,16 @@ preset.lambda <- function(IC, y, X, weights, family, start){
 #' coefficients in a way that gives an intuitive view on the quality of the fit.
 #'
 #' @export
-plot_L0glm_benchmark <- function(x, y, fit, inference = NULL, a.true, ...){
-  a.fit <- fit$coefficients
-  if(!is.null(names(a.fit))){
-    int.ind <- grepl("Intercept", names(a.fit))
-    inference$CI.lower <- inference$CI.lower[!int.ind]
-    inference$CI.upper <- inference$CI.upper[!int.ind]
-    inference$p.value <- inference$p.value[!int.ind]
-    a.fit <- a.fit[!int.ind]
-  }
+plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, ...){
+  a.fit <- coefs
+  # a.fit <- fit$coefficients
+  # if(!is.null(names(a.fit))){
+  #   int.ind <- grepl("Intercept", names(a.fit))
+  #   inference$CI.lower <- inference$CI.lower[!int.ind]
+  #   inference$CI.upper <- inference$CI.upper[!int.ind]
+  #   inference$p.value <- inference$p.value[!int.ind]
+  #   a.fit <- a.fit[!int.ind]
+  # }
   # transf <- function(x) sqrt(x) # transform data for better rendering
   transf <- function(x) return(x)
   plot(x, transf(y), type="l", ylab="Signal", xlab="Time", col = "grey40",
@@ -414,7 +415,7 @@ plot_L0glm_benchmark <- function(x, y, fit, inference = NULL, a.true, ...){
   lines(x,-transf(y), col = "grey40")
   lines(transf(a.true), type = "h", col = "red", lwd = 2)
   lines(x, -transf(a.fit), type="h", col="blue", lwd = 2)
-  lines(x, -transf(fit$fitted.values), col="orange2", lwd = 1)
+  lines(x, -transf(fitted), col="orange2", lwd = 1)
   if(!is.null(inference)){
     # Change color of significant covariates
     sign <- inference$p.value < 0.05
@@ -432,7 +433,7 @@ plot_L0glm_benchmark <- function(x, y, fit, inference = NULL, a.true, ...){
     legend("topleft", lty = c(1,1,0,0), col = c("grey40", "orange2", "red", "blue"),
            pch = c("", "", "|", "|"),
            legend = c("Input signal", "Fitted signal", "Ground truth",
-                      "L0glm estimates (Wald p >= 0.05)", "L0glm estimates (Wald p < 0.05)"))
+                      "L0glm estimates"))
   }
 }
 

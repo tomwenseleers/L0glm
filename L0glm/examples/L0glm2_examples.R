@@ -5,7 +5,7 @@ p <- 1000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
-sim <- simulate_spike_train()
+# sim <- simulate_spike_train()
 coefs_true <- sim$beta_true
 
 X <- sim$X
