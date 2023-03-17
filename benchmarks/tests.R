@@ -33,8 +33,8 @@ library(Matrix)
 
 # Simulate data
 set.seed(1)
-n <- 10000
-p <- 10000
+n <- 100
+p <- 100
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -63,36 +63,6 @@ upper <- rep(Inf, ncol(X))
 nonnegative <- TRUE
 start <- NULL
 verbose <- FALSE
-
-family <- poisson(identity)
-converged_set = rep(FALSE, ncol(X))
-control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE)
-control.solver = NULL
-solver = "osqp"
-
-system.time(mod <- glm.iwls2(X = X, y = y, weights = weights, family = poisson(identity),
-          solver = "osqp",
-          lambda = lambdas,
-          nonnegative = nonnegative,
-          lower = lower,
-          upper = upper,
-          verbose = verbose)) # 12s for n=p=10000
-
-cor(mod$coefficients, coefs_true)
-
-plot_L0glm_benchmark(x = sim$x, y = y, fit = a, a.true = sim$beta_true,
-                     main="Ground truth vs L0glm estimates")
-
-
-system.time(b <- glm.iwls(X = X, y = y, weights = weights, family = poisson(identity),
-               lambda = lambdas,
-               nonnegative = nonnegative))
-
-
-plot_L0glm_benchmark(x = sim$x, y = y, fit = b, a.true = sim$a,
-                     main="Ground truth vs L0glm estimates")
-
-
 
 # # example of multichannel signal
 # yvect <- c(Y)
@@ -186,7 +156,6 @@ cor(coefs_solve_dense, coefs_cholsolve_sparse) # 1
 # eigen's solve_dense_chol & solve_sparse_chol: FAST for sparse only
 system.time(coefs_cholsolve_dense <- as.vector(solve_dense_chol(D %*% crossprod(Xw) +
                                                             diag(rep(lambda, ncol(X))),
-                                                          D %*% crossprod(Xw,yw),
                                                           pivot=1L)$coefficients)) # 84s for n=p=10000, 7.96s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
 system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(Dsp %*% crossprod(Xwsp) +
                                                              .sparseDiagonal(ncol(X), lambda),
@@ -197,8 +166,17 @@ cor(coefs_cholsolve_sparse, coefs_true) # 0.1745552
 cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
 cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
 
+system.time(coefs_cholsolve_sparse_lmridge <- lmridge(X, y, lambda,
+                                                weights = weights,
+                                                lower = lower,
+                                                upper = upper,
+                                                nonnegative = nonnegative,
+                                                solver = "eigen",
+                                                method = 7))
 
-# using row augmentation & default Cholesky decomposition -> FAST both for dense & sparse X
+
+
+# using row augmentation & default Cholesky decomposition -> FAST both for dense & sparse X BUT only square matrices
 system.time(coefs_cholsolve_rowaug_dense <- as.vector(chol.solve(Xwaug,
                                                                  ywaug,
                                                                  tol=2*.Machine$double.eps))) # 13s for n=p=10000, 0.90s for p=5000 & n=1000
@@ -335,6 +313,7 @@ system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
 
 
 # osqp: FASTER if  n > p & IntelMKL is installed, otherwise rather slow
+control.solver = do.call("control.solver.gen", list(solver = "osqp", method = NULL, rowaug = FALSE))
 system.time(coefs_osqp <- lmridge(X=Xsp, y, lambda=0, weights, lower, upper, nonnegative,
                                   solver="osqp")) # 0.21s with p=n=10000 with MRO/IntelMKL
 cor(coefs_osqp, coefs_true)

@@ -377,8 +377,8 @@ L0glm2 <- function(formula,
         l[no.pen] <- 0
         fit <- L0glm.fit2(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
                           lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
-                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver,
-                          post.filter.fn = post.filter.fn)
+                          control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
+                          control.solver = control.solver, post.filter.fn = post.filter.fn)
       })
       fit <- list()
       fit$coefficients <- sapply(fits, "[[", "coefficients")
@@ -536,13 +536,14 @@ L0glm.fit2 <- function(X, y,
 
   for (i in 1:control.l0$maxit) {
     beta0 <- beta # coefs from previous iteration
-    lambda_adap <- lambda * AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma) # ridge penalty with adaptive weights
+    pen_weights <- AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma)
+    lambda_adap <- lambda * pen_weights # ridge penalty with adaptive weights
 
 
     # Fit the model with current adaptive weights.
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
-                     control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
+                     control.iwls = control.iwls, control.fit = control.fit, pen_weights = pen_weights, control.solver = control.solver)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
 
@@ -588,6 +589,7 @@ glm.iwls2 <- function(X, y, weights, family,
                       method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
+                      pen_weights = rep(1, ncol(X)),
                       nonnegative = FALSE,
                       lower = rep(-.Machine$double.xmax,ncol(X)),
                       upper = rep(.Machine$double.xmax,ncol(X)),
@@ -806,12 +808,13 @@ control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-10){
 #' Generates parameters that control the solver (lmridge function).
 #'
 #' @export
-control.solver.gen <- function(solver, method,
+control.solver.gen <- function(solver, method = NULL,
                                maxit = NULL,
                                blocksize = NULL,
                                reltol = 1E-5,
                                abstol = NULL,
-                               verbose = FALSE){
+                               verbose = FALSE,
+                               rowaug = NULL){
   if(!is.null(method) && solver != "eigen"){
     warning("A method is only required when using an Eigen solver")
   }
@@ -819,8 +822,10 @@ control.solver.gen <- function(solver, method,
   if(solver == "osqp"){
     if(is.null(maxit)) maxit <- 4000
     if(is.null(abstol)) abstol <- 1e-10
+    if(is.null(rowaug)) rowaug <- TRUE
 
-    l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L, polish = TRUE)
+    l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
+              max_iter = maxit, linsys_solver = 0L, polish = TRUE, rowaug = rowaug)
 
   } else if (solver == "glmnet") {
     if(is.null(maxit)) maxit <- 1e+05
@@ -837,15 +842,19 @@ control.solver.gen <- function(solver, method,
     }
 
     if (method == 1){
-      l <- list(method = "QR", pivot = 0L)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
 
     } else if (method == 2){
-      l <- list(method = "QR", pivot = 1)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "QR", pivot = 1, rowaug = rowaug)
 
     } else if (method == 3){
+      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
 
     } else if (method == 4){
+      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
 
     } else if (method == 5){
@@ -855,9 +864,11 @@ control.solver.gen <- function(solver, method,
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 1L)
 
     } else if (method == 7){
+      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
       l <- list(method = "chol", pivot = 0L, ordering = 0L)
 
     } else if (method == 8){
+      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
       l <- list(method = "chol", pivot = 1L, ordering = 0L)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
@@ -867,4 +878,3 @@ control.solver.gen <- function(solver, method,
   }
   return(l)
 }
-
