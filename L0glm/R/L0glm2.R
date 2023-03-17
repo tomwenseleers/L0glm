@@ -538,10 +538,10 @@ L0glm.fit2 <- function(X, y,
     beta0 <- beta # coefs from previous iteration
     lambda_adap <- lambda * AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma) # ridge penalty with adaptive weights
 
+
     # Fit the model with current adaptive weights.
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
-                     family = family, start = start,
-                     lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
+                     family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
                      control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
@@ -571,6 +571,7 @@ L0glm.fit2 <- function(X, y,
   # Perform post filtering of the coefficients using user supplied function
   fit$coefficients <- post.filter.fn(fit$coefficients)
   fit$post.filter.fn <- post.filter.fn
+
   return(fit)
 }
 
@@ -660,17 +661,18 @@ glm.iwls2 <- function(X, y, weights, family,
     # Update the observation subset
     good <- is.finite(W) & W>0
     betaold <- beta
-    
+
     # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
     #                                 y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
-    #                                 nonnegative = nonnegative, solver = solver, start = betaold,
+    #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold,
     #                                 control.solver = control.solver, verbose = verbose)
-    # 
-    
-    
+
+
+
     beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
                     nonnegative = nonnegative, solver = solver, method = method, start = betaold,
                     control.solver = control.solver, verbose = verbose)
+
 
     beta[abs(beta) < control.iwls$thresh] <- 0
     nonzero <- beta != 0
@@ -804,8 +806,8 @@ control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-10){
 #' Generates parameters that control the solver (lmridge function).
 #'
 #' @export
-control.solver.gen <- function(solver, method, 
-                               maxit = NULL, 
+control.solver.gen <- function(solver, method,
+                               maxit = NULL,
                                blocksize = NULL,
                                reltol = 1E-5,
                                abstol = NULL,
@@ -813,54 +815,55 @@ control.solver.gen <- function(solver, method,
   if(!is.null(method) && solver != "eigen"){
     warning("A method is only required when using an Eigen solver")
   }
-  
+
   if(solver == "osqp"){
     if(is.null(maxit)) maxit <- 4000
     if(is.null(abstol)) abstol <- 1e-10
 
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L, polish = TRUE)
-    
+
   } else if (solver == "glmnet") {
     if(is.null(maxit)) maxit <- 1e+05
     if(is.null(abstol)) abstol <- 1e-10
-    
+
     l <- list(thresh = abstol, maxit = maxit)
-    
+
   } else if (solver == "nnls"){
     l <- list()
-  } else { # if solver == "eigen"
+  } else if (solver == "eigen"){
     if (is.null(method)){
       warning("No method for Eigen solvers was provided. Method is set to 1.")
       method <- 1
     }
-      
+
     if (method == 1){
       l <- list(method = "QR", pivot = 0L)
-      
+
     } else if (method == 2){
       l <- list(method = "QR", pivot = 1)
-      
+
     } else if (method == 3){
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
-      
+
     } else if (method == 4){
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
-      
+
     } else if (method == 5){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)
-      
+
     } else if (method == 6){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 1L)
-      
+
     } else if (method == 7){
       l <- list(method = "chol", pivot = 0L, ordering = 0L)
-      
+
     } else if (method == 8){
       l <- list(method = "chol", pivot = 1L, ordering = 0L)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
-      
     }
+  } else {
+    stop("Chosen solver is not available.")
   }
   return(l)
 }
