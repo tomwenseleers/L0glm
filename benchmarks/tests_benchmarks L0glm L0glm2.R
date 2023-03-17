@@ -126,7 +126,7 @@ system.time(L0glm_osqp0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                  solver = "osqp", lambda = 0, nonnegative = TRUE,
                  control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                  control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                 control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE))
+                 control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = FALSE))
             )) # 7.2s for n=p=10000
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_osqp0$coefficients / X.n,
@@ -144,7 +144,7 @@ system.time(L0glm_osqp1 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "osqp", lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = FALSE))))
+                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE))))
 
 cor(L0glm_osqp0$coefficients, L0glm_osqp1$coefficients)
 plot_L0glm_benchmark(x = sim$x, y = y,
@@ -217,7 +217,7 @@ system.time(L0glm_qr0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "eigen", lambda = 0, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = TRUE))
+                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = FALSE))
 
 )) # 0.50s TODO make sure that all solvers always give a result even for underdetermined cases and lambda=0 -> then set to smallest lambda value possible
 plot_L0glm_benchmark(x = sim$x, y = y,
@@ -265,11 +265,11 @@ sum(L0glm_lscg0$coefficients>0) #
 
 
 system.time(L0glm_lscg1 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
-                                    solver = "eigen", method = 6,
+                                    solver = "eigen", method = 4,
                                     lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
                                     control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 6, rowaug = FALSE))))
+                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 4, rowaug = FALSE))))
 # TODO FIX ERROR Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_lscg1$coefficients / X.n,
