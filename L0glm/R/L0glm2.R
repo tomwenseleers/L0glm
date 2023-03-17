@@ -818,7 +818,7 @@ control.solver.gen <- function(solver, method,
     if(is.null(maxit)) maxit <- 4000
     if(is.null(abstol)) abstol <- 1e-10
 
-    l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L)
+    l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol, max_iter = maxit, linsys_solver = 0L, polish = TRUE)
     
   } else if (solver == "glmnet") {
     if(is.null(maxit)) maxit <- 1e+05

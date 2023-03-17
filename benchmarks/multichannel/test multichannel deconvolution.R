@@ -24,6 +24,7 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
                 start = rep(0, ncol(sim$X)),
                 control.solver = NULL,
                 verbose = TRUE) })) # 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
+# TODO check why glmnet is so slow here
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
