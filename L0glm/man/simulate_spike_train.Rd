@@ -13,6 +13,9 @@ simulate_spike_train(
   family = c("poisson", "gaussian"),
   sd_noise = 1,
   psf = function(x, u, w = 2.5) exp(((x - u)^2)/(-2 * (w^2))),
+  thresh = 1e-05,
+  sparse = TRUE,
+  multichannel = FALSE,
   seed = 123,
   Plot = TRUE
 )

@@ -1,4 +1,7 @@
 #' Simulate example data (blurred spike train)
+#' 
+#' @importFrom Matrix Matrix
+#' @importFrom qlcMatrix colMax colMin
 #'
 #' @description
 #'
@@ -63,33 +66,77 @@
 #' simulated spikes. Equal to \code{x} when \code{p=n}.}
 #'
 #' @export
+#' 
 simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   mean_beta = 1000, sd_logbeta = 1,
                                   family = c("poisson","gaussian"),
                                   sd_noise = 1,
                                   psf = function(x, u, w=2.5)
                                     exp(((x-u)^2)/(-2*(w^2))),
+                                  thresh = 1E-5,
+                                  sparse = TRUE,
+                                  multichannel = FALSE,
                                   seed = 123, Plot = TRUE
 ){
+  
+  # TODO: update documentation above
+  # TODO: add intercept if desired 
+  
   set.seed(seed)
   family = match.arg(family)
   x = 1:n
   x_beta = seq(1, n, length.out = p)
   # simulated peak locations:
-  u = sample(2:p, k, replace = FALSE) #changed so does not take intercept column
-  beta_true = rep(0, p)
-  # simulated peak heights assuming log-normal distribution:
-  beta_true[u] = exp(rnorm(k, log(mean_beta), sd_logbeta))
-  X = do.call(cbind, lapply(x_beta, function (u) psf(x, u)))
-  y_true = as.vector(X %*% beta_true)
-  if (family == "poisson") { y = rpois(n, y_true) } else {
-    y = y_true + rnorm(n, mean = 0, sd = sd_noise)
+  u = sample(2:p, k, replace = FALSE) # changed so does not take intercept column
+  
+  if (multichannel) { 
+    data(simulated_spectra) # data with 100 simulated example GC/MS mass spectra
+    # simulated_spectra = sweep(simulated_spectra, 1, STATS=rowSums(simulated_spectra), FUN="/") # L1 normalize
+    if (k>nrow(simulated_spectra)) stop("Maximum k is 100 when multichannel=TRUE")
+    m = ncol(simulated_spectra) # 460 mass channels
+    S = simulated_spectra[sample(1:nrow(simulated_spectra), k),] # Randomly select k spectra
+  } else { m = 1
+           S = matrix(1, nrow=k, ncol=m) }
+  
+  beta_true = Matrix(0, nrow=p, ncol=m, sparse=sparse) # rep(0, p)
+  # simulated peak heights (sum over all channels) assuming log-normal distribution :
+  peakheights = exp(rnorm(k, log(mean_beta), sd_logbeta))
+  beta_true[u, 1:m] = .sparseDiagonal(k, x=peakheights) %*% S # scale spectra by peak height
+  
+  # remove invariant channels
+  invariant = (qlcMatrix::colMax(beta_true)==qlcMatrix::colMin(beta_true)) # zero across all spectra, these channels are removed
+  m = m-sum(invariant)
+  beta_true = beta_true[,!invariant,drop=F]
+  S = S[,!invariant,drop=F]
+  
+  # covariate matrix X = shifted copies of PSF
+  # TODO maybe calculate this as a linear convolution, 
+  # cf https://stackoverflow.com/questions/66373113/linear-convolution-in-r-using-bandsparse-matrix-multiplication:
+  X = do.call(cbind, lapply(x_beta, function (u) psf(x, u))) 
+  X[X < thresh] = 0
+  X = Matrix(X, sparse=sparse)
+  
+  y_true = Matrix(X %*% beta_true, sparse=sparse)
+  beta_true = Matrix(beta_true, sparse=sparse)
+  
+  if (family == "poisson") { y = apply(y_true, 2, function (col) rpois(n, col)) } else {
+    y = y_true + rnorm(prod(dim(y_true)), mean = 0, sd = sd_noise)
     y[y < 0] = 0
   }
+  
+  # remove invariant channels
+  invariant = (qlcMatrix::colMax(y)==qlcMatrix::colMin(y)) # invariant channels are removed
+  m = m-sum(invariant)
+  beta_true = beta_true[,!invariant,drop=F]
+  S = S[,!invariant,drop=F]
+  y_true = y_true[,!invariant,drop=F]
+  y = y[,!invariant,drop=F]
 
-  X[,1]=rep(1,n)
+  X[,1]=rep(1,n) # intercept column
 
   if (Plot) {
+    if (!multichannel) {
+    # plot for single channel simulation
     par(mfrow = c(1, 1))
     plot(x, y, type = "l",
          main = paste0(
@@ -97,7 +144,14 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
            family, " noise"),
          xlab = "Time", ylab = "Signal")
     points(x, y, pch = 16, cex = 0.5)
-    lines(x_beta, beta_true, type = "h", col = "red")
+    lines(x_beta, beta_true, type = "h", col = "red") } else {
+      # plot for multichannel simulation
+      par(mfrow = c(1,1))
+      image(x=1:n, y=1:m, z=as.matrix(y_true)^0.2, 
+            col = topo.colors(255), useRaster=TRUE,
+            main = "Ground truth", xlab="Time", ylab="Channel")
+      abline(v=u*n/p, col="red")
+    }
   }
 
   return(list(

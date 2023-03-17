@@ -6,7 +6,7 @@
 \usage{
 control.l0.gen2(
   maxit = 100,
-  rel.tol = 1e-04,
+  reltol = 1e-04,
   delta = 1e-05,
   gamma = 2,
   warn = FALSE
@@ -15,7 +15,7 @@ control.l0.gen2(
 \arguments{
 \item{maxit}{The maximum number of iterations.}
 
-\item{rel.tol}{Coefficients are update until the relative difference between two iteration
+\item{reltol}{Coefficients are update until the relative difference between two iteration
 is smaller than this threshold. The relative difference is defined as
 \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}}
 

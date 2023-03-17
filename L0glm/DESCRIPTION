@@ -1,6 +1,6 @@
 Package: L0glm
 Type: Package
-Title: Package for Fitting Generalized Nonnegative Linear Models and Perform Statiscal Inference
+Title: Package for Fitting L0-norm Penalized Generalized Linear Models (aka doing best subset selection) Subject to Optional Box Constraints and Perform High-Dimensional Inference for Large-scale Problems
 Version: 0.1.0
 Date: 2019-05-15
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
@@ -13,9 +13,8 @@ Imports: boot (>= 1.3),
           nnls (>= 1.4),
           Rcpp (>= 1.0.5)
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
+Description: Package for fitting L0-norm penalized generalized linear models (aka doing best subset selection) subject to optional nonnegativity or box constraints on the coefficients, and perform high-dimensional inference for large-scale problems.
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true

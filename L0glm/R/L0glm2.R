@@ -844,7 +844,7 @@ control.solver.gen <- function(solver, method,
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
       
     } else if (method == 4){
-      l <- list(method = "LSGC", tol = 0, maxit = 0L, precond = 1L)
+      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
       
     } else if (method == 5){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)

@@ -17,13 +17,14 @@ L0glm2(
   no.pen = 0,
   nonnegative = FALSE,
   solver = "osqp",
+  method = NULL,
   lower = rep(-.Machine$double.xmax, ncol(X)),
   upper = rep(.Machine$double.xmax, ncol(X)),
   normalize = TRUE,
   control.l0 = list(),
   control.iwls = list(),
   control.fit = list(),
-  control.solver = list(),
+  control.solver = NULL,
   post.filter.fn = function(u) return(u),
   tune.meth = "none",
   tune.crit = "bic",
@@ -41,11 +42,13 @@ L0glm.fit2(
   lower = rep(-.Machine$double.xmax, ncol(X)),
   upper = rep(.Machine$double.xmax, ncol(X)),
   solver = "osqp",
+  method = NULL,
   nonnegative = FALSE,
+  control.solver = NULL,
   post.filter.fn = function(u) return(u),
-  control.l0 = list(maxit = 100, rel.tol = 1e-04, delta = 1e-05, gamma = 2, warn =
+  control.l0 = list(maxit = 100, reltol = 1e-04, delta = 1e-05, gamma = 2, warn =
     FALSE),
-  control.iwls = list(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE),
+  control.iwls = list(maxit = 1, reltol = 1e-04, thresh = 1e-05, warn = FALSE),
   control.fit = list(maxit = 10, block.size = NULL, tol = 1e-07)
 )
 
@@ -55,13 +58,15 @@ glm.iwls2(
   weights,
   family,
   solver = "osqp",
+  method = NULL,
   start = NULL,
   lambda = rep(0, ncol(X)),
   nonnegative = FALSE,
   lower = rep(-.Machine$double.xmax, ncol(X)),
   upper = rep(.Machine$double.xmax, ncol(X)),
-  control.iwls = list(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE),
+  control.iwls = list(maxit = 1, reltol = 1e-04, thresh = 1e-05, warn = FALSE),
   control.fit = list(maxit = 10, block.size = NULL, tol = 1e-07),
+  control.solver = NULL,
   converged_set = rep(FALSE, ncol(X)),
   verbose = FALSE
 )
@@ -104,7 +109,7 @@ should contain the following elements:
 \itemize{
 \item{\code{maxit}: maximum number of iterations. Set to 1 for ridge penalty
 (if \code{start == NULL}) or adaptive ridge penalty (if \code{start} != NULL).}
-\item{\code{rel.tol}: coefficients are update until the relative difference
+\item{\code{reltol}: coefficients are update until the relative difference
 between two iteration is smaller than this threshold. The relative difference
 is defined as
 \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}}
@@ -118,7 +123,7 @@ Missing values will be filled with defaults (see \code{\link{control.l0.gen}})}
 contain the following elements:
 \itemize{
 \item{\code{maxit}: maximum number of iterations}
-\item{\code{rel.tol}: coefficients are update until the relative difference
+\item{\code{reltol}: coefficients are update until the relative difference
 between two iteration is smaller than this threshold. The relative difference
 is defined as
 \eqn{2 \frac{|coef_i^{(k-1)} - coef_i^{(k)}|}{coef_i^{(k-1)} + coef_i^{(k)}}}}
@@ -314,7 +319,7 @@ L0glm1 <- L0glm(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poi
                 lambda = 0, tune.meth = "none", nonnegative = TRUE, normalize = FALSE,
                 control.iwls = list(maxit = 100),
                 control.l0 = list(maxit = 1, delta = 1E-2, gamma = 1.8))
-plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
+plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$beta_true,
                      main="Ground truth vs L0glm estimates")
 
 # Case II: fit nonnegative identity link Poisson GLM with ridge penalty

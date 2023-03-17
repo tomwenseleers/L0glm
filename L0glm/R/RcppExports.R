@@ -2,38 +2,38 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 fastnnls_dense <- function(A, b) {
-    .Call(`_L0glm_fastnnls_dense`, A, b)
+    .Call('_L0glm_fastnnls_dense', PACKAGE = 'L0glm', A, b)
 }
 
 solve_sparse_QR <- function(A, b, ordering = 1L) {
-    .Call(`_L0glm_solve_sparse_QR`, A, b, ordering)
+    .Call('_L0glm_solve_sparse_QR', PACKAGE = 'L0glm', A, b, ordering)
 }
 
 solve_dense_QR <- function(A, b, pivot = 1L) {
-    .Call(`_L0glm_solve_dense_QR`, A, b, pivot)
+    .Call('_L0glm_solve_dense_QR', PACKAGE = 'L0glm', A, b, pivot)
 }
 
 solve_sparse_chol <- function(A, b, pivot = 1L, ordering = 0L) {
-    .Call(`_L0glm_solve_sparse_chol`, A, b, pivot, ordering)
+    .Call('_L0glm_solve_sparse_chol', PACKAGE = 'L0glm', A, b, pivot, ordering)
 }
 
 solve_dense_chol <- function(A, b, pivot = 1L) {
-    .Call(`_L0glm_solve_dense_chol`, A, b, pivot)
+    .Call('_L0glm_solve_dense_chol', PACKAGE = 'L0glm', A, b, pivot)
 }
 
 solve_sparse_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
-    .Call(`_L0glm_solve_sparse_LSCG`, A, b, x0, tol, maxit, precond)
+    .Call('_L0glm_solve_sparse_LSCG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
 solve_dense_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
-    .Call(`_L0glm_solve_dense_LSCG`, A, b, x0, tol, maxit, precond)
+    .Call('_L0glm_solve_dense_LSCG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
 solve_sparse_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
-    .Call(`_L0glm_solve_sparse_CG`, A, b, x0, tol, maxit, precond)
+    .Call('_L0glm_solve_sparse_CG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
 solve_dense_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
-    .Call(`_L0glm_solve_dense_CG`, A, b, x0, tol, maxit, precond)
+    .Call('_L0glm_solve_dense_CG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 

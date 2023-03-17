@@ -82,11 +82,11 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, control.solver){
   
   #Obtain settings  and create model
   settings <- do.call(osqpSettings, control.solver)
-  if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
+  if (sum(settings$start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
   
   model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(X)), l = lower, u = upper, pars = settings)
   
-  if (!is.null(start)) model$WarmStart(x=start)
+  if (!is.null(settings$start)) model$WarmStart(x=start)
   
   #Solve model
   coefs <- model$Solve()$x
@@ -96,7 +96,7 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, control.solver){
 
 lmridge_glmnet <- function(X, y, weights, lambdas, lower, upper, control.solver){
   # Set path depending on dimensions of X
-  if(sum(lambdas) == 0 && ncol(X) >= (nrow(X)/2)){ # avoid numerical instabilities if lambda is 0 and n is not much larger than p
+  if(sum(lambdas) == 0 && ncol(X) >= nrow(X)){ # avoid numerical instabilities if lambda is 0 and p>=n
     path = TRUE
   } else {
     path = FALSE
@@ -138,12 +138,14 @@ lmridge_eigen <- function(X, y, weights, lambdas, lower, upper, control.solver){
   Xwaug <- row_augX(Xw, lambdas)
   ywaug <- augY(yw, lambdas, ncol(Xw))
   
+  if (is.null(control.solver$start)) { control.solver$start = rep(0,ncol(X))  }
+  
   if(control.solver$method == "LSCG") {
     if(issparse(X)){
-      coefs <- solve_sparse_LSCG(A = Xwaug, b = ywaug, x = start, tol = control.solver$tol,
+      coefs <- solve_sparse_LSCG(A = Xwaug, b = ywaug, x0 = control.solver$start, tol = control.solver$tol,
                                  maxit = control.solver$maxit, precond = control.solver$precond)$coefficients
     } else {
-      coefs <- solve_dense_LSCG(A = Xwaug, b = ywaug, x = start, tol = control.solver$tol,
+      coefs <- solve_dense_LSCG(A = Xwaug, b = ywaug, x0 = control.solver$start, tol = control.solver$tol,
                                 maxit = control.solver$maxit, precond = control.solver$precond)$coefficients
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
@@ -158,10 +160,10 @@ lmridge_eigen <- function(X, y, weights, lambdas, lower, upper, control.solver){
     
   } else if (control.solver$method == "CG") {
     if(issparse(X)){
-      coefs <- solve_sparse_CG(A = Xwaug, b = ywaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
+      coefs <- solve_sparse_CG(A = Xwaug, b = ywaug, x0=control.solver$start, tol = control.solver$tol,
                                maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
     } else {
-      coefs <- solve_dense_CG(A = Xwaug, b = ywaug, x0=rep(0,ncol(X)), tol = control.solver$tol,
+      coefs <- solve_dense_CG(A = Xwaug, b = ywaug, x0=control.solver$start, tol = control.solver$tol,
                               maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
     }
     coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
@@ -180,21 +182,18 @@ lmridge_eigen <- function(X, y, weights, lambdas, lower, upper, control.solver){
 
 Xweights <- function(X, weights){
   if(!is.null(weights)){
-    Xw <- X * sqrt(weights)
+    return(X * sqrt(weights))
   } else {
-    Xw <- X
+    return(X)
   }
-  
-  return(Xw)
 }
 
 Yweights <- function(y, weights){
   if (!is.null(weights)) {
-    yw <- y * sqrt(weights)
+    return(y * sqrt(weights))
   } else {
-    yw <- y
+    return(y)
   }
-  return(yw)
 }
 
 # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
@@ -205,11 +204,10 @@ row_augX <- function(Xw, lambda){
   p <- ncol(Xw)
   lambda <- sqrt(lambda)
   if (sum(lambda) != 0) {
-    Xaug <- rbind(Xw, diaglambdas(lambda, issparse(Xw), p))
+    return(rbind(Xw, diaglambdas(lambda, issparse(Xw), p)))
   } else {
-    Xaug <- Xw
+    return(Xw)
   }
-  return(Xaug)
 }
 
 augY <- function(yw, lambdas, p){
@@ -224,6 +222,7 @@ diaglambdas <- function(lambdas, sparse, p){
   }
   return (dlambdas)
 }
+
 issparse <- function(X){
   return(any(class(X) %in% c("dgCMatrix", "dsCMatrix")))
 }

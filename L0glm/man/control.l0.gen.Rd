@@ -21,11 +21,19 @@ control.iwls.gen(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE)
 
 control.fit.gen(maxit = 10, block.size = NULL, tol = 1e-07)
 
-control.iwls.gen2(maxit = 1, rel.tol = 1e-04, thresh = 1e-05, warn = FALSE)
+control.iwls.gen2(maxit = 1, reltol = 1e-04, thresh = 1e-07, warn = FALSE)
 
-control.fit.gen2(maxit = 10, block.size = NULL, tol = 1e-07)
+control.fit.gen2(maxit = 10, block.size = NULL, tol = 1e-10)
 
-control.solver.gen(maxit = 4000, block.size = NULL)
+control.solver.gen(
+  solver,
+  method,
+  maxit = NULL,
+  blocksize = NULL,
+  reltol = 1e-05,
+  abstol = NULL,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{maxit}{The maximum number of iterations.}
