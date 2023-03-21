@@ -267,6 +267,7 @@ L0glm2 <- function(formula,
                    lower = rep(-.Machine$double.xmax,ncol(X)), ##TODO: document
                    upper = rep(.Machine$double.xmax,ncol(X)), ##TODO: document
                    normalize = TRUE,
+                   gamma = 2,
                    control.l0 = list(),
                    control.iwls = list(),
                    control.fit = list(),
@@ -306,6 +307,9 @@ L0glm2 <- function(formula,
   if(intercept) no.pen <- c(1, no.pen + 1)
 
   # Get control parameters
+  if (!("gamma" %in% names(control.l0))) {
+    control.l0$gamma <- gamma
+  }
   control.l0 <- do.call("control.l0.gen2", control.l0)
   control.iwls <- do.call("control.iwls.gen2", control.iwls)
   control.fit <- do.call("control.fit.gen2", control.fit)
@@ -313,7 +317,7 @@ L0glm2 <- function(formula,
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
 
-  # Normalize data
+  #Normalize data
   if(normalize){
     X.n <- apply(X, 2, norm, type = "2")
     X <- sweep(X, 2, X.n, "/")
@@ -662,13 +666,20 @@ glm.iwls2 <- function(X, y, weights, family,
 
     # Update the observation subset
     good <- is.finite(W) & W>0
-    betaold <- beta
+    if(sum(beta) == 0) {
+      beta <- betaold
+      warning("Error: fit failed - 0 coefficients produced")
+      break
+    } else {
+      betaold <- beta
+    }
+
 
     # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
-    #                                 y = y[good], lambda = lambda, weights = weights, lower = lower, upper = upper,
-    #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold,
+    #                                 y = y[good], lambda = lambda[!converged_set], weights = weights[good],
+    #                                 lower = lower[!converged_set], upper = upper[!converged_set],
+    #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
     #                                 control.solver = control.solver, verbose = verbose)
-
 
 
     beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,

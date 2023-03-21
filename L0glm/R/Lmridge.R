@@ -186,22 +186,24 @@ lmridge_eigen <- function(X, y, weights, pen_weights, lambdas, lower, upper, sta
     }
 
   } else if (control.solver$method == "CG") {
-    D <- diag(1/pen_weights)
+    Xwaug <- row_augX(Xw, lambdas)
     if(issparse(Xw)){
-      Dsp <- Matrix(D, sparse=T)
-      coefs <- solve_sparse_CG(A = D %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw), ncol(Xw)),
-                               b = as.vector(D %*% crossprod(Xw,yw)),
+      coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"),
+                               b = as.vector(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
                                x0 = start,
                                tol = control.solver$tol,
-                               maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
+                               maxit = control.solver$maxit,
+                               precond = control.solver$precond)$coefficients
 
     } else {
-      coefs <- solve_dense_CG(A = row_augX(Xw, lambdas),
-                              b = augY(yw, lambdas, ncol(Xw)),
+      coefs <- solve_dense_CG(A = as(crossprod(Xwaug), "dgCMatrix"),
+                              b = as.vector(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
                               x0 = start,
                               tol = control.solver$tol,
-                              maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
+                              maxit = control.solver$maxit,
+                              precond = control.solver$precond)$coefficients
     }
+
 
   } else if (control.solver$method == "chol"){
     D <- diag(1/pen_weights)

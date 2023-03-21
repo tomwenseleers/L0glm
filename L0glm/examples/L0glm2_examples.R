@@ -1,7 +1,7 @@
 # Simulate data
 set.seed(1)
-n <- 1000
-p <- 1000
+n <- 100
+p <- 100
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -37,19 +37,23 @@ cor(coefs_true, L0glm1$coefficients)
 
 
 #L0glm2 OSQP
-system.time(L0glm_osqp0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
-                 solver = "osqp", lambda = 0, tune.meth = "none", nonnegative = TRUE,
-                 control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
+system.time(L0glm_osqp0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
+                 solver = "osqp", lambda = 0, tune.meth = "none", nonnegative = TRUE, gamma = 2, normalize = TRUE,
+                 control.l0 = list(maxit = 100, delta = 1E-2),
                  control.iwls = list(maxit = 100),
                  verbose = TRUE))
-plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm_osqp0, a.true = sim$beta_true,
+
+plot_L0glm_benchmark(x = sim$x, y = y,
+                     coefs = L0glm_osqp0$coefficients,
+                     fitted = L0glm_osqp0$fitted.values,
+                     a.true = sim$beta_true,
                      main="Ground truth vs L0glm2 estimates")
 
 cor(coefs_true, L0glm_osqp0$coefficients)
 
 
 
-system.time(L0glm_osqp1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
+system.time(L0glm_osqp1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                  solver = "osqp", lambda = 1, nonnegative = nonnegative, lower = lower,
                  control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
                  control.iwls = list(maxit = 100),
@@ -66,7 +70,7 @@ cor(L0glm_osqp0$coefficients, L0glm_osqp1$coefficients)
 
 #L0glm2 GLMNET
 
-system.time(L0glm_glmnet0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
+system.time(L0glm_glmnet0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                                   solver = "glmnet", lambda = 0, nonnegative = nonnegative, lower = lower,
                                   control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
                                   control.iwls = list(maxit = 100),
@@ -77,7 +81,7 @@ plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm_glmnet0, a.true = sim$beta_tr
 cor(coefs_true, L0glm_glmnet0$coefficients)
 
 
-system.time(L0glm_glmnet1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
+system.time(L0glm_glmnet1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                                     solver = "glmnet", lambda = 1, nonnegative = TRUE, lower = lower,
                                     control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
                                     control.iwls = list(maxit = 100),
@@ -91,7 +95,7 @@ cor(L0glm_glmnet0$coefficients, L0glm_glmnet1$coefficients)
 
 
 #L0glm2 Eigen - QR
-system.time(L0glm_qr0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
+system.time(L0glm_qr0 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                                     solver = "glmnet", method = 1, lambda = 0, nonnegative = nonnegative, lower = lower,
                                     control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
                                     control.iwls = list(maxit = 100),
@@ -102,7 +106,7 @@ plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm_qr0, a.true = sim$beta_true,
 cor(coefs_true, L0glm_qr0$coefficients)
 
 
-system.time(L0glm_glmnet1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity), 
+system.time(L0glm_glmnet1 <- L0glm2(formula = "y ~ 0 + .", data = data.frame(X, y = y), family = poisson(identity),
                                     solver = "glmnet", lambda = 1, nonnegative = TRUE, lower = lower,
                                     control.l0 = list(maxit = 100, delta = 1E-2, gamma = 1.8),
                                     control.iwls = list(maxit = 100),

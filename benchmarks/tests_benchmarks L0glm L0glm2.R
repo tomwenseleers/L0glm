@@ -214,7 +214,7 @@ sum(L0glm_glmnet1$coefficients>0) # 19
 #L0glm2 Eigen - QR
 
 system.time(L0glm_qr0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
-                                      solver = "eigen", lambda = 0, nonnegative = TRUE,
+                                      solver = "eigen", lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = FALSE))
@@ -233,8 +233,8 @@ sum(L0glm_qr0$coefficients>0) # 15
 system.time(L0glm_qr1 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                     solver = "eigen", lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
-                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = FALSE))))
+                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 1.5)),
+                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = TRUE))))
 
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_qr1$coefficients / X.n,
@@ -250,10 +250,11 @@ sum(L0glm_qr1$coefficients>0) # 16
 
 system.time(L0glm_lscg0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                     solver = "eigen", method = 3,
-                                    lambda = 0, nonnegative = TRUE,
+                                    lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2))
-)) # TODO FIX ERROR Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
+                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 1.5)),
+                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 4, rowaug = FALSE))))
+# TODO FIX ERROR Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_lscg0$coefficients / X.n,
                      fitted = L0glm_lscg0$fitted.values,
@@ -266,7 +267,7 @@ sum(L0glm_lscg0$coefficients>0) #
 
 system.time(L0glm_lscg1 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                     solver = "eigen", method = 4,
-                                    lambda = 1, nonnegative = TRUE,
+                                    lambda = 0, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
                                     control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                     control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 4, rowaug = FALSE))))
@@ -288,7 +289,7 @@ system.time(L0glm_cg0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "eigen", method = 5, # or 6?
                                       lambda = 0, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2))
+                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 1.5))
 )) # TODO FIX ERROR Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_cg0$coefficients / X.n,
@@ -304,7 +305,7 @@ system.time(L0glm_cg1 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "eigen", method = 5,
                                       lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2))
+                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 1.5))
 )) # TODO FIX ERROR Cholmod error 'X and/or Y have wrong dimensions' at file ../MatrixOps/cholmod_sdmult.c, line 90
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_cg1$coefficients / X.n,
@@ -336,4 +337,3 @@ plot_L0glm_benchmark(x = sim$x, y = y,
 cor(coefs_true, L0glm_chol0$coefficients / X.n) # 0.7240002 NOT OK
 sum(coefs_true>0) # 100
 sum(L0glm_chol0$coefficients>0) # 360
-
