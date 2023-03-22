@@ -217,7 +217,7 @@ system.time(L0glm_qr0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "eigen", lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = FALSE))
+                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1, rowaug = TRUE))
 
 )) # 0.50s TODO make sure that all solvers always give a result even for underdetermined cases and lambda=0 -> then set to smallest lambda value possible
 plot_L0glm_benchmark(x = sim$x, y = y,

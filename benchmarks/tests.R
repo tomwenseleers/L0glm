@@ -1,7 +1,6 @@
 library(Matrix)
 library(nnls)
 library(microbenchmark)
-# devtools::install_github("nk027/sanic")
 library(sanic)
 library(osqp)
 library(devtools)
@@ -18,6 +17,7 @@ omp_get_num_procs() # 16
 omp_get_max_threads()
 omp_set_num_threads(omp_threads)
 
+
 # couple of solves (also: QR decomposition based solve = solve.qr(a=X, b=y))
 # SVD based solve (good when p > n & lambda=0) (SLOW)
 library(pracma)
@@ -29,12 +29,10 @@ chol.solve = function (X, y, tol=.Machine$double.eps^(2/3)) {
   backsolve(ch, forwardsolve(ch, crossprod(X, y), upper = TRUE, trans = TRUE))
 }
 
-library(Matrix)
-
 # Simulate data
 set.seed(1)
-n <- 100
-p <- 100
+n <- 10000
+p <- 10000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -370,3 +368,25 @@ L0glm1 <- L0glm2(formula = "y ~ X + .", data = data.frame(X, y = y), solver = "o
 
 plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
                      main="Ground truth vs L0glm estimates")
+
+
+##################################
+##########BLOCK LMRIDGE###########
+##################################
+block.size <- 5000
+block.ids <- ceiling((1:p)/block.size)
+control.fit <- do.call("control.fit.gen2", list(block.size = block.size))
+
+system.time(coefs_osqp <- lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                                  nonnegative = nonnegative, solver = "osqp")) # 0.56
+
+
+system.time(coefs_block_osqp <- block_lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                      nonnegative = nonnegative, solver = "osqp", verbose = verbose,
+                      control.fit = control.fit, block.ids = block.ids)) # for blocks.size 5000 118.80s, for block.size 1000
+
+cor(coefs_osqp, coefs_block_osqp)
+
+
+
+beta <- block.fit(X = X, y = y, block.id = block.ids, nonnegative = nonnegative, control = control.fit)
