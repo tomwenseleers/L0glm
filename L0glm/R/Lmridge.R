@@ -22,9 +22,11 @@
 #' @export
 lmridge <- function(X, y, lambdas,
                     weights = NULL,
+                    pen_weights = rep(1, ncol(X)),
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
+                    block = FALSE,
                     solver = "osqp",
                     method = NULL,
                     start = rep(0, ncol(X)),
@@ -38,26 +40,34 @@ lmridge <- function(X, y, lambdas,
   # Initialize control.solver variable
   if(is.null(control.solver)) call.solver <- list(solver = solver, method = method)
 
+  if(!block) {
+    Xw <- Xweights(X, weights)
+    yw <- Yweights(y, weights)
+  } else { # If block == TRUE, Xw and yw are calculated in block_lmridge function
+    Xw <- X
+    yw <- y
+  }
+
 
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_osqp(X = X, y = y, weights = weights, lambdas = lambdas, start = start,
+    coefs <- lmridge_osqp(Xw = Xw, yw = yw, weights = weights, lambdas = lambdas, start = start,
                           lower = lower, upper = upper, control.solver = control.solver)
 
   } else if (solver == "glmnet") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_glmnet(X = X, y = y, weights = weights, lambdas = lambdas,
+    coefs <- lmridge_glmnet(Xw = Xw, yw = yw, weights = weights, lambdas = lambdas,
                             lower = lower, upper = upper, control.solver = control.solver)
 
 
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_eigen(X = X, y = y, weights = weights, pen_weights = pen_weights, lambdas = lambdas, start = start,
+    coefs <- lmridge_eigen(Xw = Xw, yw = yw, weights = weights, pen_weights = pen_weights, lambdas = lambdas, start = start,
                            lower = lower, upper = upper, control.solver = control.solver)
 
   } else if (solver == "nnls") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_nnls(X = X, y = y, weights = weights, lambdas = lambdas,
+    coefs <- lmridge_nnls(Xw = Xw, yw = yw, weights = weights, lambdas = lambdas,
                           lower = lower, upper = upper, control.solver = control.solver)
   } else {
     stop("Invalid solver choice") }
@@ -66,10 +76,8 @@ lmridge <- function(X, y, lambdas,
 }
 
 
-lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, start, control.solver){
-  Xw <- Xweights(X, weights)
-  yw <- Yweights(y, weights)
-
+lmridge_osqp <- function(Xw, yw, weights, lambdas, lower, upper, start, control.solver){
+  #browser()
   if(control.solver$rowaug == TRUE){
     Xwaug <- row_augX(Xw, lambdas)
     XtX <- crossprod(Xwaug)
@@ -90,7 +98,7 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, start, control.so
   settings <- do.call(osqpSettings, control.solver[-7])
   if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
 
-  model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(X)), l = lower, u = upper, pars = settings)
+  model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(Xw)), l = lower, u = upper, pars = settings)
 
   if (!is.null(start)) model$WarmStart(x=start)
 
@@ -100,18 +108,15 @@ lmridge_osqp <- function(X, y, weights, lambdas, lower, upper, start, control.so
   return(coefs)
 }
 
-lmridge_glmnet <- function(X, y, weights, lambdas, lower, upper, control.solver){
-  # Set path depending on dimensions of X
-  if(sum(lambdas) == 0 && ncol(X) >= nrow(X)){ # avoid numerical instabilities if lambdas is 0 and p>=n
+lmridge_glmnet <- function(Xw, yw, weights, lambdas, lower, upper, control.solver){
+  # Set path depending on dimensions of Xw
+  if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
   } else {
     path = FALSE
   }
 
   # Obtain Xwaug and ywaug
-  Xw <- Xweights(X, weights)
-  yw <- Yweights(y, weights)
-
   Xwaug <- row_augX(Xw, lambdas)
   ywaug <- augY(yw, lambdas, ncol(Xw))
 
@@ -125,11 +130,8 @@ lmridge_glmnet <- function(X, y, weights, lambdas, lower, upper, control.solver)
   return(coefs)
 }
 
-lmridge_nnls <- function(X, y, weights, lambdas, lower, upper, control.solver){
+lmridge_nnls <- function(Xw, yw, weights, lambdas, lower, upper, control.solver){
   # Obtain Xwaug and ywaug
-  Xw <- Xweights(X, weights)
-  yw <- Yweights(y, weights)
-
   Xwaug <- row_augX(Xw, lambdas)
   ywaug <- augY(yw, lambdas, ncol(Xw))
 
@@ -137,10 +139,7 @@ lmridge_nnls <- function(X, y, weights, lambdas, lower, upper, control.solver){
   return(coefs)
 }
 
-lmridge_eigen <- function(X, y, weights, pen_weights, lambdas, lower, upper, start, control.solver = control.solver){
-  Xw <- Xweights(X, weights)
-  yw <- Yweights(y, weights)
-
+lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, start, control.solver = control.solver){
   if (is.null(start)) { start = rep(0,ncol(X))  }
 
   if(control.solver$method == "LSCG") {
@@ -186,22 +185,24 @@ lmridge_eigen <- function(X, y, weights, pen_weights, lambdas, lower, upper, sta
     }
 
   } else if (control.solver$method == "CG") {
-    D <- diag(1/pen_weights)
+    Xwaug <- row_augX(Xw, lambdas)
     if(issparse(Xw)){
-      Dsp <- Matrix(D, sparse=T)
-      coefs <- solve_sparse_CG(A = D %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw), ncol(Xw)),
-                               b = as.vector(D %*% crossprod(Xw,yw)),
+      coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"),
+                               b = as.vector(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
                                x0 = start,
                                tol = control.solver$tol,
-                               maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
+                               maxit = control.solver$maxit,
+                               precond = control.solver$precond)$coefficients
 
     } else {
-      coefs <- solve_dense_CG(A = row_augX(Xw, lambdas),
-                              b = augY(yw, lambdas, ncol(Xw)),
+      coefs <- solve_dense_CG(A = as(crossprod(Xwaug), "dgCMatrix"),
+                              b = as.vector(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
                               x0 = start,
                               tol = control.solver$tol,
-                              maxit = control.solver$maxit,precond = control.solver$precond)$coefficients
+                              maxit = control.solver$maxit,
+                              precond = control.solver$precond)$coefficients
     }
+
 
   } else if (control.solver$method == "chol"){
     D <- diag(1/pen_weights)
