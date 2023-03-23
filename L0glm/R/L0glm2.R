@@ -685,7 +685,6 @@ glm.iwls2 <- function(X, y, weights, family,
     #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
     #                                 control.solver = control.solver, verbose = verbose)
 
-
     if(block & !is.null(control.fit$block.size) & control.fit$block.size > p){
       block.ids <- ceiling((1:p)/control.fit$block.size)
       beta <- block_lmridge(X = X, y=y, block.ids = block.ids, weights = weights, pen_weights = pen_weights,

@@ -31,8 +31,8 @@ chol.solve = function (X, y, tol=.Machine$double.eps^(2/3)) {
 
 # Simulate data
 set.seed(1)
-n <- 10000
-p <- 10000
+n <- 1000
+p <- 1000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -373,20 +373,33 @@ plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
 ##################################
 ##########BLOCK LMRIDGE###########
 ##################################
-block.size <- 5000
+block.size <- 500
 block.ids <- ceiling((1:p)/block.size)
-control.fit <- do.call("control.fit.gen2", list(block.size = block.size))
-
+control.fit <- do.call("control.fit.gen2", list(block.size = block.size, maxit = 1000))
+#OSQP
 system.time(coefs_osqp <- lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                  nonnegative = nonnegative, solver = "osqp")) # 0.56
+                                  nonnegative = nonnegative, solver = "osqp", method = 1)) 
 
-
-system.time(coefs_block_osqp <- block_lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+  #sparse
+system.time(coefs_block_osqp <- block_lmridge(Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
                       nonnegative = nonnegative, solver = "osqp", verbose = verbose,
-                      control.fit = control.fit, block.ids = block.ids)) # for blocks.size 5000 118.80s, for block.size 1000
+                      control.fit = control.fit, block.ids = block.ids))
 
+  #dense
+system.time(coefs_block_osqp <- block_lmridge(X, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                                              nonnegative = nonnegative, solver = "osqp", verbose = verbose,
+                                              control.fit = control.fit, block.ids = block.ids))
 cor(coefs_osqp, coefs_block_osqp)
 
+#EIGEN
+system.time(coefs_eigen1 <- lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                                  nonnegative = nonnegative, solver = "eigen", method = 7))
+
+system.time(coefs_block_eigen1 <- block_lmridge(Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+                                              nonnegative = nonnegative, solver = "eigen", method = 7, verbose = verbose,
+                                              control.fit = control.fit, block.ids = block.ids))
+
+cor(coefs_eigen1, coefs_block_eigen1)
 
 
 beta <- block.fit(X = X, y = y, block.id = block.ids, nonnegative = nonnegative, control = control.fit)

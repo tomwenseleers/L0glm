@@ -163,7 +163,7 @@ lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, s
 
   } else if (control.solver$method == "QR") {
     if(control.solver$rowaug == TRUE){
-      if(issparse(X)){
+      if(issparse(Xw)){
         coefs <- solve_sparse_QR(A = row_augX(Xw, lambdas),
                                  b = augY(yw, lambdas, ncol(Xw)))$coefficients
       } else {
