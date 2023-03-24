@@ -25,23 +25,23 @@ start <- NULL
 verbose <- TRUE
 weights <- 1/(y+0.1) # observation weights
 
-block.size <- 200
+block.size <- 0.1 * p
 block.ids <- ceiling((1:p)/block.size)
 
-
+#OSQP
 system.time(L0glm_osqp <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
-                                      solver = "glmnet", lambda = 1, nonnegative = TRUE, block = FALSE,
+                                      solver = "osqp", lambda = 1, nonnegative = TRUE, block = FALSE, 
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                      control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "glmnet", rowaug = TRUE))))
+                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE)))) #1.09s for n=p=1000
 
 system.time(L0glm_block_osqp <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "osqp", lambda = 1, nonnegative = TRUE, block = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = FALSE))))
+                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE)))) #3.93s for n=p=1000 and block.size = 300
 
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_block_osqp$coefficients / X.n,
@@ -49,9 +49,34 @@ plot_L0glm_benchmark(x = sim$x, y = y,
                      a.true = sim$beta_true,
                      main="Ground truth vs L0glm2 estimates")
 
-cor(coefs_true, L0glm_block_osqp$coefficients) # 0.9990666
+cor(coefs_true, L0glm_block_osqp$coefficients) # 0.93
 cor(coefs_true, L0glm_osqp$coefficients)
 cor(L0glm_osqp$coefficients, L0glm_block_osqp$coefficients)
 
-sum(coefs_true>0) # 10
-sum(L0glm_osqp0$coefficients>0) # 62
+
+
+
+#GLMNET
+system.time(L0glm_glmnet <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
+                                     solver = "glmnet", lambda = 1, nonnegative = TRUE, block = FALSE, 
+                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
+                                     control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                     control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
+                                     control.solver = do.call("control.solver.gen", list(solver = "glmnet")))) #34.81 for n=p=3000
+
+system.time(L0glm_block_glmnet <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
+                                           solver = "glmnet", lambda = 1, nonnegative = TRUE, block = TRUE,
+                                           control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
+                                           control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                           control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
+                                           control.solver = do.call("control.solver.gen", list(solver = "glmnet"))))
+
+plot_L0glm_benchmark(x = sim$x, y = y,
+                     coefs = L0glm_block_glmnet$coefficients / X.n,
+                     fitted = L0glm_block_glmnet$fitted.values,
+                     a.true = sim$beta_true,
+                     main="Ground truth vs L0glm2 estimates")
+
+cor(coefs_true, L0glm_block_glmnet$coefficients) # 0.45
+cor(coefs_true, L0glm_glmnet$coefficients) #0.997
+cor(L0glm_glmnet$coefficients, L0glm_block_glmnet$coefficients)
