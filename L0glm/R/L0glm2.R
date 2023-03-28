@@ -672,7 +672,7 @@ glm.iwls2 <- function(X, y, weights, family,
     # Update the observation subset
     good <- is.finite(W) & W>0
     if(sum(beta) == 0) {
-      beta <- betaoldj
+      beta <- betaold
       warning("Error: fit failed - 0 coefficients produced")
       break
     } else {
@@ -700,7 +700,8 @@ glm.iwls2 <- function(X, y, weights, family,
     # 
     # }
       
-      
+    if(is.null(control.fit$block.size)) control.fit$block.size = p
+    
     if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
       block.ids <- ceiling((1:p)/control.fit$block.size)
       beta <- block_lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, pen_weights = pen_weights,

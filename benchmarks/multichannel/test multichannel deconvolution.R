@@ -3,7 +3,15 @@
 library(export)
 library(qlcMatrix)
 
-sim = simulate_spike_train(n=500, p=500, k=10, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=5, p=5, k=2, multichannel=TRUE, sparse=TRUE)
+X <- sim$X
+Y <- sim$y
+true_coefs <- sim$beta_true
+m <- ncol(Y)
+n <- nrow(X)
+p <- ncol(X)
+
+
 # graph2png(file="simulated_chromatogram.png", width=7, height=5)
 
 # test implementation of L0 group penalized nonnegative identity link Poisson GLM
@@ -19,12 +27,12 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
                 lower = rep(0, ncol(sim$X)),
                 upper = rep(Inf, ncol(sim$X)),
                 nonnegative = TRUE,
-                solver = "nnls", # note: nnls or osqp solution much better than glmnet
+                solver = "osqp", # note: nnls or osqp solution much better than glmnet
                 method = NULL,
                 start = rep(0, ncol(sim$X)),
                 control.solver = NULL,
                 verbose = TRUE) })) # 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
-# TODO check why glmnet is so slow here
+# TODO check why glmnet is so slow here and gives off warnings
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
@@ -61,7 +69,7 @@ beta_wnnls <- parallel::parApply(cl, sim$y, 2, FUN = function(ycol) {
   # Clean up
   stopCluster(cl)
 }) # 3.4s with nnls, 2.9s with osqp, 52s with glmnet, for n=p=500 & k=10
-
+# Gives error invalid 'times' argument
 
 
 # 3. by working with a block diagonal matrix to make multichannel problem into single channel one: ####
@@ -69,22 +77,59 @@ beta_wnnls <- parallel::parApply(cl, sim$y, 2, FUN = function(ycol) {
 # TODO finish this code - ask ChatGPT
 # I think this can be done using the spam library & using a Kronecker product
 library(spam)
-
-yvect = as.vector(sim$y) # vectorized version of multichannel data
-
-# create the weight matrix
-W <- Diagonal(sqrt(1/(yvect+0.1)))
-
-# create the block diagonal matrix
-Xblock <- bKMatrix(W, X)
-
-
 library(Matrix)
-# create the weight matrix
-W <- Diagonal(sqrt(1/(y+0.1)))
+
+
+yvect = as.vector(Y) # vectorized version of multichannel data
+
+# create the weight matrix and the X weighted matrix
+W <- diag(sqrt(1/(yvect+0.1)))
+Xw <- lapply(1:m, function(i) X * W[i])
+
 
 # create the block diagonal matrix
-Xblock <- bdiag(lapply(1:nrow(Y), function(i) W %*% X))
+Xblock <- bdiag(Xw)
+
+
+lambda <- 1
+lower <- rep(0, ncol(Xblock))
+upper <- rep(Inf, ncol(Xblock))
+nonnegative <- TRUE
+start <- NULL
+verbose <- TRUE
+X.n <- apply(Xblock, 2, norm, type = "2")
+
+system.time(coefs_multi <- lmridge(X = Xblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
+                                  nonnegative = nonnegative, solver = "osqp", method = 7)) 
+#0.09s glmnet, 0.61s osqp, 82s nnls, 0.83 eigen.1, 0.15 eigen.4, (n=p=150, m=131) 
+
+system.time(coefs_multi <- L0glm.fit2(X=Xblock, y=yvect, family = poisson(identity),
+                                      solver = "glmnet", method = 4, block = FALSE,
+                                      lambda = 1, nonnegative = TRUE,
+                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
+                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                      control.solver = do.call("control.solver.gen", list(solver = "glmnet", method = 4, rowaug = TRUE))))
+#206s osqp, 2.5s glmnet,  (n=p=150, m=131, 100 maxit)
+
+# Turn coefficient vector into matrix
+original_dim <- c(p, m)
+
+coefficients_matrix <- matrix(coefs_multi$coefficients, nrow = original_dim[1], ncol = original_dim[2], byrow = FALSE)
+cor(coefs_multi$coefficients, as.numeric(true_coefs)) #bad correlation
+
+
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=matrix(coefs_multi$coefficients)^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="Coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+
+
+
+
+
+
+
 
 
 
@@ -102,8 +147,8 @@ system.time(beta_nnpois <- apply(sim$y, 2, function(ycol) {
              nonnegative = TRUE,
              solver = "nnls",
              method = NULL,
-             # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
-             # control.solver = NULL,
+             start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
+             control.solver = NULL,
              control.iwls = do.call("control.iwls.gen2", list(maxit = 10)),
              control.l0 = do.call("control.l0.gen2", list(maxit = 1, delta = 1E-10, gamma = 2)))$coefficients }))
 # 10.7s with nnls, 4.3s with osqp for n=p=500 & k=10
@@ -154,10 +199,10 @@ for (iter in 1:10) {
                            y=y,
                            lambda=lambdas[nonzero],
                            weights = as.vector(1/(fitted+0.1)),
-                           lower = lower[nonzero],
-                           upper = upper[nonzero],
+                           #lower = lower[nonzero],
+                           #upper = upper[nonzero],
                            nonnegative = TRUE,
-                           solver = "nnls",
+                           solver = "osqp",
                            method = NULL,
                            start = beta[nonzero],
                            control.solver = NULL,
@@ -180,7 +225,7 @@ for (iter in 1:10) {
                # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
                # control.solver = NULL,
                control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-               control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })
+               control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients }))
 
   print(sum(beta>0))
 }

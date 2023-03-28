@@ -57,7 +57,7 @@ group.cpglm <- function(X, Y,
 
   # TODO compute glm slots: residuals, deviance, etc.
   # TODO compute effetive degrees of freedom
-  # TODO perfomr inference on estimated coefficients
+  # TODO perform inference on estimated coefficients
 
   names(fit)[names(fit) == "mu"] <- "fitted.values"
   return(structure(fit, class = c("cpglm"))) # TODO glm and lm compatibility? Maybe not possible because of multivariate Y
