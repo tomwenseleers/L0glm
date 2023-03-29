@@ -3,7 +3,7 @@
 library(export)
 library(qlcMatrix)
 
-sim <- simulate_spike_train(n=5, p=5, k=2, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=150, p=150, k=5, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -11,7 +11,7 @@ m <- ncol(Y)
 n <- nrow(X)
 p <- ncol(X)
 
-
+image(Xsp, useRaster=TRUE)
 # graph2png(file="simulated_chromatogram.png", width=7, height=5)
 
 # test implementation of L0 group penalized nonnegative identity link Poisson GLM
@@ -82,40 +82,41 @@ library(Matrix)
 
 yvect = as.vector(Y) # vectorized version of multichannel data
 
-# create the weight matrix and the X weighted matrix
-W <- diag(sqrt(1/(yvect+0.1)))
-Xw <- lapply(1:m, function(i) X * W[i])
+# create the weighted block diagonal matrix
+W <- sqrt(1/(yvect+0.1))
+Xblock <- kronecker(diag(m), Xsp)
+Xwblock <- Xweights(Xblock, W)
 
+image(Xwblock[1:1080, 1:1080], useRaster = TRUE)
 
-# create the block diagonal matrix
-Xblock <- bdiag(Xw)
-
-
+# define other variables
 lambda <- 1
-lower <- rep(0, ncol(Xblock))
-upper <- rep(Inf, ncol(Xblock))
+lower <- rep(0, ncol(Xwblock))
+upper <- rep(Inf, ncol(Xwblock))
 nonnegative <- TRUE
 start <- NULL
 verbose <- TRUE
 X.n <- apply(Xblock, 2, norm, type = "2")
 
-system.time(coefs_multi <- lmridge(X = Xblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
+system.time(coefs_multi <- lmridge(X = Xwblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
                                   nonnegative = nonnegative, solver = "osqp", method = 7)) 
 #0.09s glmnet, 0.61s osqp, 82s nnls, 0.83 eigen.1, 0.15 eigen.4, (n=p=150, m=131) 
+cor(coefs_multi, as.numeric(true_coefs))
 
-system.time(coefs_multi <- L0glm.fit2(X=Xblock, y=yvect, family = poisson(identity),
-                                      solver = "glmnet", method = 4, block = FALSE,
+
+system.time(fit_multi <- L0glm.fit2(X=Xwblock, y=yvect, family = poisson(identity),
+                                      solver = "eigen", method = 7, block = FALSE,
                                       lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "glmnet", method = 4, rowaug = TRUE))))
-#206s osqp, 2.5s glmnet,  (n=p=150, m=131, 100 maxit)
+                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7, rowaug = TRUE))))
+#767.3s osqp,  14.3s glmnet, 767.4s eigen.1 (bad result), 17.8s eigen.56, TOO LONG nnls, (n=p=150, m=131, 100 maxit)
 
 # Turn coefficient vector into matrix
 original_dim <- c(p, m)
 
-coefficients_matrix <- matrix(coefs_multi$coefficients, nrow = original_dim[1], ncol = original_dim[2], byrow = FALSE)
-cor(coefs_multi$coefficients, as.numeric(true_coefs)) #bad correlation
+coefficients_matrix <- matrix(fit_multi$coefficients, nrow = original_dim[1], ncol = original_dim[2], byrow = FALSE)
+cor(fit_multi$coefficients, as.numeric(true_coefs)) #0.98 glmnet, 0.98 ospq, -0,002 eigen.1??, 0.977 eigen.56, 
 
 
 
@@ -233,3 +234,32 @@ for (iter in 1:10) {
 plot(coefs_true, beta / X.n)
 
 
+# 4. using a for loop with avg of previous channels as priors ####
+# Initialize a matrix to store the fitted coefficients for each channel
+beta_matrix <- matrix(0, nrow = p, ncol = m)
+
+# Iterate through the channels
+for (channel in 1:m) {
+  # Calculate the average of previously fitted coefficients as the starting weights
+  if (channel > 1) {
+    start <- colMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
+  } else {
+    start <- rep(0, p)
+  }
+  
+  # Fit the model for the current channel
+  beta_matrix[, channel] <- lmridge(
+    X = sim$X,
+    y = as.vector(sim$y[, channel]),
+    lambda = rep(0, p),
+    start = start,
+    weights = 1 / (as.vector(sim$y[, channel]) + 0.1),
+    lower = rep(0, p),
+    upper = rep(Inf, p),
+    nonnegative = TRUE,
+    solver = "osqp",  
+    method = NULL,
+    control.solver = NULL,
+    verbose = TRUE
+  )
+}
