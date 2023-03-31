@@ -625,6 +625,7 @@ glm.iwls2 <- function(X, y, weights, family,
   # Initialize coefficients
   beta <- if(!is.null(start)){
     start
+    betaold <- start
   } else {
     rep(1, ncol(X))
   }
@@ -671,9 +672,11 @@ glm.iwls2 <- function(X, y, weights, family,
 
     # Update the observation subset
     good <- is.finite(W) & W>0
-    if(sum(beta) == 0) {
+    
+    if(sum(beta) == 0 & j != 1) {
       beta <- betaold
       warning("Error: fit failed - 0 coefficients produced")
+      return(beta)
       break
     } else {
       betaold <- beta

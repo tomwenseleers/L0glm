@@ -11,7 +11,7 @@ m <- ncol(Y)
 n <- nrow(X)
 p <- ncol(X)
 
-image(Xsp, useRaster=TRUE)
+image(X, useRaster=TRUE)
 # graph2png(file="simulated_chromatogram.png", width=7, height=5)
 
 # test implementation of L0 group penalized nonnegative identity link Poisson GLM
@@ -242,7 +242,7 @@ beta_matrix <- matrix(0, nrow = p, ncol = m)
 for (channel in 1:m) {
   # Calculate the average of previously fitted coefficients as the starting weights
   if (channel > 1) {
-    start <- colMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
+    start <- rowMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
   } else {
     start <- rep(0, p)
   }
@@ -251,7 +251,7 @@ for (channel in 1:m) {
   beta_matrix[, channel] <- lmridge(
     X = sim$X,
     y = as.vector(sim$y[, channel]),
-    lambda = rep(0, p),
+    lambda = 1,
     start = start,
     weights = 1 / (as.vector(sim$y[, channel]) + 0.1),
     lower = rep(0, p),
@@ -263,3 +263,35 @@ for (channel in 1:m) {
     verbose = TRUE
   )
 }
+cor(as.vector(beta_matrix), as.vector(true_coefs))
+
+
+beta_matrix <- matrix(0, nrow = p, ncol = m)
+# Iterate through the channels
+system.time(for (channel in 1:m) {
+  # Calculate the average of previously fitted coefficients as the starting weights
+  if (channel > 1) {
+    start <- rowMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
+  } else {
+    start <- NULL
+  }
+  # Fit the model for the current channel
+  beta_matrix[, channel] <-  L0glm.fit2(X = sim$X,
+                                        y = as.vector(sim$y[, channel]),
+                                        lambda = 1,
+                                        weights = 1 / (as.vector(sim$y[, channel]) + 0.1),
+                                        family = poisson(identity),
+                                        lower = rep(0, ncol(sim$X)),
+                                        upper = rep(Inf, ncol(sim$X)),
+                                        nonnegative = TRUE,
+                                        solver = "glmnet",
+                                        #method = 2,
+                                        start = start,
+                                        control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+                                        control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients
+  })
+#37s osqp, 5.67s glmnet, 2.35s eigen.1,  2.11s eigen.2, 1.96s eigen.5-6, 1s eigen.7 for n=p=150
+# glmnet, eigen.2 for n=p=10000
+
+
+cor(as.vector(beta_matrix), as.vector(true_coefs)) #0.997 osqp, 0.999 glmnet, 0.999 eigen.1-2, 0.999 eigen.5-6, eigen.7-8 0 correlation
