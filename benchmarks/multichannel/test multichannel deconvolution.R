@@ -3,7 +3,7 @@
 library(export)
 library(qlcMatrix)
 
-sim <- simulate_spike_train(n=150, p=150, k=5, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=500, p=500, k=20, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -31,7 +31,34 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
                 method = NULL,
                 start = rep(0, ncol(sim$X)),
                 control.solver = NULL,
-                verbose = TRUE) })) # 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
+                verbose = TRUE) })) 
+# 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
+# 95s osqp for n=p=10000 & k=100
+# TODO check why glmnet is so slow here and gives off warnings
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+# graph2png(file="simulated_chromatogram_coefficients_wnnls.png", width=7, height=5)
+
+
+system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
+  L0glm.fit2(X = sim$X,
+             y = as.vector(ycol),
+             lambda = 1,
+             weights = 1 / (as.vector(ycol) + 0.1),
+             family = poisson(identity),
+             lower = rep(0, ncol(sim$X)),
+             upper = rep(Inf, ncol(sim$X)),
+             nonnegative = TRUE,
+             solver = "glmnet",
+             #method = 2,
+             start = rep(0, ncol(sim$X)),
+             control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+             control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })) 
+#  for n=p=500 & k=10
+cor(as.vector(beta_wnnls), as.vector(true_coefs))
+
 # TODO check why glmnet is so slow here and gives off warnings
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
       useRaster=TRUE,
@@ -266,7 +293,15 @@ for (channel in 1:m) {
 cor(as.vector(beta_matrix), as.vector(true_coefs))
 
 
+
+
+
+# Create beta matrix
 beta_matrix <- matrix(0, nrow = p, ncol = m)
+# Order columns of y decreasingly based on sparsity (decreasing)
+colnames(Y) <- seq(ncol(Y))
+y_dec <- Y[, order(colSums(Y != 0), decreasing = TRUE)]
+
 # Iterate through the channels
 system.time(for (channel in 1:m) {
   # Calculate the average of previously fitted coefficients as the starting weights
@@ -277,21 +312,42 @@ system.time(for (channel in 1:m) {
   }
   # Fit the model for the current channel
   beta_matrix[, channel] <-  L0glm.fit2(X = sim$X,
-                                        y = as.vector(sim$y[, channel]),
+                                        y = as.vector(y_dec[, channel]),
                                         lambda = 1,
-                                        weights = 1 / (as.vector(sim$y[, channel]) + 0.1),
+                                        weights = 1 / (as.vector(y_dec[, channel]) + 0.1),
                                         family = poisson(identity),
                                         lower = rep(0, ncol(sim$X)),
                                         upper = rep(Inf, ncol(sim$X)),
                                         nonnegative = TRUE,
                                         solver = "glmnet",
-                                        #method = 2,
+                                        #method = 5,
                                         start = start,
                                         control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
                                         control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients
   })
-#37s osqp, 5.67s glmnet, 2.35s eigen.1,  2.11s eigen.2, 1.96s eigen.5-6, 1s eigen.7 for n=p=150
-# glmnet, eigen.2 for n=p=10000
+# 37s osqp, 5.67s glmnet, 2.35s eigen.1,  2.11s eigen.2, 1.96s eigen.5-6, 1s eigen.7 for n=p=150
+# 8.25 glmnet (vs. 21s wo start), 6.77 eigen.5-6 (vs 25s), 135.2s eigen.1 (vs. 242,1), 130.9s eigen.2 (vs 232.1) for n=p=500
+# 127.45s for eigen.5 n=p=10000
+
+# cor(as.vector(beta_matrix), as.vector(true_coefs)) #will only give correct results if y cols haven't been reordered
+# 0.997 osqp, 0.999 glmnet, 0.999 eigen.1-2, 0.999 eigen.5-6, eigen.7-8 0 correlation
+# 0.968 glmnet (vs 0.988 wo warm start), 0.968 eigen.1 (vs. 0.6), 0.96 eigen.2 (vs 0.6), 0.97 eigen.5-6 for n=p=500
+
+# Assigning same colnames to beta_matrix as y_dec and reordering the true_coefs as well in order to allow for comparison
+colnames(beta_matrix) <- colnames(y_dec) 
+
+true_dec <- true_coefs[, order(colSums(sim$y != 0), decreasing = TRUE)]
+beta_reordered <- beta_matrix[, order(as.numeric(colnames(beta_matrix)))]
+
+cor(as.vector(beta_reordered), as.vector(true_coefs))
 
 
-cor(as.vector(beta_matrix), as.vector(true_coefs)) #0.997 osqp, 0.999 glmnet, 0.999 eigen.1-2, 0.999 eigen.5-6, eigen.7-8 0 correlation
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_reordered^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="Eigen CG coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+
+# Check sparsity of channel i?
+i = 4
+sum(true_coefs[,i]>0) 
+sum(beta_matrix[,i]>0)

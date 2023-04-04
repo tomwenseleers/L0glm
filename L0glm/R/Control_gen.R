@@ -113,9 +113,9 @@ control.solver.gen <- function(solver, method = NULL,
   } else if (solver == "nnls"){
     l <- list()
   } else if (solver == "eigen"){
-    if (is.null(method) & verbose == TRUE){
-      print("No method for Eigen solver was provided. Method is set to 1.")
+    if (is.null(method)){
       method <- 1
+      if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
     }
     
     if (method == 1){
