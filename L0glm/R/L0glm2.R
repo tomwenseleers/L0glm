@@ -550,7 +550,7 @@ L0glm.fit2 <- function(X, y,
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
                      block = block, control.iwls = control.iwls, control.fit = control.fit, pen_weights = pen_weights,
-                     control.solver = control.solver)
+                     control.solver = control.solver, i = i)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
 
@@ -593,6 +593,7 @@ L0glm.fit2 <- function(X, y,
 
 glm.iwls2 <- function(X, y, weights, family,
                       solver = "osqp",
+                      i = NULL,
                       method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
@@ -624,6 +625,7 @@ glm.iwls2 <- function(X, y, weights, family,
   # Initialize coefficients
   beta <- if(!is.null(start)){
     start
+    betaold <- start
   } else {
     rep(1, ncol(X))
   }
@@ -670,29 +672,46 @@ glm.iwls2 <- function(X, y, weights, family,
 
     # Update the observation subset
     good <- is.finite(W) & W>0
-    if(sum(beta) == 0) {
+    
+    if(sum(beta) == 0 & j != 1) {
       beta <- betaold
       warning("Error: fit failed - 0 coefficients produced")
+      return(beta)
       break
     } else {
       betaold <- beta
     }
 
-    # # Fitting the model only on coefficients that haven't converged
-    # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
-    #                                 y = y[good], lambda = lambda[!converged_set], weights = weights[good],
-    #                                 lower = lower[!converged_set], upper = upper[!converged_set],
-    #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
-    #                                 control.solver = control.solver, verbose = verbose)
 
-
-    if(block & !is.null(control.fit$block.size) & control.fit$block.size > p){
+    # Fitting the model only on coefficients that haven't converged => gives worse results
+    # if(block & !is.null(control.fit$block.size) & i == 1 & control.fit$block.size < p){
+    #   block.ids <- ceiling((1:p)/control.fit$block.size)
+    #   beta[!converged_set] <- block_lmridge(X = X[good,!converged_set,drop=F],
+    #                                   y = y[good], lambdas = lambda[!converged_set], weights = weights[good],
+    #                                   lower = lower[!converged_set], upper = upper[!converged_set],
+    #                                   nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
+    #                                   control.solver = control.solver, control.fit = control.fit, verbose = verbose)
+    # } else {
+    #   # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
+    #   #                                 y = y[good], lambdas = lambda[!converged_set], weights = weights[good],
+    #   #                                 lower = lower[!converged_set], upper = upper[!converged_set],
+    #   #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
+    #   #                                 control.solver = control.solver, verbose = verbose)
+    #   beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
+    #                   nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
+    #                   control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
+    # 
+    # }
+      
+    if(is.null(control.fit$block.size)) control.fit$block.size = p
+    
+    if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
       block.ids <- ceiling((1:p)/control.fit$block.size)
-      beta <- block_lmridge(X = X, y=y, block.ids = block.ids, weights = weights, pen_weights = pen_weights,
+      beta <- block_lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, pen_weights = pen_weights,
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
                             start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
     } else {
-      beta <- lmridge(X, y, lambda = lambda, weights = weights, lower = lower, upper = upper,
+      beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
                       nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
                       control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
     }

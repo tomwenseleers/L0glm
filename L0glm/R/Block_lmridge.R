@@ -53,7 +53,7 @@ block_lmridge <- function(X, y, lambdas,
         b <- yw
       }
       # Compute coefficients
-      coefs[block.ids == i] <- lmridge(X = as.matrix(A), y = as.vector(b), lambda = lambda[block.ids == i],
+      coefs[block.ids == i] <- lmridge(X = A, y = as.vector(b), lambda = lambda[block.ids == i],
                                        weights = weights, pen_weights = pen_weights[block.ids == i],
                                       lower = lower[block.ids == i], upper = upper[block.ids == i], nonnegative = nonnegative,
                                       block = TRUE, solver = solver, method = method, start = start[block.ids == i],

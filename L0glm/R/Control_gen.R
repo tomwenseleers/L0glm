@@ -92,60 +92,64 @@ control.solver.gen <- function(solver, method = NULL,
                                abstol = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
-  if(!is.null(method) && solver != "eigen"){
-    warning("A method is only required when using an Eigen solver")
+  if(!is.null(method) & solver != "eigen" & verbose == TRUE){
+    print("A method is only required when using an Eigen solver.")
   }
-
+  
   if(solver == "osqp"){
     if(is.null(maxit)) maxit <- 4000
     if(is.null(abstol)) abstol <- 1e-10
     if(is.null(rowaug)) rowaug <- TRUE
-
+    
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
               max_iter = maxit, linsys_solver = 0L, polish = TRUE, rowaug = rowaug)
-
+    
   } else if (solver == "glmnet") {
     if(is.null(maxit)) maxit <- 1e+05
     if(is.null(abstol)) abstol <- 1e-10
-
+    
     l <- list(thresh = abstol, maxit = maxit)
-
+    
   } else if (solver == "nnls"){
     l <- list()
   } else if (solver == "eigen"){
     if (is.null(method)){
-      warning("No method for Eigen solvers was provided. Method is set to 1.")
       method <- 1
+      if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
     }
-
+    
     if (method == 1){
       if(is.null(rowaug)) rowaug <- TRUE
       l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
-
+      
     } else if (method == 2){
       if(is.null(rowaug)) rowaug <- TRUE
       l <- list(method = "QR", pivot = 1, rowaug = rowaug)
-
+      
     } else if (method == 3){
-      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
+      if(is.null(rowaug)) rowaug <- FALSE
+      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
-
+      
     } else if (method == 4){
-      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
+      if(is.null(rowaug)) rowaug <- FALSE
+      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
       l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
-
+      
     } else if (method == 5){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)
-
+      
     } else if (method == 6){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 1L)
-
+      
     } else if (method == 7){
-      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
+      if(is.null(rowaug)) rowaug <- FALSE
+      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
       l <- list(method = "chol", pivot = 0L, ordering = 0L)
-
+      
     } else if (method == 8){
-      if(rowaug == TRUE) warning("Row augmentation is not allowed with your chosen method.")
+      if(is.null(rowaug)) rowaug <- FALSE
+      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
       l <- list(method = "chol", pivot = 1L, ordering = 0L)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
