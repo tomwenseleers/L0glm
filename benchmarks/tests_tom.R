@@ -33,8 +33,8 @@ library(Matrix)
 
 # Simulate data
 set.seed(1)
-n <- 10000
-p <- 10000
+n <- 100
+p <- 100
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -57,8 +57,8 @@ nonnegative <- TRUE
 thresh <- 1E-3 # coefficients below this value are set to zero in each iteration
 
 # we use starting values starting from a nonnegative weighted LS fit (fit using osqp)
-system.time(start <- lmridge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights,
-                             lower, upper, nonnegative,
+system.time(start <- lmridge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights = weights,
+                             lower = lower, upper = upper, nonnegative = nonnegative,
                              solver="osqp") / X.n) # 1.97s
 start[abs(start)<thresh] <- 0
 nonzero <- (abs(start)>0)

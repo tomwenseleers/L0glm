@@ -20,18 +20,18 @@ image(X, useRaster=TRUE)
 
 # 1. using basic apply ####
 system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
-             lmridge(X = sim$X,
-                y = as.vector(ycol),
-                lambda = rep(0, ncol(sim$X)),
-                weights = 1/(as.vector(ycol)+0.1),
-                lower = rep(0, ncol(sim$X)),
-                upper = rep(Inf, ncol(sim$X)),
-                nonnegative = TRUE,
-                solver = "osqp", # note: nnls or osqp solution much better than glmnet
-                method = NULL,
-                start = rep(0, ncol(sim$X)),
-                control.solver = NULL,
-                verbose = TRUE) })) 
+  lmridge(X = sim$X,
+          y = as.vector(ycol),
+          lambda = rep(0, ncol(sim$X)),
+          weights = 1/(as.vector(ycol)+0.1),
+          lower = rep(0, ncol(sim$X)),
+          upper = rep(Inf, ncol(sim$X)),
+          nonnegative = TRUE,
+          solver = "osqp", # note: nnls or osqp solution much better than glmnet
+          method = NULL,
+          start = rep(0, ncol(sim$X)),
+          control.solver = NULL,
+          verbose = TRUE) })) 
 # 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
 # 95s osqp for n=p=10000 & k=100
 # TODO check why glmnet is so slow here and gives off warnings
@@ -76,23 +76,23 @@ system.time({
   # Set up parallel backend
   cl <- parallel::makeCluster(n_cores, type="PSOCK") # NOTE: on Ubuntu & Mac type="FORK" is faster
   clusterExport(cl, list("sim", "lmridge")) # Export the 'sim' object to the workers
-
+  
   # Run the loop in parallel
-beta_wnnls <- parallel::parApply(cl, sim$y, 2, FUN = function(ycol) {
-  lmridge(X = sim$X,
-          y = as.vector(ycol),
-          lambda = rep(0, ncol(sim$X)),
-          weights = 1/(as.vector(ycol)+0.1),
-          lower = rep(0, ncol(sim$X)),
-          upper = rep(Inf, ncol(sim$X)),
-          nonnegative = TRUE,
-          solver = "nnls",
-          method = NULL,
-          start = rep(0, ncol(sim$X)),
-          control.solver = NULL,
-          verbose = TRUE)
+  beta_wnnls <- parallel::parApply(cl, sim$y, 2, FUN = function(ycol) {
+    lmridge(X = sim$X,
+            y = as.vector(ycol),
+            lambda = rep(0, ncol(sim$X)),
+            weights = 1/(as.vector(ycol)+0.1),
+            lower = rep(0, ncol(sim$X)),
+            upper = rep(Inf, ncol(sim$X)),
+            nonnegative = TRUE,
+            solver = "nnls",
+            method = NULL,
+            start = rep(0, ncol(sim$X)),
+            control.solver = NULL,
+            verbose = TRUE)
   })
-
+  
   # Clean up
   stopCluster(cl)
 }) # 3.4s with nnls, 2.9s with osqp, 52s with glmnet, for n=p=500 & k=10
@@ -126,17 +126,17 @@ verbose <- TRUE
 X.n <- apply(Xblock, 2, norm, type = "2")
 
 system.time(coefs_multi <- lmridge(X = Xwblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
-                                  nonnegative = nonnegative, solver = "osqp", method = 7)) 
+                                   nonnegative = nonnegative, solver = "osqp", method = 7)) 
 #0.09s glmnet, 0.61s osqp, 82s nnls, 0.83 eigen.1, 0.15 eigen.4, (n=p=150, m=131) 
 cor(coefs_multi, as.numeric(true_coefs))
 
 
 system.time(fit_multi <- L0glm.fit2(X=Xwblock, y=yvect, family = poisson(identity),
-                                      solver = "eigen", method = 7, block = FALSE,
-                                      lambda = 1, nonnegative = TRUE,
-                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
-                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7, rowaug = TRUE))))
+                                    solver = "eigen", method = 7, block = FALSE,
+                                    lambda = 1, nonnegative = TRUE,
+                                    control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
+                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7, rowaug = TRUE))))
 #767.3s osqp,  14.3s glmnet, 767.4s eigen.1 (bad result), 17.8s eigen.56, TOO LONG nnls, (n=p=150, m=131, 100 maxit)
 
 # Turn coefficient vector into matrix
@@ -190,19 +190,19 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 # nonnegative L0 penalized identity link weighted LS fitted on each channel independently
 system.time(beta_nnL0pois <- apply(sim$y, 2, function(ycol) {
   L0glm.fit2(X = sim$X,
-          y = as.vector(ycol),
-          lambda = 1,
-          # weights = 1/(as.vector(ycol)+0.1),
-          family = poisson(identity),
-          lower = rep(0, ncol(sim$X)),
-          upper = rep(Inf, ncol(sim$X)),
-          nonnegative = TRUE,
-          solver = "osqp",
-          method = NULL,
-          # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
-          # control.solver = NULL,
-          control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-          control.l0 = do.call("control.l0.gen2", list(maxit = 10, delta = 1E-10, gamma = 2)))$coefficients }))
+             y = as.vector(ycol),
+             lambda = 1,
+             # weights = 1/(as.vector(ycol)+0.1),
+             family = poisson(identity),
+             lower = rep(0, ncol(sim$X)),
+             upper = rep(Inf, ncol(sim$X)),
+             nonnegative = TRUE,
+             solver = "osqp",
+             method = NULL,
+             # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
+             # control.solver = NULL,
+             control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+             control.l0 = do.call("control.l0.gen2", list(maxit = 10, delta = 1E-10, gamma = 2)))$coefficients }))
 # 78s with osqp
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_nnL0pois^0.1, col = topo.colors(255),
       useRaster=TRUE,
@@ -224,37 +224,37 @@ for (iter in 1:10) {
   lambdas <- lambda*1/beta_rowmax^2
   fitted <- sim$X[,nonzero,drop=F] %*% beta[nonzero,,drop=F]
   beta[nonzero,,drop=F] <- lmridge(X=X[,nonzero,drop=F],
-                           y=y,
-                           lambda=lambdas[nonzero],
-                           weights = as.vector(1/(fitted+0.1)),
-                           #lower = lower[nonzero],
-                           #upper = upper[nonzero],
-                           nonnegative = TRUE,
-                           solver = "osqp",
-                           method = NULL,
-                           start = beta[nonzero],
-                           control.solver = NULL,
-                           verbose = TRUE)
-
+                                   y=y,
+                                   lambda=lambdas[nonzero],
+                                   weights = as.vector(1/(fitted+0.1)),
+                                   #lower = lower[nonzero],
+                                   #upper = upper[nonzero],
+                                   nonnegative = TRUE,
+                                   solver = "osqp",
+                                   method = NULL,
+                                   start = beta[nonzero],
+                                   control.solver = NULL,
+                                   verbose = TRUE)
+  
   beta_nnL0pois <- do.call(rbind, lapply(which(nonzero),
                                          sim$y,
                                          2,
                                          function(ycol) {
-    L0glm.fit2(X = sim$X,
-               y = as.vector(ycol),
-               lambda = 1,
-               # weights = 1/(ycol+0.1),
-               family = poisson(identity),
-               lower = rep(0, ncol(sim$X)),
-               upper = rep(Inf, ncol(sim$X)),
-               nonnegative = TRUE,
-               solver = "nnls",
-               method = NULL,
-               # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
-               # control.solver = NULL,
-               control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-               control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients }))
-
+                                           L0glm.fit2(X = sim$X,
+                                                      y = as.vector(ycol),
+                                                      lambda = 1,
+                                                      # weights = 1/(ycol+0.1),
+                                                      family = poisson(identity),
+                                                      lower = rep(0, ncol(sim$X)),
+                                                      upper = rep(Inf, ncol(sim$X)),
+                                                      nonnegative = TRUE,
+                                                      solver = "nnls",
+                                                      method = NULL,
+                                                      # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
+                                                      # control.solver = NULL,
+                                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+                                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients }))
+  
   print(sum(beta>0))
 }
 
@@ -319,19 +319,17 @@ system.time(for (channel in 1:m) {
                                         lower = rep(0, ncol(sim$X)),
                                         upper = rep(Inf, ncol(sim$X)),
                                         nonnegative = TRUE,
-                                        solver = "glmnet",
+                                        solver = "osqp",
                                         #method = 5,
                                         start = start,
                                         control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
                                         control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients
-  })
+})
 # 37s osqp, 5.67s glmnet, 2.35s eigen.1,  2.11s eigen.2, 1.96s eigen.5-6, 1s eigen.7 for n=p=150
 # 8.25 glmnet (vs. 21s wo start), 6.77 eigen.5-6 (vs 25s), 135.2s eigen.1 (vs. 242,1), 130.9s eigen.2 (vs 232.1) for n=p=500
 # 127.45s for eigen.5 n=p=10000
 
 # cor(as.vector(beta_matrix), as.vector(true_coefs)) #will only give correct results if y cols haven't been reordered
-# 0.997 osqp, 0.999 glmnet, 0.999 eigen.1-2, 0.999 eigen.5-6, eigen.7-8 0 correlation
-# 0.968 glmnet (vs 0.988 wo warm start), 0.968 eigen.1 (vs. 0.6), 0.96 eigen.2 (vs 0.6), 0.97 eigen.5-6 for n=p=500
 
 # Assigning same colnames to beta_matrix as y_dec and reordering the true_coefs as well in order to allow for comparison
 colnames(beta_matrix) <- colnames(y_dec) 
@@ -344,10 +342,11 @@ cor(as.vector(beta_reordered), as.vector(true_coefs))
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_reordered^0.1, col = topo.colors(255),
       useRaster=TRUE,
-      xlab="Time", ylab="Channel", main="Eigen CG coefficients")
+      xlab="Time", ylab="Channel", main="Coefficients")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(beta_matrix)!=0)], col="yellow")
 
 # Check sparsity of channel i?
-i = 4
-sum(true_coefs[,i]>0) 
-sum(beta_matrix[,i]>0)
+i = 1
+sum(rowMax(sim$beta_true)!=0)
+sum(rowMax(beta_matrix)!=0)

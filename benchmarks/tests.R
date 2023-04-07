@@ -164,17 +164,8 @@ cor(coefs_cholsolve_sparse, coefs_true) # 0.1745552
 cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
 cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
 
-system.time(coefs_cholsolve_sparse_lmridge <- lmridge(X, y, lambda,
-                                                weights = weights,
-                                                lower = lower,
-                                                upper = upper,
-                                                nonnegative = nonnegative,
-                                                solver = "eigen",
-                                                method = 7))
 
-
-
-# using row augmentation & default Cholesky decomposition -> FAST both for dense & sparse X BUT only square matrices
+# using row augmentation & default Cholesky decomposition -> FAST both for dense & sparse X BUT only square matrices (otherwise crashes)
 system.time(coefs_cholsolve_rowaug_dense <- as.vector(chol.solve(Xwaug,
                                                                  ywaug,
                                                                  tol=2*.Machine$double.eps))) # 13s for n=p=10000, 0.90s for p=5000 & n=1000

@@ -278,9 +278,8 @@ L0glm2 <- function(formula,
                    tune.meth = "none",
                    tune.crit = "bic",
                    seed = NULL, # set seed for k-fold CV
-                   # More params
                    verbose = TRUE){
-
+  
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
   if (is.null(data)) data <- environment(formula)
@@ -306,7 +305,7 @@ L0glm2 <- function(formula,
   }
   intercept <- as.logical(attr(mt, "intercept"))
   if(intercept) no.pen <- c(1, no.pen + 1)
-
+  
   # Get control parameters
   if (!("gamma" %in% names(control.l0))) {
     control.l0$gamma <- gamma
@@ -314,27 +313,28 @@ L0glm2 <- function(formula,
   control.l0 <- do.call("control.l0.gen2", control.l0)
   control.iwls <- do.call("control.iwls.gen2", control.iwls)
   control.fit <- do.call("control.fit.gen2", control.fit)
-
+  
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
-
+  
+  
   #Normalize data
   if(normalize){
     X.n <- apply(X, 2, norm, type = "2")
     X <- sweep(X, 2, X.n, "/")
   }
-
+  
   if(control.l0$warn && control.l0$delta > control.iwls$thresh){
     control.l0$delta <- control.iwls$thresh
     warning("control.l0$delta > control.iwls$thresh. To avoid artifacts control.l0$delta is decreased to control.iwls$thresh")
   }
-
+  
   # Check family argument
   if(is.character(family)) family <- get(family, mode = "function", envir = parent.frame())
   if(is.function(family)) family <- family()
   if(family$family == "gaussian" && family$link == "identity") control.iwls$maxit <- 1 # with gaussian identity loss we end up doing single nnls iteration
   if(family$family == "poisson") y <- as.integer(y)
-
+  
   # Get lambda with or without cross-validation
   if(any(lambda < 0)) stop("Negative lambda not allowed")
   if(control.l0$warn && sum(lambda) == 0 & control.l0$maxit > 1){
@@ -355,10 +355,10 @@ L0glm2 <- function(formula,
     tune.meth <- "IC"
     tune.crit <- "loocv"
   }
-
+  
   tune.crit <- match.arg(tune.crit, c("all", "bic", "aic", "loglik", "loocv", "rss", "aicc", "ebic",
                                       "hq", "ric", "mric", "cic",  "bicg", "bicq"))
-
+  
   if(verbose) cat(paste0("\n==== Lambda tuning ====\n\n",
                          "Number of lambda values: ", length(lambda), "\n",
                          "Lambda tuning method: ", tune.meth, "\n",
@@ -373,7 +373,7 @@ L0glm2 <- function(formula,
     lambda <- lambda[lambda < lam.max]
     if(length(lambda) == 0) stop("No valid lambda supplied, try using lower lambda values.")
   }
-
+  
   if(tune.meth %in% c("none", "preset")){
     tune.crit <- NA
     if(length(lambda) > 1){
@@ -426,10 +426,10 @@ L0glm2 <- function(formula,
   lambda0 <- lambda
   lambda <- rep(lambda, p)
   lambda[no.pen] <- 0
-
+  
   if(verbose) cat(paste0("Tuned lambda value: ", lambda0, "\n\n"))
-
-
+  
+  
   # Fit the model
   if(verbose) cat(paste0("==== Model fitting ====\n\n",
                          "Fitting in progress...\n"))
@@ -442,16 +442,16 @@ L0glm2 <- function(formula,
   if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
                          "Number of adaptive ridge (L0 penalty) iterations: ", fit$iter.l0, "\n",
                          "Number of IWLS iterations: ", paste0(fit$iter.iwls, collapse = ", "), "\n\n"))
-
+  
   nonzero <- fit$coefficients != 0
   fit$call <- call0
   fit$constraint <- ifelse(nonnegative, "nonnegative", "none")
   fit$prior.coefficients <- start
   fit$lambda.tune <- lambda.tune
-
+  
   # Compute residuals
   fit$residuals <- y - fit$fitted.values
-
+  
   # If all coefficient are zero, return fit without inference
   if(sum(nonzero) == 0){
     fit$deviance <- c(residual.deviance = NA, residual.df = NA,
@@ -462,7 +462,7 @@ L0glm2 <- function(formula,
     if(control.l0$warn) warning("All coefficients are 0.")
     return(fit)
   }
-
+  
   # Compute degrees of freedom
   fit$df <- compute.df(fit = fit, X = X)
   # Compute deviance
@@ -479,10 +479,10 @@ L0glm2 <- function(formula,
                        residual.deviance = dev.res, # residual deviance = 2 * (LL_full - LL_model)
                        null.deviance = dev.null, # null deviance = total deviance = 2 * (LL-full - LL_null)
                        D.squared = 1 - dev.res/dev.null)
-
+  
   # Compute the goodness of fit criteria
   fit$IC <- compute.ic(y = y, y.hat = fit$fitted.values, w = fit$prior.weights, fit = fit)
-
+  
   # Compute R squared
   # R2 is computed on the adjusted scale using the optimal weights from the last
   # iteration of the IWLS.
@@ -497,10 +497,10 @@ L0glm2 <- function(formula,
   # tss <- sum(w * (z - z.null)^2) # total sums of squares
   # fit$R.squared <- list(R.squared = mss/tss, # = Model SS / Total SS
   #                       type = ifelse(is.null(coefficients.true), "sample", "population"))
-
+  
   # Reassign norms
   if(normalize) fit$coefficients <- fit$coefficients / X.n
-
+  
   # Return solution
   fit <- fit[sort(names(fit))]
   return(structure(fit, class = "L0glm2"))
@@ -534,18 +534,18 @@ L0glm.fit2 <- function(X, y,
   p <- ncol(X)
   if(length(lambda) == 1) lambda <- rep(lambda, p)
   y <- as.vector(y)
-
+  
   # The adaptive ridge loop
   mask <- rep(FALSE, p)
   iter.iwls <- vector()
   beta <- if(is.null(start)) rep(1,p) else start
-
+  
   for (i in 1:control.l0$maxit) {
     beta0 <- beta # coefs from previous iteration
     pen_weights <- AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma)
     lambda_adap <- lambda * pen_weights # ridge penalty with adaptive weights
-
-
+    
+    
     # Fit the model with current adaptive weights.
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
@@ -553,33 +553,33 @@ L0glm.fit2 <- function(X, y,
                      control.solver = control.solver, i = i)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
-
+    
     # Control iteration
     reldiff <- 2*abs((beta-beta0)/(beta+beta0))
     mask <- reldiff <= control.l0$reltol # keep coefficients fixed in subsequent iterations if they converged
     mask[is.na(mask)] <- TRUE
     stop.loop <- sum(mask) >= (p-1)
-
+    
     # TODO Delete
     # plot(beta, type = "h", col = 2, main = i)
     # Sys.sleep(0.5)
     if(stop.loop) break
   }
-
+  
   if(control.l0$warn && control.l0$maxit > 1 && !stop.loop)
     warning("Best subset algorithm did not converge, maybe increase control.l0$maxit")
-
+  
   fit$iter.iwls <- iter.iwls
   fit$iter.l0 <- i
   fit$lambda <- lambda
   fit$lambda.w <- lambda_adap/lambda # Converged lambda weights
   fit$lambda.w[is.na(fit$lambda.w)] <- 0 # happens when dividing by 0
   fit$converged.l0 <- stop.loop || control.l0$maxit == 1
-
+  
   # Perform post filtering of the coefficients using user supplied function
   fit$coefficients <- post.filter.fn(fit$coefficients)
   fit$post.filter.fn <- post.filter.fn
-
+  
   return(fit)
 }
 
@@ -593,7 +593,7 @@ L0glm.fit2 <- function(X, y,
 
 glm.iwls2 <- function(X, y, weights, family,
                       solver = "osqp",
-                      i = NULL,
+                      i = NULL, #TODO remove?
                       method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
@@ -603,15 +603,15 @@ glm.iwls2 <- function(X, y, weights, family,
                       lower = rep(-.Machine$double.xmax,ncol(X)),
                       upper = rep(.Machine$double.xmax,ncol(X)),
                       control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-                      control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # remove ?
+                      control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # TODO remove ?
                       control.solver = NULL,
                       converged_set = rep(FALSE, ncol(X)),
                       verbose = FALSE){ # TODO match
-
-
+  
+  
   n <- N <- nrow(X)
   p <- ncol(X)
-
+  
   if (p == 0) { # IN case a NULL model is fit, code taken from 'glm'
     return(list(coefficients = numeric(),
                 weights = numeric(),
@@ -621,7 +621,7 @@ glm.iwls2 <- function(X, y, weights, family,
                 converged.iwls = TRUE,
                 iter.iwls = 0))
   }
-
+  
   # Initialize coefficients
   beta <- if(!is.null(start)){
     start
@@ -630,7 +630,7 @@ glm.iwls2 <- function(X, y, weights, family,
     rep(1, ncol(X))
   }
   names(beta) <- colnames(X)
-
+  
   # Initialize fit
   if (!is.null(start)){
     eta <- X %*% beta
@@ -644,11 +644,11 @@ glm.iwls2 <- function(X, y, weights, family,
     mu <- mustart
     eta <- family$linkfun(mustart)
   }
-
+  
   # Initialize iteration control variables
   niters_nochange <- converged_set * control.iwls$maxit # nr of iterations over which coefficients showed less than reltol relative change.
   nonzero <- rep(TRUE, ncol(X)) # nonzero coefficients
-
+  
   # Start loop
   for(j in 1:control.iwls$maxit) {
     # Linearize the response and adapt weights
@@ -663,46 +663,25 @@ glm.iwls2 <- function(X, y, weights, family,
       z <- as.vector(eta + (y - mu) / mu.prime) # TODO Remove offset here if needed.
       W <- W0 <- as.vector(weights * mu.prime^2 / family$variance(mu))
     }
-
+    
     # Update partial residuals
     # We work on partial residuals on transformed scale z, ie the scaled model
     # predictions minus the predictions for covariates with nonzero coefficients
     # that already converged. This allows for a dramatic speed up after the 1st iteration.
     z <- z - as.vector(X[, converged_set & nonzero, drop=F] %*% beta[converged_set & nonzero])
-
+    
     # Update the observation subset
     good <- is.finite(W) & W>0
     
     if(sum(beta) == 0 & j != 1) {
       beta <- betaold
       warning("Error: fit failed - 0 coefficients produced")
-      return(beta)
+      return(beta) #TODO Return beta? break?
       break
     } else {
       betaold <- beta
     }
-
-
-    # Fitting the model only on coefficients that haven't converged => gives worse results
-    # if(block & !is.null(control.fit$block.size) & i == 1 & control.fit$block.size < p){
-    #   block.ids <- ceiling((1:p)/control.fit$block.size)
-    #   beta[!converged_set] <- block_lmridge(X = X[good,!converged_set,drop=F],
-    #                                   y = y[good], lambdas = lambda[!converged_set], weights = weights[good],
-    #                                   lower = lower[!converged_set], upper = upper[!converged_set],
-    #                                   nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
-    #                                   control.solver = control.solver, control.fit = control.fit, verbose = verbose)
-    # } else {
-    #   # beta[!converged_set] <- lmridge(X = X[good,!converged_set,drop=F],
-    #   #                                 y = y[good], lambdas = lambda[!converged_set], weights = weights[good],
-    #   #                                 lower = lower[!converged_set], upper = upper[!converged_set],
-    #   #                                 nonnegative = nonnegative, solver = solver, method = method, start = betaold[!converged_set],
-    #   #                                 control.solver = control.solver, verbose = verbose)
-    #   beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
-    #                   nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
-    #                   control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
-    # 
-    # }
-      
+    
     if(is.null(control.fit$block.size)) control.fit$block.size = p
     
     if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
@@ -711,20 +690,25 @@ glm.iwls2 <- function(X, y, weights, family,
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
                             start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
     } else {
-      beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
-                      nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
-                      control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
+      if(length(beta[beta != 0]) > 1){
+        beta[beta != 0] <- lmridge(X[,beta != 0], y, lambdas = lambda[beta != 0], weights = weights,
+                                   lower = lower[beta != 0], upper = upper[beta != 0], nonnegative = nonnegative, block = FALSE,
+                                   solver = solver, method = method, start = betaold[beta != 0], control.solver = control.solver,
+                                   pen_weights = pen_weights[beta != 0], verbose = verbose)
+      } else {
+        beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
+                        nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
+                        control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
+      }
     }
-
-
-
+    
     beta[abs(beta) < control.iwls$thresh] <- 0
     nonzero <- beta != 0
-
+    
     # Update fitted data
     eta <- X[,nonzero,drop=F] %*% beta[nonzero] # + offset if required
     mu <- family$linkinv(eta)
-
+    
     # Update iteration control
     reldiff <- 2*abs((beta-betaold)/(beta+betaold)) # Vector of relative differences in coefficient estimates
     reldiff[is.na(reldiff)] <- 0
@@ -742,7 +726,7 @@ glm.iwls2 <- function(X, y, weights, family,
   }
   if(control.iwls$warn && !all(converged_set) && control.iwls$maxit > 1)
     warning("IWLS algorithm did not converge, maybe increase control.iwls$maxit")
-
+  
   # Return output
   return(list(coefficients = beta,
               weights = W0,
