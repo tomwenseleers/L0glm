@@ -22,7 +22,6 @@
 #' @export
 lmridge <- function(X, y, lambdas,
                     weights = NULL,
-                    pen_weights = rep(1, ncol(X)),
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
@@ -61,7 +60,7 @@ lmridge <- function(X, y, lambdas,
     
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_eigen(Xw = Xw, yw = yw, weights = weights, pen_weights = pen_weights, lambdas = lambdas, start = start,
+    coefs <- lmridge_eigen(Xw = Xw, yw = yw, weights = weights, lambdas = lambdas, start = start,
                            lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "nnls") {
@@ -133,7 +132,7 @@ lmridge_nnls <- function(Xw, yw, weights, lambdas, lower, upper, control.solver)
   return(coefs)
 }
 
-lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, start, control.solver = control.solver){
+lmridge_eigen <- function(Xw, yw, weights, lambdas, lower, upper, start, control.solver = control.solver){
   if (is.null(start)) { start = rep(0,ncol(X))  }
   
   if(control.solver$method == "QR") {

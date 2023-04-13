@@ -437,7 +437,7 @@ L0glm2 <- function(formula,
   fit <- L0glm.fit2(X = X, y = y, weights = weights, solver = solver, method = method, family = family, lambda = lambda,
                     start = start, nonnegative = nonnegative, block = block, control.l0 = control.l0,
                     control.solver = control.solver, control.iwls = control.iwls, control.fit = control.fit,
-                    post.filter.fn = post.filter.fn)
+                    post.filter.fn = post.filter.fn, verbose = verbose)
   fit$timing <- proc.time()[3] - t1
   if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
                          "Number of adaptive ridge (L0 penalty) iterations: ", fit$iter.l0, "\n",
@@ -529,11 +529,35 @@ L0glm.fit2 <- function(X, y,
                        post.filter.fn = function(u) return(u),
                        control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
                        control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-                       control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7)){
+                       control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
+                       verbose = FALSE){
   n <- nrow(X)
   p <- ncol(X)
+  
   if(length(lambda) == 1) lambda <- rep(lambda, p)
-  y <- as.vector(y)
+  
+  if("matrix" %in% class(y)){ ###MULTI
+    return(multi.fit <- multichannel_l0glm.fit(X = X,
+                                               Y = y,
+                                               family = family,
+                                               lambda = lambda,
+                                               lower = lower,
+                                               upper = upper,
+                                               nonnegative = nonnegative,
+                                               solver = solver,
+                                               method = method,
+                                               start = start,
+                                               block = block,
+                                               control.solver = control.solver, 
+                                               control.l0 = control.l0,
+                                               control.iwls = control.iwls,
+                                               control.fit = control.fit,
+                                               post.filter.fn = post.filter.fn,
+                                               verbose = verbose))
+  } else {
+    y <- as.vector(y)
+  }
+
   
   # The adaptive ridge loop
   mask <- rep(FALSE, p)
@@ -549,8 +573,8 @@ L0glm.fit2 <- function(X, y,
     # Fit the model with current adaptive weights.
     fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
-                     block = block, control.iwls = control.iwls, control.fit = control.fit, pen_weights = pen_weights,
-                     control.solver = control.solver, i = i)
+                     block = block, control.iwls = control.iwls, control.fit = control.fit,
+                     control.solver = control.solver, i = i, verbose = verbose)
     iter.iwls[i] <- fit$iter.iwls
     beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
     
@@ -597,7 +621,6 @@ glm.iwls2 <- function(X, y, weights, family,
                       method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
-                      pen_weights = rep(1, ncol(X)),
                       nonnegative = FALSE,
                       block = FALSE,
                       lower = rep(-.Machine$double.xmax,ncol(X)),
@@ -672,12 +695,18 @@ glm.iwls2 <- function(X, y, weights, family,
     
     # Update the observation subset
     good <- is.finite(W) & W>0
-    
     if(sum(beta) == 0 & j != 1) {
       beta <- betaold
-      warning("Error: fit failed - 0 coefficients produced")
-      return(beta) #TODO Return beta? break?
-      break
+      if(verbose) print("Error: fit failed - 0 coefficients produced")
+      return(list(coefficients = beta,
+                  weights = W0,
+                  prior.weights = weights,
+                  fitted.values = as.vector(mu),
+                  eta = eta,
+                  family = family,
+                  converged.iwls = all(converged_set) || control.iwls$maxit == 1,
+                  iter.iwls = j,
+                  zero.coefs = TRUE))
     } else {
       betaold <- beta
     }
@@ -686,7 +715,7 @@ glm.iwls2 <- function(X, y, weights, family,
     
     if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
       block.ids <- ceiling((1:p)/control.fit$block.size)
-      beta <- block_lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, pen_weights = pen_weights,
+      beta <- block_lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, 
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
                             start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
     } else {
@@ -694,11 +723,11 @@ glm.iwls2 <- function(X, y, weights, family,
         beta[beta != 0] <- lmridge(X[,beta != 0], y, lambdas = lambda[beta != 0], weights = weights,
                                    lower = lower[beta != 0], upper = upper[beta != 0], nonnegative = nonnegative, block = FALSE,
                                    solver = solver, method = method, start = betaold[beta != 0], control.solver = control.solver,
-                                   pen_weights = pen_weights[beta != 0], verbose = verbose)
+                                   verbose = verbose)
       } else {
         beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
                         nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
-                        control.solver = control.solver, pen_weights = pen_weights, verbose = verbose)
+                        control.solver = control.solver, verbose = verbose)
       }
     }
     
@@ -735,7 +764,8 @@ glm.iwls2 <- function(X, y, weights, family,
               eta = eta,
               family = family,
               converged.iwls = all(converged_set) || control.iwls$maxit == 1,
-              iter.iwls = j))
+              iter.iwls = j,
+              zero.coefs = FALSE))
 }
 
 
