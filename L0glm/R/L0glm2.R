@@ -260,7 +260,8 @@ L0glm2 <- function(formula,
                    family = gaussian(identity),
                    start = NULL,
                    contrasts = NULL,
-                   lambda = 0, no.pen = 0,
+                   lambda = 0, 
+                   no.pen = 0,
                    nonnegative = FALSE,
                    block = FALSE,
                    solver = "osqp", #TODO: document
@@ -274,6 +275,7 @@ L0glm2 <- function(formula,
                    control.fit = list(),
                    control.solver = NULL,
                    post.filter.fn = function(u) return(u),
+                   group.pen.fn,
                    # TODO make CV arguments a single list, eg tune.control ?
                    tune.meth = "none",
                    tune.crit = "bic",
@@ -523,6 +525,7 @@ L0glm.fit2 <- function(X, y,
                        upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
                        solver = "osqp", #TODO document
                        method = NULL,
+                       group.pen.fn = NULL,
                        nonnegative = FALSE,
                        block = FALSE,
                        control.solver = NULL,
@@ -537,23 +540,41 @@ L0glm.fit2 <- function(X, y,
   if(length(lambda) == 1) lambda <- rep(lambda, p)
   
   if("matrix" %in% class(y)){ ###MULTI
-    return(multi.fit <- multichannel_l0glm.fit(X = X,
-                                               Y = y,
-                                               family = family,
-                                               lambda = lambda,
-                                               lower = lower,
-                                               upper = upper,
-                                               nonnegative = nonnegative,
-                                               solver = solver,
-                                               method = method,
-                                               start = start,
-                                               block = block,
-                                               control.solver = control.solver, 
-                                               control.l0 = control.l0,
-                                               control.iwls = control.iwls,
-                                               control.fit = control.fit,
-                                               post.filter.fn = post.filter.fn,
-                                               verbose = verbose))
+    return(multi.fit <- group.cpglm2(X = X,
+                                     Y = y,
+                                     family = family,
+                                     lambda = lambda,
+                                     lower = lower,
+                                     upper = upper,
+                                     nonnegative = nonnegative,
+                                     solver = solver,
+                                     method = method,
+                                     start = start,
+                                     block = block,
+                                     control.solver = control.solver,
+                                     control.l0 = control.l0,
+                                     control.iwls = control.iwls,
+                                     control.fit = control.fit,
+                                     post.filter.fn = post.filter.fn,
+                                     verbose = verbose))
+
+    # return(group.cpglm.fit2(X = X, Y = y,
+    #                         weights = weights,
+    #                         family = family,
+    #                         lambdas = lambda,
+    #                         group.pen.fn = group.pen.fn, #TODO: add it as an argument to l0glm.fit?
+    #                         start = start,
+    #                         lower = lower,
+    #                         upper = upper,
+    #                         solver = solver,
+    #                         method = method,
+    #                         nonnegative = nonnegative,
+    #                         control.l0 = control.l0,
+    #                         control.iwls = control.iwls,
+    #                         control.fit = control.fit,
+    #                         control.solver = control.solver,
+    #                         post.filter.fn = post.filter.fn,
+    #                         verbose = verbose))
   } else {
     y <- as.vector(y)
   }
@@ -571,22 +592,20 @@ L0glm.fit2 <- function(X, y,
     
     
     # Fit the model with current adaptive weights.
-    fit <- glm.iwls2(X = X, y = y, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
+    fit <- glm.iwls2(X = X, y = y, i = i, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda_adap, converged_set = mask, nonnegative = nonnegative,
                      block = block, control.iwls = control.iwls, control.fit = control.fit,
-                     control.solver = control.solver, i = i, verbose = verbose)
+                     control.solver = control.solver, verbose = verbose)
     iter.iwls[i] <- fit$iter.iwls
-    beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
     
+    #if(fit$zero.coefs) break # TODO: remove? doesn't change anything 
+    beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
     # Control iteration
     reldiff <- 2*abs((beta-beta0)/(beta+beta0))
     mask <- reldiff <= control.l0$reltol # keep coefficients fixed in subsequent iterations if they converged
     mask[is.na(mask)] <- TRUE
     stop.loop <- sum(mask) >= (p-1)
     
-    # TODO Delete
-    # plot(beta, type = "h", col = 2, main = i)
-    # Sys.sleep(0.5)
     if(stop.loop) break
   }
   
@@ -615,9 +634,8 @@ L0glm.fit2 <- function(X, y,
 #' performed.
 #'
 
-glm.iwls2 <- function(X, y, weights, family,
+glm.iwls2 <- function(X, y, weights, family, i = NULL,
                       solver = "osqp",
-                      i = NULL, #TODO remove?
                       method = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
@@ -630,7 +648,6 @@ glm.iwls2 <- function(X, y, weights, family,
                       control.solver = NULL,
                       converged_set = rep(FALSE, ncol(X)),
                       verbose = FALSE){ # TODO match
-  
   
   n <- N <- nrow(X)
   p <- ncol(X)
@@ -695,24 +712,9 @@ glm.iwls2 <- function(X, y, weights, family,
     
     # Update the observation subset
     good <- is.finite(W) & W>0
-    if(sum(beta) == 0 & j != 1) {
-      beta <- betaold
-      if(verbose) print("Error: fit failed - 0 coefficients produced")
-      return(list(coefficients = beta,
-                  weights = W0,
-                  prior.weights = weights,
-                  fitted.values = as.vector(mu),
-                  eta = eta,
-                  family = family,
-                  converged.iwls = all(converged_set) || control.iwls$maxit == 1,
-                  iter.iwls = j,
-                  zero.coefs = TRUE))
-    } else {
-      betaold <- beta
-    }
-    
+    betaold <- beta
+
     if(is.null(control.fit$block.size)) control.fit$block.size = p
-    
     if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
       block.ids <- ceiling((1:p)/control.fit$block.size)
       beta <- block_lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, 
@@ -720,14 +722,16 @@ glm.iwls2 <- function(X, y, weights, family,
                             start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
-        beta[beta != 0] <- lmridge(X[,beta != 0], y, lambdas = lambda[beta != 0], weights = weights,
-                                   lower = lower[beta != 0], upper = upper[beta != 0], nonnegative = nonnegative, block = FALSE,
-                                   solver = solver, method = method, start = betaold[beta != 0], control.solver = control.solver,
-                                   verbose = verbose)
+        beta[beta != 0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],
+                                   pen_weights = pen_weights[good], lower = lower[beta != 0], upper = upper[beta != 0], 
+                                   nonnegative = nonnegative, solver = solver, method = method, start = betaold[beta != 0], 
+                                   control.solver = control.solver, verbose = verbose)
       } else {
-        beta <- lmridge(X, y, lambdas = lambda, weights = weights, lower = lower, upper = upper,
-                        nonnegative = nonnegative, block = FALSE, solver = solver, method = method, start = betaold,
+        beta <- lmridge(X = X[good,,drop=F], y = y[good], pen_weights = pen_weights[good],
+                        lambdas = lambda, weights = W[good],lower = lower, upper = upper,
+                        nonnegative = nonnegative, solver = solver, method = method, start = betaold,
                         control.solver = control.solver, verbose = verbose)
+        
       }
     }
     
@@ -751,10 +755,21 @@ glm.iwls2 <- function(X, y, weights, family,
       if(control.iwls$warn) warning("Error: fit failed - NaN coefficients produced")
       break
     }
+    
+    if(sum(beta) == 0) {
+      beta <- betaold
+      if(control.iwls$warn) warning("Error: fit failed - 0 coefficients produced") # TODO warning or print?
+      #if(verbose) print("Error: fit failed - 0 coefficients produced")
+      zero.coefs <- TRUE 
+      break
+    } else {
+      zero.coefs <- FALSE
+    }
+      
     if(all(converged_set)) break
   }
   if(control.iwls$warn && !all(converged_set) && control.iwls$maxit > 1)
-    warning("IWLS algorithm did not converge, maybe increase control.iwls$maxit")
+    warning("IWLS algorithm did not converge, try increasing control.iwls$maxit") # TODO change warning?
   
   # Return output
   return(list(coefficients = beta,
@@ -765,7 +780,7 @@ glm.iwls2 <- function(X, y, weights, family,
               family = family,
               converged.iwls = all(converged_set) || control.iwls$maxit == 1,
               iter.iwls = j,
-              zero.coefs = FALSE))
+              zero.coefs = zero.coefs))
 }
 
 

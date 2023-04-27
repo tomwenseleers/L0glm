@@ -130,4 +130,3 @@ group.cpglm.fit <- function(X = X, Y = Y,
               # TODO converged = stop.loop
               niter = i))
 }
-

@@ -3,7 +3,7 @@
 library(export)
 library(qlcMatrix)
 
-sim <- simulate_spike_train(n=2000, p=2000, k=100, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=100, p=100, k=10, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -19,19 +19,21 @@ image(X, useRaster=TRUE)
 # wnnls result fitted on each channel independently
 
 # 1. using basic apply ####
-system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
+system.time(beta_wnnls <- apply(sim$y, 2, function(ycol, index) {
   lmridge(X = sim$X,
           y = as.vector(ycol),
-          lambda = rep(0, ncol(sim$X)),
-          weights = 1/(as.vector(ycol)+0.1),
+          lambda = rep(1, ncol(sim$X)),
+          #weights = 1/(as.vector(ycol)+0.1),
           lower = rep(0, ncol(sim$X)),
           upper = rep(Inf, ncol(sim$X)),
           nonnegative = TRUE,
-          solver = "osqp", # note: nnls or osqp solution much better than glmnet
-          method = NULL,
+          solver = "eigen", # note: nnls or osqp solution much better than glmnet
+          method = 7,
           start = rep(0, ncol(sim$X)),
           control.solver = NULL,
           verbose = TRUE) })) 
+
+cor(as.vector(beta_wnnls), as.vector(sim$beta_true))
 # 5s with nnls, 1.3s with osqp, 185s with glmnet, for n=p=500 & k=10
 # 95s osqp for n=p=10000 & k=100
 # TODO check why glmnet is so slow here and gives off warnings
@@ -39,6 +41,7 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255)
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_wnnls)!=0)], col="cyan")
 # graph2png(file="simulated_chromatogram_coefficients_wnnls.png", width=7, height=5)
 
 
@@ -46,24 +49,31 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
   L0glm.fit2(X = sim$X,
              y = as.vector(ycol),
              lambda = 1,
-             weights = 1 / (as.vector(ycol) + 0.1),
+             #weights = 1 / (as.vector(ycol) + 0.1),
              family = poisson(identity),
-             lower = rep(0, ncol(sim$X)),
-             upper = rep(Inf, ncol(sim$X)),
              nonnegative = TRUE,
-             solver = "glmnet",
-             #method = 2,
-             start = rep(0, ncol(sim$X)),
-             control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+             solver = "eigen",
+             method = 7,
+             #start = rep(1, ncol(sim$X)),
+             control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
              control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })) 
+
 #  for n=p=500 & k=10
 cor(as.vector(beta_wnnls), as.vector(true_coefs))
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_wnnls)!=0)], col="cyan")
+
 
 # TODO check why glmnet is so slow here and gives off warnings
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_wnnls^0.1, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="wnnls coefficients (nnls)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_wnnls)!=0)], col="pink")
+abline(v=which(colSums(beta_wnnls != 0) >= 5), col="pink")
 # graph2png(file="simulated_chromatogram_coefficients_wnnls.png", width=7, height=5)
 
 
@@ -263,24 +273,23 @@ plot(coefs_true, beta / X.n)
 
 # 4. using a for loop with avg of previous channels as priors ####
 # Initialize a matrix to store the fitted coefficients for each channel
-beta_matrix <- matrix(0, nrow = p, ncol = m)
+beta.matrix <- matrix(0, nrow = p, ncol = m)
 
 # Iterate through the channels
 for (channel in 1:m) {
   # Calculate the average of previously fitted coefficients as the starting weights
   if (channel > 1) {
-    start <- rowMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
+    start <- rowMeans(beta.matrix[, 1:(channel - 1), drop = FALSE])
   } else {
     start <- rep(0, p)
   }
   
   # Fit the model for the current channel
-  beta_matrix[, channel] <- lmridge(
+  beta.matrix[, channel] <- lmridge(
     X = sim$X,
     y = as.vector(sim$y[, channel]),
     lambda = 1,
     start = start,
-    weights = 1 / (as.vector(sim$y[, channel]) + 0.1),
     lower = rep(0, p),
     upper = rep(Inf, p),
     nonnegative = TRUE,
@@ -290,9 +299,7 @@ for (channel in 1:m) {
     verbose = TRUE
   )
 }
-cor(as.vector(beta_matrix), as.vector(true_coefs))
-
-
+cor(as.vector(beta.matrix), as.vector(true_coefs))
 
 
 
@@ -308,76 +315,77 @@ iter.l0 <- vector("list", m)
 lambda.matrix <- matrix(0, nrow = p, ncol = m)
 lambda.w.matrix <- matrix(0, nrow = p, ncol = m)
 converged.l0 <- vector("numeric", length = 0)
+
 # Order columns of y decreasingly based on sparsity (decreasing)
-colnames(Y) <- seq(ncol(Y))
-y_dec <- Y[, order(colSums(Y != 0), decreasing = TRUE)] # Order by decreasing level of sparsity
+# colnames(Y) <- seq(ncol(Y))
+# y_dec <- Y[, order(colSums(Y != 0), decreasing = TRUE)] # Order by decreasing level of sparsity
 #y_dec <- Y[, order(colMeans(Y), decreasing = TRUE)] # Order by decreasing column average (doesn't change results)
 
 # Iterate through the channels
 system.time(for (channel in 1:m) {
   # Calculate the average of previously fitted coefficients as the starting weights
   if (channel > 1) {
-    start <- rowMeans(beta_matrix[, 1:(channel - 1), drop = FALSE])
+    start <- rowMeans(beta.matrix[, 1:(channel - 1), drop = FALSE])
   } else {
     start <- NULL
   }
   # Fit the model for the current channel
-  fit <-  L0glm.fit2(X = sim$X,
-                     y = as.vector(Y[, channel]),
+  current.fit <-  L0glm.fit2(X = sim$X,
+                     y = as.vector(sim$y[, channel]),
                      lambda = 1,
-                     weights = 1 / (as.vector(Y[, channel]) + 0.1),
-                     family = poisson(identity),
-                     lower = rep(0, ncol(sim$X)),
-                     upper = rep(Inf, ncol(sim$X)),
-                     nonnegative = TRUE,
-                     solver = "osqp",
-                     #method = 5,
                      start = start,
-                     control.iwls = do.call("control.iwls.gen2", list(maxit = 10)),
-                     control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))
-  beta.matrix[, channel] <- fit$coefficients
-  weights.matrix[, channel] <- fit$weights
-  prior.matrix[, channel] <- fit$prior.weights
-  fitted.matrix[, channel] <- fit$fitted.values
-  eta.matrix[, channel] <- as.vector(fit$eta)
-  converged.iwls[channel] <- c(converged.iwls, fit$converged_iwls)
-  iter.iwls[[channel]] <- fit$iter.iwls
+                     family = poisson(identity),
+                     lower = rep(0, p),
+                     upper = rep(Inf, p),
+                     nonnegative = TRUE,
+                     solver = "glmnet",
+                     method = 1,
+                     control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
+                     control.l0 = do.call("control.l0.gen2", list(warn = FALSE, maxit = 100, delta = 1E-10, gamma = 2)))
+  beta.matrix[, channel] <- current.fit$coefficients
+  weights.matrix[, channel] <- current.fit$weights
+  prior.matrix[, channel] <- current.fit$prior.weights
+  fitted.matrix[, channel] <- current.fit$fitted.values
+  eta.matrix[, channel] <- as.vector(current.fit$eta)
+  converged.iwls[channel] <- c(converged.iwls, current.fit$converged_iwls)
+  iter.iwls[[channel]] <- current.fit$iter.iwls
   names(iter.iwls)[channel] <- paste("channel", channel)
-  iter.l0[[channel]] <- fit$iter.l0
+  iter.l0[[channel]] <- current.fit$iter.l0
   names(iter.l0)[channel] <- paste("channel", channel)
-  lambda.matrix <- fit$lambda
-  lambda.w.matrix <- fit$lambda.w
-  converged.l0 <- c(converged.l0, fit$converged.l0)
+  lambda.matrix <- current.fit$lambda
+  lambda.w.matrix <- current.fit$lambda.w
+  converged.l0 <- c(converged.l0, current.fit$converged.l0)
 })
 # 37s osqp, 5.67s glmnet, 2.35s eigen.1,  2.11s eigen.2, 1.96s eigen.5-6, 1s eigen.7 for n=p=150
 # 8.25 glmnet (vs. 21s wo start), 6.77 eigen.5-6 (vs 25s), 135.2s eigen.1 (vs. 242,1), 130.9s eigen.2 (vs 232.1) for n=p=500
 # 127.45s for eigen.5 n=p=10000
 
-# cor(as.vector(beta_matrix), as.vector(true_coefs)) #will only give correct results if y cols haven't been reordered
+# cor(as.vector(beta.matrix), as.vector(true_coefs)) #will only give correct results if y cols haven't been reordered
 
-# Assigning same colnames to beta_matrix as y_dec and reordering the true_coefs as well in order to allow for comparison
+# Assigning same colnames to beta.matrix as y_dec and reordering the true_coefs as well in order to allow for comparison
 colnames(beta.matrix) <- colnames(y_dec) 
 
 true_dec <- true_coefs[, order(colSums(sim$y != 0), decreasing = TRUE)]
-beta.matrix <- beta.matrix[, order(as.numeric(colnames(beta_matrix)))]
+beta.matrix <- beta.matrix[, order(as.numeric(colnames(beta.matrix)))]
 
 cor(as.vector(beta.matrix), as.vector(true_coefs))
 
 
-image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_reordered^0.1, col = topo.colors(255),
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta.matrix^0.1, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="Coefficients")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim$X))[as.vector(rowMax(beta_matrix)!=0)], col="yellow")
+
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(beta.matrix)!=0)], col="pink")
 
 
 sum(rowMax(sim$beta_true)!=0)
-sum(rowMax(beta_matrix)!=0)
+sum(rowMax(beta.matrix)!=0)
 
 # 5. Implemented multichannel
 system.time(L0glm_osqp1 <- L0glm.fit2(X=sim$X, y=sim$y, family = poisson(identity),
-                                      solver = "nnls", method = 5, lambda = 1, nonnegative = TRUE,
-                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 100,reltol = 3)),
+                                      solver = "eigen", method = 5, lambda = 1, nonnegative = TRUE,
+                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 200,reltol = 3)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       verbose = TRUE))
 
@@ -386,7 +394,7 @@ cor(as.vector(L0glm_osqp1$coefficients), as.vector(true_coefs))
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=L0glm_osqp1$coefficients^0.1, col = topo.colors(255),
       useRaster=TRUE,
-      xlab="Time", ylab="Channel", main="Coefficients")
+      xlab="Time", ylab="Channel", main="Coefficients (averaging previously fitted channels)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(L0glm_osqp1$coefficients)!=0)], col="yellow")
 
@@ -396,13 +404,38 @@ sum(true == res)
 
 #------------
 
-i=73
-i = i+1
-system.time(L0glm_glmnet0 <- L0glm.fit2(X=X, y=Y[,i], family = poisson(identity),
-                                        solver = "osqp", lambda = 0, nonnegative = TRUE,
-                                        control.iwls = do.call("control.iwls.gen2",
-                                                               list(maxit = 1)),
-                                        control.l0 = do.call("control.l0.gen2",
-                                                             list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                        control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE)),
-                                        verbose = TRUE))
+system.time(group.cpglm.fit <- group.cpglm.fit2(X = sim$X, Y = sim$y,
+                             family = poisson(identity),
+                             lambda = 2700,
+                             solver = "glmnet",
+                             #method = 7,
+                             nonnegative = TRUE))
+
+cor(as.vector(group.cpglm.fit$coefficients), as.vector(true_coefs))
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm.fit$coefficients^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="Coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm.fit$coefficients)!=0)], col="yellow")
+
+
+#------------------------
+group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y, 
+                             family = poisson(identity),
+                             lambda = 1,
+                             solver = "glmnet",
+                             method = NULL,
+                             nonnegative = TRUE,
+                             verbose = FALSE)
+names(group.cpglm2)
+cor(as.vector(group.cpglm2$coefficients), as.vector(true_coefs))
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm2$coefficients^0.1, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="Coefficients (averaging previously fitted channels)")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm2$coefficients)!=0)], col="cyan")
+
+sum(rowMax(sim$beta_true)!=0)
+sum(rowMax(group.cpglm2$coefficients)!=0)

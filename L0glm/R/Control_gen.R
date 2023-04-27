@@ -52,7 +52,7 @@
 #' control.fit.gen2()
 #'
 #' @export
-control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE){
+control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = TRUE){
   l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
   return(l)
 }
@@ -63,7 +63,7 @@ control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2,
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen2 <- function(maxit = 1, reltol = 1E-4, thresh = 1E-7, warn = FALSE){
+control.iwls.gen2 <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = TRUE){ # TODO review, reltol used to be 1E-4
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -122,7 +122,9 @@ control.solver.gen <- function(solver, method = NULL,
 
     if (method == 1){
       if(is.null(rowaug)) rowaug <- TRUE
-      l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
+      if(rowaug == FALSE & verbose == TRUE) print("Row augmentation is required with your chosen method. Using row augmentation.") 
+      # TODO : review this? If cant use normal equations, remove rowaug as a return
+      l <- list(method = "QR", pivot = 0L, rowaug = TRUE)
 
     } else if (method == 2){
       if(is.null(rowaug)) rowaug <- TRUE

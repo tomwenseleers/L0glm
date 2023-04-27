@@ -229,7 +229,7 @@ AL.weights <- function(beta, delta){
 #     be applied.
 #   block.id: a vector indicating to which block a covariate belongs to.
 #   control: a list with control parameters of the algorithm
-#     block.size: amount of covariate that are fit simulatenously in each block
+#     block.size: amount of covariate that are fit simultaenously in each block
 #                 of the coordinate descent procedure
 #     maxit:  maximum number of iteration of the coordinate descent loop
 #     tol:    convergence threshold. The loop stops when

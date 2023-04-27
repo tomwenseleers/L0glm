@@ -21,6 +21,7 @@
 #'
 #' @export
 lmridge <- function(X, y, lambdas,
+                    pen_weights,
                     weights = NULL,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
@@ -34,7 +35,6 @@ lmridge <- function(X, y, lambdas,
 
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
-  
   # Initialize control.solver variable
   if(is.null(control.solver)) call.solver <- list(solver = solver, method = method)
   
@@ -60,7 +60,8 @@ lmridge <- function(X, y, lambdas,
     
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge_eigen(Xw = Xw, yw = yw, weights = weights, lambdas = lambdas, start = start,
+    coefs <- lmridge_eigen(Xw = Xw, yw = yw, weights = weights, pen_weights = pen_weights,
+                           lambdas = lambdas, start = start,
                            lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "nnls") {
@@ -93,7 +94,6 @@ lmridge_osqp <- function(Xw, yw, weights, lambdas, lower, upper, start, control.
   if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
   
   model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(Xw)), l = lower, u = upper, pars = settings)
-  
   if (!is.null(start)) model$WarmStart(x=start)
   
   #Solve model
@@ -132,7 +132,7 @@ lmridge_nnls <- function(Xw, yw, weights, lambdas, lower, upper, control.solver)
   return(coefs)
 }
 
-lmridge_eigen <- function(Xw, yw, weights, lambdas, lower, upper, start, control.solver = control.solver){
+lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, start, control.solver = control.solver){
   if (is.null(start)) { start = rep(0,ncol(X))  }
   
   if(control.solver$method == "QR") {
@@ -144,15 +144,25 @@ lmridge_eigen <- function(Xw, yw, weights, lambdas, lower, upper, start, control
         coefs <- solve_dense_QR(A = row_augX(Xw, lambdas),
                                 b = augY(yw, lambdas, ncol(Xw)), pivot = control.solver$pivot)$coefficients
       }
-      
     } else {
-      Xwaug = row_augX(Xw, lambdas)
+      # Xwaug = row_augX(Xw, lambdas)
+      # if(issparse(Xw)){
+      #   coefs <- solve_sparse_QR(A = as(crossprod(Xwaug),"dgCMatrix"),
+      #                            b = as.matrix(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))))$coefficients
+      # 
+      #   
+      #   } else {
+      #   coefs <- solve_dense_QR(A = crossprod(Xwaug),
+      #                           b = as.matrix(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
+      #                           pivot = control.solver$pivot)$coefficients}
+      D <- diag(1/pen_weights) # cf notation Liu & Li 2016
       if(issparse(Xw)){
-        coefs <- solve_sparse_QR(A = as(crossprod(Xwaug),"dgCMatrix"),
-                                   b = as.matrix(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))))$coefficients
+        Dsp <- Matrix(D, sparse=T)
+        coefs <- solve_sparse_QR(A = Dsp %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw), ncol(Xw)),
+                                 b = as.vector(Dsp %*% crossprod(Xw,yw)))$coefficients # TODO add ordering options to control gen for QR?
       } else {
-        coefs <- solve_dense_QR(A = crossprod(Xwaug),
-                                b = as.matrix(crossprod(Xwaug, augY(yw, lambdas, ncol(Xw)))),
+        coefs <- solve_dense_QR(A = D %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw), ncol(Xw)),
+                                b = as.vector(D %*% crossprod(Xw,yw)),
                                 pivot = control.solver$pivot)$coefficients
       }
     }
@@ -241,7 +251,7 @@ row_augX <- function(Xw, lambdas){
 }
 
 augY <- function(yw, lambdas, p){
-  #return(if (sum(lambdas)>0) c(yw, rep(0, p)) else yw)
+  #return(if (sum(lambdas)>0) c(yw, rep(0, p)) else yw) TODO remove?
   return(c(yw, rep(0, p)))
 }
 
