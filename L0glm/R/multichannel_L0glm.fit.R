@@ -5,6 +5,8 @@
 #' It is called by the upper code \code{L0glm.fit2}.
 #'
 #' @export
+
+
 # group.cpglm2 <- function(X, Y, family,
 #                          lambda = 0,
 #                          start = NULL,
@@ -23,7 +25,7 @@
 #   p <- ncol(X) #Number of covariates
 #   n <- nrow(X) #Number of observations
 #   m <- ncol(Y) #Number of correlated channels
-#   
+# 
 #   # Create objects to store betas, weights, fitted values, eta, iterations, convergence
 #   beta.matrix <- matrix(0, nrow = p, ncol = m)
 #   weights.matrix <- matrix(0, nrow = p, ncol = m)
@@ -36,20 +38,17 @@
 #   lambda.matrix <- matrix(0, nrow = p, ncol = m)
 #   lambda.w.matrix <- matrix(0, nrow = p, ncol = m)
 #   converged.l0 <- vector("numeric", length = 0)
-#   
-#   # # Order columns of y decreasingly based on sparsity (decreasing)
-#   # colnames(Y) <- seq(ncol(Y))
-#   # Y_dec <- Y[, order(colSums(Y != 0), decreasing = TRUE)] # Order by decreasing level of sparsity
-#   
+# 
+# 
 #   # Fit model for each channel
 #   for (channel in 1:m){
 #     # Calculate the average of previously fitted coefficients as the starting weights
 #     if (channel > 1) {
 #       start <- rowMeans(beta.matrix[, 1:(channel - 1), drop = FALSE])
 #     } else {
-#       start <- NULL
+#       start <- start
 #     }
-#     
+# 
 #     # Fit the model for the current channel
 #     current.fit <-  L0glm.fit2(X = X,
 #                                y = as.vector(Y[, channel]),
@@ -68,7 +67,7 @@
 #                                control.fit = control.fit,
 #                                post.filter.fn = post.filter.fn,
 #                                verbose = verbose)
-#     
+# 
 #     # Store channel values into respective objects
 #     beta.matrix[, channel] <- current.fit$coefficients
 #     weights.matrix[, channel] <- current.fit$weights
@@ -83,14 +82,9 @@
 #     lambda.matrix <- current.fit$lambda
 #     lambda.w.matrix <- current.fit$lambda.w
 #     converged.l0 <- c(converged.l0, current.fit$converged.l0)
-#     
+# 
 #   }
-#   
-#   # # Reorder channels
-#   # colnames(beta.matrix) <- colnames(y_dec)
-#   # true_dec <- true_coefs[, order(colSums(sim$y != 0), decreasing = TRUE)]
-#   # beta.matrix <- beta_matrix[, order(as.numeric(colnames(beta_matrix)))]
-#   
+# 
 #   return(list(coefficients = beta.matrix,
 #               weights = weights.matrix,
 #               prior.weights = prior.matrix,
@@ -244,7 +238,6 @@ group.cpglm.fit2 <- function(X = X, Y = Y,
   converged <- logical(m) # Store convergence for each channel
 
   for (i in 1:control.l0$maxit){
-    print(i)
     beta0 <- beta.matrix
     beta.group <- group.pen.fn(beta.matrix)
     lambda_adap <- lambdas%o% AR.weights(beta = beta.group, gamma = control.l0$gamma, delta = control.l0$delta)
@@ -291,6 +284,7 @@ group.cpglm.fit2 <- function(X = X, Y = Y,
 
       }
     }
+    
     # Control iteration
     reldiff <- 2*abs((beta.matrix-beta0)/(beta.matrix+beta0))
     mask <- reldiff <= control.l0$reltol
@@ -322,12 +316,8 @@ group.cpglm.fit2 <- function(X = X, Y = Y,
               iter.iwls = iter.iwls,
               iter.l0 = iter.l0,
               converged.l0 = converged,
-              lambda = lambda,
+              lambda = lambdas,
               lambda.w = lambda.w.matrix,
               zero.coefs = zero.coefs.vec,
               post.filter.fn = post.filter.fn))
 }
-
-
-
-

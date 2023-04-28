@@ -70,7 +70,6 @@ lmridge <- function(X, y, lambdas,
                           lower = lower, upper = upper, control.solver = control.solver)
   } else {
     stop("Invalid solver choice") }
-  
   return(coefs)
 }
 
@@ -202,7 +201,7 @@ lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, s
                               maxit = control.solver$maxit,
                               precond = control.solver$precond)$coefficients
     }
-    
+  
     
   } else if (control.solver$method == "chol"){
     if(issparse(Xw)){
@@ -221,7 +220,7 @@ lmridge_eigen <- function(Xw, yw, weights, pen_weights, lambdas, lower, upper, s
     stop("Invalid method.")
   }
   coefs <- pmax(lower, pmin(coefs, upper)) # clip coefficients within allowed range
-  return(coefs)
+  ifelse(!is.null(coefs),return(coefs), return(start))
 }
 
 

@@ -722,7 +722,7 @@ glm.iwls2 <- function(X, y, weights, family, i = NULL,
                             start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
-        beta[beta != 0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],
+        beta[beta!=0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],
                                    pen_weights = pen_weights[good], lower = lower[beta != 0], upper = upper[beta != 0], 
                                    nonnegative = nonnegative, solver = solver, method = method, start = betaold[beta != 0], 
                                    control.solver = control.solver, verbose = verbose)

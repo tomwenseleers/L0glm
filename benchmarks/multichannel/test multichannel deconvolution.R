@@ -3,7 +3,7 @@
 library(export)
 library(qlcMatrix)
 
-sim <- simulate_spike_train(n=100, p=100, k=10, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=10000, p=10000, k=50, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -406,34 +406,41 @@ sum(true == res)
 
 system.time(group.cpglm.fit <- group.cpglm.fit2(X = sim$X, Y = sim$y,
                              family = poisson(identity),
-                             lambda = 2700,
-                             solver = "glmnet",
-                             #method = 7,
+                             lambda = 500,
+                             solver = "eigen",
+                             method = 8,
                              nonnegative = TRUE))
 
+# For p=n=10000 and m = 168
+# L2 group penalty => osqp= 80.4s, glmnet = 78.13s, chol = 59.94, QR = too long, CG = 
+# L1 group penalty => slower and worse results
 cor(as.vector(group.cpglm.fit$coefficients), as.vector(true_coefs))
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm.fit$coefficients^0.1, col = topo.colors(255),
       useRaster=TRUE,
-      xlab="Time", ylab="Channel", main="Coefficients")
+      xlab="Time", ylab="Channel", main="Coefficients (L2 penalty, chol pivot = 1)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm.fit$coefficients)!=0)], col="yellow")
 
+sum(rowMax(sim$beta_true)!=0) 
+sum(rowMax(group.cpglm.fit$coefficients)!=0)
 
 #------------------------
-group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y, 
+system.time(group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y, 
                              family = poisson(identity),
                              lambda = 1,
-                             solver = "glmnet",
-                             method = NULL,
+                             solver = "eigen",
+                             method = 7,
                              nonnegative = TRUE,
-                             verbose = FALSE)
+                             verbose = FALSE))
+# For p=n=10000 and m = 168
+# osqp=113.44s (100 peaks), 71.7s (50 peaks), glmnet = 150.17s (100 peaks) / 95s (50 peaks), chol = 56.39s / 36s, QR(pivot 1) = too slow, CG = 55.82s
 names(group.cpglm2)
 cor(as.vector(group.cpglm2$coefficients), as.vector(true_coefs))
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm2$coefficients^0.1, col = topo.colors(255),
       useRaster=TRUE,
-      xlab="Time", ylab="Channel", main="Coefficients (averaging previously fitted channels)")
+      xlab="Time", ylab="Channel", main="Coefficients (averaging previously fitted channels, glmnet)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm2$coefficients)!=0)], col="cyan")
 
