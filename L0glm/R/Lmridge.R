@@ -1,4 +1,4 @@
-#' Model solvers
+#' Implementation of solvers
 #'
 #' @import nnls
 #' @import Matrix
@@ -9,6 +9,7 @@
 #' @importFrom qlcMatrix colMax
 #'
 #' @description
+#' Fits L0 penalized model using specified solver. This code contains minimum 
 
 
 
@@ -26,7 +27,7 @@ lmridge <- function(X, y, lambdas,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
-                    block = FALSE,
+                    block.size = NULL,
                     solver = "osqp",
                     method = NULL,
                     start = rep(0, ncol(X)),
@@ -38,10 +39,10 @@ lmridge <- function(X, y, lambdas,
   # Initialize control.solver variable
   if(is.null(control.solver)) call.solver <- list(solver = solver, method = method)
   
-  if(!block) {
+  if(is.null(block.size) || block.size == ncol(X)) {
     Xw <- Xweights(X, weights)
     yw <- Yweights(y, weights)
-  } else { # If block == TRUE, Xw and yw are calculated in block.lmridge function
+  } else { # If block.size < ncol(X), Xw and yw are calculated in block.lmridge function
     Xw <- X
     yw <- y
   }

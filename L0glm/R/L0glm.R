@@ -73,20 +73,11 @@
 #' \item{\code{warn}: should warnings from the IWLS iteration be produced ?}
 #' }
 #' Missing values will be filled with defaults (see \code{\link{control.iwls.gen}})
-#' @param control.fit
-#' list of parameters controling the core fitting algoritm (see details). The
-#' list should contain the following elements:
-#' \itemize{
-#' \item{\code{maxit}: maximum number of iterations}
-#' \item{\code{block.size}: number of covariates to fit simultaneously. If
-#' \code{block.size < p}, the fit is performed in different blocks which is
-#' updated cyclically. }
-#' \item{\code{tol}: stop iteration when the difference in coefficients between
-#' iterations is smaller than this threshold. The coefficient difference is
-#' defined as:
-#' \eqn{\frac{\|coefs^{(k-1)} - coefs^{(k)}}{\|coefs^{(k-1)}\|}}}
-#' }
-#' Missing values will be filled with defaults (see \code{\link{control.fit.gen}})
+#' @param control.solve
+#' list of parameters controling the different solvers. TODO finish this
+#' 
+#' 
+#' 
 #' @param post.filter.fn
 #' A function that performs post filtering to the coefficients at the end of the
 #' fit. It should require a single argument that is the vector of coefficients.
@@ -272,8 +263,8 @@ L0glm <- function(formula,
                    gamma = 2,
                    control.l0 = list(),
                    control.iwls = list(),
-                   control.fit = list(),
                    control.solver = NULL,
+                   block.size = NULL,
                    post.filter.fn = function(u) return(u),
                    group.pen.fn,
                    # TODO make CV arguments a single list, eg tune.control ?
@@ -314,7 +305,6 @@ L0glm <- function(formula,
   }
   control.l0 <- do.call("control.l0.gen", control.l0)
   control.iwls <- do.call("control.iwls.gen", control.iwls)
-  control.fit <- do.call("control.fit.gen", control.fit)
   
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
@@ -384,7 +374,7 @@ L0glm <- function(formula,
         l[no.pen] <- 0
         fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
                           lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
-                          block = block, control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
+                          block = block, control.l0 = control.l0, control.iwls = control.iwls, block.size = block.size,
                           control.solver = control.solver, post.filter.fn = post.filter.fn)
       })
       fit <- list()
@@ -401,14 +391,14 @@ L0glm <- function(formula,
       lambda.tune <- L0glm.trainval(X, y, weights = weights, family = family,
                                     start = start, lambdas = lambda, no.pen = no.pen,
                                     nonnegative = nonnegative, control.l0 = control.l0,
-                                    control.iwls = control.iwls, control.fit = control.fit,
+                                    control.iwls = control.iwls,
                                     tune.crit = tune.crit, seed = seed,
                                     verbose = verbose)
     } else if(tune.meth == "IC"){
       lambda.tune <- L0glm.IC(X, y, weights = weights, family = family,
                               start = start, lambdas = lambda, no.pen = no.pen,
                               nonnegative = nonnegative, control.l0 = control.l0,
-                              control.iwls = control.iwls, control.fit = control.fit,
+                              control.iwls = control.iwls, 
                               tune.crit = tune.crit,
                               verbose = verbose)
     } else { # if tune.meth == "x-fold"
@@ -417,7 +407,7 @@ L0glm <- function(formula,
       lambda.tune <- L0glm.cv(X, y, weights = weights, family = family,
                               start = start, lambdas = lambda, no.pen = no.pen,
                               nonnegative = nonnegative, control.l0 = control.l0,
-                              control.iwls = control.iwls, control.fit = control.fit,
+                              control.iwls = control.iwls, 
                               tune.crit = tune.crit, k = k, seed = seed,
                               verbose = verbose)
     }
@@ -437,8 +427,8 @@ L0glm <- function(formula,
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
   fit <- L0glm.fit(X = X, y = y, weights = weights, solver = solver, method = method, family = family, lambda = lambda,
-                    start = start, nonnegative = nonnegative, block = block, control.l0 = control.l0,
-                    control.solver = control.solver, control.iwls = control.iwls, control.fit = control.fit,
+                    start = start, nonnegative = nonnegative, block.size = block.size , control.l0 = control.l0,
+                    control.solver = control.solver, control.iwls = control.iwls, 
                     post.filter.fn = post.filter.fn, verbose = verbose)
   fit$timing <- proc.time()[3] - t1
   if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
@@ -473,7 +463,7 @@ L0glm <- function(formula,
   fit.null <- glm.iwls(X = X[,int.ind, drop = F],
                         y = y, weights = fit$prior.weights, family = family, solver = solver,
                         lambda = 0, start = NULL, nonnegative = nonnegative,
-                        control.iwls = control.iwls, control.fit = control.fit, control.solver = control.solver)
+                        control.iwls = control.iwls,  control.solver = control.solver)
   dev.null <- sum(family$dev.resids(y = y, mu = fit.null$fitted.values, wt = fit.null$prior.weights))
   if(is.infinite(dev.null)) dev.null <- NA
   fit$deviance <- list(residual.df = fit$df$rdf,
@@ -517,30 +507,29 @@ L0glm <- function(formula,
 #'
 #' @export
 L0glm.fit <- function(X, y,
-                       weights = rep(1, length(y)),
-                       family = poisson(identity),
-                       lambda = 0,
-                       start = NULL,
-                       lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
-                       upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
-                       solver = "osqp", #TODO document
-                       method = NULL,
-                       group.pen.fn = NULL,
-                       nonnegative = FALSE,
-                       block = FALSE,
-                       control.solver = NULL,
-                       post.filter.fn = function(u) return(u),
-                       control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
-                       control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-                       control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
-                       verbose = FALSE){
+                      weights = rep(1, length(y)),
+                      family = poisson(identity),
+                      lambda = 0,
+                      start = NULL,
+                      lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
+                      upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
+                      solver = "osqp", #TODO document
+                      method = NULL,
+                      group.pen.fn = NULL,
+                      block.size = NULL,
+                      control.solver = NULL,
+                      nonnegative = FALSE,
+                      post.filter.fn = function(u) return(u),
+                      control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
+                      control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
+                      verbose = FALSE){
   n <- nrow(X)
   p <- ncol(X)
   
   if(length(lambda) == 1) lambda <- rep(lambda, p)
   
   if("matrix" %in% class(y)){ 
-    return(multi.fit <- group.cpglm2(X = X,
+    return(multi.fit <- group.cpglm(X = X,
                                      Y = y,
                                      family = family,
                                      lambda = lambda,
@@ -550,11 +539,10 @@ L0glm.fit <- function(X, y,
                                      solver = solver,
                                      method = method,
                                      start = start,
-                                     block = block,
+                                     block.size = block.size,
                                      control.solver = control.solver,
                                      control.l0 = control.l0,
                                      control.iwls = control.iwls,
-                                     control.fit = control.fit,
                                      post.filter.fn = post.filter.fn,
                                      verbose = verbose))
 
@@ -571,7 +559,6 @@ L0glm.fit <- function(X, y,
     #                         nonnegative = nonnegative,
     #                         control.l0 = control.l0,
     #                         control.iwls = control.iwls,
-    #                         control.fit = control.fit,
     #                         control.solver = control.solver,
     #                         post.filter.fn = post.filter.fn,
     #                         verbose = verbose))
@@ -594,7 +581,7 @@ L0glm.fit <- function(X, y,
     # Fit the model with current adaptive weights.
     fit <- glm.iwls(X = X, y = y, i = i, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda.adap, converged.set = mask, nonnegative = nonnegative,
-                     block = block, control.iwls = control.iwls, control.fit = control.fit,
+                     block.size = block.size, control.iwls = control.iwls, 
                      control.solver = control.solver, verbose = verbose)
     iter.iwls[i] <- fit$iter.iwls
     
@@ -639,12 +626,10 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
                       start = NULL,
                       lambda = rep(0, ncol(X)),
                       nonnegative = FALSE,
-                      block = FALSE,
+                      block.size = NULL,
                       lower = rep(-.Machine$double.xmax,ncol(X)),
                       upper = rep(.Machine$double.xmax,ncol(X)),
-                      control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-                      control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7), # TODO remove ?
-                      control.solver = NULL,
+                      control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),control.solver = NULL,
                       converged.set = rep(FALSE, ncol(X)),
                       verbose = FALSE){ # TODO match
   
@@ -713,12 +698,12 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     good <- is.finite(W) & W>0
     betaold <- beta
 
-    if(is.null(control.fit$block.size)) control.fit$block.size = p
-    if(block & !is.null(control.fit$block.size) & control.fit$block.size < p){
-      block.ids <- ceiling((1:p)/control.fit$block.size)
+    if(is.null(block.size)) block.size = p
+    if(block.size < p){
+      block.ids <- ceiling((1:p)/block.size)
       beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, 
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
-                            start = betaold, control.solver = control.solver, control.fit = control.fit, verbose = verbose)
+                            start = betaold, control.solver = control.solver, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
         beta[beta!=0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],

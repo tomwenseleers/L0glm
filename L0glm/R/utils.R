@@ -285,7 +285,7 @@ block.fit <- function(y, X, coefs = rep(0, ncol(X)), nonnegative = FALSE,
       # plot(coefs, type = "h", main = i)
       # Sys.sleep(0.1)
     }
-    conv <- sqrt(sum((coefs0 - coefs)^2))/sqrt(sum((coefs0)^2)) < control$tol || all(coefs == 0)  # ||beta_{k-1} - beta_k||_2 / ||beta_{k-1}||_2
+    conv <- sqrt(sum((coefs0 - coefs)^2))/sqrt(sum((coefs0)^2)) < control$tol || all(coefs == 0)  # ||beta{k-1} - beta_k||_2 / ||beta_{k-1}||_2
     if(conv) break
     iter <- iter + 1
   }

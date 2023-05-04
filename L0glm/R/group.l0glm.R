@@ -6,7 +6,7 @@
 #'
 #' @export
 
-group.cpglm2 <- function(X, Y, family,
+group.cpglm <- function(X, Y, family,
                          lambda = 0,
                          start = NULL,
                          lower = rep(-.Machine$double.xmax,ncol(X)),
@@ -15,12 +15,11 @@ group.cpglm2 <- function(X, Y, family,
                          method = NULL,
                          nonnegative = FALSE,
                          refit.coefs = 3,
-                         block = FALSE,
+                         block.size = NULL,
                          control.solver = NULL,
                          post.filter.fn = function(u) return(u),
                          control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
                          control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-                         control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
                          verbose = FALSE){
   p <- ncol(X) # Number of covariates
   n <- nrow(X) # Number of observations
@@ -69,7 +68,7 @@ group.cpglm2 <- function(X, Y, family,
     # }
 
     # Fit the model for the current channel
-    current.fit <-  L0glm.fit2(X = X,
+    current.fit <-  L0glm.fit(X = X,
                                y = as.vector(Y.dec[, channel]),
                                lambda = lambda,
                                family = family,
@@ -79,11 +78,10 @@ group.cpglm2 <- function(X, Y, family,
                                solver = solver,
                                method = method,
                                start = start,
-                               block = block,
+                               block.size = block.size,
                                control.solver = control.solver,
                                control.l0 = control.l0,
                                control.iwls = control.iwls,
-                               control.fit = control.fit,
                                post.filter.fn = post.filter.fn,
                                verbose = verbose)
 
@@ -125,11 +123,10 @@ group.cpglm2 <- function(X, Y, family,
   #                                solver = solver,
   #                                method = method,
   #                                start = start,
-  #                                block = block,
+  #                                block.size = block.size,
   #                                control.solver = control.solver,
   #                                control.l0 = control.l0,
   #                                control.iwls = control.iwls,
-  #                                control.fit = control.fit,
   #                                post.filter.fn = post.filter.fn,
   #                                verbose = verbose)
   #     
@@ -165,7 +162,7 @@ group.cpglm2 <- function(X, Y, family,
 }
 
 
-# group.cpglm2 <- function(X = X, Y = Y,
+# group.cpglm <- function(X = X, Y = Y,
 #                          weights = matrix(1, nrow = nrow(Y), ncol = ncol(Y)),
 #                          family = poisson(identity),
 #                          intercept = FALSE,
@@ -180,7 +177,6 @@ group.cpglm2 <- function(X, Y, family,
 #                          no.pen = 0,
 #                          control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
 #                          control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-#                          control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
 #                          control.solver = NULL,
 #                          cv = "none",
 #                          verbose = FALSE
@@ -227,7 +223,6 @@ group.cpglm2 <- function(X, Y, family,
 #                          start = start, lower = lower, upper = upper, nonnegative = nonnegative,
 #                          control.l0 = control.l0,
 #                          control.iwls = control.iwls,
-#                          control.fit = control.fit,
 #                          control.solver = control.solver,
 #                          post.filter.fn = post.filter.fn,
 #                          verbose = verbose)
@@ -242,7 +237,7 @@ group.cpglm2 <- function(X, Y, family,
 # 
 # 
 # 
-# group.cpglm.fit2 <- function(X = X, Y = Y,
+# group.cpglm.fit <- function(X = X, Y = Y,
 #                              weights = matrix(1, nrow = nrow(Y), ncol = ncol(Y)),
 #                              family = poisson(identity),
 #                              lambdas = rep(0, ncol(X)),
@@ -256,7 +251,6 @@ group.cpglm2 <- function(X, Y, family,
 #                              nonnegative = FALSE,
 #                              control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
 #                              control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
-#                              control.fit = list(maxit = 10, block.size = NULL, tol = 1E-7),
 #                              control.solver = NULL,
 #                              post.filter.fn = function(u) return(u),
 #                              verbose = FALSE){
@@ -312,7 +306,7 @@ group.cpglm2 <- function(X, Y, family,
 #       }
 # 
 #       if(!converged[channel]){
-#         current.fit <- glm.iwls2(X = X,
+#         current.fit <- glm.iwls(X = X,
 #                                  y = as.vector(Y[, channel]),
 #                                  weights = weights[, channel],
 #                                  family = family,
@@ -321,11 +315,10 @@ group.cpglm2 <- function(X, Y, family,
 #                                  start = start[, channel],
 #                                  lambda = as.vector(lambda.adap), #[, channel],
 #                                  nonnegative = nonnegative,
-#                                  # block = block, # TODO remove block?
+#                                  block.size = block.size,
 #                                  lower = lower,
 #                                  upper = upper,
 #                                  control.iwls = control.iwls,
-#                                  control.fit = control.fit, # TODO remove ?
 #                                  control.solver = control.solver,
 #                                  converged.set = rep(FALSE, ncol(X)),
 #                                  verbose = verbose)

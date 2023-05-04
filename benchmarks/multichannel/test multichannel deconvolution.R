@@ -47,7 +47,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_wnnls)!=0)], col="cyan")
 
 
 system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit2(X = sim$X,
+  L0glm.fit(X = sim$X,
              y = as.vector(ycol),
              lambda = 1,
              #weights = 1 / (as.vector(ycol) + 0.1),
@@ -56,8 +56,8 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
              solver = "eigen",
              method = 7,
              #start = rep(1, ncol(sim$X)),
-             control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
-             control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })) 
+             control.iwls = do.call("control.iwls.gen", list(maxit = 100)),
+             control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })) 
 
 #  for n=p=500 & k=10
 cor(as.vector(beta_wnnls), as.vector(true_coefs))
@@ -142,11 +142,11 @@ system.time(coefs_multi <- lmridge(X = Xwblock, y = yvect, lambda = lambda, lowe
 cor(coefs_multi, as.numeric(true_coefs))
 
 
-system.time(fit_multi <- L0glm.fit2(X=Xwblock, y=yvect, family = poisson(identity),
+system.time(fit_multi <- L0glm.fit(X=Xwblock, y=yvect, family = poisson(identity),
                                     solver = "eigen", method = 7, block = FALSE,
                                     lambda = 1, nonnegative = TRUE,
-                                    control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
-                                    control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                    control.iwls = do.call("control.iwls.gen", list(maxit = 100)),
+                                    control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                     control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7, rowaug = TRUE))))
 #767.3s osqp,  14.3s glmnet, 767.4s eigen.1 (bad result), 17.8s eigen.56, TOO LONG nnls, (n=p=150, m=131, 100 maxit)
 
@@ -176,7 +176,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 
 # nonnegative identity link Poisson GLM fitted on each channel independently
 system.time(beta_nnpois <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit2(X = sim$X,
+  L0glm.fit(X = sim$X,
              y = as.vector(ycol),
              lambda = 0,
              # weights = 1/(as.vector(ycol)+0.1),
@@ -188,8 +188,8 @@ system.time(beta_nnpois <- apply(sim$y, 2, function(ycol) {
              method = NULL,
              start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
              control.solver = NULL,
-             control.iwls = do.call("control.iwls.gen2", list(maxit = 10)),
-             control.l0 = do.call("control.l0.gen2", list(maxit = 1, delta = 1E-10, gamma = 2)))$coefficients }))
+             control.iwls = do.call("control.iwls.gen", list(maxit = 10)),
+             control.l0 = do.call("control.l0.gen", list(maxit = 1, delta = 1E-10, gamma = 2)))$coefficients }))
 # 10.7s with nnls, 4.3s with osqp for n=p=500 & k=10
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_nnpois^0.1, col = topo.colors(255),
       useRaster=TRUE,
@@ -200,7 +200,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 
 # nonnegative L0 penalized identity link weighted LS fitted on each channel independently
 system.time(beta_nnL0pois <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit2(X = sim$X,
+  L0glm.fit(X = sim$X,
              y = as.vector(ycol),
              lambda = 1,
              # weights = 1/(as.vector(ycol)+0.1),
@@ -212,8 +212,8 @@ system.time(beta_nnL0pois <- apply(sim$y, 2, function(ycol) {
              method = NULL,
              # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
              # control.solver = NULL,
-             control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-             control.l0 = do.call("control.l0.gen2", list(maxit = 10, delta = 1E-10, gamma = 2)))$coefficients }))
+             control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+             control.l0 = do.call("control.l0.gen", list(maxit = 10, delta = 1E-10, gamma = 2)))$coefficients }))
 # 78s with osqp
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_nnL0pois^0.1, col = topo.colors(255),
       useRaster=TRUE,
@@ -251,7 +251,7 @@ for (iter in 1:10) {
                                          sim$y,
                                          2,
                                          function(ycol) {
-                                           L0glm.fit2(X = sim$X,
+                                           L0glm.fit(X = sim$X,
                                                       y = as.vector(ycol),
                                                       lambda = 1,
                                                       # weights = 1/(ycol+0.1),
@@ -263,8 +263,8 @@ for (iter in 1:10) {
                                                       method = NULL,
                                                       # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
                                                       # control.solver = NULL,
-                                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-                                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients }))
+                                                      control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+                                                      control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients }))
   
   print(sum(beta>0))
 }
@@ -331,7 +331,7 @@ system.time(for (channel in 1:m) {
     start <- NULL
   }
   # Fit the model for the current channel
-  current.fit <-  L0glm.fit2(X = sim$X,
+  current.fit <-  L0glm.fit(X = sim$X,
                      y = as.vector(sim$y[, channel]),
                      lambda = 1,
                      start = start,
@@ -341,8 +341,8 @@ system.time(for (channel in 1:m) {
                      nonnegative = TRUE,
                      solver = "glmnet",
                      method = 1,
-                     control.iwls = do.call("control.iwls.gen2", list(maxit = 1)),
-                     control.l0 = do.call("control.l0.gen2", list(warn = FALSE, maxit = 100, delta = 1E-10, gamma = 2)))
+                     control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+                     control.l0 = do.call("control.l0.gen", list(warn = FALSE, maxit = 100, delta = 1E-10, gamma = 2)))
   beta.matrix[, channel] <- current.fit$coefficients
   weights.matrix[, channel] <- current.fit$weights
   prior.matrix[, channel] <- current.fit$prior.weights
@@ -384,10 +384,10 @@ sum(rowMax(sim$beta_true)!=0)
 sum(rowMax(beta.matrix)!=0)
 
 # 5. Implemented multichannel
-system.time(L0glm_osqp1 <- L0glm.fit2(X=sim$X, y=sim$y, family = poisson(identity),
+system.time(L0glm_osqp1 <- L0glm.fit(X=sim$X, y=sim$y, family = poisson(identity),
                                       solver = "eigen", method = 5, lambda = 1, nonnegative = TRUE,
-                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 200,reltol = 3)),
-                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                      control.iwls = do.call("control.iwls.gen", list(maxit = 200,reltol = 3)),
+                                      control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       verbose = TRUE))
 
 names(L0glm_osqp1)
@@ -405,7 +405,7 @@ sum(true == res)
 
 #------------
 
-system.time(group.cpglm.fit <- group.cpglm.fit2(X = sim$X, Y = sim$y,
+system.time(group.cpglm.fit <- group.cpglm.fit(X = sim$X, Y = sim$y,
                              family = poisson(identity),
                              lambda = 95,
                              solver = "osqp",
@@ -427,7 +427,7 @@ sum(rowMax(sim$beta_true)!=0)
 sum(rowMax(group.cpglm.fit$coefficients)!=0) 
 
 #------------------------
-system.time(group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y, 
+system.time(group.cpglm <- group.cpglm(X = sim$X, Y = sim$y, 
                              family = poisson(identity),
                              lambda = 1, # TODO fix error OSQP lambda = 0
                              solver = "eigen",
@@ -436,14 +436,14 @@ system.time(group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y,
                              verbose = FALSE))
 # For p=n=10000 and m = 168
 # osqp=113.44s (100 peaks), 71.7s (50 peaks), glmnet = 150.17s (100 peaks) / 95s (50 peaks), chol = 56.39s / 36s, QR(pivot 1) = too slow, CG = 55.82s
-names(group.cpglm2)
-cor(as.vector(group.cpglm2$coefficients), as.vector(true_coefs))
+names(group.cpglm)
+cor(as.vector(group.cpglm$coefficients), as.vector(true_coefs))
 
-image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm2$coefficients^0.1, col = topo.colors(255),
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=group.cpglm$coefficients^0.1, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="Coefficients (averaging previously fitted channels, glmnet)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm2$coefficients)!=0)], col="cyan")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm$coefficients)!=0)], col="cyan")
 
 sum(rowMax(sim$beta_true)!=0)
-sum(rowMax(group.cpglm2$coefficients)!=0)
+sum(rowMax(group.cpglm$coefficients)!=0)
