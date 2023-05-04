@@ -196,7 +196,7 @@ system.time(L0glm_lscg0 <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                     control.iwls = do.call("control.iwls.gen2", list(maxit = 0)),
                                     control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 1.5)),
                                     control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 3, rowaug = FALSE))))
-# TODO gives bad results because it produces nonzero coefficients, CHECK ERROR replacement has length zzero
+# TODO gives bad results because it produces nonzero coefficients, CHECK ERROR replacement has length zero
 plot_L0glm_benchmark(x = sim$x, y = y,
                      coefs = L0glm_lscg0$coefficients / X.n,
                      fitted = L0glm_lscg0$fitted.values,

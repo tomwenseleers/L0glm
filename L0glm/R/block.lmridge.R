@@ -1,7 +1,7 @@
 #TODO: add argument to L0glm2 block = FALSE
 
 
-block_lmridge <- function(X, y, lambdas,
+block.lmridge <- function(X, y, lambdas,
                           coefs = rep(0, ncol(X)),
                           block.ids = NULL,
                           weights = NULL,

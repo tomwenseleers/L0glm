@@ -3,7 +3,8 @@
 library(export)
 library(qlcMatrix)
 
-sim <- simulate_spike_train(n=10000, p=10000, k=50, multichannel=TRUE, sparse=TRUE)
+set.seed(1)
+sim <- simulate_spike_train(n=200, p=200, k=20, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -319,7 +320,7 @@ converged.l0 <- vector("numeric", length = 0)
 # Order columns of y decreasingly based on sparsity (decreasing)
 # colnames(Y) <- seq(ncol(Y))
 # y_dec <- Y[, order(colSums(Y != 0), decreasing = TRUE)] # Order by decreasing level of sparsity
-#y_dec <- Y[, order(colMeans(Y), decreasing = TRUE)] # Order by decreasing column average (doesn't change results)
+# y_dec <- Y[, order(colMeans(Y), decreasing = TRUE)] # Order by decreasing column average (doesn't change results)
 
 # Iterate through the channels
 system.time(for (channel in 1:m) {
@@ -406,8 +407,8 @@ sum(true == res)
 
 system.time(group.cpglm.fit <- group.cpglm.fit2(X = sim$X, Y = sim$y,
                              family = poisson(identity),
-                             lambda = 500,
-                             solver = "eigen",
+                             lambda = 95,
+                             solver = "osqp",
                              method = 8,
                              nonnegative = TRUE))
 
@@ -423,14 +424,14 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(group.cpglm.fit$coefficients)!=0)], col="yellow")
 
 sum(rowMax(sim$beta_true)!=0) 
-sum(rowMax(group.cpglm.fit$coefficients)!=0)
+sum(rowMax(group.cpglm.fit$coefficients)!=0) 
 
 #------------------------
 system.time(group.cpglm2 <- group.cpglm2(X = sim$X, Y = sim$y, 
                              family = poisson(identity),
-                             lambda = 1,
+                             lambda = 1, # TODO fix error OSQP lambda = 0
                              solver = "eigen",
-                             method = 7,
+                             method = 5,
                              nonnegative = TRUE,
                              verbose = FALSE))
 # For p=n=10000 and m = 168

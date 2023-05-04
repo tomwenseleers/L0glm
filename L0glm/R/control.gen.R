@@ -52,7 +52,7 @@
 #' control.fit.gen2()
 #'
 #' @export
-control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = TRUE){
+control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = TRUE){
   l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
   return(l)
 }
@@ -63,7 +63,7 @@ control.l0.gen2 <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen2 <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = TRUE){ # TODO review, reltol used to be 1E-4
+control.iwls.gen <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = TRUE){ # TODO review, reltol used to be 1E-4
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -74,7 +74,7 @@ control.iwls.gen2 <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = TR
 #' Generates parameters that control the least square fit.
 #'
 #' @export
-control.fit.gen2 <- function(maxit = 10, block.size = NULL, tol = 1E-10){
+control.fit.gen <- function(maxit = 10, block.size = NULL, tol = 1E-10){
   l <- list(block.size = block.size, maxit = maxit, tol = tol)
   return(l)
 }

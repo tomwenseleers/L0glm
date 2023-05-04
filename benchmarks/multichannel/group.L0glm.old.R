@@ -1,6 +1,6 @@
 
 # TODO documentation
-group.cpglm <- function(X, Y,
+group.cpglm.old <- function(X, Y,
                             Weights = matrix(1, nrow = nrow(Y), ncol = ncol(Y)), # TODO for efficiency maybe use a single vector
                             family = poisson(identity),
                             intercept = FALSE,
@@ -66,7 +66,7 @@ group.cpglm <- function(X, Y,
 
 
 
-group.cpglm.fit <- function(X = X, Y = Y,
+group.cpglm.fit.old <- function(X = X, Y = Y,
                                 Weights = Weights,
                                 family = family,
                                 lambdas = rep(0, ncol(X)),
