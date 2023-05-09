@@ -7,18 +7,14 @@
 #' @importFrom stats lm.fit
 #' @importFrom utils flush.console
 #' @importFrom qlcMatrix colMax
-#'
-#' @description
-#' Fits L0 penalized model using specified solver. This code contains minimum 
-
-
-
-
-
-#' @describeIn Lmridge
+#' 
+#' @describeIn L0glm
 #'
 #' Implementation of different solvers
 #' It is called by the upper code \code{L0glm.iwls}.
+#' Note that
+#' \code{lambda} should be a vector of length \code{p} and no lambda tuning is
+#' performed.
 #'
 #' @export
 lmridge <- function(X, y, lambdas,

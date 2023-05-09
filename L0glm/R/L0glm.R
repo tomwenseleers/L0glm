@@ -19,7 +19,8 @@
 #' @param data
 #' the data from which to extract the covariates called in the formula. If \code{NULL},
 #' data is retrieved from the environment associated with the formula.
-#' @param weights a vector of observation weights ("prior weights") of length
+#' @param weights 
+#' a vector of observation weights ("prior weights") of length
 #' \code{n}.
 #' @param family
 #' a description of the error distribution and link function to be
@@ -44,6 +45,18 @@
 #' should the covariate matrix be normalized with the L2 norm (Euclidean norm)?
 #' It is advised to use normalization unless the covariates were measures on a
 #' similar unit scale.
+#' @param solver
+#' solver used for optimization (see details). It should be one of \code{"osqp"},
+#' \code{"glmnet"}, \code{"eigen"}, \code{"nnls"}.
+#' @param method
+#' method used for the eigen solver (see details). It should be an integer from 
+#' 1 to 8.
+#' @param lower
+#' lower limit for box constraints. It should be an integer or a vector of length 
+#' \code{p}.
+#' @param upper
+#' upper limit for box constraints. It should be an integer or a vector of length 
+#' \code{p}.
 #' @param control.l0
 #' list of parameters controling the L0 penalty loop (see details). The list
 #' should contain the following elements:
@@ -73,17 +86,24 @@
 #' \item{\code{warn}: should warnings from the IWLS iteration be produced ?}
 #' }
 #' Missing values will be filled with defaults (see \code{\link{control.iwls.gen}})
-#' @param control.solve
-#' list of parameters controling the different solvers. TODO finish this
-#' 
-#' 
-#' 
+#' @param control.solver
+#' list of parameters controlling the optimization solvers. The elements in the 
+#' list depend on the selected solver. Refer to the documentation or specific
+#' solver functions for more details on the available parameters.
+#' @param control.block
 #' @param post.filter.fn
 #' A function that performs post filtering to the coefficients at the end of the
 #' fit. It should require a single argument that is the vector of coefficients.
 #' Note that lambda tuning will be performed with the processed coefficients, so
 #' the selected lambda will be influenced by the filtering step. Default: no
 #' filtering.
+#' @param group.pen.fn
+#' A function that is used to perform group penalized regression. It should 
+#' require a single argument that is the matrix of size \code{n}x\code{p}x\code{m},
+#' with m being the number of groups or channels. TODO revise this.
+#' @param block.size
+#' The size of the blocks that will be fitted. If `NULL` or larger than `p`, all
+#' the coefficients will be fitted at once.
 #' @param tune.meth
 #' lambda selection method (see details). It should be one of \code{"none"},
 #' \code{"IC"}, \code{"trainval"}, \code{"loocv"}, \code{"k-fold"} (where
@@ -246,32 +266,32 @@
 #'
 #' @export
 L0glm <- function(formula,
-                   data = NULL,
-                   weights = rep(1,length(y)),
-                   family = gaussian(identity),
-                   start = NULL,
-                   contrasts = NULL,
-                   lambda = 0, 
-                   no.pen = 0,
-                   nonnegative = FALSE,
-                   block = FALSE,
-                   solver = "osqp", #TODO: document
-                   method = NULL,
-                   lower = rep(-.Machine$double.xmax,ncol(X)),
-                   upper = rep(.Machine$double.xmax,ncol(X)),
-                   normalize = TRUE,
-                   gamma = 2,
-                   control.l0 = list(),
-                   control.iwls = list(),
-                   control.solver = NULL,
-                   block.size = NULL,
-                   post.filter.fn = function(u) return(u),
-                   group.pen.fn,
-                   # TODO make CV arguments a single list, eg tune.control ?
-                   tune.meth = "none",
-                   tune.crit = "bic",
-                   seed = NULL, # set seed for k-fold CV
-                   verbose = TRUE){
+                  data = NULL,
+                  weights = rep(1,length(y)),
+                  family = gaussian(identity),
+                  start = NULL,
+                  contrasts = NULL,
+                  lambda = 0, 
+                  no.pen = 0,
+                  nonnegative = FALSE,
+                  normalize = TRUE,
+                  solver = NULL,
+                  method = NULL,
+                  lower = rep(-.Machine$double.xmax,ncol(X)),
+                  upper = rep(.Machine$double.xmax,ncol(X)),
+                  gamma = 2,
+                  control.l0 = list(),
+                  control.iwls = list(),
+                  control.solver = NULL,
+                  control.block = NULL,
+                  block.size = NULL,
+                  post.filter.fn = function(u) return(u),
+                  # group.pen.fn = function(mat) sqrt(rowSums(mat^2)), TODO delete this? If you do, delete it from docu
+                  # TODO make CV arguments a single list, eg tune.control ?
+                  tune.meth = "none",
+                  tune.crit = "bic",
+                  seed = NULL, # set seed for k-fold CV
+                  verbose = TRUE){
   
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
@@ -314,6 +334,27 @@ L0glm <- function(formula,
   if(normalize){
     X.n <- apply(X, 2, norm, type = "2")
     X <- sweep(X, 2, X.n, "/")
+  }
+  
+  # Create limit vector if box constraints are provided as integers, throw warning if provided constraints are not in the correct format
+  if(is.null(lower)){
+    lower <- rep(-Inf, p)
+  } else if(length(lower) == 1 & class(lower) %in% c("numeric", "integer")){
+    lower <- rep(lower, p)
+  } else if(length(lower) == p & class(lower) %in% c("numeric", "integer")) {
+    lower <- lower
+  } else {
+    stop("Lower limit should be numeric value or a numeric vector of length p.")
+  }
+  
+  if(is.null(upper)){
+    upper <- rep(Inf, p)
+  } else if(length(upper) == 1 & class(lower) %in% c("numeric", "integer")){
+    upper <- rep(upper, p)
+  } else if(length(upper) == p & class(lower) %in% c("numeric", "integer")){
+    upper <- upper
+  } else {
+    stop("Upper limit should be numeric value or a numeric vector of length p.")
   }
   
   if(control.l0$warn && control.l0$delta > control.iwls$thresh){
@@ -375,7 +416,7 @@ L0glm <- function(formula,
         fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
                           lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
                           block = block, control.l0 = control.l0, control.iwls = control.iwls, block.size = block.size,
-                          control.solver = control.solver, post.filter.fn = post.filter.fn)
+                          control.solver = control.solver, control.block = control.block, post.filter.fn = post.filter.fn)
       })
       fit <- list()
       fit$coefficients <- sapply(fits, "[[", "coefficients")
@@ -427,7 +468,7 @@ L0glm <- function(formula,
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
   fit <- L0glm.fit(X = X, y = y, weights = weights, solver = solver, method = method, family = family, lambda = lambda,
-                    start = start, nonnegative = nonnegative, block.size = block.size , control.l0 = control.l0,
+                    start = start, nonnegative = nonnegative, block.size = block.size , control.l0 = control.l0, control.block = control.block,
                     control.solver = control.solver, control.iwls = control.iwls, 
                     post.filter.fn = post.filter.fn, verbose = verbose)
   fit$timing <- proc.time()[3] - t1
@@ -513,11 +554,12 @@ L0glm.fit <- function(X, y,
                       start = NULL,
                       lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
                       upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
-                      solver = "osqp", #TODO document
+                      solver = NULL,
                       method = NULL,
                       group.pen.fn = NULL,
                       block.size = NULL,
                       control.solver = NULL,
+                      control.block = NULL,
                       nonnegative = FALSE,
                       post.filter.fn = function(u) return(u),
                       control.l0 = list(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 2, warn = FALSE),
@@ -526,25 +568,51 @@ L0glm.fit <- function(X, y,
   n <- nrow(X)
   p <- ncol(X)
   
+  if(is.null(solver) & is.null(control.solver)) stop("Please choose a solver. The available solvers are osqp, glmnet, nnls and eigen.")
+  
+  # Create limit vector if box constraints are provided as integers, throw warning if provided constraints are not in the correct format
+  if(is.null(lower)){
+    lower <- rep(-Inf, p)
+  } else if(length(lower) == 1 & class(lower) %in% c("numeric", "integer")){
+    lower <- rep(lower, p)
+  } else if(length(lower) == p & class(lower) %in% c("numeric", "integer")) {
+    lower <- lower
+  } else {
+    stop("Lower limit should be numeric value or a numeric vector of length p.")
+  }
+  
+  if(is.null(upper)){
+    upper <- rep(Inf, p)
+  } else if(length(upper) == 1 & class(lower) %in% c("numeric", "integer")){
+    upper <- rep(upper, p)
+  } else if(length(upper) == p & class(lower) %in% c("numeric", "integer")){
+    upper <- upper
+  } else {
+    stop("Upper limit should be numeric value or a numeric vector of length p.")
+  }
+  
+  if(is.null(control.block)) control.block <- do.call("control.block.gen", list(block.size = block.size))
+  
   if(length(lambda) == 1) lambda <- rep(lambda, p)
   
   if("matrix" %in% class(y)){ 
     return(multi.fit <- group.cpglm(X = X,
-                                     Y = y,
-                                     family = family,
-                                     lambda = lambda,
-                                     lower = lower,
-                                     upper = upper,
-                                     nonnegative = nonnegative,
-                                     solver = solver,
-                                     method = method,
-                                     start = start,
-                                     block.size = block.size,
-                                     control.solver = control.solver,
-                                     control.l0 = control.l0,
-                                     control.iwls = control.iwls,
-                                     post.filter.fn = post.filter.fn,
-                                     verbose = verbose))
+                                    Y = y,
+                                    family = family,
+                                    lambda = lambda,
+                                    lower = lower,
+                                    upper = upper,
+                                    nonnegative = nonnegative,
+                                    solver = solver,
+                                    method = method,
+                                    start = start,
+                                    block.size = block.size,
+                                    control.block = control.block,
+                                    control.solver = control.solver,
+                                    control.l0 = control.l0,
+                                    control.iwls = control.iwls,
+                                    post.filter.fn = post.filter.fn,
+                                    verbose = verbose))
 
     # return(group.cpglm.fit2(X = X, Y = y,
     #                         weights = weights,
@@ -573,16 +641,15 @@ L0glm.fit <- function(X, y,
   beta <- if(is.null(start)) rep(1,p) else start
   
   for (i in 1:control.l0$maxit) {
+    print(i)
     beta0 <- beta # coefs from previous iteration
     pen.weights <- AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma)
     lambda.adap <- lambda * pen.weights # ridge penalty with adaptive weights
     
-    
     # Fit the model with current adaptive weights.
     fit <- glm.iwls(X = X, y = y, i = i, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
                      family = family, start = start, lambda = lambda.adap, converged.set = mask, nonnegative = nonnegative,
-                     block.size = block.size, control.iwls = control.iwls, 
-                     control.solver = control.solver, verbose = verbose)
+                     control.iwls = control.iwls, control.solver = control.solver, control.block = control.block, verbose = verbose)
     iter.iwls[i] <- fit$iter.iwls
     
     #if(fit$zero.coefs) break # TODO: remove? doesn't change anything 
@@ -621,17 +688,18 @@ L0glm.fit <- function(X, y,
 #' performed.
 #'
 glm.iwls <- function(X, y, weights, family, i = NULL,
-                      solver = "osqp",
-                      method = NULL,
-                      start = NULL,
-                      lambda = rep(0, ncol(X)),
-                      nonnegative = FALSE,
-                      block.size = NULL,
-                      lower = rep(-.Machine$double.xmax,ncol(X)),
-                      upper = rep(.Machine$double.xmax,ncol(X)),
-                      control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),control.solver = NULL,
-                      converged.set = rep(FALSE, ncol(X)),
-                      verbose = FALSE){ # TODO match
+                     solver = "osqp",
+                     method = NULL,
+                     start = NULL,
+                     lambda = rep(0, ncol(X)),
+                     nonnegative = FALSE,
+                     lower = rep(-.Machine$double.xmax,ncol(X)),
+                     upper = rep(.Machine$double.xmax,ncol(X)),
+                     control.iwls = list(maxit = 1, reltol = 1E-4, thresh = 1E-5, warn = FALSE),
+                     control.solver = NULL,
+                     control.block = NULL,
+                     converged.set = rep(FALSE, ncol(X)),
+                     verbose = FALSE){ # TODO match
   
   n <- N <- nrow(X)
   p <- ncol(X)
@@ -698,10 +766,11 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     good <- is.finite(W) & W>0
     betaold <- beta
 
-    if(is.null(block.size)) block.size = p
-    if(block.size < p){
-      block.ids <- ceiling((1:p)/block.size)
-      beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, 
+    if(is.null(control.block$block.size)) control.block$block.size = p
+    
+    if(control.block$block.size < p){
+      block.ids <- ceiling((1:p)/control.block$block.size)
+      beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, control.block = control.block,
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
                             start = betaold, control.solver = control.solver, verbose = verbose)
     } else {

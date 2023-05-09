@@ -52,7 +52,7 @@
 #' control.fit.gen2()
 #'
 #' @export
-control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = TRUE){
+control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = F){
   l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
   return(l)
 }
@@ -63,7 +63,7 @@ control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = TRUE){ # TODO review, reltol used to be 1E-4
+control.iwls.gen <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -114,9 +114,9 @@ control.solver.gen <- function(solver, method = NULL,
 
   } else if (solver == "nnls"){
     l <- list()
+    
   } else if (solver == "eigen"){
     if (is.null(method)){
-      method <- 1
       if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
     }
 
@@ -163,3 +163,19 @@ control.solver.gen <- function(solver, method = NULL,
   }
   return(l)
 }
+
+
+
+
+#' @describeIn control.l0.gen
+#'
+#' Generates parameters that control the block fitting algorithm.
+#'
+#' @export
+control.block.gen <- function(maxit = 70, block.size = NULL, tol = 1E-10){
+  l <- list(block.size = block.size, maxit = maxit, tol = tol)
+  return(l)
+}
+  
+  
+  
