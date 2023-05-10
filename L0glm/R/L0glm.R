@@ -332,8 +332,8 @@ L0glm <- function(formula,
   
   #Normalize data
   if(normalize){
-    X.n <- apply(X, 2, norm, type = "2")
-    X <- sweep(X, 2, X.n, "/")
+    X.n <- sqrt(colSums(X^2)) # apply(X, 2, norm, type = "2")
+    X <- X / X.n # sweep(X, 2, X.n, "/")
   }
   
   # Create limit vector if box constraints are provided as integers, throw warning if provided constraints are not in the correct format
@@ -531,7 +531,7 @@ L0glm <- function(formula,
   # fit$R.squared <- list(R.squared = mss/tss, # = Model SS / Total SS
   #                       type = ifelse(is.null(coefficients.true), "sample", "population"))
   
-  # Reassign norms
+  # scale coefficients to original scale
   if(normalize) fit$coefficients <- fit$coefficients / X.n
   
   # Return solution
