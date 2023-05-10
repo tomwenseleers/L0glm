@@ -641,7 +641,7 @@ L0glm.fit <- function(X, y,
   beta <- if(is.null(start)) rep(1,p) else start
   
   for (i in 1:control.l0$maxit) {
-    print(i)
+    # print(i)
     beta0 <- beta # coefs from previous iteration
     pen.weights <- AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma)
     lambda.adap <- lambda * pen.weights # ridge penalty with adaptive weights

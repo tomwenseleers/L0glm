@@ -133,12 +133,12 @@ control.solver.gen <- function(solver, method = NULL,
     } else if (method == 3){
       if(is.null(rowaug)) rowaug <- FALSE
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
+      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 0L)
 
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- FALSE
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
+      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 1L)
 
     } else if (method == 5){
       l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)
