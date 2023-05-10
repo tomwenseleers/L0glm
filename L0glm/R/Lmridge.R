@@ -224,7 +224,7 @@ lmridge.eigen <- function(Xw, yw, weights, pen.weights, lambdas, lower, upper, s
 
 Xweights <- function(X, weights){
   if(!is.null(weights)){
-    return(X * sqrt(weights))
+    return(Diagonal(X=sqrt(weights)) %*% X) # Faster than X*sqrt(weights)
   } else {
     return(X)
   }
