@@ -47,9 +47,9 @@
 #'
 #' @examples
 #'
-#' control.l0.gen2()
-#' control.iwls.gen2()
-#' control.fit.gen2()
+#' control.l0.gen()
+#' control.iwls.gen()
+#' control.fit.gen()
 #'
 #' @export
 control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = F){
@@ -89,6 +89,7 @@ control.solver.gen <- function(solver, method = NULL,
                                maxit = NULL,
                                blocksize = NULL,
                                reltol = 1E-5,
+                               tol = NULL,
                                abstol = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
@@ -119,6 +120,7 @@ control.solver.gen <- function(solver, method = NULL,
     if (is.null(method)){
       if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
     }
+    if(is.null(tol)) tol <- 0
 
     if (method == 1){
       if(is.null(rowaug)) rowaug <- TRUE
@@ -133,18 +135,19 @@ control.solver.gen <- function(solver, method = NULL,
     } else if (method == 3){
       if(is.null(rowaug)) rowaug <- FALSE
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 0L)
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L)
 
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- FALSE
+      
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 0, maxit = 0L, precond = 1L)
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L)
 
     } else if (method == 5){
-      l <- list(method = "CG", tol = 0, maxit = 0L, precond = 0L)
+      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L)
 
     } else if (method == 6){
-      l <- list(method = "CG", tol = 0, maxit = 0L, precond = 1L)
+      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L)
 
     } else if (method == 7){
       if(is.null(rowaug)) rowaug <- FALSE
