@@ -772,17 +772,20 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
       block.ids <- ceiling((1:p)/control.block$block.size)
       beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, control.block = control.block,
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
-                            start = betaold, control.solver = control.solver, verbose = verbose)
+                            start = betaold, 
+                            control.solver = control.solver, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
         beta[beta!=0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],
                                    pen.weights = pen.weights[good], lower = lower[beta != 0], upper = upper[beta != 0], 
-                                   nonnegative = nonnegative, solver = solver, method = method, start = betaold[beta != 0], 
+                                   nonnegative = nonnegative, solver = solver, method = method, 
+                                   start = betaold[beta != 0], 
                                    control.solver = control.solver, verbose = verbose)
       } else {
         beta <- lmridge(X = X[good,,drop=F], y = y[good], pen.weights = pen.weights[good],
                         lambdas = lambda, weights = W[good],lower = lower, upper = upper,
-                        nonnegative = nonnegative, solver = solver, method = method, start = betaold,
+                        nonnegative = nonnegative, solver = solver, method = method, 
+                        start = betaold,
                         control.solver = control.solver, verbose = verbose)
         
       }

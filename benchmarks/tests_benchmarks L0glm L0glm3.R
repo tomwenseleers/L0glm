@@ -50,27 +50,28 @@ thresh = 1E-10 # coefficients below this threshold will be set to 0
 
 # couple of possible coefficient initialisations ####
 
-# ridge regression initialisation ####
-microbenchmark(beta_init_ridge <- solve_sparse_LSCG(A = Xspwaug / X.n.L2,
-                                                    b = ywaug,
-                                                    x0 = ywaug[1:ncol(Xspwaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
-                                                    tol = 1E-3,
-                                                    maxit = 0L,
-                                                    precond = 1L)$coefficients / X.n.L2, unit="s") 
-# 0.02s
-cor(as.vector(beta_init_ridge), coefs_true)
-hist(as.vector(beta_init_ridge)) #
-length(intersect(which(coefs_true>0), which(as.vector(beta_init_ridge)>thresh))) # 999, nearly all true coefficients that are >0 come out in inferred set
-sum(as.vector(beta_init_ridge)>thresh) # 6662
-
 # Jacobi/diagonal preconditioner initialisation ####
 microbenchmark(beta_init_jacobi <- as.vector(crossprod(Xspwaug, ywaug) / colSums(Xspwaug^2)), unit="s") 
 # 0.0012s, colSums(Xspwaug^2) = diag(crossprod(Xspwaug)))
 
-cor(beta_init_jacobi, beta_init_ridge) # 0.96, highly correlated to true ridge solution
+# ridge regression initialisation ####
+microbenchmark(beta_init_ridge <- solve_sparse_LSCG(A = Xspwaug / X.n.L2,
+                                                    b = ywaug,
+                                                    x0 = beta_init_jacobi, # TODO check if this could be good default initialisation # ywaug[1:ncol(Xspwaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
+                                                    tol = 1E-3,
+                                                    maxit = 0L,
+                                                    precond = 1L)$coefficients / X.n.L2, unit="s") 
+# 0.02s
+beta_init_ridge[beta_init_ridge<thresh] = 0
+cor(as.vector(beta_init_ridge), coefs_true) # 0.28
+hist(as.vector(beta_init_ridge)) #
+length(intersect(which(coefs_true>0), which(as.vector(beta_init_ridge)>thresh))) # 999, nearly all true coefficients that are >0 come out in inferred set
+sum(as.vector(beta_init_ridge)>thresh) # 6662
+
+cor(beta_init_jacobi, beta_init_ridge) # 0.78, highly correlated to true ridge solution, beta_init_jacobi all > 0 though
 plot(beta_init_jacobi, beta_init_ridge)
 
-cor(beta_init_jacobi, coefs_true)
+cor(beta_init_jacobi, coefs_true) # 0.12
 plot(beta_init_jacobi, coefs_true)
 length(intersect(which(coefs_true>0), which(beta_init_jacobi>thresh))) # 1000, all true coefficients that are >0 come out in inferred set
 sum(beta_init_jacobi>thresh) # 9894
@@ -81,77 +82,82 @@ system.time(beta_init_nnwls_osqp <- L0glm.fit(X=Xsp / X.n.L2, y=y, weights = wei
                                               start = as.vector(beta_init_ridge),
                                               solver = "osqp", lambda = 0, nonnegative = TRUE,
                                               control.iwls = do.call("control.iwls.gen", list(maxit = 0)),
-                                              control.l0 = do.call("control.l0.gen", list(maxit = 0, delta = 1E-10, gamma = 2)),
+                                              control.l0 = do.call("control.l0.gen", 
+                                                                   list(maxit = 2, delta = 1E-10, gamma = 2)),
                                               control.solver = do.call("control.solver.gen", 
-                                                                       list(solver = "osqp", rowaug = FALSE)))$coefficients / X.n.L2
-) # 2.6s
+                                                                       list(solver = "osqp", rowaug = TRUE)))$coefficients 
+                                     / X.n.L2
+) # 1.5s
 hist(log10(beta_init_nnwls_osqp))
-length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>thresh))) # 923, not all true coefficients that are >0 come out in inferred set
-sum(as.vector(beta_init_nnwls_osqp)>thresh) # 2047
+length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>thresh))) # 932, not all true coefficients that are >0 come out in inferred set
+sum(as.vector(beta_init_nnwls_osqp)>thresh) # 2447
 beta_init_nnwls_osqp[beta_init_nnwls_osqp < thresh] = 0
-cor(beta_init_nnwls_osqp, coefs_true) # 0.9629725
+cor(beta_init_nnwls_osqp, coefs_true) # 0.9624411
 plot(beta_init_nnwls_osqp, coefs_true)
-mean(abs(beta_init_nnwls_osqp-coefs_true)) # 51.99452
+mean(abs(beta_init_nnwls_osqp-coefs_true)) # 49.79818
 sum(coefs_true!=0) # 1000
-sum(beta_init_nnwls_osqp!=0) # 2047
-length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>0))) # 923
+sum(beta_init_nnwls_osqp!=0) # 2447
+length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>0))) # 932
 
 
 system.time(beta_init_nnwls_osqp2 <- lmridge.osqp(Xw = Xsp / X.n.L2, yw = y, weights = weights, lambdas = rep(0, ncol(X)), 
-                                                  start = as.vector(beta_init_ridge), # start=y or beta_init_ridge both OK
-                                                  lower = lower, upper = upper, control.solver = do.call("control.solver.gen", 
-                                                                                                         list(solver = "osqp", rowaug = FALSE))) / X.n.L2 ) # 0.94s
-# 0.78s, note: figure out why call above is so much slower
+                                                  start = as.vector(beta_init_jacobi), # start=y or beta_init_ridge both OK
+                                                  lower = lower, upper = upper, 
+                                                  control.solver = do.call("control.solver.gen", 
+                                                                   list(solver = "osqp", rowaug = FALSE))) / X.n.L2 ) # 0.94s
+# 0.94s, note: figure out why call above is so much slower
 # CHECK WHY SOLUTION BELOW IS SO BAD
 hist(log10(beta_init_nnwls_osqp2))
-length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp2)>thresh))) # 990, nearly all true coefficients that are >0 come out in inferred set
-sum(as.vector(beta_init_nnwls_osqp2)>thresh) # 9312
+length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp2)>thresh))) # 997, nearly all true coefficients that are >0 come out in inferred set
+sum(as.vector(beta_init_nnwls_osqp2)>thresh) # 9487
 beta_init_nnwls_osqp2[(beta_init_nnwls_osqp2) < thresh] = 0
-cor(beta_init_nnwls_osqp2, coefs_true) # 0.7931252
+cor(beta_init_nnwls_osqp2, coefs_true) # 0.7963079
 plot(beta_init_nnwls_osqp2, coefs_true)
-mean(abs(beta_init_nnwls_osqp2-coefs_true)) # 167.8864
+mean(abs(beta_init_nnwls_osqp2-coefs_true)) # 166.8044
 sum(coefs_true!=0) # 1000
-sum(beta_init_nnwls_osqp2!=0) # 9312
+sum(beta_init_nnwls_osqp2!=0) # 9487
 hist(log10(beta_init_nnwls_osqp2))
-length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>0))) # 923
+length(intersect(which(coefs_true>0), which(as.vector(beta_init_nnwls_osqp)>0))) # 932
 
 
 # L0glm with OSQP solver ####
 system.time(L0glm_osqp <- L0glm.fit(X=Xsp / X.n.L2, y=y, 
-                                    # start=as.vector(beta_init_ridge), # beta_init_nnwls_osqp2, OR y,
+                                    start=as.vector(beta_init_jacobi/ X.n.L2), # beta_init_jacobi, beta_init_nnwls_osqp2, OR y,
                                     family = poisson(identity),
                                     solver = "osqp", lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
                                     control.l0 = do.call("control.l0.gen", 
                                                          list(maxit = 100, delta = 1E-10, gamma = 2)),
                                     control.solver = do.call("control.solver.gen", 
-                                                             list(solver = "osqp", rowaug = FALSE)))$coefficients / X.n.L2 
-            ) # 1.62s for n=p=10000
+                                                             list(solver = "osqp", rowaug = FALSE)))$coefficients 
+                            / X.n.L2 
+            ) # 2.48s for n=p=10000
 hist(log10(L0glm_osqp))
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_osqp)>thresh))) # 833, all true coefficients that are >0 come out in inferred set
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_osqp)>thresh))) # 834, nearly all true coefficients that are >0 come out in inferred set
 
-cor(L0glm_osqp, coefs_true) # 0.9615766
+cor(L0glm_osqp, coefs_true) # 0.9648606
 plot(L0glm_osqp, coefs_true)
-mean(abs(L0glm_osqp-coefs_true)) # 42.5446
+mean(abs(L0glm_osqp-coefs_true)) # 41.64047
 sum(coefs_true!=0) # 1000
-sum(L0glm_osqp!=0) # 1084
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_osqp)>0))) # 833
+sum(L0glm_osqp!=0) # 1091
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_osqp)>0))) # 834
 
 
 # L0glm with Glmnet solver ####
-system.time(L0glm_glmnet <- L0glm.fit(X=Xsp, y=y,
-                                      start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
+system.time(L0glm_glmnet <- L0glm.fit(X=Xsp/X.n.L2, y=y,
+                                      start=as.vector(beta_init_jacobi/X.n.L2), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                       family = poisson(identity),
                                       solver = "glmnet", lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
-                                      control.l0 = do.call("control.l0.gen", list(maxit = 1000, delta = 1E-10, gamma = 2)))$coefficients
-) # 8.4s for n=p=10000
-cor(L0glm_glmnet, coefs_true) # 0.9547656
+                                      control.l0 = do.call("control.l0.gen", list(maxit = 1000, delta = 1E-10, gamma = 2)))$coefficients 
+                              / X.n.L2
+) # 5.8s for n=p=10000
+cor(L0glm_glmnet, coefs_true) # 0.960394
 plot(L0glm_glmnet, coefs_true)
-mean(abs(L0glm_glmnet-coefs_true)) # 43.6681
+mean(abs(L0glm_glmnet-coefs_true)) # 40.80738
 sum(coefs_true!=0) # 1000
-sum(L0glm_glmnet!=0) # 1071
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_glmnet)>0))) # 834
+sum(L0glm_glmnet!=0) # 1092
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_glmnet)>0))) # 842
 
 
 # L0glm with Eigen Cholesky solver ####
@@ -164,17 +170,19 @@ system.time(L0glm_eigenCHOL <- L0glm.fit(X=Xsp / X.n.L2, y=y,
                                          control.l0 = do.call("control.l0.gen", list(maxit = 200, delta = 1E-10, gamma = 2)),
                                          control.solver = do.call("control.solver.gen", 
                                                                   list(solver = "eigen", method = 7,
-                                                                       rowaug = FALSE)))$coefficients / X.n.L2
-) # 0.33s for n=p=10000
-cor(L0glm_eigenCHOL, coefs_true) # 0.9313193
+                                                                       rowaug = FALSE)))$coefficients 
+            / X.n.L2
+) # 0.48s for n=p=10000
+cor(L0glm_eigenCHOL, coefs_true) # 0.9687326
 plot(L0glm_eigenCHOL, coefs_true)
-mean(abs(L0glm_eigenCHOL-coefs_true)) # 73.16189
+mean(abs(L0glm_eigenCHOL-coefs_true)) # 35.41456
 sum(coefs_true!=0) # 1000
-sum(L0glm_eigenCHOL!=0) # 1000
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenCHOL)>0))) # 640
+sum(L0glm_eigenCHOL!=0) # 1071
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenCHOL)>0))) # 846
+
 
 # L0glm with Eigen CG solver ####
-system.time(L0glm_eigenCG <- L0glm.fit(X=Xsp / X.n.sqL2, y=y, 
+system.time(L0glm_eigenCG <- L0glm.fit(X=Xsp / X.n.L2, y=y, 
                                        start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                        family = poisson(identity),
                                        solver = "eigen", method = 5, 
@@ -182,52 +190,60 @@ system.time(L0glm_eigenCG <- L0glm.fit(X=Xsp / X.n.sqL2, y=y,
                                        control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
                                        control.l0 = do.call("control.l0.gen", list(maxit = 200, delta = 1E-10, gamma = 2)),
                                        control.solver = do.call("control.solver.gen", 
-                                                                list(solver = "eigen", method = 5, rowaug = FALSE)))$coefficients / X.n.sqL2
-) # 0.83s for n=p=10000
-cor(L0glm_eigenCG, coefs_true) # 0.9410897
+                                                                list(solver = "eigen", method = 5, rowaug = FALSE)))$coefficients 
+            / X.n.L2
+) # 1.83s for n=p=10000
+cor(L0glm_eigenCG, coefs_true) # 0.9687326
 plot(L0glm_eigenCG, coefs_true)
-mean(abs(L0glm_eigenCG-coefs_true)) # 78.45663
+mean(abs(L0glm_eigenCG-coefs_true)) # 35.41456
 sum(coefs_true!=0) # 1000
-sum(L0glm_eigenCG!=0) # 1026
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenCG)>0))) # 644
+sum(L0glm_eigenCG!=0) # 1071
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenCG)>0))) # 846
 
 # L0glm with QR solver ####
-system.time(L0glm_eigenQR <- L0glm.fit(X=Xsp, y=y, 
+system.time(L0glm_eigenQR <- L0glm.fit(X=Xsp / X.n.L2, y=y, 
                                        start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                        family = poisson(identity),
                                        solver = "eigen", method = 2, 
                                        lambda = 1, nonnegative = TRUE,
                                        control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
-                                       control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
+                                       control.l0 = do.call("control.l0.gen", 
+                                                            list(maxit = 100, delta = 1E-10, gamma = 2)),
                                        control.solver = do.call("control.solver.gen", 
-                                                                list(solver = "eigen", method = 2, rowaug = TRUE)))$coefficients
+                                                                list(solver = "eigen", method = 2, 
+                                                                     rowaug = TRUE)))$coefficients 
+                                / X.n.L2
 ) # 253s for n=p=10000
-cor(L0glm_eigenQR, coefs_true) # 0.9444676
+cor(L0glm_eigenQR, coefs_true) # 0.9260835
 plot(L0glm_eigenQR, coefs_true)
-mean(abs(L0glm_eigenQR-coefs_true)) # 67.84128
+mean(abs(L0glm_eigenQR-coefs_true)) # 41.96809
 sum(coefs_true!=0) # 1000
-sum(L0glm_eigenQR!=0) # 1033
-length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenQR)>0))) # 679
+sum(L0glm_eigenQR!=0) # 1070
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenQR)>0))) # 841
 
 
-# LSCG SOLVER ####
+# L0glm with LSCG solver ####
 system.time(L0glm_eigenLSCG <- L0glm.fit(X=Xsp / X.n.sqL2, y=y, 
                                          start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                          family = poisson(identity),
                                          solver = "eigen", method = 4, 
                                          lambda = 1, nonnegative = TRUE,
-                                         control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+                                         # block.size = 500,
+                                         # control.block = list(block.size = 500, maxit = 1, tol = 1E-4),
+                                         control.iwls = do.call("control.iwls.gen", list(maxit = 0)),
                                          control.l0 = do.call("control.l0.gen", 
                                                               list(maxit = 100, 
-                                                                   delta = 1E-10, 
+                                                                   delta = 1E-3, 
                                                                    gamma = 2)),
                                          control.solver = do.call("control.solver.gen", 
                                                                   list(solver = "eigen", method = 4, 
                                                                        rowaug = FALSE
-                                                                       )))$coefficients / X.n.sqL2
-) # 0.84s for n=p=10000
-cor(L0glm_eigenLSCG, coefs_true) # 0.683617
+                                                                       )))$coefficients 
+                             / X.n.sqL2
+) # 0.22s for n=p=10000
+cor(L0glm_eigenLSCG, coefs_true) # 0.7519692
 plot(L0glm_eigenLSCG, coefs_true)
-mean(abs(L0glm_eigenLSCG-coefs_true)) # 171
+mean(abs(L0glm_eigenLSCG-coefs_true)) # 157
 sum(coefs_true!=0) # 1000
-sum(L0glm_eigenLSCG!=0) # 1260
+sum(L0glm_eigenLSCG!=0) # 1145
+length(intersect(which(coefs_true>0), which(as.vector(L0glm_eigenLSCG)>0))) # 505

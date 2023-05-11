@@ -33,7 +33,7 @@ yw = y*sqrt(weights) # weighted y
 ywaug = c(yw, rep(0, ncol(Xs))) # augmented weighted y
 lam = 1 # 1/max(sim$beta_true) # 1
 lambdas = rep(lam, ncol(Xs)) # ridge penalties on individual coefficients
-Xsw = Xs*Diagonal(x=sqrt(weights)) # weighted X
+Xsw = Diagonal(x=sqrt(weights)) %*% Xs # weighted X
 Xswaug = rbind(Xsw, Diagonal(x=sqrt(lambdas))) # row augmented covariate matrix
 
 # Cholesky decomposition based solver using base R functions
@@ -72,20 +72,18 @@ cg_solve2 = function(A, b,
 
 # timings sparse Cholesky decomposition based solve of weighted least squares problem using base R
 system.time(s1 <- chol.solve(Xswaug, ywaug)) # 1.4s when using Intel MKL (MRO 4.0.2), 135s without Intel MKL
-max(s1) # 0.9999187
-cor(as.vector(s1),as.vector(sim$beta_true)) # 0.47
+cor(as.vector(s1),as.vector(sim$beta_true)) # 0.21
 plot(as.vector(s1),as.vector(sim$beta_true))
 
 # timings dense Cholesky decomposition based solve of weighted least squares problem using base R
 system.time(s1_dense <- chol.solve(as(Xswaug, "matrix"), ywaug)) # 8.6s when using Intel MKL (MRO 4.0.2), 1017s without Intel MKL
-max(abs(s1_dense-s1)) # 0
-# cor(as.vector(s1),as.vector(sim$beta_true)) # 0.47
+# cor(as.vector(s1),as.vector(sim$beta_true)) # 0.21
 # plot(as.vector(s1),as.vector(sim$beta_true))
 
 # timings sparse least squares conjugate gradient pure R implementation, using CPU
-system.time(s2 <- cg_solve2(Xswaug, ywaug)) # 0.03s
-max(abs(s2-s1)) # 1.658031e-10
-# cor(as.vector(s2),as.vector(sim$beta_true)) # 0.47
+system.time(s2 <- cg_solve2(Xswaug, ywaug)) # 0.77s
+max(abs(s2-s1)) # 8.840573e-11
+# cor(as.vector(s2),as.vector(sim$beta_true)) # 0.21
 # plot(as.vector(s2),as.vector(sim$beta_true))
 
 # torch & tensorflow solver timings
@@ -99,47 +97,47 @@ Xswaug_tensorflow_gpu <- gpu.matrix(Xswaug, type = "tensorflow", dtype = "float3
 ywaug_tensorflow_gpu <- gpu.matrix(ywaug, type = "tensorflow", dtype = "float32", sparse = F) 
 
 # timings torch sparse Cholesky solve, using GPU
-system.time(s3 <- chol_solve(crossprod(Xswaug_gpu, ywaug_gpu), chol(crossprod(Xswaug_gpu)))) # 0.58s, faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
-max(abs(s3-s1)) # 3.131536e-07
+system.time(s3 <- chol_solve(crossprod(Xswaug_gpu, ywaug_gpu), chol(crossprod(Xswaug_gpu)))) # 0.69s, faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
+max(abs(s3-s1)) # 8
 
 # timings torch sparse Cholesky solve, using CPU
-system.time(s4 <- chol_solve(crossprod(Xswaug_cpu, ywaug_cpu), chol(crossprod(Xswaug_cpu)))) # 1.09s, slightly faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
-max(abs(s4-s1)) # 2.365705e-07
+system.time(s4 <- chol_solve(crossprod(Xswaug_cpu, ywaug_cpu), chol(crossprod(Xswaug_cpu)))) # 2.79s, slightly faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
+max(abs(s4-s1)) # 8
 
 # timings torch dense Cholesky solve, using GPU
-system.time(s5 <- chol_solve(crossprod(Xswaug_dense_gpu, ywaug_gpu), chol(crossprod(Xswaug_dense_gpu)))) # 1.17s, faster than torch Cholesky solve using CPU, faster than Base R Cholesky solve with IntelMKL & faster than Eigen's dense Cholesky solver
-max(abs(s5-s1)) # 3.131536e-07
+system.time(s5 <- chol_solve(crossprod(Xswaug_dense_gpu, ywaug_gpu), chol(crossprod(Xswaug_dense_gpu)))) # 1.28s, faster than torch Cholesky solve using CPU, faster than Base R Cholesky solve with IntelMKL & faster than Eigen's dense Cholesky solver
+max(abs(s5-s1)) # 8
 
 # timings torch dense Cholesky solve, using CPU
-system.time(s6 <- chol_solve(crossprod(Xswaug_dense_cpu, ywaug_cpu), chol(crossprod(Xswaug_dense_cpu)))) # 6.08s
-max(abs(s6-s1)) # 2.365705e-07
+system.time(s6 <- chol_solve(crossprod(Xswaug_dense_cpu, ywaug_cpu), chol(crossprod(Xswaug_dense_cpu)))) # 6.35s
+max(abs(s6-s1)) # 8
 
 # timings tensorflow sparse least squares conjugate gradient pure R implementation, using GPU
 system.time(s7 <- cg_solve2(Xswaug_tensorflow_gpu, ywaug_tensorflow_gpu)) # 0.61s
 max(abs(s7-s1)) # 1.073286e-05
 
 # timings torch sparse least squares conjugate gradient pure R implementation, using GPU
-system.time(s8 <- cg_solve2(Xswaug_gpu, ywaug_gpu)) # 0.06s
-max(abs(s_torch_gpu-s1)) # 1.011147e-07
+system.time(s8 <- cg_solve2(Xswaug_gpu, ywaug_gpu)) # 1.68s
+max(abs(s8-s1)) # 1.317928e-06
 
 # timings torch sparse least squares conjugate gradient pure R implementation, using CPU
-system.time(s9 <- cg_solve2(Xswaug_cpu, ywaug_cpu)) # 0.03s
-max(abs(s9-s1)) # 1.011147e-07
+system.time(s9 <- cg_solve2(Xswaug_cpu, ywaug_cpu)) # 4.92s
+max(abs(s9-s1)) # 6.344871e-05
 
 # timings torch dense least squares conjugate gradient pure R implementation, using GPU
-system.time(s10 <- cg_solve2(Xswaug_dense_gpu, ywaug_gpu)) # 4.07s
-max(abs(s10-s1)) # 1.011147e-07
+system.time(s10 <- cg_solve2(Xswaug_dense_gpu, ywaug_gpu)) # 116.53s
+max(abs(s10-s1)) # 1.489769e-06
 
 # timings torch dense least squares conjugate gradient pure R implementation, using CPU
-system.time(s11 <- cg_solve2(Xswaug_dense_cpu, ywaug_cpu)) # 5.20s
-max(abs(s11-s1)) # 1.011147e-07
+system.time(s11 <- cg_solve2(Xswaug_dense_cpu, ywaug_cpu)) # 176.11s
+max(abs(s11-s1)) # 2.542638e-05
 
 # timings Eigen sparse QR solver, using CPU
 library(microbenchmark)
 microbenchmark({s12 <- solve_sparse_QR(A = Xswaug,
                                        b = ywaug,
-                                       ordering = 1L)$coefficients}, unit="s") # 0.0263564s using Eigen QR solver
-max(abs(s12-s1)) # 2.375877e-14
+                                       ordering = 1L)$coefficients}, unit="s") # 510s using Eigen QR solver
+max(abs(s12-s1)) # 1.17506e-11
 # cor(as.vector(s12),as.vector(sim$beta_true)) # 0.47
 # plot(as.vector(s12),as.vector(sim$beta_true))
 
@@ -147,19 +145,18 @@ max(abs(s12-s1)) # 2.375877e-14
 microbenchmark(s13 <- solve_sparse_chol(A = as(crossprod(Xswaug),"dgCMatrix"),
                                         b = as.matrix(crossprod(Xswaug, ywaug)), 
                                         pivot = 1L,
-                                        ordering = 0L)$coefficients, unit="s") # 0.00093359s using Eigen sparse Cholesky solver, 135/0.00093359=144603x faster than native R Cholesky when not using IntelMKL
-max(abs(s13-s1)) # 3.330669e-16
-cor(as.vector(s13),as.vector(sim$beta_true)) # 0.47
+                                        ordering = 0L)$coefficients, unit="s") # 0.04s using Eigen sparse Cholesky solver, 135/0.00093359=144603x faster than native R Cholesky when not using IntelMKL
+max(abs(s13-s1)) # 3.105072e-11
+cor(as.vector(s13),as.vector(sim$beta_true)) # 0.21
 plot(as.vector(s13),as.vector(sim$beta_true))
 hist(s13)
-max(s13) # maximum value of obtained coefficients is 1/lam
 
 
 # timings Eigen dense Cholesky solve, using CPU
 system.time(s14_dense <- solve_dense_chol(A = as(crossprod(Xswaug), "matrix"),
                                           b = as.matrix(crossprod(Xswaug, ywaug)), 
-                                          pivot = 1L)$coefficients) # 57s using Eigen dense Cholesky solver
-max(abs(s14_dense-s1)) # 3.330669e-16
+                                          pivot = 1L)$coefficients) # 62s using Eigen dense Cholesky solver
+max(abs(s14_dense-s1)) # 4.377387e-12
 
 # timings Eigen sparse conjugate gradient, using normal equations, using CPU
 microbenchmark({A=as(crossprod(Xswaug),"dgCMatrix");
@@ -169,61 +166,54 @@ microbenchmark({A=as(crossprod(Xswaug),"dgCMatrix");
                        x0 = b[1:ncol(A)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
                        tol = 1E-5,
                        maxit = 0L,
-                       precond = 1L)$coefficients}, unit="s") # 0.000690752s using Eigen sparse conjugate gradient & using normal equations
-max(abs(s15-s1)) # 4.440892e-16
+                       precond = 1L)$coefficients}, unit="s") # 0.03s using Eigen sparse conjugate gradient & using normal equations
+max(abs(s15-s1)) # 0.001054265
 
-
-# timings Eigen sparse least squares conjugate gradient, using normal equations, using CPU
-microbenchmark({A=as(crossprod(Xswaug),"dgCMatrix");
-                b=as.matrix(crossprod(Xswaug, ywaug));
-                s16 <- solve_sparse_LSCG(A = A,
-                                         b = b,
-                                         x0 = b[1:ncol(A)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
-                                         tol = 1E-5,
-                                         maxit = 0L,
-                                         precond = 1L)$coefficients}, unit="s") # 0.000688393s using Eigen sparse least squares conjugate gradient & using normal equations
-max(abs(s16-s1)) # 4.440892e-16
 
 # timings Eigen sparse least squares conjugate gradient, without forming normal equations & calculating XtX, using CPU - FASTEST
-microbenchmark({s17 <- solve_sparse_LSCG(A = Xswaug,
+library(microbenchmark)
+microbenchmark({ x0 <- as.vector(crossprod(Xswaug, ywaug) / colSums(Xswaug^2)); # colSums(Xswaug^2) = diag(crossprod(Xswaug)))
+                 s16 <- solve_sparse_LSCG(A = Xswaug,
                                          b = ywaug,
-                                         x0 = ywaug[1:ncol(Xswaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
-                                         tol = 1E-5,
+                                         x0 = x0, # ywaug[1:ncol(Xswaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
+                                         tol = 1E-7,
                                          maxit = 0L,
-                                         precond = 1L)$coefficients}, unit="s") # 0.00016174s using Eigen least squares conjugate gradient, without forming normal equations, 135/0.00016174=834672.9x faster than native R Cholesky solve when not using IntelMKL
-max(abs(s17-s1)) # 1.957323e-13
+                                         precond = 1L)$coefficients }, unit="s") # 0.04s using Eigen least squares conjugate gradient, without forming normal equations, 135/0.00016174=834672.9x faster than native R Cholesky solve when not using IntelMKL
+max(abs(s16-s1)) # 4.748111e-06
+
+
 
 # timings Eigen dense least squares conjugate gradient, without forming normal equations & calculating XtX, using CPU
-system.time({s18 <- solve_dense_LSCG(A = as(Xswaug, "matrix"),
+system.time({x0 <- as.vector(crossprod(as(Xswaug, "matrix"), ywaug) / colSums(as(Xswaug, "matrix")^2));
+             s17 <- solve_dense_LSCG(A = as(Xswaug, "matrix"),
                                      b = as.matrix(ywaug),
-                                     x0 = as.matrix(ywaug[1:ncol(Xswaug)]),
-                                     tol = 1E-5,
+                                     x0 = x0, # as.matrix(ywaug[1:ncol(Xswaug)]),
+                                     tol = 1E-7,
                                      maxit = 0L,
-                                     precond = 1L)$coefficients}) # 1.42s using Eigen least squares conjugate gradient
-max(abs(s18-s1)) # 1.957323e-13
+                                     precond = 1L)$coefficients}) # 22s using Eigen least squares conjugate gradient
+max(abs(s17-s1)) # 6.044192e-06
+
 
 
 # diagonal/Jacobi preconditioner initialisation, tailored to a weighted least squares ridge regression - BEST
 diag_crossprod_Xswaug = colSums(Xswaug^2) # = diag(crossprod(Xswaug)))
 P = Diagonal(x=1/diag_crossprod_Xswaug) # tailored diagonal preconditioner for weighted least square ridge regression
-beta_hat = P %*% crossprod(Xswaug, ywaug) # these coefficients range between 0 and 1/lambda 
+beta_hat = P %*% crossprod(Xswaug, ywaug) 
 hist(as.vector(beta_hat)) 
 
 library(microbenchmark)
-microbenchmark(beta_hat <- crossprod(Xswaug, ywaug) / colSums(Xswaug^2), unit="s") # 0.0002s, colSums(Xswaug^2) = diag(crossprod(Xswaug)))
+microbenchmark(beta_hat <- crossprod(Xswaug, ywaug) / colSums(Xswaug^2), unit="s") # 0.001s, colSums(Xswaug^2) = diag(crossprod(Xswaug)))
 
-# obtained coefficients are nearly identical to the actual ridge regression solution :
-range(beta_hat) # 0.0000000 0.9999187 - coefficients are bounded between 0 and 1/lambda
-max(abs(beta_hat-s1)) # 3.330669e-16, where s1 is my actual ridge regression Cholesky solver solution
-cor(as.vector(beta_hat), s1) # 1
+
+
 
 
 
 deco_nnL0poisglm = function(X = sim$X, y = sim$y, 
-                            lambda=1, 
-                            delta=1E-10, 
-                            gamma=2,
-                            thresh=1E-10) {  
+                            lambda = 1, 
+                            delta = 1E-10, 
+                            gamma = 2,
+                            thresh = 1E-10) {  
   print(sum(sim$beta_true!=0))
   
   weights = 1/(as.vector(y)+0.1) # observation weights (approx 1/Poisson noise variance)
@@ -233,8 +223,7 @@ deco_nnL0poisglm = function(X = sim$X, y = sim$y,
   ywaug = c(yw, rep(0, p)) # augmented weighted y
   penweights = rep(1, p) # ridge regression penalty weights on individual coefficients (sum to p)
   lambdas = lambda*penweights # ridge penalties on individual coefficients
-  # Xw = X * sqrt(weights) # weighted X 
-  Xw = Diagonal(x=sqrt(weights)) %*% X
+  Xw = Diagonal(x=sqrt(weights)) %*% X # = X * sqrt(weights)
   Xwaug = rbind(Xw, Diagonal(x=sqrt(lambdas))) # row augmented covariate matrix
   # X.n = colSums(Xwaug^2) # squared L2 norm normalisation of columns of Xwaug
   # Xwaug_scaled = Xwaug / X.n
@@ -279,20 +268,17 @@ deco_nnL0poisglm = function(X = sim$X, y = sim$y,
     #                             solver="eigen",
     #                             method=4)
     X.n = sqrt(colSums(Xw[,nonzero,drop=F] ^ 2))
-    beta_hat[nonzero] = solve_sparse_LSCG(A = Xw[,nonzero,drop=F] / X.n,
-                      b = matrix(yw),
+    beta_hat[nonzero] = solve_sparse_LSCG(A = Xwaug[,nonzero,drop=F] / X.n,
+                      b = matrix(ywaug),
                       x0 = matrix(x0), # or even better: use beta_init below in section diagonal/jacobi preconditioner
                       tol = 1E-3,
                       maxit = 0L,
-                      precond = 1L)$coefficients * X.n
+                      precond = 1L)$coefficients / X.n
     beta_hat[beta_hat<thresh] = 0
     hist(as.vector(beta_hat))
     plot(sim$beta_true, as.vector(beta_hat))  
     cor(as.vector(sim$beta_true), as.vector(beta_hat)) # 0.47  
   }
 
-  sum(sim$beta_true!=0)
-  sum(beta_hat!=0)
- 
-
+  return(beta_hat)
 }
