@@ -120,7 +120,7 @@ control.solver.gen <- function(solver, method = NULL,
     if (is.null(method)){
       if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
     }
-    if(is.null(tol)) tol <- 0
+    if(is.null(tol)) tol <- 1E-10
 
     if (method == 1){
       if(is.null(rowaug)) rowaug <- TRUE
@@ -135,13 +135,13 @@ control.solver.gen <- function(solver, method = NULL,
     } else if (method == 3){
       if(is.null(rowaug)) rowaug <- FALSE
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 1E-10, maxit = 0L, precond = 0L)
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L)
 
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- FALSE
       
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "LSCG", tol = 1E-10, maxit = 0L, precond = 1L)
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L)
 
     } else if (method == 5){
       l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L)
@@ -159,7 +159,7 @@ control.solver.gen <- function(solver, method = NULL,
       if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
       l <- list(method = "chol", pivot = 1L, ordering = 0L)
     } else {
-      stop("Chosen method for Eigen solvers is unavailable. Please choose a different method.")
+      stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-8).")
     }
   } else {
     stop("Chosen solver is not available.")

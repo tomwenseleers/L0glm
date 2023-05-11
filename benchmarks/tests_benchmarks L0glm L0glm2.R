@@ -1,7 +1,7 @@
 # Simulate data
 set.seed(1)
-n <- 10000
-p <- 10000
+n <- 100
+p <- 100
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
@@ -22,6 +22,9 @@ nonnegative <- TRUE
 start <- NULL
 verbose <- TRUE
 weights <- 1/(y+0.1) # observation weights
+
+control.solver = do.call("control.solver.gen", list(solver = "eigen", tol=1e-3, method = 3))
+lmridge.eigen(Xw, yw, pen.weights, lambdas, lower, upper, start, control.solver = control.solver)
 
 
 # 1. OSQP
