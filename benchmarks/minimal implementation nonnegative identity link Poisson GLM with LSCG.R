@@ -71,3 +71,5 @@ system.time(coefs <- nnL0poisglm(X = sim$X,
 plot(sim$beta_true, coefs)
 mean(abs(sim$beta_true - coefs)) # 1.493188 - really accurate!!
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs)>0))) # 198 (should be 200)
+
+cor(as.vector(sim$beta_true), as.vector(coefs))
