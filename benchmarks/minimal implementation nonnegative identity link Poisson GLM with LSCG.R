@@ -132,6 +132,8 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  thresh = 1,
                                  solver="eigen", 
                                  method=7L)) # 0.13s - Cholesky : FASTEST
+
+ 
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2, 
                                      y=as.vector(sim$y),
@@ -151,12 +153,20 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
             # / X.n.L2
 ) # 0.19s for n=p=10000
 
+system.time(coefs_osqp <- nnL0poisglm(X = sim$X, 
+                                      y = sim$y, 
+                                      lambda = 1, 
+                                      delta = 1E-10, 
+                                      gamma = 2,
+                                      thresh = 1,
+                                      solver="osqp")
+) # 2.65s
+
 # L0glm with osqp solver ####
-X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
-system.time(coefs_osqp <- L0glm.fit(X=sim$X / X.n.L2, 
+system.time(coefs_osqp2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
-                                     # start=as.vector(beta_init_ridge)*X.n.L2, # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
+                                     # start=as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                      # family = poisson(identity),
                                      family = gaussian(identity),
                                      solver = "osqp", # method = 7L, 
@@ -165,17 +175,7 @@ system.time(coefs_osqp <- L0glm.fit(X=sim$X / X.n.L2,
                                      control.l0 = c(do.call("control.l0.gen", 
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
-             / X.n.L2
-) # 4.64s for n=p=10000
-
-X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
-system.time(coefs_osqp2 <- nnL0poisglm(X = sim$X / X.n.L2,
-                                       y = sim$y, 
-                                       lambda = 1, 
-                                       delta = 1E-10, 
-                                       gamma = 2,
-                                       thresh = 1,
-                                       solver="osqp")  / X.n.L2 ) # 3.58s
+) # 4.39s for n=p=10000
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -187,8 +187,8 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
 
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 7.552769e-07 with tol=1E-10
 mean(abs(coefs_chol-coefs_cg)) # 7.483028e-07
-mean(abs(coefs_chol-coefs_osqp)) # 17.52318
-mean(abs(coefs_chol-coefs_osqp2)) # 18.45288
+mean(abs(coefs_chol-coefs_osqp)) # 9.30883
+mean(abs(coefs_chol-coefs_osqp2)) # 9.449058
 mean(abs(coefs_chol-coefs_glmnet)) # 18.34359
 mean(abs(coefs_chol-coefs_chol2)) # 0.48072560
 
@@ -196,8 +196,8 @@ mean(abs(coefs_lscg-sim$beta_true)) # 37.51987
 mean(abs(coefs_cg-sim$beta_true)) # 37.51987
 mean(abs(coefs_chol-sim$beta_true)) # 37.51987
 mean(abs(coefs_chol2-sim$beta_true)) # 37.59185
-mean(abs(coefs_osqp-sim$beta_true)) # 40.34903
-mean(abs(coefs_osqp2-sim$beta_true)) # 39.53232
+mean(abs(coefs_osqp-sim$beta_true)) # 38.31471
+mean(abs(coefs_osqp2-sim$beta_true)) # 37.72349
 mean(abs(coefs_glmnet-sim$beta_true)) # 44.18537
 
 plot(sim$beta_true, coefs_chol, pch=16, col="steelblue")
@@ -209,15 +209,15 @@ length(intersect(which(sim$beta_true>0), which(as.vector(coefs_lscg)>thresh))) #
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_cg)>thresh))) # 852 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol)>thresh))) # 852 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol2)>thresh))) # 860 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp)>thresh))) # 855 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp2)>thresh))) # 852 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp)>thresh))) # 851 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp2)>thresh))) # 856 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_glmnet)>thresh))) # 844 (should be 1000)
 
 sum(coefs_lscg>thresh) # 1068 (should be 1000)
 sum(coefs_cg>thresh) # 1068 (should be 1000)
 sum(coefs_chol>thresh) # 1068 (should be 1000)
 sum(coefs_chol2>thresh) # 1082 (should be 1000)
-sum(coefs_osqp>thresh) # 1096 (should be 1000)
-sum(coefs_osqp2>thresh) # 1078 (should be 1000)
+sum(coefs_osqp>thresh) # 1084 (should be 1000)
+sum(coefs_osqp2>thresh) # 1088 (should be 1000)
 sum(coefs_glmnet>thresh) # 1087 (should be 1000)
 
