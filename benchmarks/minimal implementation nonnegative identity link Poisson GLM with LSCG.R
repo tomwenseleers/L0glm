@@ -23,7 +23,7 @@ nnL0poisglm = function(X,
   # require(microbenchmark)
   beta_hat <- lmridge(X = Xwaug, y = ywaug, # we use fast LSCG as initialisation
                                         pen.weights = pen.weights,
-                                        lambdas = rep(0, p), # lambdas, # TODO really slow if lambdas are given & Xw and yw is passed
+                                        lambdas = rep(0, p), # lambdas, # TODO really slow if lambdas are given & Xw and yw is passed - check that no augmentation occurs when lambda is passed as NULL or with all zeros
                                         start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                                         lower = rep(0, p), 
                                         upper = rep(Inf, p),
@@ -103,7 +103,7 @@ system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
             gamma = 2,
             thresh = 1,
             solver="eigen", 
-            method=3L)) # 0.65s, LSCG
+            method=3L)) # 0.65s, LSCG (tol=1E-5) or 1.5s (tol=1E-10)
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -111,7 +111,7 @@ system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  gamma = 2,
                                  thresh = 1,
                                  solver="eigen", 
-                                 method=5L)) # 1.24s, CG
+                                 method=5L)) # 0.83s, CG
 system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -119,8 +119,8 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  gamma = 2,
                                  thresh = 1,
                                  solver="eigen", 
-                                 method=7L)) # 0.2s - Cholesky the fastest
-# L0glm with Eigen Cholesky solver ####
+                                 method=7L)) # 0.16s - Cholesky : FASTEST
+# L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
@@ -137,7 +137,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
             # / X.n.L2
-) # 0.25s for n=p=10000
+) # 0.2s for n=p=10000
 
 X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
 system.time(coefs_osqp <- nnL0poisglm(X = sim$X / X.n.L2,
@@ -176,7 +176,7 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       solver="glmnet")) # 1.71s
 
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 3.38143e-07 with tol=1E-10
-mean(abs(coefs_chol-coefs_cg)) # 1.783757e-11
+mean(abs(coefs_chol-coefs_cg)) # 3.291415e-07
 mean(abs(coefs_chol-coefs_osqp)) # 19.01243
 mean(abs(coefs_chol-coefs_osqp2)) # 17.34572
 mean(abs(coefs_chol-coefs_glmnet)) # 17.36323
