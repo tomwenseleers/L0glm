@@ -114,7 +114,7 @@ system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
             gamma = 2,
             thresh = 1,
             solver="eigen", 
-            method=3L)) # LSCG, 0.65s with tol=1E-5 or 1.45s with tol=1E-10
+            method=3L)) # LSCG, 0.65s with tol=1E-5 or 1.42s with tol=1E-10
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -130,7 +130,7 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  gamma = 2,
                                  thresh = 1,
                                  solver="eigen", 
-                                 method=7L)) # 0.20s - Cholesky : FASTEST
+                                 method=7L)) # 0.18s - Cholesky : FASTEST
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2, 
                                      y=as.vector(sim$y),
@@ -148,7 +148,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
             # / X.n.L2
-) # 0.25s for n=p=10000
+) # 0.23s for n=p=10000
 
 # L0glm with osqp solver ####
 X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
@@ -165,7 +165,7 @@ system.time(coefs_osqp <- L0glm.fit(X=sim$X / X.n.L2,
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
              / X.n.L2
-) # 1.71s for n=p=10000
+) # 1.58s for n=p=10000
 
 system.time(coefs_osqp2 <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -173,7 +173,7 @@ system.time(coefs_osqp2 <- nnL0poisglm(X = sim$X,
                                       delta = 1E-10, 
                                       gamma = 2,
                                       thresh = 1,
-                                      solver="osqp")) # 1.98s
+                                      solver="osqp")) # 1.86s
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
