@@ -93,11 +93,14 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     Xty <- as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw))))
   }
   
-  #Obtain settings  and create model
+  # Obtain settings  and create model
   settings <- do.call(osqpSettings, control.solver[-7])
-  if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else settings <- c(settings, warm_start = FALSE)
+  if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else 
+    settings <- c(settings, warm_start = FALSE)
   
-  model <- osqp(P = XtX, q = -Xty, A = .sparseDiagonal(ncol(Xw)), l = lower, u = upper, pars = settings)
+  model <- osqp(P = XtX, q = -Xty, 
+                A = .sparseDiagonal(ncol(Xw)), 
+                l = lower, u = upper, pars = settings)
   if (!is.null(start)) model$WarmStart(x=start)
   
   #Solve model

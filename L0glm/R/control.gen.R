@@ -88,7 +88,7 @@ control.fit.gen <- function(maxit = 10, block.size = NULL, tol = 1E-10){
 control.solver.gen <- function(solver, method = NULL,
                                maxit = NULL,
                                blocksize = NULL,
-                               reltol = 1E-5,
+                               reltol = 1E-8,
                                tol = NULL,
                                abstol = NULL,
                                verbose = FALSE,
@@ -98,15 +98,16 @@ control.solver.gen <- function(solver, method = NULL,
   }
 
   if(solver == "osqp"){
-    if(is.null(maxit)) maxit <- 100000
-    if(is.null(abstol)) abstol <- 1e-15
+    if(is.null(maxit)) maxit <- 10000
+    if(is.null(abstol)) abstol <- 1e-8
     if(is.null(rowaug)) rowaug <- TRUE
 
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
-              max_iter = maxit, linsys_solver = 0L, polish = TRUE, rowaug = rowaug)
+              max_iter = maxit, linsys_solver = 0L, polish = FALSE, 
+              rowaug = rowaug)
 
   } else if (solver == "glmnet") {
-    if(is.null(maxit)) maxit <- 1e+05
+    if(is.null(maxit)) maxit <- 1e5
     if(is.null(abstol)) abstol <- 1e-10
     if(is.null(rowaug)) rowaug <- TRUE
     if(rowaug == FALSE) print("Only row augmentation is allowed with this method.")
