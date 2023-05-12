@@ -8,7 +8,9 @@ nnL0poisglm = function(X,
                        gamma = 2,
                        thresh = 1,
                        solver = "eigen", # or "osqp" or "glmnet"
-                       method = 7L) { # 3(+4) = LSCG, 5+6 = CG, 7+8 = Cholesky  
+                       method = 7L,
+                       maxit = 25,
+                       reltol = 1E-5) { # 3(+4) = LSCG, 5+6 = CG, 7+8 = Cholesky  
   # print(sum(sim$beta_true!=0))
   
   weights = 1/(as.vector(y)+0.1) # observation weights (approx 1/Poisson noise variance)
@@ -31,7 +33,8 @@ nnL0poisglm = function(X,
                                         method = 7L) # 0.03s, Eigen Cholesky was fastest, so we use that for initialisation
   # print(range(beta_hat))
   
-  for (i in 1:20) {  
+  for (i in 1:maxit) {  
+    # print(i)
     nonzero = as.vector(beta_hat!=0) # nonzero coefficients
     # print(sum(nonzero))
     pen.weights[nonzero] = 1/(1+abs(beta_hat[nonzero])^gamma+delta^gamma) # update L2 norm ridge regression penalty weights
@@ -44,10 +47,11 @@ nnL0poisglm = function(X,
     # X.n = sqrt(colSums(Xwaug^2))
     # X.n = rep(1, sum(nonzero))
     
+    beta_hat_old <- beta_hat
     beta_hat[nonzero] <- lmridge(X = Xwaug, y = ywaug, # we use fast LSCG as initialisation
                                  pen.weights = rep(1, ncol(Xwaug)),
                                  lambdas = rep(0, ncol(Xwaug)),
-                                 start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                                 start = beta_hat[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                                  lower = rep(0, ncol(Xwaug)), 
                                  upper = rep(Inf, ncol(Xwaug)),
                                  solver = solver, # PS something wrong with solver="glmnet"
@@ -56,6 +60,13 @@ nnL0poisglm = function(X,
     # weights = 1/pred # updated 1/variance weights for Poisson
     # Xw = Diagonal(x=sqrt(weights)) %*% X # updated Xw
     # yw = as.vector(y*sqrt(weights)) # updated yw
+    
+    previous_norm <- sqrt(sum(beta_hat_old^2))
+    current_norm <- sqrt(sum(beta_hat^2))
+    relative_difference <- abs(current_norm - previous_norm) / previous_norm
+    
+    # print(relative_difference)
+    if (relative_difference < reltol) break
   }
   return(beta_hat)
 }
@@ -103,7 +114,7 @@ system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
             gamma = 2,
             thresh = 1,
             solver="eigen", 
-            method=3L)) # LSCG, 0.65s with tol=1E-5 or 1.5s with tol=1E-10
+            method=3L)) # LSCG, 0.65s with tol=1E-5 or 1.45s with tol=1E-10
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -111,7 +122,7 @@ system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  gamma = 2,
                                  thresh = 1,
                                  solver="eigen", 
-                                 method=5L)) # 0.83s, CG
+                                 method=5L)) # 0.80s, CG
 system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -119,7 +130,7 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  gamma = 2,
                                  thresh = 1,
                                  solver="eigen", 
-                                 method=7L)) # 0.16s - Cholesky : FASTEST
+                                 method=7L)) # 0.20s - Cholesky : FASTEST
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2, 
                                      y=as.vector(sim$y),
@@ -137,7 +148,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
             # / X.n.L2
-) # 0.26s for n=p=10000
+) # 0.25s for n=p=10000
 
 # L0glm with osqp solver ####
 X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
@@ -154,7 +165,15 @@ system.time(coefs_osqp <- L0glm.fit(X=sim$X / X.n.L2,
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
              / X.n.L2
-) # 1.61s for n=p=10000
+) # 1.71s for n=p=10000
+
+system.time(coefs_osqp2 <- nnL0poisglm(X = sim$X,
+                                      y = sim$y, 
+                                      lambda = 1, 
+                                      delta = 1E-10, 
+                                      gamma = 2,
+                                      thresh = 1,
+                                      solver="osqp")) # 1.98s
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -162,37 +181,41 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       delta = 1E-10, 
                                       gamma = 2,
                                       thresh = 1,
-                                      solver="glmnet")) # 1.71s
+                                      solver="glmnet")) # 2.34s
 
-mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 3.38143e-07 with tol=1E-10
-mean(abs(coefs_chol-coefs_cg)) # 3.291415e-07
-mean(abs(coefs_chol-coefs_osqp)) # 17.34572
-mean(abs(coefs_chol-coefs_glmnet)) # 17.36323
-mean(abs(coefs_chol-coefs_chol2)) # 0.227413
+mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 2.774932e-07 with tol=1E-10
+mean(abs(coefs_chol-coefs_cg)) # 2.599545e-07
+mean(abs(coefs_chol-coefs_osqp)) # 17.42289
+mean(abs(coefs_chol-coefs_osqp2)) # 158.1443
+mean(abs(coefs_chol-coefs_glmnet)) # 18.31585
+mean(abs(coefs_chol-coefs_chol2)) # 0.3983627
 
-mean(abs(coefs_lscg-sim$beta_true)) # 37.55488
-mean(abs(coefs_cg-sim$beta_true)) # 37.54006
-mean(abs(coefs_chol-sim$beta_true)) # 37.54006
+mean(abs(coefs_lscg-sim$beta_true)) # 37.51987
+mean(abs(coefs_cg-sim$beta_true)) # 37.51987
+mean(abs(coefs_chol-sim$beta_true)) # 37.51987
 mean(abs(coefs_chol2-sim$beta_true)) # 37.59185
 mean(abs(coefs_osqp-sim$beta_true)) # 40.32613
-mean(abs(coefs_glmnet-sim$beta_true)) # 44.86981
+mean(abs(coefs_osqp2-sim$beta_true)) # 166.9919 # TODO check optimal settings of osqp solver?
+mean(abs(coefs_glmnet-sim$beta_true)) # 44.18537
 
 plot(sim$beta_true, coefs_chol, pch=16, col="steelblue")
 plot(sim$beta_true, coefs_chol2, pch=16, col="steelblue")
 
 thresh = 1
 
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_lscg)>thresh))) # 859 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_cg)>thresh))) # 859 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol)>thresh))) # 859 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_lscg)>thresh))) # 856 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_cg)>thresh))) # 856 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol)>thresh))) # 856 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol2)>thresh))) # 860 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp)>thresh))) # 855 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_glmnet)>thresh))) # 851 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp2)>thresh))) # 937 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_glmnet)>thresh))) # 847 (should be 1000)
 
-sum(coefs_lscg>thresh) # 1079 (should be 1000)
-sum(coefs_cg>thresh) # 1079 (should be 1000)
-sum(coefs_chol>thresh) # 1079 (should be 1000)
+sum(coefs_lscg>thresh) # 1069 (should be 1000)
+sum(coefs_cg>thresh) # 1069 (should be 1000)
+sum(coefs_chol>thresh) # 1069 (should be 1000)
 sum(coefs_chol2>thresh) # 1082 (should be 1000)
 sum(coefs_osqp>thresh) # 1097 (should be 1000)
-sum(coefs_glmnet>thresh) # 1098 (should be 1000)
+sum(coefs_osqp2>thresh) # 2275 (should be 1000)
+sum(coefs_glmnet>thresh) # 1089 (should be 1000)
 

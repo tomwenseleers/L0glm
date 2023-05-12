@@ -647,9 +647,13 @@ L0glm.fit <- function(X, y,
     lambda.adap <- lambda * pen.weights # ridge penalty with adaptive weights
     
     # Fit the model with current adaptive weights.
-    fit <- glm.iwls(X = X, y = y, i = i, weights = weights, lower = lower, upper = upper, solver = solver, method = method,
-                     family = family, start = start, lambda = lambda.adap, converged.set = mask, nonnegative = nonnegative,
-                     control.iwls = control.iwls, control.solver = control.solver, control.block = control.block, verbose = verbose)
+    fit <- glm.iwls(X = X, y = y, i = i, weights = weights, 
+                    lower = lower, upper = upper, solver = solver, method = method,
+                    family = family, 
+                    start = beta0, # set to NULL to have LSCG & CG being initialised by diagonal / Jacobi initialisation
+                    lambda = lambda.adap, 
+                    converged.set = mask, nonnegative = nonnegative,
+                    control.iwls = control.iwls, control.solver = control.solver, control.block = control.block, verbose = verbose)
     iter.iwls[i] <- fit$iter.iwls
     
     #if(fit$zero.coefs) break # TODO: remove? doesn't change anything 

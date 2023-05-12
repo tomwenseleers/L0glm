@@ -52,7 +52,7 @@
 #' control.fit.gen()
 #'
 #' @export
-control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5, warn = F){
+control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5, warn = F){
   l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
   return(l)
 }
@@ -63,7 +63,7 @@ control.l0.gen <- function(maxit = 100, reltol = 1E-4, delta = 1E-5, gamma = 1.5
 #' Generate parameters that control the IWLS iteration.
 #'
 #' @export
-control.iwls.gen <- function(maxit = 1, reltol = 1E-3, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
+control.iwls.gen <- function(maxit = 1, reltol = 1E-5, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -98,8 +98,8 @@ control.solver.gen <- function(solver, method = NULL,
   }
 
   if(solver == "osqp"){
-    if(is.null(maxit)) maxit <- 4000
-    if(is.null(abstol)) abstol <- 1e-10
+    if(is.null(maxit)) maxit <- 100000
+    if(is.null(abstol)) abstol <- 1e-15
     if(is.null(rowaug)) rowaug <- TRUE
 
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
