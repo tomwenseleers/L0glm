@@ -26,7 +26,7 @@ library(tensorflow)
 
 set.seed(1)
 sim = simulate_spike_train(n=10000, p=10000, 
-                           k=1000, sparse=TRUE) # blurred spike train with 10000 timepoints & 200 blurred peaks
+                           k=100, sparse=TRUE) # blurred spike train with 10000 timepoints & 200 blurred peaks
 library(Matrix)
 Xs = sim$X # sparse covariate matrix Xs of class dgCMatrix (time-shifted copies of the point spread function)
 y = sim$y
@@ -83,10 +83,10 @@ cg_solve2 = function(A, b,
 
 # timings Eigen sparse Cholesky solve, using CPU - VERY FAST
 library(microbenchmark)
-microbenchmark(s1 <- solve_sparse_chol(A = as(crossprod(Xswaug),"generalMatrix"),
+system.time(s1 <- solve_sparse_chol(A = as(crossprod(Xswaug),"generalMatrix"),
                                         b = as.matrix(crossprod(Xswaug, ywaug)), 
                                         pivot = 1L,
-                                        ordering = 0L)$coefficients, unit="s") # 0.04s using Eigen sparse Cholesky solver
+                                        ordering = 0L)$coefficients) # 0.04s using Eigen sparse Cholesky solver
 cor(as.vector(s1),as.vector(sim$beta_true)) # 0.1547611
 plot(as.vector(s1),as.vector(sim$beta_true))
 hist(s1)
@@ -130,7 +130,7 @@ Xswaug_dense_cpu <- gpu.matrix(Xswaug, dtype = "float32", device="cpu", sparse =
 Xswaug_tensorflow_gpu <- gpu.matrix(Xswaug, type = "tensorflow", dtype = "float32", sparse = T)
 ywaug_tensorflow_gpu <- gpu.matrix(ywaug, type = "tensorflow", dtype = "float32", sparse = F) 
 
-# timings torch sparse Cholesky solve, using GPU
+# timings torch sparse Cholesky solve, using GPU - QUITE GOOD TIMINGS
 system.time(s3 <- chol_solve(crossprod(Xswaug_gpu, ywaug_gpu), chol(crossprod(Xswaug_gpu)))) # 0.71s, faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
 max(abs(s3-s1)) # 8
 
@@ -138,7 +138,7 @@ max(abs(s3-s1)) # 8
 system.time(s4 <- chol_solve(crossprod(Xswaug_cpu, ywaug_cpu), chol(crossprod(Xswaug_cpu)))) # 3.06s, slightly faster than Base R Cholesky solve with IntelMKL, but slower than Eigen's sparse Cholesky solver
 max(abs(s4-s1)) # 8
 
-# timings torch dense Cholesky solve, using GPU - FASTEST DENSE SOLVER
+# timings torch dense Cholesky solve, using GPU - FASTEST DENSE SOLVER, BEST GPU & CPU OPTION
 system.time(s5 <- chol_solve(crossprod(Xswaug_dense_gpu, ywaug_gpu), 
                              chol(crossprod(Xswaug_dense_gpu)))) # 1.13s, faster than torch Cholesky solve using CPU, faster than Base R Cholesky solve with IntelMKL & faster than Eigen's dense Cholesky solver
 max(abs(s5-s1)) # 8
@@ -152,7 +152,7 @@ max(abs(s6-s1)) # 8
 system.time(s7 <- cg_solve2(Xswaug_tensorflow_gpu, ywaug_tensorflow_gpu)) # 19s
 max(abs(s7-s1)) # 1.073286e-05
 
-# timings torch sparse least squares conjugate gradient pure R implementation, using GPU
+# timings torch sparse least squares conjugate gradient pure R implementation, using GPU - GOOD TIMINGS
 system.time(s8 <- cg_solve2(Xswaug_gpu, ywaug_gpu)) # 1.68s
 max(abs(s8-s1)) # 1.317928e-06
 
@@ -202,15 +202,18 @@ s16 <- solve_dense_CG(A = A,
 max(abs(s16-s1)) # 0.001054265
 
 
+# LEAST SQUARES CONJUGATE GRADIENT - DOES NOT FORM XtX SO SCALES TO VERY LARGE MATRICES ###
+# e.g. still works with 1 million variables
+
 # timings Eigen sparse least squares conjugate gradient, without forming normal equations & calculating XtX, using CPU - FASTEST
 library(microbenchmark)
-microbenchmark({ x0 <- as.vector(crossprod(Xswaug, ywaug) / colSums(Xswaug^2)); # colSums(Xswaug^2) = diag(crossprod(Xswaug)))
-                 s17 <- solve_sparse_LSCG(A = Xswaug,
+system.time({ x0 <- as.vector(crossprod(Xswaug, ywaug) / colSums(Xswaug^2)); # colSums(Xswaug^2) = diag(crossprod(Xswaug)))
+              s17 <- solve_sparse_LSCG(A = Xswaug,
                                          b = ywaug,
                                          x0 = x0, # ywaug[1:ncol(Xswaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
                                          tol = 1E-7,
                                          maxit = 0L,
-                                         precond = 1L)$coefficients }, unit="s") # 0.04s using Eigen least squares conjugate gradient
+                                         precond = 1L)$coefficients }) # 0.04s using Eigen least squares conjugate gradient
 max(abs(s17-s1)) # 4.748111e-06
 
 
