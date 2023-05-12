@@ -19,7 +19,7 @@ block.lmridge <- function(X, y, lambdas,
   
   if(is.null(control.block$block.size) || control.block$block.size > p) control.block$block.size <- p
   if(is.null(block.ids)) block.ids <- ceiling((1:p)/control.block$block.size)
-  if(length(lambda) == 1) lambda <- rep(lambda, p)
+  if(length(lambdas) == 1) lambdas <- rep(lambdas, p)
   if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", list(solver = solver, method = method))
   
   
@@ -56,10 +56,12 @@ block.lmridge <- function(X, y, lambdas,
         b <- yw
       }
       # Compute coefficients
-      coefs[block.ids == i] <- lmridge(X = A, y = as.vector(b), lambda = lambda[block.ids == i],
-                                       weights = weights, lower = lower[block.ids == i], upper = upper[block.ids == i], nonnegative = nonnegative,
-                                      block = TRUE, solver = solver, method = method, start = start[block.ids == i],
-                                      control.solver = control.solver, verbose = verbose)
+      coefs[block.ids == i] <- lmridge(X = A, y = as.vector(b), lambdas = lambdas[block.ids == i],
+                                       weights = weights, lower = lower[block.ids == i], upper = upper[block.ids == i], 
+                                       nonnegative = nonnegative,
+                                       # block = TRUE, 
+                                       solver = solver, method = method, start = start[block.ids == i],
+                                       control.solver = control.solver, verbose = verbose)
       coefs[is.na(coefs) | is.infinite(coefs)] <- 0
     }
     conv <- sqrt(sum((coefs0 - coefs)^2))/sqrt(sum((coefs0)^2)) < control.block$tol || all(coefs == 0)  # ||beta_{k-1} - beta_k||_2 / ||beta_{k-1}||_2

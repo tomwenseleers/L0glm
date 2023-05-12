@@ -23,7 +23,7 @@ nnL0poisglm = function(X,
   # require(microbenchmark)
   beta_hat <- lmridge(X = Xwaug, y = ywaug, # we use fast LSCG as initialisation
                                         pen.weights = pen.weights,
-                                        lambdas = rep(0, p), # lambdas, # TODO really slow if lambdas are given & Xw and yw is passed - check that no augmentation occurs when lambda is passed as NULL or with all zeros
+                                        lambdas = NULL, # lambdas, # TODO really slow if lambdas are given & Xw and yw is passed - check that no augmentation occurs when lambda is passed as NULL or with all zeros
                                         start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                                         lower = rep(0, p), 
                                         upper = rep(Inf, p),
@@ -83,7 +83,7 @@ microbenchmark(beta_init_jacobi <- as.vector(crossprod(Xwaug, ywaug) / colSums(X
 # 0.001s, colSums(Xwaug^2) = diag(crossprod(Xwaug)))
 
 # ridge regression initialisation ####
-microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "dgCMatrix"), # / X.n.L2,
+microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "generalMatrix"), # / X.n.L2,
                                                     b = as.vector(crossprod(Xwaug, ywaug)),
                                                     # x0 = beta_init_jacobi, # TODO check if this could be good default initialisation # ywaug[1:ncol(Xspwaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
                                                     # tol = 1E-3,
@@ -103,7 +103,7 @@ system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
             gamma = 2,
             thresh = 1,
             solver="eigen", 
-            method=3L)) # 0.65s, LSCG (tol=1E-5) or 1.5s (tol=1E-10)
+            method=3L)) # LSCG, 0.65s with tol=1E-5 or 1.5s with tol=1E-10
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -137,22 +137,11 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
             # / X.n.L2
-) # 0.2s for n=p=10000
-
-X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
-system.time(coefs_osqp <- nnL0poisglm(X = sim$X / X.n.L2,
-                                 y = sim$y, 
-                                 lambda = 1, 
-                                 delta = 1E-10, 
-                                 gamma = 2,
-                                 thresh = 1,
-                                 solver="osqp") 
-            / X.n.L2
-            ) # 2.4s, 9.4s in MRO
+) # 0.26s for n=p=10000
 
 # L0glm with osqp solver ####
 X.n.L2 <- sqrt(colSums(sim$X^2)) # L2 norm column normalisation
-system.time(coefs_osqp2 <- L0glm.fit(X=sim$X / X.n.L2, 
+system.time(coefs_osqp <- L0glm.fit(X=sim$X / X.n.L2, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
                                      # start=as.vector(beta_init_ridge)*X.n.L2, # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
@@ -165,7 +154,7 @@ system.time(coefs_osqp2 <- L0glm.fit(X=sim$X / X.n.L2,
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
              / X.n.L2
-) # 1.54s for n=p=10000
+) # 1.61s for n=p=10000
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -177,8 +166,7 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
 
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 3.38143e-07 with tol=1E-10
 mean(abs(coefs_chol-coefs_cg)) # 3.291415e-07
-mean(abs(coefs_chol-coefs_osqp)) # 19.01243
-mean(abs(coefs_chol-coefs_osqp2)) # 17.34572
+mean(abs(coefs_chol-coefs_osqp)) # 17.34572
 mean(abs(coefs_chol-coefs_glmnet)) # 17.36323
 mean(abs(coefs_chol-coefs_chol2)) # 0.227413
 
@@ -186,8 +174,7 @@ mean(abs(coefs_lscg-sim$beta_true)) # 37.55488
 mean(abs(coefs_cg-sim$beta_true)) # 37.54006
 mean(abs(coefs_chol-sim$beta_true)) # 37.54006
 mean(abs(coefs_chol2-sim$beta_true)) # 37.59185
-mean(abs(coefs_osqp-sim$beta_true)) # 41.85887
-mean(abs(coefs_osqp2-sim$beta_true)) # 40.32613
+mean(abs(coefs_osqp-sim$beta_true)) # 40.32613
 mean(abs(coefs_glmnet-sim$beta_true)) # 44.86981
 
 plot(sim$beta_true, coefs_chol, pch=16, col="steelblue")
@@ -199,15 +186,13 @@ length(intersect(which(sim$beta_true>0), which(as.vector(coefs_lscg)>thresh))) #
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_cg)>thresh))) # 859 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol)>thresh))) # 859 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_chol2)>thresh))) # 860 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp)>thresh))) # 851 (should be 1000)
-length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp2)>thresh))) # 855 (should be 1000)
+length(intersect(which(sim$beta_true>0), which(as.vector(coefs_osqp)>thresh))) # 855 (should be 1000)
 length(intersect(which(sim$beta_true>0), which(as.vector(coefs_glmnet)>thresh))) # 851 (should be 1000)
 
 sum(coefs_lscg>thresh) # 1079 (should be 1000)
 sum(coefs_cg>thresh) # 1079 (should be 1000)
 sum(coefs_chol>thresh) # 1079 (should be 1000)
 sum(coefs_chol2>thresh) # 1082 (should be 1000)
-sum(coefs_osqp>thresh) # 1090 (should be 1000)
-sum(coefs_osqp2>thresh) # 1097 (should be 1000)
+sum(coefs_osqp>thresh) # 1097 (should be 1000)
 sum(coefs_glmnet>thresh) # 1098 (should be 1000)
 
