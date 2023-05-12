@@ -365,7 +365,7 @@ L0glm <- function(formula,
   # Check family argument
   if(is.character(family)) family <- get(family, mode = "function", envir = parent.frame())
   if(is.function(family)) family <- family()
-  if(family$family == "gaussian" && family$link == "identity") control.iwls$maxit <- 1 # with gaussian identity loss we end up doing single nnls iteration
+  if(family$family == "gaussian" && family$link == "identity") control.iwls$maxit <- 1 # with gaussian identity loss we end up doing single iwls iteration
   if(family$family == "poisson") y <- as.integer(y)
   
   # Get lambda with or without cross-validation
@@ -770,10 +770,9 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     
     if(control.block$block.size < p){
       block.ids <- ceiling((1:p)/control.block$block.size)
-      beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = weights, control.block = control.block,
+      beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = W, control.block = control.block,
                             lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
-                            start = betaold, 
-                            control.solver = control.solver, verbose = verbose)
+                            start = betaold, control.solver = control.solver, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
         beta[beta!=0] <- lmridge(X[good,beta != 0, drop = F], y = y[good], lambdas = lambda[beta != 0], weights = W[good],
