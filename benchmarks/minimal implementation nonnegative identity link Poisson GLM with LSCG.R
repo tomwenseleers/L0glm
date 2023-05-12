@@ -95,7 +95,7 @@ microbenchmark(beta_init_jacobi <- as.vector(crossprod(Xwaug, ywaug) / colSums(X
 # 0.001s, colSums(Xwaug^2) = diag(crossprod(Xwaug)))
 
 # ridge regression initialisation ####
-microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "generalMatrix"), # / X.n.L2,
+microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "generalMatrix"),
                                                     b = as.vector(crossprod(Xwaug, ywaug)),
                                                     # x0 = beta_init_jacobi, # TODO check if this could be good default initialisation # ywaug[1:ncol(Xspwaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
                                                     # tol = 1E-3,
@@ -103,9 +103,10 @@ microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "ge
                                                     ordering = 0L
                                                     #maxit = 0L,
                                                     #precond = 1L
-                                                    )$coefficients, # / X.n.L2, 
+                                                    )$coefficients, 
                unit="s") 
 # 0.034s
+beta_init_ridge[beta_init_ridge<0] = 0
 
 library(microbenchmark)
 system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
@@ -135,10 +136,10 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
 
  
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
-system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2, 
+system.time(coefs_chol2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
-                                     # start=as.vector(beta_init_ridge) * X.n.L2, # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
+                                     # start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                      # family = poisson(identity),
                                      family = gaussian(identity),
                                      solver = "eigen", method = 7L, 
@@ -150,8 +151,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X, # / X.n.L2,
                                      control.solver = do.call("control.solver.gen", 
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
-            # / X.n.L2
-) # 0.19s for n=p=10000
+) # 0.20s for n=p=10000
 
 system.time(coefs_osqp <- nnL0poisglm(X = sim$X, 
                                       y = sim$y, 
@@ -169,13 +169,13 @@ system.time(coefs_osqp2 <- L0glm.fit(X=sim$X,
                                      # start=as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
                                      # family = poisson(identity),
                                      family = gaussian(identity),
-                                     solver = "osqp", # method = 7L, 
+                                     solver = "osqp", 
                                      lambda = 1, nonnegative = TRUE,
-                                     control.iwls = do.call("control.iwls.gen", list(maxit = 2)), # 2 gave better solution
+                                     control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
                                      control.l0 = c(do.call("control.l0.gen", 
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
-) # 4.39s for n=p=10000
+) # 4.19s for n=p=10000
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -188,7 +188,7 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 7.552769e-07 with tol=1E-10
 mean(abs(coefs_chol-coefs_cg)) # 7.483028e-07
 mean(abs(coefs_chol-coefs_osqp)) # 9.30883
-mean(abs(coefs_chol-coefs_osqp2)) # 9.449058
+mean(abs(coefs_chol-coefs_osqp2)) # 9.449736
 mean(abs(coefs_chol-coefs_glmnet)) # 18.34359
 mean(abs(coefs_chol-coefs_chol2)) # 0.48072560
 
@@ -197,7 +197,7 @@ mean(abs(coefs_cg-sim$beta_true)) # 37.51987
 mean(abs(coefs_chol-sim$beta_true)) # 37.51987
 mean(abs(coefs_chol2-sim$beta_true)) # 37.59185
 mean(abs(coefs_osqp-sim$beta_true)) # 38.31471
-mean(abs(coefs_osqp2-sim$beta_true)) # 37.72349
+mean(abs(coefs_osqp2-sim$beta_true)) # 37.72411
 mean(abs(coefs_glmnet-sim$beta_true)) # 44.18537
 
 plot(sim$beta_true, coefs_chol, pch=16, col="steelblue")
