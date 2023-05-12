@@ -10,7 +10,7 @@ nnL0poisglm = function(X,
                        solver = "eigen", # or "osqp" or "glmnet"
                        method = 7L,
                        maxit = 25,
-                       reltol = 1E-5) { # 3(+4) = LSCG, 5+6 = CG, 7+8 = Cholesky  
+                       reltol = 1E-5) { # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
   # print(sum(sim$beta_true!=0))
   
   weights = 1/(as.vector(y)+0.1) # observation weights (approx 1/Poisson noise variance)
@@ -23,13 +23,13 @@ nnL0poisglm = function(X,
   Xw = Diagonal(x=sqrt(weights)) %*% X # = X * sqrt(weights)
   Xwaug = rbind(Xw, Diagonal(x=sqrt(lambdas))) # row augmented covariate matrix
   # require(microbenchmark)
-  beta_hat <- lmridge(X = Xwaug, y = ywaug, # we use fast LSCG as initialisation
+  beta_hat <- lmridge(X = Xwaug, y = ywaug, # we use Eigen Cholesky as initialisation
                                         pen.weights = pen.weights,
                                         lambdas = NULL,
-                                        start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                                        # start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                                         lower = rep(0, p), 
                                         upper = rep(Inf, p),
-                                        solver = "eigen", # PS something wrong with solver="glmnet"
+                                        solver = "eigen",
                                         method = 7L) # 0.03s, Eigen Cholesky was fastest, so we use that for initialisation
   # print(range(beta_hat))
   
@@ -45,14 +45,11 @@ nnL0poisglm = function(X,
     Xwaug = rbind(Xw[,nonzero,drop=F], Diagonal(x=sqrt(lambdas[nonzero])))
     ywaug = c(yw, rep(0, sum(nonzero)))
     
-    # X.n = sqrt(colSums(Xwaug^2))
-    # X.n = rep(1, sum(nonzero))
-    
     beta_hat_old <- beta_hat
-    beta_hat[nonzero] <- lmridge(X = Xwaug, y = ywaug, # we use fast LSCG as initialisation
+    beta_hat[nonzero] <- lmridge(X = Xwaug, y = ywaug,
                                  pen.weights = rep(1, ncol(Xwaug)),
                                  lambdas = rep(0, ncol(Xwaug)),
-                                 start = NULL, # beta_hat[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)), #  # 
+                                 start = NULL, # beta_hat[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)), 
                                  lower = rep(0, ncol(Xwaug)), 
                                  upper = rep(Inf, ncol(Xwaug)),
                                  solver = solver,
@@ -97,12 +94,12 @@ microbenchmark(beta_init_jacobi <- as.vector(crossprod(Xwaug, ywaug) / colSums(X
 # ridge regression initialisation ####
 microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "generalMatrix"),
                                                     b = as.vector(crossprod(Xwaug, ywaug)),
-                                                    # x0 = beta_init_jacobi, # TODO check if this could be good default initialisation # ywaug[1:ncol(Xspwaug)], # or even better: use beta_init below in section diagonal/jacobi preconditioner
+                                                    # x0 = beta_init_jacobi,
                                                     # tol = 1E-3,
                                                     pivot = 1L,
                                                     ordering = 0L
-                                                    #maxit = 0L,
-                                                    #precond = 1L
+                                                    # maxit = 0L,
+                                                    # precond = 1L
                                                     )$coefficients, 
                unit="s") 
 # 0.034s
@@ -139,9 +136,9 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
-                                     # start=as.vector(beta_init_ridge), # y, # as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
-                                     # family = poisson(identity),
-                                     family = gaussian(identity),
+                                     # start=as.vector(beta_init_ridge),
+                                     # family = poisson(identity), # gives worse solution
+                                     family = gaussian(identity), 
                                      solver = "eigen", method = 7L, 
                                      lambda = 1, nonnegative = TRUE,
                                      control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
@@ -166,8 +163,8 @@ system.time(coefs_osqp <- nnL0poisglm(X = sim$X,
 system.time(coefs_osqp2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
-                                     # start=as.vector(beta_init_ridge), # beta_init_nnwls_osqp2,
-                                     # family = poisson(identity),
+                                     # start=as.vector(beta_init_ridge), 
+                                     # family = poisson(identity), # gives worse solution
                                      family = gaussian(identity),
                                      solver = "osqp", 
                                      lambda = 1, nonnegative = TRUE,
