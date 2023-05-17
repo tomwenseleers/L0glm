@@ -285,7 +285,7 @@ p <- ncol(X)
 # L0glm fit applied separately to each of the columns of y :
 # (see section 2.2 for a parallelized version of this)
 # NOTE I think L0glm.fit should return this solution by default if you pass it
-# a Y matrix
+# a Y matrix, this solution could be called "independent L0" by analogy with https://hichamjanati.github.io/mutar/api.html
 
 system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
   # print(col)
@@ -301,7 +301,7 @@ system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
   }))) # 11.7s with eigen solver 7 (Cholesky), TODO check why glmnet & osqp crash or give error
 cor(as.vector(beta_L0_1), as.vector(sim$beta_true)) # 0.9979857
 # NOTE I think L0glm.fit should return this solution by default if you pass it
-# a Y matrix
+# a Y matrix, this solution could be called "independent L0" by analogy with https://hichamjanati.github.io/mutar/api.html
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_L0_1^1E-10, col = topo.colors(255),
       useRaster=TRUE,
@@ -349,7 +349,6 @@ length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1)!=0))) 
 
 
 # 3d step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
-# near perfect solution
 avgcoefs = rowMeans(beta_L0_1_2)
 sum(avgcoefs>0) # 111 selected variables in 2nd pass
 variable_indices = which(avgcoefs>0)
@@ -388,7 +387,7 @@ sum(beta_L0_1_3!=0) # 3976 coefficients detected - spectra too sparse...
 length(intersect(which(sim$beta_true!=0), which(beta_L0_1_3!=0))) # 3971 out of 7645 = 52% nonzero coefficients detected
 length(intersect(which(sim$beta_true==0), which(beta_L0_1_3!=0))) # 5 out of 7645 = 0.07% false positive coefficients
 
-# NOTE: I would call this solution an L0,Linfinity GLM, which we can maybe just call multitask L0 ?
+# NOTE: I would call this solution an L0,Linfinity GLM, which we can maybe just call group L0 ?
 
 
 # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
@@ -417,7 +416,7 @@ system.time(beta_L0_1_4[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y
 }))) # 3s with eigen solver 7 (Cholesky)
 cor(as.vector(beta_L0_1_4), as.vector(sim$beta_true)) # 0.9994399
 
-# NOTE: this solution I would call "relaxed multitask L0" by analogy of a relaxed lasso, https://cran.microsoft.com/snapshot/2023-03-06/web/packages/glmnet/vignettes/relax.pdf
+# NOTE: this solution I would call "relaxed group L0" by analogy of a relaxed lasso, https://cran.microsoft.com/snapshot/2023-03-06/web/packages/glmnet/vignettes/relax.pdf
 
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_4)^1E-10, col = topo.colors(255),
@@ -433,7 +432,10 @@ sum(beta_L0_1_4!=0) # 6903 coefficients detected - very good solution!!!
 length(intersect(which(sim$beta_true!=0), which(beta_L0_1_4!=0))) # 6757 out of 7645 = 88% nonzero coefficients detected
 length(intersect(which(sim$beta_true==0), which(beta_L0_1_4!=0))) # 146 out of 7645 = 1.9% false positive coefficients
 
-
+# TODO performance should be compared to methods in
+# https://hichamjanati.github.io/mutar/index.html#
+# https://hichamjanati.github.io/mutar/api.html
+# https://scikit-learn.org/stable/auto_examples/linear_model/plot_multi_task_lasso_support.html
 
 
 
