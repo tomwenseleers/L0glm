@@ -5,6 +5,7 @@ block.lmridge <- function(X, y, lambdas,
                           coefs = rep(0, ncol(X)),
                           block.ids = NULL,
                           weights = NULL,
+                          pen.weights = rep(1, ncol(X)),
                           lower = rep(-.Machine$double.xmax,ncol(X)),
                           upper = rep(.Machine$double.xmax,ncol(X)),
                           nonnegative = FALSE,
@@ -23,10 +24,10 @@ block.lmridge <- function(X, y, lambdas,
   if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", list(solver = solver, method = method))
   
   
-
+  
   Xw <- Xweights(X, weights)
   yw <- Yweights(y, weights)
-
+  
   interc.ind <- which(grepl(colnames(Xw), pattern = "intercept", ignore.case = TRUE))
   if(max(block.ids) == 1){
     control.block$maxit <- 1
@@ -39,7 +40,7 @@ block.lmridge <- function(X, y, lambdas,
     }
   }
   blocks <- sort(unique(block.ids))
-
+  
   iter <- 1
   while(iter <= control.block$maxit){
     coefs0 <- coefs
@@ -58,7 +59,7 @@ block.lmridge <- function(X, y, lambdas,
       # Compute coefficients
       coefs[block.ids == i] <- lmridge(X = A, y = as.vector(b), lambdas = lambdas[block.ids == i],
                                        weights = weights, lower = lower[block.ids == i], upper = upper[block.ids == i], 
-                                       nonnegative = nonnegative,
+                                       nonnegative = nonnegative, pen.weights = pen.weights,
                                        # block = TRUE, 
                                        solver = solver, method = method, start = start[block.ids == i],
                                        control.solver = control.solver, verbose = verbose)
@@ -68,7 +69,7 @@ block.lmridge <- function(X, y, lambdas,
     if(conv) break
     iter <- iter + 1
   }
-
+  
   if(control.block$maxit > 1 && !conv) warning("Algorithm did not converge, try increasing control.block$block.size or control.block$maxit")
-    return(coefs)
+  return(coefs)
 }

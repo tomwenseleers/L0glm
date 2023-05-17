@@ -148,7 +148,8 @@ system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
             thresh = 1,
             solver="eigen", 
             method=3L,
-            warmupiters = warmupiters)) # LSCG, 0.65s with tol=1E-5 or 1.30s with tol=1E-10
+            warmupiters = warmupiters)) # LSCG, 0.65s with tol=1E-5 or 1.30s with tol=1E-10 & 5.77 in other comp
+
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -157,7 +158,8 @@ system.time(coefs_cg <- nnL0poisglm(X = sim$X,
                                  thresh = 1,
                                  solver="eigen", 
                                  method=5L,
-                                 warmupiters = warmupiters)) # 0.48s, CG
+                                 warmupiters = warmupiters)) # 0.48s, CG / 2.64 in other comp
+
 system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  y = sim$y, 
                                  lambda = 1, 
@@ -166,7 +168,7 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
                                  thresh = 1,
                                  solver="eigen", 
                                  method=7L,
-                                 warmupiters = warmupiters)) # 0.16s - Cholesky : FASTEST
+                                 warmupiters = warmupiters)) # 0.16s - Cholesky : FASTEST // 0.42 in other comp
 
  
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
@@ -185,7 +187,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X,
                                      control.solver = do.call("control.solver.gen", 
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
-) # 0.22s for n=p=10000
+) # 0.22s for n=p=10000 / 0.46 in other comp
 
 system.time(coefs_osqp <- nnL0poisglm(X = sim$X, 
                                       y = sim$y, 
@@ -195,7 +197,7 @@ system.time(coefs_osqp <- nnL0poisglm(X = sim$X,
                                       thresh = 1,
                                       solver="osqp",
                                       warmupiters = warmupiters)
-) # 2.68s
+) # 2.68s / 5.63 in other comp
 
 # L0glm with osqp solver ####
 system.time(coefs_osqp2 <- L0glm.fit(X=sim$X, 
@@ -210,7 +212,7 @@ system.time(coefs_osqp2 <- L0glm.fit(X=sim$X,
                                      control.l0 = c(do.call("control.l0.gen", 
                                                             list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1))$coefficients 
-) # 4.14s for n=p=10000
+) # 4.14s for n=p=10000 / 7.5 in other comp
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       y = sim$y, 
@@ -219,7 +221,7 @@ system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
                                       gamma = 2,
                                       thresh = 1,
                                       solver="glmnet",
-                                      warmupiters = warmupiters)) # 1.67s
+                                      warmupiters = warmupiters)) # 1.67s / 2.99 in other comp
 
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 7.718954e-07 with tol=1E-10
 mean(abs(coefs_chol-coefs_cg)) # 7.722587e-07

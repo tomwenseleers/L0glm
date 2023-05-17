@@ -18,17 +18,18 @@
 #'
 #' @export
 lmridge <- function(X, y, lambdas = NULL,
-                    pen.weights,
+                    pen.weights = rep(1, ncol(X)),
                     weights = NULL,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
                     block.size = NULL,
-                    solver = "osqp",
-                    method = NULL,
+                    solver = "eigen",
+                    method = ifelse(ncol(X)>=20000, 3L, 5L),
                     start = NULL,
                     control.solver = NULL,
                     verbose){
+  
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
@@ -80,7 +81,8 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     Xwaug <- Xw
     ywaug <- yw
   }
-
+  if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
+  
   if(control.solver$rowaug == TRUE){
     XtX <- crossprod(Xwaug)
     Xty <- crossprod(Xwaug, ywaug)
