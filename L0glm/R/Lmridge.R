@@ -30,7 +30,6 @@ lmridge <- function(X, y, lambdas = NULL,
                     control.solver = NULL,
                     verbose){
   
-  
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
   # Initialize control.solver variable
@@ -81,7 +80,6 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     Xwaug <- Xw
     ywaug <- yw
   }
-  if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
   
   if(control.solver$rowaug == TRUE){
     XtX <- crossprod(Xwaug)
@@ -103,7 +101,8 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
   model <- osqp(P = XtX, q = -Xty, 
                 A = .sparseDiagonal(ncol(Xw)), 
                 l = lower, u = upper, pars = settings)
-  if (!is.null(start)) model$WarmStart(x=start)
+  if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
+  model$WarmStart(x=start)
   
   #Solve model
   coefs <- model$Solve()$x

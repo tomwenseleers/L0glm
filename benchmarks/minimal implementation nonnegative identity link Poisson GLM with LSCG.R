@@ -292,15 +292,18 @@ p <- ncol(X)
 system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
   # print(col)
   nnL0poisglm(X = sim$X,
-              y = as.vector(sim$y[,col,drop=F]), 
-              lambda = 1, 
-              delta = 1E-10, 
+              y = as.vector(sim$y[,col,drop=F]),
+              lambda = 1,
+              delta = 1E-10,
               gamma = 2,
               thresh = 1,
-              solver = "eigen",  # TODO check why glmnet & osqp crash or give error
+              solver = "eigen",  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
               method = 7L,
-              warmupiters = 4L) 
-  }))) # 11.7s with eigen solver 7 (Cholesky), TODO check why glmnet & osqp crash or give error
+              warmupiters = 4L)
+  # L0glm.fit(X = sim$X,
+  #           y = as.vector(sim$y[,col,drop=F]),
+  #           )
+  }))) # 11.7s with eigen solver 7 (Cholesky) / 35s with other computer, TODO check why glmnet & osqp crash or give error
 cor(as.vector(beta_L0_1), as.vector(sim$beta_true)) # 0.9979857
 # NOTE I think L0glm.fit should return this solution by default if you pass it
 # a Y matrix, this solution could be called "independent L0" by analogy with https://hichamjanati.github.io/mutar/api.html
@@ -337,7 +340,7 @@ system.time(beta_L0_1_2[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y
                                      list(solver = "eigen", method = 7L,
                                           rowaug = FALSE)))$coefficients 
   
-}))) # 3.2s with eigen solver 7 (Cholesky)
+}))) # 3.2s with eigen solver 7 (Cholesky) / 12s with other computer
 cor(as.vector(beta_L0_1_2), as.vector(sim$beta_true)) # 0.9993619
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_2)^1E-10, col = topo.colors(255),
@@ -346,7 +349,7 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_2)^1E-10, col = to
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_1_2)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 100 true peaks
-sum(rowMin(beta_L0_1_2)!=0) # 111 peaks detected - still too high
+sum(rowMin(beta_L0_1_2)!=0) # 111 peaks detected - still too high 
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1)!=0))) # 99 out of 100 peaks detected
 
 
@@ -373,7 +376,7 @@ system.time(beta_L0_1_3[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y
                                      list(solver = "eigen", method = 7L,
                                           rowaug = FALSE)))$coefficients 
   
-}))) # 2.87s with eigen solver 7 (Cholesky)
+}))) # 2.87s with eigen solver 7 (Cholesky) / 15.2S in other computer
 cor(as.vector(beta_L0_1_3), as.vector(sim$beta_true)) # 0.9994057
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_3)^1E-10, col = topo.colors(255),
@@ -415,7 +418,7 @@ system.time(beta_L0_1_4[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y
                                      list(solver = "osqp", method = 7L,
                                           rowaug = TRUE)))$coefficients 
   
-}))) # 2.73s with osqp solver, eigen slightly faster
+}))) # 2.73s with osqp solver, eigen slightly faster / 8.84s with other computer
 cor(as.vector(beta_L0_1_4), as.vector(sim$beta_true)) # 0.9998314
 
 # NOTE: this solution I would call "relaxed group L0" by analogy of a relaxed lasso, https://cran.microsoft.com/snapshot/2023-03-06/web/packages/glmnet/vignettes/relax.pdf
