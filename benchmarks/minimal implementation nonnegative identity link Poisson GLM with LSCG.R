@@ -8,7 +8,7 @@ nnL0poisglm = function(X,
                        gamma = 2,
                        thresh = 1,
                        solver = "eigen", # or "osqp" or "glmnet"
-                       method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
+                       method = ifelse(ncol(X)<20000, 7L, 3L), # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
                        maxit = 25,
                        reltol = 1E-5,
                        warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
@@ -52,7 +52,7 @@ nnL0poisglm = function(X,
     beta_hat_old <- beta_hat
     beta_hat[nonzero] <- lmridge(X = Xwaug, y = ywaug,
                                  pen.weights = rep(1, ncol(Xwaug)),
-                                 lambdas = rep(0, ncol(Xwaug)),
+                                 lambdas = NULL, # rep(0, ncol(Xwaug)),
                                  start = beta_hat[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)), 
                                  lower = rep(0, ncol(Xwaug)), 
                                  upper = rep(Inf, ncol(Xwaug)),
@@ -60,15 +60,17 @@ nnL0poisglm = function(X,
                                  method = method)
     beta_hat[abs(beta_hat)<thresh] = 0
     nonzero = as.vector(beta_hat!=0) # nonzero coefficients
-    if (i>=warmupiters) { # after nr of warmup iterations weights are also updated (could also be done if model predictions have nearly converged)
+     if (i>=warmupiters) { # after nr of warmup iterations weights are also updated (could also be done if model predictions have nearly converged)
       pred = as.vector(X[,nonzero,drop=F] %*% beta_hat[nonzero])
       weights = 1/pred # updated 1/variance weights for Poisson
-      goodrows = (!is.na(weights)&!(weights==0)&!is.infinite(weights)) # good rows to include
+     goodrows = (!is.na(weights)&!(weights==0)&!is.infinite(weights)) # good rows to include
     }
         
     previous_norm <- sqrt(sum(beta_hat_old^2))
     current_norm <- sqrt(sum(beta_hat^2))
-    relative_difference <- abs(current_norm - previous_norm) / previous_norm
+    # print(previous_norm)
+    # print(current_norm)
+    relative_difference <- abs(current_norm - previous_norm) / (previous_norm+0.1)
     
     # print(relative_difference)
     if (relative_difference < reltol) break
@@ -76,7 +78,7 @@ nnL0poisglm = function(X,
   return(beta_hat)
 }
 
-# example
+# 1. EXAMPLE SINGLE CHANNEL ####
 set.seed(1)
 s = 0.1
 p <- n <- 10000
@@ -105,15 +107,28 @@ warmupiters = 4 # 3 or 4 gave best performance
 
 
 # couple of possible coefficient initialisations to use as starting values in L0glm.fit ####
-# Jacobi/diagonal preconditioner initialisation ####
+# orthogonal initialisation (assuming variables are orthogonal) ####
 library(microbenchmark)
-microbenchmark(beta_init_jacobi <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)), unit="s") 
+microbenchmark(beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)), unit="s") 
 # 0.001s, colSums(Xwaug^2) = diag(crossprod(Xwaug)))
+cor(beta_init_orthogonal, as.vector(sim$beta_true)) # 0.336
+plot(beta_init_orthogonal, sim$beta_true)
+# PS original variables in columns of X are obviously very far from orthogonal, 
+# but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
+# makes the assumption hold better
+
+# diagonal initialisation (assuming system is dominated by diagonal of X) ####
+# for our problem this gives the best initial solution
+# only works if X is square though
+microbenchmark(beta_init_diagonal <- y*sqrt(weights) / diag(Xw))
+# 104µs
+cor(beta_init_diagonal, as.vector(sim$beta_true)) # 0.4709823
+plot(beta_init_diagonal, sim$beta_true)
 
 # ridge regression initialisation ####
 microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "generalMatrix"),
                                                     b = as.vector(crossprod(Xwaug, ywaug)),
-                                                    # x0 = beta_init_jacobi,
+                                                    # x0 = beta_init_orthogonal,
                                                     # tol = 1E-3,
                                                     pivot = 1L,
                                                     ordering = 0L
@@ -158,7 +173,7 @@ system.time(coefs_chol <- nnL0poisglm(X = sim$X,
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
                                      weights=1/(as.vector(sim$y)+0.1),
-                                     # start=as.vector(beta_init_ridge),
+                                     # start=as.vector(beta_init_orthogonal),
                                      # family = poisson(identity), # gives worse solution
                                      family = gaussian(identity), 
                                      solver = "eigen", method = 7L, 
@@ -170,7 +185,7 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X,
                                      control.solver = do.call("control.solver.gen", 
                                                                   list(solver = "eigen", method = 7L,
                                                                        rowaug = FALSE)))$coefficients 
-) # 0.18s for n=p=10000
+) # 0.22s for n=p=10000
 
 system.time(coefs_osqp <- nnL0poisglm(X = sim$X, 
                                       y = sim$y, 
@@ -241,4 +256,264 @@ sum(coefs_chol2>thresh) # 1082 (should be 1000)
 sum(coefs_osqp>thresh) # 1073 (should be 1000)
 sum(coefs_osqp2>thresh) # 1088 (should be 1000)
 sum(coefs_glmnet>thresh) # 1084 (should be 1000)
+
+
+
+# 2. EXAMPLE MULTICHANNEL ####
+
+library(export)
+library(qlcMatrix)
+
+set.seed(1)
+sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=TRUE, sparse=TRUE)
+X <- sim$X
+Y <- sim$y
+true_coefs <- sim$beta_true
+m <- ncol(Y)
+n <- nrow(X)
+p <- ncol(X)
+
+# image(X, useRaster=TRUE)
+# graph2png(file="simulated_chromatogram.png", width=7, height=5)
+
+
+
+# ITERATED L0 penalized nonnegative Poisson GLMs FOR MULTICHANNEL DECONVOLUTION ####
+
+# 2.1 USING BASIC APPLY, I.E. NOT PARALLELIZED ####
+
+# L0glm fit applied separately to each of the columns of y :
+# (see section 2.2 for a parallelized version of this)
+# NOTE I think L0glm.fit should return this solution by default if you pass it
+# a Y matrix
+
+system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
+  # print(col)
+  nnL0poisglm(X = sim$X,
+              y = as.vector(sim$y[,col,drop=F]), 
+              lambda = 1, 
+              delta = 1E-10, 
+              gamma = 2,
+              thresh = 1,
+              solver = "eigen",  # TODO check why glmnet & osqp crash or give error
+              method = 7L,
+              warmupiters = 4L) 
+  }))) # 11.7s with eigen solver 7 (Cholesky), TODO check why glmnet & osqp crash or give error
+cor(as.vector(beta_L0_1), as.vector(sim$beta_true)) # 0.9979857
+# NOTE I think L0glm.fit should return this solution by default if you pass it
+# a Y matrix
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_L0_1^1E-10, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="L0 nonneg Poisson GLM coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_1)!=0)], col="cyan")
+sum(rowMax(sim$beta_true)!=0) # 100 true peaks
+sum(rowMin(beta_L0_1)!=0) # 299 peaks detected - still too high
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1)!=0))) # 99 out of 100 peaks detected
+
+# 2nd step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
+avgcoefs = rowMeans(beta_L0_1) # PS as(rowMax(beta_L0_1),"vector") gives worse solution
+sum(avgcoefs>0) # 299 selected variables in 1st pass
+variable_indices = which(avgcoefs>0)
+beta_L0_1_2 = Matrix(0, nrow=nrow(beta_L0_1), ncol=ncol(beta_L0_1), sparse=TRUE)
+system.time(beta_L0_1_2[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
+  # print(col)
+  L0glm.fit(X=sim$X[,variable_indices,drop=F], 
+            y=as.vector(sim$y[,col,drop=F]),
+            weights=1/(as.vector(sim$y[,col,drop=F])+0.1),
+            start=as.vector(avgcoefs[variable_indices]),
+            # family = poisson(identity), # gives worse solution
+            family = gaussian(identity), 
+            solver = "eigen", method = 7L, 
+            lambda = 1, nonnegative = TRUE,
+            control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+            control.l0 = c(do.call("control.l0.gen", 
+                                   list(maxit = 20, delta = 1E-10, gamma = 2)),
+                           thresh=1),
+            control.solver = do.call("control.solver.gen", 
+                                     list(solver = "eigen", method = 7L,
+                                          rowaug = FALSE)))$coefficients 
+  
+}))) # 3.2s with eigen solver 7 (Cholesky)
+cor(as.vector(beta_L0_1_2), as.vector(sim$beta_true)) # 0.9993619
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_2)^1E-10, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="L0 nonneg Poisson GLM coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_1_2)!=0)], col="cyan")
+sum(rowMax(sim$beta_true)!=0) # 100 true peaks
+sum(rowMin(beta_L0_1_2)!=0) # 111 peaks detected - still too high
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1)!=0))) # 99 out of 100 peaks detected
+
+
+# 3d step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
+# near perfect solution
+avgcoefs = rowMeans(beta_L0_1_2)
+sum(avgcoefs>0) # 111 selected variables in 2nd pass
+variable_indices = which(avgcoefs>0)
+beta_L0_1_3 = Matrix(0, nrow=nrow(beta_L0_1), ncol=ncol(beta_L0_1), sparse=TRUE)
+system.time(beta_L0_1_3[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
+  # print(col)
+  L0glm.fit(X=sim$X[,variable_indices,drop=F], 
+            y=as.vector(sim$y[,col,drop=F]),
+            weights=1/(as.vector(sim$y[,col,drop=F])+0.1),
+            start=as.vector(avgcoefs[variable_indices]),
+            # family = poisson(identity), # gives worse solution
+            family = gaussian(identity), 
+            solver = "eigen", method = 7L, 
+            lambda = 1, nonnegative = TRUE,
+            control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+            control.l0 = c(do.call("control.l0.gen", 
+                                   list(maxit = 20, delta = 1E-10, gamma = 2)),
+                           thresh=1),
+            control.solver = do.call("control.solver.gen", 
+                                     list(solver = "eigen", method = 7L,
+                                          rowaug = FALSE)))$coefficients 
+  
+}))) # 2.87s with eigen solver 7 (Cholesky)
+cor(as.vector(beta_L0_1_3), as.vector(sim$beta_true)) # 0.9994057
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_3)^1E-10, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="L0 nonneg Poisson GLM coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_1_3)!=0)], col="cyan")
+sum(rowMax(sim$beta_true)!=0) # 100 true peaks
+sum(rowMin(beta_L0_1_3)!=0) # 98 peaks detected
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1_3)!=0))) # 98 out of 100 peaks detected
+sum(sim$beta_true!=0) # 7645 true nonzero coefficients
+sum(beta_L0_1_3!=0) # 3976 coefficients detected - spectra too sparse...
+length(intersect(which(sim$beta_true!=0), which(beta_L0_1_3!=0))) # 3971 out of 7645 = 52% nonzero coefficients detected
+length(intersect(which(sim$beta_true==0), which(beta_L0_1_3!=0))) # 5 out of 7645 = 0.07% false positive coefficients
+
+# NOTE: I would call this solution an L0,Linfinity GLM, which we can maybe just call multitask L0 ?
+
+
+# 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
+avgcoefs = rowMeans(beta_L0_1_3)
+sum(avgcoefs>0) # 98 selected variables in 3d pass
+variable_indices = which(avgcoefs>0)
+beta_L0_1_4 = Matrix(0, nrow=nrow(beta_L0_1), ncol=ncol(beta_L0_1), sparse=TRUE)
+system.time(beta_L0_1_4[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
+  # print(col)
+  L0glm.fit(X=sim$X[,variable_indices,drop=F], 
+            y=as.vector(sim$y[,col,drop=F]),
+            weights=1/(as.vector(sim$y[,col,drop=F])+0.1),
+            start=as.vector(avgcoefs[variable_indices]),
+            # family = poisson(identity), # gives worse solution
+            family = gaussian(identity), 
+            solver = "eigen", method = 7L, 
+            lambda = 0, nonnegative = TRUE,
+            control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+            control.l0 = c(do.call("control.l0.gen", 
+                                   list(maxit = 20, delta = 1E-10, gamma = 2)),
+                           thresh=1),
+            control.solver = do.call("control.solver.gen", 
+                                     list(solver = "eigen", method = 7L,
+                                          rowaug = FALSE)))$coefficients 
+  
+}))) # 3s with eigen solver 7 (Cholesky)
+cor(as.vector(beta_L0_1_4), as.vector(sim$beta_true)) # 0.9994399
+
+# NOTE: this solution I would call "relaxed multitask L0" by analogy of a relaxed lasso, https://cran.microsoft.com/snapshot/2023-03-06/web/packages/glmnet/vignettes/relax.pdf
+
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(beta_L0_1_4)^1E-10, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="L0 nonneg Poisson GLM coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_1_4)!=0)], col="cyan")
+sum(rowMax(sim$beta_true)!=0) # 100 true peaks
+sum(rowMin(beta_L0_1_4)!=0) # 98 peaks detected
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1_4)!=0))) # 98 out of 100 peaks detected
+sum(sim$beta_true!=0) # 7645 true nonzero coefficients
+sum(beta_L0_1_4!=0) # 6903 coefficients detected - very good solution!!!
+length(intersect(which(sim$beta_true!=0), which(beta_L0_1_4!=0))) # 6757 out of 7645 = 88% nonzero coefficients detected
+length(intersect(which(sim$beta_true==0), which(beta_L0_1_4!=0))) # 146 out of 7645 = 1.9% false positive coefficients
+
+
+
+
+
+
+
+
+# 2.2 USING PARALLELISATION USING library(parallel) ####
+
+# Load the parallel package
+library(parallel)
+
+# Define the number of cores to use
+n_cores <- round(detectCores()/2) # 8 for me
+
+# Determine the type of cluster based on the operating system
+cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
+
+# Create a cluster using the number of cores
+cl <- makeCluster(n_cores, type=cluster_type) # on Mac & Ubuntu type="FORK" is faster
+
+# Export the sim data and the function to the workers
+clusterExport(cl, list("sim", "fun", "nnL0poisglm"))
+
+# Load the required libraries and functions on each worker
+# (this only needs to be done once)
+cleval <- clusterEvalQ(cl, {
+  require(L0glm)
+  devtools::load_all(".") # this should not be necessary once all callable functions are
+                          # correctly exported by the L0glm package
+})
+
+system.time({
+# Define the function to be applied
+fun <- function(cols) {
+  # require(L0glm)
+  # devtools::load_all(".")
+  
+  results <- lapply(cols, function(col) {
+    # Get the required data
+    X = sim$X
+    y = as.vector(sim$y[,col,drop=F])
+    
+    # Call nnL0poisglm
+    nnL0poisglm(X = X,
+                y = y, 
+                lambda = 1, 
+                delta = 1E-10, 
+                gamma = 2,
+                thresh = 1,
+                solver = "eigen",
+                method = 7L,
+                warmupiters = 4L)
+  })
+  
+  # Return the results as a matrix
+  do.call(cbind, results)
+}
+
+# Create a list of column index chunks
+cols <- 1:ncol(sim$y)
+chunks <- split(cols, cut(cols, n_cores))
+
+# Use clusterApply to apply the function in parallel & combine results
+beta_L0_2 <- do.call(cbind, clusterApply(cl, chunks, fun))
+
+}) # 4.46s using 8 cores
+
+# Stop the cluster
+stopCluster(cl)
+
+cor(as.vector(beta_L0_2), as.vector(sim$beta_true)) # 0.9979857
+
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_L0_2^1E-10, col = topo.colors(255),
+      useRaster=TRUE,
+      xlab="Time", ylab="Channel", main="L0 nonneg Poisson GLM coefficients")
+abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
+abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_L0_2)!=0)], col="cyan")
+
+sum(rowMax(sim$beta_true)!=0) # 100 true peaks
+sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
+
 

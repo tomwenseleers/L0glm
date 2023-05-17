@@ -808,7 +808,7 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     # if coefficients stay within reltol in terms of relative difference over
     # 2 subsequent iterations we consider they converged. If initial estimates
     # are supplied, we look only at previous iteration
-    # This is perfromed only when working with identity link
+    # This is performed only when working with identity link
     converged.set <- niters.nochange >= (2 - !is.null(start))
     if (anyNA(beta)) {
       if(control.iwls$warn) warning("Error: fit failed - NaN coefficients produced")
@@ -845,5 +845,4 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
 
 
 # TODO
-# - allow for some covariates to be constrained to nonnegativity, use QP for this
 # - Explore standardization of y and X and influence on lambda selection vs theoretical lambda
