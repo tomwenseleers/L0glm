@@ -399,22 +399,22 @@ system.time(beta_L0_1_4[variable_indices,] <- do.call(cbind, lapply(1:ncol(sim$y
   # print(col)
   L0glm.fit(X=sim$X[,variable_indices,drop=F], 
             y=as.vector(sim$y[,col,drop=F]),
-            weights=1/(as.vector(sim$y[,col,drop=F])+0.1),
+            # weights=1/(as.vector(sim$y[,col,drop=F])+0.1),
             start=as.vector(avgcoefs[variable_indices]),
-            # family = poisson(identity), # gives worse solution
-            family = gaussian(identity), 
-            solver = "eigen", method = 7L, 
+            family = poisson(identity), # gives worse solution
+            # family = gaussian(identity), 
+            solver = "osqp", method = 7L, 
             lambda = 0, nonnegative = TRUE,
-            control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
+            control.iwls = do.call("control.iwls.gen", list(maxit = 20)),
             control.l0 = c(do.call("control.l0.gen", 
                                    list(maxit = 20, delta = 1E-10, gamma = 2)),
-                           thresh=1),
+                           thresh=1E-5),
             control.solver = do.call("control.solver.gen", 
-                                     list(solver = "eigen", method = 7L,
-                                          rowaug = FALSE)))$coefficients 
+                                     list(solver = "osqp", method = 7L,
+                                          rowaug = TRUE)))$coefficients 
   
-}))) # 3s with eigen solver 7 (Cholesky)
-cor(as.vector(beta_L0_1_4), as.vector(sim$beta_true)) # 0.9994399
+}))) # 2.73s with osqp solver, eigen slightly faster
+cor(as.vector(beta_L0_1_4), as.vector(sim$beta_true)) # 0.9998314
 
 # NOTE: this solution I would call "relaxed group L0" by analogy of a relaxed lasso, https://cran.microsoft.com/snapshot/2023-03-06/web/packages/glmnet/vignettes/relax.pdf
 
@@ -428,9 +428,9 @@ sum(rowMax(sim$beta_true)!=0) # 100 true peaks
 sum(rowMin(beta_L0_1_4)!=0) # 98 peaks detected
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_1_4)!=0))) # 98 out of 100 peaks detected
 sum(sim$beta_true!=0) # 7645 true nonzero coefficients
-sum(beta_L0_1_4!=0) # 6903 coefficients detected - very good solution!!!
-length(intersect(which(sim$beta_true!=0), which(beta_L0_1_4!=0))) # 6757 out of 7645 = 88% nonzero coefficients detected
-length(intersect(which(sim$beta_true==0), which(beta_L0_1_4!=0))) # 146 out of 7645 = 1.9% false positive coefficients
+sum(beta_L0_1_4!=0) # 6882 coefficients detected - very good solution!!!
+length(intersect(which(sim$beta_true!=0), which(beta_L0_1_4!=0))) # 6882 out of 7645 = 90% nonzero coefficients detected
+length(intersect(which(sim$beta_true==0), which(beta_L0_1_4!=0))) # 104 out of 7645 = 1.4% false positive coefficients
 
 # TODO performance should be compared to methods in
 # https://hichamjanati.github.io/mutar/index.html#
