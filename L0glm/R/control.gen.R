@@ -52,8 +52,13 @@
 #' control.fit.gen()
 #'
 #' @export
-control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5, warn = F){
-  l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warn = warn)
+control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5, warmupiters = 4, warn = F){
+  if(warmupiters > maxit & maxit > 0) warmupiters <- maxit - 1 
+  if(maxit <= 0){
+    maxit <- 1
+    print("Control.l0$maxit needs to be a positive integer. Value was set to 1.")
+  }
+  l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warmupiters = warmupiters, warn = warn)
   return(l)
 }
 
@@ -64,6 +69,10 @@ control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5
 #'
 #' @export
 control.iwls.gen <- function(maxit = 1, reltol = 1E-5, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
+  if(maxit <= 0){
+    maxit <- 1
+    print("Control.iwls$maxit needs to be a positive integer. Value was set to 1.")
+  }
   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
   return(l)
 }
@@ -75,6 +84,10 @@ control.iwls.gen <- function(maxit = 1, reltol = 1E-5, thresh = 1E-7, warn = F){
 #'
 #' @export
 control.fit.gen <- function(maxit = 10, block.size = NULL, tol = 1E-10){
+  if(maxit <= 0){
+    maxit <- 1
+    print("Control.fit$maxit needs to be a positive integer. Value was set to 1.")
+  }
   l <- list(block.size = block.size, maxit = maxit, tol = tol)
   return(l)
 }
@@ -93,12 +106,15 @@ control.solver.gen <- function(solver, method = NULL,
                                abstol = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
-  if(!is.null(method) & solver != "eigen" & verbose == TRUE){
-    print("A method is only required when using an Eigen solver.")
-  }
   
   if(solver == "osqp"){
-    if(is.null(maxit)) maxit <- 10000
+    if(is.null(maxit)) {
+      maxit <- 10000
+    } else if(maxit <= 0){
+      maxit <- 1e5
+      if(verbose) print("Control.solver$maxit needs to be a positive integer fot the chosen solver. Value was set to solver default (10000).")
+    }
+    
     if(is.null(abstol)) abstol <- 1e-8
     if(is.null(rowaug)) rowaug <- TRUE
     
@@ -107,7 +123,13 @@ control.solver.gen <- function(solver, method = NULL,
               rowaug = rowaug)
     
   } else if (solver == "glmnet") {
-    if(is.null(maxit)) maxit <- 1e5
+    if(is.null(maxit)) {
+      maxit <- 1e5
+    } else if(maxit <= 0){
+      maxit <- 1e5
+      if(verbose) print("Control.solver$maxit needs to be a positive integer fot the chosen solver. Value was set to solver default (1e5).")
+    }
+    
     if(is.null(abstol)) abstol <- 1e-10
     if(is.null(rowaug)) rowaug <- TRUE
     if(rowaug == FALSE) print("Only row augmentation is allowed with this method.")

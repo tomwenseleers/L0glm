@@ -554,8 +554,8 @@ L0glm.fit <- function(X, y,
                       start = NULL,
                       lower = rep(-.Machine$double.xmax,ncol(X)), #TODO document
                       upper = rep(.Machine$double.xmax,ncol(X)), #TODO document
-                      solver = NULL,
-                      method = NULL,
+                      solver = "eigen",
+                      method = ifelse(ncol(X)>=20000, 3L, 5L),
                       group.pen.fn = NULL,
                       block.size = NULL,
                       control.solver = NULL,
@@ -568,6 +568,9 @@ L0glm.fit <- function(X, y,
   n <- nrow(X)
   p <- ncol(X)
   
+  
+  control.l0 <- do.call("control.l0.gen", control.l0)
+  control.iwls <- do.call("control.iwls.gen", control.iwls)
   if(is.null(solver) & is.null(control.solver)) stop("Please choose a solver. The available solvers are osqp, glmnet, nnls and eigen.")
   
   # Create limit vector if box constraints are provided as integers, throw warning if provided constraints are not in the correct format
@@ -596,75 +599,97 @@ L0glm.fit <- function(X, y,
   if(length(lambda) == 1) lambda <- rep(lambda, p)
   
   if("matrix" %in% class(y)){ 
-    return(multi.fit <- group.cpglm(X = X,
-                                    Y = y,
-                                    family = family,
-                                    lambda = lambda,
-                                    lower = lower,
-                                    upper = upper,
-                                    nonnegative = nonnegative,
-                                    solver = solver,
-                                    method = method,
-                                    start = start,
-                                    block.size = block.size,
-                                    control.block = control.block,
-                                    control.solver = control.solver,
-                                    control.l0 = control.l0,
-                                    control.iwls = control.iwls,
-                                    post.filter.fn = post.filter.fn,
-                                    verbose = verbose))
-    
-    # return(group.cpglm.fit2(X = X, Y = y,
-    #                         weights = weights,
-    #                         family = family,
-    #                         lambdas = lambda,
-    #                         group.pen.fn = group.pen.fn, #TODO: add it as an argument to l0glm.fit?
-    #                         start = start,
-    #                         lower = lower,
-    #                         upper = upper,
-    #                         solver = solver,
-    #                         method = method,
-    #                         nonnegative = nonnegative,
-    #                         control.l0 = control.l0,
-    #                         control.iwls = control.iwls,
-    #                         control.solver = control.solver,
-    #                         post.filter.fn = post.filter.fn,
-    #                         verbose = verbose))
+    if((ncol(y))>1){
+      return(multi.fit <- group.cpglm(X = X,
+                                      Y = y,
+                                      family = family,
+                                      lambda = lambda,
+                                      lower = lower,
+                                      upper = upper,
+                                      nonnegative = nonnegative,
+                                      solver = solver,
+                                      method = method,
+                                      start = start,
+                                      block.size = block.size,
+                                      control.block = control.block,
+                                      control.solver = control.solver,
+                                      control.l0 = control.l0,
+                                      control.iwls = control.iwls,
+                                      post.filter.fn = post.filter.fn,
+                                      verbose = verbose))
+    } else {
+      y <- as.vector(y)
+    }
+
   } else {
     y <- as.vector(y)
   }
+  
+  if (family$family == "gaussian") { # TODO for which families should i do this?
+    #fixed.weights <- rep(1, length(y))
+    fixed.weights <- 1/(y + 0.1) # TODO talk with Tom
+  } else if (family$family == "binomial") {
+    fixed.weights <- 1/(y*(1-y))
+    fixed.weights[y == 0 | y == 1] <- 1  # avoid division by zero
+  } else if (family$family == "poisson") {
+    fixed.weights <- 1/(y + 0.1)
+  } else if (family$family == "Gamma") {
+    fixed.weights <- 1/(y^2 + 0.1)
+  } else {
+    stop("Unsupported family!")
+  }
+  
+  pen.weights = rep(1, p) # ridge regression penalty weights on individual coefficients (sum to p)
+  #lambdas = lambda*pen.weights # ridge penalties on individual coefficients
+  good = (!is.na(fixed.weights)&!(fixed.weights==0)&!is.infinite(fixed.weights))
   
   
   # The adaptive ridge loop
   mask <- rep(FALSE, p)
   iter.iwls <- vector()
   beta <- if(is.null(start)) rep(1,p) else start
+  nonzero = as.vector(beta!=0) # nonzero coefficients
   
   for (i in 1:control.l0$maxit) {
     # print(i)
-    beta0 <- beta # coefs from previous iteration
+    beta0 <- beta # coefs from initialization / previous iteration
     pen.weights <- AR.weights(beta = beta, delta = control.l0$delta, gamma = control.l0$gamma)
     lambda.adap <- lambda * pen.weights # ridge penalty with adaptive weights
+    if (i <= control.l0$warmupiters & control.l0$maxit > 1){ #TODO: do warmupiters-1? since the initialization could also be counted as an iteration
+      # Fit the model with fixed weights
+      beta[nonzero] <- lmridge(X = X[good, nonzero, drop = F], y = y[good],
+                               pen.weights = pen.weights[good],
+                               weights = fixed.weights[good],
+                               lambdas = lambda.adap[nonzero],
+                               start = beta[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                               lower = lower[nonzero],
+                               upper = upper[nonzero],
+                               nonnegative = nonnegative,
+                               solver = solver,
+                               method = method)
+      
+      beta[abs(beta) < control.iwls$thresh] <- 0
+      nonzero = as.vector(beta!=0)
+      iter.iwls[i] <- 1
+    } else {
+      # Fit the model with current adaptive pen.weights and update obs weights (done within iwls loop)
+      fit <- glm.iwls(X = X, y = y, i = i, weights = weights, 
+                      lower = lower, upper = upper, solver = solver, method = method,
+                      family = family, start = beta0, # set to NULL to have LSCG & CG being initialised by diagonal / Jacobi initialisation
+                      lambda = lambda.adap, pen.weights = pen.weights,
+                      converged.set = mask, nonnegative = nonnegative,
+                      control.iwls = control.iwls, control.solver = control.solver, control.block = control.block, verbose = verbose)
+      beta <- start <- fit$coefficients  # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
+      iter.iwls[i] <- fit$iter.iwls
+    }
     
-    # Fit the model with current adaptive weights.
-    fit <- glm.iwls(X = X, y = y, i = i, weights = weights, 
-                    lower = lower, upper = upper, solver = solver, method = method,
-                    family = family, 
-                    start = beta0, # set to NULL to have LSCG & CG being initialised by diagonal / Jacobi initialisation
-                    lambda = lambda.adap, 
-                    converged.set = mask, nonnegative = nonnegative,
-                    control.iwls = control.iwls, control.solver = control.solver, control.block = control.block, verbose = verbose)
-    iter.iwls[i] <- fit$iter.iwls
     
-    #if(fit$zero.coefs) break # TODO: remove? doesn't change anything 
-    beta <- start <- fit$coefficients # Note: beta and start is updated because this allows that if only 1 iteration is required, the loop boils down to a non penalized glm
     # Control iteration
     reldiff <- 2*abs((beta-beta0)/(beta+beta0))
     mask <- reldiff <= control.l0$reltol # keep coefficients fixed in subsequent iterations if they converged
     mask[is.na(mask)] <- TRUE
     stop.loop <- sum(mask) >= (p-1)
-    
-    if(stop.loop) break
+    if(stop.loop & i > control.l0$warmupiters) break # Only break if at glm.iwls was called at least once.
   }
   
   if(control.l0$warn && control.l0$maxit > 1 && !stop.loop)
@@ -692,8 +717,9 @@ L0glm.fit <- function(X, y,
 #' performed.
 #'
 glm.iwls <- function(X, y, weights, family, i = NULL,
-                     solver = "osqp",
-                     method = NULL,
+                     solver = "eigen",
+                     pen.weights = rep(1, ncol(X)),
+                     method = ifelse(ncol(X)>=20000, 3L, 5L),
                      start = NULL,
                      lambda = rep(0, ncol(X)),
                      nonnegative = FALSE,
@@ -748,8 +774,7 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
   # Start loop
   for(j in 1:control.iwls$maxit) {
     # Linearize the response and adapt weights
-    # The updates use Fisher scoring, which is Newton-Raphson with
-    # the expected Hessian, see
+    # The updates use Fisher scoring, which is Newton-Raphson with the expected Hessian, see
     # https://stats.stackexchange.com/questions/344309/why-using-newtons-method-for-logistic-regression-optimization-is-called-iterati
     if(family$link == "identity"){ # simplified formula and faster than formula in else statement
       W <- W0 <- as.vector(weights/family$variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
@@ -771,11 +796,10 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     betaold <- beta
     
     if(is.null(control.block$block.size)) control.block$block.size = p
-    
     if(control.block$block.size < p){
       block.ids <- ceiling((1:p)/control.block$block.size)
       beta <- block.lmridge(X = X, y=y, block.ids = block.ids, lambdas = lambda, weights = W, control.block = control.block,
-                            lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
+                            pen.weights = pen.weights, lower = lower, upper = upper, nonnegative = nonnegative, solver = solver, method = method,
                             start = betaold, control.solver = control.solver, verbose = verbose)
     } else {
       if(length(beta[beta != 0]) > 1){
@@ -808,7 +832,7 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
     # if coefficients stay within reltol in terms of relative difference over
     # 2 subsequent iterations we consider they converged. If initial estimates
     # are supplied, we look only at previous iteration
-    # This is performed only when working with identity link
+    # This is perfromed only when working with identity link
     converged.set <- niters.nochange >= (2 - !is.null(start))
     if (anyNA(beta)) {
       if(control.iwls$warn) warning("Error: fit failed - NaN coefficients produced")
@@ -842,7 +866,4 @@ glm.iwls <- function(X, y, weights, family, i = NULL,
               zero.coefs = zero.coefs))
 }
 
-
-
-# TODO
-# - Explore standardization of y and X and influence on lambda selection vs theoretical lambda
+# TODO Explore standardization of y and X and influence on lambda selection vs theoretical lambda

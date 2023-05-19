@@ -1,7 +1,117 @@
 devtools::load_all(".")
-
-# minimal implementation of nonnegative L0 penalized identity link Poisson GLM
+# External L0glm.fit_new
 L0glm.fit_new = function(X, 
+                          y, 
+                          weights = rep(1, ncol(X)),
+                          family = poisson(identity),
+                          offset = rep(0, nrow(X)),
+                          start = NULL,
+                          lower = rep(0, ncol(X)),
+                          upper = rep(Inf, ncol(X)),
+                          lambda = 1, 
+                          parallellize = TRUE,
+                          delta = 1E-10, 
+                          gamma = 2,
+                          thresh = 1,
+                          solver = "eigen", # or "osqp" or "glmnet"
+                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
+                          maxit = 25,
+                          tol = 1E-10,
+                          warmupiters = 4){
+  
+  if("matrix" %in% class(y)){
+    if(ncol(y) > 1){
+      if(parallellize){
+        # Fit parallelly all channels
+        # Define the number of cores to use
+        n_cores <- round(detectCores()/2) # 8 for me
+        
+        # Determine the type of cluster based on the operating system
+        cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
+        
+        # Create a cluster using the number of cores
+        cl <- makeCluster(n_cores, type=cluster_type) # on Mac & Ubuntu type="FORK" is faster
+        
+        # Export the sim data and the function to the workers
+        clusterExport(cl, list("sim", "fun", "nnL0poisglm", "L0glm.fit_internal"))
+        
+        # Load the required libraries and functions on each worker
+        # (this only needs to be done once)
+        cleval <- clusterEvalQ(cl, {
+          require(L0glm)
+          devtools::load_all(".") # this should not be necessary once all callable functions are
+          # correctly exported by the L0glm package
+        })
+        
+        # Create a list of column index chunks
+        cols <- 1:ncol(sim$y)
+        chunks <- split(cols, cut(cols, n_cores))
+        
+        # Use clusterApply to apply the function in parallel & combine results
+        fit <- do.call(cbind, clusterApply(cl, chunks, fun, 
+                                    lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, method=method, warmupiters=warmupiters))
+        
+        stopCluster(cl)
+      } else {
+        # Fit all channels sequentially
+        fit <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
+          # print(col)
+          nnL0poisglm(X = sim$X,
+                      y = as.vector(sim$y[,col,drop=F]),
+                      lambda = lambda,
+                      delta = delta,
+                      gamma = gamma,
+                      thresh = thresh,
+                      solver = solver,  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
+                      method = method,
+                      warmupiters = warmupiters)
+        }))
+      }
+      
+    } else {
+      fit <- L0glm.fit_internal(X = X, 
+                                y = y,
+                                weights = weights,
+                                family = family,
+                                offset = offset,
+                                start = start,
+                                lower = lower,
+                                upper = upper,
+                                lambda = lambda, 
+                                delta = delta, 
+                                gamma = gamma,
+                                thresh = thresh,
+                                solver = solver, 
+                                method = method, 
+                                maxit = maxit,
+                                tol = tol,
+                                warmupiters = warmupiters)
+    }
+  } else {
+    fit <- L0glm.fit_internal(X = X, 
+                              y = as.matrix(y),
+                              weights = weights,
+                              family = family,
+                              offset = offset,
+                              start = start,
+                              lower = lower,
+                              upper = upper,
+                              lambda = lambda, 
+                              delta = delta, 
+                              gamma = gamma,
+                              thresh = thresh,
+                              solver = solver, 
+                              method = method, 
+                              maxit = maxit,
+                              tol = tol,
+                              warmupiters = warmupiters)
+
+  }
+  return(fit)
+}
+
+# Implementation of nonnegative L0 penalized identity link Poisson GLM
+L0glm.fit_internal = function(X, 
                          y, 
                          weights = rep(1, ncol(X)),
                          family = poisson(identity),
@@ -16,9 +126,8 @@ L0glm.fit_new = function(X,
                          solver = "eigen", # or "osqp" or "glmnet"
                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
                          maxit = 25,
-                         tol = 1E-5,
+                         tol = 1E-10,
                          warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
-  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -51,9 +160,11 @@ L0glm.fit_new = function(X,
   
   mu = linkinv(eta) # expected value on response scale
   dev.resids = family$dev.resids # deviance residuals function
-  dev = sum(dev.resids(y, mu, weights)) # deviance
+  dev = sum(dev.resids(y, mu, weights)) # deviance 
+  # TODO remove dev? Talk with Tom
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
+  mask <- rep(FALSE, p)
 
   for (i in 1L:maxit) {
     print(i)
@@ -106,20 +217,54 @@ L0glm.fit_new = function(X,
       warning(gettextf("non-finite coefficients at iteration %d", i), domain = NA)
       break
     }
+    
     ## calculate updated values of eta and mu with the new coefs:
     eta = X[,nonzero,drop=F] %*% beta[nonzero] + offset # expected value / predictions on link scale
     mu = linkinv(eta) # expected value / predictions on response scale
     dev_old = dev
     dev = sum(dev.resids(y, mu, weights))
+
     
-    if (abs(dev - dev_old) / (0.1 + abs(dev)) < tol) break
+    reldiff <- 2*abs((beta-beta_old)/(beta+beta_old))
+    mask <- reldiff <= tol # keep coefficients fixed in subsequent iterations if they converged
+    mask[is.na(mask)] <- TRUE
+    stop.loop <- sum(mask) >= (p-1)
+    if(stop.loop & i > warmupiters) break # Only break if at glm.iwls was called at least once.
+    
+    
+    # if (abs(dev - dev_old) / (0.1 + abs(dev)) < tol) break # This gives error because dev goes to infinity
     # or if (norm(beta-beta_old, "2") < tol) break
     dev_old = dev
     beta_old = beta
   }
   
-  return(beta)
+  return(beta) # TODO add more returns? Or should the function only return the coefs?
   
+}
+
+fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters) {
+  # require(L0glm)
+  # devtools::load_all(".")
+  
+  results <- lapply(cols, function(col) {
+    # Get the required data
+    X = sim$X
+    y = as.vector(sim$y[,col,drop=F])
+    
+    # Call nnL0poisglm
+    L0glm.fit_internal(X = X,
+                y = y, 
+                #lambda = lambda, 
+                #delta = delta, 
+                #gamma = gamma,
+                #thresh = thresh,
+                solver = solver,
+                method = method,
+                warmupiters = warmupiters)
+  })
+  
+  # Return the results as a matrix
+  do.call(cbind, results)
 }
   
 
@@ -150,7 +295,8 @@ reltol = 1E-5
 warmupiters = 4 # 3 or 4 gave best performance
 
 
-L0glm.fit_new(X = X, y = y)
+coefs_new <- L0glm.fit_new(X = X, y = y, solver = "eigen")
+cor(as.vector(coefs_new), as.vector(sim$beta_true))
 
 
 # couple of possible coefficient initialisations to use as starting values in L0glm.fit ####

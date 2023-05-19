@@ -506,8 +506,9 @@ chunks <- split(cols, cut(cols, n_cores))
 # Use clusterApply to apply the function in parallel & combine results
 beta_L0_2 <- do.call(cbind, clusterApply(cl, chunks, fun))
 
-}) # 4.46s using 8 cores
+})# 4.46s using 8 cores
 
+beta <- L0glm.fit_new(X = sim$X, y = sim$y)
 # Stop the cluster
 stopCluster(cl)
 
@@ -524,3 +525,5 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
+system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, parallellize = T)) #34.88s for parallellize = F, 19.75s for parallellize = T
+cor(as.vector(par), as.vector(sim$beta_true))
