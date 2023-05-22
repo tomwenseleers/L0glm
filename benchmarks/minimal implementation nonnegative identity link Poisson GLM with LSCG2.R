@@ -1,23 +1,23 @@
 devtools::load_all(".")
 # External L0glm.fit_new
 L0glm.fit_new = function(X, 
-                          y, 
-                          weights = rep(1, ncol(X)),
-                          family = poisson(identity),
-                          offset = rep(0, nrow(X)),
-                          start = NULL,
-                          lower = rep(0, ncol(X)),
-                          upper = rep(Inf, ncol(X)),
-                          lambda = 1, 
-                          parallellize = TRUE,
-                          delta = 1E-10, 
-                          gamma = 2,
-                          thresh = 1,
-                          solver = "eigen", # or "osqp" or "glmnet"
-                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
-                          maxit = 25,
-                          tol = 1E-10,
-                          warmupiters = 4){
+                         y, 
+                         weights = rep(1, ncol(X)),
+                         family = poisson(identity),
+                         offset = rep(0, nrow(X)),
+                         start = NULL,
+                         lower = rep(0, ncol(X)),
+                         upper = rep(Inf, ncol(X)),
+                         lambda = 1, 
+                         parallellize = TRUE,
+                         delta = 1E-10, 
+                         gamma = 2,
+                         thresh = 1,
+                         solver = "eigen", # or "osqp" or "glmnet"
+                         method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
+                         maxit = 25,
+                         tol = 1E-10,
+                         warmupiters = 4){
   
   if("matrix" %in% class(y)){
     if(ncol(y) > 1){
@@ -49,7 +49,7 @@ L0glm.fit_new = function(X,
         
         # Use clusterApply to apply the function in parallel & combine results
         fit <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                    lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, method=method, warmupiters=warmupiters))
+                                           lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, method=method, warmupiters=warmupiters))
         
         stopCluster(cl)
       } else {
@@ -105,29 +105,29 @@ L0glm.fit_new = function(X,
                               maxit = maxit,
                               tol = tol,
                               warmupiters = warmupiters)
-
+    
   }
   return(fit)
 }
 
 # Implementation of nonnegative L0 penalized identity link Poisson GLM
 L0glm.fit_internal = function(X, 
-                         y, 
-                         weights = rep(1, ncol(X)),
-                         family = poisson(identity),
-                         offset = rep(0, nrow(X)),
-                         start = NULL,
-                         lower = rep(0, ncol(X)),
-                         upper = rep(Inf, ncol(X)),
-                         lambda = 1, 
-                         delta = 1E-10, 
-                         gamma = 2,
-                         thresh = 1,
-                         solver = "eigen", # or "osqp" or "glmnet"
-                         method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
-                         maxit = 25,
-                         tol = 1E-10,
-                         warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+                              y, 
+                              weights = rep(1, ncol(X)),
+                              family = poisson(identity),
+                              offset = rep(0, nrow(X)),
+                              start = NULL,
+                              lower = rep(0, ncol(X)),
+                              upper = rep(Inf, ncol(X)),
+                              lambda = 1, 
+                              delta = 1E-10, 
+                              gamma = 2,
+                              thresh = 1,
+                              solver = "eigen", # or "osqp" or "glmnet"
+                              method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
+                              maxit = 25,
+                              tol = 1E-10,
+                              warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -136,26 +136,16 @@ L0glm.fit_internal = function(X,
   mu.eta = family$mu.eta # function of derivative of the expected values
   etastart = NULL
   
-  nobs = nrow(X)    # needed by the initialize expression below
-  nvars = ncol(X)   # needed by the initialize expression below
-  
-  # if (nvars == 0) { # In case a NULL model is fit, code taken from 'glm'
-  #   return(list(coefficients = numeric(),
-  #               weights = numeric(),
-  #               prior.weights = weights,
-  #               fitted.values = rep(0, n),
-  #               family = family,
-  #               converged.iwls = TRUE,
-  #               iter.iwls = 0))
-  # }
+  nobs = n = nrow(X)    # needed by the initialize expression below
+  nvars = p = ncol(X)   # needed by the initialize expression below
   
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
   
   if (is.null(start)) {  beta <- beta_old <- rep(1, nvars) # initial model coefficients
-                         eta = family$linkfun(mustart) } else {  # eta = expected value on link scale
-                           beta <- beta_old <- start # when starting coefficient values were provided
-                           eta = offset + as.vector(if (ncol(X) == 1L) X * start else X %*% start) # eta = expected value on link scale
-                         }
+  eta = family$linkfun(mustart) } else {  # eta = expected value on link scale
+    beta <- beta_old <- start # when starting coefficient values were provided
+    eta = offset + as.vector(if (ncol(X) == 1L) X * start else X %*% start) # eta = expected value on link scale
+  }
   names(beta) <- colnames(X)
   
   mu = linkinv(eta) # expected value on response scale
@@ -165,12 +155,12 @@ L0glm.fit_internal = function(X,
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
   mask <- rep(FALSE, p)
-
+  
   for (i in 1L:maxit) {
     print(i)
     varg = variance(mu) # variance
     gprime = mu.eta(eta) # derivative of the expected values
-
+    
     good = (weights > 0) & (gprime != 0) # valid rows
     
     if (i==1|i>warmupiters) {
@@ -191,7 +181,7 @@ L0glm.fit_internal = function(X,
                        i), domain = NA)
       break
     }
-      
+    
     pen.weights = AR.weights(beta = beta, delta = delta, gamma = gamma) # adaptive ridge pentalty weights
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
     
@@ -202,14 +192,14 @@ L0glm.fit_internal = function(X,
     # beta = solve(crossprod(Xw), crossprod(Xw,z*sqrt(W)), tol=2*.Machine$double.eps)
     beta_old = beta
     beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
-                   weights = W,
-                   pen.weights = pen.weights[nonzero], # TODO: remove this argument
-                   lambdas = lambdas[nonzero],
-                   start = NULL, # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-                   lower = lower[nonzero], 
-                   upper = upper[nonzero],
-                   solver = solver,
-                   method = method)
+                             weights = W,
+                             pen.weights = pen.weights[nonzero], # TODO: remove this argument
+                             lambdas = lambdas[nonzero],
+                             start = NULL, # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                             lower = lower[nonzero], 
+                             upper = upper[nonzero],
+                             solver = solver,
+                             method = method)
     beta[nonzero][abs(beta[nonzero])<thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
     if (any(!is.finite(beta))) {
@@ -223,7 +213,7 @@ L0glm.fit_internal = function(X,
     mu = linkinv(eta) # expected value / predictions on response scale
     dev_old = dev
     dev = sum(dev.resids(y, mu, weights))
-
+    
     
     reldiff <- 2*abs((beta-beta_old)/(beta+beta_old))
     mask <- reldiff <= tol # keep coefficients fixed in subsequent iterations if they converged
@@ -253,20 +243,30 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters)
     
     # Call nnL0poisglm
     L0glm.fit_internal(X = X,
-                y = y, 
-                #lambda = lambda, 
-                #delta = delta, 
-                #gamma = gamma,
-                #thresh = thresh,
-                solver = solver,
-                method = method,
-                warmupiters = warmupiters)
+                       y = y,
+                       lambda = lambda,
+                       delta = delta,
+                       gamma = gamma,
+                       thresh = thresh,
+                       solver = solver,
+                       method = method,
+                       warmupiters = warmupiters)
+    # nnL0poisglm(
+    #   X = X,
+    #   y = y, 
+    #   lambda = lambda,
+    #   delta = delta,
+    #   gamma = gamma,
+    #   thresh = thresh,
+    #   solver = solver,
+    #   method = method,
+    #   warmupiters = warmupiters)
   })
   
   # Return the results as a matrix
   do.call(cbind, results)
 }
-  
+
 
 # example
 set.seed(1)
