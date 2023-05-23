@@ -525,5 +525,8 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, parallellize = T, relaxedGroupL0 = T)) #34.88s for parallellize = F, 19.75s for parallellize = T
+system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, parallellize = F, relaxedGroupL0 = T)) #34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par), as.vector(sim$beta_true))
+
+length(intersect(which(sim$beta_true!=0), which(par!=0))) # 3608 out of 7645
+length(intersect(which(sim$beta_true==0), which(par!=0))) # 3 out of 7645

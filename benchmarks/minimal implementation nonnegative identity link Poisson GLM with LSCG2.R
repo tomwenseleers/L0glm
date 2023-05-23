@@ -52,11 +52,12 @@ L0glm.fit_new = function(X,
         
         # Use clusterApply to apply the function in parallel & combine results
         fit1 <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                            lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, 
+                                            X = X, y = y, lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, 
                                             weights = weights, start = start, lower = lower, upper = upper,
-                                            method=method, nonnegative = nonnegative, warmupiters=warmupiters))
+                                            method=method, nonnegative = nonnegative, warmupiters=warmupiters, variable_indices = NULL))
         
         if(relaxedGroupL0){
+          # Apply relaxed group L0 feature selection
           avgcoefs = rowMeans(fit1)
           variable_indices = which(avgcoefs>0) # TODO check how to implement this in parallellization
           fit2 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
@@ -64,15 +65,21 @@ L0glm.fit_new = function(X,
           cols <- 1:ncol(y)
           chunks <- split(cols, cut(cols, n_cores))
           fit2 <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                              lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver,
-                                              weights = 1/(as.vector(y[,col,drop=F])+0.1),
-                                              start = as.vector(avgcoefs), 
-                                              lower = lower, upper = upper, method=method, nonnegative = nonnegative, 
-                                              warmupiters=warmupiters))
+                                              X = X, y = y, lambda=lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver, 
+                                              weights = weights, start = avgcoefs, lower = lower, upper = upper,
+                                              method=method, nonnegative = nonnegative, warmupiters = warmupiters, variable_indices = NULL))
+            
+            
+            # cl, chunks, fun, 
+            #                                   X = X,  y = y, lambda = lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver,
+            #                                   weights = NULL, start = avgcoefs, variable_indices = variable_indices,
+            #                                   lower = lower, upper = upper, method=method, nonnegative = nonnegative, 
+            #                                   warmupiters = warmupiters))
         } else {
           fit <- fit1
         }
-        fit <- fit2
+        
+        fit <- fit1
         
         stopCluster(cl)
       } else {
@@ -80,40 +87,74 @@ L0glm.fit_new = function(X,
         fit1 <- do.call(cbind, lapply(1:ncol(y), function(col) {
           # print(col)
           L0glm.fit_internal(X = X,
-                      y = y[,col,drop=F],
-                      lambda = lambda,
-                      delta = delta,
-                      weights = weights,
-                      start = start,
-                      lower = lower,
-                      upper = upper,
-                      gamma = gamma,
-                      thresh = thresh,
-                      solver = solver,  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
-                      method = method,  # TODO add the rest of the parameters
-                      warmupiters = warmupiters)
+                             y = y[,col,drop=F],
+                             lambda = lambda,
+                             delta = delta,
+                             weights = weights,
+                             start = start,
+                             lower = lower,
+                             upper = upper,
+                             gamma = gamma,
+                             thresh = thresh,
+                             solver = solver,  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
+                             method = method,  # TODO add the rest of the parameters
+                             warmupiters = warmupiters)
         }))
         
         if(relaxedGroupL0){
+          # Apply relaxed group L0 feature selection
+          # 2nd step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
           avgcoefs = rowMeans(fit1)
           variable_indices = which(avgcoefs>0)
-          fit = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+          fit2 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
           
-          fit[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+          fit2[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
             L0glm.fit_internal(X=X[,variable_indices,drop=F], 
-                      y=y[,col,drop=F],
-                      weights=1/(as.vector(y[,col,drop=F])+0.1),
-                      start=as.vector(avgcoefs[variable_indices]),
-                      family = family, 
+                               y=y[,col,drop=F],
+                               weights=1/(as.vector(y[,col,drop=F])+0.1),
+                               start=as.vector(avgcoefs[variable_indices]),
+                               family = family, 
+                               solver = solver, 
+                               method = method, 
+                               lambda = lambda, 
+                               nonnegative = nonnegative)
+          }))
+          
+          # 3rd step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
+          avgcoefs = rowMeans(fit2)
+          variable_indices = which(avgcoefs>0)
+          fit3 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+          
+         fit3[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+            L0glm.fit_internal(X = X[,variable_indices,drop=F], 
+                      y = as.vector(y[,col,drop=F]),
+                      weights = 1/(as.vector(y[,col,drop=F])+0.1),
+                      start = as.vector(avgcoefs[variable_indices]),
+                      family = gaussian(identity), 
                       solver = solver, 
                       method = method, 
                       lambda = lambda, 
                       nonnegative = nonnegative)
+            
           }))
-          
+         # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
+         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
+         # avgcoefs = rowMeans(fit3)
+         # variable_indices = which(avgcoefs>0)
+         # fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+         # fit4[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+         #   L0glm.fit(X = X[,variable_indices,drop=F], 
+         #             y = as.vector(y[,col,drop=F]),
+         #             start = as.vector(avgcoefs[variable_indices]),
+         #             family = family,
+         #             solver = "osqp", 
+         #             method = method, 
+         #             lambda = 0, 
+         #             nonnegative = nonnegative)}))
         } else {
           fit <- fit1
         }
+        fit <- fit3
       }
     } else {
       fit <- L0glm.fit_internal(X = X, 
@@ -199,8 +240,10 @@ L0glm.fit_internal = function(X,
   # }
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
   
-  if (is.null(start)) {  beta <- beta_old <- rep(1,p) # initial model coefficients
-  eta = family$linkfun(mustart) } else {  # eta = expected value on link scale
+  if (is.null(start)) {  
+    beta <- beta_old <- rep(1,p) # initial model coefficients
+    eta = family$linkfun(mustart) 
+    } else {  # eta = expected value on link scale
     beta <- beta_old <- start # when starting coefficient values were provided
     eta = offset + as.vector(if (p == 1L) X * start else X %*% start) # eta = expected value on link scale
   }
@@ -290,15 +333,25 @@ L0glm.fit_internal = function(X,
   
 }
 
-fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative,
-                weights, start, lower, upper) { # TODO set defaults?
+fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, 
+                weights = NULL, start = NULL, lower, upper, variable_indices = NULL) { # TODO set defaults?
   # require(L0glm)
   # devtools::load_all(".")
   
   results <- lapply(cols, function(col) {
     # Get the required data
-    X = sim$X
-    y = as.vector(sim$y[,col,drop=F])
+    if (!is.null(variable_indices)) {
+      X = X[, variable_indices, drop=F]
+    }
+    y = as.vector(y[,col,drop=F])
+    
+    if (!is.null(start) && !is.null(variable_indices)) {
+      start = as.vector(start[variable_indices])
+    }
+
+    if (is.null(weights) && !is.null(y)) {
+      weights = 1/(y+0.1)
+    }
     
     # Call L0glm.fit_internal
     L0glm.fit_internal(X = X,
@@ -315,22 +368,12 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                        nonnegative = nonnegative,
                        method = method,
                        warmupiters = warmupiters)
-    # Or call nnL0poisglm
-    # nnL0poisglm(
-    #   X = X,
-    #   y = y,
-    #   lambda = lambda,
-    #   delta = delta,
-    #   gamma = gamma,
-    #   thresh = thresh,
-    #   solver = solver,
-    #   method = method,
-    #   warmupiters = warmupiters)
   })
   
   # Return the results as a matrix
   do.call(cbind, results)
 }
+
 
 
 # example
