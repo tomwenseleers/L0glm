@@ -42,8 +42,7 @@ L0glm.fit_new = function(X,
         # (this only needs to be done once)
         cleval <- clusterEvalQ(cl, {
           require(L0glm)
-          devtools::load_all(".") # this should not be necessary once all callable functions are
-          # correctly exported by the L0glm package
+          devtools::load_all(".") # TODO remove this? this should not be necessary once all callable functions are correctly exported by the L0glm package
         })
         
         # Create a list of column index chunks
@@ -66,15 +65,9 @@ L0glm.fit_new = function(X,
           chunks <- split(cols, cut(cols, n_cores))
           fit2 <- do.call(cbind, clusterApply(cl, chunks, fun, 
                                               X = X, y = y, lambda=lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver, 
-                                              weights = weights, start = avgcoefs, lower = lower, upper = upper,
-                                              method=method, nonnegative = nonnegative, warmupiters = warmupiters, variable_indices = NULL))
+                                              weights = NULL, start = avgcoefs, lower = lower, upper = upper,
+                                              method=method, nonnegative = nonnegative, warmupiters = warmupiters, variable_indices = variable_indices))
             
-            
-            # cl, chunks, fun, 
-            #                                   X = X,  y = y, lambda = lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver,
-            #                                   weights = NULL, start = avgcoefs, variable_indices = variable_indices,
-            #                                   lower = lower, upper = upper, method=method, nonnegative = nonnegative, 
-            #                                   warmupiters = warmupiters))
         } else {
           fit <- fit1
         }
@@ -82,7 +75,7 @@ L0glm.fit_new = function(X,
         fit <- fit1
         
         stopCluster(cl)
-      } else {
+      } else { # If parallellize = FALSE
         # Fit all channels sequentially
         fit1 <- do.call(cbind, lapply(1:ncol(y), function(col) {
           # print(col)
@@ -137,24 +130,27 @@ L0glm.fit_new = function(X,
                       nonnegative = nonnegative)
             
           }))
+         fit <- fit3
          # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
          # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-         # avgcoefs = rowMeans(fit3)
-         # variable_indices = which(avgcoefs>0)
+         avgcoefs = rowMeans(fit3)
+         variable_indices = which(avgcoefs>0)
          # fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+         # 
          # fit4[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
-         #   L0glm.fit(X = X[,variable_indices,drop=F], 
+         #   L0glm.fit_internal(X = X[,variable_indices,drop=F],
          #             y = as.vector(y[,col,drop=F]),
          #             start = as.vector(avgcoefs[variable_indices]),
          #             family = family,
-         #             solver = "osqp", 
-         #             method = method, 
-         #             lambda = 0, 
+         #             solver = solver,
+         #             method = method,
+         #             lambda = 0,
          #             nonnegative = nonnegative)}))
+         # fit <- fit4
         } else {
           fit <- fit1
         }
-        fit <- fit3
+        
       }
     } else {
       fit <- L0glm.fit_internal(X = X, 
@@ -219,6 +215,7 @@ L0glm.fit_internal = function(X,
                               maxit = 25,
                               tol = 1E-10,
                               warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -403,7 +400,7 @@ reltol = 1E-5
 warmupiters = 4 # 3 or 4 gave best performance
 
 
-coefs_new <- L0glm.fit_new(X = X, y = y, solver = "eigen")
+system.time(coefs_new <- L0glm.fit_new(X = X, y = y, solver = "eigen", method = 1, family = poisson(identity)))
 cor(as.vector(coefs_new), as.vector(sim$beta_true))
 
 

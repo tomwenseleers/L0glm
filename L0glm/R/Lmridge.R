@@ -42,6 +42,7 @@ lmridge <- function(X, y, lambdas = NULL,
     Xw <- X
     yw <- y
   }
+  yw[is.nan(yw)] <- 0
   
   
   if (solver == "osqp") {
@@ -117,7 +118,6 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
   } else {
     path = FALSE
   }
-  
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -126,7 +126,6 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
     Xwaug <- Xw
     ywaug <- yw
   }
-  
   model <- bigGlm(x = Xwaug, 
                   y = ywaug,
                   intercept = FALSE, 

@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=1000, p=1000, k=100, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
