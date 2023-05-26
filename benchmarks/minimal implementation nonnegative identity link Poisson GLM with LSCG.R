@@ -526,7 +526,9 @@ length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) 
 
 
 system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, parallellize = F, relaxedGroupL0 = T)) #34.88s for parallellize = F, 19.75s for parallellize = T
-cor(as.vector(par), as.vector(sim$beta_true))
+cor(as.vector(par), as.vector(sim$beta_true)) # 0.994652 with variable indices
 
 length(intersect(which(sim$beta_true!=0), which(par!=0))) # 3608 out of 7645
 length(intersect(which(sim$beta_true==0), which(par!=0))) # 3 out of 7645
+
+# 0.993456 //  2848 // 417

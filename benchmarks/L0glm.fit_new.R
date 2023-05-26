@@ -48,7 +48,6 @@ L0glm.fit_new = function(X,
         # Create a list of column index chunks
         cols <- 1:ncol(y)
         chunks <- split(cols, cut(cols, n_cores))
-        
         # Use clusterApply to apply the function in parallel & combine results
         fit1 <- do.call(cbind, clusterApply(cl, chunks, fun, 
                                             X = X, y = y, lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, 
@@ -59,16 +58,29 @@ L0glm.fit_new = function(X,
         if(relaxedGroupL0){
           # Apply relaxed group L0 feature selection
           avgcoefs = rowMeans(fit1)
-          variable_indices = which(avgcoefs>0) # TODO check how to implement this in parallellization
+          # variable_indices = which(avgcoefs>0) # TODO remove?
           fit2 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
           cols <- 1:ncol(y)
           chunks <- split(cols, cut(cols, n_cores))
-          
-          fit2[[, variable_indices, drop=F]] <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                                                            X = X[,variable_indices, drop = F], y = y, lambda = lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver, 
-                                                                            weights = NULL, start = as.vector(avgcoefs[variable_indices]), lower = lower, upper = upper,
-                                                                            method=method, nonnegative = nonnegative, warmupiters = warmupiters))
+          fit2 <- do.call(cbind, clusterApply(cl, chunks, fun, 
+                                              X = X, y = y, lambda = lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver, 
+                                              weights = weights, start = as.vector(avgcoefs), lower = lower, upper = upper,
+                                              method = method, nonnegative = nonnegative, warmupiters = warmupiters))
           fit <- fit2
+          avgcoefs = rowMeans(fit2)
+          # variable_indices = which(avgcoefs>0)
+          fit3 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+          cols <- 1:ncol(y)
+          chunks <- split(cols, cut(cols, n_cores))
+
+          fit3 <- do.call(cbind, clusterApply(cl, chunks, fun,
+                                              X = X, y = y, lambda = lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver,
+                                              weights = weights, start = as.vector(avgcoefs), lower = lower, upper = upper,
+                                              method=method, nonnegative = nonnegative, warmupiters = warmupiters))
+
+          fit <- fit3
+          
+          
         } else {
           fit <- fit1
         }
@@ -103,14 +115,14 @@ L0glm.fit_new = function(X,
           fit2 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
           
           fit2[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
-            L0glm.fit.internal(X=X[,variable_indices,drop=F], 
+            L0glm.fit.internal(X=X[,variable_indices,drop=F],
                                y=y[,col,drop=F],
                                weights=1/(as.vector(y[,col,drop=F])+0.1),
                                start=as.vector(avgcoefs[variable_indices]),
-                               family = family, 
-                               solver = solver, 
-                               method = method, 
-                               lambda = lambda, 
+                               family = family,
+                               solver = solver,
+                               method = method,
+                               lambda = lambda,
                                nonnegative = nonnegative)
           }))
           
@@ -124,7 +136,7 @@ L0glm.fit_new = function(X,
                                y = as.vector(y[,col,drop=F]),
                                weights = 1/(as.vector(y[,col,drop=F])+0.1),
                                start = as.vector(avgcoefs[variable_indices]),
-                               family = gaussian(identity), 
+                               family = family, 
                                solver = solver, 
                                method = method, 
                                lambda = lambda, 
@@ -134,8 +146,8 @@ L0glm.fit_new = function(X,
           fit <- fit3
           # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
           # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-          avgcoefs = rowMeans(fit3)
-          variable_indices = which(avgcoefs>0)
+          # avgcoefs = rowMeans(fit3)
+          # variable_indices = which(avgcoefs>0)
           # fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
           # 
           # fit4[variable_indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
@@ -143,8 +155,8 @@ L0glm.fit_new = function(X,
           #             y = as.vector(y[,col,drop=F]),
           #             start = as.vector(avgcoefs[variable_indices]),
           #             family = family,
-          #             solver = solver,
-          #             method = method,
+          #             solver = "osqp",
+          #             method = NULL,
           #             lambda = 0,
           #             nonnegative = nonnegative)}))
           # fit <- fit4
@@ -337,14 +349,12 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                 weights = NULL, start = NULL, lower, upper) { 
   # require(L0glm)
   # devtools::load_all(".")
-  results <- lapply(cols, function(col) {
+  results <- lapply(cols, function(cols) {
     # Get the required data
-    y = as.vector(y[,col,drop=F])
-    
     if (is.null(weights) && !is.null(y)) {
-      weights = 1/as.vector((y[,col,drop=F]+0.1))
+      weights = 1/as.vector(y[,cols,drop=F]+0.1)
     }
-
+    y = as.vector(y[,cols,drop=F])
     
     # Call L0glm.fit.internal
     L0glm.fit.internal(X = X,
