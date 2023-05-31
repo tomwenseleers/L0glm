@@ -1,5 +1,12 @@
-devtools::load_all(".")
-# External L0glm.fit_new
+#' @describeIn L0glm
+#'
+#'  Fits a generalized linear model with L0 regularization and option for nonnegativity and box constraints. It takes as input parameters the design matrix X, the response 
+#'  variable y, regularization parameters, solver options, and control parameters. It supports parallel computation for independent channels if specified. The function 
+#'  applies L0 regularization iteratively, potentially including relaxed group L0 feature selection. The result is a fitted model with coefficients estimated using 
+#'  the specified regularization method and solver. The function contains minimal code for fitting the GLM, as it calls \code{L0glm.fit.internal}, and it is called
+#'  by the higher level \code{L0glm}. It supports parallellization when fitting a multichannel response variable.
+#'
+#' @export
 L0glm.fit_new = function(X, 
                          y, 
                          weights = rep(1, ncol(X)),
@@ -231,7 +238,13 @@ L0glm.fit_new = function(X,
   return(fit)
 }
 
-# Implementation of nonnegative L0 penalized identity link Poisson GLM
+#' @describeIn L0glm
+#'
+#'  Fits a generalized linear model with L0 regularization and option for nonnegativity and box constraints. It takes as input parameters the design matrix X, the response 
+#'  variable y, regularization parameters, solver options, and control parameters. The result is a fitted model with coefficients estimated using 
+#'  the specified regularization method and solver. The function it is called by the higher level \code{L0glm.fit_new}.
+#'
+#' @export
 L0glm.fit.internal = function(X, 
                               y, 
                               weights = rep(1, ncol(X)),
@@ -368,6 +381,15 @@ L0glm.fit.internal = function(X,
   
 }
 
+#' @describeIn L0glm
+#'
+#' Helper function used in the \code{L0glm.fit_new} function for parallel computation. It takes a subset of column indices cols along with 
+#' other parameters such as regularization parameters, solver options, and data matrices X and y. It performs L0 regularization using 
+#' the \code{L0glm.fit.internal} function on each column independently and returns the results as a matrix. The function supports weighting 
+#' of observations and nonnegative constraints if specified. 
+#'
+#'
+#' @export
 fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, 
                 weights = NULL, start = NULL, lower, upper, control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
@@ -399,36 +421,3 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
   # Return the results as a matrix
   do.call(cbind, results)
 }
-
-
-
-
-# example
-set.seed(1)
-s = 0.1
-p <- n <- 10000
-k = round(p*s)
-sim = simulate_spike_train(n=n, p=p, k=k, 
-                           mean_beta = 1000, 
-                           sd_logbeta = 1, 
-                           family="poisson",
-                           sparse=TRUE) # blurred spike train with 10000 timepoints & 200 blurred peaks
-X = sim$X
-y = sim$y
-weights = 1/(sim$y+0.1) # approx 1/variance Poisson weights
-Xw = Diagonal(x=sqrt(weights)) %*% sim$X # = X * sqrt(weights)
-Xwaug = rbind(Xw, Diagonal(x=sqrt(rep(1,p)))) # row augmented covariate matrix
-ywaug = as.vector(c(sim$y, rep(0, p))) # 
-lambda = 1 
-delta = 1E-10
-gamma = 2
-thresh = 1
-solver = "eigen" # or "osqp" or "glmnet"
-method = 7L # = Cholesky
-maxit = 25
-reltol = 1E-5
-warmupiters = 4 # 3 or 4 gave best performance
-
-
-system.time(coefs_new <- L0glm.fit_new(X = X, y = y, solver = "glmnet", lambda= 1, method = 7, family = poisson(identity)))
-cor(as.vector(coefs_new), as.vector(sim$beta_true))

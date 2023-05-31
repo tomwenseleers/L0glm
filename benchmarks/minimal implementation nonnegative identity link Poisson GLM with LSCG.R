@@ -297,7 +297,7 @@ system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
               delta = 1E-10,
               gamma = 2,
               thresh = 1,
-              solver = "glmnet",  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
+              solver = "osqp",  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
               method = 7L,
               warmupiters = 4L)
   # L0glm.fit(X = sim$X,

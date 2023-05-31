@@ -3,6 +3,7 @@
 #' @import nnls
 #' @import Matrix
 #' @import glmnet
+#' @import parallel
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'

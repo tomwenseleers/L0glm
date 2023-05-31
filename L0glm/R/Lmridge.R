@@ -110,13 +110,14 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
 }
 
 lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver){
-
+  if(any(is.infinite(yw))) browser()
   # Set path depending on dimensions of Xw
   if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
   } else {
     path = FALSE
   }
+
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -125,6 +126,8 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
     Xwaug <- Xw
     ywaug <- yw
   }
+  
+  if(any(is.infinite(ywaug))) browser()
 
   model <- bigGlm(x = Xwaug, 
                   y = ywaug,
