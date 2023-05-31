@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=1000, p=1000, k=100, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -297,7 +297,7 @@ system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
               delta = 1E-10,
               gamma = 2,
               thresh = 1,
-              solver = "eigen",  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
+              solver = "glmnet",  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
               method = 7L,
               warmupiters = 4L)
   # L0glm.fit(X = sim$X,
@@ -525,10 +525,10 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, parallellize = F, relaxedGroupL0 = T)) #34.88s for parallellize = F, 19.75s for parallellize = T
+system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, parallellize = T, relaxedGroupL0 = T)) # 34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par), as.vector(sim$beta_true)) # 0.994652 with variable indices
 
 length(intersect(which(sim$beta_true!=0), which(par!=0))) # 3608 out of 7645
 length(intersect(which(sim$beta_true==0), which(par!=0))) # 3 out of 7645
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(par)!=0)))  # 99 out of 100
 
-# 0.993456 //  2848 // 417
