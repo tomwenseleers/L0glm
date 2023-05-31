@@ -35,7 +35,7 @@ L0glm.fit_new = function(X,
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
         
         # Create a cluster using the number of cores
-        cl <- makeCluster(n_cores, type=cluster_type) # on Mac & Ubuntu type="FORK" is faster
+        cl <- makeCluster(n_cores, type = cluster_type) # on Mac & Ubuntu type="FORK" is faster
         
         # Export the sim data and the function to the workers
         clusterExport(cl, list("sim", "fun", "L0glm.fit.internal"))
@@ -69,6 +69,7 @@ L0glm.fit_new = function(X,
                                               weights = NULL, start = as.vector(avgcoefs[variable.indices]), lower = lower, upper = upper,
                                               method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
           fit <- fit2
+          
           avgcoefs = rowMeans(fit2)
           variable.indices = which(avgcoefs>0)
           fit3 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
@@ -81,6 +82,18 @@ L0glm.fit_new = function(X,
                                               method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
 
           fit <- fit3
+          
+          # avgcoefs = rowMeans(fit3)
+          # variable.indices = which(avgcoefs>0)
+          # fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+          # cols <- 1:ncol(y)
+          # chunks <- split(cols, cut(cols, n_cores))
+          # 
+          # fit4[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun,
+          #                                                        X = X[,variable.indices, drop = F], y = y, lambda = 0, delta = delta, gamma = gamma, thresh = thresh, solver = solver,
+          #                                                        weights = NULL, start = as.vector(avgcoefs[variable.indices]), lower = lower, upper = upper,
+          #                                                        method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
+          # fit <- fit4
           
           
         } else {
@@ -145,28 +158,28 @@ L0glm.fit_new = function(X,
                                method = method, 
                                lambda = lambda, 
                                control.solver = control.solver,
-                               nonnegative = nonnegative)
-            
-          }))
+                               nonnegative = nonnegative)}))
           fit <- fit3
+          
           # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
           # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-          # avgcoefs = rowMeans(fit3)
-          # variable.indices = which(avgcoefs>0)
-          # fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
-          # 
-          # fit4[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
-          #   L0glm.fit.internal(X = X[,variable.indices,drop=F],
-          #                      y = as.vector(y[,col,drop=F]),
-          #                      weights = 1/(as.vector(y[,col,drop=F])+0.1),
-          #                      start = as.vector(avgcoefs[variable.indices]),
-          #                      family = family,
-          #                      solver = solver,
-          #                      method = method,
-          #                      lambda = 0,
-          #                      control.solver = control.solver,
-          #                      nonnegative = nonnegative)}))
-          # fit <- fit4
+          avgcoefs = rowMeans(fit3)
+          variable.indices = which(avgcoefs>0)
+          fit4 = Matrix(0, nrow=nrow(fit1), ncol=ncol(fit1), sparse=TRUE)
+
+          fit4[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+            L0glm.fit.internal(X = X[,variable.indices,drop=F],
+                               y = as.vector(y[,col,drop=F]),
+                               weights = 1/(as.vector(y[,col,drop=F])+0.1),
+                               start = as.vector(avgcoefs[variable.indices]),
+                               family = family,
+                               solver = solver,
+                               method = method,
+                               lambda = 0,
+                               control.solver = control.solver,
+                               nonnegative = nonnegative)}))
+          fit <- fit4
+
         } else {
           fit <- fit1
         }
