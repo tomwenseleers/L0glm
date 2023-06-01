@@ -31,8 +31,6 @@ L0glm.fit_new = function(X,
                          verbose = FALSE){
   
   y <- as.matrix(y)
-  browser()
-  
   
   if(ncol(y) > 1){
     if(parallellize){
