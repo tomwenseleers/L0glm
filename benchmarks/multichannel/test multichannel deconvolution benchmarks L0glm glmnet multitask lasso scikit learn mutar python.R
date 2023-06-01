@@ -1,4 +1,4 @@
-# TEST MULTITASK FEATURE SELECTION METHODS IN scikitlearn (MultiTaskLasso=multivariate group LASSO) & mutar ####
+# TEST MULTITASK FEATURE SELECTION METHODS IN glmnet, scikitlearn (MultiTaskLasso=multivariate group LASSO) & mutar ####
 
 devtools::load_all(".")
 
