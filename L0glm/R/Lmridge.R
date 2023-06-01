@@ -32,7 +32,6 @@ lmridge <- function(X, y, lambdas = NULL,
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
-  
   if(is.null(block.size) || block.size == ncol(X)) {
     Xw <- Xweights(X, weights)
     yw <- Yweights(y, weights)
@@ -41,7 +40,6 @@ lmridge <- function(X, y, lambdas = NULL,
     yw <- y
   }
   yw[is.nan(yw)] <- 0
-  
   
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
@@ -110,7 +108,6 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
 }
 
 lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver){
-  if(any(is.infinite(yw))) browser()
   # Set path depending on dimensions of Xw
   if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
@@ -126,8 +123,6 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
     Xwaug <- Xw
     ywaug <- yw
   }
-  
-  if(any(is.infinite(ywaug))) browser()
 
   model <- bigGlm(x = Xwaug, 
                   y = ywaug,

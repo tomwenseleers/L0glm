@@ -61,7 +61,7 @@ L0glm.fit_new = function(X,
         fit1 <- do.call(cbind, clusterApply(cl, chunks, fun, 
                                             X = X, y = y, lambda=lambda, delta=delta, gamma=gamma, thresh=thresh, solver=solver, 
                                             weights = weights, start = start, lower = lower, upper = upper,
-                                            method=method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
+                                            method=method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters, verbose = verbose))
         
         fit <- fit1
         if(relaxedGroupL0){
@@ -74,7 +74,7 @@ L0glm.fit_new = function(X,
           fit2[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun, 
                                               X = X[,variable.indices, drop = F], y = y, lambda = lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver, 
                                               weights = NULL, start = as.vector(avgcoefs[variable.indices]), lower = lower, upper = upper,
-                                              method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
+                                              method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters, verbose = verbose))
           fit <- fit2
           
           avgcoefs = rowMeans(fit2)
@@ -86,7 +86,7 @@ L0glm.fit_new = function(X,
           fit3[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun,
                                               X = X[,variable.indices, drop = F], y = y, lambda = lambda, delta = delta, gamma = gamma, thresh = thresh, solver = solver,
                                               weights = NULL, start = as.vector(avgcoefs[variable.indices]), lower = lower, upper = upper,
-                                              method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
+                                              method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters, verbose = verbose))
 
           fit <- fit3
           
@@ -99,7 +99,7 @@ L0glm.fit_new = function(X,
           # fit4[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun,
           #                                                        X = X[,variable.indices, drop = F], y = y, lambda = 0, delta = delta, gamma = gamma, thresh = thresh, solver = solver,
           #                                                        weights = NULL, start = as.vector(avgcoefs[variable.indices]), lower = lower, upper = upper,
-          #                                                        method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters))
+          #                                                        method = method, nonnegative = nonnegative, control.solver = control.solver, warmupiters = warmupiters, verbose = verbose))
           # fit <- fit4
           
           
@@ -113,7 +113,6 @@ L0glm.fit_new = function(X,
       } else { # If parallellize = FALSE
         # Fit all channels sequentially
         fit1 <- do.call(cbind, lapply(1:ncol(y), function(col) {
-          # print(col)
           L0glm.fit.internal(X = X,
                              y = y[,col,drop=F],
                              lambda = lambda,
@@ -127,7 +126,8 @@ L0glm.fit_new = function(X,
                              solver = solver,  # TODO check why glmnet & osqp crash or give error. Osqp crashes R, glmnet gives error because sum(Xwaug) == 0 before calling bigGLM in lmridge
                              method = method,  # TODO add the rest of the parameters
                              control.solver = control.solver,
-                             warmupiters = warmupiters)
+                             warmupiters = warmupiters,
+                             verbose = verbose)
         }))
         
         if(relaxedGroupL0){
@@ -147,7 +147,8 @@ L0glm.fit_new = function(X,
                                method = method,
                                lambda = lambda,
                                control.solver = control.solver,
-                               nonnegative = nonnegative)
+                               nonnegative = nonnegative,
+                               verbose = verbose)
           }))
           
           # 3rd step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit
@@ -165,7 +166,8 @@ L0glm.fit_new = function(X,
                                method = method, 
                                lambda = lambda, 
                                control.solver = control.solver,
-                               nonnegative = nonnegative)}))
+                               nonnegative = nonnegative,
+                               verbose = verbose)}))
           fit <- fit3
           
           # 4th step using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
@@ -184,7 +186,8 @@ L0glm.fit_new = function(X,
                                method = method,
                                lambda = 0,
                                control.solver = control.solver,
-                               nonnegative = nonnegative)}))
+                               nonnegative = nonnegative,
+                               verbose = verbose)}))
           fit <- fit4
 
         } else {
@@ -211,7 +214,8 @@ L0glm.fit_new = function(X,
                                 maxit = maxit,
                                 tol = tol,
                                 control.solver = control.solver,
-                                warmupiters = warmupiters)
+                                warmupiters = warmupiters,
+                                verbose = verbose)
     }
   } else {
     fit <- L0glm.fit.internal(X = X, 
@@ -232,7 +236,8 @@ L0glm.fit_new = function(X,
                               maxit = maxit,
                               tol = tol,
                               control.solver = control.solver,
-                              warmupiters = warmupiters)
+                              warmupiters = warmupiters,
+                              verbose = verbose)
     
   }
   return(fit)
@@ -263,7 +268,8 @@ L0glm.fit.internal = function(X,
                               maxit = 25,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                              warmupiters = 4) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+                              warmupiters = 4,
+                              verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
@@ -305,28 +311,28 @@ L0glm.fit.internal = function(X,
   mask <- rep(FALSE, p)
   
   for (i in 1L:maxit) {
-    # print(i)
     varg = variance(mu) # variance
     gprime = mu.eta(eta) # derivative of the expected values
     
-    good = (weights > 0) & (gprime != 0) # valid rows
+    good = !is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0) # valid rows
+    
     
     if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
         W = as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
-        good = (W > 0) & (gprime != 0) # valid rows
+        good = (!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
         z = (y - offset)[good] # response
       } else {
         mu.prime <- family$mu.eta(eta) # derivative of the expected values
-        good = (weights > 0) & (mu.prime != 0) # valid rows
+        good = (weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)# valid rows
         z <- (eta - offset)[good] + (y - mu)[good] / mu.prime[good] # working (adjusted) response
         W <- weights[good] * as.vector(mu.prime[good]^2 / variance(mu)[good]) # updated weights 
       }}
     
     if (all(!good)) {
       conv <- FALSE
-      warning(gettextf("no observations informative at iteration %d",
-                       i), domain = NA)
+      if(verbose) print(gettextf("no observations informative at iteration %d",
+                                 i), domain = NA)
       break
     }
     
@@ -340,17 +346,22 @@ L0glm.fit.internal = function(X,
     # beta = solve(crossprod(Xw), crossprod(Xw,z*sqrt(W)), tol=2*.Machine$double.eps)
     beta_old = beta
     beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
-                             weights = W,
-                             pen.weights = pen.weights[nonzero], # TODO: remove this argument
+                             weights = W[good],
+                             pen.weights = pen.weights[good], # TODO: remove this argument
                              lambdas = lambdas[nonzero],
                              nonnegative = nonnegative,
-                             start = start, # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                             start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                              lower = lower[nonzero], 
                              upper = upper[nonzero],
                              solver = solver,
                              method = method)
     beta[nonzero][abs(beta[nonzero])<thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
+    if(sum(nonzero) == 0){
+      conv <- FALSE
+      if(verbose) print("Zero coefficients produced.")
+      break
+    }
     if (any(!is.finite(beta))) {
       conv <- FALSE
       warning(gettextf("non-finite coefficients at iteration %d", i), domain = NA)
@@ -391,7 +402,7 @@ L0glm.fit.internal = function(X,
 #'
 #' @export
 fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, 
-                weights = NULL, start = NULL, lower, upper, control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
   results <- lapply(cols, function(col) {
@@ -415,7 +426,8 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                        solver = solver,
                        nonnegative = nonnegative,
                        method = method,
-                       warmupiters = warmupiters)
+                       warmupiters = warmupiters,
+                       verbose = verbose)
   })
   
   # Return the results as a matrix
