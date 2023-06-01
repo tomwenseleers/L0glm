@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=100, p=100, k=10, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=TRUE, sparse=TRUE, family = "gaussian")
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -525,7 +525,7 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, parallellize = F, relaxedGroupL0 = T, solver = "osqp")) # 34.88s for parallellize = F, 19.75s for parallellize = T
+system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, parallellize = F, relaxedGroupL0 = F, solver = "eigen")) # 34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par), as.vector(sim$beta_true)) # 0.994652 with variable indices
 # TODO: check why if data is family = "gaussian" gives an error
 
