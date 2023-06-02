@@ -140,7 +140,7 @@ L0glm.fit_new = function(X,
         fit2[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
           L0glm.fit.internal(X=X[,variable.indices,drop=F],
                              y=y[,col,drop=F],
-                             weights=1/(as.vector(y[,col,drop=F])+0.1),
+                             weights=weights,
                              start=as.vector(avgcoefs[variable.indices]),
                              family = family,
                              solver = solver,
