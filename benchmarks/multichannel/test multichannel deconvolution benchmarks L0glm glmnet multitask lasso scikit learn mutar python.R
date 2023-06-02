@@ -61,14 +61,16 @@ system.time(beta_relaxedgroupL0 <- L0glm.fit_new(X = sim$X, y = sim$y,
                                      nonnegative = TRUE,
                                      thresh = 0.01,
                                      warmupiters = 5,
-                                     solver = "eigen",
+                                     solver = "osqp",
                                      method = 7L, # using Eigen's sparse Cholesky solver
-                                     parallellize = T, 
+                                     parallellize = F, 
                                      relaxedGroupL0 = T)) # 7.5s
-# TODO: osqp still gives errors - Error in checkForRemoteErrors(val) : 
+# TODO: osqp still gives errors if I set parallellize to T - then gives
+# Error in checkForRemoteErrors(val) : 
 # 8 nodes produced errors; first error: length(l) == m is not TRUE
 
 beta_relaxedgroupL0 <- as.matrix(beta_relaxedgroupL0) # convert to dense matrix
+beta_relaxedgroupL0[beta_relaxedgroupL0>1E7] = 0 # TODO: check- osqp gives a couple of outlier coefficients
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(sim$beta_true)^0.1, 
       col = topo.colors(255),
@@ -99,66 +101,71 @@ cor(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0)) # 0.9997544
 
 # MULTICHANNEL DECONVOLUTION USING nonnegative group LASSO with glmnet ####
 library(glmnet)
+alpha <- 1 # LASSO
 system.time(cvfit <- cv.glmnet(X, 
                                Y, 
                                # weights = 1/(rowSums(Y)+0.1), # does not allow weights to be passed as a matrix, i.e. 1/(Y+0.1)
-                               alpha = 1, 
+                               alpha = alpha, 
                                # lambda = 10^seq(-3,2,length.out=20),
                                # dfmax = round(s*p),
                                # pmax = round(s*p),
                                family = "mgaussian", 
                                nlambda = 100,
                                lambda.min.ratio = 1E-5,
+                               # thresh = 1e-10,
                                nfolds = 5, 
-                   standardize = FALSE,
-                   standardize.response = FALSE,
-                   intercept = FALSE, 
-                   relax = FALSE,
-                   lower.limits = rep(0, ncol(X)+1))) # 7.46s
-
-# Select the best lambda value (to get slightly greater sparsity I used a slightly higher lambda cvfit$lambda.1se)
-best_lambda <- cvfit$lambda.min # or lambda.1se # or lambda.min
+                               standardize = FALSE,
+                               standardize.response = FALSE, # set to true solution is not sparse enough
+                               intercept = FALSE, 
+                               relax = FALSE,
+                               lower.limits = rep(0, ncol(X)+1))) # 7.46s
 
 # Fit the glmnet model over a sequence of lambda values
 system.time(fit_glmnet <- glmnet(X, 
                      Y,
                      # weights = 1/(rowSums(Y)+0.1), # does not allow weights to be passed as a matrix, i.e. 1/(Y+0.1)
-                     alpha = 1, 
+                     alpha = alpha, 
                      lambda = 10^seq(-3,2,length.out=20),
                      # dfmax = round(s*p),
                      # pmax = round(s*p),
                      family = "mgaussian", 
                      nlambda = 100,
                      lambda.min.ratio = 1E-5,
+                     # thresh = 1e-10,
                      standardize = FALSE,
-                     standardize.response = TRUE,
+                     standardize.response = FALSE, # set to true solution is not sparse enough
                      intercept = FALSE, 
                      relax = FALSE, 
                      lower.limits = rep(0, ncol(X)+1))) # 1.02s
 
+# Select the best lambda value (to get slightly greater sparsity I used a slightly higher lambda cvfit$lambda.1se)
+best_lambda <- cvfit$lambda.min/10 # NOTE: I have to reduce level of regularisation by a factor of 10 to get a decent solution
+
 # get the coefficients for each task for the best lambda value
 coefs <- coef(fit_glmnet, s = best_lambda)
 beta_mgaussian_glmnet <- do.call(cbind, lapply(seq_len(m), function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
-# beta_mgaussian_glmnet[abs(beta_mgaussian_glmnet)<0.01] = 0
+beta_mgaussian_glmnet[abs(beta_mgaussian_glmnet)<0.01] = 0
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_mgaussian_glmnet^0.01, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_mgaussian_glmnet)!=0)], col="cyan")
-sum(rowMax(sim$beta_true)!=0) # 20 true peaks
-sum(rowMin(beta_mgaussian_glmnet)!=0) # 18 peaks detected
+sum(rowMax(sim$beta_true)!=0) # 50 true peaks
+sum(rowMin(beta_mgaussian_glmnet)!=0) # 52 peaks detected
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_mgaussian_glmnet)!=0))) # 19 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1606 coefs nonzero
-length(as.vector(sim$beta_true)) # 29800 coefs in total
+                 which(rowMin(beta_mgaussian_glmnet)!=0))) # 31 out of 50 peaks detected
+length(which(sim$beta_true!=0)) # 3758 coefs nonzero
+length(as.vector(sim$beta_true)) # 80500 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_mgaussian_glmnet!=0))) # 1431 true pos coefs
+                 which(beta_mgaussian_glmnet!=0))) # 2224 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_mgaussian_glmnet!=0))) # 1814 false pos coefs
+                 which(beta_mgaussian_glmnet!=0))) # 5184 false pos coefs
 plot(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet), pch=16)
-cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet)) # 0.9997873
+cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet)) # 0.9999071
 
+# NOTE: above solution is too sparse
+# with standardize.response=TRUE solution is not sparse enough
 
 
 

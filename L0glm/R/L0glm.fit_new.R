@@ -112,7 +112,6 @@ L0glm.fit_new = function(X,
       stopCluster(cl)
     } else { # If parallellize = FALSE
       # Fit all channels sequentially
-      browser()
       fit1 <- do.call(cbind, lapply(1:ncol(y), function(col) {
         L0glm.fit.internal(X = X,
                            y = y[,col,drop=F],
