@@ -4,13 +4,14 @@ devtools::load_all(".")
 
 # simulate blurred multichannel spike train
 set.seed(1)
-s <- 0.1
-p <- 200
+s <- 0.1 # sparsity (% of timepoints where there is a peak)
+p <- 500 # 500 variables
+# simulate multichannel blurred spike train with Gaussian noise
 sim <- simulate_spike_train(n=p, p=p, k=round(s*p), 
                             mean_beta = 10000,
                             sd_logbeta = 3,
                             family="gaussian",
-                            sd_noise = 50,
+                            sd_noise = 1,
                             multichannel=TRUE, sparse=TRUE)
 X <- sim$X # n x p matrix
 Y <- sim$y # n x m matrix  
@@ -58,43 +59,42 @@ system.time(beta_relaxedgroupL0 <- L0glm.fit_new(X = sim$X, y = sim$y,
                                      lower = rep(0, ncol(X)),
                                      upper = rep(Inf, ncol(X)),
                                      nonnegative = TRUE,
-                                     # thresh = 1E-10,
-                                     # warmupiters = 5,
+                                     thresh = 0.01,
+                                     warmupiters = 5,
                                      solver = "eigen",
                                      method = 7L, # using Eigen's sparse Cholesky solver
                                      parallellize = T, 
-                                     relaxedGroupL0 = T)) # 9s
-# works with family=poisson(identity) but with gaussian(identity) gives
-# Error in intI(i, n = d[1L], dn[[1L]], give.dn = FALSE) :
-# logical subscript too long (29800, should be 200)
+                                     relaxedGroupL0 = T)) # 7.5s
+# TODO: osqp still gives errors - Error in checkForRemoteErrors(val) : 
+# 8 nodes produced errors; first error: length(l) == m is not TRUE
 
 beta_relaxedgroupL0 <- as.matrix(beta_relaxedgroupL0) # convert to dense matrix
 
-image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(sim$beta_true)^0.01, 
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(sim$beta_true)^0.1, 
       col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="True coefficients")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_relaxedgroupL0)!=0)], col="cyan")
 
-image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_relaxedgroupL0^0.01, 
+image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_relaxedgroupL0^0.1, 
       col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="nonnegative relaxed group L0")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_relaxedgroupL0)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_relaxedgroupL0)!=0) # 50 peaks detected
+sum(rowMin(beta_relaxedgroupL0)!=0) # 46 peaks detected
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_relaxedgroupL0)!=0))) # 46 out of 50 peaks detected
-length(which(sim$beta_true!=0)) # 3895 coefs nonzero
-length(as.vector(sim$beta_true)) # 162000 coefs in total
+                 which(rowMin(beta_relaxedgroupL0)!=0))) # 39 out of 50 peaks correctly detected
+length(which(sim$beta_true!=0)) # 3758 coefs nonzero
+length(as.vector(sim$beta_true)) # 80500 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_relaxedgroupL0!=0))) # 2727 true pos coefs
+                 which(beta_relaxedgroupL0!=0))) # 1912 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_relaxedgroupL0!=0))) # 142 false pos coefs
+                 which(beta_relaxedgroupL0!=0))) # 520 false pos coefs
 plot(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0), pch=16)
-cor(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0)) # 0.9983556
+cor(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0)) # 0.9997544
 
 
 # MULTICHANNEL DECONVOLUTION USING nonnegative group LASSO with glmnet ####
@@ -103,50 +103,61 @@ system.time(cvfit <- cv.glmnet(X,
                                Y, 
                                # weights = 1/(rowSums(Y)+0.1), # does not allow weights to be passed as a matrix, i.e. 1/(Y+0.1)
                                alpha = 1, 
-                               family = "mgaussian", nfolds = 5, 
+                               # lambda = 10^seq(-3,2,length.out=20),
+                               # dfmax = round(s*p),
+                               # pmax = round(s*p),
+                               family = "mgaussian", 
+                               nlambda = 100,
+                               lambda.min.ratio = 1E-5,
+                               nfolds = 5, 
                    standardize = FALSE,
-                   standardize.response = TRUE,
+                   standardize.response = FALSE,
                    intercept = FALSE, 
-                   relax = TRUE,
-                   lower.limits = rep(0, ncol(X)+1))) # 162s
+                   relax = FALSE,
+                   lower.limits = rep(0, ncol(X)+1))) # 7.46s
 
-# Select the best lambda value
-best_lambda <- cvfit$lambda.min
+# Select the best lambda value (to get slightly greater sparsity I used a slightly higher lambda cvfit$lambda.1se)
+best_lambda <- cvfit$lambda.min # or lambda.1se # or lambda.min
 
 # Fit the glmnet model over a sequence of lambda values
 system.time(fit_glmnet <- glmnet(X, 
                      Y,
                      # weights = 1/(rowSums(Y)+0.1), # does not allow weights to be passed as a matrix, i.e. 1/(Y+0.1)
-                     alpha = 1, family = "mgaussian", 
+                     alpha = 1, 
+                     lambda = 10^seq(-3,2,length.out=20),
+                     # dfmax = round(s*p),
+                     # pmax = round(s*p),
+                     family = "mgaussian", 
                      nlambda = 100,
-                     lambda.min.ratio = 1E-4,
+                     lambda.min.ratio = 1E-5,
                      standardize = FALSE,
                      standardize.response = TRUE,
                      intercept = FALSE, 
-                     relax = TRUE, 
-                     lower.limits = rep(0, ncol(X)+1))) # 94s
+                     relax = FALSE, 
+                     lower.limits = rep(0, ncol(X)+1))) # 1.02s
 
 # get the coefficients for each task for the best lambda value
 coefs <- coef(fit_glmnet, s = best_lambda)
 beta_mgaussian_glmnet <- do.call(cbind, lapply(seq_len(m), function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
+# beta_mgaussian_glmnet[abs(beta_mgaussian_glmnet)<0.01] = 0
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_mgaussian_glmnet^0.01, col = topo.colors(255),
       useRaster=TRUE,
       xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_mgaussian_glmnet)!=0)], col="cyan")
-sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_mgaussian_glmnet)!=0) # 39 peaks detected
+sum(rowMax(sim$beta_true)!=0) # 20 true peaks
+sum(rowMin(beta_mgaussian_glmnet)!=0) # 18 peaks detected
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_mgaussian_glmnet)!=0))) # 27 out of 50 peaks detected
-length(which(sim$beta_true!=0)) # 3895 coefs nonzero
-length(as.vector(sim$beta_true)) # 162000 coefs in total
+                 which(rowMin(beta_mgaussian_glmnet)!=0))) # 19 out of 20 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_mgaussian_glmnet!=0))) # 1502 true pos coefs
+                 which(beta_mgaussian_glmnet!=0))) # 1431 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_mgaussian_glmnet!=0))) # 1355 false pos coefs
+                 which(beta_mgaussian_glmnet!=0))) # 1814 false pos coefs
 plot(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet), pch=16)
-cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet)) # 0.9994965
+cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet)) # 0.9997873
 
 
 
@@ -161,13 +172,14 @@ cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet)) # 0.9994965
 # beta_grpreg <- coef(fit_grpreg, lambda=best_lambda)
 # 
 # # also try https://search.r-project.org/CRAN/refmans/gglasso/html/gglasso.html
+# and https://search.r-project.org/CRAN/refmans/RMTL/html/MTL.html
 
 
 
 # MULTICHANNEL DECONVOLUTION USING MultiTaskLasso IN scikitlearn (using L1/L2 block norm penalty = multivariate group LASSO of https://projecteuclid.org/download/pdfview_1/euclid.aos/1291388368) ####
 
 # define the MultiTaskLasso model
-multitasklasso <- sklearn$MultiTaskLasso(alpha=1)
+multitasklasso <- sklearn$MultiTaskLasso(alpha=5, max_iter=10000)
 
 # specify nonnegativity constraints - not possible for the moment?
 # multitasklasso$positive <- TRUE
@@ -176,7 +188,7 @@ multitasklasso <- sklearn$MultiTaskLasso(alpha=1)
 # multitasklasso$sample_weights = W
 
 # fit the model - note: currently does not support observation weights
-system.time(multitasklasso$fit(X_py_dense, Y_py)) # 18s
+system.time(multitasklasso$fit(X_py_dense, Y_py)) # 23s
 
 # get coefficients
 beta_MultiTaskLasso <- t(multitasklasso$coef_)
@@ -187,17 +199,17 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_MultiTaskLasso^1E-10, col = topo.
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_MultiTaskLasso)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_MultiTaskLasso)!=0) # 87 peaks detected - still too high
+sum(rowMin(beta_MultiTaskLasso)!=0) # 50 peaks detected with this alpha
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_MultiTaskLasso)!=0))) # 41 out of 50 peaks detected
-length(which(sim$beta_true!=0)) # 3895 coefs nonzero
-length(as.vector(sim$beta_true)) # 162000 coefs in total
+                 which(rowMin(beta_MultiTaskLasso)!=0))) # 33 peaks detected
+length(which(sim$beta_true!=0)) # 3758 coefs nonzero
+length(as.vector(sim$beta_true)) # 80500 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_MultiTaskLasso!=0))) # 3031 true pos coefs
+                 which(beta_MultiTaskLasso!=0))) # 2381 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_MultiTaskLasso!=0))) # 11063 false pos coefs
+                 which(beta_MultiTaskLasso!=0))) # 5669 false pos coefs
 plot(as.vector(sim$beta_true), as.vector(beta_MultiTaskLasso), pch=16)
-cor(as.vector(sim$beta_true), as.vector(beta_MultiTaskLasso)) # 0.7964879
+cor(as.vector(sim$beta_true), as.vector(beta_MultiTaskLasso)) # 0.9997148
 
 
 
@@ -215,7 +227,7 @@ multilevellasso <- mutar$MultiLevelLasso(alpha = 1, fit_intercept=FALSE)
 X_py_sparse <- r_to_py(X) # scipy.sparse.csc.csc_matrix
 X_py_dense <- r_to_py(as.matrix(X)) # X_py_sparse$toarray() # numpy.ndarray
 class(X_py_dense) # numpy.ndarray, 200x200
-Y_py <- np$array(t(Y)) # needs to be transposed
+Y_py <- np$array(t(as.matrix(Y))) # needs to be transposed
 dim(Y_py) # 142 200
 class(Y_py) # matrix array
 
@@ -232,16 +244,16 @@ class(X_reshaped) # array
 X_weighted_py <- np$array(X_weighted)
 dim(X_weighted_py) # 142 200 200
 class(X_weighted_py) # array
-Y_weighted_py <- np$array(t(Y_weighted)) # needs to be transposed
+Y_weighted_py <- np$array(t(as.matrix(Y_weighted))) # needs to be transposed
 dim(Y_weighted_py) # 142 200
 class(Y_weighted_py) # matrix array
 
 
 # fit the models - note: currently methods do not support observation weights
-system.time(indlasso$fit(X_reshaped, Y_py)) # 16s
-system.time(indrewlasso$fit(X_reshaped, Y_py)) # 180s 
-system.time(grouplasso$fit(X_reshaped, Y_py)) # 824s
-system.time(dirtymodel$fit(X_reshaped, Y_py)) # 
+system.time(indlasso$fit(X_reshaped, Y_py)) # 0.53s
+system.time(indrewlasso$fit(X_reshaped, Y_py)) # 1.70s 
+system.time(grouplasso$fit(X_reshaped, Y_py)) # 35.43s
+system.time(dirtymodel$fit(X_reshaped, Y_py)) # 109.77s
 system.time(multilevellasso$fit(X_reshaped, Y_py)) # 
 
 # indlasso$fit(X_weighted_py, Y_weighted_py)
@@ -264,15 +276,15 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_IndLasso^0.1, col = topo.colors(2
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_IndLasso)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 20 true peaks
-sum(rowMin(beta_IndLasso)!=0) # 171 peaks detected - still too high
+sum(rowMin(beta_IndLasso)!=0) # 32 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_IndLasso)!=0))) # 18 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1591 coefs nonzero
-length(as.vector(sim$beta_true)) # 28400 coefs in total
+                 which(rowMin(beta_IndLasso)!=0))) # 16 out of 20 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_IndLasso!=0))) # 42/1591 true pos coefs
+                 which(beta_IndLasso!=0))) # 583 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_IndLasso!=0))) # 499/1591 false pos coefs
+                 which(beta_IndLasso!=0))) # 203 false pos coefs
 
 
 # Individual Reweighted Lasso
@@ -284,13 +296,13 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_IndRewLasso)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 20 true peaks
 sum(rowMin(beta_IndRewLasso)!=0) # 28 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_IndRewLasso)!=0))) # 17 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1591 coefs nonzero
-length(as.vector(sim$beta_true)) # 28400 coefs in total
+                 which(rowMin(beta_IndRewLasso)!=0))) # 16 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_IndRewLasso!=0))) # 150/1591 true pos coefs
+                 which(beta_IndRewLasso!=0))) # 571 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_IndRewLasso!=0))) # 24/28400 false pos coefs
+                 which(beta_IndRewLasso!=0))) # 43 false pos coefs
 
 
 # Group Lasso
@@ -300,15 +312,15 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_GroupLasso^0.1, col = topo.colors
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_GroupLasso)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 20 true peaks
-sum(rowMin(beta_GroupLasso)!=0) # 49 peaks detected - still too high
+sum(rowMin(beta_GroupLasso)!=0) # 26 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_GroupLasso)!=0))) # 10 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1591 coefs nonzero
-length(as.vector(sim$beta_true)) # 28400 coefs in total
+                 which(rowMin(beta_GroupLasso)!=0))) # 14 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_GroupLasso!=0))) # 912/1591 true pos coefs
+                 which(beta_GroupLasso!=0))) # 1083 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_GroupLasso!=0))) # 6046/28400 false pos coefs
+                 which(beta_GroupLasso!=0))) # 2791 false pos coefs
 
 # Dirty Model
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_DirtyModel^0.1, col = topo.colors(255),
@@ -317,15 +329,15 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_DirtyModel^0.1, col = topo.colors
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_DirtyModel)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 20 true peaks
-sum(rowMin(beta_DirtyModel)!=0) # 49 peaks detected - still too high
+sum(rowMin(beta_DirtyModel)!=0) # 30 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_DirtyModel)!=0))) # 10 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1591 coefs nonzero
-length(as.vector(sim$beta_true)) # 28400 coefs in total
+                 which(rowMin(beta_DirtyModel)!=0))) # 16 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_DirtyModel!=0))) # 912/1591 true pos coefs
+                 which(beta_DirtyModel!=0))) # 1171 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_DirtyModel!=0))) # 6046/1591 false pos coefs
+                 which(beta_DirtyModel!=0))) # 3003 false pos coefs
 
 # MultiLevel Lasso
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_MultiLevelLasso^1E-10, col = topo.colors(255),
@@ -334,13 +346,13 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_MultiLevelLasso^1E-10, col = topo
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_MultiLevelLasso)!=0)], col="cyan")
 sum(rowMax(sim$beta_true)!=0) # 20 true peaks
-sum(rowMin(beta_MultiLevelLasso)!=0) # 18 peaks detected - still too high
+sum(rowMin(beta_MultiLevelLasso)!=0) # 22 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), 
-                 which(rowMin(beta_MultiLevelLasso)!=0))) # 12 out of 20 peaks detected
-length(which(sim$beta_true!=0)) # 1591 coefs nonzero
-length(as.vector(sim$beta_true)) # 28400 coefs in total
+                 which(rowMin(beta_MultiLevelLasso)!=0))) # 11 peaks detected
+length(which(sim$beta_true!=0)) # 1606 coefs nonzero
+length(as.vector(sim$beta_true)) # 29800 coefs in total
 length(intersect(which(sim$beta_true!=0), 
-                 which(beta_MultiLevelLasso!=0))) # 576/1591 true pos coefs
+                 which(beta_MultiLevelLasso!=0))) # 673 true pos coefs
 length(intersect(which(sim$beta_true==0), 
-                 which(beta_MultiLevelLasso!=0))) # 459/1591 false pos coefs
+                 which(beta_MultiLevelLasso!=0))) # 1172 false pos coefs
 

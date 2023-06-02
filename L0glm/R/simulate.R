@@ -114,7 +114,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   # cf https://stackoverflow.com/questions/66373113/linear-convolution-in-r-using-bandsparse-matrix-multiplication:
   X = do.call(cbind, lapply(x_beta, function (u) psf(x, u))) 
   X[X < thresh] = 0
-  X = Matrix(X, sparse=sparse)
+  if (sparse) X = as(X,"dgCMatrix")
   
   y_true = Matrix(X %*% beta_true, sparse=sparse)
   beta_true = Matrix(beta_true, sparse=sparse)
@@ -132,7 +132,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   y_true = y_true[,!invariant,drop=F]
   y = y[,!invariant,drop=F]
 
-  X[,1]=rep(1,n) # intercept column
+  # X[,1]=rep(1,n) # intercept column # TODO add option for intercept
 
   if (Plot) {
     if (!multichannel) {
@@ -157,8 +157,8 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   return(list(
     X = X,
     beta_true = beta_true,
-    y = y,
-    y_true = y_true,
+    y = as.matrix(y),
+    y_true = as.matrix(y_true),
     x = x,
     x_beta = x_beta
   ))
