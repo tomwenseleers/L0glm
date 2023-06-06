@@ -100,12 +100,17 @@ control.fit.gen <- function(maxit = 10, block.size = NULL, tol = 1E-10){
 #' @export
 control.solver.gen <- function(solver, method = NULL,
                                maxit = NULL,
+                               standardize = NULL,
                                blocksize = NULL,
                                reltol = 1E-8,
                                tol = NULL,
                                abstol = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
+  
+  if(solver != "glmnet" & !is.null(standardize) & verbose) {
+    print("Selected solver does not support standardization. To enable standardization, please set the solver to glmnet.")
+  }
   
   if(solver == "osqp"){
     if(is.null(maxit)) {
@@ -132,9 +137,12 @@ control.solver.gen <- function(solver, method = NULL,
     
     if(is.null(abstol)) abstol <- 1e-10
     if(is.null(rowaug)) rowaug <- TRUE
-    if(rowaug == FALSE) print("Only row augmentation is allowed with this method.")
+    if(rowaug == FALSE) print("Row augmentation is required with chosen solver.")
     
-    l <- list(thresh = abstol, maxit = maxit)
+    if(is.null(standardize)) standardize <- FALSE
+    
+    
+    l <- list(thresh = abstol, maxit = maxit, standardize = standardize)
     
   } else if (solver == "nnls"){
     l <- list()

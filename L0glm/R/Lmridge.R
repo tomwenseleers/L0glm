@@ -29,7 +29,6 @@ lmridge <- function(X, y, lambdas = NULL,
                     start = NULL,
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
-  
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
   if(is.null(block.size) || block.size == ncol(X)) {
@@ -127,7 +126,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
   model <- bigGlm(x = Xwaug, 
                   y = ywaug,
                   intercept = FALSE, 
-                  standardize = FALSE, 
+                  standardize = control.solver$standardize, 
                   standardize.response = FALSE,
                   lower.limits = c(-Inf, lower), 
                   upper.limits = c(Inf, upper),
@@ -136,6 +135,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
                   thresh = control.solver$thresh,
                   maxit = control.solver$maxit)
   coefs <- coef(model)[-1]
+  browser()
   coefs <- pmax(lower, pmin(coefs, upper)) #TODO ask TOM
   return(coefs)
 }
