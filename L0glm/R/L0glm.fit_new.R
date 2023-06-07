@@ -9,7 +9,7 @@
 #' @export
 L0glm.fit_new = function(X, 
                          y, 
-                         weights = rep(1, ncol(X)),
+                         weights = NULL,
                          family = gaussian(identity),
                          offset = rep(0, nrow(X)),
                          start = NULL,
@@ -31,9 +31,30 @@ L0glm.fit_new = function(X,
                          warmupiters = 4,
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
-  
   y <- as.matrix(y)
+  # Make weights and start into a matrix if they are provided as a vector and y is multichannel
+
+  if(!is.null(weights)){
+    if(ncol(y) > 1 & dim(as.matrix(weights))[2] == 1){
+      weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
+    }
+  } else { # If no weights are passed
+    if(ncol(y) > 1){ # Multichannel
+      weights = matrix(1, nrow = nrow(y), ncol = ncol(y))
+    } else { # Single channel
+      weights = rep(1, ncol(X))
+    }
+  }
+  
+
+  if(!is.null(start)){
+    if(ncol(y) > 1 & dim(as.matrix(start))[2] == 1){
+      start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
+    }
+  }
+
   if(nonnegative) lower[lower < 0] <- 0
+  
   
   if(ncol(y) > 1){
     if(!group) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
@@ -64,16 +85,15 @@ L0glm.fit_new = function(X,
       
       for(i in 1L:group.maxit){
         if(i > 1){
-          start <- rowMeans(fit)
-          variable.indices = which(start > 0)
+          avgcoefs = rowMeans(fit)
+          variable.indices = which(avgcoefs > 0)
+          start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
         }
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
         # Use clusterApply to apply the function in parallel & combine results
-        
-        
         fit[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun, 
                                                               X = X[,variable.indices, drop = F], 
                                                               y = y, 
@@ -86,7 +106,7 @@ L0glm.fit_new = function(X,
                                                               thresh = thresh, 
                                                               solver = solver, 
                                                               weights = weights, 
-                                                              start = as.vector(start[variable.indices]), 
+                                                              start = start[variable.indices, , drop = F], 
                                                               lower = lower[variable.indices], 
                                                               upper = upper[variable.indices], 
                                                               offset = offset,
@@ -100,7 +120,9 @@ L0glm.fit_new = function(X,
       if(relaxedGroupL0){
         # Apply relaxed group L0 feature selection
         avgcoefs = rowMeans(fit)
-        variable.indices = which(avgcoefs>0)
+        variable.indices = which(avgcoefs > 0)
+        start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
+        
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
         fit[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun, 
@@ -115,7 +137,7 @@ L0glm.fit_new = function(X,
                                                               thresh = thresh, 
                                                               solver = solver, 
                                                               weights = weights, 
-                                                              start = as.vector(start[variable.indices]), 
+                                                              start = start[variable.indices, , drop = F], 
                                                               lower = lower[variable.indices], 
                                                               upper = upper[variable.indices], 
                                                               offset = offset,
@@ -129,8 +151,9 @@ L0glm.fit_new = function(X,
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
         if(i > 1){
-          start <- rowMeans(fit)
-          variable.indices = which(start > 0)
+          avgcoefs <- rowMeans(fit)
+          variable.indices = which(avgcoefs > 0)
+          start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
         }
@@ -145,8 +168,8 @@ L0glm.fit_new = function(X,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              offset = offset,
-                             weights = weights,
-                             start = as.vector(start[variable.indices]),
+                             weights = as.vector(weights[,col,drop=F]),
+                             start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
                              upper = upper[variable.indices],
                              maxit = maxit,
@@ -166,6 +189,7 @@ L0glm.fit_new = function(X,
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
         avgcoefs = rowMeans(fit)
         variable.indices = which(avgcoefs>0)
+        start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
         fit[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
@@ -176,8 +200,8 @@ L0glm.fit_new = function(X,
                              delta = delta,
                              gamma = gamma,
                              nonnegative = nonnegative,
-                             weights = weights,
-                             start = as.vector(avgcoefs[variable.indices]),
+                             weights = as.vector(weights[,col,drop=F]),
+                             start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
                              upper = upper[variable.indices],
                              maxit = maxit,
@@ -251,15 +275,6 @@ L0glm.fit.internal = function(X,
   etastart = NULL
   n <- nobs <- nrow(X)    # needed by the initialize expression below
   p <- nvars <- ncol(X)   # needed by the initialize expression below
-  # if (nvars == 0) { # In case a NULL model is fit, code taken from 'glm'
-  #   return(list(coefficients = numeric(),
-  #               weights = numeric(),
-  #               prior.weights = weights,
-  #               fitted.values = rep(0, n),
-  #               family = family,
-  #               converged.iwls = TRUE,
-  #               iter.iwls = 0))
-  # }
   
   mustart = NULL
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
@@ -293,7 +308,6 @@ L0glm.fit.internal = function(X,
         W = as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
         good = (!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
         z = (y - offset)[good] # response
-        if(length(z) < length(W[good])) browser()
       } else {
         mu.prime <- family$mu.eta(eta) # derivative of the expected values
         good = (weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)# valid rows
@@ -387,10 +401,10 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                        lambda = lambda,
                        delta = delta,
                        gamma = gamma,
-                       weights = weights,
+                       weights = as.vector(weights[,col,drop=F]),
+                       start = as.vector(start[, col, drop = F]),
                        maxit = maxit,
                        tol = tol,
-                       start = start,
                        lower = lower,
                        offset = offset,
                        upper = upper,
