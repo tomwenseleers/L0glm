@@ -90,7 +90,7 @@ compute.df <- function(X, fit){
 
 # compute.diagH ####
 # Calculate the diagonal of the hat matrix. The hat matrix is not computed
-# explicitely but we take a shortcut using QR decomposition.
+# explicitly but we take a shortcut using QR decomposition.
 #
 # INPUT:
 #   X:    the model matrix
@@ -311,22 +311,35 @@ L0glm.bfun <- function(data, indices, X, family, lambda, start, wts, nonnegative
 # Function to compute the best lambda given the IC. For some families, the
 # dispersion is estimated using glmnet (+lambda tuning) which is faster than
 # tuning lambda with L0glm.
-preset.lambda <- function(IC, y, X, weights, family, start){
-  N <- n <- nrow(X)
-  # AR is an approximation of L0 penalty so the given lambda and lambda from
+# TODO check estimateSigma in selectiveInference package which also estimates the variance using glmnet
+preset.lambda <- function(IC="gic", y=NULL, X=NULL, 
+                          weights=rep(1, nrow(X)),  # TODO also add offset here
+                          family=gaussian(identity),
+                          start=NULL,
+                          dispersion=NULL) {
+  require(glmnet)
+  # AR is an approximation of L0 penalty so the given lambda tilde used in AR and lambda from
   # the L0 penalty objective do not exactly match (see Frommlet et al, 2016).
-  # We will use the factor 4 the authors derived for orthogonal case, assuming
-  # this approximately holds for any data
-  lambda.hat <- 4 # The estimated true lambda
+  # Frommlet et al. (2016) showed that if variables are orthogonal, lambda tilde = lambda/4.
+  # We will here use this factor of 4, assuming that approximately holds also
+  # for non-orthogonal variables. 
+  lambda.tilde <- 1/4 # lambda tilde to use in the adaptive ridge iterations to approximate a lambda L0 penalty
   # Lambda is dependent on the dispersion of the model
   # The issue is that the dispersion is not known beforehand, so we use glmnet
   # which is very fast to optimize but has no L0 penalty and estimate the
   # dispersion from the fit
-  if(family$family %in% c("poisson", "binomial")){ # constant dispersion
-    dispersion <- 1
-  } else {
-    # Perform an initial fit of the data
-    if (!is.null(start)){
+  
+  if (family$family %in% c("poisson", "binomial")) { dispersion <- 1 } # families with constant dispersion 
+  
+  if (is.null(dispersion)) {
+  N <- n <- nrow(X)
+  p <- ncol(X)
+  y <- as.matrix(y)
+  sel_task <- which.max(colMeans(abs(sim$y)))
+  y <- y[, sel_task, drop=F] # NOTE: just using single channel with max avg absolute value
+  weights <- as.matrix(rowMeans(as.matrix(weights)))
+  # Perform an initial fit of the data
+  if (!is.null(start)){
       eta <- X %*% start
       mu <- family$linkinv(eta)
     } else {
@@ -340,26 +353,35 @@ preset.lambda <- function(IC, y, X, weights, family, start){
     }
     # Transform data on the link scale
     if(family$link == "identity"){ # simplified formula and faster than formula in else statement
-      W <- as.vector(weights/family$variance(mu))
+      W <- weights/family$variance(mu)
+      dim(W) <- dim(eta)
       z <- y
     } else {
       mu.prime <- family$mu.eta(eta)
       z <- as.vector(eta + (y - mu) / mu.prime) # TODO Remove offset here if needed.
-      W <- as.vector(weights * mu.prime^2 / family$variance(mu))
+      W <- weights * mu.prime^2 / family$variance(mu)
+      dim(W) <- dim(eta)
     }
-    glmnet.cv.out <- cv.glmnet(x = X, y = z, weights = W, lambda = 10^seq(-10, 10, length.out = 100),
-                               family = "gaussian")
-    res <- y - predict(glmnet.cv.out, newx = X, s = glmnet.cv.out$lambda.min)
-    dispersion <- sum(weights * res^2)/n # To avoid overhead of computing rdf or having negative variance, we use just use n instead of n-p
-  }
-  lambda.hat <- lambda.hat * dispersion / 2 # estimated lambda factor. This is additionally scaled to the desired IC
-  lambda <- switch(IC,
-                   aic = 2 * lambda.hat,
-                   bic = log(n) * lambda.hat,
-                   hq = 2*log(log(n)) * lambda.hat, # Hannan and Quinnn information criterion,
-                   bicq = log(n) - 2*log(0.25/(1-0.25)) * lambda.hat, # TODO q = 0.25 should be a constant to optimize...
-                   stop("invalid information criterion for initializing lambda. It must be one of 'aic', 'bic', 'hq', 'bicq'."))
-  return(lambda)
+    suppressWarnings(glmnet.cv.out <- glmnet::cv.glmnet(x = X, 
+                                                y = z, 
+                                                weights = W,  
+                               lambda = 10^seq(-10, 10, length.out = 100),
+                               family = "gaussian"))
+    res <- z - suppressWarnings(predict(glmnet.cv.out, newx = X, s = glmnet.cv.out$lambda.min))
+    dispersion <- sum(weights * res^2)/n # To avoid overhead of computing rdf or having negative variance, we just use n instead of n-p
+}
+      
+  lambda.tilde <- lambda.tilde * dispersion # estimated lambda factor
+  lambda.tilde <- switch(IC,
+                   gic = log(p)*log(log(n)) * lambda.tilde,
+                   aic = 2 * lambda.tilde,
+                   bic = log(n) * lambda.tilde,
+                   ebic = (log(n) + 2*(1-log(n)/(2*log(p)))*log(p)) * lambda.tilde,
+                   mbic = log(n*(p^2)/16) * lambda.tilde,
+                   # bicq = log(n) - 2*log(0.25/(1-0.25)) * lambda.tilde # TODO q = 0.25 should be a constant to optimize...
+                   # hq = 2*log(log(n)) * lambda.tilde, # Hannan and Quinnn information criterion,
+                   stop("invalid information criterion for initializing lambda. It must be one of 'gic', 'aic', 'bic', 'ebic', 'mbic'."))
+  return(lambda.tilde)
 }
 
 

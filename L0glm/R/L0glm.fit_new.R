@@ -18,12 +18,12 @@ L0glm.fit_new = function(X,
                          lambda = 1, 
                          nonnegative = FALSE,
                          parallellize = TRUE,
-                         group = FALSE,
-                         group.maxit = 3,
+                         group = FALSE, # TODO: bit unclear what this one does in cobmination with relaxedGroupL0, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
+                         group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxedGroupL0 = TRUE,
-                         delta = 1E-10, 
+                         delta = 0, # TODO: remove this argument & hard code delta to 0, since thresh alone should be enough 
                          gamma = 2,
-                         thresh = 1,
+                         thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
                          maxit = 25,

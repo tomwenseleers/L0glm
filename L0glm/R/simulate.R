@@ -78,7 +78,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   multichannel = FALSE,
                                   seed = 123, Plot = TRUE
 ){
-  
+  require(qlcMatrix)
   # TODO: update documentation above
   # TODO: add intercept if desired 
   
@@ -147,13 +147,17 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
     lines(x_beta, beta_true, type = "h", col = "red") } else {
       # plot for multichannel simulation
       par(mfrow = c(1,1))
-      image(x=1:n, y=1:m, z=as.matrix(y_true)^0.2, 
+      image(x=1:n, y=1:m, z=as.matrix(y)^0.2, 
             col = topo.colors(255), useRaster=TRUE,
-            main = "Ground truth", xlab="Time", ylab="Channel")
+            main = "Simulated blurred multichannel spike train\n(red=true support)", xlab="Time", ylab="Channel")
       abline(v=u*n/p, col="red")
     }
   }
 
+  colnames(X) = paste0("x", 1:ncol(X))
+  colnames(y) = paste0("y", 1:ncol(y))
+  colnames(y_true) = paste0("y", 1:ncol(y_true))
+  
   return(list(
     X = X,
     beta_true = beta_true,
