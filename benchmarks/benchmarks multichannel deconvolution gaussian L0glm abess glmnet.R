@@ -344,8 +344,34 @@ plot(beta_lm_onallvars, sim$beta_true, pch=16,
 graph2png(file="../benchmarks/plots/10 true vs estimated coefficients least square regr all variables.png", width=7, height=5)
 
 
-# NOTE: working with the union of selected variables would not work if you use nonnegative group LASSO ####
-# as the set would be too large
+
+# Alternatively, similar to the bolasso we could also identify the variables that 
+# are selected by the L0glm fit at least threshold % of the time, similar to what 
+# the https://cran.r-project.org/web/packages/bolasso/bolasso.pdf
+# does. If we set threshold to 0.3, this seems to converge very quickly to approx the true support.
+# (PROBABLY THE BEST SOLUTION)
+threshold = 0.3 # value much lower than in bolasso, where threshold to achieve consistency=0.9
+# variables selected at least threshold % of the time:
+BOL0GLMset = USVBset_relaxedGroupL0[colMeans(do.call(rbind,lapply(1:length(beta_relaxedgroupL0_boot), function (i) USVBset_relaxedGroupL0 %in% boot_selectedvars_relaxedGroupL0[[i]]))) >= threshold]
+length(BOL0GLMset) # 20 variables selected
+length(intersect(BOL0GLMset, true_support_set)) # 19/20 selected variables overlap with true support, 1 false positive but highly collinear with the correct variable
+
+BOL0GLMset_setsize_vs_B = sapply(1:B, function (nr_bootstrap_repls) { length(USVBset_relaxedGroupL0[colMeans(do.call(rbind,lapply(1:nr_bootstrap_repls, function (i) USVBset_relaxedGroupL0 %in% boot_selectedvars_relaxedGroupL0[[i]]))) >= threshold]) })
+plot(1:B, 
+     BOL0GLMset_setsize_vs_B, type="o", pch=16,
+     main="Size of set of variables selected 30% of the time by\nnonnegative relaxed group L0 GLM after\nbootstrapping (blue=true support size)",
+     xlab="Number of bootstrap replicates",
+     ylab="Size of set of selected variables")
+abline(h=length(true_support_set), col="blue")
+graph2png(file="../benchmarks/plots/9b size of set of variables selected 30 percent of the time after bootstrap relaxed group L0.png", width=7, height=5)
+
+
+# we could then do inference on these selected variables using glm.cons or regular glm
+
+
+
+# NOTE: if you use nonnegative group LASSO one also has to use this approach, as in https://cran.r-project.org/web/packages/bolasso/bolasso.pdf ####
+# but with threshold = 0.9 to achieve variable selection consistency
 
 # determine optimal lambda in nonnegative group LASSO
 library(glmnet)
@@ -385,6 +411,7 @@ system.time(fit_glmnet <- glmnet(
   relax = FALSE,
   lower.limits = rep(0, ncol(X) + 1)  # for nonnegativity constraints
 )) # 3s
+
 
 # get the coefficients for each task for the best lambda value
 coefs <- coef(fit_glmnet, s = best_lambda_mgaussian_glmnet)
@@ -435,11 +462,11 @@ system.time({
 
 # union of selected variables across L0glm best subset fits on bootstrap replicates
 # and then fitting a (constrained) (g)lm on that set of selected variables
+# this doesn't work as it would select too large a set & set would keep on growing
 boot_selectedvars_mgaussian_glmnet = lapply(beta_mgaussian_glmnet_boot, function (coefs) which(rowMin(coefs)!=0)) # set of selected variables for each fit
 USVBset_mgaussian_glmnet = unique(unlist(boot_selectedvars_mgaussian_glmnet)) # union of selected variables
 length(USVBset_mgaussian_glmnet) # 181 variables selected out of 200 (true support size=20)
 # so this doesn't work!
-
 
 USVBset_mgaussian_glmnet_setsize_vs_B = sapply(1:B, function (nr_bootstrap_repls) { 
   length(unique(unlist(boot_selectedvars_mgaussian_glmnet[1:nr_bootstrap_repls]))) }) 
@@ -450,6 +477,25 @@ plot(1:B, USVBset_mgaussian_glmnet_setsize_vs_B, type="o", pch=16,
      ylim=c(0,200))
 abline(h=length(true_support_set), col="blue")
 graph2png(file="../benchmarks/plots/12 size of union of selected variables after bootstrap nonnegative group LASSO.png", width=7, height=5)
+
+# set of variables selected 70% of the time, as in https://arxiv.org/abs/0804.1302, 
+# does work & achieves variable selection consistency
+threshold = 0.7 # optimal value here to achieve variable selection consistency, slightly lower than suggested 0.9
+# variables selected at least threshold % of the time:
+bolassoset = USVBset_mgaussian_glmnet[colMeans(do.call(rbind,lapply(1:length(beta_mgaussian_glmnet_boot), function (i) USVBset_mgaussian_glmnet %in% boot_selectedvars_mgaussian_glmnet[[i]]))) >= threshold]
+length(bolassoset) # 17 variables selected
+length(intersect(bolassoset, true_support_set)) # 17 selected variables all overlap with true support, no false positives
+
+bolassoset_setsize_vs_B = sapply(1:B, function (nr_bootstrap_repls) { length(USVBset_mgaussian_glmnet[colMeans(do.call(rbind,lapply(1:nr_bootstrap_repls, function (i) USVBset_mgaussian_glmnet %in% boot_selectedvars_mgaussian_glmnet[[i]]))) >= threshold]) })
+plot(1:B, 
+     bolassoset_setsize_vs_B, type="o", pch=16,
+     main="Size of set of variables selected 70% of the time by\nnonnegative group LASSO after\nbootstrapping (blue=true support size)",
+     xlab="Number of bootstrap replicates",
+     ylab="Size of set of selected variables")
+abline(h=length(true_support_set), col="blue")
+graph2png(file="../benchmarks/plots/12b size of set of variables selected 70 percent of the time after bootstrap nonneg group LASSO.png", width=7, height=5)
+
+
 
 
 
