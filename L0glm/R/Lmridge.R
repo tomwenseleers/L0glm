@@ -302,9 +302,21 @@ row_augX <- function(Xw, lambdas){
   return(rbind(Xw, diaglambdas(lambdas, issparse(Xw))))
 }
 
+# augment y
+# NOTE: for zero-centered ridge regression augmentation is with zeros
+# (in a Bayesian framework this would correspond to the MAP with a zero-centered Gaussian prior)
+# a nonzero centered ridge regression, centered at the coefficient estimates of the
+# previous iteration might also be worth considering (in a Bayesian sense corresponding to the
+# MAP with a prior centered at the coefficient estimates of the previous iteration)
+# in the latter case, we would have to augment not with zeros but with prior.mean * sqrt(lambdas)
+# where prior.mean is a vector with the values at which the ridge penalty should be centered
+# see e.g. https://www.sciencedirect.com/science/article/abs/pii/S0047259X21001603
+# In an optimisation sense, this would add "momentum" to the optimisation process.
+# Not sure how this would perform - might be worth quickly trying.
 augY <- function(yw, p){
   return(c(yw, rep(0, p)))
 }
+
 
 diaglambdas <- function(lambdas, sparse){
   if(sparse) {

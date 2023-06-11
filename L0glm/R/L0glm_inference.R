@@ -144,7 +144,7 @@ L0glm.inference <- function(fit, level = 0.95, boot.repl = 200,
 
   if(out$method == "FIM"){ # For ordinary regression or (non adaptive) ridge regression, compute pvalues numerically using the Fischer information matrix
     out$estimates <- fit$coefficients
-    lambda <- fit$lambda * fit$lambda.w
+    lambda <- fit$lambda * fit$lambda.w # ridge regularisation lambda x converged adaptive penalty weights
 
     # Estimate dispersion (1 if noise is poisson or binomial)
     if(fam$family %in% c("poisson","binomial")){
@@ -153,7 +153,7 @@ L0glm.inference <- function(fit, level = 0.95, boot.repl = 200,
       dispersion <- sum(fit$weights * fit$residuals^2)/fit$df$rdf
     }
     Xw <- if(sum(lambda) != 0){
-      sqrt(fit$weights) * rbind(X, diag(sqrt(lambda),ncol(X))) # the weighted row augmented matrix subseted for positive covariates
+      sqrt(fit$weights) * rbind(X, diag(sqrt(lambda),ncol(X))) # the weighted row augmented matrix subsetted for positive covariates
     } else {
       sqrt(fit$weights) * X
     }
