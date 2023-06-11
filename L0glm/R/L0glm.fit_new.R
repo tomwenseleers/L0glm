@@ -23,7 +23,6 @@ L0glm.fit_new = function(X,
                          group = FALSE, # TODO: bit unclear what this one does in cobmination with relaxedGroupL0, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxedGroupL0 = TRUE,
-                         delta = 0, # TODO: remove this argument & hard code delta to 0, since thresh alone should be enough 
                          gamma = 2,
                          thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
@@ -35,6 +34,7 @@ L0glm.fit_new = function(X,
                          verbose = FALSE){
   y <- as.matrix(y)
   if(intercept) no.pen <- c(1, no.pen + 1) # Add intercept to non penalized indices
+  
   
   # Make weights and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
@@ -102,7 +102,6 @@ L0glm.fit_new = function(X,
                                                               y = y, 
                                                               family = family, 
                                                               lambda = lambda, 
-                                                              delta = delta, 
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
@@ -134,7 +133,6 @@ L0glm.fit_new = function(X,
                                                               y = y, 
                                                               family = family, 
                                                               lambda = 0, 
-                                                              delta = delta, 
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
@@ -169,7 +167,6 @@ L0glm.fit_new = function(X,
                              y = y[,col,drop=F],
                              family=family,
                              lambda = lambda,
-                             delta = delta,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              offset = offset,
@@ -203,7 +200,6 @@ L0glm.fit_new = function(X,
                              y = as.vector(y[,col,drop=F]),
                              family = family,
                              lambda = 0,
-                             delta = delta,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              weights = as.vector(weights[,col,drop=F]),
@@ -232,7 +228,6 @@ L0glm.fit_new = function(X,
                               lower = lower,
                               upper = upper,
                               lambda = lambda, 
-                              delta = delta, 
                               gamma = gamma,
                               thresh = thresh,
                               solver = solver, 
@@ -265,7 +260,6 @@ L0glm.fit.internal = function(X,
                               lower = rep(0, ncol(X)),
                               upper = rep(Inf, ncol(X)),
                               lambda = 1, 
-                              delta = 1E-10, 
                               gamma = 2,
                               thresh = 1,
                               solver = "eigen", # or "osqp" or "glmnet"
@@ -304,6 +298,8 @@ L0glm.fit.internal = function(X,
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
   mask <- rep(FALSE, p)
+  
+  delta = 0
   
   for (i in 1L:maxit) {
     varg = variance(mu) # variance
@@ -396,7 +392,7 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family,
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family,
                 weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
@@ -409,7 +405,6 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                        y = y,
                        family = family,
                        lambda = lambda,
-                       delta = delta,
                        gamma = gamma,
                        weights = as.vector(weights[,col,drop=F]),
                        start = as.vector(start[, col, drop = F]),
