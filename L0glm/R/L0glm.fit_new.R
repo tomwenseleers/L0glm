@@ -18,6 +18,8 @@ L0glm.fit_new = function(X,
                          lambda = 1, 
                          nonnegative = FALSE,
                          parallellize = TRUE,
+                         no.pen = 0, # Must be a vector of the indices that shouldn't be penalized, excluding the intercept
+                         intercept = FALSE,
                          group = FALSE, # TODO: bit unclear what this one does in cobmination with relaxedGroupL0, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxedGroupL0 = TRUE,
@@ -32,8 +34,9 @@ L0glm.fit_new = function(X,
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
   y <- as.matrix(y)
+  if(intercept) no.pen <- c(1, no.pen + 1) # Add intercept to non penalized indices
+  
   # Make weights and start into a matrix if they are provided as a vector and y is multichannel
-
   if(!is.null(weights)){
     if(ncol(y) > 1 & dim(as.matrix(weights))[2] == 1){
       weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
@@ -103,6 +106,7 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
+                                                              no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
                                                               weights = weights, 
@@ -134,6 +138,7 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
+                                                              no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
                                                               weights = weights, 
@@ -177,6 +182,7 @@ L0glm.fit_new = function(X,
                              solver = solver,  
                              method = method,  
                              tol = tol,
+                             no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
                              verbose = verbose)
@@ -209,6 +215,7 @@ L0glm.fit_new = function(X,
                              solver = solver,
                              method = method,
                              tol = tol,
+                             no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
                              verbose = verbose)}))
@@ -232,6 +239,7 @@ L0glm.fit_new = function(X,
                               method = method, 
                               maxit = maxit,
                               tol = tol,
+                              no.pen = no.pen,
                               control.solver = control.solver,
                               warmupiters = warmupiters,
                               verbose = verbose)
@@ -252,6 +260,7 @@ L0glm.fit.internal = function(X,
                               family = poisson(identity),
                               offset = rep(0, nrow(X)),
                               start = NULL,
+                              no.pen = 0,
                               nonnegative = FALSE,
                               lower = rep(0, ncol(X)),
                               upper = rep(Inf, ncol(X)),
@@ -329,6 +338,7 @@ L0glm.fit.internal = function(X,
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
     
     beta_old = beta
+    lambdas[no.pen] = 0
 
     beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
                              weights = W[good],
@@ -387,7 +397,7 @@ L0glm.fit.internal = function(X,
 #'
 #' @export
 fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset,
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -405,6 +415,7 @@ fun <- function(cols, lambda, delta, gamma, thresh, solver, method, warmupiters,
                        start = as.vector(start[, col, drop = F]),
                        maxit = maxit,
                        tol = tol,
+                       no.pen = no.pen,
                        lower = lower,
                        offset = offset,
                        upper = upper,
