@@ -33,7 +33,7 @@ W <- 1/(Y+0.1) # approx 1/variance Poisson observation weights with family="pois
 
 # lambda values that in principle would be expected to maximize aic, bic, gic, ebic or mbic 
 # can be calculated using
-# (NOTE: with high dispersion/variance these come out way too high though, except if sd_noise=1 - check this)
+# (NOTE: with high dispersion/variance these come out way too high though,  except if sd_noise=1 - check this)
 
 # if dispersion/variance is known
 lambda_preset_aic_knowndisp = preset.lambda(IC="aic", dispersion=sd_noise^2)  
@@ -80,6 +80,7 @@ lambda_preset_mbic
 # max lambda = max(diag(1/crossprod(X, X)) * (crossprod(X, y)^2))
 # = max((1/colSums(X^2)) * (crossprod(X, y)^2))
 maxlambda = max((1/colSums(sim$X^2)) * (crossprod(sim$X, sim$y)^2)) # lambda that would penalize all variables to 0 in L0 regression (but maybe factor of 4 of Frommlet still needs to be taken into account - check with orthogonal variable problem)
+# TODO it should be Xw and yw
 
 lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1, by=1)
 
@@ -92,14 +93,13 @@ system.time(warm_start <- L0glm.fit_new(X = sim$X, y = sim$y,
                                upper = rep(Inf, ncol(sim$X)),
                                nonnegative = TRUE,
                                thresh = 1,
-                               delta = 1E-2,
                                group = T, # use group L0 penalty
                                group.maxit = 5,
                                relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                warmupiters = 5,
                                solver = "eigen",
                                method = 7L # using Eigen's sparse Cholesky solver
-                               )) # 5s
+                               )) # 5s / 20s for other computer
 sum(rowMin(abs(warm_start))!=0) # nr of selected variables at lowest lambda used
 
 no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
@@ -113,7 +113,6 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                                                             upper = rep(Inf, ncol(sim$X)),
                                                                             nonnegative = TRUE,
                                                                             thresh = 1, # coefficients below this threshold are set to zero
-                                                                            delta = 0, # TODO: if we have the thresh argument we can get rid of delta & set delta to zero, no need to have both
                                                                             group = T, # use group L0 penalty
                                                                             group.maxit = 6,
                                                                             relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
@@ -125,7 +124,7 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                 warm_start <<- new_coefs
                                 return(new_coefs)
 }
-)) # 82s, TODO check how warm starts would affect solution quality & stability
+)) # 82s, TODO check how warm starts would affect solution quality & stability / 197s in other computer
 
 # metrics relaxed group L0 over sequence of lambda values
 library(qlcMatrix)
@@ -137,6 +136,8 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        edf=sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 ) 
 )))
+
+
 
 # best empirical lambda based on calculated GIC over lambda sequence:
 metric = "gic"

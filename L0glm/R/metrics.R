@@ -40,7 +40,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     specificity = TN / (TN+FP) # = TNR
     accuracy = (TP+TN) / (TP+TN+FP+FN)
     F1_score = 2*precision*recall / (precision + recall) # = harmonic mean of precision and recall
-    
     # metrics related to accuracy of coefficients ####
     MD_coefs = mean(beta-beta_true) # mean deviation
     MAD_coefs = mean(abs(beta-beta_true)) # mean absolute deviation
@@ -48,7 +47,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     bias_coefs = as.vector(coef(lm(as.vector(beta_true) ~ 0 + as.vector(beta)))[[1]]) # regression beta true on beta (closer to 1 is better, >1 means you underestimate true coefs, <1 means you overestimate true coefs)
     R2_coefs = summary(lm(as.vector(beta_true) ~ 0+as.vector(beta)))$r.squared # I use R2 from zero intercept regression of beta_true on beta
   } else {
-    TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- F1_score <- bias_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
+    TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
   }
   
   # metrics related to prediction accuracy ####
@@ -63,7 +62,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     gprime = family$mu.eta(eta) # derivative of the expected values
     varg = family$variance(mu) # variance
     W = as.vector(weights)*(gprime^2)/varg # weights
-    good = !is.na(W) & W != 0 & !is.infinite(W) & gprime_true!=0 & as.vector(weights)!=0 # valid observations
+    good = !is.na(W) & W != 0 & !is.infinite(W) & gprime!=0 & as.vector(weights)!=0 # valid observations
     W[!good] = 0
     dim(W) = dim(eta)
     
@@ -130,7 +129,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
   # still add explained variance or adjusted explained variance on adjusted z scale?
   
-  return( list(model_name=model_name, p=p, n=n, m=m, 
+  return(list(model_name=model_name, p=p, n=n, m=m, 
                deviance=deviance, loglik=loglik,
                MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
                bias_coefs=bias_coefs, 
