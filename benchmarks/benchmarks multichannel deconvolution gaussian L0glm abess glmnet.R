@@ -133,11 +133,10 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        offset=Matrix(0, nrow=nrow(sim$X), ncol=ncol(sim$y), sparse=T), 
                                                                                        family=gaussian(identity), 
                                                                                        beta_true=sim$beta_true,
-                                                                                       edf=sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
-) 
-)))
+                                                                                       edf=sum(sim$beta!=0))))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 
 
+metrics2 <- tune.L0glm(X = sim$X, y = sim$y, family = gaussian(identity), coefs.true = sim$beta_true, IC = "aic", group.maxit = 6)
 
 # best empirical lambda based on calculated GIC over lambda sequence:
 metric = "gic"

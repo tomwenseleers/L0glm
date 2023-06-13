@@ -4,6 +4,7 @@
 #' @import Matrix
 #' @import glmnet
 #' @import parallel
+#' @import qlcMatrix
 #' @importFrom stats gaussian lm.fit pnorm poisson qnorm quantile rpois runif
 #' @importFrom utils flush.console
 #'

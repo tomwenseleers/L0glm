@@ -130,16 +130,16 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # still add explained variance or adjusted explained variance on adjusted z scale?
   
   return(list(model_name=model_name, p=p, n=n, m=m, 
-               deviance=deviance, loglik=loglik,
-               MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
-               bias_coefs=bias_coefs, 
-               R2_coefs=R2_coefs,
-               support_size_true=support_size_true, 
-               support_size_estimated=support_size_estimated, 
-               estimated_over_true_support_size=estimated_over_true_support_size,
-               TP=TP, FP=FP, TN=TN, FN=FN, 
-               precision=precision, recall=recall, specificity=specificity, 
-               accuracy=accuracy, F1_score=F1_score,
-               gic=gic, ebic=ebic, bic=bic, aic=aic, mbic=mbic) )
+              deviance=deviance, loglik=loglik,
+              MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
+              bias_coefs=bias_coefs, 
+              R2_coefs=R2_coefs,
+              support_size_true=support_size_true, 
+              support_size_estimated=support_size_estimated, 
+              estimated_over_true_support_size=estimated_over_true_support_size,
+              TP=TP, FP=FP, TN=TN, FN=FN, 
+              precision=precision, recall=recall, specificity=specificity, 
+              accuracy=accuracy, F1_score=F1_score,
+              gic=gic, ebic=ebic, bic=bic, aic=aic, mbic=mbic) )
   # hq=hq, aicc=aicc, ric=ric, mric=mric, cic=cic, bicg=bicg, bicq=bicq))
 }

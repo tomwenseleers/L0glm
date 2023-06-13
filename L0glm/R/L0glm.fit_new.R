@@ -11,14 +11,14 @@ L0glm.fit_new = function(X,
                          y, 
                          weights = NULL,
                          family = gaussian(identity),
-                         offset = rep(0, nrow(X)),
+                         offset = NULL,
                          start = NULL,
                          lower = rep(-Inf, ncol(X)),
                          upper = rep(Inf, ncol(X)),
                          lambda = 1, 
                          nonnegative = FALSE,
                          parallellize = TRUE,
-                         no.pen = 0, # Must be a vector of the indices that shouldn't be penalized, INCLUDING the intercept if applicable
+                         no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
                          grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxed = TRUE,
@@ -33,8 +33,7 @@ L0glm.fit_new = function(X,
                          verbose = FALSE){
   y <- as.matrix(y)
   
-  
-  # Make weights and start into a matrix if they are provided as a vector and y is multichannel
+  # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
       weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
@@ -47,7 +46,18 @@ L0glm.fit_new = function(X,
     }
   }
   
-
+  if(!is.null(offset)){
+    if(ncol(y) > 1 & ncol(as.matrix(offset)) == 1){
+      offset <- matrix(rep(offset, times = ncol(y)), nrow = length(offset), ncol = ncol(y))
+    }
+  } else { # If no offset is passed
+    if(ncol(y) > 1){ # Multichannel
+      offset <- Matrix(0, nrow = nrow(X), ncol=ncol(y), sparse=T)
+    } else { # Single channel
+      offset = rep(0, nrow(X))
+    }
+  }
+  
   if(!is.null(start)){
     if(ncol(y) > 1 & dim(as.matrix(start))[2] == 1){
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
@@ -167,7 +177,7 @@ L0glm.fit_new = function(X,
                              lambda = lambda,
                              gamma = gamma,
                              nonnegative = nonnegative,
-                             offset = offset,
+                             offset = as.vector(offset[col, drop = F]),
                              weights = as.vector(weights[,col,drop=F]),
                              start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
@@ -410,7 +420,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        tol = tol,
                        no.pen = no.pen,
                        lower = lower,
-                       offset = offset,
+                       offset = as.vector(offset[,col, drop ? F]),
                        upper = upper,
                        thresh = thresh,
                        solver = solver,
