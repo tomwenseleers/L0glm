@@ -18,11 +18,10 @@ L0glm.fit_new = function(X,
                          lambda = 1, 
                          nonnegative = FALSE,
                          parallellize = TRUE,
-                         no.pen = 0, # Must be a vector of the indices that shouldn't be penalized, excluding the intercept
-                         intercept = FALSE,
-                         group = FALSE, # TODO: bit unclear what this one does in cobmination with relaxedGroupL0, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
+                         no.pen = 0, # Must be a vector of the indices that shouldn't be penalized, INCLUDING the intercept if applicable
+                         grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                          group.maxit = 6, # note: increased default to 6 to increase performance
-                         relaxedGroupL0 = TRUE,
+                         relaxed = TRUE,
                          gamma = 2,
                          thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
@@ -33,12 +32,11 @@ L0glm.fit_new = function(X,
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
   y <- as.matrix(y)
-  if(intercept) no.pen <- c(1, no.pen + 1) # Add intercept to non penalized indices
   
   
   # Make weights and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
-    if(ncol(y) > 1 & dim(as.matrix(weights))[2] == 1){
+    if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
       weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
     }
   } else { # If no weights are passed
@@ -60,7 +58,7 @@ L0glm.fit_new = function(X,
   
   
   if(ncol(y) > 1){
-    if(!group) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
+    if(!grouped) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
     if(parallellize){
       # Fit parallelly all channels (independent L0)
       # Define the number of cores to use
@@ -120,7 +118,7 @@ L0glm.fit_new = function(X,
                                                               verbose = verbose))
       }
       
-      if(relaxedGroupL0){
+      if(relaxed){
         # Apply relaxed group L0 feature selection
         avgcoefs = rowMeans(fit)
         variable.indices = which(avgcoefs > 0)
@@ -186,7 +184,7 @@ L0glm.fit_new = function(X,
         }))
       }
       
-      if(relaxedGroupL0){
+      if(relaxed){
         # Apply relaxed group L0 feature selection
         # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
