@@ -14,11 +14,11 @@ sd_noise <- 10
 sim <- simulate_spike_train(n=p, p=p, k=round(s*p), 
                             mean_beta = 10000,
                             sd_logbeta = 1,
-                            family="gaussian", # alt option "poisson" for nonnegative identity link poisson
+                            family="poisson", # alt option "poisson" for nonnegative identity link poisson
                             sd_noise = sd_noise,
                             multichannel=TRUE, 
                             sparse=TRUE)
-graph2png(file="../benchmarks/plots/1 simulated multichannel spike train.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/1 simulated multichannel spike train.png", width=7, height=5)
 X <- sim$X # n x p matrix
 Y <- sim$y # n x m matrix  
 true_coefs <- sim$beta_true
@@ -87,15 +87,15 @@ lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1,
 library(parallel)
 library(qlcMatrix)
 system.time(warm_start <- L0glm.fit_new(X = sim$X, y = sim$y,
-                               family = gaussian(identity), # poisson(identity),
+                               family = poisson(identity), # poisson(identity),
                                lambda = min(lambdas), #  # or 0.1 or 1
                                lower = rep(0, ncol(sim$X)),
                                upper = rep(Inf, ncol(sim$X)),
                                nonnegative = TRUE,
                                thresh = 1,
-                               group = T, # use group L0 penalty
+                               grouped = T, # use group L0 penalty
                                group.maxit = 5,
-                               relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
+                               relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                warmupiters = 5,
                                solver = "eigen",
                                method = 7L # using Eigen's sparse Cholesky solver
@@ -106,16 +106,16 @@ no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
 w = 0.9 # 0 = no warm starts, 1 = full warm starts
 system.time(coefficients <- lapply(lambdas, function (lambda) {
                                 new_coefs <- L0glm.fit_new(X = sim$X, y = sim$y, 
-                                                                            family = gaussian(identity), # poisson(identity),
+                                                                            family = poisson(identity), # poisson(identity),
                                                                             start = w*warm_start+(1-w)*no_warm_start, # use warm starts
                                                                             lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
                                                                             lower = rep(0, ncol(sim$X)),
                                                                             upper = rep(Inf, ncol(sim$X)),
                                                                             nonnegative = TRUE,
                                                                             thresh = 1, # coefficients below this threshold are set to zero
-                                                                            group = T, # use group L0 penalty
+                                                                            grouped = T, # use group L0 penalty
                                                                             group.maxit = 6,
-                                                                            relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
+                                                                            relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                                                             warmupiters = 5,
                                                                             solver = "eigen",
                                                                             method = 7L, # using Eigen's sparse Cholesky solver
@@ -131,7 +131,7 @@ library(qlcMatrix)
 metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.metrics(beta=coefs, X=sim$X, y=sim$y, 
                                                                                        weights=matrix(1, nrow=nrow(sim$y), ncol=ncol(sim$y)), 
                                                                                        offset=Matrix(0, nrow=nrow(sim$X), ncol=ncol(sim$y), sparse=T), 
-                                                                                       family=gaussian(identity), 
+                                                                                       family=poisson(identity), 
                                                                                        beta_true=sim$beta_true,
                                                                                        edf=sum(sim$beta!=0))))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 
@@ -153,7 +153,7 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=as.matrix(sim$beta_true)^0.1,
       xlab="Time", ylab="Channel", main="True coefficients\n(red=true support)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 # abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_relaxedgroupL0)!=0)], col="magenta")
-graph2png(file="../benchmarks/plots/2 true coefficients true support.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/2 true coefficients true support.png", width=7, height=5)
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_relaxedgroupL0^0.1, 
       col = topo.colors(255),
@@ -161,7 +161,7 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_relaxedgroupL0^0.1,
       xlab="Time", ylab="Channel", main="nonnegative relaxed group L0\n(red=estimated support)")
 # abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_relaxedgroupL0)!=0)], col="red")
-graph2png(file="../benchmarks/plots/3 estimated coefficients and support nonneg relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/3 estimated coefficients and support nonneg relaxed group L0.png", width=7, height=5)
 sum(rowMax(sim$beta_true)!=0) # true support size of 20
 sum(rowMin(beta_relaxedgroupL0)!=0) # estimate support size correct: also 20
 length(intersect(which(rowMax(sim$beta_true)!=0), 
@@ -176,7 +176,7 @@ plot(as.vector(beta_relaxedgroupL0), as.vector(sim$beta_true), pch=16,
      xlab="estimated coefficients nonnegative relaxed L0 group GLM",
      ylab="true coefficients", col="steelblue",
      main="True vs estimated coefficients\nnonnegative relaxed L0 group GLM\nR2=0.9988")
-graph2png(file="../benchmarks/plots/4 true vs estimated coefficients relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/4 true vs estimated coefficients relaxed group L0.png", width=7, height=5)
 cor(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0))^2 # R2=0.9987671
 
 
@@ -186,7 +186,7 @@ plot(x=log10(lambdas), y=metrics$support_size_estimated,
      pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
 abline(h=metrics$support_size_true, col="blue")
-graph2png(file="../benchmarks/plots/5 support size vs lambda relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/5 support size vs lambda relaxed group L0.png", width=7, height=5)
 
 plot(x=log10(lambdas), y=metrics$deviance, pch=16, type="o", 
      ylim=c(0,max(unlist(metrics$deviance)))) # theoretical deviance relative to true underlying signal without noise
@@ -203,7 +203,7 @@ lambda_bestloglik = lambdas[which.max(metrics$loglik)]
 lambda_bestloglik
 abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_bestloglik), col="blue")
-graph2png(file="../benchmarks/plots/6 log likelihood vs lambda relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/6 log likelihood vs lambda relaxed group L0.png", width=7, height=5)
 plot(x=log10(lambdas), y=metrics$MD_coefs, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
 plot(x=log10(lambdas), y=metrics$MAD_coefs, 
@@ -212,7 +212,7 @@ plot(x=log10(lambdas), y=metrics$MAD_coefs,
      pch=16, type="o")
 lambdas[which.min(metrics$MAD_coefs)] 
 abline(v=log10(bestlambda), col="red")
-graph2png(file="../benchmarks/plots/7 mean abs deviation true coefficients vs lambda relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/7 mean abs deviation true coefficients vs lambda relaxed group L0.png", width=7, height=5)
 plot(x=log10(lambdas), y=metrics$sMAPE_coefs, pch=16, type="o")
 lambdas[which.min(metrics$sMAPE_coefs)]
 abline(v=log10(bestlambda), col="red")
@@ -242,7 +242,7 @@ lambda_best_accuracy = lambdas[which.max(metrics$accuracy)] #
 lambda_best_accuracy
 abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_best_accuracy), col="blue")
-graph2png(file="../benchmarks/plots/8 accuracy support recovery vs lambda relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/8 accuracy support recovery vs lambda relaxed group L0.png", width=7, height=5)
 plot(x=log10(lambdas), y=metrics$F1_score, pch=16, type="o") # BEST FOR THEORETICAL BEST SUPPORT RECOVERY, has max at lambda=1
 lambda_best_F1score = lambdas[which.max(metrics$F1_score)] # 
 lambda_best_F1score # 2.8
@@ -312,7 +312,7 @@ plot(1:B, USVBset_relaxedGroupL0_setsize_vs_B, type="o", pch=16,
      xlab="Number of bootstrap replicates",
      ylab="Size of union of selected variables")
 abline(h=length(true_support_set), col="blue")
-graph2png(file="../benchmarks/plots/9 size of union of selected variables after bootstrap relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/9 size of union of selected variables after bootstrap relaxed group L0.png", width=7, height=5)
 
 # gaussian generalised linear model fits on union of selected variables for each outcome variable ####
 # since we have nonnegativity constraints I use glm.cons here
@@ -341,7 +341,7 @@ plot(beta_lm_onallvars, sim$beta_true, pch=16,
      xlab="estimated coefficients linear model",
      ylab="true coefficients", col="steelblue",
      main="True vs estimated coefficients\nleast square regression fit on all variables")
-graph2png(file="../benchmarks/plots/10 true vs estimated coefficients least square regr all variables.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/10 true vs estimated coefficients least square regr all variables.png", width=7, height=5)
 
 
 
@@ -363,7 +363,7 @@ plot(1:B,
      xlab="Number of bootstrap replicates",
      ylab="Size of set of selected variables")
 abline(h=length(true_support_set), col="blue")
-graph2png(file="../benchmarks/plots/9b size of set of variables selected 30 percent of the time after bootstrap relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/9b size of set of variables selected 30 percent of the time after bootstrap relaxed group L0.png", width=7, height=5)
 
 
 # we could then do inference on these selected variables using glm.cons or regular glm
@@ -420,7 +420,7 @@ plot(as.vector(beta_mgaussian_glmnet), as.vector(sim$beta_true), pch=16,
      xlab="estimated coefficients nonnegative group LASSO glmnet",
      ylab="true coefficients", col="steelblue",
      main="True vs estimated coefficients\nnonnegative group LASSO glmnet\nR2=0.24")
-graph2png(file="../benchmarks/plots/11 true vs estimated coefficients relaxed group L0.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/11 true vs estimated coefficients relaxed group L0.png", width=7, height=5)
 cor(as.vector(sim$beta_true), as.vector(beta_mgaussian_glmnet))^2 # R2=0.2364216
 
 
@@ -476,7 +476,7 @@ plot(1:B, USVBset_mgaussian_glmnet_setsize_vs_B, type="o", pch=16,
      ylab="Size of union of selected variables",
      ylim=c(0,200))
 abline(h=length(true_support_set), col="blue")
-graph2png(file="../benchmarks/plots/12 size of union of selected variables after bootstrap nonnegative group LASSO.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/12 size of union of selected variables after bootstrap nonnegative group LASSO.png", width=7, height=5)
 
 # set of variables selected 70% of the time, as in https://arxiv.org/abs/0804.1302, 
 # does work & achieves variable selection consistency
@@ -493,7 +493,7 @@ plot(1:B,
      xlab="Number of bootstrap replicates",
      ylab="Size of set of selected variables")
 abline(h=length(true_support_set), col="blue")
-graph2png(file="../benchmarks/plots/12b size of set of variables selected 70 percent of the time after bootstrap nonneg group LASSO.png", width=7, height=5)
+# graph2png(file="../benchmarks/plots/12b size of set of variables selected 70 percent of the time after bootstrap nonneg group LASSO.png", width=7, height=5)
 
 
 
@@ -520,6 +520,8 @@ system.time(abess_fit <- abess(x = X[,preselvars,drop=F],
                                warm.start = TRUE,
                                tune.type = "ebic") # ebic gave sparsest solution; alt options cv or bic or aic or gic
 ) # 1.09s
+
+
 # abess_fit
 extract(abess_fit)$support.size # 31
 sum(rowMin(abs(sim$beta_true))!=0) # true support 20
