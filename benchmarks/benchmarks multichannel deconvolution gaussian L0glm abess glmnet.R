@@ -14,7 +14,7 @@ sd_noise <- 10
 sim <- simulate_spike_train(n=p, p=p, k=round(s*p), 
                             mean_beta = 10000,
                             sd_logbeta = 1,
-                            family="poisson", # alt option "poisson" for nonnegative identity link poisson
+                            family="gaussian", # alt option "poisson" for nonnegative identity link poisson
                             sd_noise = sd_noise,
                             multichannel=TRUE, 
                             sparse=TRUE)
@@ -87,7 +87,7 @@ lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1,
 library(parallel)
 library(qlcMatrix)
 system.time(warm_start <- L0glm.fit_new(X = sim$X, y = sim$y,
-                               family = poisson(identity), # poisson(identity),
+                               family = gaussian(identity), # poisson(identity),
                                lambda = min(lambdas), #  # or 0.1 or 1
                                lower = rep(0, ncol(sim$X)),
                                upper = rep(Inf, ncol(sim$X)),
@@ -106,7 +106,7 @@ no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
 w = 0.9 # 0 = no warm starts, 1 = full warm starts
 system.time(coefficients <- lapply(lambdas, function (lambda) {
                                 new_coefs <- L0glm.fit_new(X = sim$X, y = sim$y, 
-                                                                            family = poisson(identity), # poisson(identity),
+                                                                            family = gaussian(identity), # poisson(identity),
                                                                             start = w*warm_start+(1-w)*no_warm_start, # use warm starts
                                                                             lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
                                                                             lower = rep(0, ncol(sim$X)),
@@ -131,19 +131,19 @@ library(qlcMatrix)
 metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.metrics(beta=coefs, X=sim$X, y=sim$y, 
                                                                                        weights=matrix(1, nrow=nrow(sim$y), ncol=ncol(sim$y)), 
                                                                                        offset=Matrix(0, nrow=nrow(sim$X), ncol=ncol(sim$y), sparse=T), 
-                                                                                       family=poisson(identity), 
+                                                                                       family=gaussian(identity), 
                                                                                        beta_true=sim$beta_true,
                                                                                        edf=sum(sim$beta!=0))))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 
 
-metrics2 <- tune.L0glm(X = sim$X, y = sim$y, family = gaussian(identity), coefs.true = sim$beta_true, IC = "aic", group.maxit = 6)
+system.time(metrics2 <- tune.L0glm(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, IC = "aic", group.maxit = 6, plot = T))
 
 # best empirical lambda based on calculated GIC over lambda sequence:
 metric = "gic"
-bestlambda = lambdas[which.min(metrics[,metric])]
+bestlambda = lambdas[which.min(metrics2[,metric])]
 bestlambda # 100
 
-bestlambda = lambdas[which.min(abs(lambdas-bestlambda))]
+bestlambda = lambdas[which.min(abs(lambdas-bestlambda))] 
 beta_relaxedgroupL0 = as.matrix(coefficients[[which(lambdas==bestlambda)]]) # estimated coefficients at best lambda
 # beta_relaxedgroupL0[beta_relaxedgroupL0<10] = 0
 
@@ -189,12 +189,14 @@ abline(h=metrics$support_size_true, col="blue")
 # graph2png(file="../benchmarks/plots/5 support size vs lambda relaxed group L0.png", width=7, height=5)
 
 plot(x=log10(lambdas), y=metrics$deviance, pch=16, type="o", 
-     ylim=c(0,max(unlist(metrics$deviance)))) # theoretical deviance relative to true underlying signal without noise
+     ylim=c(0,max(unlist(metrics$deviance))),
+     main = "Theoretical deviance relative to true underlying signal without noise\n(red=estimate at best GIC, blue=best deviance" )  # theoretical deviance relative to true underlying signal without noise
 lambda_bestdeviance = lambdas[which.min(metrics$deviance)]
 lambda_bestdeviance
 abline(v=log10(bestlambda), col="red")
 abline(v=log10(lambda_bestdeviance), col="blue")
 par(oma=c(0,2,0,0))
+
 plot(x=log10(lambdas), y=metrics$loglik,
      main="Log likelihood in function of regularisation\nusing nonnegative relaxed group L0 GLM\n(red=estimate at best GIC)",
      ylab="log likelihood",
@@ -204,8 +206,11 @@ lambda_bestloglik
 abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_bestloglik), col="blue")
 # graph2png(file="../benchmarks/plots/6 log likelihood vs lambda relaxed group L0.png", width=7, height=5)
+
 plot(x=log10(lambdas), y=metrics$MD_coefs, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
+
+
 plot(x=log10(lambdas), y=metrics$MAD_coefs, 
      main="Mean absolute deviation of coefficients vs true coefs\nusing nonnegative relaxed group L0 GLM\n(red=estimate at best GIC)",
      ylab="Mean absolute deviation coefficients",
@@ -213,27 +218,35 @@ plot(x=log10(lambdas), y=metrics$MAD_coefs,
 lambdas[which.min(metrics$MAD_coefs)] 
 abline(v=log10(bestlambda), col="red")
 # graph2png(file="../benchmarks/plots/7 mean abs deviation true coefficients vs lambda relaxed group L0.png", width=7, height=5)
+
 plot(x=log10(lambdas), y=metrics$sMAPE_coefs, pch=16, type="o")
 lambdas[which.min(metrics$sMAPE_coefs)]
 abline(v=log10(bestlambda), col="red")
+
 plot(x=log10(lambdas), y=metrics$bias_coefs, pch=16, type="o", ylim=c(0.9,1.1)) # closest to 1 best
 lambda_minimal_bias = min(lambdas[which(abs(unlist(metrics$bias_coefs)-1)<=min(abs(unlist(metrics$bias_coefs)-1), na.rm=T)*1.3)]) # 1
 lambda_minimal_bias 
 abline(v=log10(bestlambda), col="red")
 abline(h=1, col="blue")
+
 plot(x=log10(lambdas), y=metrics$R2_coefs, pch=16, type="o", ylim=c(0, 1)) # highest lambda before sudden drop in R2 optimal
 abline(v=log10(bestlambda), col="red") # best would be lambda of 1
+
 plot(x=log10(lambdas), y=metrics$estimated_over_true_support_size, pch=16, type="o") # lambda 1 close to optimal
 lambda_correct_support_size = min(lambdas[which.min(abs(unlist(metrics$estimated_over_true_support_size)-1))]) #
 lambda_correct_support_size 
 abline(v=log10(bestlambda), col="red") 
 abline(v=log10(lambda_correct_support_size), col="blue")
+
 plot(x=log10(lambdas), y=metrics$precision, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
+
 plot(x=log10(lambdas), y=metrics$recall, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
+
 plot(x=log10(lambdas), y=metrics$specificity, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
+
 plot(x=log10(lambdas), y=metrics$accuracy,
      main="Accuracy to recover true support\nusing nonnegative relaxed group L0 GLM\n(red=estimate at best GIC)",
      ylab="accuracy",
@@ -243,28 +256,35 @@ lambda_best_accuracy
 abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_best_accuracy), col="blue")
 # graph2png(file="../benchmarks/plots/8 accuracy support recovery vs lambda relaxed group L0.png", width=7, height=5)
+
 plot(x=log10(lambdas), y=metrics$F1_score, pch=16, type="o") # BEST FOR THEORETICAL BEST SUPPORT RECOVERY, has max at lambda=1
 lambda_best_F1score = lambdas[which.max(metrics$F1_score)] # 
 lambda_best_F1score # 2.8
 abline(v=log10(bestlambda), col="red")
 abline(v=log10(lambdas[which.max(metrics$F1_score)]), col="blue")
+
 plot(x=log10(lambdas), y=metrics$ebic, pch=16, type="o") # keep, cf https://www.researchgate.net/publication/46468889_Consistency_of_the_Empirical_Bayes_Information_Criterion_for_Selecting_Variables_in_Linear_Mixed_Models#:~:text=Compared%20to%20mAIC%2C%20cAIC%20and%20BIC%2C%20the%20EBIC,of%20covariates%20and%20the%20number%20of%20clusters%20increase.
 lambda_best_EBIC = lambdas[which.min(metrics$ebic)] #
 lambda_best_EBIC # 1
 abline(v=log10(bestlambda), col="red")
 abline(v=log10(lambda_best_EBIC), col="blue") # corresponds to lambda giving optimal support recovery
+
 plot(x=log10(lambdas), y=metrics$gic, pch=16, type="o") # keep
 lambda_best_gic = lambdas[which.min(metrics$gic)] # 1
 abline(v=log10(bestlambda), col="red")
 abline(v=log10(lambda_best_gic), col="blue") # corresponds to lambda giving optimal support recovery
+
 plot(x=log10(lambdas), y=metrics$aic, pch=16, type="o") # keep - no good though
 lambda_best_aic = lambdas[which.min(metrics$aic)] # 0.088 - no good
 abline(v=log10(bestlambda), col="red")
-abline(v=log10(lambda_best_aic), col="blue") # 
+abline(v=log10(lambda_best_aic), col="blue") #
+
 plot(x=log10(lambdas), y=metrics$bic, pch=16, type="o") # keep
 lambda_best_bic = lambdas[which.min(metrics$bic)] # 1
 abline(v=log10(bestlambda), col="red")
 abline(v=log10(lambda_best_aic), col="blue") # keep
+
+
 plot(x=log10(lambdas), y=metrics$mbic, pch=16, type="o") # keep
 lambda_best_mbic = lambdas[which.min(metrics$mbic)] # 1
 abline(v=log10(bestlambda), col="red")
@@ -562,7 +582,7 @@ plot(x=support.size[sel], y=metrics$sMAPE_coefs[sel], pch=16, type="o") # optima
 support.size[which.min(metrics$sMAPE_coefs)] # 12
 abline(v=metrics$support_size_true, col="red")
 plot(x=support.size[sel], y=metrics$bias_coefs[sel], pch=16, type="o", ylim=c(0.1,2)) #
-support.size[which.min(metrics$bias_coefs)] 
+support.size[which.min(metrics$bias_coefs)]
 abline(v=metrics$support_size_true, col="red")
 abline(h=1, col="blue")
 plot(x=support.size[sel], y=metrics$R2_coefs[sel], pch=16, type="o", ylim=c(0, 1)) #
@@ -593,8 +613,3 @@ abline(v=metrics$support_size_true, col="red")
 plot(x=support.size[sel], y=metrics$ebic[sel], pch=16, type="o") # keep
 support.size[which.min(metrics$ebic)] # 12
 abline(v=metrics$support_size_true, col="red")
-
-
-
-
-
