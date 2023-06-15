@@ -24,6 +24,7 @@ lmridge <- function(X, y, lambdas = NULL,
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
                     block.size = NULL,
+                    rowaug.center = NULL,
                     solver = "eigen",
                     method = ifelse(ncol(X)>=20000, 3L, 5L),
                     start = NULL,
@@ -40,26 +41,27 @@ lmridge <- function(X, y, lambdas = NULL,
   }
   yw[is.nan(yw)] <- 0
   
+  rowaug.center = NULL
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start,
+    coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, rowaug.center = rowaug.center, 
                           lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "glmnet") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas,
+    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, rowaug.center = rowaug.center,
                             lower = lower, upper = upper, control.solver = control.solver)
     
     
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, pen.weights = pen.weights,
-                           lambdas = lambdas, start = start,
+                           lambdas = lambdas, start = start, rowaug.center = rowaug.center,
                            lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "nnls") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.nnls(Xw = Xw, yw = yw, lambdas = lambdas,
+    coefs <- lmridge.nnls(Xw = Xw, yw = yw, lambdas = lambdas, rowaug.center = rowaug.center,
                           lower = lower, upper = upper, control.solver = control.solver)
   } else {
     stop("Invalid solver choice") }
@@ -67,11 +69,11 @@ lmridge <- function(X, y, lambdas = NULL,
 }
 
 
-lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, control.solver){
+lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, control.solver, rowaug.center = NULL){
   Xw = as(Xw, "generalMatrix")
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug))
+    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center) 
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -86,7 +88,7 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     } else {
       XtX <- crossprod(Xwaug)
     }
-    Xty <- as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw))))
+    Xty <- as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, rowaug.center = rowaug.center)))
   }
   
   # Obtain settings  and create model
@@ -106,7 +108,7 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
   return(coefs)
 }
 
-lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver){
+lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, rowaug.center = NULL){
   # Set path depending on dimensions of Xw
   if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
@@ -117,7 +119,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug))
+    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -140,11 +142,11 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver)
   return(coefs)
 }
 
-lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver){
+lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, rowaug.center = NULL){
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug))
+    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -154,13 +156,13 @@ lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver){
   return(coefs)
 }
 
-lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, start, control.solver = control.solver){ # TODO allow for null lambdas in all solvers 
+lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, start, control.solver = control.solver, rowaug.center = NULL){ 
   if(control.solver$method == "QR") {
     if(control.solver$rowaug == TRUE){
       # Obtain Xwaug and ywaug
       if(!is.null(lambdas)&(sum(lambdas)!=0)) {
         Xwaug <- row_augX(Xw, lambdas)
-        ywaug <- augY(yw, ncol(Xwaug))
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
       } else {
         Xwaug <- Xw
         ywaug <- yw
@@ -177,12 +179,12 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       # Xwaug = row_augX(Xw, lambdas)
       # if(issparse(Xw)){
       #   coefs <- solve_sparse_QR(A = as(crossprod(Xwaug),"generalMatrix"),
-      #                            b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw)))))$coefficients
+      #                            b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, rowaug.center = rowaug.center))))$coefficients
       # 
       #   
       #   } else {
       #   coefs <- solve_dense_QR(A = crossprod(Xwaug),
-      #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw)))),
+      #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, rowaug.center = rowaug.center))),
       #                           pivot = control.solver$pivot)$coefficients}
       D <- diag(1/pen.weights) # cf notation Liu & Li 2016
       if(issparse(Xw)){
@@ -199,7 +201,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug))
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -225,7 +227,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)&(sum(lambdas)!=0)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug))
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -253,7 +255,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)&(sum(lambdas)!=0)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug))
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, rowaug.center = rowaug.center)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -313,8 +315,12 @@ row_augX <- function(Xw, lambdas){
 # see e.g. https://www.sciencedirect.com/science/article/abs/pii/S0047259X21001603
 # In an optimisation sense, this would add "momentum" to the optimisation process.
 # Not sure how this would perform - might be worth trying quickly.
-augY <- function(yw, p){
-  return(c(yw, rep(0, p)))
+augY <- function(yw, p, rowaug.center = NULL, lambdas = NULL){
+  if(is.null(rowaug.center) | is.null(lambdas)){
+    return(c(yw, rep(0, p))) # zero centered row augmentation
+  } else {
+    return(c(yw, rowaug.center * sqrt(lambdas))) # nonzero centered row augmentation
+  }
 }
 
 

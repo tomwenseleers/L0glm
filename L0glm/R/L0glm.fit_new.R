@@ -23,6 +23,7 @@ L0glm.fit_new = function(X,
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxed = TRUE,
                          gamma = 2,
+                         rowaug.center = NULL,
                          thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
@@ -36,7 +37,7 @@ L0glm.fit_new = function(X,
   
   y <- as.matrix(y)
   
-  # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
+  # Make weights and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
       weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
@@ -66,7 +67,7 @@ L0glm.fit_new = function(X,
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
     }
   }
-
+  
   if(nonnegative) lower[lower < 0] <- 0
   
   
@@ -99,11 +100,12 @@ L0glm.fit_new = function(X,
       
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs = rowMeans(fit)
+          avgcoefs <- rowaug.center <- rowMeans(fit) # TODO talk with tom: if user passes rowaug.center, should it use the provided one for all the fit?
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
+          
         }
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
@@ -116,6 +118,7 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
+                                                              rowaug.center = rowaug.center[variable.indices],
                                                               no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
@@ -133,7 +136,7 @@ L0glm.fit_new = function(X,
       
       if(relaxed){
         # Apply relaxed group L0 feature selection
-        avgcoefs = rowMeans(fit)
+        avgcoefs <- rowaug.center <- rowMeans(fit)
         variable.indices = which(avgcoefs > 0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         
@@ -147,6 +150,7 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
+                                                              rowaug.center = rowaug.center[variable.indices],
                                                               no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
@@ -165,13 +169,13 @@ L0glm.fit_new = function(X,
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs <- rowMeans(fit)
+          avgcoefs <- rowaug.center <- rowMeans(fit)
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
         }
-
+        
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         fit[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
           L0glm.fit.internal(X = X[,variable.indices,drop=F],
@@ -181,6 +185,7 @@ L0glm.fit_new = function(X,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              offset = as.vector(offset[col, drop = F]),
+                             rowaug.center = rowaug.center[variable.indices],
                              weights = as.vector(weights[,col,drop=F]),
                              start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
@@ -201,7 +206,7 @@ L0glm.fit_new = function(X,
         # Apply relaxed group L0 feature selection
         # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-        avgcoefs = rowMeans(fit)
+        avgcoefs <- rowaug.center <- rowMeans(fit)
         variable.indices = which(avgcoefs>0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
@@ -222,6 +227,7 @@ L0glm.fit_new = function(X,
                              solver = solver,
                              method = method,
                              tol = tol,
+                             rowaug.center = rowaug.center[variable.indices],
                              no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
@@ -234,6 +240,7 @@ L0glm.fit_new = function(X,
                               weights = weights,
                               family = family,
                               nonnegative = nonnegative,
+                              rowaug.center = rowaug.center,
                               offset = offset,
                               start = start,
                               lower = lower,
@@ -271,6 +278,7 @@ L0glm.fit.internal = function(X,
                               lower = rep(0, ncol(X)),
                               upper = rep(Inf, ncol(X)),
                               lambda = 1, 
+                              rowaug.center = NULL,
                               gamma = 2,
                               thresh = 1,
                               solver = "eigen", # or "osqp" or "glmnet"
@@ -313,11 +321,11 @@ L0glm.fit.internal = function(X,
   delta = 0
   
   for (i in 1L:maxit) {
-    varg = variance(mu) # variance
+    var = variance(mu) # variance
     gprime = mu.eta(eta) # derivative of the expected values
     
     good = !is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0) # valid rows
-
+    
     
     if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
@@ -346,13 +354,16 @@ L0glm.fit.internal = function(X,
     
     beta_old = beta
     lambdas[no.pen] = 0
-
+    
+    if(i > 1) rowaug.center = beta_old
+    
     beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
                              weights = W[good],
                              pen.weights = pen.weights[good], # TODO: remove this argument
                              lambdas = lambdas[nonzero],
                              nonnegative = nonnegative,
                              start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                             rowaug.center = rowaug.center[nonzero],
                              lower = lower[nonzero], 
                              upper = upper[nonzero],
                              solver = solver,
@@ -404,7 +415,7 @@ L0glm.fit.internal = function(X,
 #'
 #' @export
 fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, rowaug.center = NULL, maxit, tol, offset, no.pen = 0,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -419,11 +430,12 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        gamma = gamma,
                        weights = as.vector(weights[,col,drop=F]),
                        start = as.vector(start[, col, drop = F]),
+                       rowaug.center = rowaug.center,
                        maxit = maxit,
                        tol = tol,
                        no.pen = no.pen,
                        lower = lower,
-                       offset = as.vector(offset[,col, drop ? F]),
+                       offset = offset,
                        upper = upper,
                        thresh = thresh,
                        solver = solver,

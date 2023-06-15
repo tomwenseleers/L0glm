@@ -27,10 +27,11 @@ tune.L0glm <- function(X, y, family,
                                       X = X, weights=rep(1, nrow(y)),
                                   family = family)
   }
-  
+  n <- nobs <- nrow(X)
+  p <- ncol(X)
   
   # TODO: Calculate Xw and yw properly
-  Xw <- Xweights(X, weights[,1]) # TODO: talk with Tom about this
+  Xw <- Xweights(X, weights[,1]) # TODO: talk with Tom about this (whaat column should we use?)
   Yw <- sapply(seq_len(ncol(Y)), function(col) {
     yw <- Yweights(Y[, col, drop = FALSE], weights[, col, drop = FALSE])
     return(yw)
@@ -40,7 +41,7 @@ tune.L0glm <- function(X, y, family,
   # (round(log10(lambda_preset_aic))-3) as the lower bound and the theoretical
   # lambda that would penalize all variables to zero with an L0 penalty as maximum
   # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
-  maxlambda = max((1/colSums(X^2)) * (crossprod(X, Y)^2))
+  maxlambda = max((1/colSums(X^2)) * (crossprod(X, Y)^2)) # TODO make this Xw and Yw
   lambdas = 10^seq((round(log10(lambda.preset))-3), round(log10(maxlambda))+1, by=1)
 
   # Get warm start
