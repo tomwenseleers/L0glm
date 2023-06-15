@@ -8,6 +8,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
                         lower=rep(0, ncol(X)),
                         upper=rep(Inf,ncol(X)) ) {
   
+  if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
+  
   # nr of variables, cases & tasks & effective degrees of freedom ####
   p = ncol(X) # nr of variables
   n = nrow(X) # nr of cases
@@ -101,9 +103,17 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # Get -2 * log-likelihood & log likelihood
   y = as.vector(y)
   # y = as.vector(mu_true)
-  min2LL = family$aic(y = as.vector(y), mu = as.vector(mu), wt = as.vector(W), # TODO for family poisson gives Error in dpois(y, mu, log = TRUE) : Non-numeric argument to mathematical function
-                      n = NULL, # TODO check what n should be for family binomial(logit)
-                      dev = as.vector(deviance))
+  good = which(as.vector(W!=0))
+  if (family$family!="poisson") { min2LL = family$aic(y = as.vector(y)[good], 
+                      n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                      mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                      wt = as.vector(W)[good], 
+                      dev = as.vector(dev_res)[good] ) } else {   
+                                                           min2LL = family$aic(y = round(as.vector(y))[good], 
+                                                                             n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                                                                             mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                                                                             wt = as.vector(W)[good], 
+                                                                             dev = as.vector(dev_res)[good]) }
   loglik = -1/2 * min2LL
   
   # p=nr of vars, n=nr of cases, k=effective degrees of freedom
