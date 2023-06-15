@@ -3,15 +3,15 @@
 library(L0glm)
 library(export)
 
-n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100
+n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=300
 s <- 0.1 # sparsity, nr of timepoints with a peak
 k <- round(n*s)
 mean_beta <- 2000
 sd_logbeta <- 1
-sd_noise <- 10 # SD of noise for Gaussian noise case
+sd_noise <- 5 # SD of noise for Gaussian noise case
 set.seed(1)
-crit <- "gic" # choose lambda based on what would be expected to optimise this IC
-# options: aic, bic, gic, ebic, mbic
+crit <- "bic" # choose lambda based on what would be expected to optimise this IC
+# options in order of increasing regularisation: aic, bic, gic, ebic, mbic
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
@@ -32,7 +32,7 @@ L0glm.out <- L0glm.fit_new(X, y,
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
                                   y = y, 
                                   X = X, 
                                   family = poisson(identity)) 
@@ -75,7 +75,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   y = y, 
                                   X = X, 
                                   family = gaussian(identity)) 
-lambda_preset # lambda that would be expected to optimise BIC
+lambda_preset # lambda that would be expected to optimise given IC
 
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
@@ -143,7 +143,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   y = y, 
                                   X = X,  
                                   family = gaussian(identity)) 
-lambda_preset # lambda that would be expected to optimise BIC
+lambda_preset # lambda that would be expected to optimise given IC
 
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
