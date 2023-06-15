@@ -149,7 +149,10 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
       par(mfrow = c(1,1))
       image(x=1:n, y=1:m, z=as.matrix(y)^0.2, 
             col = topo.colors(255), useRaster=TRUE,
-            main = "Simulated blurred multichannel spike train\n(red=true support)", xlab="Time", ylab="Channel")
+            main = paste0(
+              "Simulated blurred multichannel spike train\n(red=true support) with ",
+              family, " noise"), 
+            xlab="Time", ylab="Channel")
       abline(v=u*n/p, col="red")
     }
   }

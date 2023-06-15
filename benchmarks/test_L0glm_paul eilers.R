@@ -2,8 +2,6 @@
 
 library(L0glm)
 library(export)
-# library(glmnet)
-# devtools::load_all(".")
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
@@ -20,7 +18,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                            family = poisson(identity), 
                            lambda = 1, 
                            nonnegative = TRUE)
-points(1:100, L0glm.out, pch = 16, col= 'blue')
+# points(1:100, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise BIC (lambda = 1.15)
 lambda_preset_bic = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
@@ -33,7 +31,8 @@ L0glm.out_bic <- L0glm.fit_new(X, y,
                                family = poisson(identity), 
                                lambda = lambda_preset_bic, 
                                nonnegative = TRUE)
-points(1:100, L0glm.out_bic, pch = 16, col= 'red')
+points(1:100, L0glm.out_bic, pch = 16, col= 'blue')
+graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out_bic, 
@@ -70,13 +69,14 @@ L0glm.out_bic <- L0glm.fit_new(X, y,
                                family = gaussian(identity), 
                                lambda = lambda_preset_bic, 
                                nonnegative = TRUE)
-points(1:100, L0glm.out_bic, pch = 16, col= 'red')
+points(1:100, L0glm.out_bic, pch = 16, col= 'blue')
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out_bic, 
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
+graph2pdf(file="..//benchmarks/plots/1_2 single channel deconvolution Gaussian.pdf", width=7, height=5)
 
 
 
@@ -102,7 +102,9 @@ L0glm.out_bic <- L0glm.fit_new(X, y,
                                family = poisson(identity), 
                                lambda = lambda_preset_bic, 
                                nonnegative = TRUE)
-abline(v=which(rowMin(L0glm.out_bic)!=0), col= 'cyan')
+abline(v=which(rowMin(L0glm.out_bic)!=0), col = 'cyan')
+graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
+
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out_bic, 
@@ -134,7 +136,8 @@ L0glm.out_bic <- L0glm.fit_new(X, y,
                                family = gaussian(identity), 
                                lambda = lambda_preset_bic, 
                                nonnegative = TRUE)
-abline(v=which(rowMin(L0glm.out_bic)!=0), col= 'cyan')
+abline(v=which(rowMin(L0glm.out_bic)!=0), col = 'cyan')
+graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out_bic, 
