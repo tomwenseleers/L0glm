@@ -329,11 +329,12 @@ preset.lambda <- function(IC="gic", y=NULL, X=NULL,
   # which is very fast to optimize but has no L0 penalty and estimate the
   # dispersion from the fit
   
+  N <- n <- nrow(X)
+  p <- ncol(X)
+  
   if (family$family %in% c("poisson", "binomial")) { dispersion <- 1 } # families with constant dispersion 
   
   if (is.null(dispersion)) {
-  N <- n <- nrow(X)
-  p <- ncol(X)
   y <- as.matrix(y)
   sel_task <- which.max(colMeans(abs(sim$y)))
   y <- y[, sel_task, drop=F] # NOTE: just using single channel with max avg absolute value

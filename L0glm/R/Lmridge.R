@@ -312,7 +312,7 @@ row_augX <- function(Xw, lambdas){
 # where prior.mean is a vector with the values at which the ridge penalty should be centered
 # see e.g. https://www.sciencedirect.com/science/article/abs/pii/S0047259X21001603
 # In an optimisation sense, this would add "momentum" to the optimisation process.
-# Not sure how this would perform - might be worth quickly trying.
+# Not sure how this would perform - might be worth trying quickly.
 augY <- function(yw, p){
   return(c(yw, rep(0, p)))
 }
