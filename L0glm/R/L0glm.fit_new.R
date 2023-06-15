@@ -23,7 +23,8 @@ L0glm.fit_new = function(X,
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxed = TRUE,
                          gamma = 2,
-                         rowaug.center = NULL,
+                         nonzero.centered = TRUE,
+                         ridge.center = NULL, # Should be a vector of length ncol(X)
                          thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
@@ -32,12 +33,13 @@ L0glm.fit_new = function(X,
                          warmupiters = 4,
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
+  
   require(parallel)
   require(qlcMatrix)
   
   y <- as.matrix(y)
   
-  # Make weights and start into a matrix if they are provided as a vector and y is multichannel
+  # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
       weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
@@ -100,12 +102,11 @@ L0glm.fit_new = function(X,
       
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs <- rowaug.center <- rowMeans(fit) # TODO talk with tom: if user passes rowaug.center, should it use the provided one for all the fit?
+          avgcoefs = rowMeans(fit)
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
-          
         }
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
@@ -118,10 +119,11 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
-                                                              rowaug.center = rowaug.center[variable.indices],
                                                               no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
+                                                              nonzero.centered = nonzero.centered,
+                                                              ridge.center = ridge.center[variable.indices],
                                                               weights = weights, 
                                                               start = start[variable.indices, , drop = F], 
                                                               lower = lower[variable.indices], 
@@ -136,7 +138,7 @@ L0glm.fit_new = function(X,
       
       if(relaxed){
         # Apply relaxed group L0 feature selection
-        avgcoefs <- rowaug.center <- rowMeans(fit)
+        avgcoefs = rowMeans(fit)
         variable.indices = which(avgcoefs > 0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         
@@ -150,10 +152,11 @@ L0glm.fit_new = function(X,
                                                               gamma = gamma,
                                                               maxit = maxit,
                                                               tol = tol,
-                                                              rowaug.center = rowaug.center[variable.indices],
                                                               no.pen = no.pen,
                                                               thresh = thresh, 
                                                               solver = solver, 
+                                                              nonzero.centered = nonzero.centered,
+                                                              ridge.center = ridge.center[variable.indices],
                                                               weights = weights, 
                                                               start = start[variable.indices, , drop = F], 
                                                               lower = lower[variable.indices], 
@@ -169,7 +172,7 @@ L0glm.fit_new = function(X,
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs <- rowaug.center <- rowMeans(fit)
+          avgcoefs <- rowMeans(fit)
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
@@ -185,8 +188,9 @@ L0glm.fit_new = function(X,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              offset = as.vector(offset[col, drop = F]),
-                             rowaug.center = rowaug.center[variable.indices],
                              weights = as.vector(weights[,col,drop=F]),
+                             nonzero.centered = nonzero.centered,
+                             ridge.center = ridge.center[variable.indices],
                              start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
                              upper = upper[variable.indices],
@@ -206,7 +210,7 @@ L0glm.fit_new = function(X,
         # Apply relaxed group L0 feature selection
         # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-        avgcoefs <- rowaug.center <- rowMeans(fit)
+        avgcoefs = rowMeans(fit)
         variable.indices = which(avgcoefs>0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
@@ -223,11 +227,12 @@ L0glm.fit_new = function(X,
                              lower = lower[variable.indices],
                              upper = upper[variable.indices],
                              maxit = maxit,
+                             nonzero.centered = nonzero.centered,
+                             ridge.center = ridge.center[variable.indices],
                              thresh = thresh,
                              solver = solver,
                              method = method,
                              tol = tol,
-                             rowaug.center = rowaug.center[variable.indices],
                              no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
@@ -240,12 +245,13 @@ L0glm.fit_new = function(X,
                               weights = weights,
                               family = family,
                               nonnegative = nonnegative,
-                              rowaug.center = rowaug.center,
                               offset = offset,
                               start = start,
                               lower = lower,
                               upper = upper,
                               lambda = lambda, 
+                              nonzero.centered = nonzero.centered,
+                              ridge.center = ridge.center,
                               gamma = gamma,
                               thresh = thresh,
                               solver = solver, 
@@ -278,8 +284,9 @@ L0glm.fit.internal = function(X,
                               lower = rep(0, ncol(X)),
                               upper = rep(Inf, ncol(X)),
                               lambda = 1, 
-                              rowaug.center = NULL,
                               gamma = 2,
+                              nonzero.centered = TRUE,
+                              ridge.center = NULL,
                               thresh = 1,
                               solver = "eigen", # or "osqp" or "glmnet"
                               method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
@@ -321,7 +328,7 @@ L0glm.fit.internal = function(X,
   delta = 0
   
   for (i in 1L:maxit) {
-    var = variance(mu) # variance
+    varg = variance(mu) # variance
     gprime = mu.eta(eta) # derivative of the expected values
     
     good = !is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0) # valid rows
@@ -341,6 +348,18 @@ L0glm.fit.internal = function(X,
     } else {
       z <- (y - offset)[good]
     }
+    if(is.null(ridge.center)){ # If it's not null we use user provided
+      if(i > warmupiters & nonzero.centered){
+        center = start # If start is NULL, this is also set to zero. 
+      } else if (nonzero.centered){
+        center = beta_old
+      } else {
+        center = NULL
+      }
+    } else {
+      center = ridge.center
+    }
+
     
     if (all(!good)) {
       conv <- FALSE
@@ -355,17 +374,15 @@ L0glm.fit.internal = function(X,
     beta_old = beta
     lambdas[no.pen] = 0
     
-    if(i > 1) rowaug.center = beta_old
-    
     beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
                              weights = W[good],
                              pen.weights = pen.weights[good], # TODO: remove this argument
                              lambdas = lambdas[nonzero],
                              nonnegative = nonnegative,
                              start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-                             rowaug.center = rowaug.center[nonzero],
                              lower = lower[nonzero], 
                              upper = upper[nonzero],
+                             ridge.center = center[nonzero],
                              solver = solver,
                              method = method)
     beta[nonzero][abs(beta[nonzero]) < thresh] = 0
@@ -414,8 +431,8 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, rowaug.center = NULL, maxit, tol, offset, no.pen = 0,
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family, nonzero.centered = T, ridge.center = NULL,
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -430,13 +447,14 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        gamma = gamma,
                        weights = as.vector(weights[,col,drop=F]),
                        start = as.vector(start[, col, drop = F]),
-                       rowaug.center = rowaug.center,
                        maxit = maxit,
                        tol = tol,
                        no.pen = no.pen,
                        lower = lower,
-                       offset = offset,
+                       offset = as.vector(offset[,col, drop ? F]),
                        upper = upper,
+                       nonzero.centered = nonzero.centered,
+                       ridge.center = ridge.center,
                        thresh = thresh,
                        solver = solver,
                        nonnegative = nonnegative,
