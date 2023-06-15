@@ -6,11 +6,11 @@ library(export)
 n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100
 s <- 0.1 # sparsity, nr of timepoints with a peak
 k <- round(n*s)
-mean_beta <- 1000
+mean_beta <- 2000
 sd_logbeta <- 1
-sd_noise <- 5 # SD of noise for Gaussian noise case
+sd_noise <- 10 # SD of noise for Gaussian noise case
 set.seed(1)
-crit <- "bic" # choose lambda based on what would be expected to optimise this IC
+crit <- "aic" # choose lambda based on what would be expected to optimise this IC
 # options: aic, bic, gic, ebic, mbic
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
@@ -157,3 +157,4 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            X = X, y = y, 
                            family = gaussian(identity), 
                            beta_true = sim$beta_true))
+
