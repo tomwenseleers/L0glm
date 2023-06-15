@@ -10,7 +10,7 @@ mean_beta <- 2000
 sd_logbeta <- 1
 sd_noise <- 10 # SD of noise for Gaussian noise case
 set.seed(1)
-crit <- "aic" # choose lambda based on what would be expected to optimise this IC
+crit <- "gic" # choose lambda based on what would be expected to optimise this IC
 # options: aic, bic, gic, ebic, mbic
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
@@ -36,7 +36,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   y = y, 
                                   X = X, 
                                   family = poisson(identity)) 
-lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100
+lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, lambda = 1.76 would optimise GIC
 
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
@@ -109,7 +109,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   y = y, 
                                   X = X, 
                                   family = poisson(identity)) 
-lambda_preset # lambda = 1.15 would be expected to optimise BIC
+lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 would optimise GIC
 
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
