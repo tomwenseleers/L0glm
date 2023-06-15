@@ -6,7 +6,12 @@ library(export)
 n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100
 s <- 0.1 # sparsity, nr of timepoints with a peak
 k <- round(n*s)
+mean_beta <- 1000
+sd_logbeta <- 1
+sd_noise <- 5 # SD of noise for Gaussian noise case
 set.seed(1)
+crit <- "bic" # choose lambda based on what would be expected to optimise this IC
+# options: aic, bic, gic, ebic, mbic
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
@@ -14,8 +19,8 @@ sim <- simulate_spike_train(n = n,
                             p = p,
                             k = k,
                             family = "poisson", 
-                            mean_beta = 10000,
-                            sd_logbeta = 1)
+                            mean_beta = mean_beta,
+                            sd_logbeta = sd_logbeta)
 X <- sim$X
 y <- sim$y
 
@@ -24,24 +29,24 @@ L0glm.out <- L0glm.fit_new(X, y,
                            family = poisson(identity), 
                            lambda = 1, 
                            nonnegative = TRUE)
-# points(1:100, L0glm.out, pch = 16, col= 'blue')
+# points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
-# using lambda expected to optimise BIC (lambda = 1.15)
-lambda_preset_bic = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+# using lambda expected to optimise given IC
+lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                                   y = y, 
                                   X = X, 
                                   family = poisson(identity)) 
-lambda_preset_bic # lambda = 1.15 would be expected to optimise BIC
+lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100
 
-L0glm.out_bic <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
-                               lambda = lambda_preset_bic, 
+                               lambda = lambda_preset, 
                                nonnegative = TRUE)
-points(sim$x, L0glm.out_bic, pch = 16, col= 'blue')
+points(sim$x, L0glm.out, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out_bic, 
+do.call(cbind, get.metrics(beta = L0glm.out, 
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
@@ -52,9 +57,9 @@ sim <- simulate_spike_train(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
-                            mean_beta = 10000,
-                            sd_logbeta = 1,
-                            sd_noise = 10)
+                            mean_beta = mean_beta,
+                            sd_logbeta = sd_logbeta,
+                            sd_noise = sd_noise)
 X <- sim$X
 y <- sim$y
 
@@ -63,23 +68,23 @@ y <- sim$y
 #                           family = gaussian(identity), 
 #                           lambda = 1, 
 #                           nonnegative = TRUE)
-# points(1:100, L0glm.out, pch = 16, col= 'blue')
+# points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
-# using lambda expected to optimise BIC
-lambda_preset_bic = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+# using lambda expected to optimise given IC
+lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                                   y = y, 
                                   X = X, 
                                   family = gaussian(identity)) 
-lambda_preset_bic # lambda = 80.81514 would be expected to optimise BIC
+lambda_preset # lambda that would be expected to optimise BIC
 
-L0glm.out_bic <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
-                               lambda = lambda_preset_bic, 
+                               lambda = lambda_preset, 
                                nonnegative = TRUE)
-points(sim$x, L0glm.out_bic, pch = 16, col= 'blue')
+points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out_bic, 
+do.call(cbind, get.metrics(beta = L0glm.out, 
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
@@ -93,29 +98,28 @@ sim <- simulate_spike_train(n = n,
                             p = p,
                             k = ifelse(round(n/10)<=100, round(n/10), 100),
                             family="poisson", 
-                            mean_beta = 10000,
-                            sd_logbeta = 1,
+                            mean_beta = mean_beta,
+                            sd_logbeta = sd_logbeta,
                             multichannel=TRUE)
 X <- sim$X
 y <- sim$y
 
-# using lambda expected to optimise BIC (lambda = 1.15)
-lambda_preset_bic = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+# using lambda expected to optimise given IC (lambda = 1.15)
+lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                                   y = y, 
                                   X = X, 
                                   family = poisson(identity)) 
-lambda_preset_bic # lambda = 1.15 would be expected to optimise BIC
+lambda_preset # lambda = 1.15 would be expected to optimise BIC
 
-L0glm.out_bic <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
-                               lambda = lambda_preset_bic, 
+                               lambda = lambda_preset, 
                                nonnegative = TRUE)
-abline(v=which(rowMin(L0glm.out_bic)!=0), col = 'cyan')
+abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
 
-
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out_bic, 
+do.call(cbind, get.metrics(beta = L0glm.out, 
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
@@ -127,29 +131,29 @@ sim <- simulate_spike_train(n = n,
                             p = p,
                             k = ifelse(round(n/10)<=100, round(n/10), 100),
                             family = "gaussian", 
-                            mean_beta = 10000,
-                            sd_logbeta = 1,
-                            sd_noise = 10, 
+                            mean_beta = mean_beta,
+                            sd_logbeta = sd_logbeta,
+                            sd_noise = sd_noise, 
                             multichannel = TRUE)
 X <- sim$X
 y <- sim$y
 
-# using lambda expected to optimise BIC
-lambda_preset_bic = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+# using lambda expected to optimise given IC
+lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                                   y = y, 
                                   X = X,  
                                   family = gaussian(identity)) 
-lambda_preset_bic # lambda = 70.14565 would be expected to optimise BIC
+lambda_preset # lambda that would be expected to optimise BIC
 
-L0glm.out_bic <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
-                               lambda = lambda_preset_bic, 
+                               lambda = lambda_preset, 
                                nonnegative = TRUE)
-abline(v=which(rowMin(L0glm.out_bic)!=0), col = 'cyan')
+abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out_bic, 
+do.call(cbind, get.metrics(beta = L0glm.out, 
                            X = X, y = y, 
                            family = gaussian(identity), 
                            beta_true = sim$beta_true))
