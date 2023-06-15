@@ -3,10 +3,12 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
                         offset=Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse=T), 
                         family=gaussian(identity), 
                         beta_true=NULL, 
-                        model_name="L0glm",
                         edf=sum(beta!=0), # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
                         lower=rep(0, ncol(X)),
                         upper=rep(Inf,ncol(X)) ) {
+  
+  require(glmnet)
+  require(qlcMatrix)
   
   if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
   
@@ -103,17 +105,19 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # Get -2 * log-likelihood & log likelihood
   y = as.vector(y)
   # y = as.vector(mu_true)
-  good = which(as.vector(W!=0))
-  if (family$family!="poisson") { min2LL = family$aic(y = as.vector(y)[good], 
-                      n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                      mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                      wt = as.vector(W)[good], 
-                      dev = as.vector(dev_res)[good] ) } else {   
+  if (family$family!="poisson") { 
+                      good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
+                      min2LL = family$aic(y = as.vector(y)[good], 
+                                          n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                                          mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                                          wt = as.vector(W)[good], 
+                                          dev = deviance) } else {   
+                                                           good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
                                                            min2LL = family$aic(y = round(as.vector(y))[good], 
-                                                                             n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                                                                             mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                                                             wt = as.vector(W)[good], 
-                                                                             dev = as.vector(dev_res)[good]) }
+                                                                               n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                                                                               mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                                                                               wt = as.vector(W)[good], 
+                                                                               dev = deviance) }
   loglik = -1/2 * min2LL
   
   # p=nr of vars, n=nr of cases, k=effective degrees of freedom
@@ -139,7 +143,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
   # still add explained variance or adjusted explained variance on adjusted z scale?
   
-  return(list(model_name=model_name, p=p, n=n, m=m, 
+  return(list(p=p, n=n, m=m, 
               deviance=deviance, loglik=loglik,
               MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
               bias_coefs=bias_coefs, 

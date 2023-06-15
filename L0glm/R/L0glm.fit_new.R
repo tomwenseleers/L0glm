@@ -31,6 +31,9 @@ L0glm.fit_new = function(X,
                          warmupiters = 4,
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
+  require(parallel)
+  require(qlcMatrix)
+  
   y <- as.matrix(y)
   
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel

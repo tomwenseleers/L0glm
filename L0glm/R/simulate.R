@@ -68,9 +68,9 @@
 #' @export
 #' 
 simulate_spike_train <- function(n = 100, p = n, k = 10,
-                                  mean_beta = 1000, sd_logbeta = 1,
+                                  mean_beta = 10000, sd_logbeta = 1,
                                   family = c("poisson","gaussian"),
-                                  sd_noise = 1,
+                                  sd_noise = 10,
                                   psf = function(x, u, w=2.5)
                                     exp(((x-u)^2)/(-2*(w^2))),
                                   thresh = 1E-5,
