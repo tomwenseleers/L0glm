@@ -31,7 +31,7 @@ tune.L0glm <- function(X, y, family,
   p <- ncol(X)
   
   # TODO: Calculate Xw and yw properly
-  Xw <- Xweights(X, weights[,1]) # TODO: talk with Tom about this (whaat column should we use?)
+  Xw <- Xweights(X, weights[,1]) # TODO: talk with Tom about this (what column should we use?)
   Yw <- sapply(seq_len(ncol(Y)), function(col) {
     yw <- Yweights(Y[, col, drop = FALSE], weights[, col, drop = FALSE])
     return(yw)
