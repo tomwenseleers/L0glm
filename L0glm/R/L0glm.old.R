@@ -306,7 +306,7 @@ L0glm.old <- function(formula,
   control.iwls <- do.call("control.iwls.gen.old", control.iwls)
   control.fit <- do.call("control.fit.gen.old", control.fit)
 
-  n <- nrow(X) # nr of obersvations
+  n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
 
   # Normalize data

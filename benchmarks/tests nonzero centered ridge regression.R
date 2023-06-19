@@ -87,7 +87,7 @@ lambda_preset # lambda that would be expected to optimise given IC
 system.time(L0glm.out <- L0glm.fit_new(X, y, 
                            family = gaussian(identity), 
                            lambda = lambda_preset, 
-                           nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
+                           nonzero.centered = TRUE, # gives slightly better solution based on IC, about the same speed or slightly faster
                            ridge.center = NULL, 
                            nonnegative = TRUE,
                            relaxed = FALSE, # TODO: CHECK: relaxed argument has no effect in single channel fit - is this as intended? Should one not be allowed to fit an L0glm and then refit all selected variables unpenalized with lambda=0? 
@@ -193,7 +193,7 @@ system.time(L0glm.out <- L0glm.fit_new(X, y,
                            grouped = TRUE,
                            group.maxit = 20,
                            relaxed = FALSE,
-                           warmupiters = 1))
+                           warmupiters = 1)) # TODO: FOR GAUSSIAN GIVES BEST SOLUTION
 # XXs for n=p=10000, 25.87s for n=p=100
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 # graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)

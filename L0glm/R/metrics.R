@@ -112,6 +112,11 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
                                           mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
                                           wt = as.vector(W)[good], 
                                           dev = deviance) } else {   
+                                            # TODO: CHECK: for large counts min2LL for poisson still occasionally gives a -Inf
+                                            # see here for a solution calculating dpois manually
+                                            # https://stats.stackexchange.com/questions/475328/negative-infinity-produced-when-computing-log-likelihood-in-poisson-regression-r
+                                            # for generalisation allowing noninteger counts
+                                            # see https://stats.stackexchange.com/questions/70054/how-is-it-possible-that-poisson-glm-accepts-non-integer-numbers
                                                            good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
                                                            min2LL = family$aic(y = round(as.vector(y))[good], 
                                                                                n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
