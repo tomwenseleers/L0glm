@@ -3,7 +3,7 @@
 #' @describeIn L0glm
 #' Selects optimal value of regularization parameter lambda
 #' @export
-tune.L0glm <- function(X, y, family, 
+L0glm.tune <- function(X, y, family, 
                        weights = matrix(1, nrow = nrow(y), ncol = ncol(y)), 
                        offset = Matrix(0, nrow = nrow(X), ncol=ncol(y), sparse=T), 
                        dispersion = NULL, 
@@ -84,7 +84,7 @@ tune.L0glm <- function(X, y, family,
   return(metrics)
 }
 
-abessfit <- function(X, y, ...){
+abess.fit <- function(X, y, ...){
   fit <- abess(x = X, 
         y = y, 
         ...)
@@ -94,11 +94,11 @@ abessfit <- function(X, y, ...){
   return(fit)
 }
 
-glmnetfit <- function(X, y, ...){
+glmnet.fit <- function(X, y, ...){
   
 }
 
-plot.tune <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
+tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
   IC = tolower(IC)
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
     stop("Invalid information criteria.")
@@ -107,6 +107,7 @@ plot.tune <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
   bestlambda = lambdas[which.min(metrics[,IC])]
   bestlambda = lambdas[which.min(abs(lambdas-bestlambda))] 
   beta_relaxedgroupL0 = as.matrix(coefficients[[which(lambdas==bestlambda)]]) 
+  IC = toupper(IC) # better for plot titles
   
   # PLOT TRUE VS ESTIMATED COEFFICIENTS 
   if(!is.null(coefs.true)){

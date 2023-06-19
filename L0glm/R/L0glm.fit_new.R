@@ -23,7 +23,7 @@ L0glm.fit_new = function(X,
                          group.maxit = 6, # note: increased default to 6 to increase performance
                          relaxed = TRUE,
                          gamma = 2,
-                         nonzero.centered = TRUE,
+                         nonzero.centered = FALSE,
                          ridge.center = NULL, # Should be a vector of length ncol(X)
                          thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                          solver = "eigen", # or "osqp" or "glmnet"
@@ -36,7 +36,6 @@ L0glm.fit_new = function(X,
   
   require(parallel)
   require(qlcMatrix)
-  
   y <- as.matrix(y)
   
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
@@ -48,7 +47,7 @@ L0glm.fit_new = function(X,
     if(ncol(y) > 1){ # Multichannel
       weights = matrix(1, nrow = nrow(y), ncol = ncol(y))
     } else { # Single channel
-      weights = rep(1, ncol(X))
+      weights = rep(1, nrow(X))
     }
   }
   
@@ -285,7 +284,7 @@ L0glm.fit.internal = function(X,
                               upper = rep(Inf, ncol(X)),
                               lambda = 1, 
                               gamma = 2,
-                              nonzero.centered = TRUE,
+                              nonzero.centered = FALSE,
                               ridge.center = NULL,
                               thresh = 1,
                               solver = "eigen", # or "osqp" or "glmnet"
@@ -295,6 +294,7 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               warmupiters = 4,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -431,7 +431,7 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family, nonzero.centered = T, ridge.center = NULL,
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
                 weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
