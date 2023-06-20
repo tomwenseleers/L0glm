@@ -1,5 +1,7 @@
 # Minimal tests of L0glm package ####
 
+library(remotes)
+remotes::install_github("tomwenseleers/L0glm/L0glm")
 library(L0glm)
 library(export)
 
