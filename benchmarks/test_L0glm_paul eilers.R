@@ -209,7 +209,7 @@ lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 w
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
                                grouped = TRUE,
                                relaxed = TRUE, 
                                nonnegative = TRUE,
@@ -231,7 +231,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   L0glm.out <- L0glm.fit_new(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
@@ -247,11 +247,11 @@ matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
-plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of 1
-plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of 10
+plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda of 10
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of 1-10
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
@@ -259,7 +259,7 @@ plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of 10
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 plot(log10(metrics$lambda), metrics$gic, type="l")
 plot(log10(metrics$lambda), metrics$ebic, type="l")
@@ -293,7 +293,7 @@ lambda_preset # lambda that would be expected to optimise given IC
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
@@ -315,7 +315,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   L0glm.out <- L0glm.fit_new(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
@@ -331,11 +331,11 @@ matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
-plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of ca 10-100
 plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda of ca 10
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of ca 10-100
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
@@ -343,8 +343,8 @@ plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of ca 10
-plot(log10(metrics$lambda), metrics$F1_score, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of ca 10-100
+plot(log10(metrics$lambda), metrics$F1_score, type="l") # good one, optimal for lambda of ca 10-100
 plot(log10(metrics$lambda), metrics$gic, type="l")
 plot(log10(metrics$lambda), metrics$ebic, type="l")
 plot(log10(metrics$lambda), metrics$bic, type="l")
