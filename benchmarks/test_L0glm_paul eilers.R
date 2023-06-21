@@ -30,8 +30,9 @@ y <- sim$y
 L0glm.out <- L0glm.fit_new(X, y, 
                            family = poisson(identity), 
                            lambda = 1, 
-                           nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                           nonnegative = TRUE)
+                           nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                           nonnegative = TRUE,
+                           warmupiters = 4)
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -44,8 +45,9 @@ lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, la
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = poisson(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               nonnegative = TRUE)
+                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                               nonnegative = TRUE,
+                               warmupiters = 4)
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -54,6 +56,48 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
+
+# coefficients & metrics over a range of lambda values
+lambdas <- 10^seq(-3, 5, by=0.1)
+coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
+metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+  lambda <- lambdas[[i]]
+  L0glm.out <- L0glm.fit_new(X, y, 
+                             family = poisson(identity), 
+                             lambda = lambda, 
+                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                             nonnegative = TRUE,
+                             warmupiters = 4)
+  coefmat[i,] <<- as.vector(L0glm.out)
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
+                                          X = X, y = y, 
+                                          family = poisson(identity), 
+                                          beta_true = sim$beta_true))) )
+  } )))
+matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
+        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
+plot(log10(metrics$lambda), metrics$deviance, type="l")
+plot(log10(metrics$lambda), metrics$loglik, type="l")
+plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
+plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
+plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
+plot(log10(metrics$lambda), metrics$TP, type="l")
+plot(log10(metrics$lambda), metrics$FP, type="l")
+plot(log10(metrics$lambda), metrics$TN, type="l")
+plot(log10(metrics$lambda), metrics$FN, type="l")
+plot(log10(metrics$lambda), metrics$precision, type="l")
+plot(log10(metrics$lambda), metrics$recall, type="l")
+plot(log10(metrics$lambda), metrics$specificity, type="l")
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
+plot(log10(metrics$lambda), metrics$F1_score, type="l")
+plot(log10(metrics$lambda), metrics$gic, type="l")
+plot(log10(metrics$lambda), metrics$ebic, type="l")
+plot(log10(metrics$lambda), metrics$bic, type="l")
+plot(log10(metrics$lambda), metrics$aic, type="l")
+plot(log10(metrics$lambda), metrics$mbic, type="l")
 
 
 ## 1.2 Single channel deconvolution assuming Gaussian noise ####
@@ -72,8 +116,9 @@ y <- sim$y
 # L0glm.out <- L0glm.fit_new(X, y, 
 #                           family = gaussian(identity), 
 #                           lambda = 1, 
-#                           nonzero.centered = FALSE, # use nonzero centered ridge regression?
-#                           nonnegative = TRUE)
+#                           nonzero.centered = TRUE, # use nonzero centered ridge regression?
+#                           nonnegative = TRUE,
+#                           warmupiters = 1)
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -86,17 +131,59 @@ lambda_preset # lambda that would be expected to optimise given IC
 L0glm.out <- L0glm.fit_new(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               nonnegative = TRUE)
+                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                               nonnegative = TRUE,
+                               warmupiters = 1)
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out, 
                            X = X, y = y, 
-                           family = poisson(identity), 
+                           family = gaussian(identity), 
                            beta_true = sim$beta_true))
 graph2pdf(file="..//benchmarks/plots/1_2 single channel deconvolution Gaussian.pdf", width=7, height=5)
 
+# coefficients & metrics over a range of lambda values
+lambdas <- 10^seq(-3, 5, by=0.1)
+coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
+metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+  lambda <- lambdas[[i]]
+  L0glm.out <- L0glm.fit_new(X, y, 
+                             family = gaussian(identity), 
+                             lambda = lambda, 
+                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                             nonnegative = TRUE,
+                             warmupiters = 1)
+  coefmat[i,] <<- as.vector(L0glm.out)
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
+                                              X = X, y = y, 
+                                              family = gaussian(identity), 
+                                              beta_true = sim$beta_true))) )
+} )))
+matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
+        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
+plot(log10(metrics$lambda), metrics$deviance, type="l")
+plot(log10(metrics$lambda), metrics$loglik, type="l")
+plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda around 10-100
+plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
+plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 10-100
+plot(log10(metrics$lambda), metrics$TP, type="l")
+plot(log10(metrics$lambda), metrics$FP, type="l")
+plot(log10(metrics$lambda), metrics$TN, type="l")
+plot(log10(metrics$lambda), metrics$FN, type="l")
+plot(log10(metrics$lambda), metrics$precision, type="l")
+plot(log10(metrics$lambda), metrics$recall, type="l")
+plot(log10(metrics$lambda), metrics$specificity, type="l")
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 10-100
+plot(log10(metrics$lambda), metrics$F1_score, type="l")
+plot(log10(metrics$lambda), metrics$gic, type="l") # optimum around 10
+plot(log10(metrics$lambda), metrics$ebic, type="l")
+plot(log10(metrics$lambda), metrics$bic, type="l")
+plot(log10(metrics$lambda), metrics$aic, type="l")
+plot(log10(metrics$lambda), metrics$mbic, type="l")
 
 
 # 2. MULTICHANNEL DECONVOLUTION ####
@@ -123,7 +210,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                family = poisson(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               nonnegative = TRUE)
+                               grouped = TRUE,
+                               relaxed = TRUE, 
+                               nonnegative = TRUE,
+                               warmupiters = 4)
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -132,6 +222,51 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
+
+# coefficients & metrics over a range of lambda values
+lambdas <- 10^seq(-3, 5, by=0.5)
+coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
+metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+  lambda <- lambdas[[i]]
+  L0glm.out <- L0glm.fit_new(X, y, 
+                             family = poisson(identity), 
+                             lambda = lambda, 
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                             grouped = TRUE,
+                             relaxed = TRUE, 
+                             nonnegative = TRUE,
+                             warmupiters = 4)
+  coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
+                                              X = X, y = y, 
+                                              family = poisson(identity), 
+                                              beta_true = sim$beta_true))) )
+} )))
+matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
+        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
+plot(log10(metrics$lambda), metrics$deviance, type="l")
+plot(log10(metrics$lambda), metrics$loglik, type="l")
+plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
+plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$TP, type="l")
+plot(log10(metrics$lambda), metrics$FP, type="l")
+plot(log10(metrics$lambda), metrics$TN, type="l")
+plot(log10(metrics$lambda), metrics$FN, type="l")
+plot(log10(metrics$lambda), metrics$precision, type="l")
+plot(log10(metrics$lambda), metrics$recall, type="l")
+plot(log10(metrics$lambda), metrics$specificity, type="l")
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of 1
+plot(log10(metrics$lambda), metrics$F1_score, type="l")
+plot(log10(metrics$lambda), metrics$gic, type="l")
+plot(log10(metrics$lambda), metrics$ebic, type="l")
+plot(log10(metrics$lambda), metrics$bic, type="l")
+plot(log10(metrics$lambda), metrics$aic, type="l")
+plot(log10(metrics$lambda), metrics$mbic, type="l")
+
 
 
 
@@ -159,7 +294,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               nonnegative = TRUE)
+                               grouped = TRUE,
+                               relaxed = TRUE,
+                               nonnegative = TRUE,
+                               warmupiters = 1)
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
@@ -169,3 +307,46 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            family = gaussian(identity), 
                            beta_true = sim$beta_true))
 
+# coefficients & metrics over a range of lambda values
+lambdas <- 10^seq(-3, 5, by=0.5)
+coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
+metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+  lambda <- lambdas[[i]]
+  L0glm.out <- L0glm.fit_new(X, y, 
+                             family = gaussian(identity), 
+                             lambda = lambda, 
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                             grouped = TRUE,
+                             relaxed = TRUE, 
+                             nonnegative = TRUE,
+                             warmupiters = 1)
+  coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
+                                              X = X, y = y, 
+                                              family = gaussian(identity), 
+                                              beta_true = sim$beta_true))) )
+} )))
+matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
+        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
+plot(log10(metrics$lambda), metrics$deviance, type="l")
+plot(log10(metrics$lambda), metrics$loglik, type="l")
+plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
+plot(log10(metrics$lambda), metrics$MAD_coefs, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
+plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
+plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$TP, type="l")
+plot(log10(metrics$lambda), metrics$FP, type="l")
+plot(log10(metrics$lambda), metrics$TN, type="l")
+plot(log10(metrics$lambda), metrics$FN, type="l")
+plot(log10(metrics$lambda), metrics$precision, type="l")
+plot(log10(metrics$lambda), metrics$recall, type="l")
+plot(log10(metrics$lambda), metrics$specificity, type="l")
+plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$F1_score, type="l") # good one, optimal for lambda of ca 10
+plot(log10(metrics$lambda), metrics$gic, type="l")
+plot(log10(metrics$lambda), metrics$ebic, type="l")
+plot(log10(metrics$lambda), metrics$bic, type="l")
+plot(log10(metrics$lambda), metrics$aic, type="l")
+plot(log10(metrics$lambda), metrics$mbic, type="l")
