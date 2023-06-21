@@ -69,11 +69,12 @@ get.adjR2 = function (z_obs, # observed data on adjusted response scale
   return(r.squared) }
 
 # adjusted weighted R2 between predicted signal & observed signal
-get.adjR2(z_obs = sim$y,
+get.adjR2(z_obs = y,
           z_pred = y_pred,
           weights = weights_est,
           p = sum(coefs!=0),
-          intercept = FALSE) # 0.96794
+          intercept = FALSE) 
+# 0.96794
 
 # Ideally I think what I would like to have is an unbiased estimator of the
 # weighted R2 between the predicted signal & the true underlying signal without noise :
@@ -89,11 +90,12 @@ get.R2(z_obs = y_true,
        z_pred = y_pred,
        weights = weights_true,
        intercept = FALSE
-       ) # 0.9967505
+       ) 
+# 0.9967505
 
 
 # some metrics
 do.call(cbind, get.metrics(beta = coefs, 
                            X = X, y = y, 
                            family = poisson(identity), 
-                           beta_true = sim$beta_true))
+                           beta_true = beta_true))
