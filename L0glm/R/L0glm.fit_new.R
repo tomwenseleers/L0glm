@@ -119,7 +119,7 @@ L0glm.fit_new = function(X,
         
         # Use clusterApply to apply the function in parallel & combine results
         fit <- clusterApply(cl, chunks, fun,
-                            X = X[,, drop = F],#X[,variable.indices, drop = F], 
+                            X = X[,variable.indices, drop = F], 
                             y = y, 
                             family = family, 
                             lambda = lambda, 
@@ -130,11 +130,11 @@ L0glm.fit_new = function(X,
                             thresh = thresh, 
                             solver = solver, 
                             nonzero.centered = nonzero.centered,
-                            ridge.center = ridge.center, #[variable.indices],
+                            ridge.center = ridge.center[variable.indices],
                             weights = weights, 
-                            start = start[, , drop = F], #variable.indices, , drop = F], 
-                            lower = lower, #[variable.indices], 
-                            upper = upper, #[variable.indices], 
+                            start = start[variable.indices, , drop = F], 
+                            lower = lower[variable.indices], 
+                            upper = upper[variable.indices], 
                             offset = offset,
                             method = method, 
                             nonnegative = nonnegative, 
@@ -142,10 +142,10 @@ L0glm.fit_new = function(X,
                             warmupiters = warmupiters, 
                             verbose = verbose)
         # Extract results
-        coefficients <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
+        coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
         weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
-        pen.weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
-        lambdas.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
+        pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+        lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
       }
       
       if(relaxed){
@@ -157,11 +157,11 @@ L0glm.fit_new = function(X,
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
-        fit <- clusterApply(cl, chunks, fun, 
-                            X = X[,, drop = F], #variable.indices, drop = F], 
+        fit <- clusterApply(cl, chunks, fun,
+                            X = X[,variable.indices, drop = F], 
                             y = y, 
                             family = family, 
-                            lambda = 0, 
+                            lambda = lambda, 
                             gamma = gamma,
                             maxit = maxit,
                             tol = tol,
@@ -169,22 +169,22 @@ L0glm.fit_new = function(X,
                             thresh = thresh, 
                             solver = solver, 
                             nonzero.centered = nonzero.centered,
-                            ridge.center = ridge.center, #[variable.indices],
+                            ridge.center = ridge.center[variable.indices],
                             weights = weights, 
-                            start = start[, , drop = F], # variable.indices, , drop = F], 
-                            lower = lower, #[variable.indices], 
-                            upper = upper, #[variable.indices], 
+                            start = start[variable.indices, , drop = F], 
+                            lower = lower[variable.indices], 
+                            upper = upper[variable.indices], 
                             offset = offset,
                             method = method, 
                             nonnegative = nonnegative, 
                             control.solver = control.solver, 
                             warmupiters = warmupiters, 
                             verbose = verbose)
-        
-        coefficients <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
+        # Extract results
+        coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
         weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
-        pen.weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
-        lambdas.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
+        pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+        lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
       }
       
       stopCluster(cl)
