@@ -1,7 +1,7 @@
 # Minimal tests of L0glm package ####
 
 library(remotes)
-remotes::install_github("tomwenseleers/L0glm/L0glm")
+# remotes::install_github("tomwenseleers/L0glm/L0glm")
 library(L0glm)
 library(export)
 
@@ -32,7 +32,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                            lambda = 1, 
                            nonzero.centered = TRUE, # use nonzero centered ridge regression?
                            nonnegative = TRUE,
-                           warmupiters = 4)
+                           warmupiters = 4,
+                           # start = rep(10, ncol(sim$X)), # coefficient starting values
+                           solver = "eigen" # note: solver osqp better than eigen for very small lambda values)
+)
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -47,7 +50,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
                                nonnegative = TRUE,
-                               warmupiters = 4)
+                               warmupiters = 4,
+                               # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               solver = "eigen" # note: solver osqp better than eigen for very small lambda values)
+)
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -58,7 +64,7 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            beta_true = sim$beta_true))
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 5, by=0.1)
+lambdas <- 10^seq(-3, 7, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -67,7 +73,11 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              nonnegative = TRUE,
-                             warmupiters = 4)
+                             warmupiters = 4,
+                             # start = rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
+                             solver = "eigen" # , # note: constrained solver osqp better than eigen for very small lambda values TODO check why glmnet solver gives error
+                             # thresh = 10
+                             ) 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                           X = X, y = y, 
@@ -118,7 +128,10 @@ y <- sim$y
 #                           lambda = 1, 
 #                           nonzero.centered = TRUE, # use nonzero centered ridge regression?
 #                           nonnegative = TRUE,
-#                           warmupiters = 1)
+#                           warmupiters = 1,
+#                           start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+#                           solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+# )
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -133,7 +146,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
                                nonnegative = TRUE,
-                               warmupiters = 1)
+                               warmupiters = 1,
+                               # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+)
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # some metrics
@@ -144,7 +160,7 @@ do.call(cbind, get.metrics(beta = L0glm.out,
 graph2pdf(file="..//benchmarks/plots/1_2 single channel deconvolution Gaussian.pdf", width=7, height=5)
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 5, by=0.1)
+lambdas <- 10^seq(-3, 7, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -153,7 +169,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              nonnegative = TRUE,
-                             warmupiters = 1)
+                             warmupiters = 1,
+                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+)
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
@@ -213,7 +232,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                grouped = TRUE,
                                relaxed = TRUE, 
                                nonnegative = TRUE,
-                               warmupiters = 4)
+                               warmupiters = 4,                               
+                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+)
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -224,7 +246,7 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            beta_true = sim$beta_true))
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 5, by=0.5)
+lambdas <- 10^seq(-3, 7, by=0.5)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -235,7 +257,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
-                             warmupiters = 4)
+                             warmupiters = 4,                               
+                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+  )
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
@@ -297,7 +322,10 @@ L0glm.out <- L0glm.fit_new(X, y,
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
-                               warmupiters = 1)
+                               warmupiters = 1,                               
+                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+)
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
@@ -308,7 +336,7 @@ do.call(cbind, get.metrics(beta = L0glm.out,
                            beta_true = sim$beta_true))
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 5, by=0.5)
+lambdas <- 10^seq(-3, 7, by=0.5)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -319,7 +347,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
-                             warmupiters = 1)
+                             warmupiters = 1,                               
+                           # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+  )
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
