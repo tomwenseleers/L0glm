@@ -146,7 +146,50 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))
   # z = (eta - offset) + (y - mu) / mu.prime # working (adjusted) response
   # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
-  # still add explained variance or adjusted explained variance on adjusted z scale?
+
+  # TODO: still add explained variance or adjusted explained variance on adjusted z scale?
+  # # define functions to calculate weighted R2 and adjusted weighted R2 :
+  # get.R2 = function (z_obs, # observed data on adjusted response scale (or true data without noise on z scale if beta_true given)
+  #                    z_pred, # fitted data on adjusted response scale
+  #                    weights, # weights from last IRLS GLM iteration, e.g. 1/variance for identity link GLMs (or true weights if beta_true given)
+  #                    intercept=FALSE) { 
+  #   good = as.vector(weights<1) # to remove infinite & unreliable weights
+  #   ss_residual = sum(weights[good] * (z_obs[good] - z_pred[good]) ^ 2)
+  #   if (intercept) { wmean = weighted.mean(z_obs[good], weights[good]) } else { wmean = 0 }
+  #   ss_total = sum(weights[good] * (z_obs[good] - wmean) ^ 2)
+  #   r.squared = 1 - ss_residual / ss_total 
+  #   return(r.squared) }
+  # 
+  # get.adjR2 = function (z_obs, # observed data on adjusted response scale
+  #                       z_pred, # fitted data on adjusted response scale
+  #                       weights, # weights from last IRLS GLM iteration, e.g. 1/variance for identity link GLMs
+  #                       intercept=FALSE,
+  #                       p # nr of variables in the model (nr of nonzero coefficients) (incl intercept)
+  # ) { 
+  #   good = as.vector(weights<1) # to remove infinite & unreliable weights
+  #   n = sum(good) # nr of observations
+  #   ss_residual = sum(weights[good] * (z_obs[good] - z_pred[good]) ^ 2)
+  #   if (intercept) { wmean = weighted.mean(z_obs[good], weights[good]) } else { wmean = 0 }
+  #   ss_total = sum(weights[good] * (z_obs[good] - weighted.mean(z_obs[good], weights[good])) ^ 2)
+  #   df_residual = n-p-1
+  #   df_total = n-1
+  #   r.squared = 1 - (ss_residual/df_residual) / (ss_total/df_total) 
+  #   return(r.squared) }
+  # 
+  # # adjusted weighted R2 between predicted signal & observed signal on adjusted z scale
+  # get.adjR2(z_obs = y,
+  #           z_pred = y_pred,
+  #           weights = weights_est,
+  #           p = sum(coefs!=0),
+  #           intercept = FALSE) 
+  # 
+  # # Ideally I think what we would like to have is an unbiased estimator of the
+  # # weighted R2 between the predicted signal & the true underlying signal without noise 
+  # # on the adjusted z scale (this one you could return if beta_true is given) :
+  # get.R2(z_obs = y_true, 
+  #        z_pred = y_pred,
+  #        weights = weights_true,
+  #        intercept = FALSE) 
   
   return(list(p=p, n=n, m=m, 
               deviance=deviance, loglik=loglik,
