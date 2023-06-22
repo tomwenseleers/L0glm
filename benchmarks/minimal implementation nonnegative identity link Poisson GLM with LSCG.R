@@ -26,17 +26,17 @@ nnL0poisglm = function(X,
   Xwaug = rbind(Xw, Diagonal(x=sqrt(lambdas))) # row augmented covariate matrix
   # require(microbenchmark)
   beta_hat <- lmridge(X = Xwaug, y = ywaug, # we use Eigen Cholesky as initialisation
-                                        pen.weights = pen.weights,
-                                        lambdas = NULL,
-                                        start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-                                        lower = rep(0, p), 
-                                        upper = rep(Inf, p),
-                                        solver = "eigen",
-                                        method = ifelse(p>=20000, 3L, 5L)) # 0.035s, we use Eigen Cholesky (for small p) or LSCG (for large p) for initialisation
+                      pen.weights = pen.weights,
+                      lambdas = NULL,
+                      start = as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                      lower = rep(0, p), 
+                      upper = rep(Inf, p),
+                      solver = "eigen",
+                      method = ifelse(p>=20000, 3L, 5L)) # 0.035s, we use Eigen Cholesky (for small p) or LSCG (for large p) for initialisation
   beta_hat[abs(beta_hat)<thresh] = 0
   nonzero = as.vector(beta_hat!=0) # nonzero coefficients
   # print(range(beta_hat))
-
+  
   for (i in 1:maxit) {  
     # print(i)
     # print(sum(nonzero))
@@ -60,12 +60,12 @@ nnL0poisglm = function(X,
                                  method = method)
     beta_hat[abs(beta_hat)<thresh] = 0
     nonzero = as.vector(beta_hat!=0) # nonzero coefficients
-     if (i>=warmupiters) { # after nr of warmup iterations weights are also updated (could also be done if model predictions have nearly converged)
+    if (i>=warmupiters) { # after nr of warmup iterations weights are also updated (could also be done if model predictions have nearly converged)
       pred = as.vector(X[,nonzero,drop=F] %*% beta_hat[nonzero])
       weights = 1/pred # updated 1/variance weights for Poisson
-     goodrows = (!is.na(weights)&!(weights==0)&!is.infinite(weights)) # good rows to include
+      goodrows = (!is.na(weights)&!(weights==0)&!is.infinite(weights)) # good rows to include
     }
-        
+    
     previous_norm <- sqrt(sum(beta_hat_old^2))
     current_norm <- sqrt(sum(beta_hat^2))
     # print(previous_norm)
@@ -134,43 +134,43 @@ microbenchmark(beta_init_ridge <- solve_sparse_chol(A = as(crossprod(Xwaug), "ge
                                                     ordering = 0L
                                                     # maxit = 0L,
                                                     # precond = 1L
-                                                    )$coefficients, 
-               unit="s") 
+)$coefficients, 
+unit="s") 
 # 0.037s
 beta_init_ridge[abs(beta_init_ridge)<0] = 0
 
 library(microbenchmark)
 system.time(coefs_lscg <- nnL0poisglm(X = sim$X,
-            y = sim$y, 
-            lambda = 1, 
-            delta = 1E-10, 
-            gamma = 2,
-            thresh = 1,
-            solver="eigen", 
-            method=3L,
-            warmupiters = warmupiters)) # LSCG, 0.65s with tol=1E-5 or 1.30s with tol=1E-10 & 5.77 in other comp
+                                      y = sim$y, 
+                                      lambda = 1, 
+                                      delta = 1E-10, 
+                                      gamma = 2,
+                                      thresh = 1,
+                                      solver="eigen", 
+                                      method=3L,
+                                      warmupiters = warmupiters)) # LSCG, 0.65s with tol=1E-5 or 1.30s with tol=1E-10 & 5.77 in other comp
 
 system.time(coefs_cg <- nnL0poisglm(X = sim$X,
-                                 y = sim$y, 
-                                 lambda = 1, 
-                                 delta = 1E-10, 
-                                 gamma = 2,
-                                 thresh = 1,
-                                 solver="eigen", 
-                                 method=5L,
-                                 warmupiters = warmupiters)) # 0.48s, CG / 2.64 in other comp
+                                    y = sim$y, 
+                                    lambda = 1, 
+                                    delta = 1E-10, 
+                                    gamma = 2,
+                                    thresh = 1,
+                                    solver="eigen", 
+                                    method=5L,
+                                    warmupiters = warmupiters)) # 0.48s, CG / 2.64 in other comp
 
 system.time(coefs_chol <- nnL0poisglm(X = sim$X,
-                                 y = sim$y, 
-                                 lambda = 1, 
-                                 delta = 1E-10, 
-                                 gamma = 2,
-                                 thresh = 1,
-                                 solver="eigen", 
-                                 method=7L,
-                                 warmupiters = warmupiters)) # 0.16s - Cholesky : FASTEST // 0.42 in other comp
+                                      y = sim$y, 
+                                      lambda = 1, 
+                                      delta = 1E-10, 
+                                      gamma = 2,
+                                      thresh = 1,
+                                      solver="eigen", 
+                                      method=7L,
+                                      warmupiters = warmupiters)) # 0.16s - Cholesky : FASTEST // 0.42 in other comp
 
- 
+
 # L0glm with Eigen Cholesky solver - NOTE weighted least squares gives better solution than Poisson identity link ####
 system.time(coefs_chol2 <- L0glm.fit(X=sim$X, 
                                      y=as.vector(sim$y),
@@ -182,11 +182,11 @@ system.time(coefs_chol2 <- L0glm.fit(X=sim$X,
                                      lambda = 1, nonnegative = TRUE,
                                      control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
                                      control.l0 = c(do.call("control.l0.gen", 
-                                                          list(maxit = 20, delta = 1E-10, gamma = 2)),
+                                                            list(maxit = 20, delta = 1E-10, gamma = 2)),
                                                     thresh=1),
                                      control.solver = do.call("control.solver.gen", 
-                                                                  list(solver = "eigen", method = 7L,
-                                                                       rowaug = FALSE)))$coefficients 
+                                                              list(solver = "eigen", method = 7L,
+                                                                   rowaug = FALSE)))$coefficients 
 ) # 0.22s for n=p=10000 / 0.46 in other comp
 
 system.time(coefs_osqp <- nnL0poisglm(X = sim$X, 
@@ -215,13 +215,13 @@ system.time(coefs_osqp2 <- L0glm.fit(X=sim$X,
 ) # 4.14s for n=p=10000 / 7.5 in other comp
 
 system.time(coefs_glmnet <- nnL0poisglm(X = sim$X,
-                                      y = sim$y, 
-                                      lambda = 1, 
-                                      delta = 1E-10, 
-                                      gamma = 2,
-                                      thresh = 1,
-                                      solver="glmnet",
-                                      warmupiters = warmupiters)) # 1.67s / 2.99 in other comp
+                                        y = sim$y, 
+                                        lambda = 1, 
+                                        delta = 1E-10, 
+                                        gamma = 2,
+                                        thresh = 1,
+                                        solver="glmnet",
+                                        warmupiters = warmupiters)) # 1.67s / 2.99 in other comp
 
 mean(abs(coefs_chol-coefs_lscg)) # 0.04224502 with tol=1E-5, 7.718954e-07 with tol=1E-10
 mean(abs(coefs_chol-coefs_cg)) # 7.722587e-07
@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=TRUE, sparse=TRUE)
+sim <- simulate_spike_train(n=100, p=100, k=10, multichannel=T, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -303,7 +303,7 @@ system.time(beta_L0_1 <- do.call(cbind, lapply(1:ncol(sim$y), function(col) {
   # L0glm.fit(X = sim$X,
   #           y = as.vector(sim$y[,col,drop=F]),
   #           )
-  }))) # 11.7s with eigen solver 7 (Cholesky) / 35s with other computer, TODO check why glmnet & osqp crash or give error
+}))) # 11.7s with eigen solver 7 (Cholesky) / 35s with other computer, TODO check why glmnet & osqp crash or give error
 cor(as.vector(beta_L0_1), as.vector(sim$beta_true)) # 0.9979857
 # NOTE I think L0glm.fit should return this solution by default if you pass it
 # a Y matrix, this solution could be called "independent L0" by analogy with https://hichamjanati.github.io/mutar/api.html
@@ -469,43 +469,43 @@ clusterExport(cl, list("sim", "fun", "nnL0poisglm"))
 cleval <- clusterEvalQ(cl, {
   require(L0glm)
   devtools::load_all(".") # this should not be necessary once all callable functions are
-                          # correctly exported by the L0glm package
+  # correctly exported by the L0glm package
 })
 
 system.time({
-# Define the function to be applied
-fun <- function(cols) {
-  # require(L0glm)
-  # devtools::load_all(".")
-  
-  results <- lapply(cols, function(col) {
-    # Get the required data
-    X = sim$X
-    y = as.vector(sim$y[,col,drop=F])
+  # Define the function to be applied
+  fun <- function(cols) {
+    # require(L0glm)
+    # devtools::load_all(".")
     
-    # Call nnL0poisglm
-    nnL0poisglm(X = X,
-                y = y, 
-                lambda = 1, 
-                delta = 1E-10, 
-                gamma = 2,
-                thresh = 1,
-                solver = "eigen",
-                method = 7L,
-                warmupiters = 4L)
-  })
+    results <- lapply(cols, function(col) {
+      # Get the required data
+      X = sim$X
+      y = as.vector(sim$y[,col,drop=F])
+      
+      # Call nnL0poisglm
+      nnL0poisglm(X = X,
+                  y = y, 
+                  lambda = 1, 
+                  delta = 1E-10, 
+                  gamma = 2,
+                  thresh = 1,
+                  solver = "eigen",
+                  method = 7L,
+                  warmupiters = 4L)
+    })
+    
+    # Return the results as a matrix
+    do.call(cbind, results)
+  }
   
-  # Return the results as a matrix
-  do.call(cbind, results)
-}
-
-# Create a list of column index chunks
-cols <- 1:ncol(sim$y)
-chunks <- split(cols, cut(cols, n_cores))
-
-# Use clusterApply to apply the function in parallel & combine results
-beta_L0_2 <- do.call(cbind, clusterApply(cl, chunks, fun))
-
+  # Create a list of column index chunks
+  cols <- 1:ncol(sim$y)
+  chunks <- split(cols, cut(cols, n_cores))
+  
+  # Use clusterApply to apply the function in parallel & combine results
+  beta_L0_2 <- do.call(cbind, clusterApply(cl, chunks, fun))
+  
 })# 4.46s using 8 cores
 
 beta <- L0glm.fit_new(X = sim$X, y = sim$y)
@@ -525,11 +525,14 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, nonnegative = T, parallellize = F, group = T, relaxedGroupL0 = T, solver = "eigen", family = poisson(identity))) # 34.88s for parallellize = F, 19.75s for parallellize = T
-cor(as.vector(par), as.vector(sim$beta_true)) # 0.994652 with variable indices
+system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, nonnegative = T, parallellize = T, grouped = T, relaxed = T, solver = "eigen", family = poisson(identity))) # 34.88s for parallellize = F, 19.75s for parallellize = T
+cor(as.vector(par$coefficients), as.vector(sim$beta_true)) # 0.994652 with variable indices
 # TODO: check why if data is family = "gaussian" gives an error
 
-length(intersect(which(sim$beta_true!=0), which(par!=0))) # 4515 out of 7645
-length(intersect(which(sim$beta_true==0), which(par!=0))) # 4 out of 7645
-length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(par)!=0)))  # 99 out of 100
+length(intersect(which(sim$beta_true!=0), which(par$coefficients!=0))) # 4515 out of 7645
+length(intersect(which(sim$beta_true==0), which(par$coefficients!=0))) # 4 out of 7645
+
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(par$coefficients)!=0)))  # 99 out of 100
+
+
 

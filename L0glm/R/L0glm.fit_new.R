@@ -30,14 +30,13 @@ L0glm.fit_new = function(X,
                          method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
                          maxit = 25,
                          tol = 1E-10,
-                         warmupiters = 4,
+                         warmupiters = 4, # TODO change to 1 in gaussian
                          control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                          verbose = FALSE){
   
   require(parallel)
   require(qlcMatrix)
   y <- as.matrix(y)
-  
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
@@ -74,11 +73,10 @@ L0glm.fit_new = function(X,
   
   if(ncol(y) > 1){
     if(!grouped) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
-    if(parallellize){
-      # Fit parallelly all channels (independent L0)
-      # Define the number of cores to use
-      n_cores <- round(detectCores()/2) # 8 for me
-      
+    # Define the number of cores to use (if it is 1, don't parallellize)
+    n_cores <- round(detectCores()/2) 
+    
+    if(parallellize & n_cores > 1){
       # Determine the type of cluster based on the operating system
       cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
       
@@ -97,89 +95,115 @@ L0glm.fit_new = function(X,
       
       # Create a list of column index chunks
       cols <- 1:ncol(y)
-      chunks <- split(cols, cut(cols, n_cores))
+      
+      # chunks <- split(cols, cut(cols, n_cores))
+      
+      chunk.size <- ceiling(length(cols) / n_cores)
+      extra <- length(cols) - (chunk.size * (n_cores-1))
+      chunk_sizes <- c(rep(chunk.size, n_cores-1), extra)
+      split_points <- c(0, cumsum(chunk_sizes))
+      split_vector <- rep(1:n_cores, chunk_sizes)
+      chunks <- split(cols, split_vector)
       
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs = rowMeans(fit)
+          avgcoefs = rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
         }
-        fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
+        
+        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
         # Use clusterApply to apply the function in parallel & combine results
-        fit[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                                              X = X[,variable.indices, drop = F], 
-                                                              y = y, 
-                                                              family = family, 
-                                                              lambda = lambda, 
-                                                              gamma = gamma,
-                                                              maxit = maxit,
-                                                              tol = tol,
-                                                              no.pen = no.pen,
-                                                              thresh = thresh, 
-                                                              solver = solver, 
-                                                              nonzero.centered = nonzero.centered,
-                                                              ridge.center = ridge.center[variable.indices],
-                                                              weights = weights, 
-                                                              start = start[variable.indices, , drop = F], 
-                                                              lower = lower[variable.indices], 
-                                                              upper = upper[variable.indices], 
-                                                              offset = offset,
-                                                              method = method, 
-                                                              nonnegative = nonnegative, 
-                                                              control.solver = control.solver, 
-                                                              warmupiters = warmupiters, 
-                                                              verbose = verbose))
+        fit <- clusterApply(cl, chunks, fun,
+                            X = X[,, drop = F],#X[,variable.indices, drop = F], 
+                            y = y, 
+                            family = family, 
+                            lambda = lambda, 
+                            gamma = gamma,
+                            maxit = maxit,
+                            tol = tol,
+                            no.pen = no.pen,
+                            thresh = thresh, 
+                            solver = solver, 
+                            nonzero.centered = nonzero.centered,
+                            ridge.center = ridge.center, #[variable.indices],
+                            weights = weights, 
+                            start = start[, , drop = F], #variable.indices, , drop = F], 
+                            lower = lower, #[variable.indices], 
+                            upper = upper, #[variable.indices], 
+                            offset = offset,
+                            method = method, 
+                            nonnegative = nonnegative, 
+                            control.solver = control.solver, 
+                            warmupiters = warmupiters, 
+                            verbose = verbose)
+        # Extract results
+        coefficients <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
+        weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
+        pen.weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+        lambdas.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
       }
       
       if(relaxed){
         # Apply relaxed group L0 feature selection
-        avgcoefs = rowMeans(fit)
+        avgcoefs = rowMeans(coefficients)
         variable.indices = which(avgcoefs > 0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         
-        fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
+        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
-        fit[variable.indices,] <- do.call(cbind, clusterApply(cl, chunks, fun, 
-                                                              X = X[,variable.indices, drop = F], 
-                                                              y = y, 
-                                                              family = family, 
-                                                              lambda = 0, 
-                                                              gamma = gamma,
-                                                              maxit = maxit,
-                                                              tol = tol,
-                                                              no.pen = no.pen,
-                                                              thresh = thresh, 
-                                                              solver = solver, 
-                                                              nonzero.centered = nonzero.centered,
-                                                              ridge.center = ridge.center[variable.indices],
-                                                              weights = weights, 
-                                                              start = start[variable.indices, , drop = F], 
-                                                              lower = lower[variable.indices], 
-                                                              upper = upper[variable.indices], 
-                                                              offset = offset,
-                                                              method = method, 
-                                                              nonnegative = nonnegative, 
-                                                              control.solver = control.solver, 
-                                                              warmupiters = warmupiters, 
-                                                              verbose = verbose))
+        fit <- clusterApply(cl, chunks, fun, 
+                            X = X[,, drop = F], #variable.indices, drop = F], 
+                            y = y, 
+                            family = family, 
+                            lambda = 0, 
+                            gamma = gamma,
+                            maxit = maxit,
+                            tol = tol,
+                            no.pen = no.pen,
+                            thresh = thresh, 
+                            solver = solver, 
+                            nonzero.centered = nonzero.centered,
+                            ridge.center = ridge.center, #[variable.indices],
+                            weights = weights, 
+                            start = start[, , drop = F], # variable.indices, , drop = F], 
+                            lower = lower, #[variable.indices], 
+                            upper = upper, #[variable.indices], 
+                            offset = offset,
+                            method = method, 
+                            nonnegative = nonnegative, 
+                            control.solver = control.solver, 
+                            warmupiters = warmupiters, 
+                            verbose = verbose)
+        
+        coefficients <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
+        weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
+        pen.weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+        lambdas.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
       }
+      
       stopCluster(cl)
+      
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
         if(i > 1){
-          avgcoefs <- rowMeans(fit)
+          avgcoefs <- rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
         }
         
-        fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
-        fit[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+        
+        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
+        
+        fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
           L0glm.fit.internal(X = X[,variable.indices,drop=F],
                              y = y[,col,drop=F],
                              family=family,
@@ -203,18 +227,25 @@ L0glm.fit_new = function(X,
                              warmupiters = warmupiters,
                              verbose = verbose)
         }))
+        
+        coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
+        weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
+        pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+        lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
       }
       
       if(relaxed){
         # Apply relaxed group L0 feature selection
         # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
-        avgcoefs = rowMeans(fit)
+        avgcoefs = rowMeans(coefficients)
         variable.indices = which(avgcoefs>0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
-        fit <- Matrix(0, nrow = ncol(X), ncol=ncol(y), sparse = TRUE)
         
-        fit[variable.indices,] <- do.call(cbind, lapply(1:ncol(y), function(col) {
+        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
+        
+        fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
           L0glm.fit.internal(X = X[,variable.indices,drop=F],
                              y = as.vector(y[,col,drop=F]),
                              family = family,
@@ -236,9 +267,17 @@ L0glm.fit_new = function(X,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
                              verbose = verbose)}))
+        
+        coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
+        weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
+        pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+        lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
       }
     }
-  } else {
+    weights <- weights.mat
+    pen.weights <- pen.weights.mat
+    lambdas <- lambdas.mat
+  } else { # Single channel
     fit <- L0glm.fit.internal(X = X, 
                               y = y,
                               weights = weights,
@@ -261,8 +300,18 @@ L0glm.fit_new = function(X,
                               control.solver = control.solver,
                               warmupiters = warmupiters,
                               verbose = verbose)
+    
+    coefficients <- fit$coefficients
+    pen.weights <- fit$pen.weights
+    lambdas <- fit$lambdas
+    weights <- fit$weights
   }
-  return(fit)
+  
+  weights[is.infinite(weights)] <- 0
+  pen.weights[is.infinite(pen.weights)] <- 0
+  lambdas[is.infinite(lambdas)] <- 0
+  
+  return(list(coefficients = coefficients, weights = weights, pen.weights = pen.weights, lambdas = lambdas))
 }
 
 #' @describeIn L0glm
@@ -348,6 +397,7 @@ L0glm.fit.internal = function(X,
     } else {
       z <- (y - offset)[good]
     }
+    
     if(is.null(ridge.center)){ # If it's not null we use user provided
       if(i > warmupiters & nonzero.centered){
         center = start # If start is NULL, this is also set to zero. 
@@ -359,7 +409,7 @@ L0glm.fit.internal = function(X,
     } else {
       center = ridge.center
     }
-
+    
     
     if (all(!good)) {
       conv <- FALSE
@@ -418,8 +468,8 @@ L0glm.fit.internal = function(X,
     beta_old = beta # TODO remove dev since converged is calculated differently?
   }
   
-  return(beta) # TODO add more returns? Or should the function only return the coefs?
-  
+  return(list(coefficients = as.vector(beta), weights = as.vector(W), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas)))
+  # return(as.vector(beta))
 }
 
 #' @describeIn L0glm
@@ -436,7 +486,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
-  results <- lapply(cols, function(col) {
+  fit <- lapply(cols, function(col) {
     y = as.vector(y[,col,drop=F])
     
     # Call L0glm.fit.internal
@@ -463,6 +513,6 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        verbose = verbose)
   })
   
-  # Return the results as a matrix
-  do.call(cbind, results)
+  return(fit)
 }
+
