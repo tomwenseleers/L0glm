@@ -52,30 +52,30 @@
 #' control.fit.gen()
 #'
 #' @export
-# control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5, warmupiters = 4, warn = F){
-#   if(warmupiters > maxit & maxit > 0) warmupiters <- maxit - 1 
-#   if(maxit <= 0){
-#     maxit <- 1
-#     print("Control.l0$maxit needs to be a positive integer. Value was set to 1.")
-#   }
-#   l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warmupiters = warmupiters, warn = warn)
-#   return(l)
-# }
+control.l0.gen <- function(maxit = 100, reltol = 1E-5, delta = 1E-5, gamma = 1.5, warmupiters = 4, warn = F){
+  if(warmupiters > maxit & maxit > 0) warmupiters <- maxit - 1
+  if(maxit <= 0){
+    maxit <- 1
+    print("Control.l0$maxit needs to be a positive integer. Value was set to 1.")
+  }
+  l <- list(maxit = maxit, reltol = reltol, delta = delta, gamma = gamma, warmupiters = warmupiters, warn = warn)
+  return(l)
+}
 
 
-#' #' @describeIn control.l0.gen
-#' #'
-#' #' Generate parameters that control the IWLS iteration.
-#' #'
-#' #' @export
-#' control.iwls.gen <- function(maxit = 1, reltol = 1E-5, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
-#'   if(maxit <= 0){
-#'     maxit <- 1
-#'     print("Control.iwls$maxit needs to be a positive integer. Value was set to 1.")
-#'   }
-#'   l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
-#'   return(l)
-#' }
+#' @describeIn control.l0.gen
+#'
+#' Generate parameters that control the IWLS iteration.
+#'
+#' @export
+control.iwls.gen <- function(maxit = 1, reltol = 1E-5, thresh = 1E-7, warn = F){ # TODO review, reltol used to be 1E-4
+  if(maxit <= 0){
+    maxit <- 1
+    print("Control.iwls$maxit needs to be a positive integer. Value was set to 1.")
+  }
+  l <- list(maxit = maxit, reltol = reltol, thresh = thresh, warn = warn)
+  return(l)
+}
 
 
 #' @describeIn control.l0.gen

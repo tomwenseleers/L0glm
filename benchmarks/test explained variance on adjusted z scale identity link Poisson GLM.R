@@ -31,7 +31,7 @@ coefs <- L0glm.fit_new(X, y,
                                               family = poisson(identity)),
                         # lambda = 100,
                         nonzero.centered = TRUE, # use nonzero centered ridge regression for iterative adaptive ridge regression updates to approximate best subset
-                        nonnegative = TRUE) # enforce coefficients to be nonnegative
+                        nonnegative = TRUE)$coefficients # enforce coefficients to be nonnegative
 # fitted values
 y_pred <- as.vector(coefs %*% sim$X)
 # estimated 1/variance weights

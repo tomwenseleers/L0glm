@@ -280,7 +280,7 @@ L0glm <- function(formula,
                   normalize = TRUE, #
                   maxit = 25,
                   parallellize = TRUE, # 
-                  warmupiters = ifelse(family$family == "gaussian", 1, 4)
+                  warmupiters = ifelse(family$family == "gaussian", 1, 4),
                   grouped = TRUE,
                   group.maxit = 6,
                   relaxed = TRUE,
@@ -300,7 +300,7 @@ L0glm <- function(formula,
                   tune.meth = "none",
                   tune.crit = "bic",
                   seed = NULL, # set seed for k-fold CV
-                  verbose = TRUE){
+                  verbose = TRUE) {
 
   # TODO talk with tom about whether ot not we should group some of these variables into control lists.
   
@@ -342,7 +342,7 @@ L0glm <- function(formula,
   if(is.null(solver)){
     solver <- ifelse(p > 20000, "glmnet", "eigen")
   }
-  if(is.null(control.solver) control.solver <- do.call("control.solver.gen", list(solver = solver, method = method, verbose = verbose))
+  if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", list(solver = solver, method = method, verbose = verbose))
   
   #Normalize data
   if(normalize){
@@ -611,7 +611,7 @@ L0glm.fit = function(X,
                      method = 7L,
                      maxit = 25,
                      tol = 1E-10,
-                     warmupiters = ifelse(family$family == "gaussian", 1, 4)
+                     warmupiters = ifelse(family$family == "gaussian", 1, 4),
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose = FALSE){
   

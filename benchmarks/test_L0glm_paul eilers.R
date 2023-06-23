@@ -67,7 +67,7 @@ do.call(cbind, get.metrics(beta = L0glm.out,
 # coefficients & metrics over a range of lambda values
 lambdas <- 10^seq(-3, 7, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
@@ -77,7 +77,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              warmupiters = 4,
                              # start = rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
                              solver = "eigen", # , # note: constrained solver osqp better than eigen for very small lambda values TODO check why glmnet solver gives error
-                             method = 7L
+                             method = 7L # TODO check : method 3L, 4L, 5L & 6L don't work so well with currently chosen automatic starting values
                              # thresh = 10
                              )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
@@ -85,7 +85,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                                           X = X, y = y, 
                                           family = poisson(identity), 
                                           beta_true = sim$beta_true))) )
-  } )))
+  } )))) # 5.08s
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
