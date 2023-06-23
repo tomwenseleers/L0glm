@@ -268,25 +268,32 @@
 #'
 #' @export
 L0glm <- function(formula,
-                  data = NULL,
-                  weights = rep(1,length(y)),
-                  family = gaussian(identity),
-                  start = NULL,
+                  data = NULL, 
+                  weights = NULL, #
+                  family = gaussian(identity), #
+                  offset = NULL, #
+                  start = NULL, #
                   contrasts = NULL,
-                  lambda = 0, 
-                  no.pen = 0,
-                  nonnegative = FALSE,
-                  normalize = TRUE,
-                  solver = NULL,
-                  method = NULL,
-                  lower = rep(-.Machine$double.xmax,ncol(X)),
-                  upper = rep(.Machine$double.xmax,ncol(X)),
-                  gamma = 2,
-                  control.l0 = list(),
-                  control.iwls = list(),
+                  lambda = 0, #
+                  no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
+                  nonnegative = FALSE, #
+                  normalize = TRUE, #
+                  maxit = 25,
+                  parallellize = TRUE, # 
+                  warmupiters = ifelse(family$family == "gaussian", 1, 4)
+                  grouped = TRUE,
+                  group.maxit = 6,
+                  relaxed = TRUE,
+                  nonzero.centered = FALSE,
+                  ridge.center = NULL, # Should be a vector of length ncol(X)
+                  solver = NULL, #
+                  method = 7L, #
+                  lower = rep(-.Machine$double.xmax,ncol(X)), #
+                  upper = rep(.Machine$double.xmax,ncol(X)), #
+                  gamma = 2, # 
+                  thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
+                  tol = 1E-10,
                   control.solver = NULL,
-                  control.block = NULL,
-                  block.size = NULL,
                   post.filter.fn = function(u) return(u),
                   # group.pen.fn = function(mat) sqrt(rowSums(mat^2)), TODO delete this? If you do, delete it from docu
                   # TODO make CV arguments a single list, eg tune.control ?
@@ -294,6 +301,8 @@ L0glm <- function(formula,
                   tune.crit = "bic",
                   seed = NULL, # set seed for k-fold CV
                   verbose = TRUE){
+
+  # TODO talk with tom about whether ot not we should group some of these variables into control lists.
   
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
@@ -325,12 +334,15 @@ L0glm <- function(formula,
   if (!("gamma" %in% names(control.l0))) {
     control.l0$gamma <- gamma
   }
-  control.l0 <- do.call("control.l0.gen", control.l0)
-  control.iwls <- do.call("control.iwls.gen", control.iwls)
-  
+
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
   
+  # Choose default solver depending on data size
+  if(is.null(solver)){
+    solver <- ifelse(p > 20000, "glmnet", "eigen")
+  }
+  if(is.null(control.solver) control.solver <- do.call("control.solver.gen", list(solver = solver, method = method, verbose = verbose))
   
   #Normalize data
   if(normalize){
@@ -469,10 +481,35 @@ L0glm <- function(formula,
   if(verbose) cat(paste0("==== Model fitting ====\n\n",
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
-  fit <- L0glm.fit(X = X, y = y, weights = weights, solver = solver, method = method, family = family, lambda = lambda,
-                   start = start, nonnegative = nonnegative, block.size = block.size , control.l0 = control.l0, control.block = control.block,
-                   control.solver = control.solver, control.iwls = control.iwls, 
-                   post.filter.fn = post.filter.fn, verbose = verbose)
+  fit <- L0glm.fit(X = X, y = y, 
+                   weights = weights, 
+                   start = start,
+                   offset = offset,
+                   family = family,
+                   lower = lower,
+                   upper = upper, 
+                   nonnegative = nonnegative,
+                   solver = solver,
+                   method = method,
+                   lambda = lambda,
+                   parallellize = parallellize,
+                   grouped = grouped,
+                   maxit = maxit,
+                   group.maxit = group.maxit,
+                   relaxed = relaxed,
+                   no.pen = no.pen,
+                   block.size = block.size , 
+                   control.solver = control.solver, 
+                   gamma = gamma,
+                   thresh = thresh,
+                   tol = tol,
+                   warmupiters = warmupiters,
+                   nonzero.centered = nonzero.centered,
+                   ridge.center = ridge.center,
+                   post.filter.fn = post.filter.fn, 
+                   verbose = verbose)
+
+  
   fit$timing <- proc.time()[3] - t1
   if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
                          "Number of adaptive ridge (L0 penalty) iterations: ", fit$iter.l0, "\n",
@@ -485,7 +522,7 @@ L0glm <- function(formula,
   fit$lambda.tune <- lambda.tune
   
   # Compute residuals
-  fit$residuals <- y - fit$fitted.values
+  fit$residuals <- y - fit$coefficients # TODO check
   
   # If all coefficient are zero, return fit without inference
   if(sum(nonzero) == 0){
@@ -552,31 +589,31 @@ L0glm <- function(formula,
 #'
 #' @export
 L0glm.fit = function(X, 
-                         y, 
-                         weights = NULL,
-                         family = gaussian(identity),
-                         offset = NULL,
-                         start = NULL,
-                         lower = rep(-Inf, ncol(X)),
-                         upper = rep(Inf, ncol(X)),
-                         lambda = 1, 
-                         nonnegative = FALSE,
-                         parallellize = TRUE,
-                         no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
-                         grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
-                         group.maxit = 6, # note: increased default to 6 to increase performance
-                         relaxed = TRUE,
-                         gamma = 2,
-                         nonzero.centered = FALSE,
-                         ridge.center = NULL, # Should be a vector of length ncol(X)
-                         thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
-                         solver = "eigen", # or "osqp" or "glmnet"
-                         method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
-                         maxit = 25,
-                         tol = 1E-10,
-                         warmupiters = 4, # TODO change to 1 in gaussian
-                         control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                         verbose = FALSE){
+                     y, 
+                     weights = NULL,
+                     family = gaussian(identity),
+                     offset = NULL,
+                     start = NULL,
+                     lower = rep(-Inf, ncol(X)),
+                     upper = rep(Inf, ncol(X)),
+                     lambda = 1, 
+                     nonnegative = FALSE,
+                     parallellize = TRUE,
+                     no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
+                     grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
+                     group.maxit = 6, # note: increased default to 6 to increase performance
+                     relaxed = TRUE,
+                     gamma = 2,
+                     nonzero.centered = FALSE,
+                     ridge.center = NULL, # Should be a vector of length ncol(X)
+                     thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
+                     solver = "eigen", # or "osqp" or "glmnet"
+                     method = 7L,
+                     maxit = 25,
+                     tol = 1E-10,
+                     warmupiters = ifelse(family$family == "gaussian", 1, 4)
+                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
+                     verbose = FALSE){
   
   require(parallel)
   require(qlcMatrix)
