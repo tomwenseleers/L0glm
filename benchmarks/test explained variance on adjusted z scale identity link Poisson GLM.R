@@ -23,7 +23,7 @@ y_true <- sim$y_true # true underlying signal without Poisson noise
 weights_true <- 1/y_true # true 1/variance weights for identity link Poisson case
 
 # coefficients estimated by L0 glm (approximating GLM that optimises BIC, i.e. best subset)
-coefs <- L0glm.fit_new(X, y, 
+coefs <- L0glm.fit(X, y, 
                        family = poisson(identity), 
                        lambda = preset.lambda(IC = crit, # use lambda that optimises given IC, options aic, bic, gic, ebic, mbic
                                               y = y,

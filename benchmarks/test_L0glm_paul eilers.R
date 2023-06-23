@@ -2,7 +2,7 @@
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-# library(L0glm)
+library(L0glm)
 library(export)
 # devtools::load_all(".")
 
@@ -75,9 +75,10 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              nonnegative = TRUE,
                              warmupiters = 4,
-                             # start = rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
-                             solver = "eigen", # , # note: constrained solver osqp better than eigen for very small lambda values TODO check why glmnet solver gives error
-                             method = 7L # TODO check : method 3L, 4L, 5L & 6L don't work so well with currently chosen automatic starting values
+                             start = rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
+                             solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                             method = 7L, # TODO check : method 3L, 4L, 5L & 6L don't work so well with currently chosen automatic starting values
+                             # gamma = 1.5, 
                              # thresh = 10
                              )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
