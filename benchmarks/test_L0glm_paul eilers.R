@@ -4,7 +4,7 @@ library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
 # library(L0glm)
 library(export)
-devtools::load_all(".")
+# devtools::load_all(".")
 
 n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
@@ -36,7 +36,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                            warmupiters = 4,
                            # start = rep(10, ncol(sim$X)), # coefficient starting values
                            solver = "eigen" # note: solver osqp better than eigen for very small lambda values)
-)
+)$coefficients
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -151,7 +151,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                                warmupiters = 1,
                                # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)
+)$coefficients
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # some metrics
@@ -174,7 +174,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              warmupiters = 1,
                              # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)
+)$coefficients
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
@@ -237,7 +237,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                                warmupiters = 4,                               
                              # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)
+)$coefficients
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -262,13 +262,17 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              warmupiters = 4,                               
                              # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-  )
+  )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
                                               family = poisson(identity), 
                                               beta_true = sim$beta_true))) )
 } )))
+# TODO returns error 
+# Error in checkForRemoteErrors(val) :
+# 8 nodes produced errors; first error: object 'pen.weights' not found
+
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
@@ -327,7 +331,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                                warmupiters = 1,                               
                              # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)
+)$coefficients
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
@@ -352,13 +356,16 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              warmupiters = 1,                               
                            # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-  )
+  )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = sim$beta_true))) )
 } )))
+# TODO produces error
+# Error in .local(x, i, j, ..., value) :
+# RHS 'value' (class list) matches 'ANY', but must match matrix class dgCMatrix
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
