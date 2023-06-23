@@ -77,8 +77,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
                              nonnegative = TRUE,
                              warmupiters = 4,
-                             # start = L0glm.out_preset*0.1+rep(1,ncol(sim$X))*0.9, # rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
-                             solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                             # start = rep(1, ncol(sim$X)), # L0glm.out_preset*0.1+rep(1,ncol(sim$X))*0.9,  # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
+                             solver = "glmnet", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, # TODO check : method 3L, 4L, 5L & 6L don't work so well with currently chosen automatic starting values
                              # gamma = 1.5, 
                              # thresh = 10
