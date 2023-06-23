@@ -2,8 +2,9 @@
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-library(L0glm)
+# library(L0glm)
 library(export)
+devtools::load_all(".")
 
 n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
@@ -53,7 +54,7 @@ L0glm.out <- L0glm.fit_new(X, y,
                                warmupiters = 4,
                                # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen" # note: solver osqp better than eigen for very small lambda values)
-)
+)$coefficients
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -75,9 +76,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              nonnegative = TRUE,
                              warmupiters = 4,
                              # start = rep(1, ncol(sim$X)), # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
-                             solver = "eigen" # , # note: constrained solver osqp better than eigen for very small lambda values TODO check why glmnet solver gives error
+                             solver = "eigen", # , # note: constrained solver osqp better than eigen for very small lambda values TODO check why glmnet solver gives error
+                             method = 7L
                              # thresh = 10
-                             ) 
+                             )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                           X = X, y = y, 
