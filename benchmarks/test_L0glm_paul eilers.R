@@ -28,7 +28,7 @@ X <- sim$X
 y <- sim$y
 
 # using lambda 1
-L0glm.out <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit(X, y, 
                            family = poisson(identity), 
                            lambda = 1, 
                            nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -46,7 +46,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, lambda = 1.76 would optimise GIC
 
-L0glm.out <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit(X, y, 
                                family = poisson(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -69,7 +69,7 @@ lambdas <- 10^seq(-3, 7, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  L0glm.out <- L0glm.fit_new(X, y, 
+  L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -125,7 +125,7 @@ X <- sim$X
 y <- sim$y
 
 # using lambda 1 here would only work if sd_noise would be close to 1
-# L0glm.out <- L0glm.fit_new(X, y, 
+# L0glm.out <- L0glm.fit(X, y, 
 #                           family = gaussian(identity), 
 #                           lambda = 1, 
 #                           nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -143,7 +143,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-L0glm.out <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -166,7 +166,7 @@ lambdas <- 10^seq(-3, 7, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  L0glm.out <- L0glm.fit_new(X, y, 
+  L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -227,7 +227,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 would optimise GIC
 
-L0glm.out <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit(X, y, 
                                family = poisson(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -252,7 +252,7 @@ lambdas <- 10^seq(-3, 7, by=0.5)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  L0glm.out <- L0glm.fit_new(X, y, 
+  L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -317,7 +317,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-L0glm.out <- L0glm.fit_new(X, y, 
+L0glm.out <- L0glm.fit(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = TRUE, # use nonzero centered ridge regression?
@@ -342,7 +342,7 @@ lambdas <- 10^seq(-3, 7, by=0.5)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  L0glm.out <- L0glm.fit_new(X, y, 
+  L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
                              nonzero.centered = TRUE, # use nonzero centered ridge regression?
