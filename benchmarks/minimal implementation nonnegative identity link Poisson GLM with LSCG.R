@@ -508,7 +508,7 @@ system.time({
   
 })# 4.46s using 8 cores
 
-beta <- L0glm.fit_new(X = sim$X, y = sim$y)
+beta <- L0glm.fit(X = sim$X, y = sim$y)
 # Stop the cluster
 stopCluster(cl)
 
@@ -525,7 +525,7 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit_new(X = sim$X, y = sim$y, lambda = 1, nonnegative = T, parallellize = T, grouped = T, relaxed = F, solver = "eigen", family = poisson(identity))) # 34.88s for parallellize = F, 19.75s for parallellize = T
+system.time(par <- L0glm.fit(X = sim$X, y = sim$y, lambda = 1, nonnegative = T, parallellize = T, grouped = T, relaxed = F, solver = "eigen", family = poisson(identity))) # 34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par$coefficients), as.vector(sim$beta_true)) # 0.994652 with variable indices
 # TODO: check why if data is family = "gaussian" gives an error
 

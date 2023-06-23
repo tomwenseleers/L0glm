@@ -45,7 +45,7 @@ L0glm.tune <- function(X, y, family,
   lambdas = 10^seq((round(log10(lambda.preset))-3), round(log10(maxlambda))+1, by=1)
 
   # Get warm start
-  warm_start <- L0glm.fit_new(X = X, y = y,
+  warm_start <- L0glm.fit(X = X, y = y,
                               lambda = min(lambdas), 
                               family = family,
                               offset = offset, 
@@ -55,7 +55,7 @@ L0glm.tune <- function(X, y, family,
   
   no.warm.start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
   coefficients <- lapply(lambdas, function (lambda) {
-    new_coefs <- L0glm.fit_new(X = X, y = y, 
+    new_coefs <- L0glm.fit(X = X, y = y, 
                                family = family,
                                start = warm.start.ratio*warm_start+(1-warm.start.ratio)*no.warm.start, # warm.start.ratio= 0 => no warm starts,warm.start.ratio= 1 => full warm starts
                                lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
