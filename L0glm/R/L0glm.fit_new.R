@@ -423,8 +423,7 @@ L0glm.fit.internal = function(X,
     
     beta_old = beta
     lambdas[no.pen] = 0
-    
-    beta[nonzero] <- lmridge(X = X[good, nonzero, drop=F], y = z,
+    res <- lmridge(X = X[good, nonzero, drop=F], y = z,
                              weights = W[good],
                              pen.weights = pen.weights[good], # TODO: remove this argument
                              lambdas = lambdas[nonzero],
@@ -435,11 +434,28 @@ L0glm.fit.internal = function(X,
                              ridge.center = center[nonzero],
                              solver = solver,
                              method = method)
+    if(sum(res) != 0){
+      beta[nonzero] <- res
+    } else {
+      if(verbose) print("Zero coefficients produced. Method is switched to 7.")
+      method <- 7L
+      lmridge(X = X[good, nonzero, drop=F], y = z,
+              weights = W[good],
+              pen.weights = pen.weights[good], # TODO: remove this argument
+              lambdas = lambdas[nonzero],
+              nonnegative = nonnegative,
+              start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+              lower = lower[nonzero], 
+              upper = upper[nonzero],
+              ridge.center = center[nonzero],
+              solver = solver,
+              method = method)
+    }
     beta[nonzero][abs(beta[nonzero]) < thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
     if(sum(nonzero) == 0){
       conv <- FALSE
-      if(verbose) print("Zero coefficients produced.")
+      if(verbose) warning("Zero coefficients produced.")
       break
     }
     if (any(!is.finite(beta))) {
