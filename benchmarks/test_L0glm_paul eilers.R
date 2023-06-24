@@ -6,7 +6,7 @@ library(L0glm)
 library(export)
 # devtools::load_all(".")
 
-n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
@@ -58,6 +58,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                method = 7L # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
 )) 
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
+mincoef <- min(abs(L0glm.out_preset_coefs)[L0glm.out_preset_coefs!=0]) # nonzero coefficient with smallest absolute value
 do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
                            X = X, y = y, 
                            family = poisson(identity), 
@@ -81,7 +82,7 @@ coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+rep(0.001,ncol(sim$X))*(1-warmstart)
+  start <- L0glm.out_preset_coefs*warmstart+rep(mincoef/2,ncol(sim$X))*(1-warmstart)
   start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
