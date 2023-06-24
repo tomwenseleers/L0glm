@@ -6,13 +6,13 @@ library(L0glm)
 library(export)
 # devtools::load_all(".")
 
-n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
 sd_logbeta <- 1
 sd_noise <- 5 # SD of noise for Gaussian noise case
-crit <- "bic" # choose lambda based on what would be expected to optimise this IC
+crit <- "gic" # choose lambda based on what would be expected to optimise this IC
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
@@ -54,34 +54,47 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                nonnegative = TRUE,
                                warmupiters = 4,
                                # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                               solver = "glmnet", # note: solver osqp & glmnet better than eigen for very small lambda values)
+                               solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
-)$coefficients)
-points(sim$x, L0glm.out_preset, pch = 16, col= 'blue')
-graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
-
-# some metrics
-do.call(cbind, get.metrics(beta = L0glm.out, 
+)) 
+L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
+do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
+points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
+graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
+
+plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
+
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 7, by=0.1)
+# calculate max lambda where all coefs would be penalized to 0
+weights <- L0glm.out_preset$weights
+Xw <- Diagonal(x=sqrt(weights)) %*% X
+sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
+yw <- y[, sel_task] * sqrt(weights)
+maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
+
+lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
+warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
+  start <- L0glm.out_preset_coefs*warmstart+rep(0.001,ncol(sim$X))*(1-warmstart)
+  start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
-                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression? - TODO: change that if you specify starting values start that it does not keep on shrinking coefs to those values but instead shrink to coef values from previous iteration
                              nonnegative = TRUE,
                              warmupiters = 4,
-                             # start = rep(1, ncol(sim$X)), # L0glm.out_preset*0.1+rep(1,ncol(sim$X))*0.9,  # coefficient starting values, smaller value (eg 0.1) causes coefficients to drop off more abruptly (compared to 1 or 10)
-                             solver = "glmnet", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                             method = 7L, # TODO check : method 3L, 4L, 5L & 6L don't work so well with currently chosen automatic starting values
-                             # gamma = 1.5, 
+                             start = start,
+                             solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                             method = 7L, 
+                             # gamma = 2, 
                              # thresh = 10
+                             relaxed = FALSE # TODO check : setting this argument to TRUE doesn't affect solution, while it should (it should do an L0glm fit & then refit an unpenalized LS model for the selected coefficients)
                              )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -91,6 +104,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   } )))) # 32s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
+abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
