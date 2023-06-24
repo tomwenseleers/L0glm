@@ -6,7 +6,7 @@ library(L0glm)
 library(export)
 # devtools::load_all(".")
 
-n <- p <- 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
