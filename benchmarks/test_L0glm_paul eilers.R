@@ -73,7 +73,7 @@ plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
 weights <- L0glm.out_preset$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% X
 sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
-yw <- y[, sel_task] * sqrt(weights)
+yw <- y[, sel_task] * sqrt(weights) # TODO note that yw should really be zw, i.e. for non-identity link you should be working on the adjusted response scale - maybe you should also make L0glm.fit return z? Or make a convenience function that returns z and w given a particular given family and coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 
 lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda)+1, by=0.1)
