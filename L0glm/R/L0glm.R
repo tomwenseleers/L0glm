@@ -983,9 +983,9 @@ L0glm.fit.internal = function(X,
     
     if(is.null(ridge.center)){ # If it's not null we use user provided
       if(i > warmupiters & nonzero.centered){
-        center = start # If start is NULL, this is also set to zero. 
+        center = beta_old 
       } else if (nonzero.centered){
-        center = beta_old
+        center = start # TODO talk with Tom: should it be NULL in the warmupiters?
       } else {
         center = NULL
       }
