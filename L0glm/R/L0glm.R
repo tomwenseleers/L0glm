@@ -647,6 +647,8 @@ L0glm.fit = function(X,
     if(ncol(y) > 1 & dim(as.matrix(start))[2] == 1){
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
     }
+  } else {
+    start <- matrix(1, nrow = nrow(y), ncol = ncol(y))
   }
   
   if(nonnegative) lower[lower < 0] <- 0

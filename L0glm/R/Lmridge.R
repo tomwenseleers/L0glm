@@ -27,7 +27,7 @@ lmridge <- function(X, y, lambdas = NULL,
                     ridge.center = NULL,
                     solver = "eigen",
                     method = ifelse(ncol(X)>=20000, 3L, 5L),
-                    start = NULL,
+                    start = rep(1, ncol(X)),
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
   
@@ -100,7 +100,7 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
   model <- osqp(P = XtX, q = -Xty, 
                 A = .sparseDiagonal(ncol(Xw)), 
                 l = lower, u = upper, pars = settings)
-  if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
+  if(is.null(start)) start <- rep(1, ncol(X))
   model$WarmStart(x=start)
   
   #Solve model
@@ -206,7 +206,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       Xwaug <- Xw
       ywaug <- yw
     }
-    if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
+    if(is.null(start)) start <- rep(1, ncol(X))
     # X.n <- sqrt(colSums(Xw^2)) 
     if(issparse(Xw)){
       coefs <- solve_sparse_LSCG(A = Xwaug,
@@ -232,7 +232,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       Xwaug <- Xw
       ywaug <- yw
     }
-    if(is.null(start)) start <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2))
+    if(is.null(start)) start <- rep(1, ncol(X))
     if(issparse(Xw)){
       coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
                                b = as.vector(crossprod(Xwaug, ywaug)),
