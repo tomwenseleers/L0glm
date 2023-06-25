@@ -65,16 +65,16 @@ simulate_glm <- function(n, p, n_nonzero, family = "gaussian") {
   }
   
   # Generate response variable
-  mu <- X %*% beta
-  eta <- linkf(mu)
+  eta <- X %*% beta
+  mu <- linkinv(eta)
   if (family == "gaussian") {
-    y <- rnorm(n, mean = linkinv(eta), sd = 1)
+    y <- rnorm(n, mean = mu, sd = 1)
   } else if (family == "poisson") {
-    y <- rpois(n, lambda = linkinv(eta))
+    y <- rpois(n, lambda = mu)
   } else if (family == "binomial") {
-    y <- rbinom(n, size = 1, prob = linkinv(eta))
+    y <- rbinom(n, size = 1, prob = mu)
   } else if (family == "gamma") {
-    y <- rgamma(n, shape = 1, rate = linkinv(eta))
+    y <- rgamma(n, shape = 1, rate = mu)
   }
   
   list(X = X, y = y, beta_true = beta)
