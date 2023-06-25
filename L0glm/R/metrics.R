@@ -2,24 +2,40 @@
 get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)), 
                         offset=Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse=T), 
                         family=gaussian(identity), 
-                        beta_true=NULL, 
-                        edf=sum(beta!=0), # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
-                        lower=rep(0, ncol(X)),
-                        upper=rep(Inf,ncol(X)) ) {
+                        beta_true=NULL #, 
+                        # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
+                        # lower=rep(0, ncol(X)),
+                        # upper=rep(Inf,ncol(X)) 
+                        ) {
   
   require(glmnet)
   require(qlcMatrix)
   
   if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
+  if (is.vector(beta_true)) { beta_true <- matrix(beta_true, ncol=1) }
+
+  y <- as.matrix(y)
   
+  # nr of tasks, variables & observations
+  m = ncol(y) # nr of tasks
   # nr of variables, cases & tasks & effective degrees of freedom ####
   p = ncol(X) # nr of variables
-  n = nrow(X) # nr of cases
-  m = ncol(y) # nr of tasks
-  # edf = sum(rowMin(abs(beta))!=0)*m # we use this as effective degrees of freedom, note: abess just used sum(beta!=0) instead (with nonnegativity constraints this is smaller)
+  # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+  if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) p <- p + 1
   
-  beta[beta<lower] = lower
-  beta[beta>upper] = upper
+  n = nrow(X) # nr of cases
+  # nobs = XXX
+  # in glm source code calculated as
+  # nobs.glm <- function(object, ...)
+  #             if(!is.null(w <- object$prior.weights)) sum(w != 0) else length(object$residuals) # with residuals <- (y - mu)/mu.eta(eta)
+  
+  # effective degrees of freedom
+  edf = sum(beta!=0) # as in abess package
+  # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+  if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) edf <- edf + 1
+
+  # beta[beta<lower] = lower
+  # beta[beta>upper] = upper
   
   # metrics related to support recovery ####
   # true support & estimated support & all variable sets
@@ -70,11 +86,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     W[!good] = 0
     dim(W) = dim(eta)
     
-    # calculated deviance or true theoretical deviance compared to ground truth
-    dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(W))
-    dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
-    deviance = sum(dev_res) # deviance 
-    
   } else { # calculate weights based on the "true" responses if beta_true is given
     # calculate true response used in simulation given true coefficients beta_true
     nonzero = as.vector(rowMax(abs(beta_true))!=0) # nonzero coefficients
@@ -94,11 +105,16 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     eta = X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset # fitted eta = fitted values on link scale
     mu = family$linkinv(eta) # fitted values on response scale
     
-    # calculated true theoretical deviance compared to ground truth
-    dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W))
-    dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
-    deviance = sum(dev_res) # deviance 
+    # # calculated true theoretical deviance compared to ground truth
+    # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W))
+    # dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
+    # deviance = sum(dev_res) # deviance 
   }
+  
+  # calculated deviance
+  dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(W))
+  dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
+  deviance = sum(dev_res) # deviance 
   
   # calculate some information criteria See Zhang & Chen 2010 ####
   # see also https://github.com/abess-team/abess/blob/master/R-package/R/deviance.abess.R
@@ -107,23 +123,26 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # y = as.vector(mu_true)
   if (family$family!="poisson") { 
                       good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
-                      min2LL = family$aic(y = as.vector(y)[good], 
-                                          n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                                          mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                          wt = as.vector(W)[good], 
-                                          dev = deviance) } else {   
+                      aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+                                       n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                                       mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                                       wt = as.vector(W)[good], 
+                                       dev = deviance) 
+                      } else {   
                                             # TODO: CHECK: for large counts min2LL for poisson still occasionally gives a -Inf
                                             # see here for a solution calculating dpois manually
                                             # https://stats.stackexchange.com/questions/475328/negative-infinity-produced-when-computing-log-likelihood-in-poisson-regression-r
                                             # for generalisation allowing noninteger counts
                                             # see https://stats.stackexchange.com/questions/70054/how-is-it-possible-that-poisson-glm-accepts-non-integer-numbers
                                                            good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
-                                                           min2LL = family$aic(y = round(as.vector(y))[good], 
-                                                                               n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                                                                               mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                                                               wt = as.vector(W)[good], 
-                                                                               dev = deviance) }
-  loglik = -1/2 * min2LL
+                                                           aic.model = family$aic(y = round(as.vector(y))[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+                                                                                  n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                                                                                  mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                                                                                  wt = as.vector(W)[good], 
+                                                                                  dev = deviance) 
+                                                           }
+  loglik = p - (aic.model + 2*sum(beta!=0)) / 2
+  min2LL = -2*loglik
   
   # p=nr of vars, n=nr of cases, k=effective degrees of freedom
   gic = min2LL + log(p)*log(log(n))*edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117 
