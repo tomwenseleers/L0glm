@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=100, p=100, k=10, multichannel=T, sparse=TRUE)
+sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=F, sparse=TRUE, family = "gaussian")
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -525,9 +525,16 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
-system.time(par <- L0glm.fit(X = sim$X, y = sim$y, lambda = 1, nonnegative = T, parallellize = T, grouped = T, relaxed = F, solver = "eigen", family = poisson(identity))) # 34.88s for parallellize = F, 19.75s for parallellize = T
+system.time(par <- L0glm.fit(X = sim$X, y = sim$y, 
+                             lambda = 1, nonnegative = T, 
+                             parallellize = T,
+                             grouped = T, 
+                             relaxed = F, 
+                             solver = "eigen", 
+                             family = poisson(identity), 
+                             nonzero.centered = F)) # 34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par$coefficients), as.vector(sim$beta_true)) # 0.994652 with variable indices
-# TODO: check why if data is family = "gaussian" gives an error
+s# TODO: check why if data is family = "gaussian" gives an error
 
 length(intersect(which(sim$beta_true!=0), which(par$coefficients!=0))) # 4515 out of 7645
 length(intersect(which(sim$beta_true==0), which(par$coefficients!=0))) # 4 out of 7645

@@ -2,7 +2,6 @@
 
 export(L0glm)
 export(L0glm.fit)
-export(L0glm.fit_new)
 export(L0glm.fit.internal)
 export(fun)
 export(L0glm.inference)

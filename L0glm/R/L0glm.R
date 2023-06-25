@@ -301,7 +301,7 @@ L0glm <- function(formula,
                   tune.crit = "bic",
                   seed = NULL, # set seed for k-fold CV
                   verbose = TRUE) {
-
+  
   # TODO talk with tom about whether ot not we should group some of these variables into control lists.
   
   call0 <- match.call()
@@ -334,7 +334,7 @@ L0glm <- function(formula,
   if (!("gamma" %in% names(control.l0))) {
     control.l0$gamma <- gamma
   }
-
+  
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
   
@@ -508,7 +508,7 @@ L0glm <- function(formula,
                    ridge.center = ridge.center,
                    post.filter.fn = post.filter.fn, 
                    verbose = verbose)
-
+  
   
   fit$timing <- proc.time()[3] - t1
   if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
@@ -888,6 +888,44 @@ L0glm.fit = function(X,
     pen.weights <- fit$pen.weights
     lambdas <- fit$lambdas
     weights <- fit$weights
+    
+    if(relaxed){
+      # Apply relaxed group L0 feature selection
+      variable.indices = which(coefficients>0)
+      start <- coefficients # TODO Should the start be the previous iteration coefficients?
+      
+      
+      fit <- L0glm.fit.internal(X = X[,variable.indices, drop = F], 
+                                y = y,
+                                family = family,
+                                weights = weights,
+                                nonnegative = nonnegative,
+                                offset = offset,
+                                start = start[variable.indices],
+                                lower = lower[variable.indices],
+                                upper = upper[variable.indices],
+                                lambda = 0, 
+                                nonzero.centered = nonzero.centered,
+                                ridge.center = ridge.center[variable.indices],
+                                gamma = gamma,
+                                thresh = thresh,
+                                solver = solver, 
+                                method = method, 
+                                maxit = maxit,
+                                tol = tol,
+                                no.pen = no.pen,
+                                control.solver = control.solver,
+                                warmupiters = warmupiters,
+                                verbose = verbose)
+      
+      coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
+      weights <- rep(0, nrow(X))
+      
+      coefficients[variable.indices] <- fit$coefficients
+      pen.weights[variable.indices] <- fit$pen.weights
+      lambdas[variable.indices] <- fit$lambdas
+      weights <- fit$weights
+    }
   }
   
   weights[is.infinite(weights)] <- 0
@@ -926,7 +964,6 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               warmupiters = 4,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
-  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -981,6 +1018,13 @@ L0glm.fit.internal = function(X,
       z <- (y - offset)[good]
     }
     
+    if (all(!good)) {
+      conv <- FALSE
+      if(verbose) print(gettextf("no observations informative at iteration %d",
+                                 i), domain = NA)
+      break
+    }
+    
     if(is.null(ridge.center)){ # If it's not null we use user provided
       if(i > warmupiters & nonzero.centered){
         center = beta_old 
@@ -993,13 +1037,6 @@ L0glm.fit.internal = function(X,
       center = ridge.center
     }
     
-    
-    if (all(!good)) {
-      conv <- FALSE
-      if(verbose) print(gettextf("no observations informative at iteration %d",
-                                 i), domain = NA)
-      break
-    }
     
     pen.weights = AR.weights(beta = beta, delta = delta, gamma = gamma) # adaptive ridge pentalty weights
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
@@ -1066,7 +1103,6 @@ L0glm.fit.internal = function(X,
     dev_old = dev
     beta_old = beta # TODO remove dev since converged is calculated differently?
   }
-  
   return(list(coefficients = as.vector(beta), weights = as.vector(W), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas)))
   # return(as.vector(beta))
 }
