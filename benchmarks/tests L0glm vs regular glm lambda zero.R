@@ -88,9 +88,14 @@ sum(L0glm_gaus_presetlambda$coefficients!=0) # 47
 weights <- L0glm_gaus_presetlambda$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% data_gaus$X
 sel_task <- which.max(colMeans(abs(as.matrix(data_gaus$y)))) # for multitask select column with max mean abs value?
-yw <- as.matrix(data_gaus$y)[, sel_task,drop=F] * sqrt(weights) # TODO note that yw should really be zw, i.e. for non-identity link you should be working on the adjusted response scale - maybe you should also make L0glm.fit return z? Or make a convenience function that returns z and w given a particular given family and coefficient estimates?
+yw <- as.matrix(data_gaus$y)[, sel_task,drop=F] * sqrt(weights) 
+# TODO note that yw should really be zw, i.e. for non-identity link you should 
+# be working on the adjusted response scale - maybe you should also make 
+# L0glm.fit return z? Or make a convenience function that returns z and w 
+# given a particular given family and coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 if (family$family == "gaussian") maxlambda <- maxlambda/4
+# could be that this factor of 1/4 applies to all families & that this is that 1/4 factor mentioned in Frommlet & Nuel
 mincoef <- min(abs(L0glm_gaus_presetlambda$coefficients))
 
 lambdas <- 10^seq(round(log10(lambda_preset_gaus))-3, log10(maxlambda)+1, by=0.2)
@@ -266,9 +271,13 @@ system.time(L0glm_pois_presetlambda <- L0glm.fit(X = Matrix(data_pois$X, sparse=
 weights <- L0glm_pois_presetlambda$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% data_pois$X
 sel_task <- which.max(colMeans(abs(as.matrix(data_pois$y)))) # for multitask select column with max mean abs value?
-yw <- as.matrix(data_pois$y)[, sel_task,drop=F] * sqrt(weights) # TODO note that yw should really be zw, i.e. for non-identity link you should be working on the adjusted response scale - maybe you should also make L0glm.fit return z? Or make a convenience function that returns z and w given a particular given family and coefficient estimates?
+yw <- as.matrix(data_pois$y)[, sel_task,drop=F] * sqrt(weights) 
+# TODO note that yw should really be zw, i.e. for non-identity link you should 
+# be working on the adjusted response scale - maybe you should also make L0glm.fit 
+# return z? Or make a convenience function that returns z and w given a particular 
+# given family and coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
-if (family$family == "gaussian") maxlambda <- maxlambda/4
+if (family$family == "gaussian") maxlambda <- maxlambda/4 # could be that this factor of 1/4 applies to all families & that this is that 1/4 factor mentioned in Frommlet & Nuel
 mincoef <- min(abs(L0glm_pois_presetlambda$coefficients)) # *sign(L0glm_pois_presetlambda$coefficients)
 
 lambdas <- 10^seq(round(log10(lambda_preset_pois))-3, log10(maxlambda)+1, by=0.2)
