@@ -36,7 +36,7 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE
                                             y = data_gaus$y, 
                                             family = gaussian(identity), 
                                             lambda = 1E-30, 
-                                            nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                             nonnegative = FALSE,
                                             warmupiters = 1,
                                             # start = rep(1, ncol(data_gaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
@@ -44,15 +44,14 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE
                                             method = 4L, #
                                             relaxed = TRUE, # TODO: check: results with relaxed = TRUE are bad
                                             thresh = 1E-10
-))  # 0.08s
+))  # 0.19s
 # TODO: FIX BUG: passing dense X = data_gaus$X gives error 
 # Error in if (class(X) != "dgCMatrix") as(Matrix(X, sparse = TRUE), "dgCMatrix") else X : 
-# the condition has length > 1
-# X = Matrix(data_gaus$X, sparse=FALSE) and X = Matrix(data_gaus$X, sparse=TRUE)
-# work, but only good results with relaxed=FALSE, so something must be wrong with relaxed=TRUE
+# the condition has length > 1;
+# passing X = Matrix(data_gaus$X, sparse=FALSE) and X = Matrix(data_gaus$X, sparse=TRUE)
+# work
 
 max(abs(L0glm_gaus_lambda0$coefficients-coef(glm_gaus))) # 1.476034e-09, correct
-# TODO: check: results with relaxed = TRUE are bad
 
 # check if metrics (loglik & AIC & BIC) are correct
 metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = L0glm_gaus_lambda0$coefficients,  # some metrics
@@ -72,7 +71,7 @@ lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbi
                               family = gaussian(identity),
                               dispersion = dispersion # dispersion here was 1, here we pass this value to not have to estimate it 
                               ) 
-lambda_preset_gaus # 2.556246
+lambda_preset_gaus # 3.912023
 
 system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE), 
                                             y = data_gaus$y, 
@@ -88,10 +87,28 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = Matrix(data_gaus$X, sparse=
                                             thresh = 1E-10
 )) # 1.47s
 sum(L0glm_gaus_presetlambda$coefficients!=0) 
-# with nonzero.centered=FALSE 47, so OK
+# with nonzero.centered=FALSE 46, so OK
 # TODO: check : not OK with nonzero.centered=TRUE - then gives 100, both if 
 # start values are or are not given, ie a non-sparse solution
 # when before solution was sparse also with nonzero.centered=TRUE
+
+# couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
+weights = L0glm_gaus_presetlambda$weights
+Xw = Matrix(Diagonal(x=sqrt(weights)) %*% data_gaus$X, sparse=F) # = X * sqrt(weights)
+Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(1,ncol(data_gaus$X))))), sparse=F) # row augmented covariate matrix
+ywaug = as.vector(c(data_gaus$y, rep(0, ncol(data_gaus$X)))) # 
+
+# orthogonal initialisation (assuming variables are orthogonal) ####
+beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
+# colSums(Xwaug^2) = diag(crossprod(Xwaug)))
+# PS original variables in columns of X can be very far from orthogonal, 
+# but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
+# makes the assumption hold better
+
+# diagonal initialisation (assuming system is dominated by diagonal of X) ####
+# for signal deconvolution problem with n=p this gives the best initial solution
+# only works if X is square though
+# beta_init_diagonal <- y*sqrt(weights) / diag(Xw)
 
 
 # coefficients & metrics over a range of lambda values
@@ -111,7 +128,7 @@ mincoef <- min(abs(L0glm_gaus_presetlambda$coefficients))
 
 lambdas <- 10^seq(round(log10(lambda_preset_gaus))-3, log10(maxlambda)+1, by=0.2)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(data_gaus$X))
-warmstart <- 0.5 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.1 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   start <- (L0glm_gaus_presetlambda$coefficients)*warmstart+rep(1, ncol(data_gaus$X))*(1-warmstart)
@@ -123,7 +140,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          nonzero.centered = FALSE, # use nonzero centered ridge regression? - TODO: change that if you specify starting values start that it does not keep on shrinking coefs to those values but instead shrink to coef values from previous iteration
                          nonnegative = FALSE,
                          warmupiters = 1,
-                         start = rep(1, ncol(data_gaus$X)), # 
+                         start = rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, 
                          # gamma = 2, 
@@ -135,7 +152,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = data_gaus$beta_true))) )
-} )))) # 20s
+} )))) # 30s
 matplot(x=log10(metrics$lambda), 
         y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
