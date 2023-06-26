@@ -23,8 +23,8 @@ y = data_gaus$y
 family = gaussian(identity)
 
 # glm fit
-system.time(glm_gaus <- glm(data_gaus$y ~ 0+data_gaus$X, family=gaussian(identity))) # 0.16s
-system.time(glm_gaus2 <- glm.fit(y=data_gaus$y, x=data_gaus$X, intercept=FALSE, family=gaussian(identity))) # 0.14s
+system.time(glm_gaus <- glm(y ~ 0+X, family=gaussian(identity))) # 0.16s
+system.time(glm_gaus2 <- glm.fit(y=y, x=X, intercept=FALSE, family=gaussian(identity))) # 0.14s
 glm_gaus$deviance 
 glm_gaus$aic
 AIC(glm_gaus)
@@ -32,8 +32,8 @@ BIC(glm_gaus)
 logLik(glm_gaus)
 
 # L0 glm fit with lambda close to zero
-system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE), 
-                                            y = data_gaus$y, 
+system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(X, sparse=FALSE), 
+                                            y = y, 
                                             family = gaussian(identity), 
                                             lambda = 1E-30, 
                                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -50,6 +50,11 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE
 # the condition has length > 1;
 # passing X = Matrix(data_gaus$X, sparse=FALSE) and X = Matrix(data_gaus$X, sparse=TRUE)
 # work
+
+# NOTE: note that L0glm can fit GLMs with perfectly collinear variables, e.g.
+# with X = cbind(data_gaus$X, data_gaus$X)
+# in that case, it would divide the total effect over the different collinear versions
+# of each variable
 
 max(abs(L0glm_gaus_lambda0$coefficients-coef(glm_gaus))) # 1.476034e-09, correct
 
