@@ -6,7 +6,7 @@ library(L0glm)
 library(export)
 # devtools::load_all(".")
 
-n <- p <- 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
@@ -58,12 +58,13 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                method = 7L # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
 )) 
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
+points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
+
 mincoef <- min(abs(L0glm.out_preset_coefs)[L0glm.out_preset_coefs!=0]) # nonzero coefficient with smallest absolute value
 do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
-points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
 plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
@@ -76,7 +77,8 @@ Xw <- Diagonal(x=sqrt(weights)) %*% X
 sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
 yw <- y[, sel_task] * sqrt(weights) # TODO note that yw should really be zw, i.e. for non-identity link you should be working on the adjusted response scale - maybe you should also make L0glm.fit return z? Or make a convenience function that returns z and w given a particular given family and coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
-
+maxlambda <- maxlambda*4
+  
 lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
@@ -87,15 +89,15 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression? - TODO: change that if you specify starting values start that it does not keep on shrinking coefs to those values but instead shrink to coef values from previous iteration
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              nonnegative = TRUE,
                              warmupiters = 4,
-                             start = start,
+                             start = rep(1, ncol(X)), # start,
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
                              # gamma = 2, 
                              # thresh = 10
-                             relaxed = FALSE # TODO check : setting this argument to TRUE doesn't affect solution, while it should (it should do an L0glm fit & then refit an unpenalized LS model for the selected coefficients)
+                             relaxed = FALSE
                              )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -106,6 +108,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
 abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
+# TODO: looks like a bug - before we had all coefficients penalized to zero at this value, now we don't
+
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
@@ -248,7 +252,7 @@ lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 w
 L0glm.out <- L0glm.fit(X, y, 
                                family = poisson(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                grouped = TRUE,
                                relaxed = TRUE, 
                                nonnegative = TRUE,
@@ -273,7 +277,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
-                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
@@ -287,9 +291,8 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                                               family = poisson(identity), 
                                               beta_true = sim$beta_true))) )
 } )))
-# TODO returns error 
-# Error in checkForRemoteErrors(val) :
-# 8 nodes produced errors; first error: object 'pen.weights' not found
+# TODO : returns error Error in replCmat4(x, i1 = if (iMi) seq.int(from = 0L, length.out = di[1L]) else .ind.prep2(i,  : 
+# number of items to replace is not a multiple of replacement length
 
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
@@ -342,7 +345,7 @@ lambda_preset # lambda that would be expected to optimise given IC
 L0glm.out <- L0glm.fit(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
-                               nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
@@ -367,7 +370,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
-                             nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
