@@ -41,10 +41,10 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE
                                             warmupiters = 1,
                                             # start = rep(1, ncol(data_gaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 4L, #
-                                            relaxed = TRUE, # TODO: check: results with relaxed = TRUE are bad
+                                            method = 3L, #
+                                            relaxed = FALSE,
                                             thresh = 1E-10
-))  # 0.19s
+))  # 0.15s
 # TODO: FIX BUG: passing dense X = data_gaus$X gives error 
 # Error in if (class(X) != "dgCMatrix") as(Matrix(X, sparse = TRUE), "dgCMatrix") else X : 
 # the condition has length > 1;
@@ -85,7 +85,7 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = Matrix(data_gaus$X, sparse=
                                             method = 4L, #
                                             relaxed = TRUE,
                                             thresh = 1E-10
-)) # 1.47s
+)) # 0.72s
 sum(L0glm_gaus_presetlambda$coefficients!=0) 
 # with nonzero.centered=FALSE 46, so OK
 # TODO: check : not OK with nonzero.centered=TRUE - then gives 100, both if 
@@ -100,6 +100,9 @@ ywaug = as.vector(c(data_gaus$y, rep(0, ncol(data_gaus$X)))) #
 
 # orthogonal initialisation (assuming variables are orthogonal) ####
 beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
+cor(beta_init_orthogonal, data_gaus$beta_true) # 0.9923448
+plot(beta_init_orthogonal, data_gaus$beta_true, pch=16, col="blue")
+mean(abs(beta_init_orthogonal-data_gaus$beta_true)) # 1.629831
 # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
 # PS original variables in columns of X can be very far from orthogonal, 
 # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
@@ -137,15 +140,15 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = as.matrix(data_gaus$y), 
                          family = gaussian(identity), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression? - TODO: change that if you specify starting values start that it does not keep on shrinking coefs to those values but instead shrink to coef values from previous iteration
+                         nonzero.centered = FALSE, # use nonzero centered ridge regression?
                          nonnegative = FALSE,
                          warmupiters = 1,
-                         start = rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
+                         start = rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, 
                          # gamma = 2, 
                          thresh = 1E-10,
-                         relaxed = FALSE # TODO check : setting this argument to TRUE gives bad solution
+                         relaxed = FALSE 
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -320,7 +323,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = data_pois$y, 
                          family = poisson(log), 
                          lambda = lambda, 
-                         nonzero.centered = TRUE, # use nonzero centered ridge regression? - TODO: change that if you specify starting values start that it does not keep on shrinking coefs to those values but instead shrink to coef values from previous iteration
+                         nonzero.centered = TRUE, # use nonzero centered ridge regression? 
                          nonnegative = FALSE,
                          warmupiters = 1,
                          # start = start,
@@ -328,7 +331,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          method = 3L, 
                          # gamma = 2, 
                          thresh = 1E-10,
-                         relaxed = FALSE # TODO check : setting this argument to TRUE doesn't affect solution, while it should (it should do an L0glm fit & then refit an unpenalized LS model for the selected coefficients)
+                         relaxed = FALSE 
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
