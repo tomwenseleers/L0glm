@@ -619,6 +619,8 @@ L0glm.fit = function(X,
   require(qlcMatrix)
   
   y <- as.matrix(y)
+  X <- if (class(X) != "dgCMatrix") as(Matrix(X, sparse = TRUE), "dgCMatrix") else X
+  
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
