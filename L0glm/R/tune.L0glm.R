@@ -13,29 +13,23 @@ L0glm.tune <- function(X, y, family,
                        printbest = TRUE, # Want the best empirical lambda printed out based on the provided IC?
                        plot = TRUE, # Want plots produced?
                        ...){
-
+  
   # Checking if the IC is one of the valid criteria
   IC = tolower(IC)
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
     stop("Invalid information criteria.")
   }
-
+  
   if(!is.null(dispersion)){
     lambda.preset <- preset.lambda(IC = IC, dispersion = dispersion, family = family)
   } else {
     lambda.preset = preset.lambda(IC = IC, y = y[,which.max(colMeans(abs(y)))],
-                                      X = X, weights=rep(1, nrow(y)),
+                                  X = X, weights=rep(1, nrow(y)),
                                   family = family)
   }
   n <- nobs <- nrow(X)
   p <- ncol(X)
   
-  # TODO: Calculate Xw and yw properly
-  Xw <- Xweights(X, weights[,1]) # TODO: talk with Tom about this (what column should we use?)
-  Yw <- sapply(seq_len(ncol(Y)), function(col) {
-    yw <- Yweights(Y[, col, drop = FALSE], weights[, col, drop = FALSE])
-    return(yw)
-  })
   
   # for the lambda sequence below we use lambda_preset_aic 
   # (round(log10(lambda_preset_aic))-3) as the lower bound and the theoretical
@@ -43,51 +37,61 @@ L0glm.tune <- function(X, y, family,
   # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
   maxlambda = max((1/colSums(X^2)) * (crossprod(X, Y)^2)) # TODO make this Xw and Yw
   lambdas = 10^seq((round(log10(lambda.preset))-3), round(log10(maxlambda))+1, by=1)
-
+  
   # Get warm start
-  warm_start <- L0glm.fit(X = X, y = y,
-                              lambda = min(lambdas), 
-                              family = family,
-                              offset = offset, 
-                              weights = weights,
-                              ...) # using provided / default params
-  
-  
+  warmup <- L0glm.fit(X = X, y = y,
+                          lambda = min(lambdas), 
+                          family = family,
+                          offset = offset, 
+                          weights = weights,
+                          ...) # using provided / default params
+
+  warm_start <- warmup$coefficients
+  Z <- warmup$response
+  W <- warmup$weights
+  w.col <- which.max(colMeans(abs(y))) 
+  Xw <- Xweights(X, W[,w.col]) # TODO: talk with Tom about this (what column should we use?)
+  Zw <- sapply(seq_len(ncol(Z)), function(col) {
+    Zw <- Yweights(as.matrix(Z[, col, drop = FALSE]), as.matrix(W[, col, drop=F]))
+    return(Zw)
+  })
+
+  # Recalculate maxlambda and lambdas with obtained weights 
+  maxlambda = max((1/colSums(Xw^2)) * (crossprod(Xw, Zw)^2)) # TODO make this Xw and Yw
+  lambdas = 10^seq((round(log10(lambda.preset))-3), round(log10(maxlambda))+1, by=1)
   no.warm.start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
   coefficients <- lapply(lambdas, function (lambda) {
     new_coefs <- L0glm.fit(X = X, y = y, 
-                               family = family,
-                               start = warm.start.ratio*warm_start+(1-warm.start.ratio)*no.warm.start, # warm.start.ratio= 0 => no warm starts,warm.start.ratio= 1 => full warm starts
-                               lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
-                               weights = weights,
-                               offset = offset,
-                               ...)
+                           family = family,
+                           start = warm.start.ratio*warm_start+(1-warm.start.ratio)*no.warm.start, # warm.start.ratio= 0 => no warm starts,warm.start.ratio= 1 => full warm starts
+                           lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
+                           weights = weights,
+                           offset = offset,
+                           ...)$coefficients
     warm_start <<- new_coefs
   }) # 82s, TODO check how warm starts would affect solution quality & stability
-  
-   metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.metrics(beta = coefs, X = X, y = y, 
+  metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.metrics(beta = coefs, X = X, y = y, 
                                                                                          weights = weights, 
                                                                                          offset = offset, 
                                                                                          family = family, 
                                                                                          beta_true = coefs.true))))
-
+  
   # metrics <- structure(metrics, class = "tune.L0glm") # Deformats the data frame. TODO: should I make a constructor for the tune.L0glm class?
   if(printbest) {
     bestlambda = lambdas[which.min(metrics[,IC])]
     message <- paste("Best empirical lambda based on", IC, "over lambda sequence is", bestlambda)
     print(message)
   }
-   
-   if(plot){
-     plot.tune(metrics = metrics, IC = IC, coefs.true = coefs.true, lambdas = lambdas)
-   }
+  if(plot){
+    plot.tune(metrics = metrics, IC = IC, coefs.true = coefs.true, lambdas = lambdas)
+  }
   return(metrics)
 }
 
 abess.fit <- function(X, y, ...){
   fit <- abess(x = X, 
-        y = y, 
-        ...)
+               y = y, 
+               ...)
   
   
   plot(fit)

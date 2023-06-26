@@ -617,6 +617,7 @@ L0glm.fit = function(X,
   
   require(parallel)
   require(qlcMatrix)
+  
   y <- as.matrix(y)
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
@@ -644,11 +645,11 @@ L0glm.fit = function(X,
   }
   
   if(!is.null(start)){
-    if(ncol(y) > 1 & dim(as.matrix(start))[2] == 1){
+    if(ncol(y) > 1 & ncol(as.matrix(start)) == 1){
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
     }
   } else {
-    start <- matrix(1, nrow = nrow(y), ncol = ncol(y))
+    start <- matrix(1, nrow = ncol(X), ncol = ncol(y))
   }
   
   if(nonnegative) lower[lower < 0] <- 0
@@ -875,7 +876,7 @@ L0glm.fit = function(X,
     z <- z.mat
   } else { # Single channel
     fit <- L0glm.fit.internal(X = X, 
-                              y = y,
+                              y = as.vector(y),
                               weights = weights,
                               family = family,
                               nonnegative = nonnegative,
@@ -979,6 +980,8 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               warmupiters = 4,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+  
+
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -988,7 +991,7 @@ L0glm.fit.internal = function(X,
   etastart = NULL
   n <- nobs <- nrow(X)    # needed by the initialize expression below
   p <- nvars <- ncol(X)   # needed by the initialize expression below
-  
+
   mustart = NULL
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
   #if (is.null(mustart)) mustart <- y
@@ -1001,7 +1004,6 @@ L0glm.fit.internal = function(X,
     eta = offset + as.vector(if (p == 1L) X * start else X %*% start) # eta = expected value on link scale
   }
   names(beta) <- colnames(X)
-  
   mu = linkinv(eta) # expected value on response scale
   dev.resids = family$dev.resids # deviance residuals function
   dev = sum(dev.resids(y, mu, weights)) # deviance 
@@ -1044,7 +1046,7 @@ L0glm.fit.internal = function(X,
     }
     
     if(is.null(ridge.center)){ # If it's not null we use user provided
-      if(i > warmupiters & nonzero.centered){
+      if(i > 1 & nonzero.centered){
         center = beta_old 
       } else if (nonzero.centered){
         center = start # TODO talk with Tom: should it be NULL in the warmupiters?
