@@ -680,10 +680,19 @@ L0glm.fit = function(X,
       cols <- 1:ncol(y)
       
       # chunks <- split(cols, cut(cols, n_cores))
-      
       chunk.size <- ceiling(length(cols) / n_cores)
       extra <- length(cols) - (chunk.size * (n_cores-1))
-      chunk_sizes <- c(rep(chunk.size, n_cores-1), extra)
+      if(extra < 0){
+        n_cores <- n_cores - 1
+        chunk_sizes <- rep(chunk.size, n_cores)
+        chunk_sizes[length(chunk_sizes)] <- chunk_sizes[length(chunk_sizes)] + extra
+      } else if (extra == 0){
+        n_cores <- n_cores - 1
+        chunk_sizes <- rep(chunk.size, n_cores)
+      } else {
+        chunk_sizes <- c(rep(chunk.size, n_cores-1), extra)
+      }
+     
       split_points <- c(0, cumsum(chunk_sizes))
       split_vector <- rep(1:n_cores, chunk_sizes)
       chunks <- split(cols, split_vector)
@@ -729,6 +738,7 @@ L0glm.fit = function(X,
         weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
         pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
         lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
+        z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
       }
       
       if(relaxed){
@@ -768,6 +778,7 @@ L0glm.fit = function(X,
         weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
         pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
         lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
+        z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
       }
       
       stopCluster(cl)
@@ -781,7 +792,6 @@ L0glm.fit = function(X,
         } else {
           variable.indices <- 1:ncol(X)
         }
-        
         
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
@@ -810,11 +820,12 @@ L0glm.fit = function(X,
                              warmupiters = warmupiters,
                              verbose = verbose)
         }))
-        
         coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
         weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
         pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
         lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
+        z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+        
       }
       
       if(relaxed){
@@ -855,11 +866,13 @@ L0glm.fit = function(X,
         weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
         pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
         lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
+        z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
       }
     }
     weights <- weights.mat
     pen.weights <- pen.weights.mat
     lambdas <- lambdas.mat
+    z <- z.mat
   } else { # Single channel
     fit <- L0glm.fit.internal(X = X, 
                               y = y,
@@ -888,6 +901,7 @@ L0glm.fit = function(X,
     pen.weights <- fit$pen.weights
     lambdas <- fit$lambdas
     weights <- fit$weights
+    z <- fit$z
     
     if(relaxed){
       # Apply relaxed group L0 feature selection
@@ -924,6 +938,7 @@ L0glm.fit = function(X,
       coefficients[variable.indices] <- fit$coefficients
       pen.weights[variable.indices] <- fit$pen.weights
       lambdas[variable.indices] <- fit$lambdas
+      z <- fit$z
       weights <- fit$weights
     }
   }
@@ -932,7 +947,7 @@ L0glm.fit = function(X,
   pen.weights[is.infinite(pen.weights)] <- 0
   lambdas[is.infinite(lambdas)] <- 0
   
-  return(list(coefficients = coefficients, weights = weights, pen.weights = pen.weights, lambdas = lambdas))
+  return(list(coefficients = coefficients, weights = weights, pen.weights = pen.weights, lambdas = lambdas, response = z))
 }
 
 #' @describeIn L0glm
@@ -1007,15 +1022,18 @@ L0glm.fit.internal = function(X,
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
         W = as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
         good = (!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
-        z = (y - offset)[good] # response
+        z.ret <- (y - offset) # Returned (non subsetted) response
+        z = z.ret[good] # Subset used for fit
       } else {
         mu.prime <- family$mu.eta(eta) # derivative of the expected values
         good = (weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)# valid rows
+        z.ret <- (eta - offset) + (y - mu) / mu.prime 
         z <- (eta - offset)[good] + (y - mu)[good] / mu.prime[good] # working (adjusted) response
         W <- weights[good] * as.vector(mu.prime[good]^2 / variance(mu)[good]) # updated weights 
       }
     } else {
-      z <- (y - offset)[good]
+      z.ret <- (y - offset)
+      z <- z.ret[good]
     }
     
     if (all(!good)) {
@@ -1103,8 +1121,7 @@ L0glm.fit.internal = function(X,
     dev_old = dev
     beta_old = beta # TODO remove dev since converged is calculated differently?
   }
-  return(list(coefficients = as.vector(beta), weights = as.vector(W), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas)))
-  # return(as.vector(beta))
+  return(list(coefficients = as.vector(beta), weights = as.vector(W), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
 }
 
 #' @describeIn L0glm

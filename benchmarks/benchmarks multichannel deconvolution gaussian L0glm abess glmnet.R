@@ -86,7 +86,7 @@ lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1,
 
 library(parallel)
 library(qlcMatrix)
-system.time(warm_start <- L0glm.fit_new(X = sim$X, y = sim$y,
+system.time(warm_start <- L0glm.fit(X = sim$X, y = sim$y,
                                family = gaussian(identity), # poisson(identity),
                                lambda = min(lambdas), #  # or 0.1 or 1
                                lower = rep(0, ncol(sim$X)),
@@ -105,7 +105,7 @@ sum(rowMin(abs(warm_start))!=0) # nr of selected variables at lowest lambda used
 no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
 w = 0.9 # 0 = no warm starts, 1 = full warm starts
 system.time(coefficients <- lapply(lambdas, function (lambda) {
-                                new_coefs <- L0glm.fit_new(X = sim$X, y = sim$y, 
+                                new_coefs <- L0glm.fit(X = sim$X, y = sim$y, 
                                                                             family = gaussian(identity), # poisson(identity),
                                                                             start = w*warm_start+(1-w)*no_warm_start, # use warm starts
                                                                             lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
@@ -136,7 +136,8 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        edf=sum(sim$beta!=0))))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 
 
-system.time(metrics2 <- tune.L0glm(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, IC = "aic", group.maxit = 6, plot = T))
+system.time(metrics2 <- L0glm.tune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, IC = "aic", group.maxit = 6, plot = T))
+
 
 # best empirical lambda based on calculated GIC over lambda sequence:
 metric = "gic"
@@ -298,7 +299,7 @@ system.time({
   set.seed(1)
   for (i in 1:B) { 
     sampled = sample(sim$x, replace=T) # sampled observations
-    beta_relaxedgroupL0_boot[[i]] = L0glm.fit_new(X = sim$X[sampled,,drop=F], y = sim$y[sampled,,drop=F], 
+    beta_relaxedgroupL0_boot[[i]] = L0glm.fit(X = sim$X[sampled,,drop=F], y = sim$y[sampled,,drop=F], 
                                   family = gaussian(identity), # poisson(identity),
                                   # start = w*warm_start+(1-w)*no_warm_start, # to use warm starts
                                   lambda = bestlambda, 
