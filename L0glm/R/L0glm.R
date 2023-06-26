@@ -747,7 +747,7 @@ L0glm.fit = function(X,
       if(relaxed){
         # Apply relaxed group L0 feature selection
         avgcoefs = rowMeans(coefficients)
-        variable.indices = which(avgcoefs > 0)
+        variable.indices = which(avgcoefs != 0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
@@ -836,7 +836,7 @@ L0glm.fit = function(X,
         # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
         avgcoefs = rowMeans(coefficients)
-        variable.indices = which(avgcoefs>0)
+        variable.indices = which(avgcoefs!=0)
         start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
@@ -908,7 +908,7 @@ L0glm.fit = function(X,
     
     if(relaxed){
       # Apply relaxed group L0 feature selection
-      variable.indices = which(coefficients>0)
+      variable.indices = which(coefficients!=0)
       start <- coefficients # TODO Should the start be the previous iteration coefficients?
       
       
