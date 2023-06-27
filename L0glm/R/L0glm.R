@@ -618,13 +618,13 @@ L0glm.fit = function(X,
   require(parallel)
   require(qlcMatrix)
   
-  y <- as.matrix(y)
-  X <- if (class(X) != "dgCMatrix") as(Matrix(X, sparse = TRUE), "dgCMatrix") else X
+  y = as.matrix(y)
+  if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
   
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
-      weights <- matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
+      weights = matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
     }
   } else { # If no weights are passed
     if(ncol(y) > 1){ # Multichannel
@@ -1019,18 +1019,18 @@ L0glm.fit.internal = function(X,
     varg = variance(mu) # variance
     gprime = mu.eta(eta) # derivative of the expected values
     
-    good = !is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0) # valid rows
+    good = which(!is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0)) # valid rows
     
     
     if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
         W = as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
-        good = (!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
+        good = which(!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
         z.ret <- (y - offset) # Returned (non subsetted) response
         z = z.ret[good] # Subset used for fit
       } else {
         mu.prime <- family$mu.eta(eta) # derivative of the expected values
-        good = (weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)# valid rows
+        good = which((weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
         z.ret <- (eta - offset) + (y - mu) / mu.prime 
         z <- (eta - offset)[good] + (y - mu)[good] / mu.prime[good] # working (adjusted) response
         W <- weights[good] * as.vector(mu.prime[good]^2 / variance(mu)[good]) # updated weights 
@@ -1040,7 +1040,7 @@ L0glm.fit.internal = function(X,
       z <- z.ret[good]
     }
     
-    if (all(!good)) {
+    if (length(good)==0) {
       conv <- FALSE
       if(verbose) print(gettextf("no observations informative at iteration %d",
                                  i), domain = NA)

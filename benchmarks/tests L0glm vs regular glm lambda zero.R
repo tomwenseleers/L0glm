@@ -2,8 +2,8 @@
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-library(L0glm)
-# devtools::load_all(".")
+# library(L0glm)
+devtools::load_all(".")
 library(export)
 source("..//benchmarks/generate data.R")
 
@@ -12,7 +12,7 @@ n = 10000
 p = 100
 n_nonzero = 50
 dispersion = 1
-crit = "mbic"
+crit = "gic"
 
 # 1. GAUSSIAN GLM ####
 
@@ -32,7 +32,7 @@ BIC(glm_gaus)
 logLik(glm_gaus)
 
 # L0 glm fit with lambda close to zero
-system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(X, sparse=FALSE), 
+system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = X, 
                                             y = y, 
                                             family = gaussian(identity), 
                                             lambda = 1E-30, 
@@ -41,15 +41,10 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = Matrix(X, sparse=FALSE),
                                             warmupiters = 1,
                                             # start = rep(1, ncol(data_gaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 3L, #
+                                            method = 3L, 
                                             relaxed = FALSE,
                                             thresh = 1E-10
-))  # 0.15s
-# TODO: FIX BUG: passing dense X = data_gaus$X gives error 
-# Error in if (class(X) != "dgCMatrix") as(Matrix(X, sparse = TRUE), "dgCMatrix") else X : 
-# the condition has length > 1;
-# passing X = Matrix(data_gaus$X, sparse=FALSE) and X = Matrix(data_gaus$X, sparse=TRUE)
-# work
+))  # 0.06s
 
 # NOTE: note that L0glm can fit GLMs with perfectly collinear variables, e.g.
 # with X = cbind(data_gaus$X, data_gaus$X)
@@ -60,8 +55,8 @@ max(abs(L0glm_gaus_lambda0$coefficients-coef(glm_gaus))) # 1.476034e-09, correct
 
 # check if metrics (loglik & AIC & BIC) are correct
 metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = L0glm_gaus_lambda0$coefficients,  # some metrics
-                                                     X = Matrix(data_gaus$X, sparse=TRUE), 
-                                                     y = data_gaus$y, 
+                                                     X = data_gaus$X, 
+                                                     y = data_gaus$y,
                                                      family = gaussian(identity), 
                                                      beta_true = as.matrix(data_gaus$beta_true))))
 logLik(glm_gaus)-metrics_gaus$loglik # 0, correct
@@ -76,23 +71,24 @@ lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbi
                               family = gaussian(identity),
                               dispersion = dispersion # dispersion here was 1, here we pass this value to not have to estimate it 
                               ) 
-lambda_preset_gaus # 3.912023
+lambda_preset_gaus # 2.556246
 
-system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE), 
+system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = data_gaus$X, 
                                             y = data_gaus$y, 
                                             family = gaussian(identity), 
                                             lambda = lambda_preset_gaus,
                                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                            # ridge.center = XX,
                                             nonnegative = FALSE,
                                             warmupiters = 1,
                                             # start = rep(1, ncol(data_gaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 4L, #
+                                            method = 3L, #
                                             relaxed = TRUE,
                                             thresh = 1E-10
-)) # 0.72s
+)) # 0.77s
 sum(L0glm_gaus_presetlambda$coefficients!=0) 
-# with nonzero.centered=FALSE 46, so OK
+# with nonzero.centered=FALSE 47, so OK
 # TODO: check : not OK with nonzero.centered=TRUE - then gives 100, both if 
 # start values are or are not given, ie a non-sparse solution
 # when before solution was sparse also with nonzero.centered=TRUE
@@ -131,26 +127,27 @@ yw <- as.matrix(data_gaus$y)[, sel_task,drop=F] * sqrt(weights)
 # given a particular given family and coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 if (family$family == "gaussian") maxlambda <- maxlambda/4
-# could be that this factor of 1/4 applies to all families & that this is that 1/4 factor mentioned in Frommlet & Nuel
+# NOTE: could be that this factor of 1/4 applies to all families & that this is that 1/4 factor mentioned in Frommlet & Nuel
 mincoef <- min(abs(L0glm_gaus_presetlambda$coefficients))
 
 lambdas <- 10^seq(round(log10(lambda_preset_gaus))-3, log10(maxlambda)+1, by=0.2)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(data_gaus$X))
-warmstart <- 0.1 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.01 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   start <- (L0glm_gaus_presetlambda$coefficients)*warmstart+rep(1, ncol(data_gaus$X))*(1-warmstart)
   # start[L0glm_gaus_presetlambda$coefficients==0] <- 0
-  L0glm.out <- L0glm.fit(X = Matrix(data_gaus$X, sparse=FALSE), 
+  L0glm.out <- L0glm.fit(X = data_gaus$X, 
                          y = as.matrix(data_gaus$y), 
                          family = gaussian(identity), 
                          lambda = lambda, 
                          nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                         # ridge.center = L0glm_gaus_presetlambda$coefficients, # rep(0, ncol(data_gaus$X)),
                          nonnegative = FALSE,
                          warmupiters = 1,
-                         start = rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
+                         start = start, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 4L, 
+                         method = 3L, 
                          # gamma = 2, 
                          thresh = 1E-10,
                          relaxed = FALSE 
@@ -160,7 +157,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = data_gaus$beta_true))) )
-} )))) # 30s
+} )))) # 26s
 matplot(x=log10(metrics$lambda), 
         y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
@@ -196,11 +193,11 @@ metrics$lambda[which.max(metrics$F1_score)] # 2.511886
 plot(log10(metrics$lambda), metrics$aic, type="l")
 metrics$lambda[which.min(metrics$aic)] # 1
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 3.981072
-plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 3.981072
+metrics$lambda[which.min(metrics$bic)] # 2.511886
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 3.981072
+metrics$lambda[which.min(metrics$ebic)] # 2.511886
+plot(log10(metrics$lambda), metrics$gic, type="l")
+metrics$lambda[which.min(metrics$gic)] # 2.511886
 plot(log10(metrics$lambda), metrics$mbic, type="l")
 metrics$lambda[which.min(metrics$mbic)] # 3.981072
 
@@ -238,7 +235,6 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
 
 # 2. POISSON LOG LINK GLM ####
 
-
 set.seed(1)
 data_pois  = simulate_glm(n, p, n_nonzero, family = "poisson") 
 X = data_pois$X
@@ -253,27 +249,30 @@ BIC(glm_pois)
 logLik(glm_pois)
 
 # L0 glm fit with lambda close to zero
-system.time(L0glm_pois_lambda0 <- L0glm.fit(X = Matrix(data_pois$X, sparse=FALSE), 
-                                            y = data_pois$y, 
+system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X, 
+                                            y = y, 
                                             family = poisson(log), 
                                             lambda = 1E-10, 
                                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                            ridge.center = rep(0, ncol(X)),
                                             nonnegative = FALSE,
-                                            warmupiters = 4,
+                                            warmupiters = 1,
                                             start = rep(1, ncol(data_pois$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
                                             method = 3L, #
                                             thresh = 1E-10
-))  #
-# TODO: fix bug Error in z.ret[good] : invalid subscript type 'S4'
+))  
+# TODO: gives bad solution - check what is going wrong...
 
-max(abs(L0glm_pois_lambda0$coefficients-coef(glm_pois))) # 
+max(abs(L0glm_pois_lambda0$coefficients-coef(glm_pois))) # TODO gives bad solution - fix
+plot(L0glm_pois_lambda0$coefficients, coef(glm_pois), pch=16, col="blue")
 # check if metrics (loglik & AIC & BIC) are correct
 metrics_pois = data.frame(do.call(cbind, get.metrics(beta = L0glm_pois_lambda0$coefficients,  # some metrics
                                                      X = Matrix(data_pois$X, sparse=TRUE), 
                                                      y = as.matrix(data_pois$y), 
                                                      family = gaussian(identity), 
                                                      beta_true = as.matrix(data_pois$beta_true))))
+metrics_pois
 logLik(glm_pois)-metrics_pois$loglik # 
 AIC(glm_pois)-metrics_pois$aic # 
 BIC(glm_pois)-metrics_pois$bic # 
@@ -291,17 +290,18 @@ system.time(L0glm_pois_presetlambda <- L0glm.fit(X = Matrix(data_pois$X, sparse=
                                                  y = data_pois$y, 
                                                  family = poisson(log), 
                                                  lambda = lambda_preset_pois,
-                                                 nonzero.centered = TRUE, # use nonzero centered ridge regression?
+                                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                                  nonnegative = FALSE,
-                                                 warmupiters = 4,
+                                                 warmupiters = 1,
                                                  # start = rep(1, ncol(data_pois$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                  solver = "eigen", # 
                                                  method = 3L, #
                                                  thresh = 1E-10
 )) # 
-# TODO: fix bugs if start given: Error in weights[good] : invalid subscript type 'S4'
-# if start not given : Error in X[good, nonzero, drop = F] :
-# invalid or not-yet-implemented 'Matrix' subsetting
+max(abs(L0glm_pois_presetlambda$coefficients-coef(glm_pois))) # TODO gives bad solution - fix
+plot(L0glm_pois_presetlambda$coefficients, coef(glm_pois), pch=16, col="blue")
+
+
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0

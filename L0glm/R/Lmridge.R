@@ -40,6 +40,7 @@ lmridge <- function(X, y, lambdas = NULL,
     Xw <- X
     yw <- y
   }
+  if (!issparse(Xw)) { Xw = as.matrix(Xw) }
   yw[is.nan(yw)] <- 0
   
   #ridge.center = NULL
@@ -152,11 +153,12 @@ lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, r
     ywaug <- yw
   }
   
-  coefs <- nnls(A=Xwaug, b=ywaug)$x
+  coefs <- nnls(A=as.matrix(Xwaug), b=ywaug)$x
   return(coefs)
 }
 
 lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, start, control.solver = control.solver, ridge.center = NULL){ 
+  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") } 
   if(control.solver$method == "QR") {
     if(control.solver$rowaug == TRUE){
       # Obtain Xwaug and ywaug
@@ -168,7 +170,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
         ywaug <- yw
       }
       
-      if(issparse(Xw)){
+      if(issparse(Xwaug)){
         coefs <- solve_sparse_QR(A = Xwaug,
                                  b = ywaug)$coefficients
       } else {
@@ -208,17 +210,17 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
     }
     if(is.null(start)) start <- rep(1, ncol(X))
     # X.n <- sqrt(colSums(Xw^2)) 
-    if(issparse(Xw)){
+    if(issparse(Xwaug)){
       coefs <- solve_sparse_LSCG(A = Xwaug,
-                                 b = ywaug,
-                                 x0 = start,
+                                 b = as.matrix(ywaug),
+                                 x0 = as.matrix(start),
                                  tol = control.solver$tol,
                                  maxit = control.solver$maxit,
                                  precond = control.solver$precond)$coefficients #/ X.n
     } else {
-      coefs <- solve_sparse_LSCG(A = Xwaug,
-                                 b = ywaug,
-                                 x0 = start,
+      coefs <- solve_dense_LSCG(A = Xwaug,
+                                 b = as.matrix(ywaug),
+                                 x0 = as.matrix(start),
                                  tol = control.solver$tol,
                                  maxit = control.solver$maxit,
                                  precond = control.solver$precond)$coefficients
@@ -233,18 +235,18 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       ywaug <- yw
     }
     if(is.null(start)) start <- rep(1, ncol(X))
-    if(issparse(Xw)){
+    if(issparse(Xwaug)){
       coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
-                               b = as.vector(crossprod(Xwaug, ywaug)),
-                               x0 = start,
+                               b = as.matrix(crossprod(Xwaug, ywaug)),
+                               x0 = as.matrix(start),
                                tol = control.solver$tol,
                                maxit = control.solver$maxit,
                                precond = control.solver$precond)$coefficients
       
     } else {
-      coefs <- solve_dense_CG(A = as(crossprod(Xwaug), "generalMatrix"),
-                              b = as.vector(crossprod(Xwaug, ywaug)),
-                              x0 = start,
+      coefs <- solve_dense_CG(A = crossprod(Xwaug),
+                              b = as.matrix(crossprod(Xwaug, ywaug)),
+                              x0 = as.matrix(start),
                               tol = control.solver$tol,
                               maxit = control.solver$maxit,
                               precond = control.solver$precond)$coefficients
@@ -260,7 +262,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       Xwaug <- Xw
       ywaug <- yw
     }
-    if(issparse(Xw)){
+    if(issparse(Xwaug)){
       coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"generalMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)), 
                                  pivot = control.solver$pivot,
@@ -301,7 +303,9 @@ Yweights <- function(y, weights){
 # https://stats.stackexchange.com/a/203699/27340
 row_augX <- function(Xw, lambdas){
   lambdas <- sqrt(lambdas)
-  return(rbind(Xw, diaglambdas(lambdas, issparse(Xw))))
+  out <- rbind(Xw, diaglambdas(lambdas, issparse(Xw)))
+  if ("dgeMatrix" %in% class(out)) { out = as(out, "dgCMatrix") } 
+  return(out)
 }
 
 # augment y
