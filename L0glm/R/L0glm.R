@@ -605,13 +605,14 @@ L0glm.fit = function(X,
                      relaxed = TRUE,
                      gamma = 2,
                      nonzero.centered = FALSE,
-                     ridge.center = NULL, # Should be a vector of length ncol(X)
+                     ridge.center = NULL, # Should be a vector of length ncol(X). TODO Add to the help file that this option is ignored if nonzero.centered = FALSE
                      thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
                      solver = "eigen", # or "osqp" or "glmnet"
                      method = 7L,
                      maxit = 25,
                      tol = 1E-10,
                      warmupiters = ifelse(family$family == "gaussian", 1, 4),
+                     warmupiters.nzc = warmupiters,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose = FALSE){
   
@@ -821,6 +822,7 @@ L0glm.fit = function(X,
                              no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
+                             warmupiters.nzc = warmupiters.nzc,
                              verbose = verbose)
         }))
         coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -863,6 +865,7 @@ L0glm.fit = function(X,
                              no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
+                             warmupiters.nzc = warmupiters.nzc,
                              verbose = verbose)}))
         
         coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -898,6 +901,7 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               control.solver = control.solver,
                               warmupiters = warmupiters,
+                              warmupiters.nzc = warmupiters.nzc,
                               verbose = verbose)
     
     coefficients <- fit$coefficients
@@ -933,6 +937,7 @@ L0glm.fit = function(X,
                                 no.pen = no.pen,
                                 control.solver = control.solver,
                                 warmupiters = warmupiters,
+                                warmupiters.nzc = warmupiters.nzc,
                                 verbose = verbose)
       
       coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
@@ -981,6 +986,8 @@ L0glm.fit.internal = function(X,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               warmupiters = 4,
+                              warmupiters.nzc = warmupiters,
+                              warmupiters.nzc = warmupiters.nzc,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   
 
@@ -1047,16 +1054,16 @@ L0glm.fit.internal = function(X,
       break
     }
     
-    if(is.null(ridge.center)){ # If it's not null we use user provided
-      if(i > 1 & nonzero.centered){
+    if(is.null(ridge.center)){ # If it's not null we use user provided center
+      if(i > warmupiters.nzc & nonzero.centered){
         center = beta_old 
       } else if (nonzero.centered){
-        center = start # TODO talk with Tom: should it be NULL in the warmupiters?
+        center = start
       } else {
         center = NULL
       }
     } else {
-      center = ridge.center
+      if(nonzero.centered) center = ridge.center 
     }
     
     
@@ -1138,7 +1145,7 @@ L0glm.fit.internal = function(X,
 #'
 #' @export
 fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0,
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, warmupiters.nzc = warmupiters,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -1157,7 +1164,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        tol = tol,
                        no.pen = no.pen,
                        lower = lower,
-                       offset = as.vector(offset[,col, drop ? F]),
+                       offset = as.vector(offset[,col, drop = F]),
                        upper = upper,
                        nonzero.centered = nonzero.centered,
                        ridge.center = ridge.center,
@@ -1166,6 +1173,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        nonnegative = nonnegative,
                        method = method,
                        warmupiters = warmupiters,
+                       warmupiters.nzc = warmupiters.nzc,
                        verbose = verbose)
   })
   
