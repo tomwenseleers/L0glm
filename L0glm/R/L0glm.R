@@ -758,7 +758,7 @@ L0glm.fit = function(X,
                             X = X[,variable.indices, drop = F], 
                             y = y, 
                             family = family, 
-                            lambda = lambda, 
+                            lambda = 1e-30, 
                             gamma = gamma,
                             maxit = maxit,
                             tol = tol,
@@ -848,7 +848,7 @@ L0glm.fit = function(X,
           L0glm.fit.internal(X = X[,variable.indices,drop=F],
                              y = as.vector(y[,col,drop=F]),
                              family = family,
-                             lambda = 0,
+                             lambda = 1e-30,
                              gamma = gamma,
                              nonnegative = nonnegative,
                              weights = as.vector(weights[,col,drop=F]),
@@ -913,10 +913,9 @@ L0glm.fit = function(X,
     if(relaxed){
       # Apply relaxed group L0 feature selection
       variable.indices = which(coefficients!=0)
-      start <- coefficients # TODO Should the start be the previous iteration coefficients?
+      # start <- coefficients # TODO Should the start be the previous iteration coefficients?
       
-      
-      fit <- L0glm.fit.internal(X = X[,variable.indices, drop = F], 
+      fit <- L0glm.fit.internal(X = X[,variable.indices, drop = F],
                                 y = y,
                                 family = family,
                                 weights = weights,
@@ -925,13 +924,13 @@ L0glm.fit = function(X,
                                 start = start[variable.indices],
                                 lower = lower[variable.indices],
                                 upper = upper[variable.indices],
-                                lambda = 0, 
+                                lambda = 1e-30,
                                 nonzero.centered = nonzero.centered,
                                 ridge.center = ridge.center[variable.indices],
                                 gamma = gamma,
                                 thresh = thresh,
-                                solver = solver, 
-                                method = method, 
+                                solver = solver,
+                                method = method,
                                 maxit = maxit,
                                 tol = tol,
                                 no.pen = no.pen,
@@ -939,10 +938,10 @@ L0glm.fit = function(X,
                                 warmupiters = warmupiters,
                                 warmupiters.nzc = warmupiters.nzc,
                                 verbose = verbose)
-      
+
       coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
       weights <- rep(0, nrow(X))
-      
+
       coefficients[variable.indices] <- fit$coefficients
       pen.weights[variable.indices] <- fit$pen.weights
       lambdas[variable.indices] <- fit$lambdas
@@ -1027,10 +1026,10 @@ L0glm.fit.internal = function(X,
     
     good = which(!is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0)) # valid rows
     
-    
+
     if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
-        W = as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
+        W <- W.ret <- as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
         good = which(!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
         z.ret <- (y - offset) # Returned (non subsetted) response
         z = z.ret[good] # Subset used for fit
@@ -1040,6 +1039,7 @@ L0glm.fit.internal = function(X,
         z.ret <- (eta - offset) + (y - mu) / mu.prime 
         z <- (eta - offset)[good] + (y - mu)[good] / mu.prime[good] # working (adjusted) response
         W <- weights[good] * as.vector(mu.prime[good]^2 / variance(mu)[good]) # updated weights 
+        W.ret <- weights * as.vector(mu.prime^2 / variance(mu))
       }
     } else {
       z.ret <- (y - offset)
@@ -1062,7 +1062,7 @@ L0glm.fit.internal = function(X,
         center = NULL
       }
     } else {
-      if(nonzero.centered) center = ridge.center 
+      if(nonzero.centered) center = ridge.center else center = NULL
     }
     
     
@@ -1131,7 +1131,7 @@ L0glm.fit.internal = function(X,
     dev_old = dev
     beta_old = beta # TODO remove dev since converged is calculated differently?
   }
-  return(list(coefficients = as.vector(beta), weights = as.vector(W), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
+  return(list(coefficients = as.vector(beta), weights = as.vector(W.ret), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
 }
 
 #' @describeIn L0glm
