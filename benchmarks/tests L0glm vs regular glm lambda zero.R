@@ -41,17 +41,17 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = X,
                                             warmupiters = 1,
                                             # start = rep(1, ncol(data_gaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 3L, 
+                                            method = 7L, 
                                             relaxed = FALSE,
                                             thresh = 1E-10
-))  # 0.06s
+))  # 0.06s with method=3L, 0.3s with method=7L
 
 # NOTE: note that L0glm can fit GLMs with perfectly collinear variables, e.g.
 # with X = cbind(data_gaus$X, data_gaus$X)
 # in that case, it would divide the total effect over the different collinear versions
 # of each variable
 
-max(abs(L0glm_gaus_lambda0$coefficients-coef(glm_gaus))) # 1.476034e-09, correct
+max(abs(L0glm_gaus_lambda0$coefficients-coef(glm_gaus))) # 1.743605e-13, correct
 
 # check if metrics (loglik & AIC & BIC) are correct
 metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = L0glm_gaus_lambda0$coefficients,  # some metrics
@@ -157,7 +157,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = data_gaus$beta_true))) )
-} )))) # 26s
+} )))) # 23s
 matplot(x=log10(metrics$lambda), 
         y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")

@@ -26,17 +26,20 @@ sim <- simulate_spike_train(n = n,
                             sd_logbeta = sd_logbeta)
 X <- sim$X
 y <- sim$y
+dispersion <- 1
 
 # using lambda 1
 system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = poisson(identity), 
                            lambda = 1, 
                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                           # ridge.center = start, # ridge.center
                            nonnegative = TRUE,
-                           warmupiters = 4,
+                           warmupiters = 1,
+                           # warmupiters.nzc = 1,
                            # start = rep(10, ncol(sim$X)), # coefficient starting values
                            solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
-                           method = 3L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
+                           method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
 )$coefficients) # 0.29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
@@ -51,19 +54,19 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                family = poisson(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                               # ridge.center = start, # ridge.center
                                nonnegative = TRUE,
                                warmupiters = 1,
+                               # warmupiters.nzc = 1,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-10
 )) 
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0)  # 1068
+sum(L0glm.out_preset_coefs!=0)  # 999
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
-
-plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
 
 mincoef <- min(abs(L0glm.out_preset_coefs)[L0glm.out_preset_coefs!=0]) # nonzero coefficient with smallest absolute value
 do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
@@ -74,38 +77,35 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
 plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
 
 
-# couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
-# weights = L0glm.out_preset$weights
-weights = 1/(sim$y+0.1)
-Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=F) # = X * sqrt(weights)
-Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(1,ncol(sim$X))))), sparse=F) # row augmented covariate matrix
-ywaug = as.vector(c(sim$y, rep(0, ncol(sim$X)))) # 
-
-# orthogonal initialisation (assuming variables are orthogonal) ####
-beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
-cor(beta_init_orthogonal, as.vector(sim$beta_true)) # 0.3363417
-plot(beta_init_orthogonal, as.vector(sim$beta_true), pch=16, col="blue")
-mean(abs(beta_init_orthogonal-sim$beta_true)) # 485.0457
-# colSums(Xwaug^2) = diag(crossprod(Xwaug)))
-# PS original variables in columns of X can be very far from orthogonal, 
-# but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
-# makes the assumption hold better
-
-# diagonal initialisation (assuming system is dominated by diagonal of X) ####
-# for signal deconvolution problem with n=p this gives the best initial solution
-# only works if X is square though
-beta_init_diagonal <- y*sqrt(weights) / diag(Xw)
-beta_init_diagonal[is.na(beta_init_diagonal)] = 0
-cor(beta_init_diagonal, as.vector(sim$beta_true)) # 0.4712314
-plot(beta_init_diagonal, as.vector(sim$beta_true), pch=16, col="blue")
-mean(abs(beta_init_diagonal-sim$beta_true)) # 1834.576
+# # couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
+# # weights = L0glm.out_preset$weights
+# weights = 1/(sim$y+0.1)
+# Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=F) # = X * sqrt(weights)
+# Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(1,ncol(sim$X))))), sparse=F) # row augmented covariate matrix
+# ywaug = as.vector(c(sim$y, rep(0, ncol(sim$X)))) # 
+# 
+# # orthogonal initialisation (assuming variables are orthogonal) ####
+# beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
+# cor(beta_init_orthogonal, as.vector(sim$beta_true)) # 0.3363417
+# plot(beta_init_orthogonal, as.vector(sim$beta_true), pch=16, col="blue")
+# mean(abs(beta_init_orthogonal-sim$beta_true)) # 485.0457
+# # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
+# # PS original variables in columns of X can be very far from orthogonal, 
+# # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
+# # makes the assumption hold better
+# 
+# # diagonal initialisation (assuming system is dominated by diagonal of X) ####
+# # for signal deconvolution problem with n=p this gives the best initial solution
+# # only works if X is square though
+# beta_init_diagonal <- y*sqrt(weights) / diag(Xw)
+# beta_init_diagonal[is.na(beta_init_diagonal)] = 0
+# cor(beta_init_diagonal, as.vector(sim$beta_true)) # 0.4712314
+# plot(beta_init_diagonal, as.vector(sim$beta_true), pch=16, col="blue")
+# mean(abs(beta_init_diagonal-sim$beta_true)) # 1834.576
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
-# weights <- 1/(sim$y+0.1)  # this works to calculate max lambda
-# weights <- L0glm.out_preset$weights  # this does not work - TODO: check correctness of output weights
-weights <- as.vector(1/(L0glm.out_preset$coefficients %*% sim$X))  # this works to calculate max lambda
-# TODO: check output weights
+weights = L0glm.out_preset$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% X[,,drop=F]
 sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
 yw <- y[, sel_task] * sqrt(weights) 
@@ -115,27 +115,28 @@ yw <- y[, sel_task] * sqrt(weights)
 # coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 # maxlambda <- maxlambda/4
-maxlambda # 68335.98 / 69256.2
+maxlambda
   
 lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-warmstart <- 0.9 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+rep(mincoef/2,ncol(sim$X))*(1-warmstart)
-  # start[L0glm.out_preset_coefs==0] <- 0
+  start <- L0glm.out_preset_coefs*warmstart+rep(1,ncol(sim$X))*(1-warmstart)
+  start[L0glm.out_preset_coefs==0] <- 0 # slightly faster & stable with this
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                             # ridge.center = start, # ridge.center = start also works
+                             # ridge.center = L0glm.out_preset_coefs*0.001, 
                              nonnegative = TRUE,
                              warmupiters = 1,
+                             warmupiters.nzc = 1,
                              start = start, # rep(1, ncol(X)), # start, # rep(1, ncol(X)),  # start, # 
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
                              # gamma = 2, 
-                             thresh = 1E-10,
+                             thresh = 1E-5,
                              relaxed = FALSE
                              )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
@@ -143,7 +144,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                           X = X, y = y, 
                                           family = poisson(identity), 
                                           beta_true = sim$beta_true))) )
-  } )))) # 32s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
+  } )))) # 29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
 abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
@@ -269,15 +270,15 @@ yw <- y[, sel_task] * sqrt(weights)
 # Or make a convenience function that returns z and w given a particular given family and 
 # coefficient estimates?
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
-maxlambda <- maxlambda*(1/4) # factor of 1/4 of Frommlet & Nuel to convert lambda to lambda tilde
+maxlambda <- maxlambda*(1/4) # factor of 1/4 of Frommlet & Nuel to convert lambda to lambda tilde for Gaussian case
 
 lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-warmstart <- 0.9 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.2 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+rep(mincoef/2,ncol(sim$X))*(1-warmstart)
-  # start[L0glm.out_preset_coefs==0] <- 0
+  start <- L0glm.out_preset_coefs*warmstart+rep(1,ncol(sim$X))*(1-warmstart)
+  start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
@@ -403,7 +404,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
                                thresh = 1E-10
-)) # 7.92s
+)) # 14.97s
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
@@ -415,10 +416,11 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
                            beta_true = sim$beta_true))
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 7, by=0.5)
+lambdas <- 10^seq(-3, 7, by=1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
-  lambda <- lambdas[[i]]
+  print(i)
+  lambda <- lambdas[[i]] # for i=8 gives error at L0glm.R#742 number of rows of result is not a multiple of vector length (arg 8)
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
                              lambda = lambda, 
@@ -426,19 +428,25 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
-                             warmupiters = 4,                               
-                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                             solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+                             warmupiters = 1,                               
+                             # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                             method = 7L,
+                             parallelize = FALSE, # TODO produces error with parallellize=TRUE
+                             thresh = 1E-10
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
                                               X = X, y = y, 
                                               family = poisson(identity), 
-                                              beta_true = sim$beta_true))) )
-} )))
-# TODO : returns error Error in replCmat4(x, i1 = if (iMi) seq.int(from = 0L, length.out = di[1L]) else .ind.prep2(i,  : 
-# number of items to replace is not a multiple of replacement length
-
+                                              beta_true = sim$beta_true) )) )
+} ) ))
+# TODO fix bug with parallelize = TRUE returns Error in replCmat4(x, i1 = if (iMi) seq.int(from = 0L, length.out = di[1L]) else .ind.prep2(i,  : 
+# number of items to replace is not a multiple of replacement length at L0glm.R#742
+# In addition: Warning message:
+# In (function (..., deparse.level = 1)  :
+# number of rows of result is not a multiple of vector length (arg 8)
+  
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
@@ -487,7 +495,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-L0glm.out <- L0glm.fit(X, y, 
+L0glm.out_preset <- L0glm.fit(X, y, 
                                family = gaussian(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -495,22 +503,27 @@ L0glm.out <- L0glm.fit(X, y,
                                relaxed = TRUE,
                                nonnegative = TRUE,
                                warmupiters = 1,                               
-                             # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                               solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)$coefficients
-abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
+                             # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                               method = 7L,
+                               thresh = 1E-10
+)
+L0glm.out_preset_coefs = L0glm.out_preset$coefficients
+abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out, 
+do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
                            X = X, y = y, 
                            family = gaussian(identity), 
                            beta_true = sim$beta_true))
 
 # coefficients & metrics over a range of lambda values
-lambdas <- 10^seq(-3, 7, by=0.5)
+lambdas <- 10^seq(-3, 7, by=1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
+  print(i)
+  # TODO fix bug for i=
   lambda <- lambdas[[i]]
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
@@ -521,7 +534,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              nonnegative = TRUE,
                              warmupiters = 1,                               
                            # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                             solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+                             solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                             method = 7L,
+                             parallellize = FALSE, # TODO produces error with parallellize=TRUE
+                             thresh = 1E-10
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -529,7 +545,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                                               family = gaussian(identity), 
                                               beta_true = sim$beta_true))) )
 } )))
-# TODO produces error
+# TODO fix bug : for i=8 and with parallellize = TRUE produces error at L0glm.R#742
 # Error in .local(x, i, j, ..., value) :
 # RHS 'value' (class list) matches 'ANY', but must match matrix class dgCMatrix
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
