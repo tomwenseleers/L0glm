@@ -875,7 +875,7 @@ L0glm.fit = function(X,
         z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
       }
     }
-    weights <- weights.mat
+    weights.ret <- weights.mat
     pen.weights <- pen.weights.mat
     lambdas <- lambdas.mat
     z <- z.mat
@@ -907,7 +907,7 @@ L0glm.fit = function(X,
     coefficients <- fit$coefficients
     pen.weights <- fit$pen.weights
     lambdas <- fit$lambdas
-    weights <- fit$weights
+    weights.ret <- fit$weights
     z <- fit$z
     
     if(relaxed){
@@ -940,21 +940,21 @@ L0glm.fit = function(X,
                                 verbose = verbose)
 
       coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
-      weights <- rep(0, nrow(X))
+      weights.ret <- rep(0, nrow(X))
 
       coefficients[variable.indices] <- fit$coefficients
       pen.weights[variable.indices] <- fit$pen.weights
       lambdas[variable.indices] <- fit$lambdas
       z <- fit$z
-      weights <- fit$weights
+      weights.ret <- fit$weights
     }
   }
   
-  weights[is.infinite(weights)] <- 0
+  weights.ret[is.infinite(weights)] <- 0
   pen.weights[is.infinite(pen.weights)] <- 0
   lambdas[is.infinite(lambdas)] <- 0
   
-  return(list(coefficients = coefficients, weights = weights, pen.weights = pen.weights, lambdas = lambdas, response = z))
+  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, response = z))
 }
 
 #' @describeIn L0glm
