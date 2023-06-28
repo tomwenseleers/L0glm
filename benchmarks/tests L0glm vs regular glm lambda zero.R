@@ -132,7 +132,7 @@ mincoef <- min(abs(L0glm_gaus_presetlambda$coefficients))
 
 lambdas <- 10^seq(round(log10(lambda_preset_gaus))-3, log10(maxlambda)+1, by=0.2)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(data_gaus$X))
-warmstart <- 0.01 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.001 # % by which L0glm_gaus_presetlambda$coefficients will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   start <- (L0glm_gaus_presetlambda$coefficients)*warmstart+rep(1, ncol(data_gaus$X))*(1-warmstart)
@@ -276,6 +276,26 @@ metrics_pois
 logLik(glm_pois)-metrics_pois$loglik # 
 AIC(glm_pois)-metrics_pois$aic # 
 BIC(glm_pois)-metrics_pois$bic # 
+
+irls = function(A, b, family=poisson(log), maxit=25, tol=1e-08)
+  {
+    x = rep(0,ncol(A))
+    for(j in 1:maxit)
+    {
+      eta    = A %*% x
+      g      = family$linkinv(eta)
+      gprime = family$mu.eta(eta)
+      z      = eta + (b - g) / gprime
+      W      = as.vector(gprime^2 / family$variance(g))
+      xold   = x
+      x      = solve(crossprod(A,W*A), crossprod(A,W*z), tol=2*.Machine$double.eps)
+      if(sqrt(crossprod(x-xold)) < tol) break
+    }
+    list(coefficients=x,iterations=j)
+  }
+
+coefs_irls = irls(A=X, b=y, family = poisson(log)) 
+max(abs(coefs_irls$coefficients-coef(glm_pois))) # 6.162182e-12
 
 
 # L0 glm fit with lambda preset to optimise given IC
