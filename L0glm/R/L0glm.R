@@ -280,7 +280,7 @@ L0glm <- function(formula,
                   normalize = TRUE, #
                   maxit = 25,
                   parallellize = TRUE, # 
-                  warmupiters = ifelse(family$family == "gaussian", 1, 4),
+                  warmupiters = 1, # TODO: should it go back to ifelse(family$family == "gaussian", 1, 4)?  
                   grouped = TRUE,
                   group.maxit = 6,
                   relaxed = TRUE,
@@ -601,17 +601,17 @@ L0glm.fit = function(X,
                      parallellize = TRUE,
                      no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
                      grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
-                     group.maxit = 6, # note: increased default to 6 to increase performance
+                     group.maxit = 6, 
                      relaxed = TRUE,
                      gamma = 2,
                      nonzero.centered = FALSE,
                      ridge.center = NULL, # Should be a vector of length ncol(X). TODO Add to the help file that this option is ignored if nonzero.centered = FALSE
                      thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
-                     solver = "eigen", # or "osqp" or "glmnet"
+                     solver = "eigen", 
                      method = 7L,
                      maxit = 25,
                      tol = 1E-10,
-                     warmupiters = ifelse(family$family == "gaussian", 1, 4),
+                     warmupiters = 1, # TODO: go back to ifelse(family$family == "gaussian", 1, 4)?
                      warmupiters.nzc = warmupiters,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose = FALSE){
@@ -736,6 +736,7 @@ L0glm.fit = function(X,
                             nonnegative = nonnegative, 
                             control.solver = control.solver, 
                             warmupiters = warmupiters, 
+                            warmupiters.nzc = warmupiters.nzc,
                             verbose = verbose)
         # Extract results
         coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
@@ -776,6 +777,7 @@ L0glm.fit = function(X,
                             nonnegative = nonnegative, 
                             control.solver = control.solver, 
                             warmupiters = warmupiters, 
+                            warmupiters.nzc = warmupiters.nzc,
                             verbose = verbose)
         # Extract results
         coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
@@ -984,8 +986,8 @@ L0glm.fit.internal = function(X,
                               maxit = 25,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                              warmupiters = 4,
-                              warmupiters.nzc = warmupiters,
+                              warmupiters = 1,
+                              warmupiters.nzc = 3,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   
 
@@ -1032,7 +1034,7 @@ L0glm.fit.internal = function(X,
         W <- W.ret <- as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
         good = which(!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
         z.ret <- (y - offset) # Returned (non subsetted) response
-        z = z.ret[good] # Subset used for fit
+        z <- z.ret[good] # Subset used for fit
       } else {
         mu.prime <- family$mu.eta(eta) # derivative of the expected values
         good = which((weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
@@ -1123,7 +1125,7 @@ L0glm.fit.internal = function(X,
     mask <- reldiff <= tol # keep coefficients fixed in subsequent iterations if they converged
     mask[is.na(mask)] <- TRUE
     stop.loop <- sum(mask) >= (p-1)
-    if(stop.loop & i > warmupiters) break # Only break if at glm.iwls was called at least once.
+    if(stop.loop) break # & i > warmupiters) break 
     
     
     # if (abs(dev - dev_old) / (0.1 + abs(dev)) < tol) break # This gives error because dev goes to infinity
