@@ -987,7 +987,6 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               warmupiters = 4,
                               warmupiters.nzc = warmupiters,
-                              warmupiters.nzc = warmupiters.nzc,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   
 
