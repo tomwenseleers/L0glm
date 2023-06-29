@@ -310,7 +310,6 @@ metrics$lambda[which.min(metrics$deviance)] # # NOTE this is deviance relative t
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
 metrics$lambda[which.max(metrics$loglik)] # 0
-# TODO: check why loglikelihood comes out so high for the very high lambda values - does not look right
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 
