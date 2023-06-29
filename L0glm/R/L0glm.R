@@ -680,26 +680,19 @@ L0glm.fit = function(X,
         devtools::load_all(".") # TODO remove this? this should not be necessary once all callable functions are correctly exported by the L0glm package
       })
       
-      # Create a list of column index chunks
+      # Create the chunks for parallellization
       cols <- 1:ncol(y)
-      
-      # chunks <- split(cols, cut(cols, n_cores))
-      chunk.size <- ceiling(length(cols) / n_cores)
-      extra <- length(cols) - (chunk.size * (n_cores-1))
-      if(extra < 0){
-        n_cores <- n_cores - 1
-        chunk_sizes <- rep(chunk.size, n_cores)
-        chunk_sizes[length(chunk_sizes)] <- chunk_sizes[length(chunk_sizes)] + extra
-      } else if (extra == 0){
-        n_cores <- n_cores - 1
-        chunk_sizes <- rep(chunk.size, n_cores)
-      } else {
-        chunk_sizes <- c(rep(chunk.size, n_cores-1), extra)
+      chunk.size <- length(cols) %/% n_cores
+      extra <- length(cols) %% n_cores
+      chunk_sizes <- rep(chunk.size, n_cores)
+      if(extra > 0) {
+        chunk_sizes[1:extra] <- chunk_sizes[1:extra] + 1
       }
-     
+      
       split_points <- c(0, cumsum(chunk_sizes))
       split_vector <- rep(1:n_cores, chunk_sizes)
       chunks <- split(cols, split_vector)
+      
       
       for(i in 1L:group.maxit){
         if(i > 1){
@@ -709,7 +702,6 @@ L0glm.fit = function(X,
         } else {
           variable.indices <- 1:ncol(X)
         }
-        
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
@@ -952,9 +944,9 @@ L0glm.fit = function(X,
     }
   }
   
-  weights.ret[is.infinite(weights)] <- .Machine$double.xmax
-  pen.weights[is.infinite(pen.weights)] <- .Machine$double.xmax
-  lambdas[is.infinite(lambdas)] <- .Machine$double.xmax
+  weights.ret[is.infinite(weights)] <- 1e11
+  pen.weights[is.infinite(pen.weights)] <- 1e11
+  lambdas[is.infinite(lambdas)] <- 1e11
   
   return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, response = z))
 }
