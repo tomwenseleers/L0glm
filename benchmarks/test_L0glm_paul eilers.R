@@ -81,7 +81,7 @@ plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
 # # weights = L0glm.out_preset$weights
 # weights = 1/(sim$y+0.1)
 # Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=F) # = X * sqrt(weights)
-# Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(1,ncol(sim$X))))), sparse=F) # row augmented covariate matrix
+# Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(lambda_preset,ncol(sim$X))))), sparse=F) # row augmented covariate matrix
 # ywaug = as.vector(c(sim$y, rep(0, ncol(sim$X)))) # 
 # 
 # # orthogonal initialisation (assuming variables are orthogonal) ####
@@ -128,10 +128,10 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              family = poisson(identity), 
                              lambda = lambda, 
                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                             # ridge.center = L0glm.out_preset_coefs*0.001, 
+                             # ridge.center = NULL, 
                              nonnegative = TRUE,
                              warmupiters = 1,
-                             warmupiters.nzc = 1,
+                             warmupiters.nzc = 5,
                              start = start, # rep(1, ncol(X)), # start, # rep(1, ncol(X)),  # start, # 
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
@@ -283,9 +283,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              family = gaussian(identity), 
                              lambda = lambda, 
                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                             # ridge.center = start;
+                             # ridge.center = NULL,
                              nonnegative = TRUE,
                              warmupiters = 1,
+                             warmupiters.nzc = 5,
                              start = start, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
@@ -395,7 +396,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                family = poisson(identity), 
                                lambda = lambda_preset, 
                                nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               # ridge.center = XX,
+                               # ridge.center = NULL,
                                grouped = TRUE,
                                relaxed = TRUE, # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
@@ -432,7 +433,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
-                             parallelize = FALSE, # TODO produces error with parallellize=TRUE
+                             parallellize = FALSE, # TODO produces error with parallellize=TRUE
                              thresh = 1E-10
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels

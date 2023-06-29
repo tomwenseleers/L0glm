@@ -96,14 +96,14 @@ sum(L0glm_gaus_presetlambda$coefficients!=0)
 # couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
 weights = L0glm_gaus_presetlambda$weights
 Xw = Matrix(Diagonal(x=sqrt(weights)) %*% data_gaus$X, sparse=F) # = X * sqrt(weights)
-Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(1,ncol(data_gaus$X))))), sparse=F) # row augmented covariate matrix
+Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(lambda_preset_gaus,ncol(data_gaus$X))))), sparse=F) # row augmented covariate matrix
 ywaug = as.vector(c(data_gaus$y, rep(0, ncol(data_gaus$X)))) # 
 
 # orthogonal initialisation (assuming variables are orthogonal) ####
 beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
-cor(beta_init_orthogonal, data_gaus$beta_true) # 0.9923448
+cor(beta_init_orthogonal, data_gaus$beta_true) # 0.992346
 plot(beta_init_orthogonal, data_gaus$beta_true, pch=16, col="blue")
-mean(abs(beta_init_orthogonal-data_gaus$beta_true)) # 1.629831
+mean(abs(beta_init_orthogonal-data_gaus$beta_true)) # 1.629087
 # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
 # PS original variables in columns of X can be very far from orthogonal, 
 # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
@@ -142,12 +142,13 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          family = gaussian(identity), 
                          lambda = lambda, 
                          nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                         # ridge.center = L0glm_gaus_presetlambda$coefficients, # rep(0, ncol(data_gaus$X)),
+                         ridge.center = NULL, # L0glm_gaus_presetlambda$coefficients, # rep(0, ncol(data_gaus$X)),
                          nonnegative = FALSE,
                          warmupiters = 1,
+                         warmupiters.nzc = 5,
                          start = start, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # rep(1, ncol(data_gaus$X)), # beta_init_orthogonal, # start # rep(1, ncol(data_gaus$X)), # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, 
+                         method = 7L, # 3L here 2x as fast
                          # gamma = 2, 
                          thresh = 1E-10,
                          relaxed = FALSE 
@@ -259,7 +260,7 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
                                             warmupiters = 1,
                                             start = rep(1, ncol(data_pois$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 3L, #
+                                            method = 7L, #
                                             thresh = 1E-10
 ))  
 # TODO: gives bad solution - check what is going wrong...

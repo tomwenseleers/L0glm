@@ -1059,12 +1059,12 @@ L0glm.fit.internal = function(X,
       if(i > warmupiters.nzc & nonzero.centered){
         center = beta_old 
       } else if (nonzero.centered){
-        center = start
+        center = NULL # start
       } else {
         center = NULL
       }
     } else {
-      if(nonzero.centered) center = ridge.center else center = NULL
+      if(i > warmupiters.nzc & nonzero.centered) center = ridge.center else center = NULL
     }
     
     

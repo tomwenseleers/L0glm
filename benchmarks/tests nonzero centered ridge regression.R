@@ -25,7 +25,7 @@ X <- sim$X
 y <- sim$y
 
 # # using lambda 1
-# L0glm.out <- L0glm.fit_new(X, y, 
+# L0glm.out <- L0glm.fit(X, y, 
 #                            family = poisson(identity), 
 #                            lambda = 1, 
 #                            nonnegative = TRUE)
@@ -38,21 +38,45 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, lambda = 1.76 would optimise GIC
 
+# couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
+weights = 1/(sim$y+0.1) # L0glm_gaus_presetlambda$weights
+Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=T) # = X * sqrt(weights)
+Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(lambda_preset,ncol(sim$X))))), sparse=T) # row augmented covariate matrix
+ywaug = as.vector(c(sim$y, rep(0, ncol(sim$X)))) # 
+
+# orthogonal initialisation (assuming variables are orthogonal) ####
+beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
+cor(beta_init_orthogonal, as.vector(sim$beta_true)) 
+plot(beta_init_orthogonal, as.vector(sim$beta_true), pch=16, col="blue")
+# colSums(Xwaug^2) = diag(crossprod(Xwaug)))
+# PS original variables in columns of X can be very far from orthogonal, 
+# but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
+# makes the assumption hold better
+
+# diagonal initialisation (assuming system is dominated by diagonal of X) ####
+# for signal deconvolution problem with n=p this gives the best initial solution
+# only works if X is square though
+# beta_init_diagonal <- y*sqrt(weights) / diag(Xw)
+
+
 library(microbenchmark)
-system.time(L0glm.out <- L0glm.fit_new(X, y, 
+system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = poisson(identity), 
                            lambda = lambda_preset,
-                           nonzero.centered = TRUE, # gives slightly better solution based on IC, about the same speed or slightly faster
+                           nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
                            ridge.center = NULL, 
                            nonnegative = TRUE,
-                           relaxed = FALSE, # TODO: CHECK: relaxed argument has no effect in single channel fit - is this as intended? Should one not be allowed to fit an L0glm and then refit all selected variables unpenalized with lambda=0? 
-                           warmupiters = 4)) # should be zeto to 4 for nongaussian, eg poisson
-# 0.25s with nonzero.centered = TRUE, 0.23s with nonzero.centered = FALSE
-points(sim$x, L0glm.out, pch = 16, col= 'blue')
+                           start = rep(1, ncol(X)),
+                           relaxed = FALSE, 
+                           thresh = 1E-10,                           
+                           warmupiters = 1,
+                           warmupiters.nzc = 10)) 
+# 0.34s
+points(sim$x, L0glm.out$coefficients, pch = 16, col= 'blue')
 # graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
 # some metrics
-do.call(cbind, get.metrics(beta = L0glm.out, 
+do.call(cbind, get.metrics(beta = L0glm.out$coefficients, 
                            X = X, y = y, 
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
@@ -84,7 +108,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-system.time(L0glm.out <- L0glm.fit_new(X, y, 
+system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = gaussian(identity), 
                            lambda = lambda_preset, 
                            nonzero.centered = TRUE, # gives slightly better solution based on IC, about the same speed or slightly faster
@@ -133,7 +157,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 would optimise GIC
 
-system.time(L0glm.out <- L0glm.fit_new(X, y, 
+system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = poisson(identity), 
                            lambda = lambda_preset,
                            nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
@@ -184,7 +208,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-system.time(L0glm.out <- L0glm.fit_new(X, y, 
+system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = gaussian(identity), 
                            lambda = lambda_preset, 
                            nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
