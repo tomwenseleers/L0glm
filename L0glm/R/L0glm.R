@@ -709,7 +709,6 @@ L0glm.fit = function(X,
         } else {
           variable.indices <- 1:ncol(X)
         }
-        
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
@@ -952,9 +951,9 @@ L0glm.fit = function(X,
     }
   }
   
-  weights.ret[is.infinite(weights)] <- .Machine$double.xmax
-  pen.weights[is.infinite(pen.weights)] <- .Machine$double.xmax
-  lambdas[is.infinite(lambdas)] <- .Machine$double.xmax
+  weights.ret[is.infinite(weights)] <- 1e11
+  pen.weights[is.infinite(pen.weights)] <- 1e11
+  lambdas[is.infinite(lambdas)] <- 1e11
   
   return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, response = z))
 }
