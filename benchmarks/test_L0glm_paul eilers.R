@@ -177,7 +177,7 @@ metrics$lambda[which.max(metrics$accuracy)] #
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 
 plot(log10(metrics$lambda), metrics$aic, type="l")
-metrics$lambda[which.min(metrics$aic)] #
+metrics$lambda[which.min(metrics$aic)] # 
 plot(log10(metrics$lambda), metrics$bic, type="l")
 metrics$lambda[which.min(metrics$bic)] # 
 plot(log10(metrics$lambda), metrics$ebic, type="l")
@@ -185,7 +185,7 @@ metrics$lambda[which.min(metrics$ebic)] #
 plot(log10(metrics$lambda), metrics$gic, type="l")
 metrics$lambda[which.min(metrics$gic)] # 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which.min(metrics$mbic)] #
+metrics$lambda[which.min(metrics$mbic)] # 
 
 # lambda values that are expected to optimise each IC (with start = rep(1, ncol(X)))
 # note: using warm starts in the L0glm.fit function would shift the
@@ -417,7 +417,7 @@ metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = beta, # L0glm.out_1v
                                                      y = y,
                                                      family = gaussian(identity), 
                                                      beta_true = as.matrix(sim$beta_true))))
-metrics_gaus$loglik # -807.7088
+metrics_gaus$loglik # -807.7088 # different value because in glm p=2, whereas in our model p=101, and 807.7088+99=906.7088
 metrics_gaus$deviance # 439640658
 
 
