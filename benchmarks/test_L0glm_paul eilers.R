@@ -126,13 +126,15 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   start[L0glm.out_preset_coefs==0] <- 0 # slightly faster & stable with this
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
+                             # family = gaussian(identity),
+                             # weights = 1/(sim$y+0.1),
                              lambda = lambda, 
                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                             # ridge.center = NULL, 
+                             ridge.center = NULL, 
                              nonnegative = TRUE,
                              warmupiters = 1,
                              warmupiters.nzc = 5,
-                             start = start, # rep(1, ncol(X)), # start, # rep(1, ncol(X)),  # start, # 
+                             # start = rep(0.1, ncol(X)), # start, # rep(1, ncol(X)),  # start, # 
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
                              # gamma = 2, 
@@ -152,7 +154,7 @@ library(scales)
 abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
-metrics$lambda[which.min(metrics$deviance)] # # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
+metrics$lambda[which.min(metrics$deviance)] # 5.011872 if we use ground truth # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 metrics$lambda[which.max(metrics$loglik)] # 0
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")

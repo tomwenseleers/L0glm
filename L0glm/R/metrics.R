@@ -51,7 +51,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   if (!is.null(beta_true)) {
     TP = length(intersect(vars_true, vars_estimated)) # Intersection of true and estimated sets
     FP = length(setdiff(vars_estimated, vars_true)) # In estimated but not in true
-    TN = p-length(union(vars_true, vars_estimated)) # In neither
+    TN = ncol(X)-length(union(vars_true, vars_estimated)) # In neither
     FN = length(setdiff(vars_true, vars_estimated)) # In true but not in estimated
     
     # calculate precision, recall, sensitivity, accuracy & F1 score to recover true support from these
@@ -113,6 +113,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   
   # calculated deviance
   dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(W))
+  # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W)) # using ground truth
   dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
   deviance = sum(dev_res) # deviance 
   
@@ -120,7 +121,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # see also https://github.com/abess-team/abess/blob/master/R-package/R/deviance.abess.R
   # Get -2 * log-likelihood & log likelihood
   y = as.vector(y)
-  # y = as.vector(mu_true)
+  # y = as.vector(mu_true) # using ground truth
   if (family$family!="poisson") { 
                       good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
                       aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
