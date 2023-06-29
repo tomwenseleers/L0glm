@@ -451,12 +451,13 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                grouped = TRUE,
                                relaxed = TRUE, # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
-                               warmupiters = 1,                               
+                               warmupiters = 1,
+                               parallellize = TRUE,
                              # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
                                thresh = 1E-10
-)) # 14.97s
+)) # 9s
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
@@ -484,7 +485,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
-                             parallellize = FALSE, # TODO produces error with parallellize=TRUE
+                             parallellize = TRUE,
                              thresh = 1E-10
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
@@ -493,12 +494,8 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                                               family = poisson(identity), 
                                               beta_true = sim$beta_true) )) )
 } ) ))
-# TODO fix bug with parallelize = TRUE returns Error in replCmat4(x, i1 = if (iMi) seq.int(from = 0L, length.out = di[1L]) else .ind.prep2(i,  : 
-# number of items to replace is not a multiple of replacement length at L0glm.R#742
-# In addition: Warning message:
-# In (function (..., deparse.level = 1)  :
-# number of rows of result is not a multiple of vector length (arg 8)
-  
+# TODO at i=9 returns error Error in as.vector(pen.weights) : object 'pen.weights' not found
+
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
@@ -588,7 +585,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                            # start = rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
-                             parallellize = FALSE, # TODO produces error with parallellize=TRUE
+                             parallellize = TRUE, # TODO produces error with parallellize=TRUE
                              thresh = 1E-10
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
@@ -597,10 +594,10 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                                               family = gaussian(identity), 
                                               beta_true = sim$beta_true))) )
 } )))
-# TODO fix bug : for i=8 and with parallellize = TRUE produces error at L0glm.R#742
-# Error in .local(x, i, j, ..., value) :
+# TODO with parallellize = TRUE and i=8 produces error
+# Error in .local(x, i, j, ..., value) : 
 # RHS 'value' (class list) matches 'ANY', but must match matrix class dgCMatrix
-# TODO: fix bug with parallellize = FALSE produces error for i=9
+# TODO: for i=9 produces error
 # Error in as.vector(pen.weights) : object 'pen.weights' not found
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
