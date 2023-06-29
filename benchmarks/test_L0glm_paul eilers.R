@@ -472,7 +472,6 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
 lambdas <- 10^seq(-3, 7, by=1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
-  print(i)
   lambda <- lambdas[[i]] # for i=8 gives error at L0glm.R#742 number of rows of result is not a multiple of vector length (arg 8)
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
