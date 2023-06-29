@@ -952,9 +952,9 @@ L0glm.fit = function(X,
     }
   }
   
-  weights.ret[is.infinite(weights)] <- 0
-  pen.weights[is.infinite(pen.weights)] <- 0
-  lambdas[is.infinite(lambdas)] <- 0
+  weights.ret[is.infinite(weights)] <- .Machine$double.xmax
+  pen.weights[is.infinite(pen.weights)] <- .Machine$double.xmax
+  lambdas[is.infinite(lambdas)] <- .Machine$double.xmax
   
   return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, response = z))
 }
