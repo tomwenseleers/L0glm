@@ -308,8 +308,8 @@ abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
+abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
 metrics$lambda[which.max(metrics$loglik)] # 0
-# TODO: check why loglikelihood comes out so high for the very high lambda values - does not look right
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 
@@ -370,6 +370,55 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.76073
+
+# check log likelihood of model with single variable
+lambda = tail(lambdas, 1)/2
+warmstart <- 0.2 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+start <- L0glm.out_preset_coefs*warmstart+rep(1,ncol(sim$X))*(1-warmstart)
+start[L0glm.out_preset_coefs==0] <- 0
+L0glm.out_1variable <- L0glm.fit(X, y, 
+                              family = gaussian(identity), 
+                              lambda = lambda, 
+                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                              nonnegative = TRUE,
+                              warmupiters = 1,
+                              relaxed = TRUE,
+                              start = start, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                              solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+)
+varinmodel = which(L0glm.out_1variable$coefficients!=0) # 97
+varinmodel
+L0glm.out_1variable <- L0glm.fit(X[,varinmodel,drop=F], y, 
+                                 family = gaussian(identity), 
+                                 lambda = lambda, 
+                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                 nonnegative = TRUE,
+                                 warmupiters = 1,
+                                 relaxed = TRUE,
+                                 start = start, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                 solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
+) # TODO fix - now gives error Error in if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X)) : 
+# missing value where TRUE/FALSE needed - gives error in lmridge
+
+
+# glm fit
+glm_gaus <- glm(y ~ 0+as.matrix(X[,varinmodel, drop=F]), family=gaussian(identity))
+glm_gaus$deviance  # 439640658
+glm_gaus$aic # 1817.418
+AIC(glm_gaus) # 1817.418
+BIC(glm_gaus) # 1822.628
+logLik(glm_gaus) # 'log Lik.' -906.7088 (df=2)
+glm_gaus$deviance # 439640658
+
+beta = rep(0,ncol(X))
+beta[varinmodel] = coef(glm_gaus)
+metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = beta, # L0glm.out_1variable$coefficients, # beta, #   # some metrics
+                                                     X = X, 
+                                                     y = y,
+                                                     family = gaussian(identity), 
+                                                     beta_true = as.matrix(sim$beta_true))))
+metrics_gaus$loglik # -807.7088
+metrics_gaus$deviance # 439640658
 
 
 # 2. MULTICHANNEL DECONVOLUTION ####

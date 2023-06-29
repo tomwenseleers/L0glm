@@ -122,7 +122,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   y = as.vector(y)
   # y = as.vector(mu_true)
   if (family$family!="poisson") { 
-                      good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
+                      good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
                       aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                                        n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
                                        mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
@@ -134,7 +134,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
                                             # https://stats.stackexchange.com/questions/475328/negative-infinity-produced-when-computing-log-likelihood-in-poisson-regression-r
                                             # for generalisation allowing noninteger counts
                                             # see https://stats.stackexchange.com/questions/70054/how-is-it-possible-that-poisson-glm-accepts-non-integer-numbers
-                                                           good = which(as.vector(W!=0)&(as.vector(as.numeric(mu))!=0))
+                                                           good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
                                                            aic.model = family$aic(y = round(as.vector(y))[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                                                                                   n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
                                                                                   mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
