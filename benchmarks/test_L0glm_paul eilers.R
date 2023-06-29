@@ -549,6 +549,8 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
 # TODO fix bug : for i=8 and with parallellize = TRUE produces error at L0glm.R#742
 # Error in .local(x, i, j, ..., value) :
 # RHS 'value' (class list) matches 'ANY', but must match matrix class dgCMatrix
+# TODO: fix bug with parallellize = FALSE produces error for i=9
+# Error in as.vector(pen.weights) : object 'pen.weights' not found
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
 plot(log10(metrics$lambda), metrics$deviance, type="l")
