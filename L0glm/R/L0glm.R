@@ -680,26 +680,19 @@ L0glm.fit = function(X,
         devtools::load_all(".") # TODO remove this? this should not be necessary once all callable functions are correctly exported by the L0glm package
       })
       
-      # Create a list of column index chunks
+      # Create the chunks for parallellization
       cols <- 1:ncol(y)
-      
-      # chunks <- split(cols, cut(cols, n_cores))
-      chunk.size <- ceiling(length(cols) / n_cores)
-      extra <- length(cols) - (chunk.size * (n_cores-1))
-      if(extra < 0){
-        n_cores <- n_cores - 1
-        chunk_sizes <- rep(chunk.size, n_cores)
-        chunk_sizes[length(chunk_sizes)] <- chunk_sizes[length(chunk_sizes)] + extra
-      } else if (extra == 0){
-        n_cores <- n_cores - 1
-        chunk_sizes <- rep(chunk.size, n_cores)
-      } else {
-        chunk_sizes <- c(rep(chunk.size, n_cores-1), extra)
+      chunk.size <- length(cols) %/% n_cores
+      extra <- length(cols) %% n_cores
+      chunk_sizes <- rep(chunk.size, n_cores)
+      if(extra > 0) {
+        chunk_sizes[1:extra] <- chunk_sizes[1:extra] + 1
       }
-     
+      
       split_points <- c(0, cumsum(chunk_sizes))
       split_vector <- rep(1:n_cores, chunk_sizes)
       chunks <- split(cols, split_vector)
+      
       
       for(i in 1L:group.maxit){
         if(i > 1){
