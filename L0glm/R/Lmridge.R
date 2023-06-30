@@ -30,9 +30,8 @@ lmridge <- function(X, y, lambdas = NULL,
                     start = rep(1, ncol(X)),
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
-  
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
-  if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X))
+  if(nonnegative) lower[lower < 0] <- 0
   if(is.null(block.size) || block.size == ncol(X)) {
     Xw <- Xweights(X, weights)
     yw <- Yweights(y, weights)

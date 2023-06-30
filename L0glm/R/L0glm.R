@@ -303,7 +303,6 @@ L0glm <- function(formula,
                   verbose = TRUE) {
   
   # TODO talk with tom about whether ot not we should group some of these variables into control lists.
-  
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
   if (is.null(data)) data <- environment(formula)
@@ -644,17 +643,17 @@ L0glm.fit = function(X,
       offset = rep(0, nrow(X))
     }
   }
-  
   if(!is.null(start)){
     if(ncol(y) > 1 & ncol(as.matrix(start)) == 1){
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
-    }
+    } else if(nrow(as.matrix(start)) != ncol(X) | ncol(as.matrix(start)) != ncol(y)){ # nrow(as.matrix(start)) != )
+      stop("Start needs to be of dimensions ncol(X), ncol(y).")
+    } 
   } else {
     start <- matrix(1, nrow = ncol(X), ncol = ncol(y))
   }
   
   if(nonnegative) lower[lower < 0] <- 0
-  
   
   if(ncol(y) > 1){
     if(!grouped) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
@@ -1001,7 +1000,6 @@ L0glm.fit.internal = function(X,
   mustart = NULL
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
   #if (is.null(mustart)) mustart <- y
-  
   if (is.null(start)) {  
     beta <- beta_old <- rep(1,p) # initial model coefficients
     eta = family$linkfun(mustart) 

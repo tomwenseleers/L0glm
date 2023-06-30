@@ -109,10 +109,8 @@ weights = L0glm.out_preset$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% X[,,drop=F]
 sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
 yw <- y[, sel_task] * sqrt(weights) 
-# TODO note that yw should really be zw, i.e. for non-identity link you should be 
-# working on the adjusted response scale - maybe you should also make L0glm.fit return z? 
-# Or make a convenience function that returns z and w given a particular given family and 
-# coefficient estimates?
+# Note that yw should really be zw, i.e. for non-identity link you should be 
+# working on the adjusted response scale - use L0glm.out_preset$response to obtain z
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 # maxlambda <- maxlambda/4
 maxlambda
@@ -267,10 +265,8 @@ weights <- L0glm.out_preset$weights
 Xw <- Diagonal(x=sqrt(weights)) %*% X
 sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
 yw <- y[, sel_task] * sqrt(weights) 
-# TODO note that yw should really be zw, i.e. for non-identity link you should be 
-# working on the adjusted response scale - maybe you should also make L0glm.fit return z? 
-# Or make a convenience function that returns z and w given a particular given family and 
-# coefficient estimates?
+# Note that yw should really be zw, i.e. for non-identity link you should be 
+# working on the adjusted response scale - use L0glm.out_preset$response to obtain z
 maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 maxlambda <- maxlambda*(1/4) # factor of 1/4 of Frommlet & Nuel to convert lambda to lambda tilde for Gaussian case
 
@@ -397,7 +393,7 @@ L0glm.out_1variable <- L0glm.fit(X[,varinmodel,drop=F], y,
                                  nonnegative = TRUE,
                                  warmupiters = 1,
                                  relaxed = TRUE,
-                                 start = start, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                 start = start[varinmodel], # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                  solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
 ) # TODO fix - now gives error Error in if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X)) : 
 # missing value where TRUE/FALSE needed - gives error in lmridge
