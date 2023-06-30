@@ -282,7 +282,7 @@ maxlambda <- maxlambda*(1/4) # factor of 1/4 of Frommlet & Nuel to convert lambd
 
 lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   start <- L0glm.out_preset_coefs*warmstart+rep(mean(L0glm.out_preset_coefs),ncol(sim$X))*(1-warmstart)
@@ -296,7 +296,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              warmupiters = 1,
                              warmupiters.nzc = 5,
                              start = start, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                             solver = "osqp", # note: solver osqp better than eigen for very small lambda values))
+                             solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              relaxed = FALSE,
                              thresh = 1E-10,
@@ -314,7 +314,7 @@ library(scales)
 abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
-metrics$lambda[which.min(metrics$deviance)] # # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
+metrics$lambda[which.min(metrics$deviance)] # 0.2511886 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
 metrics$lambda[which.max(metrics$loglik)] # 7.943282
@@ -340,17 +340,17 @@ metrics$lambda[which.max(metrics$accuracy)] # 7.943282
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 
 plot(log10(metrics$lambda), metrics$aic, type="l")
-metrics$lambda[which.min(metrics$aic)] #
+metrics$lambda[which.min(metrics$aic)] # 7.943282
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 
+metrics$lambda[which.min(metrics$bic)] # 7.943282
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 
+metrics$lambda[which.min(metrics$ebic)] # 7.943282
 plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 
+metrics$lambda[which.min(metrics$gic)] # 7.943282
 abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue") 
 abline(v=log10(1.76), col="red") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which(metrics$mbic==min(metrics$mbic))] #
+metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 7.943282
 
 # lambda values that a priori are expected to optimise each IC (with start = rep(1, ncol(X)))
 # note: using warm starts in the L0glm.fit function would shift the
