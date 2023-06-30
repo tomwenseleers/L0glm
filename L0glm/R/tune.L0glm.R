@@ -172,3 +172,14 @@ tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
   
   # TODO add more plots?
 }
+
+optimize.threshold <- function(thresh, IC = "bic", coefficients, X, y, family){
+  coefficients[abs(coefficients) < thresh] = 0
+  IC.val <- get.metrics(beta = coefficients, 
+              X = X, y = y, 
+              family = family)[[paste0(IC)]]
+  print(IC.val)
+  return(IC.val)
+}
+
+

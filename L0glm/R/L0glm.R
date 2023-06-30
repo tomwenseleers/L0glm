@@ -269,33 +269,33 @@
 #' @export
 L0glm <- function(formula,
                   data = NULL, 
-                  weights = NULL, #
-                  family = gaussian(identity), #
-                  offset = NULL, #
-                  start = NULL, #
+                  weights = NULL, 
+                  family = gaussian(identity), 
+                  offset = NULL, 
+                  start = NULL, 
                   contrasts = NULL,
-                  lambda = 0, #
+                  lambda = 0, 
                   no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
-                  nonnegative = FALSE, #
-                  normalize = TRUE, #
+                  nonnegative = FALSE, 
+                  normalize = TRUE, 
                   maxit = 25,
-                  parallellize = TRUE, # 
-                  warmupiters = 1, # TODO: should it go back to ifelse(family$family == "gaussian", 1, 4)?  
+                  parallellize = TRUE, 
+                  warmupiters = 1, 
                   grouped = TRUE,
                   group.maxit = 6,
                   relaxed = TRUE,
                   nonzero.centered = FALSE,
                   ridge.center = NULL, # Should be a vector of length ncol(X)
-                  solver = NULL, #
-                  method = 7L, #
+                  solver = NULL, 
+                  method = 7L, 
                   lower = rep(-.Machine$double.xmax,ncol(X)), #
                   upper = rep(.Machine$double.xmax,ncol(X)), #
-                  gamma = 2, # 
-                  thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
+                  gamma = 2, #
+                  thresh = 1e-10, # TODO: think about sensible default that should be a function of the scale of the data
                   tol = 1E-10,
                   control.solver = NULL,
                   post.filter.fn = function(u) return(u),
-                  # group.pen.fn = function(mat) sqrt(rowSums(mat^2)), TODO delete this? If you do, delete it from docu
+                  # group.pen.fn = function(mat) sqrt(rowSums(mat^2)), TODO delete this?+ delete it from docu
                   # TODO make CV arguments a single list, eg tune.control ?
                   tune.meth = "none",
                   tune.crit = "bic",
@@ -605,7 +605,7 @@ L0glm.fit = function(X,
                      gamma = 2,
                      nonzero.centered = FALSE,
                      ridge.center = NULL, # Should be a vector of length ncol(X). TODO Add to the help file that this option is ignored if nonzero.centered = FALSE
-                     thresh = 1, # TODO: think about sensible default that should be a function of the scale of the data
+                     thresh = 1e-10, # TODO: think about sensible default that should be a function of the scale of the data
                      solver = "eigen", 
                      method = 7L,
                      maxit = 25,
@@ -1016,6 +1016,9 @@ L0glm.fit = function(X,
       z <- fit$z
       weights.ret <- fit$weights
     }
+    #thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, X = X, y = y, IC = "bic", family = family, maximum = FALSE) # TODO add user passed IC
+    #coefficients[abs(coefficients) < thresh.post$minimum] = 0
+    
   }
   
   weights.ret[is.infinite(weights)] <- 1e11
@@ -1046,7 +1049,7 @@ L0glm.fit.internal = function(X,
                               gamma = 2,
                               nonzero.centered = FALSE,
                               ridge.center = NULL,
-                              thresh = 1,
+                              thresh = 1e-10,
                               solver = "eigen", # or "osqp" or "glmnet"
                               method = 7L, # = Cholesky # 3(+4) = LSCG, 5(+6) = CG, 7(+8) = Cholesky  
                               maxit = 25,
@@ -1163,6 +1166,7 @@ L0glm.fit.internal = function(X,
               solver = solver,
               method = method)
     }
+    
     beta[nonzero][abs(beta[nonzero]) < thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
     if(sum(nonzero) == 0){
