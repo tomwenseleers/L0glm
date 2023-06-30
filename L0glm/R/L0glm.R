@@ -702,39 +702,74 @@ L0glm.fit = function(X,
         coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
-        if(length(variable.indices) == 0) break
-        
-        # Use clusterApply to apply the function in parallel & combine results
-        fit <- clusterApply(cl, chunks, fun,
-                            X = X[,variable.indices, drop = F], 
-                            y = y, 
-                            family = family, 
-                            lambda = lambda, 
-                            gamma = gamma,
-                            maxit = maxit,
-                            tol = tol,
-                            no.pen = no.pen,
-                            thresh = thresh, 
-                            solver = solver, 
-                            nonzero.centered = nonzero.centered,
-                            ridge.center = ridge.center[variable.indices],
-                            weights = weights, 
-                            start = start[variable.indices, , drop = F], 
-                            lower = lower[variable.indices], 
-                            upper = upper[variable.indices], 
-                            offset = offset,
-                            method = method, 
-                            nonnegative = nonnegative, 
-                            control.solver = control.solver, 
-                            warmupiters = warmupiters, 
-                            warmupiters.nzc = warmupiters.nzc,
-                            verbose = verbose)
-        # Extract results
-        coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
-        weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
-        pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
-        lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
-        z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
+        if(length(variable.indices) == 0) {
+          break
+        } else if (length(variable.indices) == 1) { # If only 1 variable selected => don't parallelize
+          fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
+            L0glm.fit.internal(X = X[,variable.indices,drop=F],
+                               y = y[,col,drop=F],
+                               family=family,
+                               lambda = lambda,
+                               gamma = gamma,
+                               nonnegative = nonnegative,
+                               offset = as.vector(offset[col, drop = F]),
+                               weights = as.vector(weights[,col,drop=F]),
+                               nonzero.centered = nonzero.centered,
+                               ridge.center = ridge.center[variable.indices],
+                               start = as.vector(start[variable.indices, col, drop = F]),
+                               lower = lower[variable.indices],
+                               upper = upper[variable.indices],
+                               maxit = maxit,
+                               thresh = thresh,
+                               solver = solver,
+                               method = method,
+                               tol = tol,
+                               no.pen = no.pen,
+                               control.solver = control.solver,
+                               warmupiters = warmupiters,
+                               warmupiters.nzc = warmupiters.nzc,
+                               verbose = verbose)
+          }))
+          coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
+          weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
+          pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
+          z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+
+        } else { # If length(variable.indices) > 1 (more than 1 variable selected)
+          if(length(variable.indices) == 1) browser()
+          fit <- clusterApply(cl, chunks, fun,
+                              X = X[,variable.indices, drop = F], 
+                              y = y, 
+                              family = family, 
+                              lambda = lambda, 
+                              gamma = gamma,
+                              maxit = maxit,
+                              tol = tol,
+                              no.pen = no.pen,
+                              thresh = thresh, 
+                              solver = solver, 
+                              nonzero.centered = nonzero.centered,
+                              ridge.center = ridge.center[variable.indices],
+                              weights = weights, 
+                              start = start[variable.indices, , drop = F], 
+                              lower = lower[variable.indices], 
+                              upper = upper[variable.indices], 
+                              offset = offset,
+                              method = method, 
+                              nonnegative = nonnegative, 
+                              control.solver = control.solver, 
+                              warmupiters = warmupiters, 
+                              warmupiters.nzc = warmupiters.nzc,
+                              verbose = verbose)
+          
+          # Extract results
+          coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
+          weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
+          pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+          lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
+          z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
+        }
       }
       
       if(relaxed){
@@ -742,7 +777,7 @@ L0glm.fit = function(X,
         avgcoefs = rowMeans(coefficients)
         variable.indices = which(avgcoefs != 0)
         
-        if(length(variable.indices) > 0){
+        if(length(variable.indices) > 1){
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
           coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
           weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
@@ -777,6 +812,40 @@ L0glm.fit = function(X,
           pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
           lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
           z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
+          
+        } else if (length(variable.indices) == 1){
+          fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
+            L0glm.fit.internal(X = X[,variable.indices,drop=F],
+                               y = y[,col,drop=F],
+                               family=family,
+                               lambda = lambda,
+                               gamma = gamma,
+                               nonnegative = nonnegative,
+                               offset = as.vector(offset[col, drop = F]),
+                               weights = as.vector(weights[,col,drop=F]),
+                               nonzero.centered = nonzero.centered,
+                               ridge.center = ridge.center[variable.indices],
+                               start = as.vector(start[variable.indices, col, drop = F]),
+                               lower = lower[variable.indices],
+                               upper = upper[variable.indices],
+                               maxit = maxit,
+                               thresh = thresh,
+                               solver = solver,  
+                               method = method,  
+                               tol = tol,
+                               no.pen = no.pen,
+                               control.solver = control.solver,
+                               warmupiters = warmupiters,
+                               warmupiters.nzc = warmupiters.nzc,
+                               verbose = verbose)
+          }))
+          coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
+          weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
+          pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
+          z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+        } else { # If variable indices == 0
+          if(verbose) warning("Relaxed fit wasn't possible due to all coefficients being 0.")
         }
       }
       
@@ -828,7 +897,6 @@ L0glm.fit = function(X,
         pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
         lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
         z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
-        
       }
       
       if(relaxed){
