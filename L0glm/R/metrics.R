@@ -111,10 +111,13 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
     # deviance = sum(dev_res) # deviance 
   }
   
+  # browser()
+  
   # calculated deviance
   dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(W))
   # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W)) # using ground truth
-  dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
+  dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
+  dev_res[is.na(dev_res)] = 0 # is.infinite(dev_res)|
   deviance = sum(dev_res) # deviance 
   
   # calculate some information criteria See Zhang & Chen 2010 ####
@@ -122,12 +125,15 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
   # Get -2 * log-likelihood & log likelihood
   y = as.vector(y)
   # y = as.vector(mu_true) # using ground truth
+  
+  # browser()
+  
   if (family$family!="poisson") { 
                       good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
                       aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                                        n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
                                        mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                       wt = as.vector(W)[good], 
+                                       wt = weights[good], 
                                        dev = deviance) 
                       } else {   
                                             # TODO: CHECK: for large counts min2LL for poisson still occasionally gives a -Inf
@@ -139,8 +145,9 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)
                                                            aic.model = family$aic(y = round(as.vector(y))[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                                                                                   n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
                                                                                   mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                                                                  wt = as.vector(W)[good], 
+                                                                                  wt = weights[good], 
                                                                                   dev = deviance) 
+                                                           aic.model[is.infinite(aic.model)] = sign(aic.model)*1E10
                                                            }
   loglik = p - (aic.model + 2*sum(beta!=0)) / 2
   min2LL = -2*loglik

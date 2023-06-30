@@ -117,7 +117,7 @@ maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
 # maxlambda <- maxlambda/4
 maxlambda
   
-lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05)
+lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
@@ -143,14 +143,10 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              ) 
   L0glm.out_coefs = L0glm.out$coefficients
   coefmat[i,] <<- as.vector(L0glm.out_coefs)
-  # return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out_coefs,
-  #                                         X = X, y = y, weights = L0glm.out$weights,
-  #                                         family = gaussian(identity), # TODO check this ones gives right location for minimum in ebic, gic etc
-  #                                         beta_true = sim$beta_true)))
-           return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out_coefs,
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out_coefs,
                                                        X = X, y = y,
                                                        family = poisson(identity), # TODO check this ones gives too high a lambda for the minimum in ebic, gic etc
-                                                       beta_true = sim$beta_true)))
+                                                       beta_true = sim$beta_true) ))
 
           )
   } )))) # 29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
@@ -161,11 +157,9 @@ library(scales)
 abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
-metrics$lambda[which.min(metrics$deviance)] # 0.03162278 if we use ground truth # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
+metrics$lambda[which.min(metrics$deviance)] # 0.05011872 if we use ground truth # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
-metrics$lambda[which(metrics$loglik==max(metrics$loglik))] # 0.07079458
-# TODO: fix - log likelihood at the end shouldn't go up like this for Gaussian case...
-# TODO: fix - log likelihood at the end now gives -Inf for Poisson case...
+metrics$lambda[which(metrics$loglik==max(metrics$loglik))] # 0.1778279
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 min(metrics$lambda[which(round(metrics$MAD_coefs,0)==min(round(metrics$MAD_coefs,0)))]) # 1.412538
@@ -187,15 +181,16 @@ plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for 
 min(metrics$lambda[which(metrics$accuracy==max(metrics$accuracy))]) # 1.412538
 range(metrics$lambda[which(metrics$accuracy==max(metrics$accuracy))]) # 1.412538 39.810717
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
-metrics$lambda[which.max(metrics$F1_score)] # 
+metrics$lambda[which.max(metrics$F1_score)] # 1.412538
 plot(log10(metrics$lambda), metrics$aic, type="l")
 min(metrics$lambda[which(metrics$aic==min(metrics$aic))]) # 0.1778279
 plot(log10(metrics$lambda), metrics$bic, type="l")
-max(metrics$lambda[which(metrics$bic==min(metrics$bic))]) # 0.1778279
+max(metrics$lambda[which(metrics$bic==min(metrics$bic))]) # 1.412538
 plot(log10(metrics$lambda), metrics$ebic, type="l")
 max(metrics$lambda[which(metrics$ebic==min(metrics$ebic))]) # 1.412538
 plot(log10(metrics$lambda), metrics$gic, type="l")
 max(metrics$lambda[which(metrics$gic==min(metrics$gic))]) # 1.412538
+abline(v=log10(max(metrics$lambda[which(metrics$gic==min(metrics$gic))])), col="red") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
 min(metrics$lambda[which(metrics$mbic==min(metrics$mbic))]) # 1.412538 - this would coincide with lambda giving max accuracy
 
@@ -290,7 +285,7 @@ coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+rep(mincoef/2,ncol(sim$X))*(1-warmstart)
+  start <- L0glm.out_preset_coefs*warmstart+rep(mean(L0glm.out_preset_coefs),ncol(sim$X))*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
@@ -300,8 +295,8 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              nonnegative = TRUE,
                              warmupiters = 1,
                              warmupiters.nzc = 5,
-                             # start = start, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                             solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                             start = start, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             solver = "osqp", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              relaxed = FALSE,
                              thresh = 1E-10,
@@ -322,17 +317,17 @@ plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
-metrics$lambda[which.max(metrics$loglik)] # 0
+metrics$lambda[which.max(metrics$loglik)] # 7.943282
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
-metrics$lambda[which.min(metrics$MAD_coefs)] # 
+metrics$lambda[which.min(metrics$MAD_coefs)] # 7.943282
 plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 
+metrics$lambda[which.min(metrics$sMAPE_coefs)] # 7.943282
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 
+metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 5.623413
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
 plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] #
+metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 7.943282
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
@@ -341,7 +336,7 @@ plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
 plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.max(metrics$accuracy)] # 
+metrics$lambda[which.max(metrics$accuracy)] # 7.943282
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 
 plot(log10(metrics$lambda), metrics$aic, type="l")
@@ -352,6 +347,8 @@ plot(log10(metrics$lambda), metrics$ebic, type="l")
 metrics$lambda[which.min(metrics$ebic)] # 
 plot(log10(metrics$lambda), metrics$gic, type="l")
 metrics$lambda[which.min(metrics$gic)] # 
+abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue") 
+abline(v=log10(1.76), col="red") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
 metrics$lambda[which(metrics$mbic==min(metrics$mbic))] #
 
