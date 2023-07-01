@@ -1,8 +1,8 @@
 # function to calculate fit metrics to tune lambda ####
-get.metrics <- function(beta, X, y, weights=matrix(1, nrow=nrow(y), ncol=ncol(y)), 
-                        offset=Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse=T), 
-                        family=gaussian(identity), 
-                        beta_true=NULL #, 
+get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = ncol(y)), 
+                        offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
+                        family = gaussian(identity), 
+                        beta_true = NULL #, 
                         # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
                         # lower=rep(0, ncol(X)),
                         # upper=rep(Inf,ncol(X)) 
