@@ -593,8 +593,8 @@ L0glm.fit = function(X,
                      family = gaussian(identity),
                      offset = NULL,
                      start = NULL,
-                     lower = rep(-Inf, ncol(X)),
-                     upper = rep(Inf, ncol(X)),
+                     lower = rep(-.Machine$double.xmax, ncol(X)),
+                     upper = rep(.Machine$double.xmax, ncol(X)),
                      lambda = 1, 
                      nonnegative = FALSE,
                      parallellize = TRUE,
@@ -737,7 +737,7 @@ L0glm.fit = function(X,
           z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
 
         } else { # If length(variable.indices) > 1 (more than 1 variable selected)
-          if(length(variable.indices) == 1) browser()
+          # if(length(variable.indices) == 1) browser()
           fit <- clusterApply(cl, chunks, fun,
                               X = X[,variable.indices, drop = F], 
                               y = y, 
@@ -1065,6 +1065,7 @@ L0glm.fit.internal = function(X,
                               warmupiters = 1,
                               warmupiters.nzc = 3,
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
+  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
@@ -1072,12 +1073,15 @@ L0glm.fit.internal = function(X,
     stop("'family' argument seems not to be a valid family object", call. = FALSE)
   mu.eta = family$mu.eta # function of derivative of the expected values
   etastart = NULL
-  n <- nobs <- nrow(X)    # needed by the initialize expression below
+  n = NULL
+  nobs <- nrow(X)    # needed by the initialize expression below
   p <- nvars <- ncol(X)   # needed by the initialize expression below
 
   mustart = NULL
   eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
-  #if (is.null(mustart)) mustart <- y
+  # if (is.null(mustart)) mustart <- y
+  # browser()
+  if (is.null(n)&family$family=="binomial") { n <- weights } else { n <- nobs }
   if (is.null(start)) {  
     beta <- beta_old <- rep(1,p) # initial model coefficients
     eta = family$linkfun(mustart) 

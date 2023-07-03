@@ -2,8 +2,8 @@
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-# library(L0glm)
-devtools::load_all(".")
+library(L0glm)
+# devtools::load_all(".")
 library(export)
 source("..//benchmarks/generate data.R")
 
@@ -19,7 +19,7 @@ crit = "gic"
 # 1. GAUSSIAN GLM ####
 
 set.seed(1)
-data_gaus  = simulate_glm(n = n, p = p, n_nonzero = n_nonzero, intercept = intercept, family = "gaussian", ntot = ntot) 
+data_gaus  = simulate_glm(n = n, p = p, n_nonzero = n_nonzero, intercept = intercept, family = "gaussian") 
 X = data_gaus$X
 y = data_gaus$y
 family = gaussian(identity)
@@ -66,6 +66,7 @@ system.time(metrics_gaus <- data.frame(do.call(cbind, get.metrics(beta = L0glm_g
                                                      y = data_gaus$y,
                                                      family = gaussian(identity), 
                                                      beta_true = as.matrix(data_gaus$beta_true))))) # 0.02s
+glm_gaus$deviance-metrics_gaus$deviance # 0, correct
 logLik(glm_gaus)-metrics_gaus$loglik # 0, correct
 AIC(glm_gaus)-metrics_gaus$aic # 0, correct
 BIC(glm_gaus)-metrics_gaus$bic # 0, correct
@@ -175,7 +176,7 @@ matplot(x=log10(metrics$lambda),
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
 library(scales)
 abline(h=data_gaus$beta_true, col=alpha(1:6,0.2))
-abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
+abline(v=log10(maxlambda*4), col="red") # max lambda where all coefs would be penalized to 0
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 0.001 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
@@ -190,7 +191,7 @@ plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 1.995262
 plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 2.511886
+metrics$lambda[which.min(metrics$sMAPE_coefs)] # 3.162278
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
 metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 0.001258925
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
@@ -205,19 +206,19 @@ plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
 plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.max(metrics$accuracy)] # 2.511886
+metrics$lambda[which.max(metrics$accuracy)] # 3.162278
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
-metrics$lambda[which.max(metrics$F1_score)] # 2.511886
+metrics$lambda[which.max(metrics$F1_score)] # 3.162278
 plot(log10(metrics$lambda), metrics$aic, type="l")
 metrics$lambda[which.min(metrics$aic)] # 1
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 2.511886
+metrics$lambda[which.min(metrics$bic)] # 1.995262
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 2.511886
+metrics$lambda[which.min(metrics$ebic)] # 1.995262
 plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 2.511886
+metrics$lambda[which.min(metrics$gic)] # 3.162278
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which.min(metrics$mbic)] # 2.511886
+metrics$lambda[which.min(metrics$mbic)] # 3.162278
 
 # reasonable match with lambda values that were expected to optimise each IC :
 # note: using warm starts in the L0glm.fit function would shift the
@@ -254,18 +255,18 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
 # 2. POISSON LOG LINK GLM ####
 
 set.seed(1)
-data_pois  = simulate_glm(n, p, n_nonzero, family = "poisson") 
+data_pois  = simulate_glm(n = n, p = p, n_nonzero = n_nonzero, intercept = intercept, family = "poisson") 
 X = data_pois$X
 y = data_pois$y
 
 # glm fit
-system.time(glm_pois <- glm(data_pois$y ~ 0+data_pois$X, family=poisson(log))) # 0.37s
+system.time(glm_pois <- glm(data_pois$y ~ 0+data_pois$X, family=poisson(log))) # 0.41s
 glm_pois$deviance 
 glm_pois$aic
 AIC(glm_pois)
 BIC(glm_pois)
 logLik(glm_pois)
-cor(coef(glm_pois), data_pois$beta_true) # 0.9994469
+cor(coef(glm_pois), data_pois$beta_true) # 0.9998249
 plot(x=coef(glm_pois), y=data_pois$beta_true, pch=16, col="blue")
 
 # L0 glm fit with lambda close to zero
@@ -283,12 +284,15 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
                                             thresh = 1E-10
 ))  
 # TODO: start = rep(1, ncol(data_pois$X)) gives bad solution, rep(0.05, ncol(data_pois$X)) works OK
-# CHECK how to fix this in an automatic way
+# CHECK how to fix this in an automatic way - 
+# maybe scale columns of X or normalize penalty weights to sum to nrows(data)?
 
-max(abs(L0glm_pois_lambda0$coefficients-coef(glm_pois))) # 6.124878e-12, TODO gives bad solution with start=rep(1E-2, ncol(data_pois$X)), but good solution with rep(1, ncol(data_pois$X)) - fix
+max(abs(L0glm_pois_lambda0$coefficients-coef(glm_pois))) # 8.484768e-12
+# TODO gives bad solution with start=rep(1E-2, ncol(data_pois$X)), but 
+# good solution with rep(1, ncol(data_pois$X)) - fix
 plot(L0glm_pois_lambda0$coefficients, coef(glm_pois), pch=16, col="blue")
 
-cor(L0glm_pois_lambda0$coefficients, data_pois$beta_true) # 0.9994469
+cor(L0glm_pois_lambda0$coefficients, data_pois$beta_true) # 0.9998249
 plot(x=L0glm_pois_lambda0$coefficients, y=data_pois$beta_true, pch=16, col="blue")
 
 # check if metrics (loglik & AIC & BIC) are correct
@@ -298,6 +302,7 @@ metrics_pois = data.frame(do.call(cbind, get.metrics(beta = L0glm_pois_lambda0$c
                                                      family = gaussian(identity), 
                                                      beta_true = as.matrix(data_pois$beta_true))))
 metrics_pois
+glm_pois$deviance-metrics_pois$deviance # does not match - TODO check source of discrepancy
 logLik(glm_pois)-metrics_pois$loglik # does not match because R's glm function kicks out infinites & I don't
 AIC(glm_pois)-metrics_pois$aic # 
 BIC(glm_pois)-metrics_pois$bic # 
@@ -309,7 +314,7 @@ lambda_preset_pois = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbi
                                    X = Matrix(data_pois$X, sparse=TRUE), 
                                    family = poisson(log),
                                    dispersion = dispersion) # dispersion here was 1, here we pass this value to not have to estimate it 
-lambda_preset_pois # 2.556246
+lambda_preset_pois # 2.561769
 
 system.time(L0glm_pois_presetlambda <- L0glm.fit(X = Matrix(data_pois$X, sparse=TRUE), 
                                                  y = data_pois$y, 
@@ -323,10 +328,10 @@ system.time(L0glm_pois_presetlambda <- L0glm.fit(X = Matrix(data_pois$X, sparse=
                                                  method = 1L, #
                                                  thresh = 1E-10
 )) # 1.92s
-mean(abs(L0glm_pois_presetlambda$coefficients-coef(glm_pois))) # 0.01541513 
+mean(abs(L0glm_pois_presetlambda$coefficients-coef(glm_pois))) # 0.008970691
 plot(L0glm_pois_presetlambda$coefficients, coef(glm_pois), pch=16, col="blue")
 
-cor(L0glm_pois_presetlambda$coefficients, data_pois$beta_true) # 0.999315
+cor(L0glm_pois_presetlambda$coefficients, data_pois$beta_true) # 0.9996334
 plot(x=L0glm_pois_presetlambda$coefficients, y=data_pois$beta_true, pch=16, col="blue")
 
 
@@ -370,7 +375,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = poisson(log), 
                                               beta_true = data_pois$beta_true))) )
-} )))) # 91s
+} )))) # 136s
 matplot(x=log10(metrics$lambda), 
         y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
@@ -378,21 +383,21 @@ abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be pena
 # TODO calculate correctly using adjusted zw score instead of yw
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
-metrics$lambda[which.min(metrics$deviance)] # 0.03981072 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
+metrics$lambda[which.min(metrics$deviance)] # 0.001 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$deviance_true, type="l")
-metrics$lambda[which.min(metrics$deviance_true)] # 0.3981072 # deviance relative to ground truth
+metrics$lambda[which.min(metrics$deviance_true)] # 0.6309573 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
-metrics$lambda[which.max(metrics$loglik)] # 0.3981072
+metrics$lambda[which.max(metrics$loglik)] # 0.6309573
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
-metrics$lambda[which.min(metrics$MAD_coefs)] # 1.584893
+metrics$lambda[which.min(metrics$MAD_coefs)] # 0.6309573
 plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 1.584893
+metrics$lambda[which.min(metrics$sMAPE_coefs)] # 0.6309573
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 2.511886
+metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 0.1
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
 plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 1
+metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 0.6309573
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
@@ -401,19 +406,19 @@ plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
 plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.max(metrics$accuracy)] # 1
+metrics$lambda[which.max(metrics$accuracy)] # 0.6309573
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
-metrics$lambda[which.max(metrics$F1_score)] # 1
+metrics$lambda[which.max(metrics$F1_score)] # 0.6309573
 plot(log10(metrics$lambda), metrics$aic, type="l")
-metrics$lambda[which.min(metrics$aic)] # 0.3981072
+metrics$lambda[which.min(metrics$aic)] # 0.6309573
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 1.584893
+metrics$lambda[which.min(metrics$bic)] # 0.6309573
 plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 1.584893
+metrics$lambda[which.min(metrics$gic)] # 0.6309573
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 1.584893
+metrics$lambda[which.min(metrics$ebic)] # 0.6309573
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.584893
+metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 0.6309573
 
 # reasonable match with lambda values that were expected to optimise each IC :
 # note: using warm starts in the L0glm.fit function would shift the
@@ -449,10 +454,10 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
 # 3. BINOMIAL LOGIT LINK GLM ####
 
 set.seed(1)
-data_binom  = simulate_glm(n, p, n_nonzero, family = "binomial", ntot=10) 
+data_binom  = simulate_glm(n = n, p = p, n_nonzero = n_nonzero, intercept = intercept, family = "binomial", ntot = ntot)
 X = data_binom$X
-y = data_binom$y
-weights = data_binom$weights
+y = data_binom$y # proportions
+weights = data_binom$weights # total sample size per row in dataset
 
 # glm fit
 system.time(glm_binom <- glm(data_binom$y ~ 0+data_binom$X, weights=data_binom$weights, family=binomial(logit))) # 0.37s
@@ -461,11 +466,11 @@ glm_binom$aic
 AIC(glm_binom)
 BIC(glm_binom)
 logLik(glm_binom)
-cor(coef(glm_binom), data_binom$beta_true) # 0.9990542
+cor(coef(glm_binom), data_binom$beta_true) # 0.9983967
 plot(x=coef(glm_binom), y=data_binom$beta_true, pch=16, col="blue")
 
 # L0 glm fit with lambda close to zero
-system.time(L0glm_binom_lambda0 <- L0glm.fit(X = X, 
+system.time(L0glm_binom_lambda0 <- L0glm.fit.internal(X = X, 
                                             y = y, 
                                             weights = weights,
                                             family = binomial(logit), 
@@ -474,24 +479,27 @@ system.time(L0glm_binom_lambda0 <- L0glm.fit(X = X,
                                             ridge.center = rep(0, ncol(X)),
                                             nonnegative = FALSE,
                                             warmupiters = 1,
-                                            start = rep(0.05, ncol(data_binom$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                            start = rep(0.01, ncol(data_binom$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                            no.pen = 1,
                                             solver = "eigen", # 
-                                            method = 7L, #
-                                            thresh = 1E-10
-))  
+                                            method = 3L, #
+                                            thresh = 1E-10,
+                                            lower = rep(-Inf, ncol(X)),
+                                            upper = rep(Inf, ncol(X))
+))  # 0.22s
 # TODO: fix error Error in linkinv(eta) : LENGTH or similar applied to S4 object
+mean(abs(coef(glm_binom)-L0glm_binom_lambda0$coefficients)) # 2.523878e-11
+plot(x=L0glm_binom_lambda0$coefficients, y=data_binom$beta_true, pch=16, col="blue")
 
-max(abs(L0glm_binom_lambda0$coefficients-coef(glm_binom))) # 6.210588e-12, TODO gives bad solution with start=rep(1E-2, ncol(data_binom$X)), but good solution with rep(1, ncol(data_binom$X)) - fix
-plot(L0glm_binom_lambda0$coefficients, coef(glm_binom), pch=16, col="blue")
-
-cor(L0glm_binom_lambda0$coefficients, data_binom$beta_true) # 0.9990542
+cor(L0glm_binom_lambda0$coefficients, data_binom$beta_true) # 0.9983967
 plot(x=L0glm_binom_lambda0$coefficients, y=data_binom$beta_true, pch=16, col="blue")
 
 # check if metrics (loglik & AIC & BIC) are correct
 metrics_binom = data.frame(do.call(cbind, get.metrics(beta = L0glm_binom_lambda0$coefficients,  # some metrics
                                                      X = Matrix(data_binom$X, sparse=TRUE), 
                                                      y = as.matrix(data_binom$y), 
-                                                     family = gaussian(identity), 
+                                                     weights = weights,
+                                                     family = binomial(logit), 
                                                      beta_true = as.matrix(data_binom$beta_true))))
 metrics_binom
 logLik(glm_binom)-metrics_binom$loglik # does not match because R's glm function kicks out infinites & I don't
