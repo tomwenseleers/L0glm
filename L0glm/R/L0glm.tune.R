@@ -261,12 +261,11 @@ tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
   abline(v=log10(bestlambda), col="red")
 }
 
-optimize.threshold <- function(thresh, IC = "bic", coefficients, X, y, family){
-  coefficients[abs(coefficients) < thresh] = 0
+optimize.threshold <- function(thresh, IC = "bic", coefficients, Xmat, y, family){
+  coefficients[abs(coefficients) < thresh[1]] = 0
   IC.val <- get.metrics(beta = coefficients, 
-                        X = X, y = y, 
+                        X = Xmat, y = y, 
                         family = family)[[paste0(IC)]]
-  print(IC.val)
   return(IC.val)
 }
 

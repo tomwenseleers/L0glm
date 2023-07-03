@@ -6,14 +6,14 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
                         # lower=rep(0, ncol(X)),
                         # upper=rep(Inf,ncol(X)) 
-                        ) {
+) {
   
   require(glmnet)
   require(qlcMatrix)
   
   if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
   if (is.vector(beta_true)) { beta_true <- matrix(beta_true, ncol=1) }
-
+  
   y <- as.matrix(y)
   
   # nr of tasks, variables & observations
@@ -33,7 +33,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   edf = sum(beta!=0) # as in abess package
   # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
   if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) edf <- edf + 1
-
+  
   # beta[beta<lower] = lower
   # beta[beta>upper] = upper
   
@@ -135,10 +135,10 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
   # using deviance relative to observed signal
   aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                                       n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                                       mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                       wt = weights[good], 
-                                       dev = deviance) 
+                         n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                         mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                         wt = weights[good], 
+                         dev = deviance) 
   # using deviance relative to ground truth
   aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                               n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
@@ -173,7 +173,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # z = (eta - offset) + (y - mu) / mu.prime # working (adjusted) response
   # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale 
   # = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
-
+  
   # TODO: still add explained variance or adjusted explained variance on adjusted z scale?
   # # define functions to calculate weighted R2 and adjusted weighted R2 :
   # get.R2 = function (z_obs, # observed data on adjusted response scale (or true data without noise on z scale if beta_true given)
