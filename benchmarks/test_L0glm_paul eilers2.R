@@ -6,7 +6,7 @@ library(L0glm)
 library(export)
 # devtools::load_all(".")
 
-n <- p <- 100 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
@@ -183,7 +183,7 @@ range(metrics$lambda[which(metrics$accuracy==max(metrics$accuracy))]) # 1.412538
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 1.412538
 plot(log10(metrics$lambda), metrics$aic, type="l")
-min(metrics$lambda[which(metrics$aic==min(metrics$aic))]) # 0.1778279
+min(metrics$lambda[which(metrics$aic==min(metrics$aic))]) # 0.1778279 - optimal at same point as where loglik is optimal
 plot(log10(metrics$lambda), metrics$bic, type="l")
 max(metrics$lambda[which(metrics$bic==min(metrics$bic))]) # 1.412538
 plot(log10(metrics$lambda), metrics$ebic, type="l")
@@ -295,7 +295,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                              nonnegative = TRUE,
                              warmupiters = 1,
                              warmupiters.nzc = 5,
-                             start = start, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             start = rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              relaxed = FALSE,
@@ -381,54 +381,6 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = gaussian(identity),
               dispersion = dispersion) # 2.76073
 
-# check log likelihood of model with single variable
-lambda = tail(lambdas, 1)/2
-warmstart <- 0.2 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
-start <- L0glm.out_preset_coefs*warmstart+rep(1,ncol(sim$X))*(1-warmstart)
-start[L0glm.out_preset_coefs==0] <- 0
-L0glm.out_1variable <- L0glm.fit(X, y, 
-                              family = gaussian(identity), 
-                              lambda = lambda, 
-                              nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                              nonnegative = TRUE,
-                              warmupiters = 1,
-                              relaxed = TRUE,
-                              start = start, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                              solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-)
-varinmodel = which(L0glm.out_1variable$coefficients!=0) # 97
-varinmodel
-L0glm.out_1variable <- L0glm.fit(X[,varinmodel,drop=F], y, 
-                                 family = gaussian(identity), 
-                                 lambda = lambda, 
-                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                 nonnegative = TRUE,
-                                 warmupiters = 1,
-                                 relaxed = TRUE,
-                                 start = start, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                 solver = "eigen" # note: solver osqp better than eigen for very small lambda values))
-) # TODO fix - now gives error Error in if (nonnegative && all(lower < 0)) lower <- rep(0, ncol(X)) : 
-# missing value where TRUE/FALSE needed - gives error in lmridge
-
-
-# glm fit
-glm_gaus <- glm(y ~ 0+as.matrix(X[,varinmodel, drop=F]), family=gaussian(identity))
-glm_gaus$deviance  # 439640658
-glm_gaus$aic # 1817.418
-AIC(glm_gaus) # 1817.418
-BIC(glm_gaus) # 1822.628
-logLik(glm_gaus) # 'log Lik.' -906.7088 (df=2)
-glm_gaus$deviance # 439640658
-
-beta = rep(0,ncol(X))
-beta[varinmodel] = coef(glm_gaus)
-metrics_gaus = data.frame(do.call(cbind, get.metrics(beta = beta, # L0glm.out_1variable$coefficients, # beta, #   # some metrics
-                                                     X = X, 
-                                                     y = y,
-                                                     family = gaussian(identity), 
-                                                     beta_true = as.matrix(sim$beta_true))))
-metrics_gaus$loglik # -807.7088 # different value because in glm p=2, whereas in our model p=101, and 807.7088+99=906.7088
-metrics_gaus$deviance # 439640658
 
 
 # 2. MULTICHANNEL DECONVOLUTION ####

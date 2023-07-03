@@ -1016,8 +1016,15 @@ L0glm.fit = function(X,
       z <- fit$z
       weights.ret <- fit$weights
     }
-    #thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, X = X, y = y, IC = "bic", family = family, maximum = FALSE) # TODO add user passed IC
+    
+    #thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), 
+    #                         coefficients = coefficients, 
+    #                         X = X, y = y, IC = "bic", 
+    #                         family = family, maximum = FALSE) # TODO add user passed IC
+    # given that function is non-smooth optim_nm may be alternative?
+    # or optim with method="SANN"? or DEoptim?
     #coefficients[abs(coefficients) < thresh.post$minimum] = 0
+    
     
   }
   

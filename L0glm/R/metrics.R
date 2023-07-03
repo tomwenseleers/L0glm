@@ -85,6 +85,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     good = !is.na(W) & W != 0 & !is.infinite(W) & gprime!=0 & as.vector(weights)!=0 # valid observations
     W[!good] = 0
     dim(W) = dim(eta)
+    mu_true = rep(NA, length(mu))
+    deviance_true = NA
     
   } else { # calculate weights based on the "true" responses if beta_true is given
     # calculate true response used in simulation given true coefficients beta_true
@@ -105,16 +107,17 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     eta = X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset # fitted eta = fitted values on link scale
     mu = family$linkinv(eta) # fitted values on response scale
     
-    # # calculated true theoretical deviance compared to ground truth
-    # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W))
-    # dev_res[is.infinite(dev_res)|is.na(dev_res)] = 0
-    # deviance = sum(dev_res) # deviance 
+    # calculated true theoretical deviance compared to ground truth
+    dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(weights)) # as.vector(W)
+    dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
+    dev_res[is.na(dev_res)] = 0
+    deviance_true = sum(dev_res) # deviance compared to ground truth 
   }
   
   # browser()
   
   # calculated deviance
-  dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(W))
+  dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(weights)) # as.vector(W)
   # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W)) # using ground truth
   dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
   dev_res[is.na(dev_res)] = 0 # is.infinite(dev_res)|
@@ -128,28 +131,24 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   # browser()
   
-  if (family$family!="poisson") { 
-                      good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
-                      aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+  if (family$family=="poisson") { y = round(y) } 
+  good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
+  # using deviance relative to observed signal
+  aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
                                        n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
                                        mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
                                        wt = weights[good], 
                                        dev = deviance) 
-                      } else {   
-                                            # TODO: CHECK: for large counts min2LL for poisson still occasionally gives a -Inf
-                                            # see here for a solution calculating dpois manually
-                                            # https://stats.stackexchange.com/questions/475328/negative-infinity-produced-when-computing-log-likelihood-in-poisson-regression-r
-                                            # for generalisation allowing noninteger counts
-                                            # see https://stats.stackexchange.com/questions/70054/how-is-it-possible-that-poisson-glm-accepts-non-integer-numbers
-                                                           good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
-                                                           aic.model = family$aic(y = round(as.vector(y))[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                                                                                  n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
-                                                                                  mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                                                                                  wt = weights[good], 
-                                                                                  dev = deviance) 
-                                                           aic.model[is.infinite(aic.model)] = sign(aic.model)*1E10
-                                                           }
+  # using deviance relative to ground truth
+  aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+                              n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                              mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+                              wt = weights[good], 
+                              dev = deviance_true) 
+  
   loglik = p - (aic.model + 2*sum(beta!=0)) / 2
+  # loglik_true = p - (aic.model_true + 2*sum(beta!=0)) / 2
+  # if (!is.null(beta_true)) loglik = loglik_true # DELETE, JUST A TEST
   min2LL = -2*loglik
   
   # p=nr of vars, n=nr of cases, k=effective degrees of freedom
@@ -172,7 +171,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))
   # z = (eta - offset) + (y - mu) / mu.prime # working (adjusted) response
-  # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
+  # z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale 
+  # = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
 
   # TODO: still add explained variance or adjusted explained variance on adjusted z scale?
   # # define functions to calculate weighted R2 and adjusted weighted R2 :
@@ -218,8 +218,17 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   #        weights = weights_true,
   #        intercept = FALSE) 
   
+  # TODO: also add analytically calculated leave one out CV error, cf
+  # earlier code Chris
+  # z.res <- (y.val - y.hat)/family$mu.eta(eta.hat) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
+  # w <- w.val * as.vector(family$mu.eta(eta.hat)^2 / family$variance(y.hat)) # IWLS weights from last iteration
+  # H.diag <- compute.diagH(fit = fit, X = x.val, w = w)
+  # loocv <- 1/length(y.val) * sum(w * (z.res/(1 - H.diag))^2) 
+  # see Syed 2011, p.7 in https://scholarworks.gsu.edu/cgi/viewcontent.cgi?referer=https://scholar.google.com/&httpsredir=1&article=1100&context=math_theses
+  
+  
   return(list(p=p, n=n, m=m, 
-              deviance=deviance, loglik=loglik,
+              deviance=deviance, deviance_true=deviance_true, loglik=loglik, # loglik_true=loglik_true,
               MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
               bias_coefs=bias_coefs, 
               R2_coefs=R2_coefs,
