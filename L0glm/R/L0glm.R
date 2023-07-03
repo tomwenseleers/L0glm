@@ -102,10 +102,6 @@
 #' Note that lambda tuning will be performed with the processed coefficients, so
 #' the selected lambda will be influenced by the filtering step. Default: no
 #' filtering.
-#' @param group.pen.fn
-#' A function that is used to perform group penalized regression. It should 
-#' require a single argument that is the matrix of size \code{n}x\code{p}x\code{m},
-#' with m being the number of groups or channels. TODO revise this.
 #' @param block.size
 #' The size of the blocks that will be fitted. If `NULL` or larger than `p`, all
 #' the coefficients will be fitted at once.
@@ -264,26 +260,27 @@
 #' McCullagh P. and Nelder, J. A. (1989) Generalized Linear Models. London: Chapman and Hall.
 #'
 #' @seealso
-#' \code{\link{control.l0.gen}}, \code{\link{control.iwls.gen}},
-#' \code{\link{control.fit.gen}}, \code{\link{lmridge}}, \code{\link{multichannel_L0glm}}
+#' \code{\link{control.solver.gen}}, \code{\link{lmridge}},
+#' \code{\link{L0glm.tune}}
 #'
 #' @example examples/L0glm_examples.R
 #'
 #' @export
 L0glm <- function(formula,
                   data = NULL, 
-                  weights = NULL, 
                   family = gaussian(identity), 
-                  offset = NULL, 
+                  weights = NULL, 
                   start = NULL, 
+                  offset = NULL, 
                   contrasts = NULL,
                   lambda = 0, 
-                  no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
+                  no.pen = 0,
                   nonnegative = FALSE, 
                   normalize = TRUE, 
                   maxit = 25,
                   parallellize = TRUE, 
                   warmupiters = 1, 
+                  warmupiters.nzc = warmupiters,
                   grouped = TRUE,
                   group.maxit = 6,
                   relaxed = TRUE,
@@ -298,13 +295,12 @@ L0glm <- function(formula,
                   tol = 1E-10,
                   control.solver = NULL,
                   post.filter.fn = function(u) return(u),
-                  # group.pen.fn = function(mat) sqrt(rowSums(mat^2)), TODO delete this?+ delete it from docu
                   # TODO make CV arguments a single list, eg tune.control ?
                   tune.meth = "none",
                   tune.crit = "bic",
                   seed = NULL, # set seed for k-fold CV
+                  IC = "gic",
                   verbose = TRUE) {
-  
   # TODO talk with tom about whether ot not we should group some of these variables into control lists.
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
@@ -331,15 +327,10 @@ L0glm <- function(formula,
   }
   intercept <- as.logical(attr(mt, "intercept"))
   if(intercept) no.pen <- c(1, no.pen + 1)
-  
-  # Get control parameters
-  if (!("gamma" %in% names(control.l0))) {
-    control.l0$gamma <- gamma
-  }
+
   
   n <- nrow(X) # nr of observations
   p <- ncol(X) # nr of covariates
-  
   # Choose default solver depending on data size
   if(is.null(solver)){
     solver <- ifelse(p > 20000, "glmnet", "eigen")
@@ -373,10 +364,12 @@ L0glm <- function(formula,
     stop("Upper limit should be numeric value or a numeric vector of length p.")
   }
   
-  if(control.l0$warn && control.l0$delta > control.iwls$thresh){
-    control.l0$delta <- control.iwls$thresh
-    warning("control.l0$delta > control.iwls$thresh. To avoid artifacts control.l0$delta is decreased to control.iwls$thresh")
-  }
+  # TODO remove this? Only keep if we end up allowing user given delta and thresh
+  # if(delta > thresh){
+  #   delta <- thresh
+  #   if (verbose) warning("Delta > Thresh. To avoid artifacts Delta is decreased to Thresh")
+  # }
+  
   
   # Check family argument
   if(is.character(family)) family <- get(family, mode = "function", envir = parent.frame())
@@ -384,178 +377,194 @@ L0glm <- function(formula,
   if(family$family == "gaussian" && family$link == "identity") control.iwls$maxit <- 1 # with gaussian identity loss we end up doing single iwls iteration
   if(family$family == "poisson") y <- as.integer(y)
   
-  # Get lambda with or without cross-validation
-  if(any(lambda < 0)) stop("Negative lambda not allowed")
-  if(control.l0$warn && sum(lambda) == 0 & control.l0$maxit > 1){
-    control.l0$maxit <- 1
-    warning("When no penalty is required (ie lambda == 0), there is no need for adaptive ridge iteration. Setting control.l0$maxit = 1.")
-  }
-  # Lambda supplied as an IC
-  # In case of L0 penalty, the objective function is closely related to IC's
-  # such as AIC or BIC
-  if(is.character(lambda)){
-    if(control.l0$maxit == 1) stop("You cannot specify lambda as an information criterion without L0 penalty.")
-    tune.crit = lambda
-    lambda <- preset.lambda(IC = lambda, y = y, X = X, weights = weights,
-                            family = family, start = start)
-    tune.meth = "preset"
-  }
-  if(tune.meth == "loocv") { # LOOCV is performed on the full data using the shortcut as described in https://scholarworks.gsu.edu/cgi/viewcontent.cgi?referer=https://scholar.google.com/&httpsredir=1&article=1100&context=math_theses
-    tune.meth <- "IC"
-    tune.crit <- "loocv"
-  }
+  # # Get lambda with or without cross-validation
+  # if(any(lambda < 0)) stop("Negative lambda not allowed")
+  # if(control.l0$warn && sum(lambda) == 0 & control.l0$maxit > 1){
+  #   control.l0$maxit <- 1
+  #   warning("When no penalty is required (ie lambda == 0), there is no need for adaptive ridge iteration. Setting control.l0$maxit = 1.")
+  # }
+  # # Lambda supplied as an IC
+  # # In case of L0 penalty, the objective function is closely related to IC's
+  # # such as AIC or BIC
+  # if(is.character(lambda)){
+  #   if(control.l0$maxit == 1) stop("You cannot specify lambda as an information criterion without L0 penalty.")
+  #   tune.crit = lambda
+  #   lambda <- preset.lambda(IC = lambda, y = y, X = X, weights = weights,
+  #                           family = family, start = start)
+  #   tune.meth = "preset"
+  # }
+  # if(tune.meth == "loocv") { # LOOCV is performed on the full data using the shortcut as described in https://scholarworks.gsu.edu/cgi/viewcontent.cgi?referer=https://scholar.google.com/&httpsredir=1&article=1100&context=math_theses
+  #   tune.meth <- "IC"
+  #   tune.crit <- "loocv"
+  # }
+  # 
+  # tune.crit <- match.arg(tune.crit, c("all", "bic", "aic", "loglik", "loocv", "rss", "aicc", "ebic",
+  #                                     "hq", "ric", "mric", "cic",  "bicg", "bicq"))
+  # 
+  # if(verbose) cat(paste0("\n==== Lambda tuning ====\n\n",
+  #                        "Number of lambda values: ", length(lambda), "\n",
+  #                        "Lambda tuning method: ", tune.meth, "\n",
+  #                        "Lambda tuning criterion: ", tune.crit, "\n",
+  #                        "Tuning lambda...\n"))
+  # lambda.tune <- list()
+  # # Trim the lambda to the theoretical upper bound
+  # # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression/417080#417080
+  # lam.max <- 1/2 * max(1/diag(crossprod(X, X)) * crossprod(X, y)^2)
+  # if(control.l0$warn && any(lambda > lam.max)){
+  #   warning(paste0("At least one lambda value was higher than the theoretical upper bound (lambda = ", lam.max, "). The values are removed from the sequence."))
+  #   lambda <- lambda[lambda < lam.max]
+  #   if(length(lambda) == 0) stop("No valid lambda supplied, try using lower lambda values.")
+  # }
+  # 
+  # if(tune.meth %in% c("none", "preset")){
+  #   tune.crit <- NA
+  #   if(length(lambda) > 1){
+  #     fits <- lapply(lambda, function(l){
+  #       l <- rep(l, p)
+  #       l[no.pen] <- 0
+  #       fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
+  #                        lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
+  #                        block = block, control.l0 = control.l0, control.iwls = control.iwls, block.size = block.size,
+  #                        control.solver = control.solver, control.block = control.block, post.filter.fn = post.filter.fn)
+  #     })
+  #     fit <- list()
+  #     fit$coefficients <- sapply(fits, "[[", "coefficients")
+  #     fit$fitted.values <- sapply(fits, "[[", "fitted.values")
+  #     colnames(fit$coefficients) <- colnames(fit$fitted.values) <- lambda
+  #     fit$family <- family
+  #     fit$prior.weights <- weights
+  #     return(structure(fit, class = "tune.L0glm"))
+  #   }
+  # } else if (tune.meth %in%c("trainval", "IC", "loocv") || grepl(pattern = "^\\d+-fold$", tune.meth)) {
+  #   if(length(lambda)<2) stop("Need more than one lambda value for optimization.")
+  #   if(tune.meth == "trainval"){
+  #     lambda.tune <- L0glm.trainval(X, y, weights = weights, family = family,
+  #                                   start = start, lambdas = lambda, no.pen = no.pen,
+  #                                   nonnegative = nonnegative, control.l0 = control.l0,
+  #                                   control.iwls = control.iwls,
+  #                                   tune.crit = tune.crit, seed = seed,
+  #                                   verbose = verbose)
+  #   } else if(tune.meth == "IC"){
+  #     lambda.tune <- L0glm.IC(X, y, weights = weights, family = family,
+  #                             start = start, lambdas = lambda, no.pen = no.pen,
+  #                             nonnegative = nonnegative, control.l0 = control.l0,
+  #                             control.iwls = control.iwls, 
+  #                             tune.crit = tune.crit,
+  #                             verbose = verbose)
+  #   } else { # if tune.meth == "x-fold"
+  #     k <- round(as.numeric(gsub(tune.meth, pattern = "-fold", replacement = "")))
+  #     if(k < 2) stop("'tune.meth' should be at least 2-fold")
+  #     lambda.tune <- L0glm.cv(X, y, weights = weights, family = family,
+  #                             start = start, lambdas = lambda, no.pen = no.pen,
+  #                             nonnegative = nonnegative, control.l0 = control.l0,
+  #                             control.iwls = control.iwls, 
+  #                             tune.crit = tune.crit, k = k, seed = seed,
+  #                             verbose = verbose)
+  #   }
+  #   lambda <- lambda.tune$best.lam
+  # } else {
+  #   stop("'tune.meth' should be one of: none, trainval, IC, loocv, k-fold (where k should be a numeric indicating the number of folds to use)")
+  # }
+  # lambda0 <- lambda
+
   
-  tune.crit <- match.arg(tune.crit, c("all", "bic", "aic", "loglik", "loocv", "rss", "aicc", "ebic",
-                                      "hq", "ric", "mric", "cic",  "bicg", "bicq"))
-  
-  if(verbose) cat(paste0("\n==== Lambda tuning ====\n\n",
-                         "Number of lambda values: ", length(lambda), "\n",
-                         "Lambda tuning method: ", tune.meth, "\n",
-                         "Lambda tuning criterion: ", tune.crit, "\n",
-                         "Tuning lambda...\n"))
-  lambda.tune <- list()
-  # Trim the lambda to the theoretical upper bound
-  # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression/417080#417080
-  lam.max <- 1/2 * max(1/diag(crossprod(X, X)) * crossprod(X, y)^2)
-  if(control.l0$warn && any(lambda > lam.max)){
-    warning(paste0("At least one lambda value was higher than the theoretical upper bound (lambda = ", lam.max, "). The values are removed from the sequence."))
-    lambda <- lambda[lambda < lam.max]
-    if(length(lambda) == 0) stop("No valid lambda supplied, try using lower lambda values.")
-  }
-  
-  if(tune.meth %in% c("none", "preset")){
-    tune.crit <- NA
-    if(length(lambda) > 1){
-      fits <- lapply(lambda, function(l){
-        l <- rep(l, p)
-        l[no.pen] <- 0
-        fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
-                         lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
-                         block = block, control.l0 = control.l0, control.iwls = control.iwls, block.size = block.size,
-                         control.solver = control.solver, control.block = control.block, post.filter.fn = post.filter.fn)
-      })
-      fit <- list()
-      fit$coefficients <- sapply(fits, "[[", "coefficients")
-      fit$fitted.values <- sapply(fits, "[[", "fitted.values")
-      colnames(fit$coefficients) <- colnames(fit$fitted.values) <- lambda
-      fit$family <- family
-      fit$prior.weights <- weights
-      return(structure(fit, class = "tune.L0glm"))
-    }
-  } else if (tune.meth %in%c("trainval", "IC", "loocv") || grepl(pattern = "^\\d+-fold$", tune.meth)) {
-    if(length(lambda)<2) stop("Need more than one lambda value for optimization.")
-    if(tune.meth == "trainval"){
-      lambda.tune <- L0glm.trainval(X, y, weights = weights, family = family,
-                                    start = start, lambdas = lambda, no.pen = no.pen,
-                                    nonnegative = nonnegative, control.l0 = control.l0,
-                                    control.iwls = control.iwls,
-                                    tune.crit = tune.crit, seed = seed,
-                                    verbose = verbose)
-    } else if(tune.meth == "IC"){
-      lambda.tune <- L0glm.IC(X, y, weights = weights, family = family,
-                              start = start, lambdas = lambda, no.pen = no.pen,
-                              nonnegative = nonnegative, control.l0 = control.l0,
-                              control.iwls = control.iwls, 
-                              tune.crit = tune.crit,
-                              verbose = verbose)
-    } else { # if tune.meth == "x-fold"
-      k <- round(as.numeric(gsub(tune.meth, pattern = "-fold", replacement = "")))
-      if(k < 2) stop("'tune.meth' should be at least 2-fold")
-      lambda.tune <- L0glm.cv(X, y, weights = weights, family = family,
-                              start = start, lambdas = lambda, no.pen = no.pen,
-                              nonnegative = nonnegative, control.l0 = control.l0,
-                              control.iwls = control.iwls, 
-                              tune.crit = tune.crit, k = k, seed = seed,
-                              verbose = verbose)
-    }
-    lambda <- lambda.tune$best.lam
+  # TODO should it tune lambda with L0glm.tune?
+  if(is.null(lambda)){ # TODO add a tunelambda option for user? if tunelambda == TRUE L0glm.tune gets called
+    lambda <- L0glm.tune(X = X, y = y, family = family,
+                         weights = weights, offset = offset,
+                         IC = IC, warm.start.ratio = warm.start.ratio,
+                         lower = lower, upper = upper, nonnegative = nonnegative,
+                         parallellize = parallellize, no.pen = no.pen,
+                         grouped = grouped, group.maxit = group.maxit, 
+                         relaxed = relaxed, gamma = gamma, nonzero.centered = nonzero.centered,
+                         ridge.center = ridge.center, thresh = thresh,
+                         solver = solver, method = method, maxit = maxit,
+                         tol = tol, warmupiters = warmupiters, warmupiters.nzc = warmupiters.nzc,
+                         control.solver = control.solver, verbose = FALSE)$best.lambda
   } else {
-    stop("'tune.meth' should be one of: none, trainval, IC, loocv, k-fold (where k should be a numeric indicating the number of folds to use)")
+    lambda.tune <- lambda
   }
-  lambda0 <- lambda
-  lambda <- rep(lambda, p)
-  lambda[no.pen] <- 0
+    
+  # lambda.tune <- rep(lambda.tune, p)
+  # lambda.tune[no.pen] <- 0
   
-  if(verbose) cat(paste0("Tuned lambda value: ", lambda0, "\n\n"))
+  # if(verbose) cat(paste0("Tuned lambda value: ", lambda.tune, "\n\n"))
   
   
   # Fit the model
   if(verbose) cat(paste0("==== Model fitting ====\n\n",
                          "Fitting in progress...\n"))
   t1 <- proc.time()[3]
-  fit <- L0glm.fit(X = X, y = y, 
-                   weights = weights, 
-                   start = start,
-                   offset = offset,
+  fit <- L0glm.fit(X = X, 
+                   y = y, 
+                   weights = weights,
                    family = family,
+                   start = NULL,
+                   offset = offset,
                    lower = lower,
-                   upper = upper, 
+                   upper = upper,
+                   lambda = lambda.tune, 
                    nonnegative = nonnegative,
-                   solver = solver,
-                   method = method,
-                   lambda = lambda,
                    parallellize = parallellize,
-                   grouped = grouped,
-                   maxit = maxit,
-                   group.maxit = group.maxit,
-                   relaxed = relaxed,
                    no.pen = no.pen,
-                   block.size = block.size , 
-                   control.solver = control.solver, 
+                   grouped = grouped, 
+                   group.maxit = group.maxit, 
+                   relaxed = relaxed,
                    gamma = gamma,
-                   thresh = thresh,
-                   tol = tol,
-                   warmupiters = warmupiters,
                    nonzero.centered = nonzero.centered,
                    ridge.center = ridge.center,
-                   post.filter.fn = post.filter.fn, 
+                   thresh = thresh, # TODO: think about sensible default that should be a function of the scale of the data
+                   solver = solver, 
+                   method = method,
+                   maxit = maxit,
+                   tol = tol,
+                   warmupiters = warmupiters, 
+                   warmupiters.nzc = warmupiters.nzc,
+                   control.solver = control.solver,
+                   IC = IC,
                    verbose = verbose)
   
   
   fit$timing <- proc.time()[3] - t1
-  if(verbose) cat(paste0("Converged: ", ifelse(fit$converged.l0, "yes", "no"), "\n",
-                         "Number of adaptive ridge (L0 penalty) iterations: ", fit$iter.l0, "\n",
-                         "Number of IWLS iterations: ", paste0(fit$iter.iwls, collapse = ", "), "\n\n"))
   
   nonzero <- fit$coefficients != 0
-  fit$call <- call0
   fit$constraint <- ifelse(nonnegative, "nonnegative", "none")
   fit$prior.coefficients <- start
   fit$lambda.tune <- lambda.tune
   
-  # Compute residuals
-  fit$residuals <- y - fit$coefficients # TODO check
+  # # Compute residuals
+  # fit$residuals <- y - fit$coefficients # TODO check
+  # 
+  # # If all coefficient are zero, return fit without inference
+  # if(sum(nonzero) == 0){
+  #   fit$deviance <- c(residual.deviance = NA, residual.df = NA,
+  #                     null.deviance = NA, null.df = NA, D.squared = NA)
+  #   fit$df <- c(edf = NA, rdf = NA)
+  #   fit$IC <- compute.ic(y = y, y.hat = fit$fitted.values, w = fit$prior.weights, fit = fit)
+  #   fit$coefficient.inference <- data.frame(estimates = fit$coefficients, se = NA, pvalues = NA, method = NA)
+  #   if(control.l0$warn) warning("All coefficients are 0.")
+  #   return(fit)
+  # }
+  # 
+  # # Compute degrees of freedom
+  # fit$df <- compute.df(fit = fit, X = X)
+  # # Compute deviance
+  # int.ind <- grepl("intercept", colnames(X), ignore.case = TRUE)
+  # dev.res <- sum(fit$family$dev.resids(y = y, mu = fit$fitted.values, wt = fit$prior.weights))
+  # fit.null <- glm.iwls(X = X[,int.ind, drop = F],
+  #                      y = y, weights = fit$prior.weights, family = family, solver = solver,
+  #                      lambda = 0, start = NULL, nonnegative = nonnegative,
+  #                      control.iwls = control.iwls,  control.solver = control.solver)
+  # dev.null <- sum(family$dev.resids(y = y, mu = fit.null$fitted.values, wt = fit.null$prior.weights))
+  # if(is.infinite(dev.null)) dev.null <- NA
+  # fit$deviance <- list(residual.df = fit$df$rdf,
+  #                      null.df = sum(fit.null$prior.weights != 0) - sum(int.ind),
+  #                      residual.deviance = dev.res, # residual deviance = 2 * (LL_full - LL_model)
+  #                      null.deviance = dev.null, # null deviance = total deviance = 2 * (LL-full - LL_null)
+  #                      D.squared = 1 - dev.res/dev.null)
   
-  # If all coefficient are zero, return fit without inference
-  if(sum(nonzero) == 0){
-    fit$deviance <- c(residual.deviance = NA, residual.df = NA,
-                      null.deviance = NA, null.df = NA, D.squared = NA)
-    fit$df <- c(edf = NA, rdf = NA)
-    fit$IC <- compute.ic(y = y, y.hat = fit$fitted.values, w = fit$prior.weights, fit = fit)
-    fit$coefficient.inference <- data.frame(estimates = fit$coefficients, se = NA, pvalues = NA, method = NA)
-    if(control.l0$warn) warning("All coefficients are 0.")
-    return(fit)
-  }
-  
-  # Compute degrees of freedom
-  fit$df <- compute.df(fit = fit, X = X)
-  # Compute deviance
-  int.ind <- grepl("intercept", colnames(X), ignore.case = TRUE)
-  dev.res <- sum(fit$family$dev.resids(y = y, mu = fit$fitted.values, wt = fit$prior.weights))
-  fit.null <- glm.iwls(X = X[,int.ind, drop = F],
-                       y = y, weights = fit$prior.weights, family = family, solver = solver,
-                       lambda = 0, start = NULL, nonnegative = nonnegative,
-                       control.iwls = control.iwls,  control.solver = control.solver)
-  dev.null <- sum(family$dev.resids(y = y, mu = fit.null$fitted.values, wt = fit.null$prior.weights))
-  if(is.infinite(dev.null)) dev.null <- NA
-  fit$deviance <- list(residual.df = fit$df$rdf,
-                       null.df = sum(fit.null$prior.weights != 0) - sum(int.ind),
-                       residual.deviance = dev.res, # residual deviance = 2 * (LL_full - LL_model)
-                       null.deviance = dev.null, # null deviance = total deviance = 2 * (LL-full - LL_null)
-                       D.squared = 1 - dev.res/dev.null)
-  
-  # Compute the goodness of fit criteria
-  fit$IC <- compute.ic(y = y, y.hat = fit$fitted.values, w = fit$prior.weights, fit = fit)
+  # # Compute the goodness of fit criteria
+  # fit$IC <- compute.ic(y = y, y.hat = fit$fitted.values, w = fit$prior.weights, fit = fit)
   
   # Compute R squared
   # R2 is computed on the adjusted scale using the optimal weights from the last
@@ -571,6 +580,7 @@ L0glm <- function(formula,
   # tss <- sum(w * (z - z.null)^2) # total sums of squares
   # fit$R.squared <- list(R.squared = mss/tss, # = Model SS / Total SS
   #                       type = ifelse(is.null(coefficients.true), "sample", "population"))
+  
   
   # scale coefficients to original scale
   if(normalize) fit$coefficients <- fit$coefficients / X.n
@@ -616,6 +626,7 @@ L0glm.fit = function(X,
                      warmupiters = 1, # TODO: go back to ifelse(family$family == "gaussian", 1, 4)?
                      warmupiters.nzc = warmupiters,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
+                     IC = "gic",
                      verbose = FALSE){
   require(parallel)
   require(qlcMatrix)
@@ -1018,12 +1029,10 @@ L0glm.fit = function(X,
       z <- fit$z
       weights.ret <- fit$weights
     }
-    browser()
     # Threshold optimization
     
     # # Option 1: with optimize function. 0.49s for SC p=n=100
-    # thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, Xmat = X, y = y, IC = "gic", family = family, maximum = FALSE)
-    # # TODO add user passed IC
+    # thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, Xmat = X, y = y, IC = IC, family = family, maximum = FALSE)
     # coefficients[abs(coefficients) < thresh.post$minimum] = 0
     
     # # Option 2: with optim package. https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/optim
@@ -1034,7 +1043,7 @@ L0glm.fit = function(X,
     #                      coefficients = coefficients,
     #                      Xmat = X,
     #                      y = y,
-    #                      IC = "gic",
+    #                      IC = IC,
     #                      family = family,
     #                      method = "Brent"  # "SANN" or "Brent"
     # )
@@ -1046,7 +1055,7 @@ L0glm.fit = function(X,
     #                        coefficients = coefficients,
     #                        Xmat = X,
     #                        y = y,
-    #                        IC = "gic",
+    #                        IC = IC,
     #                        family = family)
     # coefficients[abs(coefficients) < thresh.post$optim$bestmem] = 0
     
@@ -1123,7 +1132,7 @@ L0glm.fit.internal = function(X,
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
   mask <- rep(FALSE, p)
-  delta = 0
+  delta = 0 # TODO should we allow user passed delta?
   
   for (i in 1L:maxit) {
     varg = variance(mu) # variance

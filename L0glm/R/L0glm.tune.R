@@ -101,7 +101,15 @@ L0glm.tune <- function(X, y, family,
   if(FALSE){ #plot){
     tune.plots(metrics = metrics, IC = IC, coefs.true = coefs.true, lambdas = lambdas)
   }
-  return(metrics)
+  return(list(metrics = metrics, best.lambda = bestlambda, lambdas = lambdas))
+  
+  # TODO: add more returns
+  # - the optimal values of lambda & the index in lambdas of that optimal value based on given metrics - so this could also 
+  # be a dataframe with columns lambda, lambda_index, metric (e.g. different information criteria plus accuracy & F1 score for 
+  # support recovery & metrics for bias in coefficients  if beta_true was given
+  # - a sparse matrix with the coefficient estimates for those lambda values (rowMeans of the coefficients for multichannel) (with the right optimal threshold applied for each)
+  # - a list with the originally estimated sparse coefficient matrices for the different lambda values (but with the right optimal threshold applied for each)
+  
 }
 
 abess.fit <- function(X, y, ...){
