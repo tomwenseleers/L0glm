@@ -505,7 +505,7 @@ L0glm <- function(formula, #1
                    tol = tol,
                    control.solver = control.solver,
                    IC = IC,
-                   verbose = verbose))
+                   verbose = verbose) 
   
   
   fit$timing <- proc.time()[3] - t1
@@ -707,7 +707,7 @@ L0glm.fit = function(X,
         
         if(length(variable.indices) == 0) {
           break
-          if(verbose) warning(Zero coefficients produced. Try using a lower lambda.)
+          if(verbose) warning("All coefficients are penalized to zero. Try using a lower lambda value.")
         } else if (length(variable.indices) == 1) { # If only 1 variable selected => don't parallelize
           fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
             L0glm.fit.internal(X = X[,variable.indices,drop=F],

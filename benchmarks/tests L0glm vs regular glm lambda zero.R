@@ -184,9 +184,6 @@ plot(log10(metrics$lambda), metrics$deviance_true, type="l")
 metrics$lambda[which.min(metrics$deviance_true)] # 2.511886 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 metrics$lambda[which.max(metrics$loglik)] # 0.3981072
-plot(log10(metrics$lambda), metrics$loglik_true, type="l") # using deviance relative to ground truth
-metrics$lambda[which.max(metrics$loglik_true)] # 2.511886
-
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 1.995262
@@ -248,7 +245,7 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
-              dispersion = dispersion) # 3.91
+              dispersion = dispersion) # 3.92
 
 
 
@@ -269,8 +266,14 @@ logLik(glm_pois)
 cor(coef(glm_pois), data_pois$beta_true) # 0.9998249
 plot(x=coef(glm_pois), y=data_pois$beta_true, pch=16, col="blue")
 
+# Calculate L2 norm of columns
+X.n <- sqrt(Matrix::colSums(X^2))
+# X_normalized <- X %*% Matrix::Diagonal(x = 1 / X.n)
+X_normalized <- sweep(X, MARGIN=2, X.n, "/")
+
+
 # L0 glm fit with lambda close to zero
-system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X, 
+system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X_normalized, 
                                             y = y, 
                                             family = poisson(log), 
                                             lambda = 1E-10, 
@@ -278,7 +281,7 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
                                             ridge.center = rep(0, ncol(X)),
                                             nonnegative = FALSE,
                                             warmupiters = 1,
-                                            start = rep(0.05, ncol(data_pois$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                            start = rep(1, ncol(data_pois$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
                                             method = 7L, #
                                             thresh = 1E-10
@@ -287,7 +290,8 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
 # CHECK how to fix this in an automatic way - 
 # maybe scale columns of X or normalize penalty weights to sum to nrows(data)?
 
-max(abs(L0glm_pois_lambda0$coefficients-coef(glm_pois))) # 8.484768e-12
+L0glm_pois_lambda0_coefs = L0glm_pois_lambda0$coefficients / X.n
+max(abs(L0glm_pois_lambda0_coefs-coef(glm_pois))) # 8.484768e-12
 # TODO gives bad solution with start=rep(1E-2, ncol(data_pois$X)), but 
 # good solution with rep(1, ncol(data_pois$X)) - fix
 plot(L0glm_pois_lambda0$coefficients, coef(glm_pois), pch=16, col="blue")
@@ -487,7 +491,7 @@ system.time(L0glm_binom_lambda0 <- L0glm.fit.internal(X = X,
                                             lower = rep(-Inf, ncol(X)),
                                             upper = rep(Inf, ncol(X))
 ))  # 0.22s
-# TODO: fix error Error in linkinv(eta) : LENGTH or similar applied to S4 object
+# TODO fix L0glm.fit gives error Error in linkinv(eta) : LENGTH or similar applied to S4 object
 mean(abs(coef(glm_binom)-L0glm_binom_lambda0$coefficients)) # 2.523878e-11
 plot(x=L0glm_binom_lambda0$coefficients, y=data_binom$beta_true, pch=16, col="blue")
 
@@ -495,16 +499,17 @@ cor(L0glm_binom_lambda0$coefficients, data_binom$beta_true) # 0.9983967
 plot(x=L0glm_binom_lambda0$coefficients, y=data_binom$beta_true, pch=16, col="blue")
 
 # check if metrics (loglik & AIC & BIC) are correct
-metrics_binom = data.frame(do.call(cbind, get.metrics(beta = L0glm_binom_lambda0$coefficients,  # some metrics
+metrics_binom = data.frame(do.call(cbind, get.metrics(beta = as.matrix(L0glm_binom_lambda0$coefficients),  # some metrics
                                                      X = Matrix(data_binom$X, sparse=TRUE), 
                                                      y = as.matrix(data_binom$y), 
-                                                     weights = weights,
+                                                     weights = as.matrix(weights),
                                                      family = binomial(logit), 
-                                                     beta_true = as.matrix(data_binom$beta_true))))
+                                                     beta_true = as.matrix(data_binom$beta_true) ) ) )
 metrics_binom
-logLik(glm_binom)-metrics_binom$loglik # does not match because R's glm function kicks out infinites & I don't
-AIC(glm_binom)-metrics_binom$aic # 
-BIC(glm_binom)-metrics_binom$bic # 
+glm_binom$deviance-metrics_binom$deviance # 0, correct
+logLik(glm_binom)-metrics_binom$loglik # 0, correct
+AIC(glm_binom)-metrics_binom$aic # 0, correct
+BIC(glm_binom)-metrics_binom$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
@@ -513,24 +518,30 @@ lambda_preset_binom = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mb
                                    X = Matrix(data_binom$X, sparse=TRUE), 
                                    family = binomial(logit),
                                    dispersion = dispersion) # dispersion here was 1, here we pass this value to not have to estimate it 
-lambda_preset_binom # 2.556246
+lambda_preset_binom # 2.561769
 
-system.time(L0glm_binom_presetlambda <- L0glm.fit(X = Matrix(data_binom$X, sparse=TRUE), 
-                                                 y = data_binom$y, 
-                                                 family = binomial(logit), 
-                                                 lambda = lambda_preset_binom,
-                                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                                 nonnegative = FALSE,
-                                                 warmupiters = 1,
-                                                 start = rep(0.05, ncol(data_binom$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                                 solver = "eigen", # 
-                                                 method = 1L, #
-                                                 thresh = 1E-10
-)) # 2.41s
+system.time(L0glm_binom_presetlambda <- L0glm.fit.internal(X = X, 
+                                                      y = y, 
+                                                      weights = weights,
+                                                      family = binomial(logit), 
+                                                      lambda = lambda_preset_binom, 
+                                                      nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                                      ridge.center = rep(0, ncol(X)),
+                                                      nonnegative = FALSE,
+                                                      warmupiters = 1,
+                                                      start = rep(0.01, ncol(data_binom$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                                      no.pen = 1,
+                                                      solver = "eigen", # 
+                                                      method = 3L, #
+                                                      thresh = 1E-10,
+                                                      lower = rep(-Inf, ncol(X)),
+                                                      upper = rep(Inf, ncol(X))
+)) # 0.36s
+# TODO fix L0glm.fit gives error Error in linkinv(eta) : LENGTH or similar applied to S4 object
 mean(abs(L0glm_binom_presetlambda$coefficients-coef(glm_binom))) # 0.03297451 
 plot(L0glm_binom_presetlambda$coefficients, coef(glm_binom), pch=16, col="blue")
 
-cor(L0glm_binom_presetlambda$coefficients, data_binom$beta_true) # 0.9990542
+cor(L0glm_binom_presetlambda$coefficients, data_binom$beta_true) # 0.9967551
 plot(x=L0glm_binom_presetlambda$coefficients, y=data_binom$beta_true, pch=16, col="blue")
 
 

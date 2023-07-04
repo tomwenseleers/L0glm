@@ -117,6 +117,14 @@ compute.diagH <- function(X, w, fit){
   return(d)
 }
 
+# NOTE: a way to calculate this using any of the available solvers
+# would be by doing
+# Solve the WLS problem
+# sol <- wls_solver(Xwaug, w, method)
+# Calculate the diagonal of the hat matrix
+# d <- rowSums((Xwaug %*% sol) * Xwaug)
+
+
 # compute.ic ####
 # Function that computes a variety of information criteria
 # INPUT:
@@ -201,7 +209,10 @@ compute.ss <- function(mu, y, w, fam){
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 #   de Rooi & Eilers 2011, Osborne et al. 2000 & Frommlet & Nuel 2016 (eqn 5)
 AR.weights <- function(beta, delta = 1E-5, gamma = 2){
-  return(1/(abs(beta)^gamma + delta^gamma))
+  penweights = 1/(abs(beta)^gamma + delta^gamma)
+  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet
+  penweights = length(penweights)*penweights/sum(penweights) 
+  return(penweights)
 }
 
 # AL.weights ####
@@ -214,7 +225,10 @@ AR.weights <- function(beta, delta = 1E-5, gamma = 2){
 # REF
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 AL.weights <- function(beta, delta){
-  return(1/(abs(beta) + delta))
+  penweights = 1/(abs(beta) + delta)
+  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet
+  penweights = length(penweights)*penweights/sum(penweights) 
+  return(penweights)
 }
 
 

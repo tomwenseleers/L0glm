@@ -8,6 +8,10 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         # upper=rep(Inf,ncol(X)) 
 ) {
   
+  if (!is(family, "family")) family = family()
+  
+  # browser()
+  
   require(glmnet)
   require(qlcMatrix)
   
@@ -24,7 +28,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) p <- p + 1
   
   n = nrow(X) # nr of cases
-  # nobs = XXX
+  nobs = sum(weights != 0)
   # in glm source code calculated as
   # nobs.glm <- function(object, ...)
   #             if(!is.null(w <- object$prior.weights)) sum(w != 0) else length(object$residuals) # with residuals <- (y - mu)/mu.eta(eta)
@@ -76,11 +80,11 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     y = as.matrix(y)
     # Compute the fitted mean values using the fitted coefficients
     nonzero = as.vector(rowMax(abs(beta))!=0) # nonzero coefficients
-    eta = X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset # fitted eta = fitted values on link scale
-    mu = family$linkinv(eta) # fitted values on response scale
+    eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
+    mu = family$linkinv(eta=eta) # fitted values on response scale
     # Compute the weights at the fitted values
-    gprime = family$mu.eta(eta) # derivative of the expected values
-    varg = family$variance(mu) # variance
+    gprime = family$mu.eta(eta=eta) # derivative of the expected values
+    varg = family$variance(mu=mu) # variance
     W = as.vector(weights)*(gprime^2)/varg # weights
     good = !is.na(W) & W != 0 & !is.infinite(W) & gprime!=0 & as.vector(weights)!=0 # valid observations
     W[!good] = 0
@@ -91,12 +95,12 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   } else { # calculate weights based on the "true" responses if beta_true is given
     # calculate true response used in simulation given true coefficients beta_true
     nonzero = as.vector(rowMax(abs(beta_true))!=0) # nonzero coefficients
-    eta_true = X[,nonzero,drop=F] %*% beta_true[nonzero,,drop=F] + offset # true eta = true values on link scale
-    mu_true <- as.matrix(family$linkinv(eta_true)) # true mu = true values on response scale
+    eta_true = as.matrix(X[,nonzero,drop=F] %*% beta_true[nonzero,,drop=F] + offset) # true eta = true values on link scale
+    mu_true <- as.matrix(family$linkinv(eta=eta_true)) # true mu = true values on response scale
     
     # Compute the weights based on the "true" responses
-    gprime_true = family$mu.eta(eta_true) # derivative of the true values
-    varg_true = family$variance(mu_true)
+    gprime_true = family$mu.eta(eta=eta_true) # derivative of the true values
+    varg_true = family$variance(mu=mu_true)
     W = as.vector(weights)*(gprime_true^2)/varg_true
     good = !is.na(W) & W != 0 & !is.infinite(W) & gprime_true!=0 & as.vector(weights)!=0
     W[!good] = 0
@@ -104,11 +108,11 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     
     # Compute the fitted mean values using the actual fitted coefficients
     nonzero = as.vector(rowMax(abs(beta))!=0) # nonzero coefficients
-    eta = X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset # fitted eta = fitted values on link scale
-    mu = family$linkinv(eta) # fitted values on response scale
+    eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
+    mu = family$linkinv(eta=eta) # fitted values on response scale
     
     # calculated true theoretical deviance compared to ground truth
-    dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(weights)) # as.vector(W)
+    dev_res = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(weights)) # as.vector(W)
     dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
     dev_res[is.na(dev_res)] = 0
     deviance_true = sum(dev_res) # deviance compared to ground truth 
@@ -117,8 +121,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # browser()
   
   # calculated deviance
-  dev_res = family$dev.resids(as.vector(y), as.vector(mu), as.vector(weights)) # as.vector(W)
-  # dev_res = family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(W)) # using ground truth
+  dev_res = family$dev.resids(y=as.vector(y), mu=as.vector(mu), wt=as.vector(weights)) # as.vector(W)
+  # dev_res = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(W)) # using ground truth
   dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
   dev_res[is.na(dev_res)] = 0 # is.infinite(dev_res)|
   deviance = sum(dev_res) # deviance 
@@ -135,13 +139,13 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
   # using deviance relative to observed signal
   aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                         n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                         n = as.vector(weights)[good], # check this is correct for family(binomial)
                          mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
                          wt = weights[good], 
                          dev = deviance) 
   # using deviance relative to ground truth
   aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                              n = as.vector(weights*(W != 0))[good], # check this is correct for family(binomial)
+                              n = as.vector(weights)[good], # check this is correct for family(binomial)
                               mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
                               wt = weights[good], 
                               dev = deviance_true) 
