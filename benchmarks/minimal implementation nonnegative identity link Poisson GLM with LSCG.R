@@ -267,7 +267,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=F, sparse=TRUE, family = "gaussian")
+sim <- simulate_spike_train(n=10000, p=10000, k=100, multichannel=F, sparse=F, family = "gaussian")
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -534,7 +534,7 @@ system.time(par <- L0glm.fit(X = sim$X, y = sim$y,
                              family = poisson(identity), 
                              nonzero.centered = F)) # 34.88s for parallellize = F, 19.75s for parallellize = T
 cor(as.vector(par$coefficients), as.vector(sim$beta_true)) # 0.994652 with variable indices
-s# TODO: check why if data is family = "gaussian" gives an error
+# TODO: check why if data is family = "gaussian" gives an error
 
 length(intersect(which(sim$beta_true!=0), which(par$coefficients!=0))) # 4515 out of 7645
 length(intersect(which(sim$beta_true==0), which(par$coefficients!=0))) # 4 out of 7645
