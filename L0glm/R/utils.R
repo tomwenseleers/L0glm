@@ -210,8 +210,8 @@ compute.ss <- function(mu, y, w, fam){
 #   de Rooi & Eilers 2011, Osborne et al. 2000 & Frommlet & Nuel 2016 (eqn 5)
 AR.weights <- function(beta, delta = 1E-5, gamma = 2){
   penweights = 1/(abs(beta)^gamma + delta^gamma)
-  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet
-  penweights = length(penweights)*penweights/sum(penweights) 
+  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet?
+  # penweights = length(penweights)*penweights/sum(penweights) 
   return(penweights)
 }
 
@@ -226,8 +226,8 @@ AR.weights <- function(beta, delta = 1E-5, gamma = 2){
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 AL.weights <- function(beta, delta){
   penweights = 1/(abs(beta) + delta)
-  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet
-  penweights = length(penweights)*penweights/sum(penweights) 
+  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet?
+  # penweights = length(penweights)*penweights/sum(penweights) 
   return(penweights)
 }
 
