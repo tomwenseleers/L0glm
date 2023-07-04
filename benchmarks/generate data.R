@@ -7,6 +7,10 @@ simulate_orthogonal <- function(n=100, p=100, k_star=24, beta_sd=0.5, error_sd=1
   # Generate X matrix
   X <- matrix(rnorm(n*p), n, p)
   
+  # # we L2 norm normalize the columns of X first
+  # X.n <- sqrt(Matrix::colSums(X^2)) 
+  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
+
   # Generate beta vector
   beta <- c(rnorm(k_star, 0, beta_sd), rep(0, p-k_star))
   
@@ -46,6 +50,10 @@ simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", nt
   # Create matrix of predictor variables
   X <- cbind(1, # for intercept 
              matrix(runif(n * p), nrow = n, ncol = p))
+  
+  # # we L2 norm normalize the columns of X first
+  # X.n <- sqrt(Matrix::colSums(X^2)) 
+  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
   
   # Set true coefficients 
   beta <- c(intercept, rep(0, p))

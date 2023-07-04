@@ -210,7 +210,7 @@ compute.ss <- function(mu, y, w, fam){
 #   de Rooi & Eilers 2011, Osborne et al. 2000 & Frommlet & Nuel 2016 (eqn 5)
 AR.weights <- function(beta, delta = 1E-5, gamma = 2){
   penweights = 1/(abs(beta)^gamma + delta^gamma)
-  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet?
+  # renormalize so that penalty weights sum to 1
   # penweights = length(penweights)*penweights/sum(penweights) 
   return(penweights)
 }
@@ -226,10 +226,24 @@ AR.weights <- function(beta, delta = 1E-5, gamma = 2){
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 AL.weights <- function(beta, delta){
   penweights = 1/(abs(beta) + delta)
-  # renormalize so that penalty weights sum to nr of coefficients, as in glmnet?
+  # renormalize so that penalty weights sum to 1
   # penweights = length(penweights)*penweights/sum(penweights) 
   return(penweights)
 }
+
+
+# L2 norm normalize columns of matrix X
+# INPUT
+#   X: input matrix
+# OUTPUT
+#   X: matrix with L2 norm of columns normalized to 1
+#   attr(X, "X.n"): normalisation factors
+normX = function (X) {  
+  X.n <- sqrt(Matrix::colSums(X^2)) 
+  X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
+  attr(X, "X.n") <- X.n
+  return(X)
+  }
 
 
 # block.fit ####
