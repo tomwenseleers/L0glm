@@ -525,6 +525,24 @@ sum(rowMin(beta_L0_2)!=0) # 299 peaks detected - still too high
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(beta_L0_2)!=0))) # 99 out of 100 peaks detected
 
 
+
+
+
+
+
+
+library(qlcMatrix)
+
+set.seed(1)
+sim <- simulate_spike_train(n=100, p=101, k=2, multichannel=T, sparse=F, family = "gaussian")
+X <- sim$X
+Y <- sim$y
+true_coefs <- sim$beta_true
+m <- ncol(Y)
+n <- nrow(X)
+p <- ncol(X)
+
+
 system.time(par <- L0glm.fit(X = sim$X, y = sim$y, 
                              lambda = 1, nonnegative = T, 
                              parallellize = T,
@@ -542,4 +560,29 @@ length(intersect(which(sim$beta_true==0), which(par$coefficients!=0))) # 4 out o
 length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(par$coefficients)!=0)))  # 99 out of 100
 
 
+## TESTING L0GLM FUNCTION
+# Single channel (vector y)
+data <- data.frame(sim$X, y = sim$y)
+y_vars <- paste0("y.y", 1:m)
+formula_string <- paste(paste(y_vars, collapse = " + "), "~ 0 + .", sep = " ")
+fmla <- as.formula(formula_string)
+
+
+
+system.time(fit.sc <- L0glm(data = data,
+                            formula = fmla, 
+                            lambda = 1, 
+                            nonnegative = T, 
+                            relaxed = F, 
+                            normalize = T,
+                            solver = "eigen", 
+                            family = poisson(identity), 
+                            nonzero.centered = F)) # 34.88s for parallellize = F, 19.75s for parallellize = T
+cor(as.vector(fit.sc$coefficients), as.vector(sim$beta_true)) # 0.994652 with variable indices
+# TODO: check why if data is family = "gaussian" gives an error
+
+length(intersect(which(sim$beta_true!=0), which(fit.sc$coefficients!=0))) # 4515 out of 7645
+length(intersect(which(sim$beta_true==0), which(fit.sc$coefficients!=0))) # 4 out of 7645
+
+length(intersect(which(rowMax(sim$beta_true)!=0), which(rowMin(fit.sc$coefficients)!=0)))  # 99 out of 100
 

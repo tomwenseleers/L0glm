@@ -114,6 +114,7 @@
 #' for ridge regularization. If \code{ridge.center} is not specified, the algorithm will 
 #' use the provided starting values (if any) for the first iteration, and in subsequent iterations, 
 #' the center will be updated to the coefficients from the previous iteration.
+#' It should be a vector of length \code{p}.
 #' @param warmupiters
 #' an integer specifying the number of warm-up iterations before weights are updated in the 
 #' IRLS algorithm. 
@@ -294,32 +295,32 @@
 #' @example examples/L0glm_examples.R
 #'
 #' @export
-L0glm <- function(formula, #1
-                  data = NULL, #2 
-                  family = gaussian(identity), #3
-                  weights = NULL, #4
-                  start = NULL, #5
-                  offset = NULL, #6
-                  contrasts = NULL, #7
-                  lambda = 0, 
+L0glm <- function(formula,
+                  data = NULL,
+                  family = gaussian(identity),
+                  weights = NULL,
+                  start = NULL,
+                  offset = NULL,
+                  contrasts = NULL,
+                  lambda = 0,
                   no.pen = 0,
-                  nonnegative = FALSE, 
-                  normalize = TRUE,  #11
-                  solver = NULL, #12
-                  method = 7L, #13
-                  lower = rep(-.Machine$double.xmax,ncol(X)), #
-                  upper = rep(.Machine$double.xmax,ncol(X)), #15
-                  parallellize = TRUE, #16
-                  maxit = 25, #17
+                  nonnegative = FALSE,
+                  normalize = TRUE,
+                  solver = NULL,
+                  method = 7L,
+                  lower = rep(-.Machine$double.xmax,ncol(X)),
+                  upper = rep(.Machine$double.xmax,ncol(X)),
+                  parallellize = TRUE,
+                  maxit = 25,
                   grouped = TRUE, 
-                  group.maxit = 6, #19
+                  group.maxit = 6,
                   relaxed = TRUE,
                   nonzero.centered = FALSE,
-                  ridge.center = NULL, # 22 Should be a vector of length ncol(X)
+                  ridge.center = NULL,
                   warmupiters = 1, 
                   warmupiters.nzc = warmupiters,
                   gamma = 2, #
-                  thresh = 1e-10, # TODO: think about sensible default that should be a function of the scale of the data
+                  thresh = 1e-5, # TODO: think about sensible default that should be a function of the scale of the data
                   tol = 1E-10,
                   control.solver = NULL,
                   post.filter.fn = function(u) return(u),
@@ -355,6 +356,8 @@ L0glm <- function(formula, #1
   }
   intercept <- as.logical(attr(mt, "intercept"))
   if(intercept) no.pen <- c(1, no.pen + 1)
+  
+
   
   
   n <- nrow(X) # nr of observations
@@ -644,7 +647,7 @@ L0glm.fit = function(X,
                      warmupiters = 1, # TODO: go back to ifelse(family$family == "gaussian", 1, 4)?
                      warmupiters.nzc = warmupiters,
                      gamma = 2,
-                     thresh = 1e-10, 
+                     thresh = 1e-5, 
                      tol = 1E-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      IC = "gic",
@@ -1103,7 +1106,7 @@ L0glm.fit = function(X,
   # Scale coefficients to original scale
   if(normalize) coefficients <- coefficients / X.n
   
-  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, response = z))
+  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, z = z))
 }
 
 #' @describeIn L0glm
@@ -1132,7 +1135,7 @@ L0glm.fit.internal = function(X,
                               warmupiters = 1,
                               warmupiters.nzc = 3,
                               gamma = 2,
-                              thresh = 1e-10,
+                              thresh = 1e-5,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
