@@ -657,6 +657,7 @@ L0glm.fit = function(X,
   require(qlcMatrix)
   y = as.matrix(y)
   if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
+  no.pen.start <- no.pen
   
   # Normalize
   if(normalize){
@@ -742,6 +743,8 @@ L0glm.fit = function(X,
         if(i > 1){
           avgcoefs = rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0)
+          no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
+          no.pen <- match(no.pen.new.indices, variable.indices)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
@@ -823,6 +826,8 @@ L0glm.fit = function(X,
         # Apply relaxed group L0 feature selection
         avgcoefs = rowMeans(coefficients)
         variable.indices = which(avgcoefs != 0)
+        no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
+        no.pen <- match(no.pen.new.indices, variable.indices)
         
         if(length(variable.indices) > 1){
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
@@ -895,14 +900,14 @@ L0glm.fit = function(X,
           if(verbose) warning("Relaxed fit wasn't possible due to all coefficients being 0.")
         }
       }
-      
       stopCluster(cl)
-      
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
         if(i > 1){
           avgcoefs <- rowMeans(coefficients)
-          variable.indices = which(avgcoefs > 0)
+          variable.indices = which(avgcoefs > 0) # Only refit nonzero indices
+          no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
+          no.pen <- match(no.pen.new.indices, variable.indices)
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
         } else {
           variable.indices <- 1:ncol(X)
@@ -952,6 +957,8 @@ L0glm.fit = function(X,
         # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
         avgcoefs = rowMeans(coefficients)
         variable.indices = which(avgcoefs!=0)
+        no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
+        no.pen <- match(no.pen.new.indices, variable.indices)
         
         if(length(variable.indices) != 0){
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
@@ -994,7 +1001,7 @@ L0glm.fit = function(X,
     pen.weights <- pen.weights.mat
     lambdas <- lambdas.mat
     z <- z.mat
-  } else { # Single channel
+  } else { # Single variable
     fit <- L0glm.fit.internal(X = X, 
                               y = as.vector(y),
                               weights = weights,
@@ -1030,6 +1037,8 @@ L0glm.fit = function(X,
       # using 1/ avg coefficients over channels from previous fit as starting values for another L0 GLM fit but now using lambda=0, 
       # i.e. using a nonnegative Poisson GLM, using variables selected earlier via iterated L0 GLMs
       variable.indices = which(coefficients!=0)
+      no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
+      no.pen <- match(no.pen.new.indices, variable.indices)
       # start <- coefficients # TODO Should the start be the previous iteration coefficients?
       
       fit <- L0glm.fit.internal(X = X[,variable.indices, drop = F],
@@ -1139,7 +1148,6 @@ L0glm.fit.internal = function(X,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
-  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
