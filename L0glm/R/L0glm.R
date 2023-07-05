@@ -150,7 +150,7 @@
 #' Threshold tuning is performed using TODO add chosen optimization function 
 #' For lambda tuning, see details in \code{\link{L0glm.tune}}). 
 #' @param verbose
-#' print algorithm progression to console ?
+#' print algorithm progression to console?
 #'
 #'
 #' @details
@@ -330,7 +330,7 @@ L0glm <- function(formula,
                   # seed = NULL, # TODO remove? otherwise restore documentation, removed in push 4/7
                   IC = "gic",
                   verbose = TRUE) {
-  # TODO talk with tom about whether ot not we should group some of these variables into control lists.
+  # TODO talk with tom about whether or not we should group some of these variables into control lists.
   call0 <- match.call()
   # Extract data structure from the formula (code taken from stats::glm)
   if (is.null(data)) data <- environment(formula)

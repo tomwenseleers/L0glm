@@ -123,7 +123,9 @@ abess.fit <- function(X, y, ...){
 }
 
 glmnet.fit <- function(X, y, ...){
-  
+  fit(glmnet(x = X,
+             y = y,
+             ...))
 }
 
 tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
