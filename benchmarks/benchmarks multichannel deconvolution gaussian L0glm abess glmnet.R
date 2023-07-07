@@ -36,15 +36,15 @@ W <- 1/(Y+0.1) # approx 1/variance Poisson observation weights with family="pois
 # (NOTE: with high dispersion/variance these come out way too high though,  except if sd_noise=1 - check this)
 
 # if dispersion/variance is known
-lambda_preset_aic_knowndisp = preset.lambda(IC="aic", dispersion=sd_noise^2)  
+lambda_preset_aic_knowndisp = preset.lambda(X=X, y=Y, IC="aic", dispersion=sd_noise^2)  
 lambda_preset_aic_knowndisp 
-lambda_preset_bic_knowndisp = preset.lambda(IC="bic", dispersion=sd_noise^2)
+lambda_preset_bic_knowndisp = preset.lambda(X=X, y=Y, IC="bic", dispersion=sd_noise^2)
 lambda_preset_bic_knowndisp
-lambda_preset_gic_knowndisp = preset.lambda(IC="gic", dispersion=sd_noise^2)  
+lambda_preset_gic_knowndisp = preset.lambda(X=X, y=Y, IC="gic", dispersion=sd_noise^2)  
 lambda_preset_gic_knowndisp 
-lambda_preset_ebic_knowndisp = preset.lambda(IC="ebic", dispersion=sd_noise^2) 
+lambda_preset_ebic_knowndisp = preset.lambda(X=X, y=Y, IC="ebic", dispersion=sd_noise^2) 
 lambda_preset_ebic_knowndisp
-lambda_preset_ebic_knowndisp = preset.lambda(IC="mbic", dispersion=sd_noise^2) 
+lambda_preset_ebic_knowndisp = preset.lambda(X=X, y=Y, IC="mbic", dispersion=sd_noise^2) 
 lambda_preset_ebic_knowndisp
 # if dispersion/variance is not known it can first be estimated
 lambda_preset_aic = preset.lambda(IC="aic", y=sim$y[,which.max(colMeans(abs(sim$y)))], 
@@ -79,16 +79,15 @@ lambda_preset_mbic
 # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
 # max lambda = max(diag(1/crossprod(X, X)) * (crossprod(X, y)^2))
 # = max((1/colSums(X^2)) * (crossprod(X, y)^2))
-maxlambda = max((1/colSums(sim$X^2)) * (crossprod(sim$X, sim$y)^2)) # lambda that would penalize all variables to 0 in L0 regression (but maybe factor of 4 of Frommlet still needs to be taken into account - check with orthogonal variable problem)
-# TODO it should be Xw and yw
+maxlam = maxlambda(X=X, weights=rep(1, ncol(X)), z=sim$y) # max((1/colSums(sim$X^2)) * (crossprod(sim$X, sim$y)^2)) # lambda that would penalize all variables to 0 in L0 regression (but maybe factor of 4 of Frommlet still needs to be taken into account - check with orthogonal variable problem)
 
-lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1, by=1)
+lambdas = 10^seq((round(log10(lambda_preset_aic))-1), log10(maxlam), by=0.5)
 
 library(parallel)
 library(qlcMatrix)
 system.time(warm_start <- L0glm.fit(X = sim$X, y = sim$y,
                                family = gaussian(identity), # poisson(identity),
-                               lambda = min(lambdas), #  # or 0.1 or 1
+                               lambda = lambda_preset_aic, # min(lambdas), #  # or 0.1 or 1
                                lower = rep(0, ncol(sim$X)),
                                upper = rep(Inf, ncol(sim$X)),
                                nonnegative = TRUE,
@@ -96,11 +95,12 @@ system.time(warm_start <- L0glm.fit(X = sim$X, y = sim$y,
                                grouped = T, # use group L0 penalty
                                group.maxit = 5,
                                relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
-                               warmupiters = 5,
+                               warmupiters = 1,
                                solver = "eigen",
                                method = 7L # using Eigen's sparse Cholesky solver
-                               )) # 5s / 20s for other computer
-sum(rowMin(abs(warm_start))!=0) # nr of selected variables at lowest lambda used
+                               )$coefficients) # 9s
+library(qlcMatrix)
+sum(rowMin(abs(warm_start))!=0) # 20 = nr of selected variables at AIC preselected lambda
 
 no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
 w = 0.9 # 0 = no warm starts, 1 = full warm starts
@@ -116,15 +116,15 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                                                             grouped = T, # use group L0 penalty
                                                                             group.maxit = 6,
                                                                             relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
-                                                                            warmupiters = 5,
+                                                                            warmupiters = 1,
                                                                             solver = "eigen",
                                                                             method = 7L, # using Eigen's sparse Cholesky solver
                                                                             parallellize = T 
-                                                                            )
+                                                                            )$coefficients
                                 warm_start <<- new_coefs
                                 return(new_coefs)
 }
-)) # 82s, TODO check how warm starts would affect solution quality & stability / 197s in other computer
+)) # 121s, TODO check how warm starts would affect solution quality & stability
 
 # metrics relaxed group L0 over sequence of lambda values
 library(qlcMatrix)
@@ -132,8 +132,7 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        weights=matrix(1, nrow=nrow(sim$y), ncol=ncol(sim$y)), 
                                                                                        offset=Matrix(0, nrow=nrow(sim$X), ncol=ncol(sim$y), sparse=T), 
                                                                                        family=gaussian(identity), 
-                                                                                       beta_true=sim$beta_true,
-                                                                                       edf=sum(sim$beta!=0))))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
+                                                                                       beta_true=sim$beta_true)))) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(rowMin(abs(sim$beta))!=0) # sum(sim$beta!=0) # sum(rowMin(abs(sim$beta))!=0) # sum(rowMin(abs(sim$beta))!=0)*ncol(sim$beta) # sum(sim$beta!=0) # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
 
 
 system.time(metrics2 <- L0glm.tune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, IC = "aic", group.maxit = 6, plot = T))

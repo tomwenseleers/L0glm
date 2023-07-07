@@ -38,8 +38,13 @@ simulate_orthogonal <- function(n=100, p=100, k_star=24, beta_sd=0.5, error_sd=1
 
 
 
-# simulate some univariate data with sparse solution for any GLM family & canonical link ####
-simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", ntot = 10) {
+# simulate some univariate data with sparse solution for any GLM family ####
+simulate_glm <- function(n = 10000, 
+                         p = 100, 
+                         n_nonzero = 50, 
+                         intercept = 1, 
+                         family = "gaussian",
+                         ntot = 10) {
   # n: number of observations
   # p: number of variables (excluding intercept)
   # n_nonzero: nr of variables (excluding intercept term) with nonzero coefficients
@@ -47,18 +52,18 @@ simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", nt
   # family: response distribution ("gaussian", "poisson", "binomial", "gamma", "inverse.gaussian")
   # ntot: total sample size for the binomial case
   
+  require(statmod)
+  
   # Create matrix of predictor variables
   X <- cbind(1, # for intercept 
              matrix(runif(n * p), nrow = n, ncol = p))
   
-  # # we L2 norm normalize the columns of X first
-  # X.n <- sqrt(Matrix::colSums(X^2)) 
-  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
-  
   # Set true coefficients 
   beta <- c(intercept, rep(0, p))
-  if (family=="gamma") { beta[sample(2:(p+1), n_nonzero)] <- abs(rnorm(n_nonzero)) } else { # sample from half normal distribution for gamma to make sure that true coefficients are always positive 
-    beta[sample(2:(p+1), n_nonzero)] <- rnorm(n_nonzero) }
+  # if (family=="gamma") { beta[sample(2:(p+1), n_nonzero)] <- abs(rnorm(n_nonzero)) } else { 
+    # sample from half normal distribution for gamma to make sure that true coefficients are always positive 
+  beta[sample(2:(p+1), n_nonzero)] <- rnorm(n_nonzero) 
+    # }
   
   # Set link function and inverse link function based on family
   if (family == "gaussian") {
@@ -70,12 +75,12 @@ simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", nt
   } else if (family == "binomial") {
     linkinv <- plogis
     linkf <- qlogis
-  } else if (family == "gamma") {
-    linkinv <- function(mu) 1 / mu
-    linkf <- function(y) 1 / y
-  } else if (family == "inverse.gaussian") {
-    linkinv <- function(mu) 1 / mu^2
-    linkf <- function(y) sqrt(1 / y)
+  } else if (family == "gamma") { # log link Gamma
+    linkinv <- exp
+    linkf <- log
+  } else if (family == "inverse.gaussian") { # log link inverse Gaussian
+    linkinv <- exp # function(eta) 1 / eta^2
+    linkf <- log # function(mu) sqrt(1 / mu)
   } else {
     stop("Invalid family")
   }
@@ -90,8 +95,10 @@ simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", nt
   } else if (family == "binomial") {
     y <- rbinom(n, size = ntot, prob = mu)/ntot
   } else if (family == "gamma") {
-    # shape = 1 and scale = 1/rate. scale here is my & rate 1/mu to get the mean mu
+    # shape = 1 and scale = 1/rate. scale here is mu & rate 1/mu to get the mean mu
     y <-  rgamma(n, shape = 1, scale = mu)
+  } else if (family == "inverse.gaussian") {
+    y <- rinvgauss(n, mean = mu, shape = 1)
   }
   
   # Set prior weights based on family
@@ -100,6 +107,11 @@ simulate_glm <- function(n, p, n_nonzero, intercept = 1, family = "gaussian", nt
   } else {
     weights <- rep(1, n)
   }
+  
+  # L2 norm normalize columns of X
+  # X.n <- sqrt(Matrix::colSums(X^2)) # Calculate L2 norm of columns
+  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
+  # beta <- beta * X.n
   
   list(X = X, y = y, weights = weights, beta_true = beta, eta_true = eta, mu_true = mu)
 }

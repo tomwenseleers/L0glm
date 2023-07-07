@@ -27,6 +27,7 @@ sim <- simulate_spike_train(n = n,
 X <- sim$X
 y <- sim$y
 dispersion <- 1
+family <- poisson(identity)
 
 # using lambda 1
 system.time(L0glm.out <- L0glm.fit(X, y, 
@@ -40,7 +41,7 @@ system.time(L0glm.out <- L0glm.fit(X, y,
                            # start = rep(10, ncol(sim$X)), # coefficient starting values
                            solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
                            method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
-)$coefficients) # 0.29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
+)$coefficients) # 0.25s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -61,10 +62,10 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
-                               thresh = 1E-10
+                               thresh = 1E-5
 )) 
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0)  # 999
+sum(L0glm.out_preset_coefs!=0)  # 1004
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
 graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -77,52 +78,20 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
 plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
 
 
-# # couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
-# # weights = L0glm.out_preset$weights
-# weights = 1/(sim$y+0.1)
-# Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=F) # = X * sqrt(weights)
-# Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(lambda_preset,ncol(sim$X))))), sparse=F) # row augmented covariate matrix
-# ywaug = as.vector(c(sim$y, rep(0, ncol(sim$X)))) # 
-# 
-# # orthogonal initialisation (assuming variables are orthogonal) ####
-# beta_init_orthogonal <- as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)) 
-# cor(beta_init_orthogonal, as.vector(sim$beta_true)) # 0.3363417
-# plot(beta_init_orthogonal, as.vector(sim$beta_true), pch=16, col="blue")
-# mean(abs(beta_init_orthogonal-sim$beta_true)) # 485.0457
-# # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
-# # PS original variables in columns of X can be very far from orthogonal, 
-# # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
-# # makes the assumption hold better
-# 
-# # diagonal initialisation (assuming system is dominated by diagonal of X) ####
-# # for signal deconvolution problem with n=p this gives the best initial solution
-# # only works if X is square though
-# beta_init_diagonal <- y*sqrt(weights) / diag(Xw)
-# beta_init_diagonal[is.na(beta_init_diagonal)] = 0
-# cor(beta_init_diagonal, as.vector(sim$beta_true)) # 0.4712314
-# plot(beta_init_diagonal, as.vector(sim$beta_true), pch=16, col="blue")
-# mean(abs(beta_init_diagonal-sim$beta_true)) # 1834.576
-
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
-weights = L0glm.out_preset$weights
-Xw <- Diagonal(x=sqrt(weights)) %*% X[,,drop=F]
-sel_task <- which.max(colMeans(abs(sim$y))) # for multitask select column with max mean abs value?
-yw <- y[, sel_task] * sqrt(weights) 
-# TODO note that yw should really be zw, i.e. for non-identity link you should be 
-# working on the adjusted response scale - maybe you should also make L0glm.fit return z? 
-# Or make a convenience function that returns z and w given a particular given family and 
-# coefficient estimates?
-maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, yw)^2), na.rm=T)
-# maxlambda <- maxlambda/4
-maxlambda
-  
-lambdas <- 10^seq(round(log10(lambda_preset))-3, log10(maxlambda), by=0.05) #
+maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
+                    z=L0glm.out_preset$z, no.pen=NULL,
+                    coefs=L0glm.out_preset$coefficients)
+maxlam # 46466.06
+
+
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.05) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+rep(mincoef/2,ncol(sim$X))*(1-warmstart)
+  start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0 # slightly faster & stable with this
   L0glm.out <- L0glm.fit(X, y, 
                              family = poisson(identity), 
@@ -134,7 +103,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              nonnegative = TRUE,
                              warmupiters = 1,
                              warmupiters.nzc = 5,
-                             # start = rep(0.1, ncol(X)), # start, # rep(1, ncol(X)),  # start, # 
+                             start = start, # 
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
                              # gamma = 2, 
@@ -152,7 +121,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   } )))) # 29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
-abline(v=log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
+abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 library(scales)
 abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
 

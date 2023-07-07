@@ -17,12 +17,14 @@
 #' performed.
 #'
 #' @export
-lmridge <- function(X, y, lambdas = NULL,
-                    pen.weights = rep(1, ncol(X)),
+lmridge <- function(X, y, 
+                    lambdas = NULL,
+                    pen.weights = rep(1, ncol(X)), # TODO: just keep lambdas & get rid of pen.weights
                     weights = NULL,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
                     nonnegative = FALSE,
+                    scaling = rep(1, ncol(X)), # to allow scaling of columns of X, eg by L2 norm
                     block.size = NULL,
                     ridge.center = NULL,
                     solver = "eigen",
@@ -30,6 +32,13 @@ lmridge <- function(X, y, lambdas = NULL,
                     start = rep(1, ncol(X)),
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
+  
+  # browser()
+  
+  # scale columns of X if desired
+  if (sum(scaling)!=length(scaling)) { X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / scaling))
+                                       start <- start * scaling }
+  
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
   if(is.null(block.size) || block.size == ncol(X)) {
@@ -56,8 +65,10 @@ lmridge <- function(X, y, lambdas = NULL,
     
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.eigen(Xw = Xw, yw = yw, pen.weights = pen.weights,
-                           lambdas = lambdas, start = start, ridge.center = ridge.center,
+    coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
+                           pen.weights = pen.weights, # TODO get rid of this argument, lambdas should be enough
+                           lambdas = lambdas, 
+                           start = start, ridge.center = ridge.center,
                            lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "nnls") {
@@ -66,6 +77,10 @@ lmridge <- function(X, y, lambdas = NULL,
                           lower = lower, upper = upper, control.solver = control.solver)
   } else {
     stop("Invalid solver choice") }
+  
+  # rescale coefficients to original scale
+  if (sum(scaling)!=length(scaling)) { coefs = coefs / scaling }
+  
   return(coefs)
 }
 
@@ -296,6 +311,9 @@ Yweights <- function(y, weights){
   }
 }
 
+
+# A FEW UTILITY FUNCTIONS ####
+
 # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
 # Ref :
 # https://stats.stackexchange.com/a/164546/27340
@@ -335,6 +353,150 @@ diaglambdas <- function(lambdas, sparse){
   }
   return (dlambdas)
 }
+
+
 issparse <- function(X){
   return(any(class(X) %in% c("dgCMatrix", "dsCMatrix")))
 }
+
+
+# Calculate scaling of columns of matrix X in terms of L2 norm
+# INPUT X matrix
+scaleX = function (X) return(sqrt(Matrix::colSums(X^2)))
+
+# L2 norm normalize columns of matrix X
+# INPUT
+#   X: input matrix
+# OUTPUT
+#   X: matrix with L2 norm of columns normalized to 1
+#   attr(X, "scaling"): normalisation factors
+#   attr(X, "normalized"): TRUE
+normalizeX = function (X) {  
+  scaling <-  scaleX(X)
+  X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / scaling))
+  attr(X, "scaling") <- scaling
+  attr(X, "normalized") <- TRUE
+  return(X)
+}
+
+# center columns of matrix X to zero
+centerX <- function(X) {
+  Xcenter = Matrix::colMeans(X)
+  return(X - rep(Xcenter, rep.int(nrow(X), ncol(X))))
+}
+
+# is X normalized?
+isnormalized = function (X) { out = !is.null(attr(X, "normalized"))
+                              if (out) out = attr(X, "normalized")
+                              return(out) }
+
+# function to calculate good coefficient initialisations to use as starting values in 
+# L0glm.fit which can be used as start - uses an orthogonal approximation
+# to a ridge regression
+# INPUT:
+# X : covariate matrix
+# weights: prior observation weights of GLM
+# mu: expected value on response scale
+# family: GLM family
+# lambda: individual ridge penalty on individual coefficients
+init_coefs = function( X,
+                       weights = rep(1, nrow(X)),
+                       offset = rep(0, nrow(X)),
+                       mu,
+                       family = poisson(identity),
+                       lambda = 1) { 
+  # mu = as.matrix(mu)
+  # offset = as.matrix(offset)
+  eta = as.matrix(family$linkfun(mu))
+  varg = family$variance(mu) # variance
+  if (length(lambda) == 1) lambda = rep(lambda, ncol(X))
+  
+  if (family$link == "identity") {
+    # simplified formula and faster than formula in else statement
+    W <- W.ret <- as.vector(weights / varg) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
+    good = which(!is.na(W) & !(W == 0) & !is.infinite(W)) # valid rows # (gprime != 0)
+    z.ret <- (y - offset) # working (adjusted) response (returned non-subsetted version)
+    z <- z.ret[good] # subset used for fit
+  } else {
+    gprime = family$mu.eta(eta) # derivative of the expected values
+    good = which((weights != 0) &
+                 (gprime != 0) &
+                 !is.infinite(weights) & !is.na(weights)) # valid rows
+    z.ret <- (eta - offset) + (y - mu) / gprime # working (adjusted) response
+    z <- z.ret[good]
+    W.ret <- weights * as.vector(gprime ^ 2 / varg) # updated weights
+    W <- W.ret[good]
+  }
+  
+  XW = Matrix(Diagonal(x = sqrt(W)) %*% X[good, , drop = F], sparse = issparse(X))
+  XWaug = Matrix(rbind(XW, Diagonal(x = sqrt(lambda))), sparse = issparse(X))
+  zwaug = as.vector(c(z * sqrt(W), rep(0, ncol(X))))
+  # orthogonal initialisation (assuming variables are approx orthogonal)
+  beta_init = as.vector(crossprod(XWaug, zwaug) / colSums(XWaug ^ 2))
+  # colSums(XWaug^2) = diag(crossprod(XWaug)))
+  # PS original variables in columns of X can be very far from orthogonal,
+  # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
+  # makes the assumption hold better
+  
+  # possible alternative initialisation
+  # diagonal initialisation (assuming system is dominated by diagonal of X)
+  # for signal deconvolution problem with n=p this gives the best initial solution
+  # only works if X is square though
+  # beta_init_diagonal <- z*sqrt(W) / diag(XW)
+
+  # scale.factor = 0.1 # (1+lambda[[1]]) # multiply coefs by some scale factor to compensate ridge bias a bit
+  # beta_init = beta_init*scale.factor
+  return(beta_init)
+}
+
+
+# alternative simpler constant coefficient initialisation
+# with sensible, well-performing values for different GLM families
+# INPUT
+# X design matrix
+# family (to allow different starting values for different families, 
+# in a Bayesian sense corresponding to different SDs of Gaussian prior, 
+# since lambda=1/start^2 and lambda=1/SD prior)
+start_coefs = function (X, family=gaussian(identity)) { 
+  p = ncol(X)
+  scaling = scaleX(X) # L2 norm of columns of X
+  if (family$family=="Gamma"|family$family=="inverse.gaussian") { sd = 50 } else { sd = 5}
+  startvals = rep(sqrt(sd), p) / scaling
+  # sd is corresponding in a Bayesian sense to SD of Gaussian prior since
+  # lambda=1/start^2 and lambda=1/SD prior
+  return(startvals)
+}
+
+
+# maximum lambda tilde that would be expected to penalize all coefficients to zero
+# taking into account some terms that are unpenalized & prior coefficient estimates
+# see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
+maxlambda = function (X, weights, z, no.pen=NULL, coefs) {
+  z <- as.matrix(z)
+  sel_task <- which.max(colMeans(abs(z))) # for multitask select column with max mean abs value?
+  z <- z[, sel_task, drop=F] 
+  
+  # remove contribution of unpenalized terms
+  if (!is.null(no.pen)) { X_penalized <- X[, -no.pen, drop=F]
+                           # Calculate the contribution to z of the unpenalized terms
+                           unpen_contrib = X[, no.pen, drop=F] %*% coefs[no.pen]
+                           # Adjust z by subtracting the unpenalized contribution
+                           z <- z - unpen_contrib
+                           X <- X_penalized
+                         }
+  
+  Xw <- Diagonal(x=sqrt(weights)) %*% X
+  zw <- Diagonal(x=sqrt(weights)) %*% z
+  
+  maxlambda <- (1/2)*max((1/colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm=T)
+  maxlambda <- maxlambda/4 # Frommlet & Nuel factor of 1/4 to convert lambda to lambda tilde
+  
+  return(maxlambda)
+}
+
+# example
+# ml = maxlambda(X=normalizeX(data_gaus$X), weights=L0glm_gaus_presetlambda$weights,
+#                z=L0glm_gaus_presetlambda$z, no.pen=1, coefs=L0glm_gaus_presetlambda$coefficients)
+# ml
+# 2346.189
+# abline(v=log10(ml), col="cyan")

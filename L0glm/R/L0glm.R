@@ -305,7 +305,7 @@ L0glm <- function(formula,
                   lambda = 0,
                   no.pen = 0,
                   nonnegative = FALSE,
-                  normalize = TRUE,
+                  normalize = FALSE,
                   solver = NULL,
                   method = 7L,
                   lower = rep(-.Machine$double.xmax,ncol(X)),
@@ -448,7 +448,7 @@ L0glm <- function(formula,
   #       l <- rep(l, p)
   #       l[no.pen] <- 0
   #       fit <- L0glm.fit(X = X, y = y, weights = weights, family = family, solver = solver, method = method,
-  #                        lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative,
+  #                        lambda = l, start = start, lower = lower, upper = upper, nonnegative = nonnegative, normalize = normalize,
   #                        block = block, control.l0 = control.l0, control.iwls = control.iwls, block.size = block.size,
   #                        control.solver = control.solver, control.block = control.block, post.filter.fn = post.filter.fn)
   #     })
@@ -499,6 +499,7 @@ L0glm <- function(formula,
                          weights = weights, offset = offset,
                          IC = IC, warm.start.ratio = warm.start.ratio,
                          lower = lower, upper = upper, nonnegative = nonnegative,
+                         normalize = normalize,
                          parallellize = parallellize, no.pen = no.pen,
                          grouped = grouped, group.maxit = group.maxit, 
                          relaxed = relaxed, gamma = gamma, nonzero.centered = nonzero.centered,
@@ -632,14 +633,14 @@ L0glm.fit = function(X,
                      lambda = 1,
                      no.pen = 0, # Vector of unpenalized indices. Include intercept if not to be penalized.
                      nonnegative = FALSE,
-                     normalize = TRUE,
+                     normalize = FALSE,
                      solver = "eigen", 
                      method = 7L,
                      lower = rep(-.Machine$double.xmax, ncol(X)),
                      upper = rep(.Machine$double.xmax, ncol(X)),
                      parallellize = TRUE,
                      maxit = 25,
-                     grouped = TRUE, # TODO: bit unclear what this one does in cobmination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
+                     grouped = TRUE, # TODO: bit unclear what this one does in combination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                      group.maxit = 6, 
                      relaxed = TRUE,
                      nonzero.centered = FALSE,
@@ -657,13 +658,6 @@ L0glm.fit = function(X,
   require(qlcMatrix)
   y = as.matrix(y)
   if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
-  
-  # Normalize
-  if(normalize){
-    X.n <- sqrt(Matrix::colSums(X^2)) # Calculate L2 norm of columns
-    # X <- ifelse(is(X, "sparseMatrix"), X %*% Matrix::Diagonal(x = 1 / X.n), sweep(X, MARGIN=2, X.n, "/")) # More efficient for sparse or dense matrices, respectively
-    X <- X %*% Matrix::Diagonal(x = 1 / X.n) # TODO remove method above? Both sparse and dense X are faster with this
-  }
   
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
@@ -697,7 +691,7 @@ L0glm.fit = function(X,
       stop("Start needs to be of dimensions ncol(X), ncol(y).")
     } 
   } else {
-    start <- matrix(1, nrow = ncol(X), ncol = ncol(y))
+    start <- matrix(0, nrow = ncol(X), ncol = ncol(y)) # passing all zero start values is interpreted as NULL & will result in proper initialisation later on # matrix(sqrt(3), nrow = ncol(X), ncol = ncol(y)) # corresponding in Bayesian sense to assuming initial Gaussian prior with SD of 3, which is the most commonly chosen prior (lambda=1/start^2 and lambda=1/SD prior^2)
   }
   
   if(nonnegative) lower[lower < 0] <- 0
@@ -760,6 +754,7 @@ L0glm.fit = function(X,
                                lambda = lambda,
                                gamma = gamma,
                                nonnegative = nonnegative,
+                               normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
                                nonzero.centered = nonzero.centered,
@@ -805,6 +800,7 @@ L0glm.fit = function(X,
                               offset = offset,
                               method = method, 
                               nonnegative = nonnegative, 
+                              normalize = normalize,
                               control.solver = control.solver, 
                               warmupiters = warmupiters, 
                               warmupiters.nzc = warmupiters.nzc,
@@ -849,6 +845,7 @@ L0glm.fit = function(X,
                               offset = offset,
                               method = method, 
                               nonnegative = nonnegative, 
+                              normalize = normalize,
                               control.solver = control.solver, 
                               warmupiters = warmupiters, 
                               warmupiters.nzc = warmupiters.nzc,
@@ -868,6 +865,7 @@ L0glm.fit = function(X,
                                lambda = lambda,
                                gamma = gamma,
                                nonnegative = nonnegative,
+                               normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
                                nonzero.centered = nonzero.centered,
@@ -921,6 +919,7 @@ L0glm.fit = function(X,
                              lambda = lambda,
                              gamma = gamma,
                              nonnegative = nonnegative,
+                             normalize = normalize,
                              offset = as.vector(offset[col, drop = F]),
                              weights = as.vector(weights[,col,drop=F]),
                              nonzero.centered = nonzero.centered,
@@ -965,6 +964,7 @@ L0glm.fit = function(X,
                                lambda = 1e-30,
                                gamma = gamma,
                                nonnegative = nonnegative,
+                               normalize = normalize,
                                weights = as.vector(weights[,col,drop=F]),
                                start = as.vector(start[variable.indices, col, drop = F]),
                                lower = lower[variable.indices],
@@ -1000,6 +1000,7 @@ L0glm.fit = function(X,
                               weights = weights,
                               family = family,
                               nonnegative = nonnegative,
+                              normalize = normalize,
                               offset = offset,
                               start = start,
                               lower = lower,
@@ -1037,6 +1038,7 @@ L0glm.fit = function(X,
                                 family = family,
                                 weights = weights,
                                 nonnegative = nonnegative,
+                                normalize = normalize,
                                 offset = offset,
                                 start = start[variable.indices],
                                 lower = lower[variable.indices],
@@ -1066,6 +1068,8 @@ L0glm.fit = function(X,
       weights.ret <- fit$weights
     }
     # Threshold optimization
+    
+    # browser()
     
     # # Option 1: with optimize function. 0.49s for SC p=n=100
     # thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, Xmat = X, y = y, IC = IC, family = family, maximum = FALSE)
@@ -1103,9 +1107,6 @@ L0glm.fit = function(X,
   pen.weights[is.infinite(pen.weights)] <- 1e11
   lambdas[is.infinite(lambdas)] <- 1e11
   
-  # Scale coefficients to original scale
-  if(normalize) coefficients <- coefficients / X.n
-  
   return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, z = z))
 }
 
@@ -1125,6 +1126,7 @@ L0glm.fit.internal = function(X,
                               lambda = 1, 
                               no.pen = 0,
                               nonnegative = FALSE,
+                              normalize = TRUE,
                               solver = "eigen", 
                               method = 7L, 
                               lower = rep(-.Machine$double.xmax, ncol(X)),
@@ -1140,67 +1142,76 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
   
+  # Normalize columns of X to unit L2 norm? If so, calculate scaling
+  if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
+                  scaling = rep(1, ncol(X)) }
+  
+  if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation 
+  
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
   linkinv = family$linkinv # inverse link function
+  link = family$linkfun # link function
+  init = family$initialize # initialisation function
+  dev.resids = family$dev.resids # deviance residuals function
+  mu.eta = family$mu.eta # function of derivative of the expected values
+  
   if (!is.function(variance) || !is.function(linkinv) )
     stop("'family' argument seems not to be a valid family object", call. = FALSE)
-  mu.eta = family$mu.eta # function of derivative of the expected values
+
   etastart = NULL
-  
+  mustart = NULL
   n = NULL
   nobs <- nrow(X)    # needed by the initialize expression below
   p <- nvars <- ncol(X)   # needed by the initialize expression below
   
-  mustart = NULL
-  eval(family$initialize) # initializes n and fitted values mustart based on y (mu=expected value on response scale)
-  # if (is.null(mustart)) mustart <- y
-  if (is.null(n)&family$family=="binomial") { n <- weights } else { n <- nobs }
-  
-  
+  eval(init) # initializes n and m (total nr of trials for binomial) and fitted values mustart based on y (mu=expected value on response scale)
+
   if (is.null(start)) {  
-    beta <- beta_old <- rep(1,p) # initial model coefficients
-    eta = family$linkfun(mustart) 
-  } else {  # eta = expected value on link scale
+    eta = as.matrix(link(mustart))
+    # to initialise using an orthogonal initialisation
+    # beta <-  beta_old <- start <- init_coefs(X = X, weights = weights, offset = offset, mu = mu, family = family, lambda = lambda)
+    # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
+    # to initialise with constant starting values
+    beta <-  beta_old <- start <- start_coefs(X=X, family=family) # initial model coefficients - e.g. sqrt(3) correspond in a Bayesian sense to SD on Gaussian prior of 3, which is most common prior in Bayesian stats (lambda=1/start^2 and lambda=1/SD prior)
+  } else {  
+    eta = as.matrix(link(mustart))
     beta <- beta_old <- start # when starting coefficient values were provided
-    eta = offset + as.vector(if (p == 1L) X * start else X %*% start) # eta = expected value on link scale
+    # OR IF STARTING VALUES ARE VERY GOOD WE COULD USE
+    # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
   }
-  names(beta) <- colnames(X)
+  names(beta) = colnames(X)
   mu = linkinv(eta) # expected value on response scale
-  dev.resids = family$dev.resids # deviance residuals function
   dev = sum(dev.resids(y, mu, weights)) # deviance 
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
-  mask <- rep(FALSE, p)
-  delta = 0 # TODO should we allow user passed delta?
+  # mask <- rep(FALSE, p)
   
   for (i in 1L:maxit) {
     varg = variance(mu) # variance
-    gprime = mu.eta(eta) # derivative of the expected values
     
-    good = which(!is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0)) # valid rows
+    # good = which(!is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0)) # valid rows
     
-    
-    if (i==1|i>warmupiters) {
+    # if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
-        W <- W.ret <- as.vector(weights/variance(mu)) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
-        good = which(!is.na(W) & !(W==0) & !is.infinite(W) & (gprime != 0)) # valid rows
-        z.ret <- (y - offset) # Returned (non subsetted) response
-        z <- z.ret[good] # Subset used for fit
+        W <- W.ret <- as.vector(weights / varg) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
+        good = which(!is.na(W) & !(W==0) & !is.infinite(W)) # valid rows # (gprime != 0)
+        z.ret <- (y - offset) # working (adjusted) response (returned non-subsetted version)
+        z <- z.ret[good] # subset used for fit
       } else {
-        mu.prime <- family$mu.eta(eta) # derivative of the expected values
-        good = which((weights != 0) & (mu.prime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
-        z.ret <- (eta - offset) + (y - mu) / mu.prime 
-        z <- (eta - offset)[good] + (y - mu)[good] / mu.prime[good] # working (adjusted) response
-        W <- weights[good] * as.vector(mu.prime[good]^2 / variance(mu)[good]) # updated weights 
-        W.ret <- weights * as.vector(mu.prime^2 / variance(mu))
+        gprime = mu.eta(eta) # derivative of the expected values
+        good = which((weights != 0) & (gprime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
+        z.ret <- (eta - offset) + (y - mu) / gprime # working (adjusted) response
+        z <- z.ret[good] 
+        W.ret <- weights * as.vector(gprime^2 / varg) # updated weights 
+        W <- W.ret[good]
       }
-    } else {
-      z.ret <- (y - offset)
-      z <- z.ret[good]
-    }
+    # } else {
+    #   z.ret <- (y - offset)
+    #   z <- z.ret[good]
+    # }
     
-    
+    # TODO decide on expected behaviour of nonzero.centered & ridge.center
     if(is.null(ridge.center)){ # If it's not null we use user provided center
       if(i > warmupiters.nzc & nonzero.centered){
         center = beta_old 
@@ -1213,23 +1224,29 @@ L0glm.fit.internal = function(X,
       if(i > warmupiters.nzc & nonzero.centered) center = ridge.center else center = NULL
     }
     
-    pen.weights <- AR.weights(beta = beta, delta = delta, gamma = gamma) # adaptive ridge pentalty weights
+    # update ridge penalties
+    pen.weights <- AR.weights(beta = beta, gamma = gamma) # adaptive ridge pentalty weights
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
+    lambdas[no.pen] = 0
     
     if (length(good)==0) {
       conv <- FALSE
-      if(verbose) print(gettextf("no observations informative at iteration %d",
+      if(verbose) print(gettextf("No observations informative at iteration %d",
                                  i), domain = NA)
       break
     }
     
     beta_old = beta
-    lambdas[no.pen] = 0
-    res <- lmridge(X = X[good, nonzero, drop=F], y = z,
+
+    # weighted least square step in IRLS algo, here replaced by ridge regression to
+    # add automatic regularisation and with possible box constraints
+    res <- lmridge(X = X[good, nonzero, drop=F], 
+                   y = z,
                    weights = W[good],
                    pen.weights = pen.weights[good], # TODO: remove this argument
                    lambdas = lambdas[nonzero],
                    nonnegative = nonnegative,
+                   scaling = scaling[nonzero],
                    start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                    lower = lower[nonzero], 
                    upper = upper[nonzero],
@@ -1238,54 +1255,57 @@ L0glm.fit.internal = function(X,
                    method = method)
     if(sum(res) != 0){
       beta[nonzero] <- res
-    } else {
-      if(verbose) print("Zero coefficients produced. Method is switched to 7.")
-      method <- 7L
-      lmridge(X = X[good, nonzero, drop=F], y = z,
-              weights = W[good],
-              pen.weights = pen.weights[good], # TODO: remove this argument
-              lambdas = lambdas[nonzero],
-              nonnegative = nonnegative,
-              start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-              lower = lower[nonzero], 
-              upper = upper[nonzero],
-              ridge.center = center[nonzero],
-              solver = solver,
-              method = method)
-    }
+    } 
+    # else {
+    #   if(verbose) print("Zero coefficients produced. Method is switched to 7.")
+    #   method <- 7L
+    #   lmridge(X = X[good, nonzero, drop=F], y = z,
+    #           weights = W[good],
+    #           pen.weights = pen.weights[good], # TODO: remove this argument
+    #           lambdas = lambdas[nonzero],
+    #           nonnegative = nonnegative,
+    #           start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+    #           lower = lower[nonzero], 
+    #           upper = upper[nonzero],
+    #           ridge.center = center[nonzero],
+    #           solver = solver,
+    #           method = method)
+    # }
     
     beta[nonzero][abs(beta[nonzero]) < thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
     if(sum(nonzero) == 0){
-      conv <- FALSE
-      if(verbose) warning("Zero coefficients produced.")
+      conv <- TRUE
+      if(verbose) warning("All coefficients penalized to zero")
       break
     }
     if (any(!is.finite(beta))) {
       conv <- FALSE
-      warning(gettextf("non-finite coefficients at iteration %d", i), domain = NA)
+      if(verbose) warning(gettextf("Non-finite coefficients at iteration %d", i), domain = NA)
       break
     }
     
     ## calculate updated values of eta and mu with the new coefs:
-    eta = X[,nonzero,drop=F] %*% beta[nonzero] + offset # expected value / predictions on link scale
+    eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero] + offset) # expected value / predictions on link scale
     mu = linkinv(eta) # expected value / predictions on response scale
     dev_old = dev
-    dev = sum(dev.resids(y, mu, weights))
+    dev = sum(dev.resids(y, mu, weights)) # deviance
     
     
-    reldiff <- 2*abs((beta-beta_old)/(beta+beta_old))
-    mask <- reldiff <= tol # keep coefficients fixed in subsequent iterations if they converged
-    mask[is.na(mask)] <- TRUE
-    stop.loop <- sum(mask) >= (p-1)
-    if(stop.loop) break # & i > warmupiters) break 
-    
+    # reldiff <- 2*abs((beta-beta_old)/(beta+beta_old))
+    # mask <- reldiff <= tol # keep coefficients fixed in subsequent iterations if they converged
+    # mask[is.na(mask)] <- TRUE
+    # stop.loop <- sum(mask) >= (p-1)
+    # if(stop.loop) break # & i > warmupiters) break 
     
     # if (abs(dev - dev_old) / (0.1 + abs(dev)) < tol) break # This gives error because dev goes to infinity
-    # or if (norm(beta-beta_old, "2") < tol) break
+    # if (norm(beta-beta_old, "2") < tol) break
+    rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in coefficient vector (Euclidean distance, ie L2 norm, between old & new coefficients over L2 norm of current coefficients)
+    if (rel_change < tol) break
     dev_old = dev
     beta_old = beta # TODO remove dev since converged is calculated differently?
   }
+
   return(list(coefficients = as.vector(beta), weights = as.vector(W.ret), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
 }
 
@@ -1298,7 +1318,7 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
                 weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, warmupiters.nzc = warmupiters,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
@@ -1325,6 +1345,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        thresh = thresh,
                        solver = solver,
                        nonnegative = nonnegative,
+                       normalize = normalize,
                        method = method,
                        warmupiters = warmupiters,
                        warmupiters.nzc = warmupiters.nzc,
