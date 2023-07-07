@@ -471,10 +471,12 @@ start_coefs = function (X, family=gaussian(identity)) {
 # maximum lambda tilde that would be expected to penalize all coefficients to zero
 # taking into account some terms that are unpenalized & prior coefficient estimates
 # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
-maxlambda = function (X, weights, z, no.pen=NULL, coefs) {
+maxlambda = function (X, weights, z, no.pen=NULL, coefs, family) {
   z <- as.matrix(z)
+  weights <- as.matrix(weights)
   sel_task <- which.max(colMeans(abs(z))) # for multitask select column with max mean abs value?
   z <- z[, sel_task, drop=F] 
+  weights <- weights[, sel_task, drop=F]
   
   # remove contribution of unpenalized terms
   if (!is.null(no.pen)) { X_penalized <- X[, -no.pen, drop=F]
@@ -488,8 +490,8 @@ maxlambda = function (X, weights, z, no.pen=NULL, coefs) {
   Xw <- Diagonal(x=sqrt(weights)) %*% X
   zw <- Diagonal(x=sqrt(weights)) %*% z
   
-  maxlambda <- (1/2)*max((1/colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm=T)
-  maxlambda <- maxlambda/4 # Frommlet & Nuel factor of 1/4 to convert lambda to lambda tilde
+  maxlambda <- max((1/colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm=T)
+  if (family$family=="gaussian") maxlambda = maxlambda*(1/2)*(1/4) # Frommlet & Nuel factor of 1/4 for Gaussian case to convert lambda to lambda tilde
   
   return(maxlambda)
 }

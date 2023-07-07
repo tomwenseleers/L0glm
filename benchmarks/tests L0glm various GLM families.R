@@ -142,7 +142,8 @@ maxlam <- maxlambda(X=X,
                     weights=L0glm_gaus_presetlambda$weights, 
                     z=L0glm_gaus_presetlambda$z,
                     no.pen=1,
-                    coefs=L0glm_gaus_presetlambda$coefficients)
+                    coefs=L0glm_gaus_presetlambda$coefficients,
+                    family=family)
 maxlam # 2346.189
 mincoef <- min(abs(L0glm_gaus_presetlambda$coefficients))
 
@@ -365,7 +366,8 @@ metrics_pois
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm_pois_presetlambda$weights, 
                     z=L0glm_pois_presetlambda$z,
-                    no.pen=1, coefs=L0glm_pois_presetlambda$coefficients)
+                    no.pen=1, coefs=L0glm_pois_presetlambda$coefficients,
+                    family=family)
 maxlam # 57297.43
 mincoef <- min(abs(L0glm_pois_presetlambda$coefficients))
 
@@ -594,7 +596,8 @@ metrics_binom
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm_binom_presetlambda$weights, 
                     z=L0glm_binom_presetlambda$z, no.pen=1,
-                    coefs=L0glm_binom_presetlambda$coefficients)
+                    coefs=L0glm_binom_presetlambda$coefficients,
+                    family=family)
 maxlam # 1460.132
 mincoef <- min(abs(L0glm_binom_presetlambda$coefficients)) # *sign(L0glm_binom_presetlambda$coefficients)
 
@@ -812,7 +815,8 @@ metrics_gamma
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm_gamma_presetlambda$weights, 
                     z=L0glm_gamma_presetlambda$z, no.pen=1,
-                    coefs=L0glm_gamma_presetlambda$coefficients)
+                    coefs=L0glm_gamma_presetlambda$coefficients,
+                    family=family)
 maxlam # 2269.353
 mincoef <- min(abs(L0glm_gamma_presetlambda$coefficients)) # *sign(L0glm_gamma_presetlambda$coefficients)
 
@@ -1029,7 +1033,8 @@ metrics_invgaus
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm_invgaus_presetlambda$weights, 
                     z=L0glm_invgaus_presetlambda$z, no.pen=1,
-                    coefs=L0glm_invgaus_presetlambda$coefficients)
+                    coefs=L0glm_invgaus_presetlambda$coefficients,
+                    family=family)
 maxlam # 232265.1
 mincoef <- min(abs(L0glm_invgaus_presetlambda$coefficients)) # *sign(L0glm_invgaus_presetlambda$coefficients)
 
