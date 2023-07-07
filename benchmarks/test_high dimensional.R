@@ -234,9 +234,9 @@ do.call(cbind, get.metrics(beta = coefs_MCP_ordinis,
 
 
 
-# 1. TEST HIGH DIMENSIONAL SUPERRESOLUTION DECONVOLUTION ####
+# 2. TEST HIGH DIMENSIONAL SUPERRESOLUTION DECONVOLUTION ####
 
-## 1.1 Single channel deconvolution assuming Gaussian noise ####
+## 2.1 Single channel deconvolution assuming Gaussian noise ####
 n = 1000
 p = 10000
 s <- 0.1 # sparsity, nr of timepoints with a peak 
