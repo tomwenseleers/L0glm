@@ -36,7 +36,7 @@ lmridge <- function(X, y,
   # browser()
   
   # scale columns of X if desired
-  if (sum(scaling)!=length(scaling)) { X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / scaling))
+  if (sum(scaling)!=length(scaling)) { X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=TRUE)
                                        start <- start * scaling }
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
@@ -349,7 +349,7 @@ diaglambdas <- function(lambdas, sparse){
   if(sparse) {
     dlambdas <- Diagonal(x=lambdas) # faster than .sparseDiagonal(p, lambdas)
   } else {
-    dlambdas <- as.matrix(Diagonal(x=lambdas)) # faster than diag(lambdas, p)
+    dlambdas <- Diagonal(x=lambdas) # as.matrix(Diagonal(x=lambdas)) # faster than diag(lambdas, p)
   }
   return (dlambdas)
 }

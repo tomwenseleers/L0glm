@@ -3,7 +3,7 @@
 # simulate single channel data with orthogonal variables & gaussian noise with SD of 1 ####
 # cf. Frommlet & Nuel 2016 p. 9
 
-simulate_orthogonal <- function(n=100, p=100, k_star=24, beta_sd=0.5, error_sd=1) {
+simulate_orthogonal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_sd=1) {
   # Generate X matrix
   X <- matrix(rnorm(n*p), n, p)
   
@@ -12,7 +12,7 @@ simulate_orthogonal <- function(n=100, p=100, k_star=24, beta_sd=0.5, error_sd=1
   # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
 
   # Generate beta vector
-  beta <- c(rnorm(k_star, 0, beta_sd), rep(0, p-k_star))
+  beta <- c(rnorm(n_nonzero, 0, beta_sd), rep(0, p-n_nonzero))
   
   # Generate errors
   epsilon <- rnorm(n, 0, error_sd)
@@ -20,7 +20,7 @@ simulate_orthogonal <- function(n=100, p=100, k_star=24, beta_sd=0.5, error_sd=1
   # Generate y vector
   y <- X %*% beta + epsilon
   
-  return(list(X=X, y=y, beta=beta))
+  return(list(X=X, y=y, beta_true=beta))
 }
 
 # # Settings
@@ -44,12 +44,14 @@ simulate_glm <- function(n = 10000,
                          n_nonzero = 50, 
                          intercept = 1, 
                          family = "gaussian",
+                         error_sd = 1,
                          ntot = 10) {
   # n: number of observations
   # p: number of variables (excluding intercept)
   # n_nonzero: nr of variables (excluding intercept term) with nonzero coefficients
   # intercept: coefficient for intercept term
   # family: response distribution ("gaussian", "poisson", "binomial", "gamma", "inverse.gaussian")
+  # error_sd: sd of error for Gaussian case
   # ntot: total sample size for the binomial case
   
   require(statmod)
@@ -89,7 +91,7 @@ simulate_glm <- function(n = 10000,
   eta <- X %*% beta
   mu <- linkinv(eta)
   if (family == "gaussian") {
-    y <- rnorm(n, mean = mu, sd = 1)
+    y <- rnorm(n, mean = mu, sd = error_sd)
   } else if (family == "poisson") {
     y <- rpois(n, lambda = mu)
   } else if (family == "binomial") {

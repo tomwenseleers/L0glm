@@ -350,7 +350,7 @@ preset.lambda <- function(IC="gic", y=NULL, X=NULL,
   
   if (is.null(dispersion)) {
   y <- as.matrix(y)
-  sel_task <- which.max(colMeans(abs(sim$y)))
+  sel_task <- which.max(colMeans(abs(y)))
   y <- y[, sel_task, drop=F] # NOTE: just using single channel with max avg absolute value
   weights <- as.matrix(rowMeans(as.matrix(weights)))
   # Perform an initial fit of the data
