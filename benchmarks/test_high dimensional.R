@@ -28,7 +28,7 @@ X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
 y <- drop(X %*% beta_true) + rnorm(n)
 
 system.time(mod <- ordinis(X, y, 
-                           penalty = "mcp",
+                           penalty = "mcp", # using MCP penalty
                            intercept = TRUE,
                            lower.limits = rep(0, p), # force all coefficients to be positive
                            penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
@@ -41,7 +41,7 @@ mod$lambda[which.max(logLik(mod))] # best lambda = 0.1869138
 min(AIC(mod)) # 1509.041
 min(BIC(mod)) # 1719.771
 coefs_MCP_ordinis = mod$beta[,which.min(BIC(mod))]
-sum(coefs_MCP_ordinis!=0) # 50
+sum(coefs_MCP_ordinis!=0) # 50, matches expected value
 
 
 # 1.2 L0glm solution ####
@@ -68,16 +68,16 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           nonnegative = TRUE,
                                           warmupiters = 1,
                                           no.pen=NULL,
-                                          start = NULL, # rep(sqrt(0.03), ncol(Xscaled)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                          start = rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                           solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                           method = 3L, # LSCG
-                                          thresh = 1E-5,
+                                          thresh = 1E-12,
                                           # maxit = 200,
                                           # tol = 1E-20,
                                           gamma = 1.2 # this gives better result with bic
 )) # 5.41s for method 3L
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0) # 53
+sum(L0glm.out_preset_coefs!=0) # 76
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
@@ -87,7 +87,7 @@ maxlam <- maxlambda(X=Xscaled, weights=L0glm.out_preset$weights,
 maxlam #
 
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(lambda_preset)+1, by=0.1)
+lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(X))
 warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
@@ -106,7 +106,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                          method = 3L,
                          relaxed = FALSE,
-                         thresh = 1E-5
+                         thresh = 1E-12,
+                         gamma = 1.2
   )$coefficients
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -117,27 +118,26 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
-# seems too high?
 library(scales)
 abline(h=as.vector(beta_true_scaled[beta_true_scaled!=0]), col=alpha(1:6,0.2))
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 1 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$deviance_true, type="l")
-metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # 1.584893 # deviance relative to ground truth
+metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # 1 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
-metrics$lambda[which.max(metrics$loglik)] # 1.258925
+metrics$lambda[which.max(metrics$loglik)] # 1
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
-metrics$lambda[which.min(metrics$MAD_coefs)] # 15.84893
+metrics$lambda[which.min(metrics$MAD_coefs)] # 50.11872
 plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 15.84893
+metrics$lambda[which.min(metrics$sMAPE_coefs)] # 50.11872
 plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 7.943282
+metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 125.8925
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
 plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 1.995262
+metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 1
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
@@ -146,20 +146,20 @@ plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
 plot(log10(metrics$lambda), metrics$specificity, type="l")
 plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.max(metrics$accuracy)] # 15.84893
+metrics$lambda[which.max(metrics$accuracy)] # 50.11872
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
-metrics$lambda[which.max(metrics$F1_score)] # 15.84893
+metrics$lambda[which.max(metrics$F1_score)] # 50.11872
 plot(log10(metrics$lambda), metrics$aic, type="l")
-metrics$lambda[which.min(metrics$aic)] # 3.981072
+metrics$lambda[which.min(metrics$aic)] # 1
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 7.943282 # ca 10x higher than expected value
+metrics$lambda[which.min(metrics$bic)] # 1 # ca 10x higher than expected value
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 15.84893
+metrics$lambda[which.min(metrics$ebic)] # 50.11872
 plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 15.84893
+metrics$lambda[which.min(metrics$gic)] # 50.11872
 abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 15.84893
+metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 63.09573
 
 # lambda values that a priori are expected to optimise each IC (with start = NULL)
 # note: using warm starts in the L0glm.fit function would shift the
@@ -201,12 +201,12 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
                            X = Xscaled, y = y, 
                            family = family, 
                            beta_true = as.vector(beta_true_scaled)))
-#          p   n m deviance deviance_true   loglik     MD_coefs   MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# [1,] 50001 500 1 3448.991        3148.5 48754.72 -0.004351275 0.009375777 0.001543683   1.055271 0.9351579
+#          p   n m deviance deviance_true   loglik     MD_coefs  MAD_coefs sMAPE_coefs bias_coefs R2_coefs
+# [1,] 50001 500 1 11794.78      11676.16 48453.33 -0.009864239 0.02036309  0.00206614   1.103877 0.737787
 #      support_size_true support_size_estimated estimated_over_true_support_size TP FP    TN FN precision recall
-# [1,]                50                     53                             1.06 33 20 49930 17 0.6226415   0.66
+# [1,]                50                     47                             0.94 24 23 49927 26 0.5106383   0.48
 #      specificity accuracy  F1_score       gic      ebic       bic       aic      mbic
-# [1,]   0.9995996  0.99926 0.6407767 -96442.04 -96340.91 -97173.86 -97401.45 -96155.04
+# [1,]   0.9995395  0.99902 0.4948454 -95957.86 -95867.96 -96608.36 -96810.66 -95702.74
 
 # metrics for L0 glm fit with best fit criterion (e.g. best BIC, support size closest to ground truth, etc)
 do.call(cbind, get.metrics(beta = L0glm.out_best_coefs, 

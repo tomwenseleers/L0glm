@@ -507,7 +507,7 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = family) # 2.76073 for n=p=100, 3.967809 for n=p=500
 
 
-### 2.2.1 Comparison with abess relaxed group L0 weighted mgaussian best subset glm #### 
+### 2.1.1 Comparison with abess weighted mgaussian best subset glm #### 
 
 # This was our L0 glm metrics:
 metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
@@ -710,7 +710,7 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = family) # 27.48007 for n=p=500
 
 
-### 2.2.1 Comparison with abess relaxed group L0 mgaussian best subset glm #### 
+### 2.2.1 Comparison with abess mgaussian best subset glm #### 
 
 # This was our L0 glm metrics:
 metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
