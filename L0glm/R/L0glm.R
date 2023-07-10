@@ -511,8 +511,7 @@ return(structure(fit, class = "L0glm"))
 #' to a multivariate response scenario, with each column representing a different response.
 #' @param family
 #' a description of the error distribution and link function to be
-#' used in the model. This can be a character string naming a family function, a
-#' family function or the result of a call to a family function. (See
+#' used in the model. This should be a call to a family function. (See
 #' \code{stats::family} for details of family functions.)
 #' @param weights 
 #' A vector of observation weights ("prior weights") of length \code{n}, 

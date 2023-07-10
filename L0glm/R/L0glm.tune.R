@@ -1,7 +1,54 @@
 #' @importFrom qlcMatrix colMax
 #' 
-#' @describeIn L0glm
-#' Selects optimal value of regularization parameter lambda
+#' @description
+#' Tunes the lambda parameter for the \code{\link{L0glm}} and \code{\link{L0glm.fit}} 
+#' functions. It uses a list of penalty parameter values (\code{lambda}) to fit 
+#' L0-penalized GLMs, and selects the best lambda value according to a specified 
+#' information criterion. It can handle multiple output variables (channels), 
+#' and can produce a plots of the regularization path,true vs. estimated coefficients,
+#' estimated support size, deviance, log likelihood, mean, absolute deviation, 
+#' accuracy, precision, recall and the IC of interest, all in function of regularization 
+#' (some plots are only produced if the user passes a vector of true coefficients
+#' \code{coefs.true}).
+#' The function produces these plots by calling another function \code{\link{tune.plots}}.
+#' This function can also be called separately with the object \code{L0glm.tune$metrics}.
+#' 
+#' @param X 
+#' A matrix of predictor variables.
+#' @param y 
+#' A vector or matrix of response variables.
+#' @param family 
+#' A description of the error distribution and link function to be
+#' used in the model. This should be a call to a family function. (See
+#' \code{stats::family} for details of family functions.)
+#' @param weights 
+#' A matrix of observation weights.
+#' @param offset 
+#' A matrix to be added to the linear predictor.
+#' @param dispersion 
+#' A dispersion parameter for the family function. If not NULL, it is used to 
+#' set the lambda sequence.
+#' @param IC A character string specifying the information criterion to use for
+#' model selection. It should be one of \code{"aic"}, 
+#' \code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"}.
+#' @param warm.start.ratio A numeric value indicating the ratio of warm start 
+#' coefficients to use.
+#' @param coefs.true A vector or matrix of true coefficient values, for comparison 
+#' with the estimated coefficients.
+#' @param printbest A logical value indicating whether to print the best lambda 
+#' value according to the selected IC (default is TRUE).
+#' @param plot A logical value indicating whether to produce the plots mentioned
+#' in the description, all in function of regularization (lambda).
+#' @param ... Other arguments to pass to the `L0glm.fit` function except for \code{start}.
+#' 
+#' @return
+#' \code{L0glm.tune} returns a list containing the following elements:
+#' \item{\code{metrics}} {a data frame containing metrics evaluating the models fit
+#' with different regularization parameters.}
+#' \item{\code{best.lambda}} {best lambda according to the \code{IC} 
+#' criterion specified.}
+#' \item{\code{lambdas}} {a vector containing all the lambdas that were used.}
+#' 
 #' @export
 L0glm.tune <- function(X, y, family, 
                        weights = matrix(1, nrow = nrow(as.matrix(y)), ncol = ncol(as.matrix(y))), 
