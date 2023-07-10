@@ -12,7 +12,7 @@ source("..//benchmarks/generate data.R")
 
 # In the example below MCP seems to give a better solution than L0 glm :-(
 
-# 1.1 MCP penalized regression calculated using ordinis ####
+# 1.1 nonnegative MCP penalized regression calculated using ordinis ####
 
 # devtools::install_github("jaredhuling/ordinis")
 library(ordinis)

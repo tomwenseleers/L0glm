@@ -151,27 +151,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                               dev = deviance_true) 
   
   loglik = p - (aic.model + 2*sum(beta!=0)) / 2
-  # loglik_true = p - (aic.model_true + 2*sum(beta!=0)) / 2
-  # if (!is.null(beta_true)) loglik = loglik_true # DELETE, JUST A TEST
-  min2LL = -2*loglik
-  
-  # p=nr of vars, n=nr of cases, k=effective degrees of freedom
-  gic = min2LL + log(p)*log(log(n))*edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117 
-  aic = min2LL + 2*edf # Akaike information criterion
-  # aicc = ifelse(n > edf, min2LL + 2*edf*n/(n-edf), NA) # small sample AIC
-  bic = min2LL + log(n)*edf # Bayesian information criterion
-  ebic = min2LL + (log(n) + 2*(1-log(n)/(2*log(p)))*log(p))*edf # extended BIC, Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
-  mbic = min2LL + log(n*(p^2)/16)*edf # see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
-  # c = 2 # TODO default, add as a parameter
-  # hq = min2LL + c*log(log(n))*edf # Hannan and Quinnn information criterion - maybe worth to keep?
-  # ric = min2LL + 2 * log(p) # risk inflation criterion
-  # mric = min2LL + 2 * sum(log(p/(1:edf))) # modified risk inflation criterion
-  # cic = min2LL + 4 * sum(log(p/(1:edf))) # covariance inflation criterion
-  # See Xu thesis 2010, Model Selection with Information Criteria
-  # g = 1 # TODO Default, add as argument
-  # bicg =  min2LL + log(n)*edf + 2*g*lchoose(p,round(edf))
-  # q = 0.25 # TODO Default, add as argument
-  # bicq =  min2LL + log(n)*edf - 2*edf*log(q/(1-q))
+
+  IC = get.IC(loglik = loglik, n = n, p = p, edf = edf) 
   
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))
   # z = (eta - offset) + (y - mu) / mu.prime # working (adjusted) response
@@ -232,7 +213,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   
   return(list(p=p, n=n, m=m, 
-              deviance=deviance, deviance_true=deviance_true, loglik=loglik, # loglik_true=loglik_true,
+              deviance=deviance, deviance_true=deviance_true, loglik=loglik, 
               MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
               bias_coefs=bias_coefs, 
               R2_coefs=R2_coefs,
@@ -242,6 +223,31 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
               TP=TP, FP=FP, TN=TN, FN=FN, 
               precision=precision, recall=recall, specificity=specificity, 
               accuracy=accuracy, F1_score=F1_score,
-              gic=gic, ebic=ebic, bic=bic, aic=aic, mbic=mbic) )
-  # hq=hq, aicc=aicc, ric=ric, mric=mric, cic=cic, bicg=bicg, bicq=bicq))
+              gic=IC$gic, ebic=IC$ebic, bic=IC$bic, aic=IC$aic, mbic=IC$mbic) )
+}
+
+
+# return information criteria based on log likelihood, n, p & edf
+get.IC = function(loglik, n, p, edf) {
+  min2LL = -2 * loglik
+  
+  # p=nr of vars, n=nr of cases, edf=effective degrees of freedom
+  aic = min2LL + 2 * edf # Akaike information criterion
+  # aicc = ifelse(n > edf, min2LL + 2*edf*n/(n-edf), NA) # small sample AIC
+  bic = min2LL + log(n) * edf # Bayesian information criterion
+  gic = min2LL + log(p) * log(log(n)) * edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117
+  ebic = min2LL + (log(n) + 2 * (1 - log(n) / (2 * log(p))) * log(p)) * edf # extended BIC, Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
+  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
+  # c = 2 # TODO default, add as a parameter
+  # hq = min2LL + c*log(log(n))*edf # Hannan and Quinnn information criterion - maybe worth to keep?
+  # ric = min2LL + 2 * log(p) # risk inflation criterion
+  # mric = min2LL + 2 * sum(log(p/(1:edf))) # modified risk inflation criterion
+  # cic = min2LL + 4 * sum(log(p/(1:edf))) # covariance inflation criterion
+  # See Xu thesis 2010, Model Selection with Information Criteria
+  # g = 1 # TODO Default, add as argument
+  # bicg =  min2LL + log(n)*edf + 2*g*lchoose(p,round(edf))
+  # q = 0.25 # TODO Default, add as argument
+  # bicq =  min2LL + log(n)*edf - 2*edf*log(q/(1-q))
+  
+  return(data.frame(aic = aic, bic = bic, gic = gic, ebic = ebic, mbic = mbic))
 }

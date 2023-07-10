@@ -1,23 +1,30 @@
-# Minimal tests of L0glm package ####
+# Minimal tests of L0glm package plus comparison of solution quality to that returned by ordinis, abess & L0Learn ####
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-library(L0glm)
 library(export)
-# devtools::load_all(".")
+devtools::load_all(".")
+# library(L0glm)
+# devtools::install_github("jaredhuling/ordinis")
+library(ordinis)
+library(abess)
+library(devtools)
+# install_github("hazimehh/L0Learn", ref="nng") # branch of L0Learn with nonnegativity constraints
+library(L0Learn)
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 
-n <- p <- 100 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
+n <- p <- 500 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=100-300
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 2000
 sd_logbeta <- 1
 sd_noise <- 5 # SD of noise for Gaussian noise case
-crit <- "gic" # choose lambda based on what would be expected to optimise this IC
+crit <- "bic" # choose lambda based on what would be expected to optimise this IC
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
 
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
+### 1.1.1 L0glm solution ####
 set.seed(1)
 sim <- simulate_spike_train(n = n, 
                             p = p,
@@ -29,6 +36,8 @@ X <- sim$X
 y <- sim$y
 dispersion <- 1
 family <- poisson(identity)
+W <- 1/(y+1E-10) # approx 1/variance weights in case identity link Poisson is
+                 # approximated using weighted least squares
 
 # using lambda 1
 system.time(L0glm.out <- L0glm.fit(X, y, 
@@ -42,7 +51,7 @@ system.time(L0glm.out <- L0glm.fit(X, y,
                            # start = rep(10, ncol(sim$X)), # coefficient starting values
                            solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
                            method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
-)$coefficients) # 0.25s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
+)$coefficients) # 0.04s for n=p=500, 0.25s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
 # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
@@ -64,11 +73,11 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
-)) # 0.02s for n=p=100, 0.25s for n=p=10000
+)) # 0.02s for n=p=100, 0.04s for n=p=500, 0.25s for n=p=10000
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0)  # 1004
+sum(L0glm.out_preset_coefs!=0)  #
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
-graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
+# graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
 mincoef <- min(abs(L0glm.out_preset_coefs)[L0glm.out_preset_coefs!=0]) # nonzero coefficient with smallest absolute value
 do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
@@ -76,17 +85,23 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
                            family = family, 
                            beta_true = sim$beta_true))
 
-plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col="blue")
+plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col='blue',
+     main="L0 glm identity link Poisson with lambda preset to optimise BIC",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
 
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
                     z=y, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
-                    family=family)
+                    family)
 maxlam # 
 
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=0.05) #
+# lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=0.05) #
+# length(lambdas) # 152 - maybe in benchmark we should use 20 values like for the other methods?
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), length.out=20) #
+length(lambdas) # 20 - like for other methods
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, here used lowest value that still gave stable coef paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
@@ -118,12 +133,12 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                                        beta_true = sim$beta_true) ))
 
           )
-  } )))) # 4s for n=p=100 & 29s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 165s for n=p=10000 with glmnet solver, 455s for n=p=10000 with osqp solver
+  } )))) # 1.25s for n=p=500, 11s for n=p=10000 & 20 lambda values with eigen solver methods 7 (Cholesky)
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 library(scales)
-abline(h=as.vector(sim$beta_true), col=alpha(1:6,0.2))
+abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 1 for n=p=10000, 0.1 for n=p=100 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
@@ -195,10 +210,583 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = poisson(identity),
               dispersion = dispersion) # 2.76073 for n=p=100, 6.214608 for n=p=10000
 
+# coefficients for solution that optimises given criterion & metrics
+best = which.min(metrics[,crit])
+L0glm.out_best_coefs = coefmat[best,]
+plot(x=L0glm.out_best_coefs, y=sim$beta_true, pch=16, col='blue',
+     main="L0 glm identity link Poisson with tuned lambda",
+     xlab="Estimated coefficients", ylab="True coefficients")
 
+
+do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,  # some metrics
+                           X = X, y = y, 
+                           family = family, 
+                           beta_true = sim$beta_true))
+# for n=p=100
+#        p   n m deviance deviance_true    loglik  MD_coefs MAD_coefs  sMAPE_coefs bias_coefs
+# [1,] 100 100 1 52.92526      6.684153 -352.3418 0.5955815  2.436233 0.0009960084  0.9976995
+#   R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP
+# [1,] 0.999963                10                     10                                1 10  0
+#      TN FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic
+# [1,] 90  0         1      1           1        1        1 775.0129 796.7871 750.7354 724.6837
+#          mbic
+# [1,] 815.1129
+
+# for n=p=500
+#        p   n m deviance deviance_true    loglik   MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 500 500 1 381.6865      81.56291 -1664.219 -0.2749081  41.68789  0.08770669  0.9979851
+#       R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN
+# [1,] 0.9785754                50                     55                              1.1 42 13 437
+#      FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic     mbic
+# [1,]  8 0.7636364   0.84   0.9711111    0.958      0.8 3952.879 4012.044 3670.241 3438.437 4201.355
+
+# for n=p=10000
+#          p     n m deviance deviance_true    loglik  MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 10000 10000 1 8038.676         4e+10 -31790.41 -0.121826    66.515  0.06978107  0.9613788
+#      R2_coefs support_size_true support_size_estimated estimated_over_true_support_size  TP  FP
+# [1,] 0.902018              1000                   1030                             1.03 854 176
+#        TN  FN precision recall specificity accuracy  F1_score      gic     ebic      bic      aic
+# [1,] 8824 146 0.8291262  0.854   0.9804444   0.9678 0.8413793 84644.28 82554.11 73067.46 65640.81
+#       mbic
+# [1,] 89185
+
+
+### 1.1.2 Comparison of solution quality to that returned by ordinis (adaptive lasso, MCP, SCAD), glmnet (lasso), abess & L0Learn ####
+
+# nonnegative weighted lasso regression in glmnet ####
+system.time(fit_glmnet <- glmnet(x = X, 
+                                 y = y, 
+                                 weights = W,
+                                 family = "gaussian", # poisson(identity) should be supported but gave an error
+                                 nlambda = 20L,
+                                 intercept = F, 
+                                 standardize = F, 
+                                 # thresh = 1E-10,
+                                 # maxit=100000,
+                                 alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
+                                 lower.limits = 0)) # for nonnegativity constraints
+# 0.01s for n=p=100, 0.01s for n=p=500, 0.05s for n=p=10000
+plot(fit_glmnet, xvar='lambda')
+abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
+
+# log-likelihood method for gaussian glmnet fit, 
+# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+logLik.glmnet = function(object, weights, X, y) {  
+  n  = as.numeric(object$nobs)
+  df = Matrix::colSums(object$beta!=0)  
+  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
+  
+  # Compute y_pred for all columns of object$beta at once
+  y_pred = X %*% object$beta
+  
+  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+  resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)  
+  
+  rdf = n - df 
+  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") = df  # nr of nonzero coefficients
+  attr(logL, "nobs") = n
+  attr(logL, "p") = fit_glmnet$dim[[2]]
+  return(logL)
+}
+
+LLs <- logLik(fit_glmnet, weights=W, X=X, y=y)
+edfs = attr(LLs, "df")
+IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+which.min(IC) # 
+
+bestlambda_lasso_glmnet = fit_glmnet$lambda[which.min(IC)]
+coefs_lasso_glmnet = coef(fit_glmnet, s = bestlambda_lasso_glmnet)
+
+sum(coefs_lasso_glmnet!=0) # not sparse enough
+plot(x=coefs_lasso_glmnet[-1], y=sim$beta_true, pch=16, col='blue',
+     main="glmnet nonnegative weighted LASSO",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+# adaptive LASSO using glmnet ####
+
+# since glmnet is so much faster than ordinis & supports sparse
+# covariate matrices, let's use that to fit an adaptive LASSO model, cf
+# https://rpubs.com/kaz_yos/alasso
+# note that for the first step we use LASSO rather than ridge coefficients, i.e. we use
+# coefs_lasso_glmnet and then in a second step use a glmnet LASSO fit with
+# adaptive penalty weights penalty.factor = 1 / (abs(coefs_lasso_glmnet))+delta)
+# with delta=1E-5
+# NOTE: If this would be iterated further this would be a way to approximate L0 norm
+# penalized regression (cf. Nuel 2017 talk)
+
+system.time({
+  # we start with a regular LASSO fit, with lambda tuned according to our chosen IC
+  fit_lasso_glmnet <- glmnet(x = X, 
+                                 y = y, 
+                                 weights = W,
+                                 family = "gaussian", # poisson(identity) should be supported but gave an error
+                                 nlambda = 20L,
+                                 intercept = F, 
+                                 standardize = F, 
+                                 # thresh = 1E-10,
+                                 # maxit=100000,
+                                 alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
+                                 lower.limits = 0) # for nonnegativity constraints
+LLs <- logLik(fit_lasso_glmnet, weights=W, X=X, y=y)
+edfs = attr(LLs, "df")
+IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+bestlambda_lasso_glmnet = fit_lasso_glmnet$lambda[which.min(IC)]
+coefs_lasso_glmnet = coef(fit_lasso_glmnet, s = bestlambda_lasso_glmnet)
+
+# in second step we do another LASSO fit with adaptive penalty weights
+delta = 1E-5
+fit_alasso_glmnet <- glmnet(x = X, 
+                           y = y, 
+                           weights = W,
+                           family = "gaussian", # poisson(identity) should be supported but gave an error
+                           nlambda = 20L,
+                           penalty.factor = 1 / (abs(coefs_lasso_glmnet[-1])+delta), # adaptive penalty weights
+                           intercept = F, 
+                           standardize = F, 
+                           # thresh = 1E-10,
+                           # maxit=100000,
+                           alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
+                           lower.limits = 0) # for nonnegativity constraints
+LLs <- logLik(fit_alasso_glmnet, weights=W, X=X, y=y)
+edfs = attr(LLs, "df")
+IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+bestlambda_alasso_glmnet = fit_alasso_glmnet$lambda[which.min(IC)]
+coefs_alasso_glmnet = coef(fit_alasso_glmnet, s = bestlambda_lasso_glmnet)
+})
+# 0.02s for n=p=500, 0.11s for n=p=10000
+
+plot(fit_alasso_glmnet, xvar='lambda')
+abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
+
+sum(coefs_alasso_glmnet!=0) # 1092 for n=p=10000, pretty good
+plot(x=coefs_alasso_glmnet[-1], y=sim$beta_true, pch=16, col='blue',
+     main="glmnet nonnegative weighted adaptive LASSO",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+
+
+# # nonnegative L0Learn best subset fit ####
+# # quite good, but slow for n=p=10000
+# system.time(fit_nnL0Learn <- L0Learn.fit(x=as.matrix(Diagonal(x=sqrt(W)) %*% X),  # note: no support for sparse matrices
+#                                          y=as.vector(y*sqrt(W)),
+#                                          loss = "SquaredError",
+#                                          penalty="L0", algorithm="CD",
+#                                          maxSuppSize=round(p/2), 
+#                                          intercept=FALSE, 
+#                                          nLambda=100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
+#                                          # activeSetNum = 3, maxSwaps = 100,
+#                                          autoLambda=TRUE
+#                                          # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
+#                                          #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2)) 
+# ))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
+# # 0.86s for n=p=500
+# plot(fit_nnL0Learn)
+# 
+# # log-likelihood method for gaussian L0Learn fit, 
+# # cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+# logLik.L0Learn = function(object, weights, X, y) {  
+#   n  = object$n
+#   p = object$p
+#   df = object$suppSize[[1]]   
+#   # df = nr of nonzero coefficients (incl intercept)
+#   
+#   # Compute y_pred for all columns of object$beta at once
+#   y_pred = X %*% object$beta[[1]]
+#   
+#   # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+#   resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - 
+#                                   y_pred) ^ 2)  
+#   
+#   rdf = n - df 
+#   logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+#   attr(logL, "df") = df  # nr of nonzero coefficients
+#   attr(logL, "nobs") = n
+#   attr(logL, "p") = object$dim[[2]]
+#   return(logL)
+# }
+# 
+# LLs = logLik(fit_nnL0Learn, weights=W, X, y)
+# edfs = attr(LLs, "df")
+# LLs = as.vector(LLs)
+# IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+# coefs_nnL0Learn = coef(fit_nnL0Learn,
+#                        lambda = fit_nnL0Learn$lambda[[1]][which.min(IC)],
+#                        gamma = 0)
+# sum(coefs_nnL0Learn!=0) # very close
+# plot(x=coefs_nnL0Learn, y=sim$beta_true, pch=16, col='blue',
+#      main="nnL0Learn weighted least squares best subset",
+#      xlab="Estimated coefficients", ylab="True coefficients")
+
+
+
+# nonnegative L0Learn best subset fit after glmnet nonnegative LASSO ####
+selcoefs = which(coefs_lasso_glmnet[-1]!=0)
+p_selcoefs = length(selcoefs)
+system.time(fit_nnL0Learn_selcoefs <- L0Learn.fit(x=as.matrix(Diagonal(x=sqrt(W)) %*% X[,selcoefs,drop=F]),  # note: no support for sparse matrices
+                                         y=as.vector(y*sqrt(W)),
+                                         loss = "SquaredError",
+                                         penalty="L0", algorithm="CD",
+                                         maxSuppSize=(p_selcoefs-1), 
+                                         intercept=FALSE, 
+                                         nLambda=100, # NOTE: 100 gave much better results than 20
+                                         # activeSetNum = 3, maxSwaps = 100,
+                                         autoLambda=TRUE
+                                         # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
+                                         #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2)) 
+))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
+# 0.29s for n=p=500
+plot(fit_nnL0Learn_selcoefs)
+
+LLs = logLik(fit_nnL0Learn_selcoefs, weights=W, X[,selcoefs,drop=F], y)
+edfs = attr(LLs, "df")
+LLs = as.vector(LLs)
+IC = get.IC(loglik = LLs, n = n, p = p_selcoefs, edf = edfs)[,crit]
+coefs_nnL0Learn_selcoefs = coef(fit_nnL0Learn_selcoefs,
+                       lambda = fit_nnL0Learn_selcoefs$lambda[[1]][which.min(IC)],
+                       gamma = 0)
+coefs_nnL0Learn_after_lasso = Matrix(0, p)
+coefs_nnL0Learn_after_lasso[selcoefs] = coefs_nnL0Learn_selcoefs
+sum(coefs_nnL0Learn_after_lasso!=0) # 46
+
+plot(x=coefs_nnL0Learn_after_lasso, y=sim$beta_true, pch=16, col='blue',
+     main="weighted nnL0Learn after nonnegative LASSO",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+
+# # abess best subset fit (with EBIC criterion) ####
+# # note: currently no support for nonnegativity constraints
+# # solution not great, so marked out for now & slow for n=p=10000
+# system.time(fit_abess <- abess(x = X, 
+#                                y = y, 
+#                                weights = W,  # approx 1/variance weights to approximate family="poisson", which is not supported
+#                                family = "gaussian",
+#                                tune.path = "sequence", 
+#                                support.size = c(1:round(p*0.5)),
+#                                lambda=0, 
+#                                warm.start = TRUE, # TRUE worked best here
+#                                tune.type = "ebic")) # had to use ebic here for optimal performance, XXs for n=p=XX, options bic, ebic, aic or cv
+# # fast for small problems, but becomes slow for n=p=10000
+# plot(fit_abess, type="tune")  # optimal support size 
+# coefs_abess = as.matrix(extract(fit_abess)$beta) # coefficient matrix for best subset
+# coefs_abess[coefs_abess<0] = 0
+# sum(coefs_abess!=0) # 11, quite OK
+# plot(x=coefs_abess, y=sim$beta_true, pch=16, col='blue',
+#      main="abess best subset weighted least squares",
+#      xlab="Estimated coefficients", ylab="True coefficients")
+
+
+# abess best subset fit after nonnegative LASSO ####
+# very good solution, and fast for small problems, but
+# becomes very slow for large problems, e.g. n=p=10000
+selcoefs = which(coefs_lasso_glmnet[-1]!=0)
+p_selcoefs = length(selcoefs)
+system.time(fit_abessafterlasso_selcoefs <- abess(x = X[,selcoefs,drop=F], 
+                                                  y = y, 
+                                                  weights = W,  # approx 1/variance weights to approximate family="poisson", which is not supported
+                                                  family = "gaussian",
+                                                  tune.path = "sequence", 
+                                                  support.size = c(1:(p_selcoefs-1)),
+                                                  lambda = 0, 
+                                                  warm.start = TRUE, # FALSE worked better here, but much slower
+                                                  tune.type = crit))  # options bic, ebic, aic or cv
+# 0.06s for n=p=500 
+# note: abess currently has no support for nonnegativity constraints, so 
+# abess after nonnegative LASSO works much better
+plot(fit_abessafterlasso_selcoefs, type="tune")  # optimal support size 
+coefs_abessafterlasso_selcoefs = as.matrix(extract(fit_abessafterlasso_selcoefs)$beta) # coefficient matrix for best subset
+coefs_abessafterlasso = Matrix(rep(0, p), sparse=T)
+coefs_abessafterlasso[selcoefs] = coefs_abessafterlasso_selcoefs
+coefs_abessafterlasso[coefs_abessafterlasso<0] = 0
+sum(coefs_abessafterlasso!=0) # pretty good
+plot(x=coefs_abessafterlasso, y=sim$beta_true, pch=16, col='blue',
+     main="abess best subset weighted least squares\nafter nonnegative LASSO",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+
+# nonnegative weighted MCP penalized regression in ordinis ####
+# NOTE: ncvreg also has MCP penalized models, but not with nonnegativity constraints
+system.time(fit_MCP <- ordinis(X, y, 
+                           weights=W, # approx 1/variance Poisson weights
+                           nlambda = 100L, # 1000L gives much better solution than 100L, 20L doesn't work & coefficient path looks very different
+                           penalty = "mcp", # using MCP penalty
+                           intercept = FALSE,
+                           lower.limits = rep(0, p), # force all coefficients to be positive
+                           standardize = FALSE,
+                           # maxit = 1000,
+                           # tol = 1E-100,
+                           # maxit.irls = 1000,
+                           # tol.irls = 1E-100,
+                           # gamma = 100, # ifelse(penalty == "scad", 3.7, 1.4),
+                           alpha = 1))  # ie no elastic net
+# 12.25s for n=p=500, XXs for n=p=10000
+plot(fit_MCP)
+abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2)) # note : ordinis uses different colours, so cols don't match now
+
+# log-likelihood method for gaussian ordinis fit, 
+# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+# but correctly taking into account weights
+# NOTE: ordinis is currently not taking into account the weights in
+# the calculation of the log likelihood as loss=residual SS do not take into 
+# account weights here https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_call.R
+# hence the redefinition of the log likelihood here
+logLik2 = function(object, weights, X, y) {  
+  n  = as.numeric(object$nobs)
+  p = object$nvars
+  df = Matrix::colSums(object$beta!=0)  
+  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
+  
+  # Compute y_pred for all columns of object$beta at once
+  y_pred =  cbind(1, X) %*% object$beta
+  
+  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - 
+                                          y_pred) ^ 2)
+  
+  rdf = n - df 
+  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") = df  # nr of nonzero coefficients
+  attr(logL, "nobs") = n
+  attr(logL, "p") = p
+  return(logL)
+}
+
+LLs = logLik2(fit_MCP, weights=W, X, y)
+edfs = attr(LLs, "df")
+LLs = as.vector(LLs)
+IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+coefs_MCP_ordinis = fit_MCP$beta[,which.min(IC)]
+sum(coefs_MCP_ordinis!=0) # not sparse enough
+plot(x=coefs_MCP_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+     main="ordinis nonnegative MCP",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+# nonnegative weighted SCAD penalized regression in ordinis ####
+# NOTE: ncvreg also has SCAD penalized models, but not with nonnegativity constraints
+system.time(fit_SCAD <- ordinis(X, 
+                                y, 
+                               weights=W, # approx 1/variance Poisson weights
+                               nlambda = 20L, # 1000L gives much better solution than 100L or 20L & coefficient path looks very different
+                               penalty = "scad", # using SCAD penalty
+                               intercept = FALSE,
+                               lower.limits = rep(0, p), # force all coefficients to be positive
+                               standardize = FALSE,
+                               # maxit = 1000,
+                               # tol = 1E-100,
+                               # maxit.irls = 1000,
+                               # tol.irls = 1E-100,
+                               # gamma = 100, # ifelse(penalty == "scad", 3.7, 1.4),
+                               alpha = 1))  # ie no elastic net
+# 4.75s for n=p=500
+plot(fit_SCAD)
+abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2)) # note : ordinis uses different colours, so cols don't match now
+LLs = logLik2(fit_SCAD, weights=W, X, y)
+edfs = attr(LLs, "df")
+LLs = as.vector(LLs)
+IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+coefs_SCAD_ordinis = fit_SCAD$beta[,which.min(IC)]
+sum(coefs_SCAD_ordinis!=0) # not sparse enough
+plot(x=coefs_SCAD_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+     main="ordinis nonnegative SCAD",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+# # nonnegative weighted lasso regression in ordinis ####
+# system.time(fit_lasso_ordinis <- ordinis(X, 
+#                                          y, 
+#                                  weights=W, # approx 1/variance Poisson weights
+#                                  nlambda = 20L, # 1000L gives much better solution than 100L or 20L & coefficient path looks very different
+#                                  lambda.min.ratio = 0.0001,
+#                                  penalty = "lasso", # using LASSO penalty
+#                                  intercept = FALSE,
+#                                  lower.limits = rep(0, p), # force all coefficients to be positive
+#                                  standardize = FALSE,
+#                                  maxit = 1000,
+#                                  # tol = 1E-100,
+#                                  # maxit.irls = 1000,
+#                                  # tol.irls = 1E-100,
+#                                  # gamma = 100, # ifelse(penalty == "scad", 3.7, 1.4),
+#                                  alpha = 1))  # ie no elastic net
+# # XXs for n=p=100, 522s for n=p=10000
+# plot(fit_lasso_ordinis)
+# abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2)) # note : ordinis uses different colours, so cols don't match now
+
+# LLs = logLik2(object=fit_lasso_ordinis, weights=W, X=X, y=y)
+# edfs = attr(LLs, "df")
+# LLs = as.vector(LLs)
+# IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+# which.min(IC) # 
+# bestlambda_lasso_ordinis = fit_lasso_ordinis$lambda[which.min(IC)]
+# bestlambda_lasso_ordinis # 
+# coefs_lasso_ordinis = fit_lasso_ordinis$beta[,which.min(IC)]
+# sum(coefs_lasso_ordinis!=0) # not sparse enough
+# plot(x=coefs_lasso_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+#      main="ordinis nonnegative weighted LASSO",
+#      xlab="Estimated coefficients", ylab="True coefficients")
+
+
+# # nonnegative weighted adaptive lasso regression in ordinis ####
+# system.time(fit_alasso_ordinis <- ordinis(X, y, 
+#                                   weights=W, # approx 1/variance Poisson weights
+#                                   nlambda = 20L, # 1000L gives much better solution than 100L or 20L & coefficient path looks very different
+#                                   penalty = "alasso", # using adaptive LASSO penalty
+#                                   intercept = FALSE,
+#                                   lower.limits = rep(0, p), # force all coefficients to be positive
+#                                   standardize = FALSE,
+#                                   # maxit = 1000,
+#                                   # tol = 1E-100,
+#                                   # maxit.irls = 1000,
+#                                   # tol.irls = 1E-100,
+#                                   # gamma = 100, # ifelse(penalty == "scad", 3.7, 1.4),
+#                                   alpha = 1))  # ie no elastic net
+# # XXs for n=p=100, XXs for n=p=10000
+# plot(fit_alasso_ordinis)
+# abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2)) # note : ordinis uses different colours, so cols don't match now
+# 
+# LLs = logLik2(fit_alasso_ordinis, weights=W, X, y)
+# edfs = attr(LLs, "df")
+# LLs = as.vector(LLs)
+# IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,crit]
+# coefs_alasso_ordinis = fit_alasso_ordinis$beta[,which.min(IC)]
+# sum(coefs_alasso_ordinis!=0) # 9 - slightly too sparse
+# plot(x=coefs_alasso_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+#      main="ordinis nonnegative weighted adaptive LASSO",
+#      xlab="Estimated coefficients", ylab="True coefficients")
+
+
+
+# table with benchmarks ####
+benchmarks_1_1 = rbind(
+      data.frame(method="L0glm_tuned_lambda", do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,  # some metrics
+                                                                     X = X, y = y, 
+                                                                     family = family, 
+                                                                     beta_true = sim$beta_true))),
+  
+      data.frame(method="L0glm_preset_lambda", do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
+                           X = X, y = y, 
+                           family = family, 
+                           beta_true = sim$beta_true))),
+      data.frame(method="nnalasso_glmnet", do.call(cbind, get.metrics(beta = coefs_alasso_glmnet,  # some metrics
+                                                                      X = cbind(1, X), y = y, 
+                                                                      weights = W,
+                                                                      family = gaussian(identity), 
+                                                                      beta_true = c(0, as.vector(sim$beta_true))) )),
+      data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = coefs_nnL0Learn_after_lasso,  # some metrics
+                                                                                     X = X, y = y, 
+                                                                                     weights = W,
+                                                                                     family = gaussian(identity),
+                                                                                     beta_true = as.vector(sim$beta_true)) )),
+      data.frame(method="abess_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = coefs_abessafterlasso,  # some metrics
+                                                                                 X = X, y = y, 
+                                                                                 weights = W,
+                                                                                 family = gaussian(identity),
+                                                                                 beta_true = as.vector(sim$beta_true)) )),
+      data.frame(method="nnL0Learn", do.call(cbind, get.metrics(beta = coefs_nnL0Learn,  # some metrics
+                                                                      X = X, y = y, 
+                                                                      weights = W,
+                                                                      family = gaussian(identity), 
+                                                                      beta_true = as.vector(sim$beta_true)) )),
+      data.frame(method="nnlasso_glmnet", do.call(cbind, get.metrics(beta = coefs_lasso_glmnet,  # some metrics
+                                                                     X = cbind(1, X), y = y, 
+                                                                     weights = W,
+                                                                     family = gaussian(identity), 
+                                                                     beta_true = c(0, as.vector(sim$beta_true))) )),
+      data.frame(method="nnMCP_ordinis", do.call(cbind, get.metrics(beta = coefs_MCP_ordinis,  # some metrics
+                                                                    X = cbind(1, X), y = y, 
+                                                                    weights = W,
+                                                                    family = gaussian(identity),
+                                                                    beta_true = c(0, as.vector(sim$beta_true))) )),
+      data.frame(method="nnSCAD_ordinis", do.call(cbind, get.metrics(beta = coefs_SCAD_ordinis,  # some metrics
+                                                             X = cbind(1, X), y = y, 
+                                                             weights = W,
+                                                             family = gaussian(identity), 
+                                                             beta_true = c(0, as.vector(sim$beta_true))) ))
+      # data.frame(method="nnlasso_ordinis", do.call(cbind, get.metrics(beta = coefs_lasso_ordinis,  # some metrics
+      #                                                                 X = cbind(1, X), y = y, 
+      #                                                                 weights = W,
+      #                                                                 family = gaussian(identity),
+      #                                                                 beta_true = c(0, as.vector(sim$beta_true))) )),
+      # data.frame(method="nnalasso_ordinis", do.call(cbind, get.metrics(beta = coefs_alasso_ordinis,  # some metrics
+      #                                                       X = cbind(1, X), y = y, 
+      #                                                       weights = W,
+      #                                                       family = gaussian(identity), 
+      #                                                       beta_true = c(0, as.vector(sim$beta_true))) )),
+      # data.frame(method="abess", do.call(cbind, get.metrics(beta = coefs_abess,  # some metrics
+      #                                                                X = X, y = y, 
+      #                                                                weights = W,
+      #                                                                family = gaussian(identity), 
+      #                                                                beta_true = as.vector(sim$beta_true)) ))
+      )
+benchmarks_1_1 = benchmarks_1_1[order(benchmarks_1_1[,crit]),] # sort by IC
+benchmarks_1_1
+# CONCLUSION: L0glm with tuned lambda best followed by L0glm with preset lambda,
+# followed by L0Learn after lasso, alasso & L0Learn; 
+# all other methods much worse
+
+# For n=p=500
+
+#                           method   p   n m     deviance deviance_true    loglik    MD_coefs
+# 1             L0glm_tuned_lambda 500 500 1 3.816865e+02  8.156291e+01 -1664.219  -0.2749081
+# 2            L0glm_preset_lambda 500 500 1 3.901860e+02  9.186823e+01 -1669.468  -0.2586797
+# 4 nnL0Learn_after_glmnet_nnlasso 501 500 1 1.911327e+04  5.047348e+10 -2217.407  -6.2095115
+# 3                nnalasso_glmnet 502 500 1 1.887068e+04  5.047348e+10 -2216.214  -6.5259568
+# 6                      nnL0Learn 501 500 1 2.056724e+04  5.047348e+10 -2234.737  -6.6674122
+# 7                 nnlasso_glmnet 502 500 1 1.880836e+04  5.047332e+10 -2272.387  -6.4909290
+# 8                  nnMCP_ordinis 502 500 1 2.218307e+04  5.047349e+10 -2320.644  -8.1817751
+# 9                 nnSCAD_ordinis 502 500 1 3.644955e+04  5.046555e+10 -2462.794 -11.5835933
+# 5     abess_after_glmnet_nnlasso 501 500 1 2.541601e+09  3.600837e+10 -5168.888  25.7496713
+#   MAD_coefs sMAPE_coefs bias_coefs  R2_coefs support_size_true support_size_estimated
+# 1  41.68789  0.08770669  0.9979851 0.9785754                50                     55
+# 2  44.89718  0.09978243  0.9988826 0.9778247                50                     56
+# 4 117.90380  0.17375413  0.9651048 0.8999311                50                     52
+# 3 115.79339  0.15415604  0.9810797 0.8915773                50                     55
+# 6 205.63036  0.23467638  0.8126596 0.6770243                50                     51
+# 7 144.37886  0.36529360  0.9994436 0.8652952                50                    112
+# 8 333.05557  0.41517219  1.1096016 0.4792685                50                    119
+# 9 366.28820  0.47824117  1.1203732 0.3898567                50                    137
+# 5 215.22493  0.22115776  0.7853456 0.6375838                50                     54
+#   estimated_over_true_support_size TP FP  TN FN precision recall specificity  accuracy  F1_score
+# 1                             1.10 42 13 437  8 0.7636364   0.84   0.9711111 0.9580000 0.8000000
+# 2                             1.12 41 15 435  9 0.7321429   0.82   0.9666667 0.9520000 0.7735849
+# 4                             1.04 30 22 428 20 0.5769231   0.60   0.9511111 0.9160000 0.5882353
+# 3                             1.10 35 20 431 15 0.6363636   0.70   0.9556541 0.9301397 0.6666667
+# 6                             1.02 22 29 421 28 0.4313725   0.44   0.9355556 0.8860000 0.4356436
+# 7                             2.24 39 73 378 11 0.3482143   0.78   0.8381375 0.8323353 0.4814815
+# 8                             2.38 39 80 371 11 0.3277311   0.78   0.8226164 0.8183633 0.4615385
+# 9                             2.74 42 95 356  8 0.3065693   0.84   0.7893570 0.7944112 0.4491979
+# 5                             1.08 25 29 421 25 0.4629630   0.50   0.9355556 0.8920000 0.4807692
+#         gic      ebic       bic       aic      mbic
+# 1  3952.879  4012.044  3670.241  3438.437  4201.355
+# 2  3974.732  4034.973  3686.955  3450.937  4227.726
+# 4  5036.743  5093.775  4764.189  4540.815  5276.202
+# 3  5068.632  5128.911  4780.446  4544.428  5321.664
+# 6  5060.044  5116.000  4792.633  4573.473  5294.985
+# 7  5828.542  5950.178  5247.025  4770.774  6339.126
+# 8  6004.581  6133.752  5387.041  4881.288  6546.794
+# 9  6493.375  6641.922  5783.204  5201.588  7116.920
+# 5 10962.418 11021.602 10679.579 10447.776 11210.913
+
+# TODO: probably best to package some of the above in an individual sparse learning
+# function sparseglm with identical arguments (e.g. lasso, alasso, mcp, scad, L0learn,
+# L0learn_after_lasso, abess, abess_after_lasso, etc with arguments X=, y=, 
+# family=gaussian or poisson, nonnegative=)
+# and coefficients as output & to then make a benchmark function with the same arguments
+# plus fitfunc, which could be a list of fit functions you would like to try
+# That benchmark function can then also record the timings & output that
+# as a column of the dataframe above.
+# TODO: do the same for Gaussian case below (just set W=rep(1,p)) & for multichannel
+# and also run similar benchmarks for orthogonal case & high dimensional cases
+# (I had a try in test_high dimensional, but didn't get very far - there
+# ordinis gave a better result)
 
 
 ## 1.2 Single channel deconvolution assuming Gaussian noise ####
+### 1.2.1 L0glm solution ####
 set.seed(1)
 sim <- simulate_spike_train(n = n, 
                             p = p,
@@ -364,6 +952,7 @@ crit <- "gic" # choose lambda based on what would be expected to optimise this I
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
 
 ## 2.1 Multichannel deconvolution assuming Poisson noise ####
+### 2.1.1 L0glm solution ####
 set.seed(1)
 sim <- simulate_spike_train(n = n, 
                             p = p,
@@ -507,7 +1096,7 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = family) # 2.76073 for n=p=100, 3.967809 for n=p=500
 
 
-### 2.1.1 Comparison with abess weighted mgaussian best subset glm #### 
+### 2.1.2 Comparison with abess weighted mgaussian best subset glm #### 
 
 # This was our L0 glm metrics:
 metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
@@ -566,6 +1155,7 @@ metrics_abess
 
 
 ## 2.2 Multichannel deconvolution assuming Gaussian noise ####
+### 2.2.1 L0glm solution ####
 set.seed(1)
 sim <- simulate_spike_train(n = n, 
                             p = p,
@@ -710,7 +1300,7 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = family) # 27.48007 for n=p=500
 
 
-### 2.2.1 Comparison with abess mgaussian best subset glm #### 
+### 2.2.2 Comparison with abess mgaussian best subset glm #### 
 
 # This was our L0 glm metrics:
 metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
@@ -764,7 +1354,7 @@ metrics_abess
 # [1,]   0.7266667    0.722 0.3285024 588165.6 615366.7 458172.8 351635.9 702374
 
 
-### 2.2.2 Comparison with glmnet nonnegative mgaussian multivariate group LASSO fit #### 
+### 2.2.3 Comparison with glmnet nonnegative mgaussian multivariate group LASSO fit #### 
 
 library(glmnet)
 system.time(cvfit <- cv.glmnet(X, 
