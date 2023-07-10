@@ -78,7 +78,7 @@
 #' If \code{FALSE}, the columns are fitted sequentially. Note that parallelization 
 #' requires sufficient computational resources (multiple cores) to be effective.
 #' @param maxit 
-#' maximum number of iterations
+#' maximum number of IRLS iterations
 #' @param grouped
 #' a logical value indicating whether a grouped fit should be performed in the
 #' multivariate case. 
@@ -96,31 +96,17 @@
 #' a logical value indicating whether an additional refinement fit should be 
 #' performed at the end of the algorithm with \code{lambda = 0}. If \code{TRUE},
 #' the algorithm will conduct a final fit using a nonnegative Poisson GLM, starting
-#' with 1/ average coefficients over responses from the previous fit and only 
+#' with 1/average coefficients over responses from the previous fit and only 
 #' including variables selected earlier via the iterated L0 GLMs. This approach
 #' can help to fine-tune the final model estimates. 
-#' @param nonzero.centered
-#' a logical value that determines the center value for ridge regularization. 
-#' If \code{TRUE}, the ridge center can be a value other than 0 after a specified 
-#' number of iterations, defined by \code{warmupiters.nzc}. The center value is 
-#' determined as follows: If a value is provided in \code{ridge.center}, it is 
-#' used as the center value after the warm-up iterations. If \code{ridge.center} 
-#' is not specified, the algorithm will use the provided starting values (if any) 
-#' for the first iteration, and in subsequent iterations, the center will be 
-#' updated to the coefficients from the previous iteration.
 #' @param ridge.center
-#' a numeric value specifying the center for ridge regularization when \code{nonzero.centered = TRUE}. 
-#' After the warm-up iterations defined by \code{warmupiters.nzc}, this value is used as the center 
-#' for ridge regularization. If \code{ridge.center} is not specified, the algorithm will 
-#' use the provided starting values (if any) for the first iteration, and in subsequent iterations, 
-#' the center will be updated to the coefficients from the previous iteration.
+#' a numeric value specifying the center for nonzero centered ridge regularization. 
+#' If \code{ridge.center} is not specified, the algorithm will perform the default 
+#' zero centered Ridge Regression.
 #' It should be a vector of length \code{p}.
 #' @param warmupiters
 #' an integer specifying the number of warm-up iterations before weights are updated in the 
 #' IRLS algorithm. 
-#' @param warmupiters.nzc
-#' an integer specifying the number of warm-up iterations before the center of ridge regularization 
-#' is updated when \code{nonzero.centered = TRUE}.
 #' @param gamma
 #' the exponent used for computing the adaptive ridge penalty weights. It is
 #' recommended to work with \code{gamma = 2} (Frommlet et Nuel 2016).
@@ -138,12 +124,6 @@
 #' Refer to the documentation in \code{\link{control.solver.gen}} or specific 
 #' solver functions (\code{"osqp"}, \code{"glmnet"}, \code{"eigen"} and \code{"nnls"})
 #' for more details on the available parameters.
-#' @param post.filter.fn
-#' A function that performs post filtering to the coefficients at the end of the
-#' fit. It should require a single argument that is the vector of coefficients.
-#' Note that lambda tuning will be performed with the processed coefficients, so
-#' the selected lambda will be influenced by the filtering step. Default: no
-#' filtering.
 #' @param IC
 #' lambda and threshold tuning criterion. It should be one of \code{"aic"}, 
 #' \code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"}.
@@ -157,123 +137,37 @@
 #'
 #' \strong{Structure of the algorithm}
 #'
-#' \code{L0glm} starts with lambda tuning (see below) and tries to select the
-#' best lambda out of the serie of lambda supplied by the user, given a
-#' tuning method and criterion. If a single lambda value is supplied, this
-#' step is skipped. The best lambda is then used to fit the penalized GLM. The
-#' algorithm contains 3 main nest loops. From high level to low level:
-#' \itemize{
-#' \item{\strong{Adaptive ridge for L0 penalty:} the L0 penalty is approximated
-#' by iteratively fitting an adaptive ridge and update the penalty weights based
-#' on the fitted coefficient from the previous update  (Frommlet et Nuel 2016).
-#' The penalty weights are updated using the formula
-#' \eqn{\frac{1}{(|\beta|^{\gamma} + \delta^{\gamma})}}.
-#' When \code{control.l0$maxit == 1}, this boils down to a simple ridge penalty.
-#' Furthermore, with \code{start != NULL}, an simple adaptive ridge is used where
-#' \code{start} is considered as the coefficient priors.}
-#' \item{\strong{GLM fitting using IWLS:} within every AR loop, a GLM is fit. If
-#' the error family is Gaussian, this is a (nonnegative) least square regression.
-#' For other error families and other link function than identity, the GLM is
-#' solved using iteratively reweighted least squares (IWLS, McCullach & Nelder
-#' 1989). To include ridge regularization, the covariate matrix is augmented
-#' with the diagonal matrix \eqn{\sqrt{\lambda} \bm{I}}, and the response is
-#' augmented with 0s accordingly.}
-#'
+#' \code{L0glm} starts with lambda tuning (see below) and selects the
+#' best lambda using \code{\link{L0glm.tune}} function, given a tuning criterion.
+#' If a single lambda value is supplied, this
+#' step is skipped. The best lambda is then used to call \code{\link{L0glm.fit}}.
+#' 
 #' Information criteria and other goodness of fit of measures are computed based
 #' on the fitted coefficients.
 #'
-#' \strong{Lambda tuning}
-#'
-#' Lambda can be specified in 3 ways:
-#'
-#'
-#' \itemize{
-#' \item{\strong{Scalar}: lambda is the penalty factor used for the ridge,
-#' adaptive ridge, or best subset regression.}
-#'
-#' \item{\strong{Numerical vector}: every value of lambda will be used as penalty
-#' factor for the ridge, adaptive ridge, or best subset regression, separately.
-#' The lambda that leads to the best fit according to the provided selection
-#' method and  criteria is kept and used to fit the model. If \code{tune.meth} is set
-#' to \code{"none"}, the fit will be performed with every lambda and hence the
-#' \code{"L0glm"} object will contain an \code{p x length(lambda)} matrix of
-#' coefficients and \code{n x length(lambda)} matrix of fitted values.}
-#'
-#' \item{\strong{Character}}: In the case that L0 penalty is required (\emph{i.e.}
-#' \code{control.l0$maxit > 1}), lambda can be supplied as the information
-#' criterion to optimize. Possible values are \code{"aic"}, \code{"bic"},
-#' \code{"hq"}, or \code{"bicq"}.
-#' }
-#'
-#' The lambda tuning can be performed using 3 different methods:
-#' \itemize{
-#' \item{When \code{tune.meth == "trainval"}, lambda is tuned using a training
-#' and validation set. The training set will contain 90\% of the observations.
-#' The best lambda is the lambda that leads to the highest performance according
-#' to the IC measure computed on the validation set.}
-#' \item{When \code{tune.meth == "IC"}, lambda is tuned on the full dataset. The
-#' lambda associated with the best IC value will be selected. It is not
-#' recommended using this method with \code{tune.crit == "rss"|"loglik"} since
-#' it cannot overcome overfitting.}
-#' \item{When \code{tune.meth == "k-fold"} (where \code{k} should be a numeric),
-#' the lambda is tuned using k-fold cross-validation. The data is split in k
-#' chunks where each chunk serves as a validation sets while the remaining data
-#' serves as training set. The IC measure across folds are averaged. For LOOCV,
-#' use \code{tune.meth == "IC"} and \code{tune.crit == "loocv"}.}
-#' }
-#'
-#' To avoid unnecessary computations, the algorithm finds the maximal lambda for
-#' which all coefficients are 0. This is given by
-#' \deqn{\lambda_{max} = \max_{i = 1,\dots,p}~ 1/2  (X^\top_i X_i)^{-1} (X^\top_i y)^2}
-#'
 #' @return
-#'
 #' \code{L0glm} returns an "L0glm" object which contains the following
 #' elements:
-#' \item{\code{call}}{The call that produced this object.}
-#' \item{\code{coefficients}}{a vector of fitted coefficients.}
+#' \item{\code{coefficients}}{a vector or matrix of fitted coefficients.}
+#' \item{\code{weights}}{a vector or matrix of observation weights.}
+#' \item{\code{pen.weights}}{a vector or matrix of adaptive penalization weights.}
+#' \item{\code{init.lambda}}{intial lambda, either provided or tuned with
+#' \code{\link{L0glm.tune}}.}
+#' \item{\code{lambdas}}{a vector or matrix with the adaptive lambdas.}
+#' \item{\code{family}}{The error structure used to fit the data.}
+#' \item{\code{z}}{a vector or matrix containing the working response in the 
+#' final iteration of code{\link{L0glm.fit}}.}
+#' \item{\code{X}}{X matrix.}
+#' \item{\code{y}}{y vector or matrix.}
+#' \item{\code{timing}}{time (in sec) taken for fitting the model (after lambda 
+#' tuning).}
 #' \item{\code{constraint}}{the constrained used for fitting. Either "none" if
 #' no constraint was applied or "nonneg" for nonnegative fits.}
-#' \item{\code{converged.iwls}}{Did the last iteration of IWLS converged?}
-#' \item{\code{converged.l0}}{Did the adaptive ridge converged?}
-#' \item{\code{deviance}}{a list containing degrees of freedom and deviance
-#' for the fitted model and the null model. The goodness of fit is computed as:
-#' \eqn{D^2 = 1 - \frac{D_{res}}{D_{null}}}}
-#' \item{\code{df}}{a list containing the \code{edf} effective degrees of freedom,
-#' and \code{rdf} residual degree of freedom of the fitted model.}
-#' \item{\code{eta}}{a vector with the fitted response on the link scale.}
-#' \item{\code{family}}{The error structure used to fit the data.}
-#' \item{\code{fitted.values}}{a vector with the fitted response.}
-#' \item{\code{IC}}{a vector with IC values and other goodness of fit criteria.
-#' Currently implemented are: \code{loglik}, \code{rss}, \code{aic}, \code{aicc},
-#' \code{bic}, \code{ebic}, \code{hq}, \code{ric}, \code{mric}, \code{cic},
-#' \code{bicg}, \code{bicq}.}
-#' \item{\code{iter.iwls}}{A vector of length \code{iter.l0} containing the
-#' number of iterations performed for every IWLS fit.}
-#' \item{\code{iter.l0}}{The number of adaptive ridge iterations.}
-#' \item{\code{lambda}}{The lambda used for the the adaptive ridge. This is a
-#' vector of length \code{p} which may contain zeros for unpenalized coefficients.}
-#' \item{\code{lambda.tune}}{a list generated during lambda tuning (if required).
-#' The list contains the sequence of lambdas, the estimated coefficients for
-#' every lambda (except if \code{tune.meth == "k-fold"}), the IC associated to
-#' every lambda, and the selected lambda.}
-#' \item{\code{lambda.w}}{The converged lambda weights from the adaptive ridge
-#' iteration. This is a vector of length \code{p} with coefficient specific
-#' weights.}
-#' \item{\code{prior.coefficients}}{a vector with the supplied prior values of the
+#' \item{\code{prior.coefficients}}{a vector with the supplied prior (start) 
+#' values of the
 #' coefficients. NULL if no prior was supplied.}
 #' \item{\code{prior.weights}}{a vector with the initial observation weights}
-#' \item{\code{residuals}}{a vector of residuals.}
-#' \item{\code{timing}}{time (in sec) taken for fitting the model (after lambda tuning).}
-#' \item{\code{weights}}{a vector of converged IWNNLS weights. This is a vector
-#' of length \code{n}.}
 #'
-#'
-#' @note
-#' When a lambda is supplied as vector with no tuning method (\code{tune.meth == "none"}),
-#' the function returns an object of class \code{tune.L0glm}. This contains
-#' \code{coefficients} (a \code{p} by \code{length(lambda)} matrix), \code{fitted.values}
-#' (a \code{n} by \code{length(lambda)} matrix), \code{family}, and \code{prior.weights}.
 #'
 #' @author
 #' Tom Wenseleers, Laura Lanzas, Christophe Vanderaa
@@ -287,10 +181,8 @@
 #' McCullagh P. and Nelder, J. A. (1989) Generalized Linear Models. London: Chapman and Hall.
 #'
 #' @seealso
-#' \code{\link{control.solver.gen}}, \code{\link{lmridge}},
-#' \code{\link{L0glm.tune}}
-#'
-#' @example examples/L0glm_examples.R
+#' \code{\link{L0glm.fit}}  \code{\link{lmridge}},
+#' \code{\link{L0glm.tune}}, \code{\link{control.solver.gen}}
 #'
 #' @export
 L0glm <- function(formula,
@@ -300,7 +192,7 @@ L0glm <- function(formula,
                   start = NULL,
                   offset = NULL,
                   contrasts = NULL,
-                  lambda = 0,
+                  lambda = NULL,
                   no.pen = 0,
                   nonnegative = FALSE,
                   normalize = FALSE,
@@ -313,15 +205,12 @@ L0glm <- function(formula,
                   grouped = TRUE, 
                   group.maxit = 6,
                   relaxed = TRUE,
-                  nonzero.centered = FALSE,
                   ridge.center = NULL,
                   warmupiters = 1, 
-                  warmupiters.nzc = warmupiters,
                   gamma = 2, #
                   thresh = 1e-5, 
                   tol = 1E-10,
                   control.solver = NULL,
-                  post.filter.fn = function(u) return(u),
                   IC = "gic",
                   verbose = TRUE) {
   # TODO talk with tom about whether or not we should group some of these variables into control lists.
@@ -483,17 +372,17 @@ L0glm <- function(formula,
   
   # TODO should it tune lambda with L0glm.tune?
   if(is.null(lambda)){ # TODO add a tunelambda option for user? if tunelambda == TRUE L0glm.tune gets called
-    lambda <- L0glm.tune(X = X, y = y, family = family,
+    lambda.tune <- L0glm.tune(X = X, y = y, family = family,
                          weights = weights, offset = offset,
                          IC = IC, warm.start.ratio = warm.start.ratio,
                          lower = lower, upper = upper, nonnegative = nonnegative,
                          normalize = normalize,
                          parallellize = parallellize, no.pen = no.pen,
                          grouped = grouped, group.maxit = group.maxit, 
-                         relaxed = relaxed, gamma = gamma, nonzero.centered = nonzero.centered,
+                         relaxed = relaxed, gamma = gamma,
                          ridge.center = ridge.center, thresh = thresh,
                          solver = solver, method = method, maxit = maxit,
-                         tol = tol, warmupiters = warmupiters, warmupiters.nzc = warmupiters.nzc,
+                         tol = tol, warmupiters = warmupiters, 
                          control.solver = control.solver, verbose = FALSE)$best.lambda
   } else {
     lambda.tune <- lambda
@@ -515,7 +404,7 @@ L0glm <- function(formula,
                    weights = weights,
                    start = start,
                    offset = offset,
-                   lambda = lambda,
+                   lambda = lambda.tune,
                    no.pen = no.pen, 
                    nonnegative = nonnegative,
                    normalize = normalize,
@@ -528,10 +417,8 @@ L0glm <- function(formula,
                    grouped = grouped, 
                    group.maxit = group.maxit, 
                    relaxed = relaxed,
-                   nonzero.centered = nonzero.centered,
                    ridge.center = ridge.center, 
                    warmupiters = warmupiters, 
-                   warmupiters.nzc = warmupiters.nzc,
                    gamma = gamma,
                    thresh = thresh,
                    tol = tol,
@@ -545,7 +432,6 @@ fit$timing <- proc.time()[3] - t1
 nonzero <- fit$coefficients != 0
 fit$constraint <- ifelse(nonnegative, "nonnegative", "none")
 fit$prior.coefficients <- start
-fit$lambda.tune <- lambda.tune
 
 # # Compute residuals
 # fit$residuals <- y - fit$coefficients 
@@ -602,13 +488,179 @@ return(structure(fit, class = "L0glm"))
 }
 
 
-#' @describeIn L0glm
+
+#' @description
+#' Fits a generalized linear model with L0 regularization and option for 
+#' nonnegativity and box constraints. It takes as input parameters the design 
+#' matrix X, the response variable y, regularization parameters, solver options, 
+#' and control parameters. It supports parallel computation for independent 
+#' channels if specified. The function applies L0 regularization iteratively, 
+#' potentially including relaxed group L0 feature selection. The result is a 
+#' fitted model with coefficients estimated using the specified regularization 
+#' method and solver. The function contains minimal code for fitting the GLM, as 
+#' it calls \code{L0glm.fit.internal}, and it is called by the higher level 
+#' \code{\link{L0glm}}. 
+#' 
+#' @param X
+#' A matrix of predictor variables. Each row corresponds to an observation and 
+#' each column corresponds to a different predictor variable. It should not 
+#' include a column for the response variable, and it should include a column of 
+#' ones for the intercept term if needed. 
+#' @param y
+#' Response variable. Can be either a vector or a matrix. A matrix corresponds 
+#' to a multivariate response scenario, with each column representing a different response.
+#' @param family
+#' a description of the error distribution and link function to be
+#' used in the model. This can be a character string naming a family function, a
+#' family function or the result of a call to a family function. (See
+#' \code{stats::family} for details of family functions.)
+#' @param weights 
+#' A vector of observation weights ("prior weights") of length \code{n}, 
+#' or a matrix of weights with dimension \code{c(n, m)}, with \code{n} corresponding to 
+#' the number of observations and \code{m} to the number of columns in \code{y}.
+#' @param start
+#' A vector of starting values for the coefficients to estimate of length \code{p}, 
+#' or a matrix of starting values with dimension \code{c(p, m)}, 
+#' with \code{p} corresponding to the number of predictors and \code{m} 
+#' to the number of columns in \code{y}.
+#' @param offset 
+#' An optional vector of offset values of length \code{p}, or a matrix of offset values
+#' with dimensions \code{c(p, m)}. The offset is a known quantity that is 
+#' included in the linear predictor of the model. If specified, the offset is 
+#' included in the calculation of the linear predictor and the 
+#' working response.
+#' @param lambda
+#' either a scalar, a vector of numerics, or a character. Set \code{lambda = 0} 
+#' to disable penalization.
+#' @param no.pen
+#' a vector of coefficient indices (including the intercept if applicable) that should 
+#' \strong{not} be penalized.
+#' @param nonnegative
+#' a logical indicating whether nonnegativity constraints should be applied.
+#' @param normalize
+#' should the covariate matrix be normalized with the L2 norm (Euclidean norm)?
+#' It is advised to use normalization unless the covariates were measured on a
+#' similar unit scale.
+#' @param solver
+#' solver used for optimization (see details). It should be one of \code{"osqp"},
+#' \code{"glmnet"}, \code{"eigen"}, \code{"nnls"}.
+#' @param method
+#' method used for the eigen solver (see details). It should be an integer from 
+#' 1 to 8.
+#' @param lower
+#' lower limit for box constraints. It should be an integer, a vector of length 
+#' \code{p} or a matrix with dimensions \code{c(p, m)}.
+#' @param upper
+#' upper limit for box constraints. It should be an integer, a vector of length 
+#' \code{p} or a matrix with dimensions \code{c(p, m)}.
+#' @param parallelize
+#' a logical value indicating whether the columns of the response matrix \code{y} 
+#' should be fitted in parallel in the multivariate case. If \code{TRUE}, each 
+#' column of \code{y} is fitted concurrently, potentially speeding up computation.
+#' If \code{FALSE}, the columns are fitted sequentially. Note that parallelization 
+#' requires sufficient computational resources (multiple cores) to be effective.
+#' @param maxit 
+#' maximum number of IRLS iterations
+#' @param grouped
+#' a logical value indicating whether a grouped fit should be performed in the
+#' multivariate case. 
+#' If \code{TRUE}, the algorithm will perform a group fitting procedure where 
+#' the columns of the response matrix \code{y} are refitted for a maximum number 
+#' of iterations specified by \code{group.maxit}. The starting value for each 
+#' iteration is the average of all columns of \code{y}. This can improve model 
+#' fit by incorporating information from all responses into the fitting process.
+#' @param group.maxit
+#' an integer value specifying the maximum number of iterations for the group 
+#' fitting procedure when \code{grouped = TRUE}. This determines how many times
+#' the columns of the response matrix \code{y} will be refitted using the average 
+#' of all columns of \code{y} as the starting value. 
+#' @param relaxed
+#' a logical value indicating whether an additional refinement fit should be 
+#' performed at the end of the algorithm with \code{lambda = 0}. If \code{TRUE},
+#' the algorithm will conduct a final fit using a nonnegative Poisson GLM, starting
+#' with 1/ average coefficients over responses from the previous fit and only 
+#' including variables selected earlier via the iterated L0 GLMs. This approach
+#' can help to fine-tune the final model estimates. 
+#' @param ridge.center
+#' a numeric value specifying the center for nonzero centered ridge regularization. 
+#' If \code{ridge.center} is not specified, the algorithm will perform the default 
+#' zero centered Ridge Regression.
+#' It should be a vector of length \code{p}.
+#' @param warmupiters
+#' an integer specifying the number of warm-up iterations before weights are updated in the 
+#' IRLS algorithm. 
+#' @param gamma
+#' the exponent used for computing the adaptive ridge penalty weights. It is
+#' recommended to work with \code{gamma = 2} (Frommlet et Nuel 2016).
+#' @param thresh
+#' a threshold under which the fitted coefficients are clipped to 0.
+#' @param tol
+#' stop iteration when the difference in coefficients between iterations is
+#' smaller than this threshold. The coefficient difference is defined as:
+#' \eqn{\frac{\|coefs^{(k-1)} - coefs^{(k)}}{\|coefs^{(k-1)}\|}}
+#' @param control.solver
+#' list of parameters controlling the optimization solvers. Should be NULL 
+#' (which will be filledwith defaults, check \code{\link{control.solver.gen}} for
+#' more details) or generated sing the \code{\link{control.solver.gen}} function. 
+#' The specific parameters required and their roles depend on the solver in use. 
+#' Refer to the documentation in \code{\link{control.solver.gen}} or specific 
+#' solver functions (\code{"osqp"}, \code{"glmnet"}, \code{"eigen"} and \code{"nnls"})
+#' for more details on the available parameters.
+#' @param IC
+#' threshold tuning criterion. It should be one of \code{"aic"}, 
+#' \code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"}.
+#' Threshold tuning is performed using TODO add chosen optimization function 
+#' @param verbose
+#' print algorithm progression to console?
 #'
-#'  Fits a generalized linear model with L0 regularization and option for nonnegativity and box constraints. It takes as input parameters the design matrix X, the response 
-#'  variable y, regularization parameters, solver options, and control parameters. It supports parallel computation for independent channels if specified. The function 
-#'  applies L0 regularization iteratively, potentially including relaxed group L0 feature selection. The result is a fitted model with coefficients estimated using 
-#'  the specified regularization method and solver. The function contains minimal code for fitting the GLM, as it calls \code{L0glm.fit.internal}, and it is called
-#'  by the higher level \code{L0glm}. It supports parallellization when fitting a multichannel response variable.
+#' @details
+#' 
+#' \strong{Structure of the algorithm}
+#' If the provided data is multivariate, algorithm parallellizes the columns of
+#' \code{y} if \code{parallellize == TRUE}. Otherwise, these are fit sequentially.
+#' \code{\link{L0glm.internal}} is called for every column of \code{y}. If
+#' \code{grouped == TRUE}, all of the columns are refitted \code{group.maxit} times, 
+#' using the average of all the columns fitted on the previous iteration and only 
+#' refitting the selected coefficients in the previous iterations. 
+#' If \code{y} is a vector or a matrix of \code{ncol(y) == 1}, the data is fit once.
+#' If \code{relaxed == TRUE}, the algorithm performs a final fit using a nonnegative 
+#' Poisson GLM, starting with 1/average coefficients over responses from the 
+#' previous fit and only including variables selected earlier via the iterated L0 GLMs. 
+#' This approach can help to fine-tune the final model estimates. 
+#' 
+#' \code{\link{L0glm.fit.internal}} follows these steps:
+#' 1. It first normalizes the columns of X if 'normalize' is TRUE. Then it checks 
+#' if the 'family' parameter is a valid family object and assigns the family 
+#' functions accordingly.
+#' 2. It initializes the 'mu' and 'eta' variables, either with the provided 
+#' 'start' values or with constant starting values.
+#' 3. Then, the function enters a loop for a maximum of 'maxit' iterations. In 
+#' each iteration:
+#' \itemize{
+#' \item{It computes the working responses 'z' and the weights 'W'.}
+#' \item{It updates the ridge penalties based on the current 'beta' coefficients.}
+#' \item{It fits a weighted least squares model with ridge regularization, updating 
+#'      the 'beta' coefficients.}
+#' \item{It then zeros out any 'beta' coefficients below the 'thresh' threshold, 
+#'      and updates 'nonzero', 'eta', 'mu', and 'dev'.}}
+#' 4. The loop continues until the relative change in 'beta' is below the 'tol' threshold.
+#' 5. Finally, the function returns a list containing the estimated 'beta' coefficients, the observation weights,
+#'    the penalty weights, the ridge penalties, and the working responses.
+#'
+#'
+#' @return
+#' \code{L0glm.fit} returns a list containing the following elements:
+#' \item{\code{coefficients}}{a vector or matrix of fitted coefficients.}
+#' \item{\code{weights}}{a vector or matrix of observation weights.}
+#' \item{\code{pen.weights}}{a vector or matrix of adaptive penalization weights.}
+#' \item{\code{init.lambda}}{intial lambda.}
+#' \item{\code{lambdas}}{a vector or matrix with the adaptive lambdas.}
+#' \item{\code{family}}{The error structure used to fit the data.}
+#' \item{\code{z}}{a vector or matrix containing the working response in the 
+#' final iteration of code{\link{L0glm.fit}}.}
+#' \item{\code{X}}{X matrix.}
+#' \item{\code{y}}{y vector or matrix.}
+#'
 #'
 #' @export
 L0glm.fit = function(X, 
@@ -630,10 +682,8 @@ L0glm.fit = function(X,
                      grouped = TRUE, # TODO: bit unclear what this one does in combination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                      group.maxit = 6, 
                      relaxed = TRUE,
-                     nonzero.centered = FALSE,
-                     ridge.center = NULL, # Should be a vector of length ncol(X). TODO Add to the help file that this option is ignored if nonzero.centered = FALSE
+                     ridge.center = NULL, # Should be a vector of length ncol(X). 
                      warmupiters = 1, # TODO: go back to ifelse(family$family == "gaussian", 1, 4)?
-                     warmupiters.nzc = warmupiters,
                      gamma = 2,
                      thresh = 1e-5, 
                      tol = 1E-10,
@@ -746,7 +796,6 @@ L0glm.fit = function(X,
                                normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
-                               nonzero.centered = nonzero.centered,
                                ridge.center = ridge.center[variable.indices],
                                start = as.vector(start[variable.indices, col, drop = F]),
                                lower = lower[variable.indices],
@@ -759,7 +808,6 @@ L0glm.fit = function(X,
                                no.pen = no.pen,
                                control.solver = control.solver,
                                warmupiters = warmupiters,
-                               warmupiters.nzc = warmupiters.nzc,
                                verbose = verbose)
           }))
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -780,7 +828,6 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               thresh = thresh, 
                               solver = solver, 
-                              nonzero.centered = nonzero.centered,
                               ridge.center = ridge.center[variable.indices],
                               weights = weights, 
                               start = start[variable.indices, , drop = F], 
@@ -792,7 +839,6 @@ L0glm.fit = function(X,
                               normalize = normalize,
                               control.solver = control.solver, 
                               warmupiters = warmupiters, 
-                              warmupiters.nzc = warmupiters.nzc,
                               verbose = verbose)
           
           # Extract results
@@ -827,7 +873,6 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               thresh = thresh, 
                               solver = solver, 
-                              nonzero.centered = nonzero.centered,
                               ridge.center = ridge.center[variable.indices],
                               weights = weights, 
                               start = start[variable.indices, , drop = F], 
@@ -839,7 +884,6 @@ L0glm.fit = function(X,
                               normalize = normalize,
                               control.solver = control.solver, 
                               warmupiters = warmupiters, 
-                              warmupiters.nzc = warmupiters.nzc,
                               verbose = verbose)
           # Extract results
           coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
@@ -859,7 +903,6 @@ L0glm.fit = function(X,
                                normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
-                               nonzero.centered = nonzero.centered,
                                ridge.center = ridge.center[variable.indices],
                                start = as.vector(start[variable.indices, col, drop = F]),
                                lower = lower[variable.indices],
@@ -872,7 +915,6 @@ L0glm.fit = function(X,
                                no.pen = no.pen,
                                control.solver = control.solver,
                                warmupiters = warmupiters,
-                               warmupiters.nzc = warmupiters.nzc,
                                verbose = verbose)
           }))
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -914,7 +956,6 @@ L0glm.fit = function(X,
                              normalize = normalize,
                              offset = as.vector(offset[col, drop = F]),
                              weights = as.vector(weights[,col,drop=F]),
-                             nonzero.centered = nonzero.centered,
                              ridge.center = ridge.center[variable.indices],
                              start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
@@ -927,7 +968,6 @@ L0glm.fit = function(X,
                              no.pen = no.pen,
                              control.solver = control.solver,
                              warmupiters = warmupiters,
-                             warmupiters.nzc = warmupiters.nzc,
                              verbose = verbose)
         }))
         coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -964,7 +1004,6 @@ L0glm.fit = function(X,
                                lower = lower[variable.indices],
                                upper = upper[variable.indices],
                                maxit = maxit,
-                               nonzero.centered = nonzero.centered,
                                ridge.center = ridge.center[variable.indices],
                                thresh = thresh,
                                solver = solver,
@@ -973,7 +1012,6 @@ L0glm.fit = function(X,
                                no.pen = no.pen,
                                control.solver = control.solver,
                                warmupiters = warmupiters,
-                               warmupiters.nzc = warmupiters.nzc,
                                verbose = verbose)}))
           
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
@@ -1000,7 +1038,6 @@ L0glm.fit = function(X,
                               lower = lower,
                               upper = upper,
                               lambda = lambda, 
-                              nonzero.centered = nonzero.centered,
                               ridge.center = ridge.center,
                               gamma = gamma,
                               thresh = thresh,
@@ -1011,7 +1048,6 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               control.solver = control.solver,
                               warmupiters = warmupiters,
-                              warmupiters.nzc = warmupiters.nzc,
                               verbose = verbose)
     
     coefficients <- fit$coefficients
@@ -1040,7 +1076,6 @@ L0glm.fit = function(X,
                                 lower = lower[variable.indices],
                                 upper = upper[variable.indices],
                                 lambda = 1e-30,
-                                nonzero.centered = nonzero.centered,
                                 ridge.center = ridge.center[variable.indices],
                                 gamma = gamma,
                                 thresh = thresh,
@@ -1051,7 +1086,6 @@ L0glm.fit = function(X,
                                 no.pen = no.pen,
                                 control.solver = control.solver,
                                 warmupiters = warmupiters,
-                                warmupiters.nzc = warmupiters.nzc,
                                 verbose = verbose)
       
       coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
@@ -1063,6 +1097,8 @@ L0glm.fit = function(X,
       z <- fit$z
       weights.ret <- fit$weights
     }
+    
+    
     # Threshold optimization
     
     
@@ -1127,10 +1163,8 @@ L0glm.fit.internal = function(X,
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
                               maxit = 25,
-                              nonzero.centered = FALSE,
                               ridge.center = NULL,
                               warmupiters = 1,
-                              warmupiters.nzc = 3,
                               gamma = 2,
                               thresh = 1e-5,
                               tol = 1E-10,
@@ -1199,17 +1233,12 @@ L0glm.fit.internal = function(X,
         W <- W.ret[good]
       }
     
-    if(is.null(ridge.center)){ # If it's not null we use user provided center
-      if(i > warmupiters.nzc & nonzero.centered){
-        center = beta_old 
-      } else if (nonzero.centered){
-        center = NULL # start
-      } else {
-        center = NULL
-      }
+    if(!is.null(ridge.center)){ 
+      center = ridge.center # nonzero centered ridge regression
     } else {
-      if(i > warmupiters.nzc & nonzero.centered) center = ridge.center else center = NULL
+      center = NULL # zero centered ridge regrerssion
     }
+    
     # update ridge penalties
     pen.weights <- AR.weights(beta = beta, gamma = gamma) # adaptive ridge pentalty weights
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
@@ -1290,7 +1319,7 @@ L0glm.fit.internal = function(X,
 #'
 #' @export
 fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, warmupiters.nzc = warmupiters,
+                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -1319,7 +1348,6 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        normalize = normalize,
                        method = method,
                        warmupiters = warmupiters,
-                       warmupiters.nzc = warmupiters.nzc,
                        verbose = verbose)
   })
   

@@ -13,6 +13,7 @@ L0glm.tune <- function(X, y, family,
                        printbest = TRUE, # Want the best empirical lambda printed out based on the provided IC?
                        plot = TRUE, # Want plots produced?
                        ...){
+  require(scales)
   # Checking if the IC is one of the valid criteria
   IC = tolower(IC)
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
