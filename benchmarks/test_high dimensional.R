@@ -21,7 +21,7 @@ library(ordinis)
 set.seed(123)
 n <- 500
 p <- 50000
-m <- 50
+m <- 50 # nr of nonzero coefs
 sd_noise <- 3
 beta_true <- matrix(c(runif(m), rep(0, p - m))) # 50 000 coefs
 X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
@@ -32,7 +32,8 @@ system.time(mod <- ordinis(X, y,
                            intercept = TRUE,
                            lower.limits = rep(0, p), # force all coefficients to be positive
                            penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
-                           alpha = 0.95))  # 3.28s, use elastic net with alpha = 0.95
+                           alpha = 0.95))  # use elastic net with alpha = 0.95
+# 3.28s
 plot(mod)
 logLik(mod)
 max(logLik(mod)) # -704.5205
@@ -42,6 +43,11 @@ min(AIC(mod)) # 1509.041
 min(BIC(mod)) # 1719.771
 coefs_MCP_ordinis = mod$beta[,which.min(BIC(mod))]
 sum(coefs_MCP_ordinis!=0) # 50, matches expected value
+library(scales)
+abline(h=as.vector(beta_true[beta_true!=0]), col=alpha(1:6,0.2)) # note colours don't match the ones of ordinis
+
+plot(x=coefs_MCP_ordinis, y=c(0,beta_true), pch=16, col="blue")
+
 
 
 # 1.2 L0glm solution ####
@@ -71,13 +77,14 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           start = rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                           solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                           method = 3L, # LSCG
-                                          thresh = 1E-12,
+                                          thresh = 1E-5,
                                           # maxit = 200,
                                           # tol = 1E-20,
                                           gamma = 1.2 # this gives better result with bic
 )) # 5.41s for method 3L
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0) # 76
+sum(L0glm.out_preset_coefs!=0) # 53
+plot(x=L0glm.out_preset_coefs, y=beta_true_scaled, pch=16, col="blue")
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
@@ -107,7 +114,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          method = 3L,
                          relaxed = FALSE,
                          thresh = 1E-12,
-                         gamma = 1.2
+                         gamma = 1.2 # this one worked better than 2
   )$coefficients
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
