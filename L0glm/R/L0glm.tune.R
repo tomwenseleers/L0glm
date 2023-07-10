@@ -8,12 +8,11 @@ L0glm.tune <- function(X, y, family,
                        offset = Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse=T), 
                        dispersion = NULL, 
                        IC = "aic", 
-                       warm.start.ratio = 0.9, 
+                       warm.start.ratio = 0, 
                        coefs.true = NULL,
                        printbest = TRUE, # Want the best empirical lambda printed out based on the provided IC?
                        plot = TRUE, # Want plots produced?
                        ...){
-  
   # Checking if the IC is one of the valid criteria
   IC = tolower(IC)
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
@@ -44,54 +43,56 @@ L0glm.tune <- function(X, y, family,
                       ...) # using provided / default params
   
   warm_start <- as.matrix(warmup$coefficients)
-  Z <- as.matrix(warmup$response)
+  Z <- as.matrix(warmup$z)
   W <- as.matrix(warmup$weights)
   
-  if(m > 1) w <- W[, which.max(colMeans(abs(y))), drop = F] else w <- W
-  Xw <- Xweights(X, w) 
+  # Recalculate maxlambda
+  maxlambda <- maxlambda(X = X, weights = W, z = warmup$z, 
+                         coefs = warm_start,family = family)
+
+  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by=0.2)
+                    
+  if(length(lambdas) > 30)  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by = 0.5)
+  if(length(lambdas) > 30)  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by = 1)
   
-  Zw <- sapply(seq_len(ncol(Z)), function(col) {
-    Zw <- Yweights(as.matrix(Z[, col, drop = FALSE]), as.matrix(W[, col, drop=F]))
-    return(Zw)
-  })
-  # Recalculate maxlambda and lambdas with obtained weights 
-  l <- (1/colSums(Xw^2)) * (crossprod(Xw, Zw)^2)
-  maxlambda = max(l[!is.nan(l)]) 
-  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by=0.05)
-  no.warm.start = matrix(1, nrow = nrow(warm_start), ncol = ncol(warm_start))
-  coefmat <- Matrix(0, nrow=length(lambdas), ncol = p)
-  metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
-    lambda <- lambdas[[i]]
+  if(warm.start.ratio > 0){
+    no.warm.start = matrix(1, nrow = nrow(warm_start), ncol = ncol(warm_start))
     start <- warm_start*warm.start.ratio + no.warm.start*(1-warm.start.ratio)
     start[warm_start == 0] <- 0 # slightly faster & stable with this
-    L0glm.out <- L0glm.fit(X, y, 
+  } else {
+    start = NULL
+  }
+
+  coefmat <- Matrix(0, nrow=length(lambdas), ncol = p)
+  
+  metrics <- data.frame(do.call(rbind, lapply(1:(length(lambdas)), function (i) { 
+    lambda <- lambdas[[i]]
+    L0glm.out <- L0glm.fit(X = X, y = y, 
                            family = family, 
                            weights = weights,
                            lambda = lambda, 
                            start = start,
                            offset = offset,
                            ...)$coefficients 
-    
     if(m > 1){
       coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across channels
     } else {
       coefmat[i,] <<- as.vector(L0glm.out)
     }
+    if(i == 23) browser()
     return(unlist(c(lambda = lambda, get.metrics(beta = L0glm.out, 
                                                 X = X, y = y, 
                                                 family = poisson(identity), 
                                                 beta_true = coefs.true))))
   })))
   
-  
   if(plot){
     title = ifelse(m > 1, "Regularisation path group L0 Poisson GLM", "Regularisation path L0 Poisson GLM")
     matplot(x = log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
             xlab = "Log10(lambda)", ylab="Coefficient estimates", main = title)
     abline(v = log10(maxlambda), col="red") # max lambda where all coefs would be penalized to 0
-    if(!is.null(coefs.true)) abline(h = as.vector(coefs.true), col = alpha(1:6,0.2))
+    if(!is.null(coefs.true)) abline(h = as.vector(coefs.true), col = alpha(1:6,0.2)) # TODO alpha gives error
   }
-  
   
   if(printbest) {
     bestlambda = lambdas[which.min(metrics[,IC])]
@@ -110,22 +111,6 @@ L0glm.tune <- function(X, y, family,
   # - a sparse matrix with the coefficient estimates for those lambda values (rowMeans of the coefficients for multichannel) (with the right optimal threshold applied for each)
   # - a list with the originally estimated sparse coefficient matrices for the different lambda values (but with the right optimal threshold applied for each)
   
-}
-
-abess.fit <- function(X, y, ...){
-  fit <- abess(x = X, 
-               y = y, 
-               ...)
-  
-  
-  plot(fit)
-  return(fit)
-}
-
-glmnet.fit <- function(X, y, ...){
-  fit(glmnet(x = X,
-             y = y,
-             ...))
 }
 
 tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){

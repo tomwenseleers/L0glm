@@ -120,3 +120,12 @@ simulate_glm <- function(n = 10000,
 
 # data = simulate_glm(n = 100, p = 1000000, n_nonzero = 50, intercept = 1, family = "gaussian")
 
+
+simulate_ordinis <- function(n = 500, p = 50000, m = 50, sd_noise = 3){
+  beta_true <- matrix(c(runif(m), rep(0, p - m))) 
+  X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
+  y <- drop(X %*% beta_true) + rnorm(n)
+  
+  return(list(X = X, y = y, beta_true = beta_true))
+}
+

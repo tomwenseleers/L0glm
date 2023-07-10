@@ -33,8 +33,6 @@ lmridge <- function(X, y,
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
   
-  # browser()
-  
   # scale columns of X if desired
   if (sum(scaling)!=length(scaling)) { X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=TRUE)
                                        start <- start * scaling }

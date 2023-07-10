@@ -178,8 +178,6 @@
 #' 1989). To include ridge regularization, the covariate matrix is augmented
 #' with the diagonal matrix \eqn{\sqrt{\lambda} \bm{I}}, and the response is
 #' augmented with 0s accordingly.}
-#' \item{\strong{Block-wise (NN)LS fitting:} TODO needed?}
-#' }
 #'
 #' Information criteria and other goodness of fit of measures are computed based
 #' on the fitted coefficients.
@@ -320,14 +318,10 @@ L0glm <- function(formula,
                   warmupiters = 1, 
                   warmupiters.nzc = warmupiters,
                   gamma = 2, #
-                  thresh = 1e-5, # TODO: think about sensible default that should be a function of the scale of the data
+                  thresh = 1e-5, 
                   tol = 1E-10,
                   control.solver = NULL,
                   post.filter.fn = function(u) return(u),
-                  # TODO make CV arguments a single list, eg tune.control ?
-                  # tune.meth = "none", # TODO remove? otherwise restore documentation, removed in push 4/7
-                  # tune.crit = "bic", # TODO remove? otherwise restore documentation, removed in push 4/7
-                  # seed = NULL, # TODO remove? otherwise restore documentation, removed in push 4/7
                   IC = "gic",
                   verbose = TRUE) {
   # TODO talk with tom about whether or not we should group some of these variables into control lists.
@@ -388,12 +382,6 @@ L0glm <- function(formula,
   } else {
     stop("Upper limit should be numeric value or a numeric vector of length p.")
   }
-  
-  # TODO remove this? Only keep if we end up allowing user given delta and thresh
-  # if(delta > thresh){
-  #   delta <- thresh
-  #   if (verbose) warning("Delta > Thresh. To avoid artifacts Delta is decreased to Thresh")
-  # }
   
   
   # Check family argument
@@ -560,7 +548,7 @@ fit$prior.coefficients <- start
 fit$lambda.tune <- lambda.tune
 
 # # Compute residuals
-# fit$residuals <- y - fit$coefficients # TODO check
+# fit$residuals <- y - fit$coefficients 
 # 
 # # If all coefficient are zero, return fit without inference
 # if(sum(nonzero) == 0){
@@ -596,7 +584,6 @@ fit$lambda.tune <- lambda.tune
 # Compute R squared
 # R2 is computed on the adjusted scale using the optimal weights from the last
 # iteration of the IWLS.
-# TODO shall we include this ?
 # eta <- fit$eta # Sample R2 (the variance is estimated from the model fit of the last IRLS iteration)
 # # eta <- X %*% coefficients.true # Population R2 (true variance is known)
 # z <- eta + (y - fit$fitted.values)/family$mu.eta(eta) # = X %*% beta + (y - g.inv(mu))/g'(X %*% beta)
@@ -653,13 +640,12 @@ L0glm.fit = function(X,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      IC = "gic",
                      verbose = FALSE){
-  
   require(parallel)
   require(qlcMatrix)
   y = as.matrix(y)
   if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
   no.pen.start <- no.pen
-  
+  init.lambda <- lambda
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
@@ -696,7 +682,6 @@ L0glm.fit = function(X,
   }
   
   if(nonnegative) lower[lower < 0] <- 0
-  
   if(ncol(y) > 1){
     if(!grouped) group.maxit <- 1 # Set group max iteration to 1 if group selection is negative -> channels will be fit independently
     # Define the number of cores to use (if it is 1, don't parallellize)
@@ -734,6 +719,7 @@ L0glm.fit = function(X,
       
       
       for(i in 1L:group.maxit){
+        print(i)
         if(i > 1){
           avgcoefs = rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0)
@@ -901,6 +887,7 @@ L0glm.fit = function(X,
       stopCluster(cl)
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
+        print(i)
         if(i > 1){
           avgcoefs <- rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0) # Only refit nonzero indices
@@ -1040,7 +1027,7 @@ L0glm.fit = function(X,
       variable.indices = which(coefficients!=0)
       no.pen.new.indices <- no.pen.start[no.pen.start %in% variable.indices] # Recalculate no.pen indices
       no.pen <- match(no.pen.new.indices, variable.indices)
-      # start <- coefficients # TODO Should the start be the previous iteration coefficients?
+      start <- coefficients
       
       fit <- L0glm.fit.internal(X = X[,variable.indices, drop = F],
                                 y = y,
@@ -1078,7 +1065,6 @@ L0glm.fit = function(X,
     }
     # Threshold optimization
     
-    # browser()
     
     # # Option 1: with optimize function. 0.49s for SC p=n=100
     # thresh.post <- optimize(optimize.threshold, interval = c(0, max(coefficients)), coefficients = coefficients, Xmat = X, y = y, IC = IC, family = family, maximum = FALSE)
@@ -1116,7 +1102,7 @@ L0glm.fit = function(X,
   pen.weights[is.infinite(pen.weights)] <- 1e11
   lambdas[is.infinite(lambdas)] <- 1e11
   
-  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, lambdas = lambdas, z = z))
+  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, init.lambda = lambda, lambdas = lambdas, family = family, z = z, X = X, y = y))
 }
 
 #' @describeIn L0glm
@@ -1154,7 +1140,6 @@ L0glm.fit.internal = function(X,
   # Normalize columns of X to unit L2 norm? If so, calculate scaling
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
                   scaling = rep(1, ncol(X)) }
-  
   if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation 
   
   if (!is(family, "family")) family = family()
@@ -1195,12 +1180,10 @@ L0glm.fit.internal = function(X,
   dev_old = 0
   nonzero = as.vector(beta!=0) # nonzero coefficients
   # mask <- rep(FALSE, p)
-  
   for (i in 1L:maxit) {
     varg = variance(mu) # variance
     
     # good = which(!is.na(weights) & !(weights==0) & !is.infinite(weights) & (gprime != 0)) # valid rows
-    
     # if (i==1|i>warmupiters) {
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
         W <- W.ret <- as.vector(weights / varg) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
@@ -1215,12 +1198,7 @@ L0glm.fit.internal = function(X,
         W.ret <- weights * as.vector(gprime^2 / varg) # updated weights 
         W <- W.ret[good]
       }
-    # } else {
-    #   z.ret <- (y - offset)
-    #   z <- z.ret[good]
-    # }
     
-    # TODO decide on expected behaviour of nonzero.centered & ridge.center
     if(is.null(ridge.center)){ # If it's not null we use user provided center
       if(i > warmupiters.nzc & nonzero.centered){
         center = beta_old 
@@ -1232,7 +1210,6 @@ L0glm.fit.internal = function(X,
     } else {
       if(i > warmupiters.nzc & nonzero.centered) center = ridge.center else center = NULL
     }
-    
     # update ridge penalties
     pen.weights <- AR.weights(beta = beta, gamma = gamma) # adaptive ridge pentalty weights
     lambdas = lambda*pen.weights # ridge penalties on individual coefficients
@@ -1252,7 +1229,7 @@ L0glm.fit.internal = function(X,
     res <- lmridge(X = X[good, nonzero, drop=F], 
                    y = z,
                    weights = W[good],
-                   pen.weights = pen.weights[good], # TODO: remove this argument
+                   pen.weights = pen.weights[good], 
                    lambdas = lambdas[nonzero],
                    nonnegative = nonnegative,
                    scaling = scaling[nonzero],
@@ -1265,22 +1242,7 @@ L0glm.fit.internal = function(X,
     if(sum(res) != 0){
       beta[nonzero] <- res
     } 
-    # else {
-    #   if(verbose) print("Zero coefficients produced. Method is switched to 7.")
-    #   method <- 7L
-    #   lmridge(X = X[good, nonzero, drop=F], y = z,
-    #           weights = W[good],
-    #           pen.weights = pen.weights[good], # TODO: remove this argument
-    #           lambdas = lambdas[nonzero],
-    #           nonnegative = nonnegative,
-    #           start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-    #           lower = lower[nonzero], 
-    #           upper = upper[nonzero],
-    #           ridge.center = center[nonzero],
-    #           solver = solver,
-    #           method = method)
-    # }
-    
+
     beta[nonzero][abs(beta[nonzero]) < thresh] = 0
     nonzero = as.vector(beta!=0) # nonzero coefficients
     if(sum(nonzero) == 0){
@@ -1312,7 +1274,7 @@ L0glm.fit.internal = function(X,
     rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in coefficient vector (Euclidean distance, ie L2 norm, between old & new coefficients over L2 norm of current coefficients)
     if (rel_change < tol) break
     dev_old = dev
-    beta_old = beta # TODO remove dev since converged is calculated differently?
+    beta_old = beta 
   }
 
   return(list(coefficients = as.vector(beta), weights = as.vector(W.ret), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
