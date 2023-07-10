@@ -69,7 +69,7 @@ simulate <- function(method=1, n = 500, p = 500, options = NULL){
     sim <- simulate_orthogonal(n = n, p = p, 
                                n_nonzero = ifelse(is.null(options), 24, options$n_nonzero),
                                beta_sd = ifelse(is.null(options), 0.5, options$beta_sd), 
-                                = ifelse(is.null(options), 1, options$error_sd))
+                               error_sd = ifelse(is.null(options), 1, options$error_sd))
   } else if(method == 6){
     sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options), 3, options$sd_noise))
   }
@@ -91,7 +91,9 @@ fit.GLM <- function(X, y, method = 1, options){
     
   } else if(method == 6){ # ordinis mcp
     
-  } else if(method == 7) # ordinis SCAD
+  } else if(method == 7){# ordinis SCAD
+    
+  } 
   
 }
 
