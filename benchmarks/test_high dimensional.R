@@ -32,17 +32,19 @@ system.time(mod <- ordinis(X, y,
                            intercept = TRUE,
                            lower.limits = rep(0, p), # force all coefficients to be positive
                            penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
+                           gamma = 1.1, # ifelse(penalty == "scad", 3.7, 1.4)
                            alpha = 0.95))  # use elastic net with alpha = 0.95
 # 3.28s
 plot(mod)
-logLik(mod)
-max(logLik(mod)) # -704.5205
+logLik(mod) # 
+max(logLik(mod)) # -731.8202 for SCAD with gamma=3.7, -704.5205 for MCP with gamma=1.4, -692.5572 for MCP with gamma=1.1
 # min(logLik(mod)) # -1960.879
 mod$lambda[which.max(logLik(mod))] # best lambda = 0.1869138
-min(AIC(mod)) # 1509.041
-min(BIC(mod)) # 1719.771
+min(AIC(mod)) # 1485.114
+min(BIC(mod)) # 1695.845
 coefs_MCP_ordinis = mod$beta[,which.min(BIC(mod))]
-sum(coefs_MCP_ordinis!=0) # 50, matches expected value
+coefs_MCP_ordinis[coefs_MCP_ordinis<0] = 0
+sum(coefs_MCP_ordinis!=0) # 49, closely matches expected value
 library(scales)
 abline(h=as.vector(beta_true[beta_true!=0]), col=alpha(1:6,0.2)) # note colours don't match the ones of ordinis
 
@@ -67,24 +69,41 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               dispersion = dispersion) 
 lambda_preset # lambda that would be expected to optimise given IC
 
+warm_start = 0.9 
+start = coefs_MCP_ordinis[-1]*scaling
+gamma = 2
+# A warm_start value of 1 would indicate using the provided starting coefficients 
+# directly (full warm start), while a warm_start between 0 and 1 would represent 
+# a "cooled" or "tempered" start, blending the provided coefficients with  
+# their standard deviations raised to the power of 1/gamma. In this way, one can
+# specify one's prior belief in the starting coefficients being correct vs.
+# implying identical priors on al coefficients (but still allowing 
+# the observed variability in the starting coefficients to affect the chosen
+# constant SD on the implied Gaussian prior of all coefficients).
 system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y, 
                                           family = family, 
                                           lambda = lambda_preset, 
                                           nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
+                                          # lower = rep(0, ncol(X)),
                                           warmupiters = 1,
-                                          no.pen=NULL,
-                                          start = rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 3L, # LSCG
-                                          thresh = 1E-5,
-                                          # maxit = 200,
-                                          # tol = 1E-20,
-                                          gamma = 1.2 # this gives better result with bic
-)) # 5.41s for method 3L
-L0glm.out_preset_coefs = L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0) # 53
-plot(x=L0glm.out_preset_coefs, y=beta_true_scaled, pch=16, col="blue")
+                                          no.pen = NULL,
+                                          # start = rep(sqrt(0.05), ncol(X)),
+                                          start = warm_start*start*scaling +
+                                                  (1-warm_start)*rep(sd(start*scaling)^(1/gamma)), ncol(X)), # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
+                                          method = 5L, # LSCG
+                                          thresh = 1E-100,
+                                          maxit = 10,
+                                          tol = 1E-5,
+                                          gamma = 2 # this gives better result with bic
+)) 
+# 6s for glmnet with n=500 and p=50000, but only works with 50:50 MCP warm start
+L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling
+sum(L0glm.out_preset_coefs!=0) # 47
+plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
+
+
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0

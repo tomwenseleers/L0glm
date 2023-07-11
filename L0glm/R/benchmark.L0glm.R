@@ -145,7 +145,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                        intercept = F, 
                        standardize = F, 
                        alpha = 1, 
-                       lower.limits = 0))
+                       lower.limits = 0)
     } else {
       args <- c(list(x = X, y = y, family = "gaussian"), options)
       result <- do.call(glmnet(args))
