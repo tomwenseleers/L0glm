@@ -66,11 +66,12 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = family, 
-                              dispersion = dispersion) 
+                              dispersion = dispersion) # with dispersion = NULL: estimating dispersion here doesn't seem to work well & takes a very long time
 lambda_preset # lambda that would be expected to optimise given IC
 
-warm_start = 0.9 
-start = coefs_MCP_ordinis[-1]*scaling
+warm_start = 0.9 # TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
+start = coefs_MCP_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
+start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
 gamma = 2
 # A warm_start value of 1 would indicate using the provided starting coefficients 
 # directly (full warm start), while a warm_start between 0 and 1 would represent 
@@ -83,23 +84,24 @@ gamma = 2
 system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y, 
                                           family = family, 
                                           lambda = lambda_preset, 
-                                          nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                          # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
                                           # lower = rep(0, ncol(X)),
                                           warmupiters = 1,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
-                                          start = warm_start*start*scaling +
-                                                  (1-warm_start)*rep(sd(start*scaling)^(1/gamma)), ncol(X)), # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 5L, # LSCG
-                                          thresh = 1E-100,
-                                          maxit = 10,
+                                          start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                                          method = 3L, # LSCG
+                                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
+                                          maxit = 20,
                                           tol = 1E-5,
-                                          gamma = 2 # this gives better result with bic
+                                          gamma = gamma 
 )) 
-# 6s for glmnet with n=500 and p=50000, but only works with 50:50 MCP warm start
-L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling
+# 6s for glmnet with n=500 and p=50000, but only works with a MCP warm start with warm_start>0.5
+# fails for osqp & eigen method 5, 6 with Cholmod error 'problem too large' at file ../Core/cholmod_sparse.c, line 89
+# XXs for eigen method 3
+L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling # TODO do this scaling automatically if normalize=T
 sum(L0glm.out_preset_coefs!=0) # 47
 plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
 

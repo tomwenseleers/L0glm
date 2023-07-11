@@ -241,8 +241,8 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                             nLambda = 100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
                             autoLambda=TRUE)
     } else {
-      args = c(list(x = X, y = y, options)
-               result <- do.call(L0learn.fit, args)
+      args = list(x = X, y = y, options)
+      result <- do.call(L0learn.fit, args)
     }
     
     LLs = logLik(result, weights = W, X, y)
