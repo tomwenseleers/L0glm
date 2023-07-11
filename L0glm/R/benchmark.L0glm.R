@@ -81,29 +81,17 @@ simulate <- function(method=1, n = 500, p = 500, options = NULL){
 #' This function simulates different types of data based on the method specified. 
 #' Various aspects of the data generation can be controlled using the \code{options} parameter.
 #' @param sim
+#' Simulated data generated using \code\link{simulate} function. 
 #' @param method 
-#' A numeric value indicating the type of data to simulate. The possible values are:
-#' 1: Single channel (single variable) data with Gaussian noise.
-#' 2: Single channel data with Poisson noise.
-#' 3: Multichannel data with Gaussian noise.
-#' 4: Multichannel data with Poisson noise.
-#' 5: Orthogonal data.
-#' 6: High dimensional data generation (p > 40000 suggested).
+#' A numeric value indicating the method that needs to be used to fit the GLM. 
+#' The possible values are:
+#' 1: ...
 #' @param options 
-#' A list of optional parameters to control the data generation process. This can include:
-#'   For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
-#'   \code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
-#'   For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_sd} (standard deviation of the beta coefficients), 
-#'   \code{error_sd} (standard deviation of the error term).
-#'   For method 6: \code{sd_noise} (standard deviation of the noise).
-#'   If options are \code{NULL}, default values will be used.
+#' Here specify the options that each method accepts the options that the package
+#' that method calls accepts (and to refer to the respective packages and functions)
 #'
-#' @return A variable containing the simulated data.
+#' @return A vector or matrix of coefficients.
 #'
-#' @examples
-#' \dontrun{
-#' sim_data <- simulate(method=1, n=500, p=500)
-#' }
 #' 
 #' @export
 fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic"){
@@ -241,7 +229,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                             nLambda = 100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
                             autoLambda=TRUE)
     } else {
-      args = list(x = X, y = y, options)
+      args = c(list(x = X, y = y), options)
       result <- do.call(L0learn.fit, args)
     }
     
