@@ -125,7 +125,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                           nonnegative = TRUE,
                           warmupiters = 1,
                           solver = "eigen", 
-                          method = 7L) 
+                          method = 7L)
     } else {
       args <- c(list(X=X, y=y, family=family), options)
       result <- do.call(L0glm.fit, args)
@@ -135,6 +135,10 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            main="L0 glm identity link Poisson with lambda preset to optimise BIC",
            xlab="Estimated coefficients", ylab="True coefficients")
     }
+    
+    coefs <- result$coefficients
+    
+    
   } else if(method == 2) { # glmnet
     if(is.null(options)){
       result <- glmnet(x = X, 
@@ -149,29 +153,24 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     } else {
       args <- c(list(x = X, y = y, family = "gaussian"), options)
       result <- do.call(glmnet(args))
-      
-      if(plot){
-        plot(result, xvar='lambda')
-        abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
-      }
     }
-    
-  } else if(method == 4) { # loglik glmnet, cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
-    glmnet.fit <- fit.GLM(sim = sim, method = 2, options = options, plot = F)
-    LLs <- logLik(glmnet.fit, weights = W, X = X, y = y)
+    LLs <- logLik(result, weights = W, X = X, y = y)
     edfs = attr(LLs, "df")
-    IC = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
-    which.min(IC) # 
+    IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
     
-    bestlambda_lasso_glmnet = glmnet.fit$lambda[which.min(IC)]
-    coefs_lasso_glmnet = coef(glmnet.fit, s = bestlambda_lasso_glmnet)
+    bestlambda_lasso_glmnet = result$lambda[which.min(IC.val)]
+    coefs = coef(result, s = bestlambda_lasso_glmnet)
     
     if(plot){
-      plot(x=coefs_lasso_glmnet[-1], y=sim$beta_true, pch=16, col='blue',
+      plot(result, xvar='lambda')
+      abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
+      
+      plot(x = coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="glmnet nonnegative weighted LASSO",
            xlab="Estimated coefficients", ylab="True coefficients")
     }
-  } else if(method == 5) { # adaotive LASSO using glmnet 
+    
+  } else if(method == 3) { # adaotive LASSO using glmnet 
     # since glmnet is so much faster than ordinis & supports sparse
     # covariate matrices, let's use that to fit an adaptive LASSO model, cf
     # https://rpubs.com/kaz_yos/alasso
@@ -183,7 +182,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     # penalized regression (cf. Nuel 2017 talk)
     
     # Start with regular LASSO fit
-    glmnet.fit <- fit.GLM(sim = sim, method = 2, options = options, plot = F)
+    glmnet.fit <- fit.GLM(sim = sim, method = 2, plot = F)
     
     LLs <- logLik(glmnet.fit, weights=W, X=X, y=y)
     edfs = attr(LLs, "df")
@@ -195,15 +194,15 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     delta = 1E-5
     if(is.null(options)){
       result <- glmnet(x = X, 
-                                  y = y, 
-                                  weights = W,
-                                  family = "gaussian", # poisson(identity) should be supported but gave an error
-                                  nlambda = 20L,
-                                  penalty.factor = 1 / (abs(coefs.glmnet.fit[-1])+delta), # adaptive penalty weights
-                                  intercept = F, 
-                                  standardize = F, 
-                                  alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
-                                  lower.limits = 0) # for nonnegativity constraints
+                       y = y, 
+                       weights = W,
+                       family = "gaussian", # poisson(identity) should be supported but gave an error
+                       nlambda = 20L,
+                       penalty.factor = 1 / (abs(coefs.glmnet.fit[-1])+delta), # adaptive penalty weights
+                       intercept = F, 
+                       standardize = F, 
+                       alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
+                       lower.limits = 0) # for nonnegativity constraints
     } else {
       args <- c(list(x = X, y = y, weights = W, family = "gaussian", penalty.factor = 1/(abs(coefs.glmnet.fit[-1])+delta)), options)
       do.call(glmnet, args)
@@ -213,45 +212,224 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     edfs = attr(LLs, "df")
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
     bestlambda_alasso_glmnet = result$lambda[which.min(IC.val)]
+    coefs = coef(result, s = bestlambda_lasso_glmnet)
     
     if(plot){
       plot(result, xvar='lambda')
       abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
       
-      coefs.result = coef(result, s = bestlambda_lasso_glmnet)
-      plot(x=coefs.result[-1], y=sim$beta_true, pch=16, col='blue',
+      plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="glmnet nonnegative weighted adaptive LASSO",
            xlab="Estimated coefficients", ylab="True coefficients")
     }
-  } else if(method == 6) { # L0 learn
     
-  } else if(method == 7) { # abess
+  } else if(method == 4) { # nonnegative L0 learn
+    if(sim$family == "poisson"){
+      X = as.matrix(Diagonal(x=sqrt(W)) %*% X)
+      y = as.vector(y*sqrt(W))
+    } else {
+      X = as.matrix(X)
+      y = as.vector(y)
+    }
+    if(is.null(options)){
+      result <- L0Learn.fit(x = X,  # note: no support for sparse matrices
+                            y = y,
+                            loss = "SquaredError",
+                            penalty = "L0", algorithm="CD",
+                            maxSuppSize = round(p/2),
+                            intercept = FALSE,
+                            nLambda = 100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
+                            autoLambda=TRUE)
+    } else {
+      args = c(list(x = X, y = y, options)
+               result <- do.call(L0learn.fit, args)
+    }
     
-  } else if(method == 8) { # abess after LASSO
+    LLs = logLik(result, weights = W, X, y)
+    edfs = attr(LLs, "df")
+    LLs = as.vector(LLs)
+    IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
+    coefs = coef(result, lambda = result$lambda[[1]][which.min(IC.val)], gamma = 0)
     
-  } else if(method == 9) { # ordinis mcp
+    if(plot){
+      plot(result)
+      
+      plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
+           main="nnL0Learn weighted least squares best subset",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    }
     
-  } else if(method == 10) { # ordinis scad
+  } else if(method == 5) { # nonnegative L0glm after glmnet LASSO
+    # Start with regular LASSO fit
+    glmnet.fit <- fit.GLM(sim = sim, method = 2, plot = F)
+    selcoefs <- which(glmnet.fit[-1]!=0)
+    p_selcoefs = length(selcoefs)
     
+    if(sim$family == "poisson"){
+      X = as.matrix(Diagonal(x=sqrt(W)) %*% X)
+      y = as.vector(y*sqrt(W))
+    } else {
+      X = as.matrix(X)
+      y = as.vector(y)
+    }
+    
+    if(is.null(options)){
+      fit <- L0Learn.fit(x = X[,selcoefs,drop=F],  # note: no support for sparse matrices
+                         y = y,
+                         loss = "SquaredError",
+                         penalty = "L0", algorithm = "CD",
+                         maxSuppSize = (p_selcoefs-1), 
+                         intercept = FALSE, 
+                         nLambda = 100,
+                         autoLambda=TRUE)
+      
+    } else {
+      args <- c(list(x = X[,selcoefs,drop=F], y = y, maxSuppSize = (p_selcoefs-1)), options)
+      fit <- do.call(L0learn.fit, args)
+    }
+    
+    
+    LLs = logLik(fit, weights=W, X[,selcoefs,drop=F], y)
+    edfs = attr(LLs, "df")
+    LLs = as.vector(LLs)
+    IC.val = get.IC(loglik = LLs, n = n, p = p_selcoefs, edf = edfs)[,IC]
+    coefs.sel = coef(fit,
+                     lambda = fit$lambda[[1]][which.min(IC)],
+                     gamma = 0)
+    coefs = Matrix(0, p)
+    coefs[selcoefs] = coefs.sel
+    if(plot){
+      plot(fit)
+      plot(x=coefs_nnL0Learn_after_lasso, y=sim$beta_true, pch=16, col='blue',
+           main="weighted nnL0Learn after nonnegative LASSO",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    } 
+    
+  } else if(method == 6) { # abess
+    # note: currently no support for nonnegativity constraints
+    # fast for small problems, but becomes slow for n=p=10000
+    if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
+    if(is.null(options)){
+      fit <- abess(x = X, 
+                   y = y,
+                   weights = W, 
+                   family = sim$family,
+                   tune.path = "sequence",
+                   support.size = c(1:round(p*0.5)),
+                   lambda=0,
+                   warm.start = TRUE,
+                   tune.type = IC)
+    } else {
+      args <- c(list(x = X, y = y, weights = W, tune.type = IC, family = sim$family), options)
+      fit <- do.call(abess, args)
+    }
+    
+    coefs = as.matrix(extract(fit_abess)$beta) # coefficient matrix for best subset
+    
+    if(plot){
+      plot(fit, type="tune")
+      
+      plot(x=coefs_abess, y=sim$beta_true, pch=16, col='blue',
+           main="abess best subset weighted least squares",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    }
+    
+  } else if(method == 7) { # abess after LASSO
+    # very good solution, and fast for small problems, but
+    # becomes very slow for large problems, e.g. n=p=10000
+    glmnet.fit <- fit.GLM(sim = sim, method = 2, plot = F)
+    selcoefs <- which(glmnet.fit[-1]!=0)
+    p_selcoefs = length(selcoefs)
+    
+    if(is.null(options)){
+      fit <- abess(x = X[,selcoefs,drop=F], 
+                   y = y, 
+                   weights = W,
+                   family = "gaussian", # poisson not supported
+                   tune.path = "sequence", 
+                   support.size = c(1:(p_selcoefs-1)),
+                   lambda = 0, 
+                   warm.start = TRUE, # FALSE worked better here, but much slower
+                   tune.type = IC)
+    } else {
+      args <- c(list(x = X[,selcoefs,drop=F], y = y, tune.type = IC, support.size = c(1:(p_selcoefs-1))), options)
+      fit <- do.call(abess, args)
+    }
+    
+    plot(fit_abessafterlasso_selcoefs, type="tune")  # optimal support size 
+    coefs.selcoefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
+    coefs = Matrix(rep(0, p), sparse=T)
+    coefs[selcoefs] = coefs.selcoefs
+    
+    if(plot){
+      plot(fit, type="tune")  # optimal support size 
+      
+      plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
+           main="abess best subset weighted least squares\nafter nonnegative LASSO",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    }
+  } else if(method == 8) { # nonnegative weighted MCP penalized regression in ordinis 
+    if(is.null(options)){
+      fit <- ordinis(X, y, 
+                     weights = W,
+                     nlambda = 100L, 
+                     penalty = "mcp", # using MCP penalty
+                     intercept = FALSE,
+                     lower.limits = rep(0, p), # force all coefficients to be positive
+                     standardize = FALSE,
+                     alpha = 1) 
+    } else {
+      args <- c(list(X = X, y = y, weights = W), options)
+      fit <- do.call(ordinis, args)
+    }
+    
+    LLs = logLik2(fit, weights=W, X, y)
+    edfs = attr(LLs, "df")
+    LLs = as.vector(LLs)
+    IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
+    coefs = fit$beta[,which.min(IC.val)]
+    
+    
+    
+    if(plot){
+      plot(fit_MCP)
+      abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
+      
+      plot(x=coefs_MCP_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+           main="ordinis nonnegative MCP",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    }
+  } else if(method == 9) { # ordinis scad
+    if(is.null(options)){
+      fit <- ordinis(X, y, 
+                     weights = W,
+                     nlambda = 100L, 
+                     penalty = "scad", # using scad penalty
+                     intercept = FALSE,
+                     lower.limits = rep(0, p), # force all coefficients to be positive
+                     standardize = FALSE,
+                     alpha = 1) 
+    } else {
+      args <- c(list(X = X, y = y, weights = W), options)
+      fit <- do.call(ordinis, args)
+    }
+    
+    LLs = logLik2(fit, weights=W, X, y)
+    edfs = attr(LLs, "df")
+    LLs = as.vector(LLs)
+    IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
+    coefs = fit$beta[,which.min(IC.val)]
+    
+    
+    
+    if(plot){
+      plot(fit_MCP)
+      abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
+      
+      plot(x=coefs_MCP_ordinis[-1], y=sim$beta_true, pch=16, col='blue',
+           main="ordinis nonnegative MCP",
+           xlab="Estimated coefficients", ylab="True coefficients")
+    }
   }
-  
-}
-
-logLik.glmnet = function(object, weights, X, y) {  
-  n  = as.numeric(object$nobs)
-  df = Matrix::colSums(object$beta!=0)  
-  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
-  
-  # Compute y_pred for all columns of object$beta at once
-  y_pred = X %*% object$beta
-  
-  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-  resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)  
-  
-  rdf = n - df 
-  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-  attr(logL, "df") = df  # nr of nonzero coefficients
-  attr(logL, "nobs") = n
-  attr(logL, "p") = object$dim[[2]]
-  return(logL)
+  return(coefs)
 }

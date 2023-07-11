@@ -10,7 +10,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   if (!is(family, "family")) family = family()
   
-  # browser()
   
   require(glmnet)
   require(qlcMatrix)
@@ -73,7 +72,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   } else {
     TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
   }
-  
   # metrics related to prediction accuracy ####
   # calculate deviance
   if (is.null(beta_true)) { # calculated weights based on expected value
@@ -118,7 +116,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     deviance_true = sum(dev_res) # deviance compared to ground truth 
   }
   
-  # browser()
   
   # calculated deviance
   dev_res = family$dev.resids(y=as.vector(y), mu=as.vector(mu), wt=as.vector(weights)) # as.vector(W)
@@ -143,12 +140,12 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                          mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
                          wt = weights[good], 
                          dev = deviance) 
-  # using deviance relative to ground truth
-  aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                              n = as.vector(weights)[good], # check this is correct for family(binomial)
-                              mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                              wt = weights[good], 
-                              dev = deviance_true) 
+  # # using deviance relative to ground truth
+  # aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+  #                             n = as.vector(weights)[good], # check this is correct for family(binomial)
+  #                             mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
+  #                             wt = weights[good], 
+  #                             dev = deviance_true) 
   
   loglik = p - (aic.model + 2*sum(beta!=0)) / 2
 
