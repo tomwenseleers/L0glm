@@ -167,6 +167,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
     y = as.matrix(y),
     y_true = as.matrix(y_true),
     x = x,
-    x_beta = x_beta
+    x_beta = x_beta,
+    family = family
   ))
 }

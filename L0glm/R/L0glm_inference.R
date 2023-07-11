@@ -272,3 +272,62 @@ L0glm.inference <- function(fit, level = 0.95, boot.repl = 200,
 # One-sided p-values for log(coefs) being greater than 0, ie coefs being > 1 (since log(1) = 0)
 # z = log(beta_pos)/SE_logbetapos
 
+L0glm.inference.new <- function(fit, boot.replicates = 100, plot = T, family = fit$family, warm.start.ratio = 0.9, ...){
+  browser()
+  beta_relaxedgroupL0_boot <- vector("list", boot.replicates) # list of coefficient matrices for each bootstrap replicate
+  warm.start <- as.matrix(fit$coefficients)
+  no.warm.start <- matrix(1, nrow = nrow(warm.start), ncol = ncol(warm.start))
+  for (i in 1:boot.replicates) { 
+    sampled = sample(1:nrow(fit$X), replace=T) # sampled observations
+    beta_relaxedgroupL0_boot[[i]] = L0glm.fit(X = fit$X[sampled,,drop=F], y = fit$y[sampled,,drop=F], 
+                                              family = family, # poisson(identity),
+                                              start = warm.start.ratio*warm.start+(1-warm.start.ratio)*no.warm.start, # to use warm starts
+                                              lambda = fit$init.lambda, 
+                                              ... )$coefficients
+  }
+  
+  # do inference by calculating the
+  # union of selected variables across L0glm best subset fits on bootstrap replicates
+  # and then fitting a (constrained) (g)lm on that set of selected variables
+  boot_selectedvars_relaxedGroupL0 = lapply(beta_relaxedgroupL0_boot, function (coefs) which(rowMin(coefs)!=0)) # set of selected variables for each fit
+  USVBset_relaxedGroupL0 = unique(unlist(boot_selectedvars_relaxedGroupL0)) # union of selected variables
+  
+  USVBset_relaxedGroupL0_setsize_vs_B = sapply(1:B, function (boot.replicates) { 
+    length(unique(unlist(boot_selectedvars_relaxedGroupL0[1:boot.replicates]))) }) 
+  
+  if(plot){
+    plot(1:B, USVBset_relaxedGroupL0_setsize_vs_B, type="o", pch=16, 
+         main="Size of union of variables selected by nonnegative\nrelaxed group L0 GLM after bootstrapping",
+         xlab="Number of bootstrap replicates",
+         ylab="Size of union of selected variables")
+    # abline(h=length(true_support_set), col="blue")
+  }
+
+  # generalised linear model fits on union of selected variables for each outcome variable
+  # since we have nonnegativity constraints I use glm.cons here
+  require(zetadiv)
+  require(broom)
+
+  signvariables = lapply(1:m, # variables that are significant for each of the m channels (after Bonferroni correction)
+                         function (var) {
+                           glmconsfit_on_subset = glm.cons(fit$y[,var] ~ 0+as.matrix(fit$X[,USVBset_relaxedGroupL0,drop=F]),
+                                                           family=stats::gaussian(identity),
+                                                           cons=1, # for nonnegativity constraints
+                                                           cons.inter=1)
+                           which(tidy(glmconsfit_on_subset)$p.value<(0.05/m)) }) # /m for Bonferroni correction
+  set_signvariables = unique(unlist(signvariables))
+  length(set_signvariables) # 17 variables with coefficient sign >0 in at least one of the channels
+  intersect(set_signvariables, true_support_set) # 15 out of 17 are in the true support set, so only 2 false positives
+
+
+  # a regular unconstrained linear model fit on all variables obviously
+  # would give really crap results, given that p=n & that such a fit
+  # does not take into account nonnegativity constraints
+  system.time(beta_lm_onallvars <- lm.fit(x=as.matrix(fit$X), y=as.matrix(fit$y))$coefficients)
+  range(beta_lm_onallvars) # -52381709  52281909
+  range(sim$beta_true) #
+  plot(beta_lm_onallvars, sim$beta_true, pch=16,
+       xlab="estimated coefficients linear model",
+       ylab="true coefficients", col="steelblue",
+       main="True vs estimated coefficients\nleast square regression fit on all variables")
+}

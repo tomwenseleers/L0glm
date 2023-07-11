@@ -43,11 +43,9 @@ W <- 1/(y+1E-10) # approx 1/variance weights in case identity link Poisson is
 system.time(L0glm.out <- L0glm.fit(X, y, 
                            family = poisson(identity), 
                            lambda = 1, 
-                           nonzero.centered = FALSE, # use nonzero centered ridge regression?
                            # ridge.center = start, # ridge.center
                            nonnegative = TRUE,
                            warmupiters = 1,
-                           # warmupiters.nzc = 1,
                            # start = rep(10, ncol(sim$X)), # coefficient starting values
                            solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
                            method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
@@ -64,18 +62,16 @@ lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, la
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                # ridge.center = start, # ridge.center
                                nonnegative = TRUE,
                                warmupiters = 1,
-                               # warmupiters.nzc = 1,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
 )) # 0.02s for n=p=100, 0.04s for n=p=500, 0.25s for n=p=10000
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0)  #
+sum(L0glm.out_preset_coefs!=0)  #56
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
 # graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -104,6 +100,7 @@ lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), length.out=20) #
 length(lambdas) # 20 - like for other methods
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
 warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, here used lowest value that still gave stable coef paths
+
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
@@ -113,11 +110,9 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              # family = gaussian(identity),
                              # weights = 1/(sim$y+0.1),
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              ridge.center = NULL, 
                              nonnegative = TRUE,
                              warmupiters = 1,
-                             warmupiters.nzc = 5,
                              start = start, # 
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
@@ -301,7 +296,7 @@ logLik.glmnet = function(object, weights, X, y) {
   logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
   attr(logL, "df") = df  # nr of nonzero coefficients
   attr(logL, "nobs") = n
-  attr(logL, "p") = fit_glmnet$dim[[2]]
+  attr(logL, "p") = object$dim[[2]]
   return(logL)
 }
 
@@ -360,8 +355,6 @@ fit_alasso_glmnet <- glmnet(x = X,
                            penalty.factor = 1 / (abs(coefs_lasso_glmnet[-1])+delta), # adaptive penalty weights
                            intercept = F, 
                            standardize = F, 
-                           # thresh = 1E-10,
-                           # maxit=100000,
                            alpha = 1, # lasso (lower value, ie elastic net, made solution worse)
                            lower.limits = 0) # for nonnegativity constraints
 LLs <- logLik(fit_alasso_glmnet, weights=W, X=X, y=y)
@@ -1489,7 +1482,7 @@ benchmarks_1_2
 
 # 2. MULTICHANNEL DECONVOLUTION ####
 
-n <- p <- 500 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
+n <- p <- 100 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 10000
