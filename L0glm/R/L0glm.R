@@ -1299,6 +1299,7 @@ L0glm.fit.internal = function(X,
                    upper = upper[nonzero],
                    prior.mean = center[nonzero],
                    solver = solver,
+                   control.solver = control.solver,
                    method = method)
     if(sum(res) != 0){
       beta[nonzero] <- res

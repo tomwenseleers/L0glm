@@ -155,43 +155,39 @@ control.solver.gen <- function(solver, method = NULL,
     if(is.null(tol)) tol <- 1E-10
     
     if (method == 1){
-      if(is.null(rowaug)) rowaug <- TRUE
-      if(rowaug == FALSE & verbose == TRUE) print("Row augmentation is required with your chosen method. Using row augmentation.") 
-      # TODO : review this? If cant use normal equations, remove rowaug as a return
-      l <- list(method = "QR", pivot = 0L, rowaug = TRUE)
+      if(is.null(rowaug)) rowaug <- FALSE
+      l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
       
     } else if (method == 2){
-      if(is.null(rowaug)) rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- FALSE
       l <- list(method = "QR", pivot = 1, rowaug = rowaug)
       
     } else if (method == 3){
-      if(is.null(rowaug)) rowaug <- FALSE
-      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
+      # if(is.null(rowaug)) rowaug <- FALSE
+      rowaug <- TRUE
       
-      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L)
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 4){
-      if(is.null(rowaug)) rowaug <- FALSE
-      
-      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      
-      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L)
+      # if(is.null(rowaug)) rowaug <- FALSE
+      rowaug <- TRUE
+      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 5){
-      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
-      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){
-      if(is.null(rowaug)) rowaug <- FALSE
-      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "chol", pivot = 0L, ordering = 0L)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "chol", pivot = 0L, ordering = 0L, rowaug = rowaug)
       
     } else if (method == 8){
-      if(is.null(rowaug)) rowaug <- FALSE
-      if(rowaug == TRUE & verbose == TRUE) print("Row augmentation is not allowed with your chosen method. Using normal equations.")
-      l <- list(method = "chol", pivot = 1L, ordering = 0L)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "chol", pivot = 1L, ordering = 0L, rowaug = rowaug)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-8).")
     }

@@ -30,11 +30,10 @@ lmridge <- function(X, y,
                     method = ifelse(ncol(X)>=20000, 3L, 7L),
                     start = rep(1, ncol(X)),
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                    verbose){
-  
+                    verbose = FALSE){
   # scale columns of X if desired
   if (sum(scaling)!=length(scaling)) { X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=TRUE)
-                                       start <- start * scaling }
+  start <- start * scaling }
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
@@ -48,7 +47,14 @@ lmridge <- function(X, y,
   if (!issparse(Xw)) { Xw = as.matrix(Xw) }
   yw[is.nan(yw)] <- 0
   
-  #prior.mean = NULL
+  if(is.null(prior.mean)){
+    prior.mean = rep(0, ncol(X))
+  } else if (length(as.vector(prior.mean)) == 1){
+    prior.mean = rep(prior.mean, ncol(X))
+  } else if (length(as.vector(prior.mean != ncol(X)))){
+    stop("Prior.mean needs to be a vector of length p or a numerical.")
+  }
+  
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
     coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, 
@@ -67,7 +73,8 @@ lmridge <- function(X, y,
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
                            lambdas = lambdas, 
                            start = start, prior.mean = prior.mean,
-                           lower = lower, upper = upper, control.solver = control.solver)
+                           lower = lower, upper = upper, control.solver = control.solver,
+                           verbose = verbose)
     
   } else if (solver == "nnls") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
@@ -142,7 +149,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
   } else {
     path = FALSE
   }
-
+  
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -153,7 +160,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
     Xwaug <- Xw
     ywaug <- yw
   }
-
+  
   model <- bigGlm(x = Xwaug, 
                   y = ywaug,
                   intercept = FALSE, 
@@ -194,15 +201,17 @@ lmridge.eigen <- function(Xw, yw,
                           upper = rep(.Machine$double.xmax,ncol(X)), 
                           start = rep(0, ncol(Xw)), 
                           control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
-                          prior.mean = rep(0, ncol(Xw))){ 
+                          prior.mean = rep(0, ncol(Xw)),
+                          verbose = FALSE){ 
   lambda = mean(lambdas)
-  # pen.weights = lambdas / lambda # penalty weights, but not needed
-  
-  
-  
+  pen.weights = lambdas / lambda 
   if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") } 
   if (control.solver$method == "QR") {
-    if (control.solver$rowaug == TRUE) {
+    if(ncol(Xw) > nrow(X)){
+      control.solver$rowaug <- FALSE
+      if(verbose) print("Row augmentation is not recommended for p > n. Using to normal equations.")
+    }
+    if (control.solver$rowaug) {
       # Obtain Xwaug and ywaug
       if (!is.null(lambdas)&(sum(lambdas)!=0)) {
         Xwaug <- row_augX(Xw, lambdas)
@@ -220,100 +229,232 @@ lmridge.eigen <- function(Xw, yw,
                                 b = ywaug, pivot = control.solver$pivot)$coefficients
       }
     } else {
-      # Xwaug = row_augX(Xw, lambdas)
-      # if(issparse(Xw)){
-      #   coefs <- solve_sparse_QR(A = as(crossprod(Xwaug),"generalMatrix"),
-      #                            b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, prior.mean = prior.mean))))$coefficients
-      # 
-      #   
-      #   } else {
-      #   coefs <- solve_dense_QR(A = crossprod(Xwaug),
-      #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, prior.mean = prior.mean))),
-      #                           pivot = control.solver$pivot)$coefficients}
-      D <- Diagonal(x=lambda / lambdas) # = diag(1/pen.weights), cf notation Liu & Li 2016
-      if(issparse(Xw)){
-        Dsp <- Matrix(D, sparse=T)
-        coefs <- solve_sparse_QR(A = Dsp %*% crossprod(Xw) + Diagonal(x=lambdas),
-                                 b = as.vector(Dsp %*% crossprod(Xw,yw)))$coefficients # TODO add ordering options to control gen for QR?
-      } else {
-        coefs <- solve_dense_QR(A = as.matrix(D %*% crossprod(Xw) + Diagonal(x=lambdas)),
-                                b = as.vector(D %*% crossprod(Xw,yw)),
-                                pivot = control.solver$pivot)$coefficients
+      D <- Diagonal(x=1/pen.weights)
+      if(nrow(Xw) >= ncol(Xw)){
+        if(issparse(Xw)){
+          coefs <- as.vector(solve_sparse_QR(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)))$coefficients)
+        } else { # if it's dense
+          coefs <- as.vector(solve_dense_QR(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
+                                            b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                            pivot = control.solver$pivot)$coefficients)
+        }
+      } else { # if p > n
+        if(issparse(Xw)){
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_QR(A = Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                  b = y_star)$coefficients) 
+        } else { # if it's dense
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% solve_dense_QR(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(X)))),
+                                                                 b = y_star,
+                                                                 pivot = control.solver$pivot)$coefficients)
+        }
       }
     }
   } else if (control.solver$method == "LSCG") {
-    # Obtain Xwaug and ywaug
-    if(!is.null(lambdas)) {
-      Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
-    } else {
-      Xwaug <- Xw
-      ywaug <- yw
+    if (control.solver$rowaug) {
+      # Obtain Xwaug and ywaug
+      if(!is.null(lambdas)) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      if(is.null(start)) start <- rep(1, ncol(X))
+      # X.n <- sqrt(colSums(Xw^2)) 
+      if(issparse(Xwaug)){
+        coefs <- solve_sparse_LSCG(A = Xwaug,
+                                   b = as.matrix(ywaug),
+                                   x0 = as.matrix(start),
+                                   tol = control.solver$tol,
+                                   maxit = control.solver$maxit,
+                                   precond = control.solver$precond)$coefficients 
+      } else {
+        coefs <- solve_dense_LSCG(A = Xwaug,
+                                  b = as.matrix(ywaug),
+                                  x0 = as.matrix(start),
+                                  tol = control.solver$tol,
+                                  maxit = control.solver$maxit,
+                                  precond = control.solver$precond)$coefficients
+      }
+    } else { # Normal equations
+      D <- Diagonal(x=1/pen.weights)
+      
+      if(nrow(Xw) >= ncol(Xw)){
+        if(issparse(Xw)){
+          coefs <- as.vector(solve_sparse_LSCG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                               x0 = as.matrix(start),
+                                               tol = control.solver$tol,
+                                               precond = control.solver$precond)$coefficients)
+        } else { # if it's dense
+          coefs <- as.vector(solve_dense_LSCG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
+                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                              x0 = as.matrix(start),
+                                              tol = control.solver$tol,
+                                              maxit = control.solver$maxit,
+                                              precond = control.solver$precond)$coefficients)
+        }
+      } else { # if p > n
+        DXw <- Matrix::tcrossprod(D, Xw)
+        if(issparse(Xw)){
+          # Precompute some values
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          browser()
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                y_star,
+                                                                tol = control.solver$tol))
+        } else { # if it's dense
+          # Precompute some values
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                y_star,
+                                                                tol = control.solver$tol))
+        }
+      }
     }
-    if(is.null(start)) start <- rep(1, ncol(X))
-    # X.n <- sqrt(colSums(Xw^2)) 
-    if(issparse(Xwaug)){
-      coefs <- solve_sparse_LSCG(A = Xwaug,
-                                 b = as.matrix(ywaug),
-                                 x0 = as.matrix(start),
-                                 tol = control.solver$tol,
-                                 maxit = control.solver$maxit,
-                                 precond = control.solver$precond)$coefficients #/ X.n
-    } else {
-      coefs <- solve_dense_LSCG(A = Xwaug,
-                                 b = as.matrix(ywaug),
+  } else if (control.solver$method == "CG") {
+    if (control.solver$rowaug) {
+      # Obtain Xwaug and ywaug
+      if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      if(is.null(start)) start <- rep(1, ncol(X))
+      if(issparse(Xwaug)){
+        coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"), 
+                                 b = as.matrix(crossprod(Xwaug, ywaug)),
                                  x0 = as.matrix(start),
                                  tol = control.solver$tol,
                                  maxit = control.solver$maxit,
                                  precond = control.solver$precond)$coefficients
-    }
-  } else if (control.solver$method == "CG") {
-    # Obtain Xwaug and ywaug
-    if(!is.null(lambdas)&(sum(lambdas)!=0)) {
-      Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
-    } else {
-      Xwaug <- Xw
-      ywaug <- yw
-    }
-    if(is.null(start)) start <- rep(1, ncol(X))
-    if(issparse(Xwaug)){
-      coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"), 
-                               b = as.matrix(crossprod(Xwaug, ywaug)),
-                               x0 = as.matrix(start),
-                               tol = control.solver$tol,
-                               maxit = control.solver$maxit,
-                               precond = control.solver$precond)$coefficients
-      
-    } else {
-      coefs <- solve_dense_CG(A = crossprod(Xwaug),
-                              b = as.matrix(crossprod(Xwaug, ywaug)),
-                              x0 = as.matrix(start),
-                              tol = control.solver$tol,
-                              maxit = control.solver$maxit,
-                              precond = control.solver$precond)$coefficients
-    }
-    
-    
-  } else if (control.solver$method == "chol"){
-    # Obtain Xwaug and ywaug
-    if(!is.null(lambdas)&(sum(lambdas)!=0)) {
-      Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
-    } else {
-      Xwaug <- Xw
-      ywaug <- yw
-    }
-    if(issparse(Xwaug)){
-      coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"dgCMatrix"), 
-                                 b = as.matrix(crossprod(Xwaug, ywaug)), 
-                                 pivot = control.solver$pivot,
-                                 ordering = control.solver$ordering)$coefficients
-    } else {
-      Xwaug = row_augX(Xw, lambdas)
-      coefs <- solve_dense_chol(A = crossprod(Xwaug),
+        
+      } else {
+        coefs <- solve_dense_CG(A = crossprod(Xwaug),
                                 b = as.matrix(crossprod(Xwaug, ywaug)),
-                                pivot = control.solver$pivot)$coefficients
+                                x0 = as.matrix(start),
+                                tol = control.solver$tol,
+                                maxit = control.solver$maxit,
+                                precond = control.solver$precond)$coefficients
+      }
+      
+    } else { # normal equations
+      D <- Diagonal(x=1/pen.weights)
+      
+      if(nrow(Xw) >= ncol(Xw)){
+        if(issparse(Xw)){
+          coefs <- as.vector(solve_sparse_CG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                             x0 = as.matrix(start),
+                                             tol = control.solver$tol,
+                                             maxit = control.solver$maxit,
+                                             precond = control.solver$precond)$coefficients)
+        } else { # if it's dense
+          coefs <- as.vector(solve_dense_CG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
+                                            b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                            x0 = as.matrix(start),
+                                            tol = control.solver$tol,
+                                            maxit = control.solver$maxit,
+                                            precond = control.solver$precond)$coefficients)
+        }
+      } else { # if p > n
+        if(issparse(Xw)){
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                y_star,
+                                                                tol = control.solver$tol)) 
+        } else { # if it's dense
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                y_star,
+                                                                tol = control.solver$tol))
+          coefs_solve_largep_dense <- as.vector(prior.mean + DXw %*% Matrix::solve(
+            as.matrix(Xwsp %*% DXw + Diagonal(x=rep(lambda, n))),
+            y_star,
+            tol=2*.Machine$double.eps))
+        }
+      }
+    }
+  } else if (control.solver$method == "chol"){
+    if (control.solver$rowaug) {
+      # Obtain Xwaug and ywaug
+      if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      if(issparse(Xwaug)){
+        coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"dgCMatrix"), 
+                                   b = as.matrix(crossprod(Xwaug, ywaug)), 
+                                   pivot = control.solver$pivot,
+                                   ordering = control.solver$ordering)$coefficients
+      } else {
+        Xwaug = row_augX(Xw, lambdas)
+        coefs <- solve_dense_chol(A = crossprod(Xwaug),
+                                  b = as.matrix(crossprod(Xwaug, ywaug)),
+                                  pivot = control.solver$pivot)$coefficients
+      }
+    } else { # normal equations
+      D <- Diagonal(x=1/pen.weights)
+      
+      if(nrow(Xw) >= ncol(Xw)){
+        if(issparse(Xw)){
+          coefs <- as.vector(solve_sparse_chol(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                               pivot = control.solver$pivot,
+                                               ordering = control.solver$ordering)$coefficients)
+        } else { # if it's dense
+          coefs <- as.vector(solve_dense_chol(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
+                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+                                              pivot = control.solver$pivot)$coefficients)
+        }
+      } else { # if p > n
+        if(issparse(Xw)){
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_chol(A = Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+                                                                    b = y_star,
+                                                                    pivot = control.solver$pivot,
+                                                                    ordering = control.solver$ordering)$coefficients) 
+        } else { # if it's dense
+          # Precompute some values
+          DXw <- Matrix::tcrossprod(D, Xw)
+          y_star <- as.vector(yw - Xw %*% prior.mean)
+          
+          # Calculate β using Woodbury identity
+          coefs <- as.vector(prior.mean + DXw %*% solve_dense_chol(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
+                                                                   b = y_star,
+                                                                   pivot = control.solver$pivot)$coefficients)
+        }
+      }
     }
   } else {
     stop("Invalid method.")
@@ -351,7 +492,7 @@ Yweights <- function(y, weights){
 row_augX <- function(Xw, lambdas = NULL){
   if (!is.null(lambdas)&(sum(lambdas)!=0)) {
     out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else
-  { out <- Xw }
+    { out <- Xw }
   
   if ("dgeMatrix" %in% class(out)) { out = as(out, "dgCMatrix") } # now always returning sparse matrix, as that's most efficient when using row augmentation
   
@@ -375,7 +516,7 @@ augY <- function(yw, p, prior.mean = NULL, lambdas = NULL){
       return(c(yw, rep(0, p))) # zero centered row augmentation
     } else {
       return(c(yw, prior.mean * sqrt(lambdas)))  # nonzero centered row augmentation
-  } } else { return(yw) }
+    } } else { return(yw) }
 }
 
 
@@ -421,8 +562,8 @@ centerX <- function(X) {
 
 # is X normalized?
 isnormalized = function (X) { out = !is.null(attr(X, "normalized"))
-                              if (out) out = attr(X, "normalized")
-                              return(out) }
+if (out) out = attr(X, "normalized")
+return(out) }
 
 # function to calculate good coefficient initialisations to use as starting values in 
 # L0glm.fit which can be used as start - uses an orthogonal approximation
@@ -454,8 +595,8 @@ init_coefs = function( X,
   } else {
     gprime = family$mu.eta(eta) # derivative of the expected values
     good = which((weights != 0) &
-                 (gprime != 0) &
-                 !is.infinite(weights) & !is.na(weights)) # valid rows
+                   (gprime != 0) &
+                   !is.infinite(weights) & !is.na(weights)) # valid rows
     z.ret <- (eta - offset) + (y - mu) / gprime # working (adjusted) response
     z <- z.ret[good]
     W.ret <- weights * as.vector(gprime ^ 2 / varg) # updated weights
@@ -477,7 +618,7 @@ init_coefs = function( X,
   # for signal deconvolution problem with n=p this gives the best initial solution
   # only works if X is square though
   # beta_init_diagonal <- z*sqrt(W) / diag(XW)
-
+  
   # scale.factor = 0.1 # (1+lambda[[1]]) # multiply coefs by some scale factor to compensate ridge bias a bit
   # beta_init = beta_init*scale.factor
   return(beta_init)
@@ -514,12 +655,12 @@ maxlambda = function (X, weights, z, no.pen=NULL, coefs, family) {
   
   # remove contribution of unpenalized terms
   if (!is.null(no.pen)) { X_penalized <- X[, -no.pen, drop=F]
-                           # Calculate the contribution to z of the unpenalized terms
-                           unpen_contrib = X[, no.pen, drop=F] %*% coefs[no.pen]
-                           # Adjust z by subtracting the unpenalized contribution
-                           z <- z - unpen_contrib
-                           X <- X_penalized
-                         }
+  # Calculate the contribution to z of the unpenalized terms
+  unpen_contrib = X[, no.pen, drop=F] %*% coefs[no.pen]
+  # Adjust z by subtracting the unpenalized contribution
+  z <- z - unpen_contrib
+  X <- X_penalized
+  }
   
   Xw <- Diagonal(x=sqrt(weights)) %*% X
   zw <- Diagonal(x=sqrt(weights)) %*% z
