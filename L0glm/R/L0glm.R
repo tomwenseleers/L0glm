@@ -706,11 +706,12 @@ L0glm.fit = function(X,
                      verbose = FALSE){
   require(parallel)
   require(qlcMatrix)
+  # TODO if lambda is NULL and starting values are passed, calculate lambda from starting values
   y = as.matrix(y)
   if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
   no.pen.start <- no.pen
   init.lambda <- lambda
-  # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel
+  # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel.
   if(!is.null(weights)){
     if(ncol(y) > 1 & ncol(as.matrix(weights)) == 1){
       weights = matrix(rep(weights, times = ncol(y)), nrow = length(weights), ncol = ncol(y))
