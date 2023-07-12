@@ -1,11 +1,11 @@
 #TODO: add argument to L0glm2 block = FALSE
 
 
-block.lmridge <- function(X, y, lambdas,
+block.lmridge <- function(X, y, lambdas = rep(1, ncol(X)),
                           coefs = rep(0, ncol(X)),
                           block.ids = NULL,
                           weights = NULL,
-                          pen.weights = rep(1, ncol(X)),
+                          # pen.weights = rep(1, ncol(X)),
                           lower = rep(-.Machine$double.xmax,ncol(X)),
                           upper = rep(.Machine$double.xmax,ncol(X)),
                           nonnegative = FALSE,
@@ -59,7 +59,8 @@ block.lmridge <- function(X, y, lambdas,
       # Compute coefficients
       coefs[block.ids == i] <- lmridge(X = A, y = as.vector(b), lambdas = lambdas[block.ids == i],
                                        weights = weights, lower = lower[block.ids == i], upper = upper[block.ids == i], 
-                                       nonnegative = nonnegative, pen.weights = pen.weights,
+                                       nonnegative = nonnegative, 
+                                       # pen.weights = pen.weights,
                                        # block = TRUE, 
                                        solver = solver, method = method, start = start[block.ids == i],
                                        control.solver = control.solver, verbose = verbose)

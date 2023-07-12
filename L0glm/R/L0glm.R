@@ -150,10 +150,9 @@
 #' elements:
 #' \item{\code{coefficients}}{a vector or matrix of fitted coefficients.}
 #' \item{\code{weights}}{a vector or matrix of observation weights.}
-#' \item{\code{pen.weights}}{a vector or matrix of adaptive penalization weights.}
 #' \item{\code{init.lambda}}{intial lambda, either provided or tuned with
 #' \code{\link{L0glm.tune}}.}
-#' \item{\code{lambdas}}{a vector or matrix with the adaptive lambdas.}
+#' \item{\code{lambdas}}{a vector or matrix with the adaptive penalties lambdas.}
 #' \item{\code{family}}{The error structure used to fit the data.}
 #' \item{\code{z}}{a vector or matrix containing the working response in the 
 #' final iteration of code{\link{L0glm.fit}}.}
@@ -651,9 +650,8 @@ return(structure(fit, class = "L0glm"))
 #' \code{L0glm.fit} returns a list containing the following elements:
 #' \item{\code{coefficients}}{a vector or matrix of fitted coefficients.}
 #' \item{\code{weights}}{a vector or matrix of observation weights.}
-#' \item{\code{pen.weights}}{a vector or matrix of adaptive penalization weights.}
 #' \item{\code{init.lambda}}{intial lambda.}
-#' \item{\code{lambdas}}{a vector or matrix with the adaptive lambdas.}
+#' \item{\code{lambdas}}{a vector or matrix with the adaptive penalties lambdas.}
 #' \item{\code{family}}{The error structure used to fit the data.}
 #' \item{\code{z}}{a vector or matrix containing the working response in the 
 #' final iteration of code{\link{L0glm.fit}}.}
@@ -778,7 +776,7 @@ L0glm.fit = function(X,
         } else {
           variable.indices <- 1:ncol(X)
         }
-        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        coefficients <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
         if(length(variable.indices) == 0) {
@@ -811,9 +809,9 @@ L0glm.fit = function(X,
           }))
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
           weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
-          pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
-          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
-          z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+          # pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          z.mat <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
           
         } else { # If length(variable.indices) > 1 (more than 1 variable selected)
           fit <- clusterApply(cl, chunks, fun,
@@ -843,7 +841,7 @@ L0glm.fit = function(X,
           # Extract results
           coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
           weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
-          pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+          # pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
           lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
           z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
         }
@@ -858,7 +856,7 @@ L0glm.fit = function(X,
         
         if(length(variable.indices) > 1){
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
-          coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+          coefficients <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
           weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
           
           fit <- clusterApply(cl, chunks, fun,
@@ -887,7 +885,7 @@ L0glm.fit = function(X,
           # Extract results
           coefficients[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$coefficients)))
           weights.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$weights)))
-          pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
+          # pen.weights.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$pen.weights)))
           lambdas.mat[variable.indices,] <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$lambdas)))
           z.mat <- do.call(cbind, lapply(fit, function(x) sapply(x, function(y) y$z)))
           
@@ -918,7 +916,7 @@ L0glm.fit = function(X,
           }))
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
           weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
-          pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          # pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
           lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
           z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
         } else { # If variable indices == 0
@@ -939,7 +937,7 @@ L0glm.fit = function(X,
           variable.indices <- 1:ncol(X)
         }
         
-        coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+        coefficients <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
         weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
         
         if(length(variable.indices) == 0) break
@@ -971,9 +969,9 @@ L0glm.fit = function(X,
         }))
         coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
         weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
-        pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
-        lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
-        z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+        # pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+        lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+        z.mat <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
       }
       
       if(relaxed){
@@ -987,7 +985,7 @@ L0glm.fit = function(X,
         
         if(length(variable.indices) != 0){
           start <- matrix(rep(avgcoefs, times = ncol(y)), nrow = length(avgcoefs), ncol = ncol(y))
-          coefficients <- pen.weights.mat <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
+          coefficients <- lambdas.mat <- Matrix(0, nrow = ncol(X), ncol = ncol(y), sparse = TRUE)
           weights.mat <- Matrix(0, nrow = nrow(X), ncol = ncol(y), sparse = TRUE)
           
           fit <- do.call(cbind, lapply(1:ncol(y), function(col) {
@@ -1015,14 +1013,14 @@ L0glm.fit = function(X,
           
           coefficients[variable.indices,] <-  Matrix(do.call(cbind, fit[1, ]), sparse = TRUE)
           weights.mat <-  Matrix(do.call(cbind, fit[2, ]), sparse = TRUE)
-          pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
-          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
-          z.mat <-  Matrix(do.call(cbind, fit[5, ]), sparse = TRUE)
+          # pen.weights.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          lambdas.mat[variable.indices,] <-  Matrix(do.call(cbind, fit[3, ]), sparse = TRUE)
+          z.mat <-  Matrix(do.call(cbind, fit[4, ]), sparse = TRUE)
         }
       }
     }
     weights.ret <- weights.mat
-    pen.weights <- pen.weights.mat
+    # pen.weights <- pen.weights.mat
     lambdas <- lambdas.mat
     z <- z.mat
   } else { # Single variable
@@ -1050,7 +1048,7 @@ L0glm.fit = function(X,
                               verbose = verbose)
     
     coefficients <- fit$coefficients
-    pen.weights <- fit$pen.weights
+    # pen.weights <- fit$pen.weights
     lambdas <- fit$lambdas
     weights.ret <- fit$weights
     z <- fit$z
@@ -1087,11 +1085,11 @@ L0glm.fit = function(X,
                                 warmupiters = warmupiters,
                                 verbose = verbose)
       
-      coefficients <- pen.weights <- lambdas <- rep(0, ncol(X))
+      coefficients <- lambdas <- rep(0, ncol(X))
       weights.ret <- rep(0, nrow(X))
       
       coefficients[variable.indices] <- fit$coefficients
-      pen.weights[variable.indices] <- fit$pen.weights
+      # pen.weights[variable.indices] <- fit$pen.weights
       lambdas[variable.indices] <- fit$lambdas
       z <- fit$z
       weights.ret <- fit$weights
@@ -1134,10 +1132,13 @@ L0glm.fit = function(X,
   }
   
   weights.ret[is.infinite(weights)] <- 1e11
-  pen.weights[is.infinite(pen.weights)] <- 1e11
+  # pen.weights[is.infinite(pen.weights)] <- 1e11
   lambdas[is.infinite(lambdas)] <- 1e11
   
-  return(list(coefficients = coefficients, weights = weights.ret, pen.weights = pen.weights, init.lambda = lambda, lambdas = lambdas, family = family, z = z, X = X, y = y))
+  return(list(coefficients = coefficients, weights = weights.ret, 
+              # pen.weights = pen.weights, 
+              init.lambda = lambda, 
+              lambdas = lambdas, family = family, z = z, X = X, y = y))
 }
 
 #' @describeIn L0glm
@@ -1257,7 +1258,7 @@ L0glm.fit.internal = function(X,
     res <- lmridge(X = X[good, nonzero, drop=F], 
                    y = z,
                    weights = W[good],
-                   pen.weights = pen.weights[good], 
+                   # pen.weights = pen.weights[good], 
                    lambdas = lambdas[nonzero],
                    nonnegative = nonnegative,
                    scaling = scaling[nonzero],
@@ -1305,7 +1306,9 @@ L0glm.fit.internal = function(X,
     beta_old = beta 
   }
 
-  return(list(coefficients = as.vector(beta), weights = as.vector(W.ret), pen.weights = as.vector(pen.weights), lambdas = as.vector(lambdas), z = as.vector(z.ret)))
+  return(list(coefficients = as.vector(beta), weights = as.vector(W.ret), 
+              # pen.weights = as.vector(pen.weights), 
+              lambdas = as.vector(lambdas), z = as.vector(z.ret)))
 }
 
 #' @describeIn L0glm

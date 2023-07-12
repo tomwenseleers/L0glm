@@ -1,5 +1,7 @@
 # Test high dimensional variable selection ####
 
+# fix to set working package repository when using Microsoft R Open with Intel MKL
+options (repos = c(CRAN="https://cloud.r-project.org/"))
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
 # library(L0glm)
@@ -66,13 +68,16 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = family, 
-                              dispersion = dispersion) # with dispersion = NULL: estimating dispersion here doesn't seem to work well & takes a very long time
+                              dispersion = dispersion) # TODO dispersion=NULL doesn't work
+# with dispersion = NULL: estimating dispersion here doesn't seem to work well & 
+# takes a very long time
 lambda_preset # lambda that would be expected to optimise given IC
 
 warm_start = 0.9 # TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
+gamma = 2
 start = coefs_MCP_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
 start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
-gamma = 2
+
 # A warm_start value of 1 would indicate using the provided starting coefficients 
 # directly (full warm start), while a warm_start between 0 and 1 would represent 
 # a "cooled" or "tempered" start, blending the provided coefficients with  
@@ -91,7 +96,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
                                           method = 3L, # LSCG
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,

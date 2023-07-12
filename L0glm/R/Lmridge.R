@@ -19,7 +19,6 @@
 #' @export
 lmridge <- function(X, y, 
                     lambdas = NULL,
-                    pen.weights = rep(1, ncol(X)), # TODO: just keep lambdas & get rid of pen.weights
                     weights = NULL,
                     lower = rep(-.Machine$double.xmax,ncol(X)),
                     upper = rep(.Machine$double.xmax,ncol(X)),
@@ -28,7 +27,7 @@ lmridge <- function(X, y,
                     block.size = NULL,
                     ridge.center = NULL,
                     solver = "eigen",
-                    method = ifelse(ncol(X)>=20000, 3L, 5L),
+                    method = ifelse(ncol(X)>=20000, 3L, 7L),
                     start = rep(1, ncol(X)),
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose){
@@ -52,8 +51,10 @@ lmridge <- function(X, y,
   #ridge.center = NULL
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, ridge.center = ridge.center, 
-                          lower = lower, upper = upper, control.solver = control.solver)
+    coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, 
+                          ridge.center = ridge.center, 
+                          lower = lower, upper = upper, 
+                          control.solver = control.solver)
     
   } else if (solver == "glmnet") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
@@ -64,7 +65,6 @@ lmridge <- function(X, y,
   } else if (solver == "eigen") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
-                           pen.weights = pen.weights, # TODO get rid of this argument, lambdas should be enough
                            lambdas = lambdas, 
                            start = start, ridge.center = ridge.center,
                            lower = lower, upper = upper, control.solver = control.solver)
@@ -83,8 +83,14 @@ lmridge <- function(X, y,
 }
 
 
-lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, control.solver, ridge.center = NULL){
-  Xw = as(Xw, "generalMatrix")
+
+lmridge.osqp <- function(Xw, 
+                         yw, 
+                         lambdas = NULL, 
+                         lower, upper, start, 
+                         control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
+                         ridge.center = NULL){
+  Xw = as(Matrix(Xw, sparse=T), "dgCMatrix")
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
     ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center) 
@@ -98,11 +104,14 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     Xty <- crossprod(Xwaug, ywaug)
   } else {
     if (issparse(Xw)){
-      XtX <- as(crossprod(Xwaug),"generalMatrix")
+      XtX <- as(Matrix(crossprod(Xwaug), sparse=T),"dgCMatrix")
     } else {
       XtX <- crossprod(Xwaug)
     }
-    Xty <- as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, ridge.center = ridge.center)))
+    Xty <- as.matrix(crossprod(Xwaug, 
+                               augY(yw, ncol(Xw), 
+                                    lambdas = lambdas, 
+                                    ridge.center = ridge.center)))
   }
   
   # Obtain settings  and create model
@@ -111,7 +120,7 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
     settings <- c(settings, warm_start = FALSE)
   
   model <- osqp(P = XtX, q = -Xty, 
-                A = .sparseDiagonal(ncol(Xw)), 
+                A = .sparseDiagonal(ncol(Xw)), # Diagonal(n = ncol(Xw)),
                 l = lower, u = upper, pars = settings)
   if(is.null(start)) start <- rep(1, ncol(X))
   model$WarmStart(x=start)
@@ -122,7 +131,11 @@ lmridge.osqp <- function(Xw, yw, weights, lambdas = NULL, lower, upper, start, c
   return(coefs)
 }
 
-lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, ridge.center = NULL){
+
+lmridge.glmnet <- function(Xw, yw, lambdas = NULL, 
+                           lower, upper, 
+                           control.solver, 
+                           ridge.center = NULL){
   # Set path depending on dimensions of Xw
   if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
@@ -133,7 +146,9 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver,
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+    ywaug <- augY(yw, ncol(Xwaug), 
+                  lambdas = lambdas, 
+                  ridge.center = ridge.center)
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -155,7 +170,11 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver,
   return(coefs)
 }
 
-lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, ridge.center = NULL){
+
+
+lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, 
+                         control.solver, 
+                         ridge.center = NULL){
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -169,12 +188,23 @@ lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, control.solver, r
   return(coefs)
 }
 
-lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, start, control.solver = control.solver, ridge.center = NULL){ 
+lmridge.eigen <- function(Xw, yw, 
+                          lambdas = rep(1, ncol(Xw)), 
+                          lower = rep(-.Machine$double.xmax,ncol(X)), 
+                          upper = rep(.Machine$double.xmax,ncol(X)), 
+                          start = rep(0, ncol(Xw)), 
+                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
+                          ridge.center = rep(0, ncol(Xw))){ 
+  lambda = mean(lambdas)
+  # pen.weights = lambdas / lambda # penalty weights, but not needed
+  
+  
+  
   if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") } 
-  if(control.solver$method == "QR") {
-    if(control.solver$rowaug == TRUE){
+  if (control.solver$method == "QR") {
+    if (control.solver$rowaug == TRUE) {
       # Obtain Xwaug and ywaug
-      if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+      if (!is.null(lambdas)&(sum(lambdas)!=0)) {
         Xwaug <- row_augX(Xw, lambdas)
         ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
       } else {
@@ -182,7 +212,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
         ywaug <- yw
       }
       
-      if(issparse(Xwaug)){
+      if (issparse(Xwaug)){
         coefs <- solve_sparse_QR(A = Xwaug,
                                  b = ywaug)$coefficients
       } else {
@@ -200,13 +230,13 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       #   coefs <- solve_dense_QR(A = crossprod(Xwaug),
       #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, ridge.center = ridge.center))),
       #                           pivot = control.solver$pivot)$coefficients}
-      D <- diag(1/pen.weights) # cf notation Liu & Li 2016
+      D <- Diagonal(x=lambda / lambdas) # = diag(1/pen.weights), cf notation Liu & Li 2016
       if(issparse(Xw)){
         Dsp <- Matrix(D, sparse=T)
-        coefs <- solve_sparse_QR(A = Dsp %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw)),
+        coefs <- solve_sparse_QR(A = Dsp %*% crossprod(Xw) + Diagonal(x=lambdas),
                                  b = as.vector(Dsp %*% crossprod(Xw,yw)))$coefficients # TODO add ordering options to control gen for QR?
       } else {
-        coefs <- solve_dense_QR(A = D %*% crossprod(Xw) + diaglambdas(lambdas, issparse(Xw)),
+        coefs <- solve_dense_QR(A = as.matrix(D %*% crossprod(Xw) + Diagonal(x=lambdas)),
                                 b = as.vector(D %*% crossprod(Xw,yw)),
                                 pivot = control.solver$pivot)$coefficients
       }
@@ -248,7 +278,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
     }
     if(is.null(start)) start <- rep(1, ncol(X))
     if(issparse(Xwaug)){
-      coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
+      coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"), 
                                b = as.matrix(crossprod(Xwaug, ywaug)),
                                x0 = as.matrix(start),
                                tol = control.solver$tol,
@@ -275,7 +305,7 @@ lmridge.eigen <- function(Xw, yw, pen.weights, lambdas = NULL, lower, upper, sta
       ywaug <- yw
     }
     if(issparse(Xwaug)){
-      coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"generalMatrix"), 
+      coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"dgCMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)), 
                                  pivot = control.solver$pivot,
                                  ordering = control.solver$ordering)$coefficients
@@ -310,16 +340,21 @@ Yweights <- function(y, weights){
 }
 
 
-# A FEW UTILITY FUNCTIONS ####
+
+
+# UTILITY FUNCTIONS ####
 
 # Row augmentation of the covariate matrix if lambda!=0 to add ridge penalty
 # Ref :
 # https://stats.stackexchange.com/a/164546/27340
 # https://stats.stackexchange.com/a/203699/27340
-row_augX <- function(Xw, lambdas){
-  lambdas <- sqrt(lambdas)
-  out <- rbind(Xw, diaglambdas(lambdas, issparse(Xw)))
-  if ("dgeMatrix" %in% class(out)) { out = as(out, "dgCMatrix") } 
+row_augX <- function(Xw, lambdas = NULL){
+  if (!is.null(lambdas)&(sum(lambdas)!=0)) {
+    out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else
+  { out <- Xw }
+  
+  if ("dgeMatrix" %in% class(out)) { out = as(out, "dgCMatrix") } # now always returning sparse matrix, as that's most efficient when using row augmentation
+  
   return(out)
 }
 
@@ -335,22 +370,23 @@ row_augX <- function(Xw, lambdas){
 # In an optimisation sense, this would add "momentum" to the optimisation process.
 # Not sure how this would perform - might be worth trying quickly.
 augY <- function(yw, p, ridge.center = NULL, lambdas = NULL){
-  if(is.null(ridge.center) | is.null(lambdas)){
-    return(c(yw, rep(0, p))) # zero centered row augmentation
-  } else {
-    return(c(yw, ridge.center * sqrt(lambdas))) # nonzero centered row augmentation
-  }
+  if (!is.null(lambdas)&(sum(lambdas)!=0)) {
+    if(is.null(ridge.center) | is.null(lambdas)){
+      return(c(yw, rep(0, p))) # zero centered row augmentation
+    } else {
+      return(c(yw, ridge.center * sqrt(lambdas)))  # nonzero centered row augmentation
+  } } else { return(yw) }
 }
 
 
-diaglambdas <- function(lambdas, sparse){
-  if(sparse) {
-    dlambdas <- Diagonal(x=lambdas) # faster than .sparseDiagonal(p, lambdas)
-  } else {
-    dlambdas <- Diagonal(x=lambdas) # as.matrix(Diagonal(x=lambdas)) # faster than diag(lambdas, p)
-  }
-  return (dlambdas)
-}
+# diaglambdas <- function(lambdas){ # this one always returns a sparse matrix
+#   # if(sparse) {
+#   #  dlambdas <- Diagonal(x=lambdas) # faster than .sparseDiagonal(p, lambdas)
+#   # } else {
+#   #  dlambdas <- Diagonal(x=lambdas) # as.matrix(Diagonal(x=lambdas)) # faster than diag(lambdas, p)
+#   # }
+#   return (Diagonal(x=lambdas))
+# }
 
 
 issparse <- function(X){

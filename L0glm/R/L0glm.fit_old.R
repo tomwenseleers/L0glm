@@ -1,3 +1,6 @@
+# TODO: delete this file?
+
+
 #' @describeIn L0glm
 #'
 #' fits an L0 penalized regression using the adaptive ridge algorithm (Frommlet

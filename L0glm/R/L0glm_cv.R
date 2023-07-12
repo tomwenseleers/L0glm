@@ -1,3 +1,5 @@
+# TODO: move this file out of github?
+
 # L0glm.trainval ####
 # Function that tunes a sequence of
 L0glm.trainval <- function(X, y,

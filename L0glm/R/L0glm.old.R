@@ -1,3 +1,5 @@
+# TODO: delete this file?
+
 #' Fitting Constrained L0 Penalized Generalized Linear Models
 #'
 #' @import nnls
