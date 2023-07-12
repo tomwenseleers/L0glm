@@ -99,9 +99,16 @@
 #' with 1/average coefficients over responses from the previous fit and only 
 #' including variables selected earlier via the iterated L0 GLMs. This approach
 #' can help to fine-tune the final model estimates. 
-#' @param ridge.center
+#' @param warm.start 
+#' a numeric value in the range of [0, 1] that represents the level of confidence 
+#' in the initial start values. This parameter is used in a weighted average to 
+#' calculate the 'start' value. 
+#' The formula used is: 
+#' \deqn{start = warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))}
+#' If `warm.start` is closer to 1, more weight is given to the original 'start' value.
+#' @param prior.mean
 #' a numeric value specifying the center for nonzero centered ridge regularization. 
-#' If \code{ridge.center} is not specified, the algorithm will perform the default 
+#' If \code{prior.mean} is not specified, the algorithm will perform the default 
 #' zero centered Ridge Regression.
 #' It should be a vector of length \code{p}.
 #' @param warmupiters
@@ -204,9 +211,10 @@ L0glm <- function(formula,
                   grouped = TRUE, 
                   group.maxit = 6,
                   relaxed = TRUE,
-                  ridge.center = NULL,
+                  warm.start = 0.9,
+                  prior.mean = NULL,
                   warmupiters = 1, 
-                  gamma = 2, #
+                  gamma = 2,
                   thresh = 1e-5, 
                   tol = 1E-10,
                   control.solver = NULL,
@@ -378,8 +386,8 @@ L0glm <- function(formula,
                          normalize = normalize,
                          parallellize = parallellize, no.pen = no.pen,
                          grouped = grouped, group.maxit = group.maxit, 
-                         relaxed = relaxed, gamma = gamma,
-                         ridge.center = ridge.center, thresh = thresh,
+                         relaxed = relaxed, gamma = gamma, warm.start = warm.start,
+                         prior.mean = prior.mean, thresh = thresh,
                          solver = solver, method = method, maxit = maxit,
                          tol = tol, warmupiters = warmupiters, 
                          control.solver = control.solver, verbose = FALSE)$best.lambda
@@ -416,7 +424,8 @@ L0glm <- function(formula,
                    grouped = grouped, 
                    group.maxit = group.maxit, 
                    relaxed = relaxed,
-                   ridge.center = ridge.center, 
+                   warm.start = warm.start,
+                   prior.mean = prior.mean, 
                    warmupiters = warmupiters, 
                    gamma = gamma,
                    thresh = thresh,
@@ -579,9 +588,16 @@ return(structure(fit, class = "L0glm"))
 #' with 1/ average coefficients over responses from the previous fit and only 
 #' including variables selected earlier via the iterated L0 GLMs. This approach
 #' can help to fine-tune the final model estimates. 
-#' @param ridge.center
+#' @param warm.start 
+#' a numeric value in the range of [0, 1] that represents the level of confidence 
+#' in the initial start values. This parameter is used in a weighted average to 
+#' calculate the 'start' value. 
+#' The formula used is: 
+#' \deqn{start = warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))}
+#' If `warm.start` is closer to 1, more weight is given to the original 'start' value.
+#' @param prior.mean
 #' a numeric value specifying the center for nonzero centered ridge regularization. 
-#' If \code{ridge.center} is not specified, the algorithm will perform the default 
+#' If \code{prior.mean} is not specified, the algorithm will perform the default 
 #' zero centered Ridge Regression.
 #' It should be a vector of length \code{p}.
 #' @param warmupiters
@@ -679,7 +695,8 @@ L0glm.fit = function(X,
                      grouped = TRUE, # TODO: bit unclear what this one does in combination with relaxed, maybe single argument group_penalty="independent", "relaxed independent", "group" or "relaxed group" might be clearer?
                      group.maxit = 6, 
                      relaxed = TRUE,
-                     ridge.center = NULL, # Should be a vector of length ncol(X). 
+                     warm.start = 0.9,
+                     prior.mean = NULL, # Should be a vector of length ncol(X). 
                      warmupiters = 1, # TODO: go back to ifelse(family$family == "gaussian", 1, 4)?
                      gamma = 2,
                      thresh = 1e-5, 
@@ -724,6 +741,12 @@ L0glm.fit = function(X,
     } else if(nrow(as.matrix(start)) != ncol(X) | ncol(as.matrix(start)) != ncol(y)){ # nrow(as.matrix(start)) != )
       stop("Start needs to be of dimensions ncol(X), ncol(y).")
     } 
+    if(normalize == TRUE){
+      Xscaled = normalizeX(X)
+      scaling = attr(Xscaled, "scaling")
+      start = start*scaling
+    }
+    start = warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
   } else {
     start <- matrix(0, nrow = ncol(X), ncol = ncol(y)) # passing all zero start values is interpreted as NULL & will result in proper initialisation later on # matrix(sqrt(3), nrow = ncol(X), ncol = ncol(y)) # corresponding in Bayesian sense to assuming initial Gaussian prior with SD of 3, which is the most commonly chosen prior (lambda=1/start^2 and lambda=1/SD prior^2)
   }
@@ -793,7 +816,8 @@ L0glm.fit = function(X,
                                normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
-                               ridge.center = ridge.center[variable.indices],
+                               warm.start = warm.start,
+                               prior.mean = prior.mean[variable.indices],
                                start = as.vector(start[variable.indices, col, drop = F]),
                                lower = lower[variable.indices],
                                upper = upper[variable.indices],
@@ -825,7 +849,8 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               thresh = thresh, 
                               solver = solver, 
-                              ridge.center = ridge.center[variable.indices],
+                              warm.start = warm.start,
+                              prior.mean = prior.mean[variable.indices],
                               weights = weights, 
                               start = start[variable.indices, , drop = F], 
                               lower = lower[variable.indices], 
@@ -870,7 +895,8 @@ L0glm.fit = function(X,
                               no.pen = no.pen,
                               thresh = thresh, 
                               solver = solver, 
-                              ridge.center = ridge.center[variable.indices],
+                              warm.start = warm.start,
+                              prior.mean = prior.mean[variable.indices],
                               weights = weights, 
                               start = start[variable.indices, , drop = F], 
                               lower = lower[variable.indices], 
@@ -900,7 +926,8 @@ L0glm.fit = function(X,
                                normalize = normalize,
                                offset = as.vector(offset[col, drop = F]),
                                weights = as.vector(weights[,col,drop=F]),
-                               ridge.center = ridge.center[variable.indices],
+                               warm.start = warm.start,
+                               prior.mean = prior.mean[variable.indices],
                                start = as.vector(start[variable.indices, col, drop = F]),
                                lower = lower[variable.indices],
                                upper = upper[variable.indices],
@@ -953,7 +980,8 @@ L0glm.fit = function(X,
                              normalize = normalize,
                              offset = as.vector(offset[col, drop = F]),
                              weights = as.vector(weights[,col,drop=F]),
-                             ridge.center = ridge.center[variable.indices],
+                             warm.start = warm.start,
+                             prior.mean = prior.mean[variable.indices],
                              start = as.vector(start[variable.indices, col, drop = F]),
                              lower = lower[variable.indices],
                              upper = upper[variable.indices],
@@ -1001,7 +1029,8 @@ L0glm.fit = function(X,
                                lower = lower[variable.indices],
                                upper = upper[variable.indices],
                                maxit = maxit,
-                               ridge.center = ridge.center[variable.indices],
+                               warm.start = warm.start,
+                               prior.mean = prior.mean[variable.indices],
                                thresh = thresh,
                                solver = solver,
                                method = method,
@@ -1035,7 +1064,8 @@ L0glm.fit = function(X,
                               lower = lower,
                               upper = upper,
                               lambda = lambda, 
-                              ridge.center = ridge.center,
+                              warm.start = warm.start,
+                              prior.mean = prior.mean,
                               gamma = gamma,
                               thresh = thresh,
                               solver = solver, 
@@ -1073,7 +1103,8 @@ L0glm.fit = function(X,
                                 lower = lower[variable.indices],
                                 upper = upper[variable.indices],
                                 lambda = 1e-30,
-                                ridge.center = ridge.center[variable.indices],
+                                warm.start = warm.start,
+                                prior.mean = prior.mean[variable.indices],
                                 gamma = gamma,
                                 thresh = thresh,
                                 solver = solver,
@@ -1163,7 +1194,8 @@ L0glm.fit.internal = function(X,
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
                               maxit = 25,
-                              ridge.center = NULL,
+                              warm.start = 0.9,
+                              prior.mean = NULL,
                               warmupiters = 1,
                               gamma = 2,
                               thresh = 1e-5,
@@ -1233,8 +1265,8 @@ L0glm.fit.internal = function(X,
         W <- W.ret[good]
       }
     
-    if(!is.null(ridge.center)){ 
-      center = ridge.center # nonzero centered ridge regression
+    if(!is.null(prior.mean)){ 
+      center = prior.mean # nonzero centered ridge regression
     } else {
       center = NULL # zero centered ridge regrerssion
     }
@@ -1265,7 +1297,7 @@ L0glm.fit.internal = function(X,
                    start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                    lower = lower[nonzero], 
                    upper = upper[nonzero],
-                   ridge.center = center[nonzero],
+                   prior.mean = center[nonzero],
                    solver = solver,
                    method = method)
     if(sum(res) != 0){
@@ -1320,8 +1352,8 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, nonzero.centered = FALSE, ridge.center = NULL,
-                weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, nonzero.centered = FALSE, warm.start = 0.9, 
+                prior.mean = NULL, weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
   # devtools::load_all(".")
@@ -1343,7 +1375,7 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        offset = as.vector(offset[,col, drop = F]),
                        upper = upper,
                        nonzero.centered = nonzero.centered,
-                       ridge.center = ridge.center,
+                       prior.mean = prior.mean,
                        thresh = thresh,
                        solver = solver,
                        nonnegative = nonnegative,

@@ -25,7 +25,7 @@ lmridge <- function(X, y,
                     nonnegative = FALSE,
                     scaling = rep(1, ncol(X)), # to allow scaling of columns of X, eg by L2 norm
                     block.size = NULL,
-                    ridge.center = NULL,
+                    prior.mean = NULL,
                     solver = "eigen",
                     method = ifelse(ncol(X)>=20000, 3L, 7L),
                     start = rep(1, ncol(X)),
@@ -48,17 +48,17 @@ lmridge <- function(X, y,
   if (!issparse(Xw)) { Xw = as.matrix(Xw) }
   yw[is.nan(yw)] <- 0
   
-  #ridge.center = NULL
+  #prior.mean = NULL
   if (solver == "osqp") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
     coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, 
-                          ridge.center = ridge.center, 
+                          prior.mean = prior.mean, 
                           lower = lower, upper = upper, 
                           control.solver = control.solver)
     
   } else if (solver == "glmnet") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, ridge.center = ridge.center,
+    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, prior.mean = prior.mean,
                             lower = lower, upper = upper, control.solver = control.solver)
     
     
@@ -66,12 +66,12 @@ lmridge <- function(X, y,
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
                            lambdas = lambdas, 
-                           start = start, ridge.center = ridge.center,
+                           start = start, prior.mean = prior.mean,
                            lower = lower, upper = upper, control.solver = control.solver)
     
   } else if (solver == "nnls") {
     if(is.null(control.solver)) control.solver <- do.call("control.solver.gen", call.solver)
-    coefs <- lmridge.nnls(Xw = Xw, yw = yw, lambdas = lambdas, ridge.center = ridge.center,
+    coefs <- lmridge.nnls(Xw = Xw, yw = yw, lambdas = lambdas, prior.mean = prior.mean,
                           lower = lower, upper = upper, control.solver = control.solver)
   } else {
     stop("Invalid solver choice") }
@@ -89,11 +89,11 @@ lmridge.osqp <- function(Xw,
                          lambdas = NULL, 
                          lower, upper, start, 
                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
-                         ridge.center = NULL){
+                         prior.mean = NULL){
   Xw = as(Matrix(Xw, sparse=T), "dgCMatrix")
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center) 
+    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean) 
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -111,7 +111,7 @@ lmridge.osqp <- function(Xw,
     Xty <- as.matrix(crossprod(Xwaug, 
                                augY(yw, ncol(Xw), 
                                     lambdas = lambdas, 
-                                    ridge.center = ridge.center)))
+                                    prior.mean = prior.mean)))
   }
   
   # Obtain settings  and create model
@@ -135,7 +135,7 @@ lmridge.osqp <- function(Xw,
 lmridge.glmnet <- function(Xw, yw, lambdas = NULL, 
                            lower, upper, 
                            control.solver, 
-                           ridge.center = NULL){
+                           prior.mean = NULL){
   # Set path depending on dimensions of Xw
   if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
@@ -148,7 +148,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
     Xwaug <- row_augX(Xw, lambdas)
     ywaug <- augY(yw, ncol(Xwaug), 
                   lambdas = lambdas, 
-                  ridge.center = ridge.center)
+                  prior.mean = prior.mean)
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -174,11 +174,11 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
 
 lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, 
                          control.solver, 
-                         ridge.center = NULL){
+                         prior.mean = NULL){
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+    ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
   } else {
     Xwaug <- Xw
     ywaug <- yw
@@ -194,7 +194,7 @@ lmridge.eigen <- function(Xw, yw,
                           upper = rep(.Machine$double.xmax,ncol(X)), 
                           start = rep(0, ncol(Xw)), 
                           control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
-                          ridge.center = rep(0, ncol(Xw))){ 
+                          prior.mean = rep(0, ncol(Xw))){ 
   lambda = mean(lambdas)
   # pen.weights = lambdas / lambda # penalty weights, but not needed
   
@@ -206,7 +206,7 @@ lmridge.eigen <- function(Xw, yw,
       # Obtain Xwaug and ywaug
       if (!is.null(lambdas)&(sum(lambdas)!=0)) {
         Xwaug <- row_augX(Xw, lambdas)
-        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
       } else {
         Xwaug <- Xw
         ywaug <- yw
@@ -223,12 +223,12 @@ lmridge.eigen <- function(Xw, yw,
       # Xwaug = row_augX(Xw, lambdas)
       # if(issparse(Xw)){
       #   coefs <- solve_sparse_QR(A = as(crossprod(Xwaug),"generalMatrix"),
-      #                            b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, ridge.center = ridge.center))))$coefficients
+      #                            b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, prior.mean = prior.mean))))$coefficients
       # 
       #   
       #   } else {
       #   coefs <- solve_dense_QR(A = crossprod(Xwaug),
-      #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, ridge.center = ridge.center))),
+      #                           b = as.matrix(crossprod(Xwaug, augY(yw, ncol(Xw), lambdas = lambdas, prior.mean = prior.mean))),
       #                           pivot = control.solver$pivot)$coefficients}
       D <- Diagonal(x=lambda / lambdas) # = diag(1/pen.weights), cf notation Liu & Li 2016
       if(issparse(Xw)){
@@ -245,7 +245,7 @@ lmridge.eigen <- function(Xw, yw,
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -271,7 +271,7 @@ lmridge.eigen <- function(Xw, yw,
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)&(sum(lambdas)!=0)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -299,7 +299,7 @@ lmridge.eigen <- function(Xw, yw,
     # Obtain Xwaug and ywaug
     if(!is.null(lambdas)&(sum(lambdas)!=0)) {
       Xwaug <- row_augX(Xw, lambdas)
-      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, ridge.center = ridge.center)
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
     } else {
       Xwaug <- Xw
       ywaug <- yw
@@ -369,12 +369,12 @@ row_augX <- function(Xw, lambdas = NULL){
 # see e.g. https://www.sciencedirect.com/science/article/abs/pii/S0047259X21001603
 # In an optimisation sense, this would add "momentum" to the optimisation process.
 # Not sure how this would perform - might be worth trying quickly.
-augY <- function(yw, p, ridge.center = NULL, lambdas = NULL){
+augY <- function(yw, p, prior.mean = NULL, lambdas = NULL){
   if (!is.null(lambdas)&(sum(lambdas)!=0)) {
-    if(is.null(ridge.center) | is.null(lambdas)){
+    if(is.null(prior.mean) | is.null(lambdas)){
       return(c(yw, rep(0, p))) # zero centered row augmentation
     } else {
-      return(c(yw, ridge.center * sqrt(lambdas)))  # nonzero centered row augmentation
+      return(c(yw, prior.mean * sqrt(lambdas)))  # nonzero centered row augmentation
   } } else { return(yw) }
 }
 
