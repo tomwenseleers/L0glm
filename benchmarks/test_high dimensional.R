@@ -71,7 +71,8 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               dispersion = dispersion) # TODO dispersion=NULL doesn't work
 # with dispersion = NULL: estimating dispersion here doesn't seem to work well & 
 # takes a very long time
-lambda_preset # lambda that would be expected to optimise given IC
+lambda_preset # 13.98287, lambda that would be expected to optimise given IC
+# TODO extremely small lambda_preset returned with dispersion = NULL
 
 warm_start = 0.9 # TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
 gamma = 2
@@ -96,16 +97,17 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 3L, # LSCG
+                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                                          method = 5L, # 3&4 = Matrix::solve method (incomplete LU)
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,
                                           tol = 1E-5,
                                           gamma = gamma 
 )) 
 # 6s for glmnet with n=500 and p=50000, but only works with a MCP warm start with warm_start>0.5
-# fails for osqp & eigen method 5, 6 with Cholmod error 'problem too large' at file ../Core/cholmod_sparse.c, line 89
-# XXs for eigen method 3
+# eigen: try solver 1, 3, 4, 5
+# eigen: 20s for solver 1 (QR), XXs for solver 3, XXs for solver4, XXs for solver 5 (XX) with n=500 & p=50000 
+# fails for osqp 
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling # TODO do this scaling automatically if normalize=T
 sum(L0glm.out_preset_coefs!=0) # 47
 plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
