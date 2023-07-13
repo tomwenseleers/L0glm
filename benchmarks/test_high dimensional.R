@@ -22,7 +22,7 @@ library(ordinis)
 # compute the full solution path, n > p
 set.seed(123)
 n <- 500
-p <- 50000
+p <- 1000000
 n_nonzero <- 50 # nr of nonzero coefs
 sd_noise <- 3
 beta_true <- matrix(c(runif(n_nonzero), rep(0, p - n_nonzero))) # 50 000 coefs
@@ -36,7 +36,7 @@ system.time(mod <- ordinis(X, y,
                            penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
                            gamma = 1.1, # ifelse(penalty == "scad", 3.7, 1.4)
                            alpha = 0.95))  # use elastic net with alpha = 0.95
-# 3.28s
+# 3.28s for n=500 & p=50000, 67s for n=500 & p=1000000
 plot(mod)
 logLik(mod) # 
 max(logLik(mod)) # -731.8202 for SCAD with gamma=3.7, -704.5205 for MCP with gamma=1.4, -692.5572 for MCP with gamma=1.1
@@ -106,7 +106,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
+                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                           method = 7L,
                                           verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
@@ -114,8 +114,9 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           tol = 1E-5,
                                           gamma = gamma 
 )) 
-# 6s for glmnet with n=500 and p=50000, but only works with a MCP warm start with warm_start>0.5
-# eigen: 4.4s, 4.0s, 3.3s, 3.1, 4.4s, 4.5s, 3.4s, 3.8s for solvers 1, 2, 3, 4, 5, 6, 7 & 8  
+# glmnet: 6s with n=500 and p=50000, but runs out of memory with n=500 & p=1000000; biglasso or picasso would be good alternative
+# eigen: 4.4s, 4.0s, 3.3s, 3.1, 4.4s, 4.5s, 3.4s, 3.8s for solvers 1 to 8  with n=500 & p=500000
+# eigen: 78s for solvers 3 & 4 (LSCG) with n=500 & p=1000000
 # NOTE: eigen solvers 5, 6, 7 & 8 & glmnet all give an excellent solution
 # eigen solver 3 & 4 seems to give back the initial values
 # eigen solver 1 & 2 slightly lower quality solution

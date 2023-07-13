@@ -174,22 +174,22 @@ control.solver.gen <- function(solver, method = NULL,
       
     } else if (method == 5){
       # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- FALSE
+      rowaug <- TRUE
       l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
       # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- FALSE
+      rowaug <- TRUE
       l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){
       # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- FALSE
+      rowaug <- TRUE
       l <- list(method = "chol", pivot = 0L, ordering = 0L, rowaug = rowaug)
       
     } else if (method == 8){
       # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- FALSE
+      rowaug <- TRUE
       l <- list(method = "chol", pivot = 1L, ordering = 0L, rowaug = rowaug)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-8).")

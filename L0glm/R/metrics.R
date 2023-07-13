@@ -2,7 +2,8 @@
 get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = ncol(y)), 
                         offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
                         family = gaussian(identity), 
-                        beta_true = NULL #, 
+                        beta_true = NULL, 
+                        p = NULL # to pass in case model concerns one fitted on a pre-selected subset 
                         # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
                         # lower=rep(0, ncol(X)),
                         # upper=rep(Inf,ncol(X)) 
@@ -22,7 +23,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # nr of tasks, variables & observations
   m = ncol(y) # nr of tasks
   # nr of variables, cases & tasks & effective degrees of freedom ####
-  p = ncol(X) # nr of variables
+  if (is.null(p)) p = ncol(X) # nr of variables
   # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
   if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) p <- p + 1
   
@@ -225,6 +226,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
 
 
 # return information criteria based on log likelihood, n, p & edf
+# for a good discussion on information criteria see
+# https://www.sciencedirect.com/science/article/pii/S016794731100171X
 get.IC = function(loglik, n, p, edf) {
   min2LL = -2 * loglik
   
