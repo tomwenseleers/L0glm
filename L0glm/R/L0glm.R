@@ -1204,10 +1204,17 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { # nr of iterations before obs weights are updated in addition to penalty weights in each iteration, 3 or 4 gave best performance
 
+  # NOTE currently I haven't implemented any SCREENING RULES like
+  # http://proceedings.mlr.press/v119/atamturk20a/atamturk20a.pdf
+  # or sure independent screening prescreening, as implemented in abess
+  # https://cran.r-project.org/web/packages/abess/abess.pdf
+  # Implemented these might further speedup the algo.
+  
   # Normalize columns of X to unit L2 norm? If so, calculate scaling
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
                   scaling = rep(1, ncol(X)) }
-  if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation 
+  
+  # if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation 
   
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
@@ -1236,10 +1243,10 @@ L0glm.fit.internal = function(X,
     # to initialise with constant starting values
     beta <-  beta_old <- start <- start_coefs(X=X, family=family) # initial model coefficients - e.g. sqrt(3) correspond in a Bayesian sense to SD on Gaussian prior of 3, which is most common prior in Bayesian stats (lambda=1/start^2 and lambda=1/SD prior)
   } else {  
-    eta = as.matrix(link(mustart))
+    # eta = as.matrix(link(mustart))
     beta <- beta_old <- start # when starting coefficient values were provided
-    # OR IF STARTING VALUES ARE VERY GOOD WE COULD USE
-    # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
+    # IF STARTING VALUES ARE VERY GOOD WE COULD USE
+    eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
   }
   names(beta) = colnames(X)
   mu = linkinv(eta) # expected value on response scale

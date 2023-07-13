@@ -133,6 +133,8 @@ plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
 # (using MCP, SCAD & LASSO as warm start returns 47, 46 & 42 nonzero coefficients)
 # LASSO is quite good in that there is widely available fast solvers available,
 # e.g. glmnet and for the unconstrained case biglasso
+# ALASSO as warm start did not work well - only 37 nonzero coefs then & solution
+# much worse
 
 
 # coefficients & metrics over a range of lambda values
