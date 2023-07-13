@@ -91,7 +91,7 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
 lambda_preset # 25.34865, lambda that would be expected to optimise the expected value of the given IC
 # TODO extremely small lambda_preset returned with dispersion = NULL
 
-warm_start =  0.9 # 0.9 # 1 would essentially use MCP as pre-screen
+warm_start =  0.2 # 0.9 # 1 would essentially use MCP as pre-screen
 # 0.9-1 all work well, but 1 should be faster as it should kick out 0 coefficients from the start
 # TODO check in code that it is doing this in an optimal way, from the very start
 
@@ -119,13 +119,17 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start[selected], # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
+                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                           method = 7L,
                                           verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,
                                           tol = 1E-5,
-                                          gamma = gamma 
+                                          gamma = gamma
+                                          # control.solver = modifyList(do.call("control.solver.gen", 
+                                          #                                     list(solver = "eigen", 
+                                          #                                          method = 4L)), 
+                                          #                             list(rowaug=TRUE))
 )) 
 # using only preselected variables: 0.11s
 

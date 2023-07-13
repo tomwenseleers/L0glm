@@ -790,7 +790,7 @@ L0glm.fit = function(X,
       
       
       for(i in 1L:group.maxit){
-        print(i)
+        # print(i)
         if(i > 1){
           avgcoefs = rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0)
@@ -954,7 +954,7 @@ L0glm.fit = function(X,
       stopCluster(cl)
     } else { # If parallellize = FALSE
       for(i in 1L:group.maxit){
-        print(i)
+        # print(i)
         if(i > 1){
           avgcoefs <- rowMeans(coefficients)
           variable.indices = which(avgcoefs > 0) # Only refit nonzero indices
@@ -1361,7 +1361,7 @@ L0glm.fit.internal = function(X,
 #'
 #'
 #' @export
-fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, nonzero.centered = FALSE, warm.start = 0.9, 
+fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonnegative, normalize, X, y, family, warm.start = 0.9, 
                 prior.mean = NULL, weights = NULL, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   # require(L0glm)
@@ -1383,7 +1383,6 @@ fun <- function(cols, lambda, gamma, thresh, solver, method, warmupiters, nonneg
                        lower = lower,
                        offset = as.vector(offset[,col, drop = F]),
                        upper = upper,
-                       nonzero.centered = nonzero.centered,
                        prior.mean = prior.mean,
                        thresh = thresh,
                        solver = solver,

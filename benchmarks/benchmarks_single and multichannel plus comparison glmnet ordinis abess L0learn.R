@@ -46,7 +46,7 @@ system.time(L0glm.out <- L0glm.fit(X, y,
                            # ridge.center = start, # ridge.center
                            nonnegative = TRUE,
                            warmupiters = 1,
-                           # start = rep(10, ncol(sim$X)), # coefficient starting values
+                           start = rep(1, ncol(sim$X)), # coefficient starting values
                            solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
                            method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
 )$coefficients) # 0.04s for n=p=500, 0.25s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
@@ -65,7 +65,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                # ridge.center = start, # ridge.center
                                nonnegative = TRUE,
                                warmupiters = 1,
-                               # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
@@ -110,7 +110,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              # family = gaussian(identity),
                              # weights = 1/(sim$y+0.1),
                              lambda = lambda, 
-                             ridge.center = NULL, 
                              nonnegative = TRUE,
                              warmupiters = 1,
                              start = start, # 
@@ -427,7 +426,7 @@ coefs_nnL0Learn_selcoefs = coef(fit_nnL0Learn_selcoefs,
                        gamma = 0)
 coefs_nnL0Learn_after_lasso = Matrix(0, p)
 coefs_nnL0Learn_after_lasso[selcoefs] = coefs_nnL0Learn_selcoefs
-sum(coefs_nnL0Learn_after_lasso!=0) # 46
+sum(coefs_nnL0Learn_after_lasso!=0) # 52
 
 plot(x=coefs_nnL0Learn_after_lasso, y=sim$beta_true, pch=16, col='blue',
      main="weighted nnL0Learn after nonnegative LASSO",
@@ -529,7 +528,7 @@ system.time(fit_MCP <- ordinis(X, y,
                            # tol = 1E-100,
                            # maxit.irls = 1000,
                            # tol.irls = 1E-100,
-                           # gamma = 100, # ifelse(penalty == "scad", 3.7, 1.4),
+                           # gamma = 1.1, # ifelse(penalty == "scad", 3.7, 1.4),
                            alpha = 1))  # ie no elastic net
 # 12.25s for n=p=500, XXs for n=p=10000
 plot(fit_MCP)
@@ -823,10 +822,9 @@ lambda_preset # lambda that would be expected to optimise given IC
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                nonnegative = TRUE,
                                warmupiters = 1,
-                               start = NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L # Cholesky
                               )) 
@@ -864,11 +862,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                             # ridge.center = NULL,
                              nonnegative = TRUE,
                              warmupiters = 1,
-                             warmupiters.nzc = 5,
                              start = start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
@@ -1516,14 +1511,12 @@ lambda_preset
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                               # ridge.center = NULL,
                                grouped = TRUE,
                                relaxed = TRUE, # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
                                warmupiters = 1,
                                parallellize = TRUE,
-                               start = NULL, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
                                thresh = 1E-5
@@ -1553,19 +1546,18 @@ maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights,
                     family=family)
 maxlam # 
 
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2) #
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]] # for i=8 gives error at L0glm.R#742 number of rows of result is not a multiple of vector length (arg 8)
   L0glm.out <- L0glm.fit(X, y, 
                              family = family, 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
                              warmupiters = 1,                               
-                             start = NULL, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              parallellize = TRUE,
@@ -1576,7 +1568,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = poisson(identity), 
                                               beta_true = sim$beta_true) )) )
-} ) ))) # 263s for n=p=100, 375s for n=p=500
+} ) ))) # 86s for n=p=100 unparallelized, 64s parallelized
 
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
@@ -1674,8 +1666,8 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_abess^0.1, col = topo.colors(255)
       xlab="Time", ylab="Channel", main="abess multitask weighted mgaussian (red=true peaks)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_abess)!=0)], col="cyan")
-sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_abess)!=0) # 89 peaks detected
+sum(rowMax(sim$beta_true)!=0) # 10 true peaks
+sum(rowMin(beta_abess)!=0) # 10 peaks detected
 
 # note: for larger p and lower sparsity, solution quality quickly becomes a lot worse
 # see https://github.com/abess-team/abess/issues/510
@@ -1717,15 +1709,15 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                   family = family) 
 lambda_preset # lambda that would be expected to optimise given IC
 
+
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
-                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
                                warmupiters = 1,                               
-                               start = NULL, # rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
                                thresh = 1E-5
@@ -1754,19 +1746,18 @@ maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights,
                     family=family)
 maxlam # 
 
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2) #
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
-                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
                              warmupiters = 1,                               
-                             start = NULL, # rep(10, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              parallellize = TRUE, 
@@ -1777,7 +1768,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = family, 
                                               beta_true = sim$beta_true))) )
-} )))) # 300s for n=p=100, 360s for n=p=500
+} )))) # 85s for n=p=100
 
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
@@ -1876,8 +1867,8 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_abess^0.1, col = topo.colors(255)
       xlab="Time", ylab="Channel", main="abess multitask mgaussian (red=true peaks)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_abess)!=0)], col="cyan")
-sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_abess)!=0) # 157 peaks detected
+sum(rowMax(sim$beta_true)!=0) # 10 true peaks
+sum(rowMin(beta_abess)!=0) # 29 peaks detected - no good, mainly because abess currently does not support nonnegativity constraints
 # note: for larger p and lower sparsity, solution quality quickly becomes a lot worse
 # see https://github.com/abess-team/abess/issues/510
 
@@ -1941,8 +1932,8 @@ image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_mgaussian_glmnet^0.1, col = topo.
       xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet (red=true support)")
 abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_mgaussian_glmnet)!=0)], col="cyan")
-sum(rowMax(sim$beta_true)!=0) # 50 true peaks
-sum(rowMin(beta_mgaussian_glmnet)!=0) # 72 peaks detected
+sum(rowMax(sim$beta_true)!=0) # 10 true peaks
+sum(rowMin(beta_mgaussian_glmnet)!=0) # 13 peaks detected
 
 metrics_glmnet = do.call(cbind, get.metrics(beta = beta_mgaussian_glmnet, 
                                            X = X, y = y, 
