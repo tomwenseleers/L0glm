@@ -23,9 +23,9 @@ library(ordinis)
 set.seed(123)
 n <- 500
 p <- 50000
-m <- 50 # nr of nonzero coefs
+n_nonzero <- 50 # nr of nonzero coefs
 sd_noise <- 3
-beta_true <- matrix(c(runif(m), rep(0, p - m))) # 50 000 coefs
+beta_true <- matrix(c(runif(n_nonzero), rep(0, p - n_nonzero))) # 50 000 coefs
 X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
 y <- drop(X %*% beta_true) + rnorm(n)
 
@@ -46,7 +46,7 @@ min(AIC(mod)) # 1485.114
 min(BIC(mod)) # 1695.845
 coefs_MCP_ordinis = mod$beta[,which.min(BIC(mod))]
 coefs_MCP_ordinis[coefs_MCP_ordinis<0] = 0
-sum(coefs_MCP_ordinis!=0) # 49, closely matches expected value
+sum(coefs_MCP_ordinis!=0) # 49, closely matches expected value with n_nonzero=50, but not e.g. with n_nonzero=200
 library(scales)
 abline(h=as.vector(beta_true[beta_true!=0]), col=alpha(1:6,0.2)) # note colours don't match the ones of ordinis
 
@@ -61,20 +61,26 @@ scaling = attr(Xscaled, "scaling")
 beta_true_scaled = beta_true * scaling
 family = gaussian(identity)
 dispersion = sd_noise^2
-crit = "bic"
+crit = "bic" 
+# note: BIC only works well with good warm start, e.g. based on
+# MPC prescreening, which makes problem low dimensional again,
+# otherwise use mBIC, appropriate for high dimensional settings 
+# (that one is supposed to control the FDR)
 
 # using lambda expected to optimise given IC
 lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                               y = y, 
                               X = X, 
                               family = family, 
-                              dispersion = dispersion) # TODO dispersion=NULL doesn't work
+                              dispersion = dispersion) 
 # with dispersion = NULL: estimating dispersion here doesn't seem to work well & 
 # takes a very long time
-lambda_preset # 13.98287, lambda that would be expected to optimise given IC
+# TODO : fix : dispersion=NULL doesn't work
+lambda_preset # 13.98287, lambda that would be expected to optimise the expected value of the given IC
 # TODO extremely small lambda_preset returned with dispersion = NULL
 
-warm_start = 0.9 # TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
+warm_start = 0.9 # this one would essentially use MCP as pre-screen, 0.9-1 all work well
+# TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
 gamma = 2
 start = coefs_MCP_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
 start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
@@ -92,26 +98,33 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           lambda = lambda_preset, 
                                           # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
-                                          # lower = rep(0, ncol(X)),
+                                          lower = rep(0, ncol(X)),
                                           warmupiters = 1,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                           solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 5L, # 3&4 = Matrix::solve method (incomplete LU)
+                                          method = 7L,
+                                          verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,
                                           tol = 1E-5,
                                           gamma = gamma 
 )) 
 # 6s for glmnet with n=500 and p=50000, but only works with a MCP warm start with warm_start>0.5
-# eigen: try solver 1, 3, 4, 5
-# eigen: 20s for solver 1 (QR), XXs for solver 3, XXs for solver4, XXs for solver 5 (XX) with n=500 & p=50000 
+# eigen: 4.4s, 4.0s, 3.3s, 3.1, 4.4s, 4.5s, 3.4s, 3.8s for solvers 1, 2, 3, 4, 5, 6, 7 & 8  
+# NOTE: eigen solvers 5, 6, 7 & 8 & glmnet all give an excellent solution
+# eigen solver 3 & 4 seems to give back the initial values
+# eigen solver 1 & 2 slightly lower quality solution
 # fails for osqp 
+# TODO: check in code that with warmstart=1 the coefficients with abs(start)<thresh
+# are kicked out from the very beginning
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling # TODO do this scaling automatically if normalize=T
 sum(L0glm.out_preset_coefs!=0) # 47
 plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
-
+# NOTE: a BIC pre-picked lambda here worked well since the MCP
+# pre-screening already changed this from a high dimensional to a low dimensional
+# problem
 
 
 # coefficients & metrics over a range of lambda values
@@ -124,37 +137,59 @@ maxlam #
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
 lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(X))
-warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warm_start <- 0.9 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
+  gamma = 2
+  start = coefs_MCP_ordinis[-1]*scaling
+  # start = L0glm.out_preset_coefs*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
+  start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
+  # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(Xscaled, y, 
                          family = gaussian(identity), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                         # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                          # ridge.center = NULL,
-                         nonnegative = TRUE,
+                         lower = rep(0, ncol(X)),
                          warmupiters = 1,
-                         warmupiters.nzc = 5,
+                         no.pen = NULL,
                          start = start, # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                         method = 3L,
+                         method = 7L,
                          relaxed = FALSE,
-                         thresh = 1E-12,
-                         gamma = 1.2 # this one worked better than 2
-  )$coefficients
+                         thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
+                         maxit = 20,
+                         tol = 1E-5,
+                         gamma = gamma
+  )$coefficients/scaling
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
-                                              X = Xscaled, y = y, 
+                                              X = X, y = y, 
                                               family = gaussian(identity), 
-                                              beta_true = beta_true_scaled))) )
-} )))) # 78s
+                                              beta_true = beta_true))) )
+} )))) # 126s
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 library(scales)
-abline(h=as.vector(beta_true_scaled[beta_true_scaled!=0]), col=alpha(1:6,0.2))
+abline(h=as.vector(beta_true[beta_true!=0]), col=alpha(1:6,0.2))
+
+# coefficients at best lambda, here the one optimising the chosen IC
+# best = which.min(abs(metrics$estimated_over_true_support_size-1))
+best = which.min(metrics[,"mbic"]) # here using mBIC worked best
+L0glm.out_best_coefs = coefmat[best,]
+plot(L0glm.out_best_coefs, y=beta_true, pch=16, col="blue")
+
+# NOTE: for high dimensional problems with an extremely sparse solution
+# pre-picking variables based on an MPC, SCAD or LASSO regression works well
+# and gives a better solution than using a Gaussian non-adaptive prior to
+# start the algorithm. This is because of the heavier tail in the implied
+# prior distribution, e.g. Laplace instead of Gaussian in the case of LASSO.
+# For high dimensional problems with a less sparse solution, a Gaussian non-adaptive prior
+# might be expected to perform better than MCP, SCAD or LASSO though (e.g. with higher n_nonzero value).
+
+
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 1 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
@@ -225,9 +260,8 @@ preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               family = gaussian(identity),
               dispersion = dispersion) # 2.76073
 
-best = which.min(abs(metrics$estimated_over_true_support_size-1))
-# best = which.min(metrics[,"bic"])
-L0glm.out_best_coefs = coefmat[best,]
+
+
 
 # comparison of metrics
 

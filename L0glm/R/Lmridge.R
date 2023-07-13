@@ -205,12 +205,15 @@ lmridge.eigen <- function(Xw, yw,
                           verbose = FALSE){ 
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
-  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") } 
+  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") }
+  # Xw = as(Matrix(Xw, sparse=T), "dgCMatrix") # test - always coerce X to sparse matrix
+  
+  if((ncol(Xw) > nrow(Xw))) { # &(control.solver$method != "LSCG")
+    control.solver$rowaug <- FALSE
+    if(verbose) print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case.")
+  }
+  
   if (control.solver$method == "QR") {
-    if(ncol(Xw) > nrow(X)){
-      control.solver$rowaug <- FALSE
-      if(verbose) print("Row augmentation is not recommended for p > n. Using to normal equations.")
-    }
     if (control.solver$rowaug) {
       # Obtain Xwaug and ywaug
       if (!is.null(lambdas)&(sum(lambdas)!=0)) {
@@ -270,7 +273,7 @@ lmridge.eigen <- function(Xw, yw,
         Xwaug <- Xw
         ywaug <- yw
       }
-      if(is.null(start)) start <- rep(1, ncol(X))
+      if(is.null(start)) start <- rep(0, ncol(X))
       # X.n <- sqrt(colSums(Xw^2)) 
       if(issparse(Xwaug)){
         coefs <- solve_sparse_LSCG(A = Xwaug,
@@ -315,6 +318,7 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
+          # TODO; replace Matrix::solve with solve_sparse_LSCG
         } else { # if it's dense
           # Precompute some values
           y_star <- as.vector(yw - Xw %*% prior.mean)
@@ -323,6 +327,7 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
+          # TODO; replace Matrix::solve with solve_dense_LSCG
         }
       }
     }
@@ -382,7 +387,8 @@ lmridge.eigen <- function(Xw, yw,
           # Calculate β using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
-                                                                tol = control.solver$tol)) 
+                                                                tol = control.solver$tol))
+          # TODO replace Matrix::solve with solve_sparse_CG
         } else { # if it's dense
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
@@ -393,9 +399,10 @@ lmridge.eigen <- function(Xw, yw,
                                                                 y_star,
                                                                 tol = control.solver$tol))
           coefs_solve_largep_dense <- as.vector(prior.mean + DXw %*% Matrix::solve(
-            as.matrix(Xwsp %*% DXw + Diagonal(x=rep(lambda, n))),
+            as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, n))),
             y_star,
             tol=2*.Machine$double.eps))
+          # TODO replace Matrix::solve with solve_dense_CG
         }
       }
     }
