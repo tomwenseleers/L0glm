@@ -106,7 +106,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start, # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                                          solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
                                           method = 7L,
                                           verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
@@ -135,7 +135,9 @@ plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
 # e.g. glmnet and for the unconstrained case biglasso
 # ALASSO as warm start did not work well - only 37 nonzero coefs then & solution
 # much worse
-
+# Also note that with warm_start=0 a constrained solver like glmnet here performs
+# better than the unconstrained Eigen solvers. With warm_start=0.9 performance of
+# both is near-identical though.
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
