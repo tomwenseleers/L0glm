@@ -82,7 +82,7 @@ selected = which(coefs_ordinis[-1]!=0)
 # using lambda expected to optimise given IC
 lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
                               y = y, 
-                              X = X[,selected,drop=F], 
+                              X = X, 
                               family = family, 
                               dispersion = dispersion) 
 # with dispersion = NULL: estimating dispersion here doesn't seem to work well & 
@@ -151,8 +151,8 @@ maxlam <- maxlambda(X=Xscaled, weights=L0glm.out_preset$weights,
                     family=family)
 maxlam #
 
-# lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
-lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
+# lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(X))
 warm_start <- 1 # % by which L0glm.out_preset will be used as start, e.g. 0.9,
 # or as a pre-screen warm_start could be set 1
