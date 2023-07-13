@@ -75,7 +75,7 @@ crit = "bic"
 # note: BIC only works well with good warm start, e.g. based on
 # MPC prescreening, which makes problem low dimensional again,
 # otherwise use mBIC, appropriate for high dimensional settings 
-# (that one is supposed to control the FDR)
+# (that one is supposed to control the FWER)
 
 selected = which(coefs_ordinis[-1]!=0)
 
@@ -88,10 +88,10 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
 # with dispersion = NULL: estimating dispersion here doesn't seem to work well & 
 # takes a very long time
 # TODO : fix : dispersion=NULL doesn't work
-lambda_preset # 13.98287, lambda that would be expected to optimise the expected value of the given IC
+lambda_preset # 25.34865, lambda that would be expected to optimise the expected value of the given IC
 # TODO extremely small lambda_preset returned with dispersion = NULL
 
-warm_start = 0.9 # 0.9 # 1 would essentially use MCP as pre-screen
+warm_start =  0.9 # 0.9 # 1 would essentially use MCP as pre-screen
 # 0.9-1 all work well, but 1 should be faster as it should kick out 0 coefficients from the start
 # TODO check in code that it is doing this in an optimal way, from the very start
 
@@ -120,7 +120,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           # start = rep(sqrt(0.05), ncol(X)),
                                           start = start[selected], # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                           solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 3L,
+                                          method = 7L,
                                           verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,
@@ -154,7 +154,7 @@ maxlam #
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
 lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(X))
-warm_start <- 0.9 # % by which L0glm.out_preset will be used as start, e.g. 0.9,
+warm_start <- 1 # % by which L0glm.out_preset will be used as start, e.g. 0.9,
 # or as a pre-screen warm_start could be set 1
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -174,7 +174,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          warmupiters = 1,
                          no.pen = NULL,
                          start = start[selected], # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                         solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                         solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
                          method = 5L,
                          relaxed = FALSE,
                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T

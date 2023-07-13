@@ -65,7 +65,7 @@ crit = "bic"
 # note: BIC only works well with good warm start, e.g. based on
 # MPC prescreening, which makes problem low dimensional again,
 # otherwise use mBIC, appropriate for high dimensional settings 
-# (that one is supposed to control the FDR)
+# (that one is supposed to control the FWER)
 
 # using lambda expected to optimise given IC
 lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
