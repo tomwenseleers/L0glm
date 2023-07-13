@@ -208,9 +208,9 @@ lmridge.eigen <- function(Xw, yw,
   if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") }
   # Xw = as(Matrix(Xw, sparse=T), "dgCMatrix") # test - always coerce X to sparse matrix
   
-  if((ncol(Xw) > nrow(Xw))) { # &(control.solver$method != "LSCG")
+  if((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
     control.solver$rowaug <- FALSE
-    if(verbose) print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case.")
+    if(verbose&control.solver$method != "LSCG") print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case.")
   }
   
   if (control.solver$method == "QR") {
@@ -313,7 +313,7 @@ lmridge.eigen <- function(Xw, yw,
         if(issparse(Xw)){
           # Precompute some values
           y_star <- as.vector(yw - Xw %*% prior.mean)
-          browser()
+          # browser()
           # Calculate β using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,

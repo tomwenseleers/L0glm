@@ -120,7 +120,7 @@ system.time({
     as.matrix(Xwsp %*% DXw + Diagonal(x=rep(lambda, n))),
     y_star,
     tol=2*.Machine$double.eps ) )
-}) # 3.1s for n=p=10000 or 3.3s for n=10000 and p=20000 or 0.09s for n=500 and p=50000
+}) # 3.1s for n=p=10000 or 3.3s for n=10000 and p=20000 or 0.06s for n=500 and p=50000
 cor(coefs_solve_largen_dense, coefs_solve_largep_dense) # 1
 cor(coefs_solve_largen_dense, coefs_true) # 0.1557878 / 0.1087041 for n=10000 and p=20000
 cor(coefs_solve_largep_dense, coefs_true) # 0.1557878
@@ -152,7 +152,7 @@ cor(coefs_solve_largep_sparse, coefs_true) # 0.1557878
 system.time(coefs_solve_rowaug_sparse_LSCG <- as.vector(solve_sparse_LSCG(A = Xwaugsp,
                                                                           b = as.matrix(ywaug),
                                                                           x0 = as.matrix(start))$coefficients)) 
-# 3.99s for n=10000 & p=10000, 0s for n=500 & p=50000 - FAST FOR p > n
+# 3.99s for n=10000 & p=10000, 0.02s for n=500 & p=50000 - FAST FOR p > n
 
 system.time(coefs_solve_rowaug_sparse_QR <- as.vector(solve_sparse_QR(A = Xwaugsp,
                                                                       b = as.matrix(ywaug))$coefficients)) 
@@ -198,7 +198,9 @@ system.time(coefs_eigen3 <- lmridge(X=Xsp, y=y,
                     verbose = T,
                     control.solver = do.call("control.solver.gen", 
                                              list(solver = "eigen", method = 3L)))) 
-# 0.04s for n=p=10000, 0.03s for n=500 and p=50000
+# 0.04s for n=p=10000, 0.17s for n=500 and p=50000
+# TODO: check - according to row augmentation benchmark above this should only
+# take 0.02s instead of 0.17s with this solver
 
 system.time(coefs_eigen4 <- lmridge(X=Xsp, y=y, 
                                     lambdas = rep(1, p),
@@ -213,7 +215,7 @@ system.time(coefs_eigen4 <- lmridge(X=Xsp, y=y,
                                     verbose = T,
                                     control.solver = do.call("control.solver.gen", 
                                                              list(solver = "eigen", method = 4L)))) 
-# 0.04s for n=p=10000, 0.03s for n=500 and p=50000 - FASTEST FOR p > n for both DENSE & SPARSE
+# 0.04s for n=p=10000, 0.07s for n=500 and p=50000 - FASTEST FOR p > n for both DENSE & SPARSE
 
 system.time(coefs_eigen5 <- lmridge(X=Xsp, y=y, 
                                     lambdas = rep(1, p),
@@ -271,7 +273,7 @@ system.time(coefs_glmnet <- lmridge(X=Xsp, y=y,
                                     solver = "glmnet", #,
                                     control.solver = do.call("control.solver.gen", 
                                                              list(solver = "glmnet")))) 
-# 0.03s for n=p=10000, 0.08s for n=500 and p=50000
+# 0.03s for n=p=10000, 0.1s for n=500 and p=50000
 
 
 # dense case
