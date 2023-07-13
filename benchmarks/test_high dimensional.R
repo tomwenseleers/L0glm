@@ -44,13 +44,13 @@ max(logLik(mod)) # -731.8202 for SCAD with gamma=3.7, -704.5205 for MCP with gam
 mod$lambda[which.max(logLik(mod))] # best lambda = 0.1869138
 min(AIC(mod)) # 1485.114
 min(BIC(mod)) # 1695.845
-coefs_MCP_ordinis = mod$beta[,which.min(BIC(mod))]
-coefs_MCP_ordinis[coefs_MCP_ordinis<0] = 0
-sum(coefs_MCP_ordinis!=0) # 49, closely matches expected value with n_nonzero=50, but not e.g. with n_nonzero=200
+coefs_ordinis = mod$beta[,which.min(BIC(mod))]
+coefs_ordinis[coefs_ordinis<0] = 0
+sum(coefs_ordinis!=0) # 49, closely matches expected value with n_nonzero=50, but not e.g. with n_nonzero=200
 library(scales)
 abline(h=as.vector(beta_true[beta_true!=0]), col=alpha(1:6,0.2)) # note colours don't match the ones of ordinis
 
-plot(x=coefs_MCP_ordinis, y=c(0,beta_true), pch=16, col="blue")
+plot(x=coefs_ordinis, y=c(0,beta_true), pch=16, col="blue")
 
 
 
@@ -79,10 +79,13 @@ lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
 lambda_preset # 13.98287, lambda that would be expected to optimise the expected value of the given IC
 # TODO extremely small lambda_preset returned with dispersion = NULL
 
-warm_start = 0.9 # this one would essentially use MCP as pre-screen, 0.9-1 all work well
+warm_start = 0.9 # 1 would essentially use MCP as pre-screen
+# 0.9-1 all work well, but 1 should be faster as it should kick out 0 coefficients from the start
+# TODO check in code that it is doing this in an optimal way, from the very start
+
 # TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
 gamma = 2
-start = coefs_MCP_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
+start = coefs_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
 start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
 
 # A warm_start value of 1 would indicate using the provided starting coefficients 
@@ -125,6 +128,11 @@ plot(x=L0glm.out_preset_coefs, y=beta_true, pch=16, col="blue")
 # NOTE: a BIC pre-picked lambda here worked well since the MCP
 # pre-screening already changed this from a high dimensional to a low dimensional
 # problem
+# Using MCP, SCAD and LASSO coefficients as warm start all work, but MCP here 
+# gives a slightly better solution than SCAD or LASSO
+# (using MCP, SCAD & LASSO as warm start returns 47, 46 & 42 nonzero coefficients)
+# LASSO is quite good in that there is widely available fast solvers available,
+# e.g. glmnet and for the unconstrained case biglasso
 
 
 # coefficients & metrics over a range of lambda values
@@ -137,11 +145,12 @@ maxlam #
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=0.2)
 lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(lambda_preset)+1, by=0.1)
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(X))
-warm_start <- 0.9 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warm_start <- 0.9 # % by which L0glm.out_preset will be used as start, e.g. 0.9,
+# or as a pre-screen warm_start could be set 1
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   gamma = 2
-  start = coefs_MCP_ordinis[-1]*scaling
+  start = coefs_ordinis[-1]*scaling
   # start = L0glm.out_preset_coefs*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
   start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
   # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
@@ -151,6 +160,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          lambda = lambda, 
                          # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                          # ridge.center = NULL,
+                         nonnegative = TRUE,
                          lower = rep(0, ncol(X)),
                          warmupiters = 1,
                          no.pen = NULL,
@@ -290,7 +300,7 @@ do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,
 # [1,]   0.9996797  0.99934 0.6666667 -96521.46 -96427.82 -97199.07 -97409.8 -96255.72
 
 # metrics for ordinis nonnegative MCP fit
-do.call(cbind, get.metrics(beta = coefs_MCP_ordinis, 
+do.call(cbind, get.metrics(beta = coefs_ordinis, 
                            X = cbind(1, X), y = y, 
                            family = family, 
                            beta_true = c(0, beta_true)) )

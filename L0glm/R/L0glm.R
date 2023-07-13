@@ -1245,7 +1245,7 @@ L0glm.fit.internal = function(X,
   mu = linkinv(eta) # expected value on response scale
   dev = sum(dev.resids(y, mu, weights)) # deviance 
   dev_old = 0
-  nonzero = as.vector(beta!=0) # nonzero coefficients
+  if (is.null(start)) { nonzero = as.vector(beta!=0) } else { nonzero = as.vector(start!=0) } # nonzero coefficients
   # mask <- rep(FALSE, p)
   for (i in 1L:maxit) {
     varg = variance(mu) # variance
@@ -1269,7 +1269,7 @@ L0glm.fit.internal = function(X,
     if(!is.null(prior.mean)){ 
       center = prior.mean # nonzero centered ridge regression
     } else {
-      center = NULL # zero centered ridge regrerssion
+      center = NULL # zero centered ridge regression
     }
     
     # update ridge penalties
