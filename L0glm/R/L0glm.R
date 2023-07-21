@@ -735,7 +735,6 @@ L0glm.fit = function(X,
       offset = rep(0, nrow(X))
     }
   }
-  
   if(!is.null(start)){
     if(ncol(y) > 1 & ncol(as.matrix(start)) == 1){
       start <- matrix(rep(start, times = ncol(y)), nrow = length(start), ncol = ncol(y))
@@ -1214,7 +1213,7 @@ L0glm.fit.internal = function(X,
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
                   scaling = rep(1, ncol(X)) }
   
-  # if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation 
+  if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } # interpret all zero start values as start values still requiring initialisation
   
   if (!is(family, "family")) family = family()
   variance = family$variance # variance function for given family
@@ -1234,7 +1233,7 @@ L0glm.fit.internal = function(X,
   p <- nvars <- ncol(X)   # needed by the initialize expression below
   
   eval(init) # initializes n and m (total nr of trials for binomial) and fitted values mustart based on y (mu=expected value on response scale)
-
+  
   if (is.null(start)) {  
     eta = as.matrix(link(mustart))
     # to initialise using an orthogonal initialisation

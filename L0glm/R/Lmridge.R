@@ -657,7 +657,7 @@ maxlambda = function (X, weights, z, no.pen=NULL, coefs, family) {
   z <- as.matrix(z)
   weights <- as.matrix(weights)
   sel_task <- which.max(colMeans(abs(z))) # for multitask select column with max mean abs value?
-  z <- z[, sel_task, drop=F] 
+  z <- z[, sel_task, drop=F]
   weights <- weights[, sel_task, drop=F]
   
   # remove contribution of unpenalized terms

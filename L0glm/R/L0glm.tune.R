@@ -52,10 +52,10 @@
 #' @export
 L0glm.tune <- function(X, y, family, 
                        weights = matrix(1, nrow = nrow(as.matrix(y)), ncol = ncol(as.matrix(y))), 
-                       offset = Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse=T), 
+                       offset = Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse=T),
                        dispersion = NULL, 
                        IC = "aic", 
-                       warm.start.ratio = 0, 
+                       warm.start.ratio = 0.01, 
                        coefs.true = NULL,
                        printbest = TRUE, # Want the best empirical lambda printed out based on the provided IC?
                        plot = TRUE, # Want plots produced?
@@ -66,12 +66,11 @@ L0glm.tune <- function(X, y, family,
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
     stop("Invalid information criteria.")
   }
-  
+
   y <- as.matrix(y)
   n <- nrow(X)
   p <- ncol(X)
   m <- ncol(y)
-  
   if(!is.null(dispersion)){
     lambda.preset <- preset.lambda(IC = IC, dispersion = dispersion, family = family)
   } else if (m > 1){
@@ -89,14 +88,14 @@ L0glm.tune <- function(X, y, family,
                       offset = offset, 
                       weights = weights,
                       ...) # using provided / default params
-  
   warm_start <- as.matrix(warmup$coefficients)
+  if(sum(warm_start) == 0) stop("Zero coefficients produced.")
   Z <- as.matrix(warmup$z)
   W <- as.matrix(warmup$weights)
   
   # Recalculate maxlambda
   maxlambda <- maxlambda(X = X, weights = W, z = warmup$z, 
-                         coefs = warm_start,family = family)
+                         coefs = warm_start, family = family)
 
   lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by=0.2)
                     
@@ -127,7 +126,6 @@ L0glm.tune <- function(X, y, family,
     } else {
       coefmat[i,] <<- as.vector(L0glm.out)
     }
-    if(i == 23) browser()
     return(unlist(c(lambda = lambda, get.metrics(beta = L0glm.out, 
                                                 X = X, y = y, 
                                                 family = poisson(identity), 
@@ -147,8 +145,8 @@ L0glm.tune <- function(X, y, family,
     message <- paste("Best empirical lambda based on", IC, "over lambda sequence is", bestlambda)
     print(message)
   }
-  if(FALSE){ #plot){
-    tune.plots(metrics = metrics, IC = IC, coefs.true = coefs.true, lambdas = lambdas)
+  if(plot){ 
+    tune.plots(metrics = metrics, IC = IC, coefficients = coefmat, coefs.true = coefs.true, lambdas = lambdas)
   }
   return(list(metrics = metrics, best.lambda = bestlambda, lambdas = lambdas))
   
@@ -161,16 +159,15 @@ L0glm.tune <- function(X, y, family,
   
 }
 
-tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
+tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = NULL){
   IC = tolower(IC)
   if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
     stop("Invalid information criteria.")
   }
   bestlambda = lambdas[which.min(metrics[,IC])]
   bestlambda = lambdas[which.min(abs(lambdas-bestlambda))] 
-  beta_relaxedgroupL0 = as.matrix(coefficients[[which(lambdas==bestlambda)]]) 
+  beta_relaxedgroupL0 = as.matrix(coefficients[which(metrics$lambda==bestlambda),]) 
   IC = toupper(IC) # better for plot titles
-  
   # PLOT TRUE VS ESTIMATED COEFFICIENTS 
   if(!is.null(coefs.true)){
     R2 = round(cor(as.vector(coefs.true), as.vector(beta_relaxedgroupL0)), digits = 4)^2 # Calculate R2
@@ -276,10 +273,9 @@ tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
        pch = 16, type="o")
   abline(v=log10(bestlambda), col="red")
   
-  
   # TP, FP, TN, FN
-  color = c("green", "purple", "steelblue", "orange")
-  title = paste("Effect of regularisation on TP, FP, TN, FN\n(red = estimate at best", IC, ")")
+  color = c("steelblue", "purple")
+  title = paste("Effect of regularisation on True and False Positives\n(red = estimate at best", IC, ")")
   plot(x=log10(lambdas), y = metrics$TP,
        main = title,
        ylab = "Value",
@@ -287,16 +283,16 @@ tune.plots <- function(metrics, lambdas, IC = "aic", coefs.true = NULL){
        pch = 16,
        type = "o")
   lines(log10(metrics$lambda), metrics$FP, type="o", pch=16, col=color[2])
-  lines(log10(metrics$lambda), metrics$TN, type="o", pch=16, col=color[3])
-  lines(log10(metrics$lambda), metrics$FN, type="o", pch=16, col=color[4])
+  # lines(log10(metrics$lambda), metrics$TN, type="o", pch=16, col=color[1])
+  # lines(log10(metrics$lambda), metrics$FN, type="o", pch=16, col=color[4])
   
-  legend("topright", legend=c("TP", "FP", "TN", "FN"), col=color, pch=16, lty=1)
+  legend("topright", legend=c("TP", "FP"), col=color, pch=16, lty=1)
   abline(v=log10(bestlambda), col="red")
   
   # PLOT IC OF INTEREST
   # TODO should it also plot other ICs?
   title = paste("Effect of regularisation on", IC, "\n(red = estimate at best", IC, ")")
-  plot(x = log10(lambdas), y = metrics[[paste0(IC)]],
+  plot(x = log10(lambdas), y = metrics[[paste0(tolower(IC))]],
        main = title,
        ylab = IC, 
        pch = 16,

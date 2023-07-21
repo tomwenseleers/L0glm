@@ -140,7 +140,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
     par(mfrow = c(1, 1))
     plot(x, y, type = "l",
          main = paste0(
-           "Simulated blurred superimposed spike train\n(red=true coefficients, black=observed signal) with ",
+           "Simulated blurred superimposed spike train\n(red = true coefficients, black = observed signal) with ",
            family, " noise"),
          xlab = "Time", ylab = "Signal")
     points(x, y, pch = 16, cex = 0.5)
@@ -150,7 +150,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
       image(x=1:n, y=1:m, z=as.matrix(y)^0.2, 
             col = topo.colors(255), useRaster=TRUE,
             main = paste0(
-              "Simulated blurred multichannel spike train\n(red=true support) with ",
+              "Simulated blurred multichannel spike train\n(red = true support) with ",
               family, " noise"), 
             xlab="Time", ylab="Channel")
       abline(v=u*n/p, col="red")
