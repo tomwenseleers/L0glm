@@ -3,7 +3,7 @@
 #' @description
 #' Tunes the lambda parameter for the \code{\link{L0glm}} and \code{\link{L0glm.fit}} 
 #' functions. It uses a list of penalty parameter values (\code{lambda}) to fit 
-#' L0-penalized GLMs, and selects the best lambda value according to a specified 
+#' L0-penalized GLMs, and selects the best  lambda value according to a specified 
 #' information criterion. It can handle multiple output variables (channels), 
 #' and can produce a plots of the regularization path,true vs. estimated coefficients,
 #' estimated support size, deviance, log likelihood, mean, absolute deviation, 
@@ -98,7 +98,6 @@ L0glm.tune <- function(X, y, family,
                          coefs = warm_start, family = family)
 
   lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by=0.2)
-                    
   if(length(lambdas) > 30)  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by = 0.5)
   if(length(lambdas) > 30)  lambdas <- 10^seq(round(log10(lambda.preset))-3, log10(maxlambda), by = 1)
   
@@ -111,8 +110,8 @@ L0glm.tune <- function(X, y, family,
   }
 
   coefmat <- Matrix(0, nrow=length(lambdas), ncol = p)
-  
   metrics <- data.frame(do.call(rbind, lapply(1:(length(lambdas)), function (i) { 
+    print(i)
     lambda <- lambdas[[i]]
     L0glm.out <- L0glm.fit(X = X, y = y, 
                            family = family, 
@@ -133,6 +132,7 @@ L0glm.tune <- function(X, y, family,
   })))
   
   if(plot){
+    if(ncol(as.matrix(coefs.true)) > 1) coefs.true <- rowMeans(coefs.true)
     title = ifelse(m > 1, "Regularisation path group L0 Poisson GLM", "Regularisation path L0 Poisson GLM")
     matplot(x = log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
             xlab = "Log10(lambda)", ylab="Coefficient estimates", main = title)
@@ -171,9 +171,9 @@ tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = 
   # PLOT TRUE VS ESTIMATED COEFFICIENTS 
   if(!is.null(coefs.true)){
     R2 = round(cor(as.vector(coefs.true), as.vector(beta_relaxedgroupL0)), digits = 4)^2 # Calculate R2
-    title = paste("True vs estimated coefficients\nnonnegative relaxed L0 group GLM\nR2=", R2)
+    title = paste("True vs estimated coefficients\nnonnegative L0 group GLM\nR2=", R2)
     plot(as.vector(beta_relaxedgroupL0), as.vector(coefs.true), pch=16, 
-         xlab="estimated coefficients nonnegative relaxed L0 group GLM",
+         xlab="estimated coefficients nonnegative L0 group GLM",
          ylab="true coefficients", col="steelblue",
          main=title)
   }
