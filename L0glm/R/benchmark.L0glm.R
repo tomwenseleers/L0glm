@@ -36,22 +36,27 @@
 simulate <- function(method=1, n = 500, p = 500, sparse = T, options = NULL, seed = 1){
   if(method == 1){
     family = "gaussian"
-    multichannel = F
+    multichannel = FALSE
     k <- ifelse(is.null(options), round(n*0.1), options$sd_noise)
     sd_noise <- ifelse(is.null(options), 5, options$sd_noise)
     mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
   } else if(method == 2){
     family <- "poisson"
-    multichannel =  F
+    k <- round(0.1*n)
+    multichannel =  FALSE
     mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
   } else if(method == 3){
     family = "gaussian"
-    multichannel = T
+    multichannel = TRUE
+    k <- round(0.1*n)
+    if(k > 100) k <- 100
     sd_noise = ifelse(is.null(options), 5, options$sd_noise)
     mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
   } else if(method == 4){
     family = "poisson"
-    multichannel = T
+    multichannel = TRUE
+    k <- round(0.1*n)
+    if(k > 100) k <- 100
     sd_noise = ifelse(is.null(options), 10, options$sd_noise)
     mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
   } else if(method == 6){
@@ -62,7 +67,7 @@ simulate <- function(method=1, n = 500, p = 500, sparse = T, options = NULL, see
   if(method == 1 | method == 3){
     sim <- simulate_spike_train(n = n, p = p, family = family, 
                                 seed = seed,
-                                k = round(0.1*n), 
+                                k = k, 
                                 multichannel = multichannel,
                                 mean_beta = mean_beta,
                                 sparse = sparse,
@@ -71,7 +76,7 @@ simulate <- function(method=1, n = 500, p = 500, sparse = T, options = NULL, see
   } else if(method == 2 | method == 4){
     sim <- simulate_spike_train(n = n, p = p, family = family, 
                                 seed = seed,
-                                k = round(0.1*n), 
+                                k = k, 
                                 multichannel = multichannel,
                                 mean_beta = mean_beta,
                                 sparse = sparse,
