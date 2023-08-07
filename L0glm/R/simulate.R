@@ -76,7 +76,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   thresh = 1E-5,
                                   sparse = TRUE,
                                   multichannel = FALSE,
-                                  seed = 123, Plot = TRUE
+                                  seed = 123, Plot = if (p<=10000) { TRUE } else { FALSE }
 ){
   require(qlcMatrix)
   # TODO: update documentation above

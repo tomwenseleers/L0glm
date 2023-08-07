@@ -2,7 +2,7 @@
 # Additional libraries
 library(ggplot2)
 library(dplyr)
-library(export)
+devtools::load_all(".")
 
 # Simulation sizes
 sizes <- c(100, 500, 1000, 2000, 5000, 10000, 20000)
@@ -32,10 +32,11 @@ for (n in sizes) {
     lambda_preset <- preset.lambda(IC = "bic", y = y, X = X, family = family)
     
     # Fit model and measure time
+    if (solver_name %in% c("bigGlm/glmnet", "eigen LSCG")) { rowaug = T } else { rowaug = F }
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, family = poisson(identity), lambda = lambda_preset, nonnegative = TRUE, relaxed = FALSE, 
-        solver = solver, method = method, control.solver = do.call(control.solver.gen, list(solver = solver, method = method, rowaug = F)))
+        solver = solver, method = method, control.solver = do.call(control.solver.gen, list(solver = solver, method = method, rowaug = rowaug)))
     )[3]
     print(solver_name)
     print(n)
@@ -93,19 +94,20 @@ ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colo
   labs(color = "Solver/Method") +
   theme(legend.position = "right") +
   scale_color_manual(values=c("blue", "magenta", "red", "orange", "green", "cyan3")) +
-  ylab("Time (s)")
+  ylab("Time (s)") +
+  scale_y_continuous(trans="log10")
 ggsave(file="..//benchmarks//plots//timings//timings.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings.pdf", width=7, height=5, dpi=600)
 
 
-# FOR SOME LARGER PROBLEM SIZES (EXCLUDING QR SOLVER)
+# FOR SOME LARGER PROBLEM SIZES (EXCLUDING QR & OSQP & GLMNET SOLVER)
 # Simulation sizes
-sizes <- c(100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000)
+sizes <- c(100000, 1000000) # 100, 1000, 10000, 
 
 # Solvers and methods
-solvers <- c("osqp", "glmnet", "eigen", "eigen", "eigen")
-methods <- c(1, 1, 3, 5, 7)
-solver_names <- c("osqp", "bigGlm/glmnet", "eigen LSCG", "eigen CG", "eigen Cholesky LLT")
+solvers <- c("glmnet", "eigen", "eigen", "eigen")
+methods <- c(1, 3, 5, 7)
+solver_names <- c("bigGlm/glmnet", "eigen LSCG", "eigen CG", "eigen Cholesky LLT")
 family = poisson(identity)
 
 # Initialize an empty data frame to store results
@@ -114,7 +116,7 @@ results <- data.frame()
 # Loop over sizes, solvers and methods
 for (n in sizes) {
   # Simulate data
-  sim.pois <- simulate(method = 2, n = n, p = n)
+  sim.pois <- simulate(method = 2, n = n, p = n) 
   X <- sim.pois$X
   y <- sim.pois$y
   coefs.true <- sim.pois$beta_true
@@ -127,10 +129,11 @@ for (n in sizes) {
     lambda_preset <- preset.lambda(IC = "bic", y = y, X = X, family = family)
     
     # Fit model and measure time
+    if (solver_name %in% c("bigGlm/glmnet", "eigen LSCG")) { rowaug = T } else { rowaug = F }
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, family = poisson(identity), lambda = lambda_preset, nonnegative = TRUE, relaxed = FALSE, 
-        solver = solver, method = method, control.solver = do.call(control.solver.gen, list(solver = solver, method = method, rowaug = F)))
+        solver = solver, method = method, control.solver = do.call(control.solver.gen, list(solver = solver, method = method, rowaug = rowaug)))
     )[3]
     print(solver_name)
     print(n)
@@ -161,15 +164,16 @@ for (n in sizes) {
 }
 
 # Reshape data for plotting
-results_melt <- results %>% 
+results_melt2 <- results %>% 
   tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, F1,Estimated_over_true_support_size, R2), names_to = "metric", values_to = "value") %>% 
   mutate(method = factor(method), solver = factor(solver))
-results_melt$Solver = factor(results_melt$Solver, 
-                             levels=c("bigGlm/glmnet", "osqp", "eigen Cholesky LLT", "eigen CG", "eigen LSCG"),
-                             labels=c("bigGlm/glmnet", "osqp", "eigen Cholesky LLT", "eigen CG", "eigen LSCG"))
+results_melt2 = rbind(results_melt, results_melt2)
+results_melt2$Solver = factor(results_melt2$Solver, 
+                             levels=c("bigGlm/glmnet", "eigen Cholesky LLT", "eigen CG", "eigen LSCG"),
+                             labels=c("bigGlm/glmnet", "eigen Cholesky LLT", "eigen CG", "eigen LSCG"))
 
 # Plot
-ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
+ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
   geom_line() +
   facet_wrap(~metric, scales = "free_y") +
   theme_minimal() +
@@ -181,14 +185,15 @@ ggsave(file="../benchmarks/plots/timings/timings_metrics2.pdf", width=7, height=
 # NOTE: BIC makes no sense as that can't be compared across different models
 # LSCG solver could probably be fixed via some thresholding or using other settings for that one
 
-ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
+ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
   geom_line() +
   facet_wrap(~metric, scales = "free_y") +
   theme_minimal() +
   labs(color = "Solver/Method") +
   theme(legend.position = "right") +
   scale_color_manual(values=c("blue", "magenta", "red", "orange", "green")) +
-  ylab("Time (s)")
+  ylab("Time (s)") +
+  scale_y_continuous(trans="log10")
 ggsave(file="..//benchmarks//plots//timings//timings2.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings2.pdf", width=7, height=5, dpi=600)
 
