@@ -556,7 +556,6 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                     intercept = FALSE, 
                     relax = FALSE, 
                     lower.limits = rep(0, ncol(X)+1))
-      browser()
     } else {
       cvfit <- cv.glmnet(x = X, 
                          y = y, 
