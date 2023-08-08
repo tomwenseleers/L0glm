@@ -5,14 +5,16 @@ library(dplyr)
 devtools::load_all(".")
 
 # Simulation sizes
-sizes <- c(500, 1000, 2000, 5000, 10000, 20000)
+sizes <- c(500, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
 
 # Solvers and methods
 solvers <- c("osqp", "glmnet", "eigen", "eigen", "eigen", "eigen")
 methods <- c(1, 1, 1, 3, 5, 7)
 solver_names <- c("osqp", "bigGlm/glmnet", "eigen QR", "eigen LSCG", "eigen CG", "eigen Cholesky LLT")
 family = poisson(identity)
-p = 500
+mean_beta <- 10000
+sd_logbeta <- 1
+p = 1000
 
 # Initialize an empty data frame to store results
 results <- data.frame()
@@ -20,7 +22,13 @@ results <- data.frame()
 # Loop over sizes, solvers and methods
 for (n in sizes) {
   # Simulate data
-  sim.pois <- simulate(method = 2, n = n, p = n/5)
+  sim.pois.mc <- simulate_spike_train(n = n, 
+                                      p = p,
+                                      k = ifelse(round(n/10)<=100, round(n/10), 100),
+                                      family="poisson", 
+                                      mean_beta = mean_beta,
+                                      sd_logbeta = sd_logbeta,
+                                      multichannel=F)
   X <- sim.pois$X
   y <- sim.pois$y
   coefs.true <- sim.pois$beta_true
