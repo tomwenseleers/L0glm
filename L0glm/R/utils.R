@@ -40,7 +40,8 @@
 # note I am currently not doing multiple reflections, which
 # might be needed if coefficients are extremely far outside of
 # the allowed boundaries)
-clip = function (coefs, lower, upper, reflect_lower = FALSE, reflect_upper = FALSE) {
+clip = function (coefs, lower, upper, 
+                 reflect_lower = FALSE, reflect_upper = FALSE) {
   reflect = reflect_lower|reflect_upper
   if (!reflect) { return(pmax(lower, pmin(coefs, upper))) } else { 
     

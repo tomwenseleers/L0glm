@@ -372,7 +372,7 @@ L0glm.fit = function(X,
                      verbose = FALSE) {
   if (lambda %in% c("aic","bic","gic","ebic","mbic")) { lambda = preset.lambda(IC=lambda, p=ncol(X), n=nrow(X)) }
   y = as.matrix(y)
-  if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "dgCMatrix") } else { X = Matrix(X, sparse = FALSE) }
+  if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "generalMatrix") } else { X = Matrix(X, sparse = FALSE) }
   no.pen.start <- no.pen
   init.lambda <- lambda
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel.

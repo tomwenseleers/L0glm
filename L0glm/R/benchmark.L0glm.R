@@ -1,97 +1,4 @@
-#' Simulate Data
-#'
-#' This function simulates different types of data based on the method specified. 
-#' Various aspects of the data generation can be controlled using the \code{options} parameter.
-#'
-#' @param method 
-#' A numeric value indicating the type of data to simulate. The possible values are:
-#' 1: Single channel (single variable) data with Gaussian noise.
-#' 2: Single channel data with Poisson noise.
-#' 3: Multichannel data with Gaussian noise.
-#' 4: Multichannel data with Poisson noise.
-#' 5: Orthogonal data.
-#' 6: High dimensional data generation (p > 40000 suggested).
-#' @param n 
-#' A numeric value indicating the number of observations to generate.
-#' @param p 
-#' A numeric value indicating the number of predictors (variables) to generate.
-#' @param options 
-#' A list of optional parameters to control the data generation process. This can include:
-#'   For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
-#'   \code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
-#'   For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_sd} (standard deviation of the beta coefficients), 
-#'   \code{error_sd} (standard deviation of the error term).
-#'   For method 6: \code{sd_noise} (standard deviation of the noise).
-#'   If options are \code{NULL}, default values will be used.
-#' @param sparse
-#' @param seed
-#' @return A variable containing the simulated data.
-#'
-#' @examples
-#' \dontrun{
-#' sim_data <- simulate(method=1, n=500, p=500)
-#' }
-#' 
-#' @export
-simulate <- function(method=1, n = 500, p = 500, sparse = T, options = NULL, seed = 1){
-  if(method == 1){
-    family = "gaussian"
-    multichannel = FALSE
-    k <- ifelse(is.null(options), round(n*0.1), options$sd_noise)
-    sd_noise <- ifelse(is.null(options), 5, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
-  } else if(method == 2){
-    family <- "poisson"
-    k <- round(0.1*n)
-    multichannel =  FALSE
-    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
-  } else if(method == 3){
-    family = "gaussian"
-    multichannel = TRUE
-    k <- round(0.1*n)
-    if(k > 100) k <- 100
-    sd_noise = ifelse(is.null(options), 5, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
-  } else if(method == 4){
-    family = "poisson"
-    multichannel = TRUE
-    k <- round(0.1*n)
-    if(k > 100) k <- 100
-    sd_noise = ifelse(is.null(options), 10, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
-  } else if(method == 6){
-    if(p < 40000) warning("This method is suggested for data with higher dimension.")
-    m <- ifelse(is.null(options), 50, m)
-  }
-  
-  if(method == 1 | method == 3){
-    sim <- simulate_spike_train(n = n, p = p, family = family, 
-                                seed = seed,
-                                k = k, 
-                                multichannel = multichannel,
-                                mean_beta = mean_beta,
-                                sparse = sparse,
-                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta),
-                                sd_noise = sd_noise)
-  } else if(method == 2 | method == 4){
-    sim <- simulate_spike_train(n = n, p = p, family = family, 
-                                seed = seed,
-                                k = k, 
-                                multichannel = multichannel,
-                                mean_beta = mean_beta,
-                                sparse = sparse,
-                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta))
-  } else if(method == 5){
-    sim <- simulate_orthogonal(n = n, p = p, 
-                               n_nonzero = ifelse(is.null(options), 24, options$n_nonzero),
-                               beta_sd = ifelse(is.null(options), 0.5, options$beta_sd), 
-                               error_sd = ifelse(is.null(options), 1, options$error_sd))
-  } else if(method == 6){
-    sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options), 3, options$sd_noise))
-  }
-  
-  return(sim)
-}
+# Functions for benchmarking L0glm algo against other algorithms
 
 #' Fit a simulated object created with \code{\link{simulate}} function.
 #' This function simulates different types of data based on the method specified. 
@@ -113,7 +20,8 @@ simulate <- function(method=1, n = 500, p = 500, sparse = T, options = NULL, see
 #'
 #' 
 #' @export
-fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic", internal = FALSE){
+fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, 
+                    IC = "gic", internal = FALSE){
   require(scales)
   X <- sim$X
   y <- sim$y
@@ -135,7 +43,6 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                           lambda = 1, 
                           prior.mean = NULL,
                           nonnegative = TRUE,
-                          warmupiters = 1,
                           solver = "eigen", 
                           method = 7L)
     } else {
@@ -326,7 +233,6 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     } 
     
   } else if(method == 6) { # abess
-    # note: currently no support for nonnegativity constraints
     # fast for small problems, but becomes slow for n=p=10000
     if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
     if(is.null(options)){
@@ -336,6 +242,8 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    family = sim$family,
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=0,
                    warm.start = TRUE,
                    tune.type = IC)
@@ -354,7 +262,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            xlab="Estimated coefficients", ylab="True coefficients")
     }
     
-  } else if(method == 7) { # abess after LASSO
+  } else if(method == 7) { # nonnegative abess after nonnegative LASSO
     # very good solution, and fast for small problems, but
     # becomes very slow for large problems, e.g. n=p=10000
     glmnet.fit <- fit.GLM(sim = sim, method = 2, family = family, plot = F, internal = TRUE)
@@ -375,6 +283,8 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    family = "gaussian", # poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
                    tune.type = IC)
@@ -497,6 +407,8 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    family = "mgaussian",
                    tune.path = "sequence", 
                    support.size = c(1:(p-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=0, 
                    warm.start = TRUE,
                    tune.type = IC)
@@ -507,6 +419,8 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    family = options$family,
                    tune.path = options$tune.path, 
                    support.size = c(1:(p-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = IC)
@@ -618,22 +532,82 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
 }
 
 
-#' @export
-# logLik.glmnet = function(object, weights, X, y) {
-#   n  = as.numeric(object$nobs)
-#   df = Matrix::colSums(object$beta!=0)
-#   # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
-# 
-#   # Compute y_pred for all columns of object$beta at once
-#   y_pred = X %*% object$beta
-# 
-#   # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-#   resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)
-# 
-#   rdf = n - df
-#   logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-#   attr(logL, "df") = df  # nr of nonzero coefficients
-#   attr(logL, "nobs") = n
-#   attr(logL, "p") = object$dim[[2]]
-#   return(logL)
-# }
+
+# UTILITY FUNCTIONS ####
+
+# logLik method for gaussian glmnet
+# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+logLik.glmnet = function(object, weights, X, y) {
+  n  = as.numeric(object$nobs)
+  df = Matrix::colSums(object$beta!=0)
+  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
+
+  # Compute y_pred for all columns of object$beta at once
+  y_pred = X %*% object$beta
+
+  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+  resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)
+
+  rdf = n - df
+  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") = df  # nr of nonzero coefficients
+  attr(logL, "nobs") = n
+  attr(logL, "p") = object$dim[[2]]
+  return(logL)
+}
+
+
+
+# log-likelihood method for gaussian L0Learn fit,
+# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+logLik.L0Learn = function(object, weights, X, y) {
+  n  = object$n
+  p = object$p
+  df = object$suppSize[[1]]
+  # df = nr of nonzero coefficients (incl intercept)
+  
+  # Compute y_pred for all columns of object$beta at once
+  y_pred = X %*% object$beta[[1]]
+  
+  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) -
+                                  y_pred) ^ 2)
+  
+  rdf = n - df
+  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") = df  # nr of nonzero coefficients
+  attr(logL, "nobs") = n
+  attr(logL, "p") = object$dim[[2]]
+  return(logL)
+}
+
+
+
+# log-likelihood method for gaussian ordinis fit, 
+# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+# but correctly taking into account weights
+# NOTE: ordinis is currently not taking into account the weights in
+# the calculation of the log likelihood as loss=residual SS do not take into 
+# account weights here https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_call.R
+# hence the redefinition of the log likelihood here
+logLik2 = function(object, weights, X, y) {  
+  n  = as.numeric(object$nobs)
+  p = object$nvars
+  df = Matrix::colSums(object$beta!=0)  
+  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
+  
+  # Compute y_pred for all columns of object$beta at once
+  y_pred =  cbind(1, X) %*% object$beta
+  
+  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
+  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - 
+                                  y_pred) ^ 2)
+  
+  rdf = n - df 
+  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") = df  # nr of nonzero coefficients
+  attr(logL, "nobs") = n
+  attr(logL, "p") = p
+  return(logL)
+}
+

@@ -228,7 +228,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   # cf https://stackoverflow.com/questions/66373113/linear-convolution-in-r-using-bandsparse-matrix-multiplication:
   X = do.call(cbind, lapply(x_beta, function (u) psf(x, u))) 
   X[X < thresh] = 0
-  if (sparse) X = as(X,"dgCMatrix")
+  if (sparse) X = as(Matrix(X, sparse=T),"generalMatrix")
   
   y_true = Matrix(X %*% beta_true, sparse=sparse)
   beta_true = Matrix(beta_true, sparse=sparse)

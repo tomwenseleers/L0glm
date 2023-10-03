@@ -43,6 +43,8 @@ benchmark_sparse_group_glm <- function(sim,
                    family = "mgaussian",
                    tune.path = "sequence", 
                    support.size = c(1:(p-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=0, 
                    warm.start = TRUE,
                    tune.type = IC)
@@ -53,6 +55,8 @@ benchmark_sparse_group_glm <- function(sim,
                    family = options$family,
                    tune.path = options$tune.path, 
                    support.size = c(1:(p-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = IC)
@@ -90,7 +94,7 @@ benchmark_sparse_group_glm <- function(sim,
                          standardize.response = FALSE,
                          intercept = FALSE, 
                          relax = FALSE,
-                         lower.limits = rep(0, ncol(X)+1)) # for nonnegativity constraints
+                         lower.limits = 0) # for nonnegativity constraints
       
       # Fit the nonnegative group LASSO glmnet model over a sequence of lambda values
       fit <- glmnet::glmnet(x = X, 
@@ -102,7 +106,7 @@ benchmark_sparse_group_glm <- function(sim,
                     standardize.response = FALSE,
                     intercept = FALSE, 
                     relax = FALSE, 
-                    lower.limits = rep(0, ncol(X)+1))
+                    lower.limits = rep(0, ncol(X)))
     } else {
       cvfit <- glmnet::cv.glmnet(x = X, 
                          y = y, 
@@ -114,7 +118,7 @@ benchmark_sparse_group_glm <- function(sim,
                          standardize.response = options$standardize.response,
                          intercept = options$intercept, 
                          relax = options$relax,
-                         lower.limits = rep(0, ncol(X)+1)) # for nonnegativity constraints
+                         lower.limits = 0) # for nonnegativity constraints
       
       # Fit the nonnegative group LASSO glmnet model over a sequence of lambda values
       fit <- glmnet::glmnet(x = X, 
@@ -126,7 +130,7 @@ benchmark_sparse_group_glm <- function(sim,
                     standardize.response = options$standardize.response,
                     intercept = options$intercept, 
                     relax = options$relax, 
-                    lower.limits = rep(0, ncol(X)+1))
+                    lower.limits = 0)
     }
     best_lambda <- cvfit$lambda.1se
     # get the coefficients for each task for the best lambda value
@@ -167,21 +171,3 @@ benchmark_sparse_group_glm <- function(sim,
 }
 
 
-# logLik.glmnet = function(object, weights, X, y) {
-#   n  = as.numeric(object$nobs)
-#   df = Matrix::colSums(object$beta!=0)
-#   # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
-# 
-#   # Compute y_pred for all columns of object$beta at once
-#   y_pred = X %*% object$beta
-# 
-#   # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-#   resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)
-# 
-#   rdf = n - df
-#   logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-#   attr(logL, "df") = df  # nr of nonzero coefficients
-#   attr(logL, "nobs") = n
-#   attr(logL, "p") = object$dim[[2]]
-#   return(logL)
-# }

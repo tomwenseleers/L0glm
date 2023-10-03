@@ -113,7 +113,7 @@ lmridge.osqp <- function(Xw,
                          lower, upper, start, 
                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
                          prior.mean = NULL){
-  Xw = as(Matrix(Xw, sparse=T), "dgCMatrix")
+  Xw = as(Matrix(Xw, sparse=T), "generalMatrix")
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
     ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean) 
@@ -127,7 +127,7 @@ lmridge.osqp <- function(Xw,
     Xty <- crossprod(Xwaug, ywaug)
   } else {
     if (issparse(Xw)){
-      XtX <- as(Matrix(crossprod(Xwaug), sparse=T),"dgCMatrix")
+      XtX <- as(Matrix(crossprod(Xwaug), sparse=T),"generalMatrix")
     } else {
       XtX <- crossprod(Xwaug)
     }
@@ -222,8 +222,8 @@ lmridge.eigen <- function(Xw, yw,
                           verbose = FALSE){ 
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
-  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Xw, "dgCMatrix") }
-  # Xw = as(Matrix(Xw, sparse=T), "dgCMatrix") # test - always coerce X to sparse matrix
+  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Matrix(Xw, sparse=T), "generalMatrix") }
+  # always coercing Xw to sparse matrix now
   
   if((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
     control.solver$rowaug <- FALSE
@@ -361,7 +361,7 @@ lmridge.eigen <- function(Xw, yw,
       }
       if(is.null(start)) start <- rep(1, ncol(Xw))
       if(issparse(Xwaug)){
-        coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "dgCMatrix"), 
+        coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)),
                                  x0 = as.matrix(start),
                                  tol = control.solver$tol,
@@ -435,7 +435,7 @@ lmridge.eigen <- function(Xw, yw,
         ywaug <- yw
       }
       if(issparse(Xwaug)){
-        coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"dgCMatrix"), 
+        coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"generalMatrix"), 
                                    b = as.matrix(crossprod(Xwaug, ywaug)), 
                                    pivot = control.solver$pivot,
                                    ordering = control.solver$ordering)$coefficients
@@ -519,7 +519,7 @@ row_augX <- function(Xw, lambdas = NULL){
     out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else
     { out <- Xw }
   
-  if ("dgeMatrix" %in% class(out)) { out = as(out, "dgCMatrix") } # now always returning sparse matrix, as that's most efficient when using row augmentation
+  if ("dgeMatrix" %in% class(out)) { out = as(Matrix(out, sparse=T), "generalMatrix") } # now always returning sparse matrix, as that's most efficient when using row augmentation
   
   return(out)
 }

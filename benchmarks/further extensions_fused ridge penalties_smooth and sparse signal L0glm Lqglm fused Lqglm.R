@@ -42,9 +42,9 @@ make_banded_X = function (n, K) {
   K=K/sum(K)
   require(Matrix)
   X = as(bandSparse(n,k = seq(-(length(K)-1),0,1), 
-                          diag = t(replicate(n, rev(K))), symm=FALSE), "dgCMatrix")
+                          diag = t(replicate(n, rev(K))), symm=FALSE), "generalMatrix")
   X <- apply(X, 2, function (col) col/sum(col))
-  X <- as(X, "dgCMatrix")
+  X <- as(Matrix(X, sparse=T), "generalMatrix")
   return(X)
 }
 
@@ -90,7 +90,7 @@ row_augX_fusedridge = function (X, lambda1, lambda2,
   # D2 = bandSparse(p, k = c(-1,0,1), diag = list(rep(1,p)*sqrt(lambda2), # 2nd order difference ridge penalty
   #                                                rep(-2,p)*sqrt(lambda2),
   #                                                rep(1,p)*sqrt(lambda2)), symm=FALSE)
-  X_augm_fusedridge12 = as(rbind(X, D1, D2), "dgCMatrix")
+  X_augm_fusedridge12 = as(Matrix(rbind(X, D1, D2), sparse=T), "generalMatrix")
   return(X_augm_fusedridge12) }
 # NOTE: for a temporal sequence 1:p
 # these would be
@@ -174,7 +174,7 @@ lambda = preset.lambda(IC = "aic", p=p, n=n) # options aic, bic, gic, ebic, mbic
 # by 4*(1/2^(2-q_Lq)), but adapt this in code in L0glm_1_fit_internal
 
 # regular L0glm fit without fused ridge penalties & L0 penalty ####
-system.time(L0glmfit <- L0glm.fit( X=as(X, "dgCMatrix"), y=y,
+system.time(L0glmfit <- L0glm.fit( X=as(Matrix(X, sparse=T), "generalMatrix"), y=y,
   # X = X_augm_fusedridge12, y = y_augm12,
   weights = 1/(y+0.1), # TODO: using family=poisson(identity) gives a bug due to NAs in the weights that are produced - fix this
   family = gaussian(identity), # family, 

@@ -112,7 +112,8 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     # penalized regression (cf. Nuel 2017 talk)
     
     # Start with regular LASSO fit
-    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, plot = F, internal = TRUE)
+    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, 
+                                       plot = F, internal = TRUE)
     
     LLs <- logLik(glmnet.fit, weights=W, X=X, y=y)
     edfs = attr(LLs, "df")
@@ -191,7 +192,8 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     
   } else if(method == 5) { # nonnegative L0glm after glmnet LASSO
     # Start with regular LASSO fit
-    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, plot = F, internal = TRUE)
+    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, 
+                                       plot = F, internal = TRUE)
     LLs <- logLik(glmnet.fit, weights = W, X = X, y = y)
     edfs = attr(LLs, "df")
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
@@ -243,7 +245,6 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     } 
     
   } else if(method == 6) { # abess
-    # note: currently no support for nonnegativity constraints
     # fast for small problems, but becomes slow for n=p=10000
     if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
     if(is.null(options)){
@@ -253,6 +254,8 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                    family = sim$family,
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda=0,
                    warm.start = TRUE,
                    tune.type = IC)
@@ -271,10 +274,11 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
            xlab="Estimated coefficients", ylab="True coefficients")
     }
     
-  } else if(method == 7) { # abess after LASSO
+  } else if(method == 7) { # nonnegative abess after nonnegative LASSO
     # very good solution, and fast for small problems, but
     # becomes very slow for large problems, e.g. n=p=10000
-    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, plot = F, internal = TRUE)
+    glmnet.fit <- benchmark_sparse_glm(sim = sim, method = 2, family = family, 
+                                       plot = F, internal = TRUE)
     LLs <- logLik(glmnet.fit, weights = W, X = X, y = y)
     edfs = attr(LLs, "df")
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
@@ -292,6 +296,8 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                    family = "gaussian", # poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
+                   fit.intercept = FALSE,
+                   beta.low = 0, # nonnegativity constraints
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
                    tune.type = IC)
@@ -378,32 +384,5 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
 }
 
 
-# utility function
-# log-likelihood method for gaussian ordinis fit, 
-# cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
-# but correctly taking into account weights
-# NOTE: ordinis is currently not taking into account the weights in
-# the calculation of the log likelihood as loss=residual SS do not take into 
-# account weights here https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_call.R
-# hence the redefinition of the log likelihood here
-logLik2 = function(object, weights, X, y) {  
-  n  = as.numeric(object$nobs)
-  p = object$nvars
-  df = Matrix::colSums(object$beta!=0)  
-  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
-  
-  # Compute y_pred for all columns of object$beta at once
-  y_pred =  cbind(1, X) %*% object$beta
-  
-  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - 
-                                  y_pred) ^ 2)
-  
-  rdf = n - df 
-  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-  attr(logL, "df") = df  # nr of nonzero coefficients
-  attr(logL, "nobs") = n
-  attr(logL, "p") = p
-  return(logL)
-}
+
 

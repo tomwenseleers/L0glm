@@ -264,6 +264,7 @@ L0glm.fit.internal = function(X,
               # residuals = as.vector(residuals.ret), # working residuals
               dispersion = dispersion, # estimated dispersion
               # pen.weights = as.vector(pen.weights), 
-              lambdas = as.vector(lambdas), z = as.vector(z.ret)))
+              lambdas = as.vector(lambdas), 
+              z = as.vector(z.ret)))
 }
 
