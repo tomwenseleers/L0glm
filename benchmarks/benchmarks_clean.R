@@ -768,28 +768,27 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic",
 
 system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = tune.chol.sc$best.lambda,
+                                    lambda = "ebic", # tune.chol.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
 # 0.01s
-cor1 <- cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.pois$beta_true)) # 0.9611737
+cor1 <- cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.pois$beta_true)) # 0.9649188
 cor1
-TP1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 40
+TP1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 42
 TP1
-FP1 <- sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 14
+FP1 <- sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 8
 FP1
-TN1 <- sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 436
+TN1 <- sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 442
 TN1
-FN1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 10
+FN1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 8
 FN1
 plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
      main="L0 glm identity link Poisson with lambda tuned to optimise gic",
      xlab="Estimated coefficients", ylab="True coefficients")
 
 # Nonnegative weighted lasso regression in glmnet ####
-library(glmnet)
 system.time(glmnet.sc.pois <- fit.GLM(sim = sim.pois, method = 2, family = poisson(identity), plot = TRUE)) # 0.158
 # 0.15s
 
@@ -845,17 +844,17 @@ sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0learn.after.lasso.sc.poi
 # Maybe raise an issue on github with the authors if this cannot be resolved?
 system.time(abess.sc.pois <- fit.GLM(sim = sim.pois, method = 6, 
                                      family = poisson(identity), 
-                                     plot = T, IC = "egic"))  
+                                     plot = T, IC = "gic"))  
 # 47 s
-cor(as.vector(abess.sc.pois), as.vector(sim.pois$beta_true)) # 0.0696171
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.sc.pois) != 0)) # TP = 27
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(abess.sc.pois) != 0)) # FP = 147
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(abess.sc.pois) == 0)) # TN = 303
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.sc.pois) == 0)) # FN = 23
+cor(as.vector(abess.sc.pois), as.vector(sim.pois$beta_true)) # 0.09423815
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.sc.pois) != 0)) # TP = 28
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(abess.sc.pois) != 0)) # FP = 159
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(abess.sc.pois) == 0)) # TN = 291
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.sc.pois) == 0)) # FN = 22
 
 
 # abess best subset fit after nonnegative LASSO ####
-system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 7, family = poisson(identity), plot = T, IC = "egic"))  
+system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 7, family = poisson(identity), plot = T, IC = "gic"))  
 # 0.11 s
 cor(as.vector(abess.after.lasso.sc.pois), as.vector(sim.pois$beta_true))  # 0.8849495
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.after.lasso.sc.pois) != 0)) # TP = 29
@@ -866,7 +865,7 @@ sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(abess.after.lasso.sc.pois)
 # nonnegative weighted MCP penalized regression in ordinis ####
 # TODO: check - coefficients now all come out as zero
 system.time(ordinis.mcp.sc.pois <- fit.GLM(sim = sim.pois, method = 8, 
-                                           family = poisson(identity), plot = T, IC = "egic"))  
+                                           family = poisson(identity), plot = T, IC = "gic"))  
 # 17s
 cor(as.vector(ordinis.mcp.sc.pois[-1]), as.vector(sim.pois$beta_true)) # NA
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(ordinis.mcp.sc.pois[-1]) != 0)) # TP = 0
@@ -876,7 +875,7 @@ sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(ordinis.mcp.sc.pois[-1]) =
 
 # nonnegative weighted SCAD penalized regression in ordinis ####
 # TODO: check - coefficients now all come out as zero
-system.time(ordinis.scad.sc.pois <- fit.GLM(sim = sim.pois, method = 9, family = poisson(identity), plot = T, IC = "egic"))  
+system.time(ordinis.scad.sc.pois <- fit.GLM(sim = sim.pois, method = 9, family = poisson(identity), plot = T, IC = "gic"))  
 # 15s
 cor(as.vector(ordinis.scad.sc.pois[-1]), as.vector(sim.pois$beta_true)) # NA
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(ordinis.scad.sc.pois[-1]) != 0)) # TP = 0
@@ -955,13 +954,13 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic",
 
 system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
-                                    lambda = tune.chol.sc$best.lambda,
+                                    lambda = "ebic", # tune.chol.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
 # 0.01s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.978129
+cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9782595
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 44
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 9
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 441
@@ -983,7 +982,8 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(glmnet.sc.pois[-1]) == 0))
 
 
 
-system.time(glmnet.al.sc.pois <- fit.GLM(sim = sim.gaus, method = 3, family = gaussian(identity), plot = T)) # 0.172 
+system.time(glmnet.al.sc.pois <- fit.GLM(sim = sim.gaus, method = 3, family = gaussian(identity), plot = T)) 
+# 0.3s 
 cor(as.vector(glmnet.al.sc.pois[-1]), as.vector(sim.gaus$beta_true)) # 0.9626742
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(glmnet.al.sc.pois[-1]) != 0)) # TP = 37
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(glmnet.al.sc.pois[-1]) != 0)) # FP = 12
@@ -1016,7 +1016,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0learn.after.lasso.sc.poi
 # NOTE: here nonnegativity constraints are working OK
 system.time(abess.sc.pois <- fit.GLM(sim = sim.gaus, method = 6, 
                                      family = gaussian(identity), 
-                                     plot = T, IC = "egic"))  
+                                     plot = T, IC = "gic"))  
 # 1.01s 
 cor(as.vector(abess.sc.pois), as.vector(sim.gaus$beta_true)) # 0.8707492
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.sc.pois) != 0)) # TP = 28
@@ -1027,7 +1027,8 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.sc.pois) == 0)) # FN
 
 # abess best subset fit after nonnegative LASSO ####
 system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.gaus, method = 7, 
-                                                 family = gaussian(identity), plot = T, IC = "egic"))  
+                                                 family = gaussian(identity), 
+                                                 plot = T, IC = "gic"))  
 # 0.15s
 cor(as.vector(abess.after.lasso.sc.pois), as.vector(sim.gaus$beta_true))  # 0.8814479
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.after.lasso.sc.pois) != 0)) # TP = 29
@@ -1039,7 +1040,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.after.lasso.sc.pois)
 # nonnegative weighted MCP penalized regression in ordinis ####
 system.time(ordinis.mcp.sc.pois <- fit.GLM(sim = sim.gaus, method = 8, 
                                            family = gaussian(identity), 
-                                           plot = T, IC = "egic"))  
+                                           plot = T, IC = "gic"))  
 # 0.24s
 cor(as.vector(ordinis.mcp.sc.pois[-1]), as.vector(sim.gaus$beta_true)) # 0.7612053
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(ordinis.mcp.sc.pois[-1]) != 0)) # TP = 24
@@ -1049,7 +1050,8 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(ordinis.mcp.sc.pois[-1]) =
 
 # nonnegative weighted SCAD penalized regression in ordinis ####
 system.time(ordinis.scad.sc.pois <- fit.GLM(sim = sim.gaus, method = 9, 
-                                            family = gaussian(identity), plot = T, IC = "egic"))  
+                                            family = gaussian(identity), 
+                                            plot = T, IC = "gic"))  
 # 0.27s 
 cor(as.vector(ordinis.scad.sc.pois[-1]), as.vector(sim.gaus$beta_true)) # 0.9205098
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(ordinis.scad.sc.pois[-1]) != 0)) # TP = 34
@@ -1128,9 +1130,9 @@ system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "g
 
 system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
                                          family = poisson(identity), 
-                                         lambda = 1,
+                                         lambda = "ebic",
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+                                         relaxed = TRUE,
                                          parallelize = TRUE,
                                          grouped = TRUE,
                                          solver = "eigen",
@@ -1152,11 +1154,11 @@ image(x=1:nrow(sim.pois.mc$y), y=1:ncol(sim.pois.mc$y), z=as.matrix(L0glm.chol.p
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(L0glm.chol.pois$coefficients)!=0)], col="cyan")
 
-cor(as.vector(as.vector(L0glm.chol.pois$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9994756
-sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol.pois$coefficients)!=0) # TP = 50
-sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol.pois$coefficients)!=0) # FP = 3
-sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol.pois$coefficients)==0) # TN = 447
-sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol.pois$coefficients)==0) # FN = 0
+cor(as.vector(as.vector(L0glm.chol.pois$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9995638
+sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol.pois$coefficients)!=0) # TP = 49
+sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol.pois$coefficients)!=0) # FP = 1
+sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol.pois$coefficients)==0) # TN = 449
+sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol.pois$coefficients)==0) # FN = 1
 
 
 # best subset multitask learning using family="mgaussian" using abess ####
@@ -1195,7 +1197,7 @@ system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "g
 # XXs
 system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
                                     family = gaussian(identity), 
-                                    lambda = "gic", 
+                                    lambda = "ebic", 
                                     nonnegative = TRUE,
                                     relaxed = TRUE,
                                     parallelize = TRUE,
