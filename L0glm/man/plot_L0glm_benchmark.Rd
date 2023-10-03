@@ -11,13 +11,15 @@ plot_L0glm_benchmark(x, y, coefs, fitted, inference = NULL, a.true, ...)
 
 \item{y}{a vector of length \code{n} with signal.}
 
+\item{coefs}{XXX}
+
+\item{fitted}{XXX}
+
 \item{inference}{the output of \code{L0glm.inference}}
 
 \item{a.true}{the true coefficients}
 
 \item{...}{further arguments passed to \code{plot}}
-
-\item{fit}{an \code{L0glm} object}
 }
 \value{
 The function returns \code{NULL}, but plots \code{y} with the expected

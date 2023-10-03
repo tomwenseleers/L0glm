@@ -2,7 +2,7 @@
 #### GENERIC FUNCTIONS ####
 ###########################
 
-# TODO include generic functions
+# TODO define various S3 methods
 
 # print.L0glm <- function(x){
 #  # TODO
@@ -11,7 +11,6 @@
 # summary.L0glm <- function(x){
 #   # TODO
 # }
-#
 # predict.L0glm <- function(x, newdata){
 #   if (missing(newdata)) return(x$fitted.values)
 #   # TODO if (x$intercept) newdata <- cbind(1, newdata) # TODO make sure this still works
@@ -31,9 +30,34 @@
 # }
 
 
-###############################
-#### HIDDEN CORE FUNCTIONS ####
-###############################
+########################################
+#### NON-EXPORTED UTILITY FUNCTIONS ####
+########################################
+
+# clip vector of coefficients between vectors with bounds lower and upper
+# (with reflect_lower = TRUE coefficients will be reflected off the
+# lower & upper bounds to stay within the allowed range,
+# note I am currently not doing multiple reflections, which
+# might be needed if coefficients are extremely far outside of
+# the allowed boundaries)
+clip = function (coefs, lower, upper, reflect_lower = FALSE, reflect_upper = FALSE) {
+  reflect = reflect_lower|reflect_upper
+  if (!reflect) { return(pmax(lower, pmin(coefs, upper))) } else { 
+    
+    if (reflect_lower) { 
+  # Reflect off the lower boundary
+  coefs <- ifelse(coefs < lower, lower + (lower - coefs), coefs) }
+    
+    if (reflect_upper) {
+  # Reflect off the upper boundary
+  coefs <- ifelse(coefs > upper, upper - (coefs - upper), coefs) }
+    
+  coefs <- pmax(lower, pmin(coefs, upper))
+  
+  return(coefs)
+  }
+}
+  
 
 
 # compute.df ####
@@ -208,8 +232,23 @@ compute.ss <- function(mu, y, w, fam){
 # REF
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 #   de Rooi & Eilers 2011, Osborne et al. 2000 & Frommlet & Nuel 2016 (eqn 5)
-AR.weights <- function(beta, delta = 0, gamma = 2){
-  penweights = 1/(abs(beta)^gamma + delta^gamma)
+AR.weights <- function(beta, 
+                       gamma = 2, 
+                       delta = 0,  # left out, since coefs pre-thresholded
+                       q = 0){  # norm of the penalty to be approximated - TODO should I then scale lambda used by ratio of the L0 to Lq norm (calculated at L0 solution) to get lambda always on L0 penalty-like scale?
+  # note that q should lie between 0 and 2 - for 2 the penalty would become non-adaptive & our algo would reduce to plain ridge regression
+  # I think the (1/4) factor of Frommlet & Nuel in the adaptive ridge penalty
+  # should be (1/2^(2-q)) as this factor should be 1 if we use ridge regression (q=2) and should be 1/4 when q=0
+
+  # penweights = (abs(beta)^gamma+delta^gamma)^((q - 2)/gamma)
+  penweights = 1/(abs(beta)^gamma) # for q=0
+  
+  # NOTE since we pre-threshold beta<thresh to 0 and take those vars out of the model
+  # we could also leave out delta, except if we use it to get fused penalties
+  # so I left it in for now
+  # TODO maybe also allow other q, e.g. 0.5 or 1? Though for sparse problems L0 solution is always best
+  # not for non-sparse problems though, e.g. problems where true solution is smooth
+    
   # renormalize so that penalty weights sum to length(penweights)
   # penweights = length(penweights)*penweights/sum(penweights) 
   return(penweights)
@@ -309,94 +348,31 @@ block.fit <- function(y, X, coefs = rep(0, ncol(X)), nonnegative = FALSE,
 }
 
 
-# L0glm.bfun ####
-# Wrapper function around L0glm.fit to be used with boot for bootstrapping
-# see L0glm.fit documentatio for more details
-L0glm.bfun <- function(data, indices, X, family, lambda, start, wts, nonnegative,
-                       control.l0, control.iwls, control.fit, post.filter.fn){
-  beta <- L0glm.fit(y = data[indices], X = X[indices,], weights = wts[indices],
-                    family = family, lambda = lambda, start = start, nonnegative = nonnegative,
-                    control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
-                    post.filter.fn = post.filter.fn)$coefficients
-  return(beta)
-}
+# # L0glm.bfun ####
+# # Wrapper function around L0glm.fit to be used with boot for bootstrapping
+# # see L0glm.fit documentatio for more details
+# L0glm.bfun <- function(data, indices, X, family, lambda, start, wts, nonnegative,
+#                        control.l0, control.iwls, control.fit, post.filter.fn){
+#   beta <- L0glm.fit(y = data[indices], X = X[indices,], weights = wts[indices],
+#                     family = family, lambda = lambda, start = start, nonnegative = nonnegative,
+#                     control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
+#                     post.filter.fn = post.filter.fn)$coefficients
+#   return(beta)
+# }
 
 # preset.lambda ####
-# Function to compute the best lambda given the IC. For some families, the
-# dispersion is estimated using glmnet (+lambda tuning) which is faster than
-# tuning lambda with L0glm.
-# TODO check estimateSigma in selectiveInference package which also estimates the variance using glmnet
-preset.lambda <- function(IC="gic", y=NULL, X=NULL, 
-                          weights=rep(1, nrow(X)),  # TODO also add offset here
-                          family=gaussian(identity),
-                          start=NULL,
-                          dispersion=NULL) {
-  require(glmnet)
-  # AR is an approximation of L0 penalty so the given lambda tilde used in AR and lambda from
-  # the L0 penalty objective do not exactly match (see Frommlet et al, 2016).
-  # Frommlet et al. (2016) showed that if variables are orthogonal, lambda tilde = lambda/4.
-  # We will here use this factor of 4, assuming that approximately holds also
-  # for non-orthogonal variables. 
-  lambda.tilde <- 1/4 # lambda tilde to use in the adaptive ridge iterations to approximate a lambda L0 penalty
-  # Lambda is dependent on the dispersion of the model
-  # The issue is that the dispersion is not known beforehand, so we use glmnet
-  # which is very fast to optimize but has no L0 penalty and estimate the
-  # dispersion from the fit
-  
-  N <- n <- nrow(X)
-  p <- ncol(X)
-  
-  if (family$family %in% c("poisson", "binomial")) { dispersion <- 1 } # families with constant dispersion 
-  
-  if (is.null(dispersion)) {
-  y <- as.matrix(y)
-  sel_task <- which.max(colMeans(abs(y)))
-  y <- y[, sel_task, drop=F] # NOTE: just using single channel with max avg absolute value
-  weights <- as.matrix(rowMeans(as.matrix(weights)))
-  # Perform an initial fit of the data
-  if (!is.null(start)){
-      eta <- X %*% start
-      mu <- family$linkinv(eta)
-    } else {
-      # Initial estimate
-      nobs <- n # needed for evaluating the initialization
-      etastart <- mustart <- NULL # needed for evaluating the initialization
-      eval(family$initialize) # generates mustart
-      n <- N
-      mu <- mustart
-      eta <- family$linkfun(mustart)
-    }
-    # Transform data on the link scale
-    if(family$link == "identity"){ # simplified formula and faster than formula in else statement
-      W <- weights/family$variance(mu)
-      dim(W) <- dim(eta)
-      z <- y
-    } else {
-      mu.prime <- family$mu.eta(eta)
-      z <- as.vector(eta + (y - mu) / mu.prime) # TODO Remove offset here if needed.
-      W <- weights * mu.prime^2 / family$variance(mu)
-      dim(W) <- dim(eta)
-    }
-    suppressWarnings(glmnet.cv.out <- glmnet::cv.glmnet(x = X, 
-                                                y = z, 
-                                                weights = W,  
-                               lambda = 10^seq(-10, 10, length.out = 100),
-                               family = "gaussian"))
-    res <- z - suppressWarnings(predict(glmnet.cv.out, newx = X, s = glmnet.cv.out$lambda.min))
-    dispersion <- sum(weights * res^2)/n # To avoid overhead of computing rdf or having negative variance, we just use n instead of n-p
-}
-      
-  lambda.tilde <- lambda.tilde * dispersion # estimated lambda factor
-  lambda.tilde <- switch(IC,
-                   gic = log(p)*log(log(n)) * lambda.tilde,
-                   aic = 2 * lambda.tilde,
-                   bic = log(n) * lambda.tilde,
-                   ebic = (log(n) + 2*(1-log(n)/(2*log(p)))*log(p)) * lambda.tilde,
-                   mbic = log(n*(p^2)/16) * lambda.tilde,
-                   # bicq = log(n) - 2*log(0.25/(1-0.25)) * lambda.tilde # TODO q = 0.25 should be a constant to optimize...
-                   # hq = 2*log(log(n)) * lambda.tilde, # Hannan and Quinnn information criterion,
+# Function to compute the best lambda implied by a particular IC given p=ncol(X) and n=nrow(X). 
+preset.lambda <- function(IC="gic", p, n) {
+  lambda <- switch(IC,
+                   gic = log(p)*log(log(n)),
+                   aic = 2,
+                   bic = log(n),
+                   ebic = (log(n) + 2*(1-log(n)/(2*log(p)))*log(p)),
+                   mbic = log(n*(p^2)/16),
+                   # bicq = log(n) - 2*log(0.25/(1-0.25)) # TODO q = 0.25 should be a constant to optimize...
+                   # hq = 2*log(log(n)), # Hannan and Quinnn information criterion,
                    stop("invalid information criterion for initializing lambda. It must be one of 'gic', 'aic', 'bic', 'ebic', 'mbic'."))
-  return(lambda.tilde)
+  return(lambda)
 }
 
 
@@ -419,8 +395,8 @@ preset.lambda <- function(IC="gic", y=NULL, X=NULL,
 #' a vector of length \code{n} with time labels.
 #' @param y
 #' a vector of length \code{n} with signal.
-#' @param fit
-#' an \code{L0glm} object
+#' @param coefs XXX
+#' @param fitted XXX
 #' @param inference
 #' the output of \code{L0glm.inference}
 #' @param a.true
@@ -475,9 +451,9 @@ plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, 
 }
 
 
-# print.progress ####
+# print_progress ####
 # Prints progress of a loop to the console
-print.progress <- function(current, total, before = "Progress: ", after = "", ...){
+print_progress <- function(current, total, before = "Progress: ", after = "", ...){
   if(length(current)!=1 && length(total) != 1) stop("Arguments \'current\' and \'total\' must have length 1.")
   perc <- format(current/total*100, digits = 1,...)
   cat(paste0("\r", before, perc, " %", after, "   "))

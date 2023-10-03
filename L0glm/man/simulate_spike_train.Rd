@@ -2,22 +2,22 @@
 % Please edit documentation in R/simulate.R
 \name{simulate_spike_train}
 \alias{simulate_spike_train}
-\title{Simulate example data (blurred spike train)}
+\title{Simulate a single or multichannel spike train convoluted by a given peak shape function (PSF)}
 \usage{
 simulate_spike_train(
   n = 100,
   p = n,
   k = 10,
-  mean_beta = 1000,
+  mean_beta = 10000,
   sd_logbeta = 1,
   family = c("poisson", "gaussian"),
-  sd_noise = 1,
+  sd_noise = 10,
   psf = function(x, u, w = 2.5) exp(((x - u)^2)/(-2 * (w^2))),
   thresh = 1e-05,
   sparse = TRUE,
   multichannel = FALSE,
   seed = 123,
-  Plot = TRUE
+  Plot = if (p <= 20000) {     TRUE } else {     FALSE }
 )
 }
 \arguments{
@@ -49,13 +49,32 @@ a function with as first two expected arguments \code{x} (time) and
 \code{u} (the mode of the peak). Defaults to a Gaussian psf
 \code{function(x, u, w=2.5) exp(((x-u)^2)/(-2*(w^2)))}.}
 
+\item{thresh}{XXX.}
+
+\item{sparse}{XXX.}
+
+\item{multichannel}{XXX.}
+
 \item{seed}{The seed used to sample the nonzero coefficients and to generate
 the noisy response signal.}
 
 \item{Plot}{Should the generated data be plotted?}
 }
 \value{
-
+Returns a list with the following elements:
+\item{\code{X}}{a \code{n} by \code{p} covariate matrix. The matrix is a banded
+matrix with time-shifted versions of the specified peak shape function
+(also known as the Point Spread Function or PSF).}
+\item{\code{beta_true}}{a vector of length \code{p} containing the true
+coefficients. This is the spike train used to generate the data, so that
+\code{y = beta_true \%*\% X + e}.}
+\item{\code{y}}{a vector of length \code{n} containing the noisy response signal
+given by \code{y = beta_true \%*\% X + e}.}
+\item{\code{y_true}}{a vector of length \code{n} containing the response signal
+given by \code{y_true = beta_true \%*\% X}.}
+\item{\code{x}}{a vector of length \code{n} containing the time points.}
+\item{\code{x_beta}}{a vector of length \code{p} containing the locations of the
+simulated spikes. Equal to \code{x} when \code{p=n}.}
 }
 \description{
 This function generates synthetic data consisting of a time series made of a

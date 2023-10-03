@@ -1,14 +1,12 @@
-# L0glm version 0.1.0.9000
+# L0glm version 0.2.0
 
-L0glm is an R package to fit L0 penalized GLMs, aka GLMs with best subset selection, subjection to optional box or nonnegativity constraints on the coefficients. Additionally, the package includes functionality to perform inference on the fitted coefficients.
+L0glm is an R package to fit L0 penalized GLMs, aka GLMs with best subset selection, subjection to optional box or nonnegativity constraints on the coefficients.
 
 ## Features
 
 -   Fit GLM using a wide variety of error structures and link functions.
 -   Inlcude L0 penalty as a proxy for best subset selection, allowing for higher number of predictors than observations
--   By design, ridge or adaptive ridge penalties are also possible
--   Allow for nonnegativity constraints on the coefficients
--   Perform inference on the coefficients using the Fischer information matrix (ridge, adaptive ridge, and no penalty) or using non-parametric bootstrapping (L0 penalty and nonnegativity constraint)
+-   Allow for nonnegativity or box constraints on the coefficients.
 
 ## Installation
 
@@ -114,10 +112,12 @@ microbenchmark(
 )
 ```
 
-    ## Unit: milliseconds
-    ##                  expr       min        lq      mean    median        uq       max neval cld
-    ##                   glm  2.096008  2.132154  2.335677  2.162945  2.492719  3.393685    25  a 
-    ##  L0glm (glm settings) 13.157501 13.307886 15.652380 15.791233 16.464169 26.750091    25   b
+```         
+## Unit: milliseconds
+##                  expr       min        lq      mean    median        uq       max neval cld
+##                   glm  2.096008  2.132154  2.335677  2.162945  2.492719  3.393685    25  a 
+##  L0glm (glm settings) 13.157501 13.307886 15.652380 15.791233 16.464169 26.750091    25   b
+```
 
 Let's compare the coefficient estimates:
 
@@ -127,7 +127,9 @@ df <- data.frame(coef.glm = coef(glm_fit),
 abs(df$coef.glm - df$coef.L0glm)
 ```
 
-    ## [1] 1.776357e-15 7.216450e-16 0.000000e+00 2.018962e-16 7.049779e-16 
+```         
+## [1] 1.776357e-15 7.216450e-16 0.000000e+00 2.018962e-16 7.049779e-16 
+```
 
 ![](L0glm/Paper/glm_vs_L0glm.png)
 
@@ -182,10 +184,12 @@ microbenchmark(
 )
 ```
 
-    ## Unit: milliseconds
-    ##                    expr     min       lq     mean   median       uq      max neval cld
-    ##                  glmnet 1.60023 1.614064 1.658403 1.627898 1.646640 2.371787    25  a 
-    ##  L0glm (ridge settings) 3.86358 3.924716 4.129006 3.943011 3.981835 5.891759    25   b
+```         
+## Unit: milliseconds
+##                    expr     min       lq     mean   median       uq      max neval cld
+##                  glmnet 1.60023 1.614064 1.658403 1.627898 1.646640 2.371787    25  a 
+##  L0glm (ridge settings) 3.86358 3.924716 4.129006 3.943011 3.981835 5.891759    25   b
+```
 
 Note that ridge regression requires a regularization factor `lambda`. The `lambda` value leading the lowest 3-fold CV error was chosen separately for `L0glm` and `glmnet`. Note also that `glmnet` was fit using a decreasing sequence of `lambda`. This is, according to the authors, the more efficient than fitting a single `lambda` since `glmnet` makes use of warm starts between subsequent `lambda` values when computing the regularization path.
 
@@ -198,8 +202,10 @@ df <- data.frame(coef.glmnet = coef(glmnet_fit, s = 1)[-1], # first element is a
 abs(df$coef.glmnet - df$coef.L0glm)
 ```
 
-    ##  [1] 0.01445223 0.14228227 0.09717940 0.12926206 0.16251310 0.00505276 0.10352445 0.21663310 0.01424080 0.39396569
-    ## [11] 0.18586970 0.45913658 0.18662384 0.14485096 0.11259742 0.20647775 0.41230362 0.12064256 0.22498617 0.11762545
+```         
+##  [1] 0.01445223 0.14228227 0.09717940 0.12926206 0.16251310 0.00505276 0.10352445 0.21663310 0.01424080 0.39396569
+## [11] 0.18586970 0.45913658 0.18662384 0.14485096 0.11259742 0.20647775 0.41230362 0.12064256 0.22498617 0.11762545
+```
 
 ![](L0glm/Paper/glmnet_vs_L0glm.png)
 
@@ -269,12 +275,14 @@ microbenchmark(
 )
 ```
 
-    Unit: milliseconds
-           expr         min          lq        mean      median         uq         max neval cld
-        L0Learn    1.519014    1.618527    1.808269    1.672522    1.88181    2.349474     5 a  
-          L0ara   30.923810   35.449169   43.382672   39.948200   48.55491   62.037274     5 a  
-     bestsubset 5403.912756 5448.323395 5581.924445 5530.706712 5641.51577 5885.163595     5   c
-          L0glm  550.024610  550.614545  563.418621  554.177803  567.09924  595.176907     5  b 
+```         
+Unit: milliseconds
+       expr         min          lq        mean      median         uq         max neval cld
+    L0Learn    1.519014    1.618527    1.808269    1.672522    1.88181    2.349474     5 a  
+      L0ara   30.923810   35.449169   43.382672   39.948200   48.55491   62.037274     5 a  
+ bestsubset 5403.912756 5448.323395 5581.924445 5530.706712 5641.51577 5885.163595     5   c
+      L0glm  550.024610  550.614545  563.418621  554.177803  567.09924  595.176907     5  b 
+```
 
 Note that `bestsubset` is optimized using the true number of nonzero coefficient because tuning it is very slow. Furthermore, the algorithm checks the solution using the Gurobi's mixed integer program solver which is very slow for k = 10, so time limit was set to `time.limit = 5` (5 sec) which dramatically overestimates the time performance of `bestsubset`.
 
@@ -292,7 +300,9 @@ df <- data.frame(coef.L0Learn = as.numeric(L0Learn_fit$beta[[1]]),
 all(df[(k+1):p,] == 0)
 ```
 
-    [1] TRUE
+```         
+[1] TRUE
+```
 
 No false positives are reported for any algorithm!
 
@@ -300,7 +310,9 @@ No false positives are reported for any algorithm!
 abs(df$coef.L0Learn - df$coef.bestsubset)[1:k]
 ```
 
-    [1] 4.895098e-05 5.048775e-05 6.223206e-05 5.445665e-05 2.923354e-04 6.432352e-04 8.146334e-07 1.039894e-04 8.360381e-05 6.299256e-05
+```         
+[1] 4.895098e-05 5.048775e-05 6.223206e-05 5.445665e-05 2.923354e-04 6.432352e-04 8.146334e-07 1.039894e-04 8.360381e-05 6.299256e-05
+```
 
 Differences between the solution computed by `L0Learn` and `bestsubset` are little.
 
@@ -308,7 +320,9 @@ Differences between the solution computed by `L0Learn` and `bestsubset` are litt
 abs(df$coef.L0glm - df$coef.L0ara)[1:k]
 ```
 
-     [1] 1.158675e-08 1.239927e-08 3.023772e-09 1.710095e-08 9.935052e-09 1.024232e-08 1.100019e-08 6.542200e-10 9.247086e-09 1.024373e-09
+```         
+ [1] 1.158675e-08 1.239927e-08 3.023772e-09 1.710095e-08 9.935052e-09 1.024232e-08 1.100019e-08 6.542200e-10 9.247086e-09 1.024373e-09
+```
 
 Solution computed with `L0glm` and `L0ara` are almost identical (up to 2E-8).
 
@@ -316,7 +330,9 @@ Solution computed with `L0glm` and `L0ara` are almost identical (up to 2E-8).
 abs(df$coef.L0glm - df$coef.L0Learn)[1:k]
 ```
 
-     [1] 0.017378233 0.011048311 0.012139064 0.010338355 0.008954877 0.004407962 0.012004346 0.014808499 0.011377584 0.005616895
+```         
+ [1] 0.017378233 0.011048311 0.012139064 0.010338355 0.008954877 0.004407962 0.012004346 0.014808499 0.011377584 0.005616895
+```
 
 There is a noticeable difference between `L0glm` and `L0Learn`. However, the coefficients seem to be scaled with respect to one another. This is easier to see in this plot:
 
@@ -382,12 +398,14 @@ microbenchmark(
 )
 ```
 
-    Unit: milliseconds
-      expr        min         lq       mean     median         uq        max neval cld
-     lasso   4.149622   4.203617   7.075197   4.723492   4.825236  17.474019     5  a 
-       MCP   4.051449   4.068852   4.646738   4.329904   4.444589   6.338894     5  a 
-      SCAD   4.166134   4.204957   4.286173   4.238871   4.275463   4.545440     5  a 
-        L0 502.345681 520.728253 545.483454 538.695371 568.632535 597.015431     5   b
+```         
+Unit: milliseconds
+  expr        min         lq       mean     median         uq        max neval cld
+ lasso   4.149622   4.203617   7.075197   4.723492   4.825236  17.474019     5  a 
+   MCP   4.051449   4.068852   4.646738   4.329904   4.444589   6.338894     5  a 
+  SCAD   4.166134   4.204957   4.286173   4.238871   4.275463   4.545440     5  a 
+    L0 502.345681 520.728253 545.483454 538.695371 568.632535 597.015431     5   b
+```
 
 Although all penalties encourage sparsity in the fitted coefficients, let's check the sensitivity and specificity of the algorithms:
 
@@ -409,8 +427,10 @@ TN <- colSums(df[(k+1):p,] == 0)
 TP/(TP + FN)
 ```
 
-    coef.lasso   coef.mcp  coef.scad    coef.L0  coef.true 
-             1          1          1          1          1 
+```         
+coef.lasso   coef.mcp  coef.scad    coef.L0  coef.true 
+         1          1          1          1          1 
+```
 
 All penalties allow for non-zero coefficients to be be estimated as such.
 
@@ -420,8 +440,10 @@ All penalties allow for non-zero coefficients to be be estimated as such.
 TN/(TN + FP)
 ```
 
-    coef.lasso   coef.mcp  coef.scad    coef.L0  coef.true 
-     0.9428571  0.9897959  0.9693878  1.0000000  1.0000000 
+```         
+coef.lasso   coef.mcp  coef.scad    coef.L0  coef.true 
+ 0.9428571  0.9897959  0.9693878  1.0000000  1.0000000 
+```
 
 Only the L0 penalty is able to remove variables that are zero in the true model.
 

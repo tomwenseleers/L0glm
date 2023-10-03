@@ -1,20 +1,31 @@
 Package: L0glm
 Type: Package
-Title: Package for Fitting L0-norm Penalized Generalized Linear Models (aka doing best subset selection) Subject to Optional Box Constraints and Perform High-Dimensional Inference for Large-scale Problems
-Version: 0.1.0
-Date: 2019-05-15
+Title: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
+Version: 0.2.0
+Date: 2023-08-05
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
     	     email = "tom.wenseleers@kuleuven.be"),
+    	     person("Laura", "Lanzas", role = c("aut"),
+  	       email = "lauralanzasiolsina@gmail.com"),
   	       person("Christophe", "Vanderaa", role = c("aut"),
   	       email = "christophe.vanderaa@kuleuven.be"))
-Depends: R (>= 3.0)
-Imports: boot (>= 1.3),
-          Matrix (>= 1.2),
-          nnls (>= 1.4),
-          Rcpp (>= 1.0.5)
+Depends: R (>= 3.5.0)
+Imports: Matrix,
+         Rcpp,
+         abess,
+         L0Learn,
+         glmnet,
+         nnls,
+         ordinis,
+         osqp,
+         qlcMatrix,
+         methods,
+         scales,
+         statmod
+SystemRequirements: C++11
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
-Description: Package for fitting L0-norm penalized generalized linear models (aka doing best subset selection) subject to optional nonnegativity or box constraints on the coefficients, and perform high-dimensional inference for large-scale problems.
+Description: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true

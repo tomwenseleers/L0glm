@@ -1,0 +1,215 @@
+---
+  title: ""
+author: "Shi Huang / Frank E Harrell<br><small>Department of Biostatistics<br>Vanderbilt University School of Medicine</small>"
+date: "<small>`r Sys.Date()`</small>"
+output:
+  html_document:
+  toc: yes
+toc_depth: 3
+number_sections: true
+toc_float: 
+  collapsed: false
+code_folding: hide
+theme: cerulean
+description: ""
+---
+  
+  ```{r, echo=T, results='asis'}
+
+require(glmnet); require(ggplot2)
+require(Hmisc)
+devtools::load_all(".")
+# devtools::install_github("jaredhuling/ordinis")
+require(ordinis); require(ncvreg)
+
+# 2019 05
+# To show the volatility of selected features using Monte Carlo simulation.  A setup could be like this:
+
+# N=500, p=500 candidate features.  The 500 features are Bernoulli with prob.=1/10 and the regression coefficients are standard normal (500 random values, only create one and keep using for all simulations.  Likewise use the same binary predictors over all simulations).  Compute X*beta and rescale it to have a range from -3 to 3.  Generate binary Y from a logistic model with this rescaled vector of linear predictors.   Repeat  500 times.  Make a scatterplot with 500 points showing x=rescaled beta, y=proportion of the 500 simulations in which that variable was selected by lasso.
+```
+
+
+
+```{r, echo=T, results='asis'}
+
+NOBS <- 5000   # N=500
+NP <- 500     #500 candidate features
+pr <- 0.1     #500 features are Bernoulli with prob.=1/10
+simu <-20   #500 simulations.
+
+dist <- 'laplace'
+# Shi - suggest changing file name to not have laplace in the name but use
+# same script for two purposes
+
+set.seed(1234)
+
+# Creat features matrix
+X <- matrix(rbinom(NOBS*NP, 1, prob=pr), ncol=NP)
+
+# betas (before rescaling) sampled from the kind of distribution that is what the lasso is optimized for: 
+# the Laplace or double exponential exp(-abs(u)) density. 
+
+rlaplace <-    # from OOmisc package
+  function(n,beta){
+    if(beta<=0) stop("Beta should be positive") 
+    u=runif(n)
+    print(u)
+    ifelse(u<0.5,beta*log(2*u),-beta*log(2*(1-u)))
+  }
+
+Coef <- switch(dist,
+               normal  = rnorm(NP),
+               laplace = rlaplace(NP, 1) )  # location 0 dispersion 1
+
+summary(Coef)
+
+L.val <- X %*% Coef     # Creat Linear Predictor   
+
+
+summary(L.val)
+
+#rescale L.val to have quantile range from -3 to 3: 
+# Change range of L.val from -3 to 3 to -5 to 5.
+# find a and b such that a*X*beta + b has desired range
+
+r <- quantile(L.val, c(.025, .975))
+# a <- 6 / diff(r)
+# b <- 3 - a * r[2]
+
+
+# a <- 10 / diff(r)
+# b <- 5 - a * r[2]
+
+# rescale to -4 to 4
+
+a <- 8 / diff(r)
+b <- 4 - a * r[2]
+
+
+a;b
+
+L.val.scaled <- a * L.val + b
+
+
+summary(L.val.scaled)
+
+# Re-scale Coef accordingly
+
+# Coef <- a * Coef + b
+
+#The linear predictor needed to have its intercept adjusted 
+#so the overall mean is near zero. But the coefficients are adjusted 
+#for the #intercept and don't need that addition.
+
+Coef <- a * Coef 
+
+summary(Coef)
+
+# Run simu simulations, each first creat Y.val, then conduct cv.glmet.
+# v matrix is 0/1 depending on the variable selected for the run
+# corresponding to the row of v
+
+
+# For each iteration store the C-index computed from the theoretical logit and the observed Y:
+
+
+vs <- matrix(0, nrow=simu, ncol=NP)
+ys <- matrix(0, nrow=simu, ncol=1)
+cs <- matrix(0, nrow=simu, ncol=1)
+# simu replications
+for(i in 1:simu){ 
+  
+  if (i%%20==0) print(i)
+  
+  ## Shi: set.seed(i)  don't reset again
+  
+  Y.val <- ifelse(runif(500)<=plogis(L.val.scaled), 1, 0)
+  
+  ys[i, ] <-sum(Y.val)
+  
+  cs[i, ] <-somers2(L.val.scaled, Y.val)['C']
+  
+  ## Shi see if cv.glmnet accepts a 0/1 variable instead of factor
+  
+  y1 <-factor(Y.val, levels = c(0,1), labels=c("no", "yes"))  # predicting binary Y.
+  
+  ## Shi make sure the coefficients are estimated from the whole sample, not from cross-validation - YES NOW THAT WAS NOT CORRECT - COEFS WERE NOT ESTIMATED FROM WHOLE DATASET
+  
+  # cv.glmmod <- cv.glmnet(X, y1, alpha=1, family=c("binomial"),type.measure="deviance",intercept=T)
+  # # deviance is the most sensitive method so let's go with that
+  #   # plot(cv.glmmod)
+  # # FIXED: estimate coefficients from whole dataset & only use CV to determine optimal lambda
+  # fit.glmmod <- glmnet(X, y1, alpha=1, 
+  #                      family=c("binomial"),
+  #                      intercept=T)
+  # reg.coef = predict(fit.glmmod, type = "coefficients", s = cv.glmmod$lambda.min)
+  
+  # cv.ordinis <- cv.ordinis(x=X, y=(y1=="yes")*1, alpha=1,
+  #                          penalty="mcp",
+  #                          gamma = 1.1, # default 1.4 for mcp, 3.7 for scad
+  #                          type.measure = "deviance",
+  #                          intercept = TRUE, family = "binomial")
+  # # estimate coefficients from whole dataset & only use CV to determine optimal lambda
+  # fit.ordinis <- ordinis(x=X, y=(y1=="yes")*1, alpha=1,
+  #                          penalty="mcp",
+  #                          gamma = 1.1, # default 1.4 for mcp, 3.7 for scad
+  #                          intercept = TRUE, family = "binomial")
+  # reg.coef = predict(fit.ordinis, type = "coefficients", s = cv.ordinis$lambda.min)
+  
+  cv_ncvreg <- cv.ncvreg(X=X, y=(y1=="yes")*1, alpha=1,
+                           penalty="SCAD",
+                           # gamma = 3.7, # default 3 for mcp, 3.7 for scad
+                           nfolds = 5,
+                           family = "binomial")
+  fit_ncvreg <- ncvreg(X=X, y=(y1=="yes")*1, alpha=1,
+                           penalty="SCAD",
+                           # gamma = 3.7, # default 3 for mcp, 3.7 for scad
+                           family = "binomial")
+  reg.coef = predict(fit_ncvreg, type = "coefficients", lambda = cv_ncvreg$lambda.min)
+  
+  vs[i, ] <- ifelse(reg.coef[-1] == 0, 0, 1)  # -1 excludes intercept (assume is first)
+}
+
+#Make a scatterplot with NP points showing x=rescaled beta, y=proportion of the simu simulations in which that variable was selected by MCP.
+
+psel <- apply(vs, 2, mean)
+```
+
+```{r, echo=T}
+
+s2 <- data.frame(Coef, psel)
+
+ggplot(s2, aes(x=Coef, y=psel)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x, span = 0.5, size = 0.5)+ xlab("Real Regression Coefficient")+
+  ylab("Proportion Selected")+ylim(0,1)
+
+
+# ys<- data.frame(ys)
+# ggplot(data=ys,aes(ys)) + 
+#   geom_histogram( breaks=seq(min(ys), max(ys), by = 5),
+#                  col="red",
+#                  fill="green",
+#                  alpha = .2) +
+#   labs(title="Histogram for number of simulated events") +
+#   labs(x="Age", y="Count") 
+
+
+hist(ys[, 1], ylab = "Count", xlab = "Y=1",main="Histogram for number of simulated events")
+
+
+#Add a histogram of plogis(scaled linear predictor) to show the distribution of actual probabilities across the #500 observations.  Could use nclass=20 or more.  And on the main result put "Real" in front of "Regression #Coefficient".
+#The distribution is what we are looking for.  You could use nclass=10 to cut down on noise.
+
+hist(plogis(L.val.scaled), nclass=10)
+
+#make a histogram of these c-indexes
+
+hist(cs[, 1], ylab = "Count", xlab = "c-index", main="")
+
+
+# save results in an R data file
+res <- list(vs=vs, s2=s2, L.val.scaled=L.val.scaled, ys=ys, cs=cs)
+save(res, file='res.rda', compress=TRUE)
+
+```

@@ -1,3 +1,7 @@
+#' @importFrom stats coef cor is.empty.model lm lm.fit logLik model.matrix model.response rnorm sd
+#' @importFrom utils data
+#' @importFrom qlcMatrix rowMin rowMax
+
 # function to calculate fit metrics to tune lambda ####
 get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = ncol(y)), 
                         offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
@@ -12,9 +16,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   if (!is(family, "family")) family = family()
   
   
-  require(glmnet)
-  require(qlcMatrix)
-  
   if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
   if (is.vector(beta_true)) { beta_true <- matrix(beta_true, ncol=1) }
   
@@ -24,6 +25,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   m = ncol(y) # nr of tasks
   # nr of variables, cases & tasks & effective degrees of freedom ####
   if (is.null(p)) p = ncol(X) # nr of variables
+  
   # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
   if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) p <- p + 1
   
@@ -35,8 +37,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   # effective degrees of freedom
   edf = sum(beta!=0) # as in abess package
-  # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-  if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) edf <- edf + 1
+  # allow for estimated dispersion, cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
+  if (family$family %in% c("gaussian", "Gamma", "inverse.gaussian", "quasibinomial", "quasipoisson")) edf <- edf + 1
   
   # beta[beta<lower] = lower
   # beta[beta>upper] = upper
@@ -64,12 +66,22 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     specificity = TN / (TN+FP) # = TNR
     accuracy = (TP+TN) / (TP+TN+FP+FN)
     F1_score = 2*precision*recall / (precision + recall) # = harmonic mean of precision and recall
-    # metrics related to accuracy of coefficients ####
+    
+    # metrics related to accuracy of coefficients (among all coefficients) ####
     MD_coefs = mean(beta-beta_true) # mean deviation
     MAD_coefs = mean(abs(beta-beta_true)) # mean absolute deviation
     sMAPE_coefs =  mean(2 * abs(beta - beta_true) / (abs(beta) + abs(beta_true) + 1E-10)) # symmetric mean absolute percentage error, 0 = perfect agreement
     bias_coefs = as.vector(coef(lm(as.vector(beta_true) ~ 0 + as.vector(beta)))[[1]]) # regression beta true on beta (closer to 1 is better, >1 means you underestimate true coefs, <1 means you overestimate true coefs)
     R2_coefs = summary(lm(as.vector(beta_true) ~ 0+as.vector(beta)))$r.squared # I use R2 from zero intercept regression of beta_true on beta
+    
+    # metrics related to accuracy of coefficients (among selected coefficients) ####
+    sel = beta!=0
+    MD_selcoefs = mean(beta[sel]-beta_true[sel]) # mean deviation
+    MAD_selcoefs = mean(abs(beta[sel]-beta_true[sel])) # mean absolute deviation
+    sMAPE_selcoefs =  mean(2 * abs(beta[sel] - beta_true[sel]) / (abs(beta[sel]) + abs(beta_true[sel]) + 1E-10)) # symmetric mean absolute percentage error, 0 = perfect agreement
+    bias_selcoefs = as.vector(coef(lm(as.vector(beta_true[sel]) ~ 0 + as.vector(beta[sel])))[[1]]) # regression beta true on beta (closer to 1 is better, >1 means you underestimate true coefs, <1 means you overestimate true coefs)
+    R2_selcoefs = summary(lm(as.vector(beta_true[sel]) ~ 0+as.vector(beta[sel])))$r.squared # I use R2 from zero intercept regression of beta_true on beta
+    
   } else {
     TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
   }
@@ -130,9 +142,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # Get -2 * log-likelihood & log likelihood
   y = as.vector(y)
   # y = as.vector(mu_true) # using ground truth
-  
-  # browser()
-  
+
   if (family$family=="poisson") { y = round(y) } 
   good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
   # using deviance relative to observed signal
@@ -213,8 +223,9 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   return(list(p=p, n=n, m=m, 
               deviance=deviance, deviance_true=deviance_true, loglik=loglik, 
               MD_coefs=MD_coefs, MAD_coefs=MAD_coefs, sMAPE_coefs=sMAPE_coefs, 
-              bias_coefs=bias_coefs, 
-              R2_coefs=R2_coefs,
+              bias_coefs=bias_coefs, R2_coefs=R2_coefs,
+              MD_selcoefs=MD_selcoefs, MAD_selcoefs=MAD_selcoefs, sMAPE_selcoefs=sMAPE_selcoefs, 
+              bias_selcoefs=bias_selcoefs, R2_selcoefs=R2_selcoefs,
               support_size_true=support_size_true, 
               support_size_estimated=support_size_estimated, 
               estimated_over_true_support_size=estimated_over_true_support_size,

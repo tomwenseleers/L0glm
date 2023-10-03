@@ -3,14 +3,14 @@
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
 library(export)
+library(scales)
 devtools::load_all(".")
 # library(L0glm)
-# devtools::install_github("jaredhuling/ordinis")
-library(ordinis)
-library(abess)
-library(devtools)
-# install_github("hazimehh/L0Learn", ref="nng") # branch of L0Learn with nonnegativity constraints
-library(L0Learn)
+# remotes::install_github("jaredhuling/ordinis")
+# library(ordinis)
+# library(abess)
+# remotes::install_github("hazimehh/L0Learn", ref="nng") # branch of L0Learn with nonnegativity constraints
+# library(L0Learn)
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 
@@ -20,7 +20,7 @@ k <- round(n*s)
 mean_beta <- 2000
 sd_logbeta <- 1
 sd_noise <- 5 # SD of noise for Gaussian noise case
-crit <- "bic" # choose lambda based on what would be expected to optimise this IC
+crit <- "bic" # "bic" # choose lambda based on what would be expected to optimise this IC
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
 
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
@@ -38,40 +38,28 @@ dispersion <- 1
 family <- poisson(identity)
 W <- 1/(y+1E-10) # approx 1/variance weights in case identity link Poisson is
                  # approximated using weighted least squares
-
-# using lambda 1
-system.time(L0glm.out <- L0glm.fit(X, y, 
-                           family = poisson(identity), 
-                           lambda = 1, 
-                           # ridge.center = start, # ridge.center
-                           nonnegative = TRUE,
-                           warmupiters = 1,
-                           start = rep(1, ncol(sim$X)), # coefficient starting values
-                           solver = "eigen", # note: solver osqp better than eigen for very small lambda values)
-                           method = 7L # 1 & 2 = QR, 3 & 4 = LSCG, 5 & 6 = CG, 7 & 8 = Cholesky
-)$coefficients) # 0.04s for n=p=500, 0.25s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.75s with methods 5 & 6 (CG), 1.9s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 5s for n=p=10000 with osqp solver, 2.27s for n=p=10000 with glmnet solver
-# points(sim$x, L0glm.out, pch = 16, col= 'blue')
+beta_true <- sim$beta_true
+L0overL1norm = sum(beta_true!=0)/sum(abs(beta_true))
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
-                                  y = y, 
-                                  X = X, 
-                                  family = family) 
-lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, lambda = 1.76 would optimise GIC
+lambda_preset = preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic 
+ 
+lambda_preset 
 
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
                                # ridge.center = start, # ridge.center
                                nonnegative = TRUE,
-                               warmupiters = 1,
-                               start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = rep(50, ncol(sim$X)), # NULL, # rep(50, ncol(sim$X)), # 10-100 works best, coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
+                               maxit = 200,
+                               gamma = 2,
                                method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
 )) # 0.02s for n=p=100, 0.04s for n=p=500, 0.25s for n=p=10000
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
-sum(L0glm.out_preset_coefs!=0)  #56
+sum(L0glm.out_preset_coefs!=0)  #55
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
 # graph2pdf(file="..//benchmarks/plots/1_1 single channel deconvolution Poisson.pdf", width=7, height=5)
 
@@ -80,6 +68,14 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,  # some metrics
                            X = X, y = y, 
                            family = family, 
                            beta_true = sim$beta_true))
+# p      n   m   deviance deviance_true    loglik   MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 500 500 1 396.1279      103.3009 -1670.882 -0.2829917  39.18788  0.08039668   1.000992
+#       R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true
+# [1,] 0.9796187    105.6528      248.028      0.4763334      1.000992   0.9862615                50
+#      support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
+# [1,]                     55                              1.1 43 12 438  7 0.7818182   0.86
+#      specificity accuracy  F1_score      gic     ebic      bic      aic     mbic
+# [1,]   0.9733333    0.962 0.8190476 3966.206 4025.371 3683.568 3451.764 4214.682
 
 plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col='blue',
      main="L0 glm identity link Poisson with lambda preset to optimise BIC",
@@ -90,20 +86,20 @@ plot(x=L0glm.out_preset_coefs, y=sim$beta_true, pch=16, col='blue',
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
-                    z=y, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
+                    z=y, dispersion=1, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
                     family)
 maxlam # 
 
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=0.05) #
 # length(lambdas) # 152 - maybe in benchmark we should use 20 values like for the other methods?
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), length.out=20) #
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), length.out=100) #
 length(lambdas) # 20 - like for other methods
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-warmstart <- 0.001 # % by which L0glm.out_preset will be used as start, here used lowest value that still gave stable coef paths
+warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, here used lowest value that still gave stable coef paths
 
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
+  # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0 # slightly faster & stable with this
   L0glm.out <- L0glm.fit(X, y, 
                              family = family, 
@@ -111,10 +107,12 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              # weights = 1/(sim$y+0.1),
                              lambda = lambda, 
                              nonnegative = TRUE,
-                             warmupiters = 1,
-                             start = start, # 
+                             start = L0glm.out_preset_coefs, # start, # NULL, # L0glm.out_preset_coefs, # start, # 
+                             # prior.mean = L0glm.out_preset_coefs*warmstart*0.2,
+                             warm.start = warmstart,
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 7L, 
+                             # maxit = 200,
                              # gamma = 2, 
                              thresh = 1E-5,
                              relaxed = FALSE
@@ -129,9 +127,9 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
           )
   } )))) # 0.81s for n=p=500, 11s for n=p=10000 & 20 lambda values with eigen solver methods 7 (Cholesky)
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
-        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Poisson GLM")
+        xlab="Log10(lambda)", ylab="Coefficient estimates", 
+        main="Regularisation path L0 Poisson GLM")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
-library(scales)
 abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
 
 
@@ -139,14 +137,22 @@ abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
 best = which.min(metrics[,crit])
 L0glm.out_best_coefs = coefmat[best,]
 plot(x=L0glm.out_best_coefs, y=sim$beta_true, pch=16, col='blue',
-     main="L0 Gaussian GLM with tuned lambda",
+     main="L0 Poisson GLM with tuned lambda",
      xlab="Estimated coefficients", ylab="True coefficients")
-
+abline(a=0, b=1, col="lightgrey")
 
 do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,  # some metrics
                            X = X, y = y, 
                            family = family, 
                            beta_true = sim$beta_true))
+#        p   n m deviance deviance_true    loglik   MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 500 500 1 402.0993      97.53431 -1672.868 -0.3098657  37.86387  0.07571449    1.00061
+#       R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true
+# [1,] 0.9804216    107.3606     240.3617      0.4418009       1.00061   0.9870698                50
+#      support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
+# [1,]                     54                             1.08 43 11 439  7 0.7962963   0.86
+#      specificity accuracy  F1_score      gic     ebic      bic      aic     mbic
+# [1,]   0.9755556    0.964 0.8269231 3958.824 4016.913 3681.325 3453.736 4202.782
 
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
@@ -190,79 +196,12 @@ plot(log10(metrics$lambda), metrics$mbic, type="l")
 min(metrics$lambda[which(metrics$mbic==min(metrics$mbic))]) # 1.995262 for n=p=10000, 0.5623413 for n=p=100
 
 
-# lambda values that are expected to optimise each IC (with start = rep(1, ncol(X)))
-# note: using warm starts in the L0glm.fit function would shift the
-# empirically observed optimal values
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = poisson(identity),
-              dispersion = dispersion) # 0.5 for n=p=100 or n=p=10000
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = poisson(identity),
-              dispersion = dispersion) # 1.151293 for n=p=100, 2.302585 for n=p=10000
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = poisson(identity),
-              dispersion = dispersion) # 2.302585 for n=p=100, 4.60517 for n=p=10000
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = poisson(identity),
-              dispersion = dispersion) # 1.758231 for n=p=100, 5.112491 for n=p=10000
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = poisson(identity),
-              dispersion = dispersion) # 2.76073 for n=p=100, 6.214608 for n=p=10000
-
-# coefficients for solution that optimises given criterion & metrics
-best = which.min(metrics[,crit])
-L0glm.out_best_coefs = coefmat[best,]
-plot(x=L0glm.out_best_coefs, y=sim$beta_true, pch=16, col='blue',
-     main="L0 glm identity link Poisson with tuned lambda",
-     xlab="Estimated coefficients", ylab="True coefficients")
-
-
-do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,  # some metrics
-                           X = X, y = y, 
-                           family = family, 
-                           beta_true = sim$beta_true))
-# for n=p=100
-#        p   n m deviance deviance_true    loglik  MD_coefs MAD_coefs  sMAPE_coefs bias_coefs
-# [1,] 100 100 1 52.92526      6.684153 -352.3418 0.5955815  2.436233 0.0009960084  0.9976995
-#   R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP
-# [1,] 0.999963                10                     10                                1 10  0
-#      TN FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic
-# [1,] 90  0         1      1           1        1        1 775.0129 796.7871 750.7354 724.6837
-#          mbic
-# [1,] 815.1129
-
-# for n=p=500
-#        p   n m deviance deviance_true    loglik   MD_coefs MAD_coefs sMAPE_coefs bias_coefs
-# [1,] 500 500 1 381.6865      81.56291 -1664.219 -0.2749081  41.68789  0.08770669  0.9979851
-#       R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN
-# [1,] 0.9785754                50                     55                              1.1 42 13 437
-#      FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic     mbic
-# [1,]  8 0.7636364   0.84   0.9711111    0.958      0.8 3952.879 4012.044 3670.241 3438.437 4201.355
-
-# for n=p=10000
-#          p     n m deviance deviance_true    loglik  MD_coefs MAD_coefs sMAPE_coefs bias_coefs
-# [1,] 10000 10000 1 8038.676         4e+10 -31790.41 -0.121826    66.515  0.06978107  0.9613788
-#      R2_coefs support_size_true support_size_estimated estimated_over_true_support_size  TP  FP
-# [1,] 0.902018              1000                   1030                             1.03 854 176
-#        TN  FN precision recall specificity accuracy  F1_score      gic     ebic      bic      aic
-# [1,] 8824 146 0.8291262  0.854   0.9804444   0.9678 0.8413793 84644.28 82554.11 73067.46 65640.81
-#       mbic
-# [1,] 89185
 
 
 ### 1.1.2 Comparison of solution quality to that returned by ordinis (adaptive lasso, MCP, SCAD), glmnet (lasso), abess & L0Learn ####
 
 #### nonnegative weighted lasso regression in glmnet ####
+library(glmnet)
 system.time(fit_glmnet <- glmnet(x = X, 
                                  y = y, 
                                  weights = W,
@@ -377,6 +316,7 @@ plot(x=coefs_alasso_glmnet[-1], y=sim$beta_true, pch=16, col='blue',
 
 
 #### nonnegative L0Learn best subset fit after glmnet nonnegative LASSO ####
+library(L0Learn)
 selcoefs = which(coefs_lasso_glmnet[-1]!=0)
 p_selcoefs = length(selcoefs)
 system.time(fit_nnL0Learn_selcoefs <- L0Learn.fit(x=as.matrix(Diagonal(x=sqrt(W)) %*% X[,selcoefs,drop=F]),  # note: no support for sparse matrices
@@ -465,6 +405,8 @@ plot(x=coefs_nnL0Learn, y=sim$beta_true, pch=16, col='blue',
 
 
 #### abess best subset fit after nonnegative LASSO ####
+
+library(abess)
 # very good solution, and fast for small problems, but
 # becomes very slow for large problems, e.g. n=p=10000
 selcoefs = which(coefs_lasso_glmnet[-1]!=0)
@@ -516,6 +458,8 @@ plot(x=coefs_abessafterlasso, y=sim$beta_true, pch=16, col='blue',
 
 
 #### nonnegative weighted MCP penalized regression in ordinis ####
+
+library(ordinis)
 # NOTE: ncvreg also has MCP penalized models, but not with nonnegativity constraints
 system.time(fit_MCP <- ordinis(X, y, 
                            weights=W, # approx 1/variance Poisson weights
@@ -738,7 +682,7 @@ benchmarks_1_1
 # For n=p=500
 
 #                           method   p   n m     deviance deviance_true    loglik    MD_coefs
-# 1             L0glm_tuned_lambda 500 500 1 3.816865e+02  8.156291e+01 -1664.219  -0.2749081
+# 1             L0glm_tuned_lambda 500 500 1 3.816367e+02  8.174847e+01 -1664.194  -0.2732649
 # 2            L0glm_preset_lambda 500 500 1 3.901860e+02  9.186823e+01 -1669.468  -0.2586797
 # 4 nnL0Learn_after_glmnet_nnlasso 501 500 1 1.911327e+04  5.047348e+10 -2217.407  -6.2095115
 # 3                nnalasso_glmnet 502 500 1 1.887068e+04  5.047348e+10 -2216.214  -6.5259568
@@ -748,7 +692,7 @@ benchmarks_1_1
 # 9                 nnSCAD_ordinis 502 500 1 3.644955e+04  5.046555e+10 -2462.794 -11.5835933
 # 5     abess_after_glmnet_nnlasso 501 500 1 2.541601e+09  3.600837e+10 -5168.888  25.7496713
 #   MAD_coefs sMAPE_coefs bias_coefs  R2_coefs support_size_true support_size_estimated
-# 1  41.68789  0.08770669  0.9979851 0.9785754                50                     55
+# 1  41.71338  0.08770819  0.9980317 0.9785675                50                     55
 # 2  44.89718  0.09978243  0.9988826 0.9778247                50                     56
 # 4 117.90380  0.17375413  0.9651048 0.8999311                50                     52
 # 3 115.79339  0.15415604  0.9810797 0.8915773                50                     55
@@ -768,7 +712,7 @@ benchmarks_1_1
 # 9                             2.74 42 95 356  8 0.3065693   0.84   0.7893570 0.7944112 0.4491979
 # 5                             1.08 25 29 421 25 0.4629630   0.50   0.9355556 0.8920000 0.4807692
 #         gic      ebic       bic       aic      mbic
-# 1  3952.879  4012.044  3670.241  3438.437  4201.355
+# 1  3952.829  4011.994  3670.191  3438.388  4201.305
 # 2  3974.732  4034.973  3686.955  3450.937  4227.726
 # 4  5036.743  5093.775  4764.189  4540.815  5276.202
 # 3  5068.632  5128.911  4780.446  4544.428  5321.664
@@ -813,24 +757,21 @@ dispersion <- sd_noise^2
 W <- rep(1,p) # with Gaussian equal observation weights
 
 # using lambda expected to optimise given IC
-system.time(lambda_preset <- preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
-                                  y = y, 
-                                  X = X, 
-                                  family = family)) # 0.37s for n=p=500
+lambda_preset <- preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic 
 lambda_preset # lambda that would be expected to optimise given IC
 
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
                                nonnegative = TRUE,
-                               warmupiters = 1,
-                               start = rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               start = NULL, # rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L # Cholesky
                               )) 
 # 0.03s
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 points(sim$x, L0glm.out_preset_coefs, pch = 16, col= 'blue')
+sum(L0glm.out_preset_coefs!=0) # 54
 
 # some metrics
 do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
@@ -839,56 +780,87 @@ do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
                            beta_true = sim$beta_true))
 # graph2pdf(file="..//benchmarks/plots/1_2 single channel deconvolution Gaussian.pdf", width=7, height=5)
 
-
+#        p   n m deviance deviance_true    loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 501 500 1 10189.95      1390.415 -1017.107 -0.02009234  6.407866  0.03245251   1.001921
+#      R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN
+# [1,] 0.998688                50                     54                             1.08 48  6 444  2
+#      precision recall specificity accuracy  F1_score      gic    ebic      bic      aic     mbic
+# [1,] 0.8888889   0.96   0.9866667    0.984 0.9230769 2658.855 2718.04 2376.017 2144.213 2907.351
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
-                    z=y, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
+                    z=y, dispersion=L0glm.out_preset$dispersion, 
+                    no.pen=NULL, coefs=L0glm.out_preset$coefficients,
                     family=family)
-maxlam #
-
+maxlam 
 
 # lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=0.05) #
 # length(lambdas) # 152 - maybe in benchmark we should use 20 values like for the other methods?
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), length.out=20) #
+lambdas <- 10^seq(round(log10(lambda_preset))-2, log10(maxlam), length.out=100) #
 length(lambdas) # 20 - like for other methods
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X))
-warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, lowest value that led to stable coefficient paths
+warmstart <- 0.1 # % by which L0glm.out_preset will be used as start, this value gave best solution quality
+gamma <- 2
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
+  
+  # gamma = 2
+  start = L0glm.out_preset_coefs # *scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
+  # start = warmstart*start + (1-warmstart)*rep(sd(start)^(1/gamma), ncol(X))
+  
+  start <- warmstart*start+(1-warmstart)*start_coefs(X, family)*100
   # start[L0glm.out_preset_coefs==0] <- 0
   L0glm.out <- L0glm.fit(X, y, 
                              family = gaussian(identity), 
                              lambda = lambda, 
                              nonnegative = TRUE,
-                             warmupiters = 1,
-                             start = start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             dispersion = L0glm.out_preset$dispersion,
+                             start = start, # L0glm.out_preset_coefs, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                             # warm.start = warmstart, 
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
                              relaxed = FALSE,
                              thresh = 1E-5,
-)$coefficients
-  coefmat[i,] <<- as.vector(L0glm.out)
-  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
+)
+  coefmat[i,] <<- as.vector(L0glm.out$coefficients)
+  return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out$coefficients, 
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = sim$beta_true))) )
 } )))) # 0.87s for n=p=500 and using Eigen Cholesky solver nr 7
-matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
-        xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path L0 Gaussian GLM")
+matplot(x=log10(lambdas), y=as.matrix(coefmat), type="l", lty=1,
+        xlab="Log10(lambda)", ylab="Coefficient estimates", 
+        main="Regularisation path L0 Gaussian GLM", col=1:6)
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 library(scales)
 abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
 
+# coefficients for solution that optimises given criterion & metrics
+best = which.min(metrics[,crit])
+L0glm.out_best_coefs = coefmat[best,]
+plot(x=L0glm.out_best_coefs, y=sim$beta_true, pch=16, col='blue',
+     main="L0 Gaussian GLM with tuned lambda",
+     xlab="Estimated coefficients", ylab="True coefficients")
+
+
+do.call(cbind, get.metrics(beta = L0glm.out_best_coefs,  # some metrics
+                           X = X, y = y, 
+                           family = family, 
+                           beta_true = sim$beta_true))
+#        p   n m deviance deviance_true  loglik    MD_coefs MAD_coefs  sMAPE_coefs bias_coefs
+# [1,] 501 500 1 10250.99      1029.794 -1014.6 -0.03125375 0.2979296 0.0002203519   1.000016
+# R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN
+# [1,] 0.9999993                50                     50                                1 50  0 450
+#      FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic     mbic
+# [1,]  0         1      1           1        1        1 2608.413 2663.293 2346.145 2131.199 2838.836
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 1 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$deviance_true, type="l")
 metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # 100 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
-metrics$lambda[which.max(metrics$loglik)] # 4.466836
+metrics$lambda[which.max(metrics$loglik)] # 1.985 - this is AIC optimal value
 plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 4.466836
@@ -911,45 +883,16 @@ metrics$lambda[which.max(metrics$accuracy)] # 4.466836
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 
 plot(log10(metrics$lambda), metrics$aic, type="l")
-metrics$lambda[which.min(metrics$aic)] # 4.466836
+metrics$lambda[which.min(metrics$aic)] # 3.04
 plot(log10(metrics$lambda), metrics$bic, type="l")
-metrics$lambda[which.min(metrics$bic)] # 4.466836
+metrics$lambda[which.min(metrics$bic)] # 4.66
 plot(log10(metrics$lambda), metrics$ebic, type="l")
-metrics$lambda[which.min(metrics$ebic)] # 4.466836
+metrics$lambda[which.min(metrics$ebic)] # 4.66
 plot(log10(metrics$lambda), metrics$gic, type="l")
-metrics$lambda[which.min(metrics$gic)] # 4.466836
+metrics$lambda[which.min(metrics$gic)] # 4.66
 abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
-metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 4.466836
-
-# lambda values that a priori are expected to optimise each IC (with start = NULL)
-# note: using warm starts in the L0glm.fit function would shift the
-# empirically observed optimal values
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = gaussian(identity),
-              dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = gaussian(identity),
-              dispersion = dispersion) # 1.151293
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = gaussian(identity),
-              dispersion = dispersion) # 2.302585
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = gaussian(identity),
-              dispersion = dispersion) # 1.758231
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-              y = as.matrix(sim$y), 
-              X = Matrix(sim$X, sparse=TRUE), 
-              family = gaussian(identity),
-              dispersion = dispersion) # 2.76073
+metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 4.66
 
 
 ### 1.2.2 Comparison of solution quality to that returned by ordinis (adaptive lasso, MCP, SCAD), glmnet (lasso), abess & L0Learn ####
@@ -1434,8 +1377,8 @@ benchmarks_1_2
 
 # For n=p=500
 #                           method   p   n m     deviance deviance_true    loglik     MD_coefs
-# 1             L0glm_tuned_lambda 501 500 1     10247.66  1.200549e+03 -1015.518  -0.03624437
-# 2            L0glm_preset_lambda 501 500 1     13262.59  4.550889e+03 -1085.993  -0.01044006
+# 1             L0glm_tuned_lambda 501 500 1     10250.99  1.029794e+03 -1014.600  -0.03125375
+# 2            L0glm_preset_lambda 501 500 1     10189.95  1.390415e+03 -1017.107  -0.02009234
 # 4 nnL0Learn_after_glmnet_nnlasso 501 500 1    128245.96  1.212676e+05 -1664.244  -0.30244913
 # 9                 nnSCAD_ordinis 502 500 1    334347.66  3.305220e+05 -1892.801   0.25641215
 # 8                  nnMCP_ordinis 502 500 1   2131544.51  2.114008e+06 -2362.907   2.27259794
@@ -1443,19 +1386,19 @@ benchmarks_1_2
 # 3                nnalasso_glmnet 502 500 1   3712409.86  3.720694e+06 -2483.615  -5.47144854
 # 7                 nnlasso_glmnet 502 500 1   4078061.04  4.098858e+06 -2566.100 -11.28178925
 # 5     abess_after_glmnet_nnlasso 501 500 1 335541753.31  3.356881e+08 -3620.631  31.01370750
-#    MAD_coefs sMAPE_coefs bias_coefs  R2_coefs support_size_true support_size_estimated
-# 1   9.929055  0.02071625  0.9975733 0.9943383                50                     51
-# 2  26.611528  0.06272524  1.0069306 0.9871014                50                     57
-# 4  88.599983  0.20763150  0.9911148 0.9470501                50                     68
-# 9  82.421091  0.16282684  0.9596194 0.9259290                50                     58
-# 8 239.612441  0.27380042  0.8680802 0.6620018                50                     65
-# 6 275.487519  0.33517481  0.8355767 0.6399233                50                     74
-# 3 101.871554  0.13892336  0.9769416 0.9138261                50                     47
-# 7 117.130091  0.32508274  1.0364852 0.9213728                50                    106
-# 5 156.207153  0.15673338  0.8144065 0.7004816                50                     57
+#     MAD_coefs  sMAPE_coefs bias_coefs  R2_coefs support_size_true support_size_estimated
+# 1   0.2979296 0.0002203519  1.0000161 0.9999993                50                     50
+# 2   6.4078660 0.0324525129  1.0019211 0.9986880                50                     54
+# 4  88.5999833 0.2076315006  0.9911148 0.9470501                50                     68
+# 9  82.4210909 0.1628268383  0.9596194 0.9259290                50                     58
+# 8 239.6124410 0.2738004153  0.8680802 0.6620018                50                     65
+# 6 275.4875187 0.3351748124  0.8355767 0.6399233                50                     74
+# 3 101.8715539 0.1389233611  0.9769416 0.9138261                50                     47
+# 7 117.1300908 0.3250827351  1.0364852 0.9213728                50                    106
+# 5 156.2071531 0.1567333836  0.8144065 0.7004816                50                     57
 #   estimated_over_true_support_size TP FP  TN FN precision recall specificity  accuracy  F1_score
-# 1                             1.02 48  3 447  2 0.9411765   0.96   0.9933333 0.9900000 0.9504950
-# 2                             1.14 46 11 439  4 0.8070175   0.92   0.9755556 0.9700000 0.8598131
+# 1                             1.00 50  0 450  0 1.0000000   1.00   1.0000000 1.0000000 1.0000000
+# 2                             1.08 48  6 444  2 0.8888889   0.96   0.9866667 0.9840000 0.9230769
 # 4                             1.36 34 34 416 16 0.5000000   0.68   0.9244444 0.9000000 0.5762712
 # 9                             1.16 34 24 427 16 0.5862069   0.68   0.9467849 0.9201597 0.6296296
 # 8                             1.30 24 41 410 26 0.3692308   0.48   0.9090909 0.8662675 0.4173913
@@ -1464,8 +1407,8 @@ benchmarks_1_2
 # 7                             2.12 43 63 388  7 0.4056604   0.86   0.8603104 0.8602794 0.5512821
 # 5                             1.14 35 22 428 15 0.6140351   0.70   0.9511111 0.9260000 0.6542056
 #        gic     ebic      bic      aic     mbic
-# 1 2621.608 2677.564 2354.197 2135.037 2856.549
-# 2 2830.700 2893.112 2532.433 2287.986 3092.749
+# 1 2608.413 2663.293 2346.145 2131.199 2838.836
+# 2 2658.855 2718.040 2376.017 2144.213 2907.351
 # 4 4112.129 4186.379 3757.295 3466.487 4423.878
 # 9 4455.889 4519.398 4152.265 3903.603 4722.477
 # 8 5475.624 5546.668 5135.977 4857.813 5773.842
@@ -1477,14 +1420,19 @@ benchmarks_1_2
 
 # 2. MULTICHANNEL DECONVOLUTION ####
 
-n <- p <- 100 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
+n <- p <- 500 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 10000
 sd_logbeta <- 1
-sd_noise <- 1 # SD of noise for Gaussian noise case
-crit <- "gic" # choose lambda based on what would be expected to optimise this IC
+sd_noise <- 5 # SD of noise for Gaussian noise case
+
+# lambda expected to optimise given IC
+crit <- "bic" # choose lambda based on what would be expected to optimise this IC
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
+lambda_preset = preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic  
+lambda_preset 
+
 
 ## 2.1 Multichannel deconvolution assuming Poisson noise ####
 ### 2.1.1 L0glm solution ####
@@ -1501,26 +1449,28 @@ y <- sim$y
 family <- poisson(identity)
 m <- ncol(y) # nr of tasks/channels
 
-# using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
-                                  y = y, 
-                                  X = X, 
-                                  family = family) 
-lambda_preset 
-
+# relaxed L0 group fit, with preset lambda
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
                                grouped = TRUE,
                                relaxed = TRUE, # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
-                               warmupiters = 1,
-                               parallellize = TRUE,
+                               parallelize = TRUE,
+                               maxit = 10, # default 25
+                               group.maxit = 4, # default 6
+                               dispersion = 1,
                                start = rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
                                thresh = 1E-5
 )) # 10.46s for n=p=100, 10s for n=p=500, 30s for n=p=10000
+
+# TODO: get rid of warnings
+# Warning messages:
+# 1: In (function (..., deparse.level = 1)  :
+#        number of rows of result is not a multiple of vector length (arg 8)
+       
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_1 multichannel deconvolution Poisson.pdf", width=7, height=5)
@@ -1531,36 +1481,39 @@ metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
                            family = poisson(identity), 
                            beta_true = sim$beta_true))
 metrics_L0glm
-#        p   n   m    deviance deviance_true loglik     MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# [1,] 500 500 159 60000038144      5.81e+12   -Inf -0.005022522 0.2448657  0.02091922   1.000756 0.9998306
-#      support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
-# [1,]                50                     50                                1 50  0 450  0         1      1
-#      specificity accuracy F1_score gic ebic bic aic mbic
-# [1,]           1        1        1 Inf  Inf Inf Inf  Inf
-
+#        p   n   m deviance deviance_true    loglik     MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 500 500 159 37570.71      4.48e+12 -105213.2 -0.005010161 0.2475819  0.02308121   1.000824
+#       R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true
+# [1,] 0.9998294 0.007370507      4.77074      0.3679277      1.000824   0.9998312                50
+#      support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
+# [1,]                     50                                1 50  0 450  0         1      1
+#      specificity accuracy F1_score    gic     ebic      bic      aic     mbic
+# [1,]           1        1        1 256249 260590.7 235508.5 218498.4 274482.7
 
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
-                    z=y, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
+                    z=y, dispersion=1, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
                     family=family)
 maxlam # 
 
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=1) #
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
-  lambda <- lambdas[[i]] # for i=8 gives error at L0glm.R#742 number of rows of result is not a multiple of vector length (arg 8)
+  lambda <- lambdas[[i]] 
   L0glm.out <- L0glm.fit(X, y, 
                              family = family, 
                              lambda = lambda, 
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
-                             warmupiters = 1,                               
+                             dispersion = L0glm.out_preset$dispersion,
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 7L,
-                             parallellize = TRUE,
+                             parallelize = TRUE,
+                             maxit = 10, # default 25
+                             group.maxit = 4, # default 6
                              thresh = 1E-5
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
@@ -1569,9 +1522,16 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               family = poisson(identity), 
                                               beta_true = sim$beta_true) )) )
 } ) ))) # 86s for n=p=100 unparallelized, 64s parallelized
+# TODO fix bug
+# Error in `[<-`(`*tmp*`, variable.indices, , value = Matrix(do.call(cbind,  : 
+# subscript out of bounds
+# In addition: There were 36 warnings (use warnings() to see them)
+# GET rid of warning
+# <sparse>[ <logic> ]: .M.sub.i.logical() maybe inefficient
 
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Poisson GLM")
+# abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 0.1 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
@@ -1611,21 +1571,8 @@ metrics$lambda[which.min(metrics$gic)] # 0.6309573
 abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue") 
 plot(log10(metrics$lambda), metrics$mbic, type="l")
 metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 0.6309573
-# TODO lambdas are too low, but that's because of NaNs or Infs - FIX
+# TODO fix NaNs or Infs
 
-# lambda values than would be expected to optimise these IC
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 0.5
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 1.758231 for n=p=100, 2.838371 for n=p=500
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 2.76073 for n=p=100, 3.967809 for n=p=500
 
 
 ### 2.1.2 Comparison with abess weighted mgaussian best subset glm #### 
@@ -1636,13 +1583,12 @@ metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs,
                                            family = family, 
                                            beta_true = sim$beta_true))
 metrics_L0glm
-#        p   n   m    deviance deviance_true loglik     MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# [1,] 500 500 159 60000038144      5.81e+12   -Inf -0.005022522 0.2448657  0.02091922   1.000756 0.9998306
-#      support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
-# [1,]                50                     50                                1 50  0 450  0         1      1
-#      specificity accuracy F1_score gic ebic bic aic mbic
-# [1,]           1        1        1 Inf  Inf Inf Inf  Inf
-# TODO fix Inf values in metrics
+# p   n   m deviance deviance_true    loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs
+# [1,] 100 100 133 7624.287      1.75e+12 -20813.86 -0.01060908 0.3244337  0.02987475   0.999666
+# R2_coefs support_size_true support_size_estimated estimated_over_true_support_size TP FP TN
+# [1,] 0.9996625                10                     10                                1 10  0 90
+# FN precision recall specificity accuracy F1_score      gic     ebic      bic      aic     mbic
+# [1,]  0         1      1           1        1        1 47225.92 48959.14 45293.43 43219.71 50417.88
 
 # abess mgaussian best subset fit plus metrics:
 # best subset multitask learning using family="mgaussian" using abess
@@ -1677,12 +1623,12 @@ metrics_abess = do.call(cbind, get.metrics(beta = beta_abess,
                                            family = poisson(identity), 
                                            beta_true = sim$beta_true))
 metrics_abess
-#        p   n   m deviance deviance_true loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# [1,] 500 500 159 56607.47      39789.56    NaN -0.00851599  23.28577   0.3486785  0.1650244 0.1506123
-#      support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN precision recall
-# [1,]                50                     89                             1.78 30 59 391 20 0.3370787    0.6
-#      specificity accuracy  F1_score gic ebic bic aic mbic
-# [1,]   0.8688889    0.842 0.4316547 NaN  NaN NaN NaN  NaN
+# TODO fix warnings
+# Warning messages:
+# 1: In log(y/mu) : NaNs produced
+# 2: In log(y/mu) : NaNs produced
+# 3: In dpois(y, mu, log = TRUE) : NaNs produced
+
 
 
 
@@ -1700,28 +1646,27 @@ sim <- simulate_spike_train(n = n,
 X <- sim$X
 y <- sim$y
 family <- gaussian(identity)
+dispersion <- sd_noise^2
 m <- ncol(y) # nr of tasks/channels
 
-# using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
-                                  y = y, 
-                                  X = X,  
-                                  family = family) 
-lambda_preset # lambda that would be expected to optimise given IC
-
-
+# fit with preset lambda
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
                                lambda = lambda_preset, 
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
-                               warmupiters = 1,                               
+                               dispersion = NULL,
                                start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
+                               parallelize = FALSE, 
+                               maxit = 20, # default 25
+                               group.maxit = 4, # default 6
                                thresh = 1E-5
 )) # 9.79s for n=p=100, 12s for n=p=500, 33s for n=p=10000
+# TODO fix bug L0glm.out_preset$dispersion comes out as NULL
+
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
@@ -1742,11 +1687,12 @@ metrics_L0glm
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
-                    z=y, no.pen=NULL, coefs=L0glm.out_preset$coefficients,
+                    z=y, dispersion=L0glm.out_preset$dispersion, 
+                    no.pen=NULL, coefs=L0glm.out_preset$coefficients,
                     family=family)
 maxlam # 
 
-lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam), by=1) #
+lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
@@ -1756,11 +1702,13 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              grouped = TRUE,
                              relaxed = TRUE, 
                              nonnegative = TRUE,
-                             warmupiters = 1,                               
+                             dispersion = 1,
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
+                             maxit = 10, # default 25
+                             group.maxit = 4, # default 6
                              method = 7L,
-                             parallellize = TRUE, 
+                             parallelize = TRUE, 
                              thresh = 1E-5
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels
@@ -1772,6 +1720,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
 
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", main="Regularisation path Group L0 Gaussian GLM")
+# abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
+
 
 plot(log10(metrics$lambda), metrics$deviance, type="l")
 metrics$lambda[which.min(metrics$deviance)] # 1# NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
@@ -1812,23 +1762,6 @@ abline(v=log10(metrics$lambda[which.min(metrics$gic)]), col="blue")
 plot(log10(metrics$lambda), metrics$mbic, type="l")
 range(metrics$lambda[which(metrics$mbic==min(metrics$mbic))]) # 1.0000 251.1886
 
-# these lambda values are roughly in the expected to optimise these IC
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 3.462878 for n=p=500
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 10.76021 for n=p=500
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 19.65786 for n=p=500
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-              y = y, 
-              X = X, 
-              family = family) # 27.48007 for n=p=500
 
 
 ### 2.2.2 Comparison with abess mgaussian best subset glm #### 
@@ -1949,3 +1882,4 @@ metrics_glmnet
 
 # note: for larger p solution quality quickly becomes a lot worse
 # see https://github.com/abess-team/abess/issues/510
+

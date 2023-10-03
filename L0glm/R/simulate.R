@@ -1,10 +1,122 @@
-#' Simulate example data (blurred spike train)
+#' @name simul
+#' @aliases simul
+#' @title Simulate data.
+#' 
+#' @description
+#' This function simulates different types of data based on the method specified. 
+#' Various aspects of the data generation can be controlled using the \code{options} parameter.
+#'
+#' @param method 
+#' A numeric value indicating the type of data to simulate. The possible values are:
+#' 1: Single channel (single variable) data with Gaussian noise.
+#' 2: Single channel data with Poisson noise.
+#' 3: Multichannel data with Gaussian noise.
+#' 4: Multichannel data with Poisson noise.
+#' 5: Orthogonal data.
+#' 6: High dimensional data (p > 40000 suggested).
+#' @param n 
+#' A numeric value indicating the number of observations to generate.
+#' @param p 
+#' A numeric value indicating the number of predictors (variables) to generate.
+#' @param sparse
+#' Boolean indicating if the returned design matrix should be sparse (of Matrix class dsCMatrix) or dense.
+#' @param options 
+#' A list of optional parameters to control the data generation process. This can include:
+#'   For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
+#'   \code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
+#'   For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_sd} (standard deviation of the beta coefficients), 
+#'   \code{error_sd} (standard deviation of the error term).
+#'   For method 6: \code{sd_noise} (standard deviation of the noise).
+#'   If options are \code{NULL}, default values will be used.
+#' @param seed
+#' Random seed.
+#' 
+#' @return A variable containing the simulated data.
+#'
+#' @importFrom statmod rinvgauss
+#' @importFrom stats gaussian plogis poisson qlogis rbinom rgamma rpois runif
+#' @importFrom methods as is
+#' @importFrom utils flush.console
+#'
+#' @examples
+#' \dontrun{
+#' sim_data <- simul(method=1, n=500, p=500)
+#' }
+#' 
+#' @export
+simul <- function(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed = 1){
+  if(method == 1){
+    family = "gaussian"
+    multichannel = FALSE
+    k <- ifelse(is.null(options), round(n*0.1), options$sd_noise)
+    sd_noise <- ifelse(is.null(options), 5, options$sd_noise)
+    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
+  } else if(method == 2){
+    family <- "poisson"
+    k <- round(0.1*n)
+    multichannel =  FALSE
+    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
+  } else if(method == 3){
+    family = "gaussian"
+    multichannel = TRUE
+    k <- round(0.1*n)
+    if(k > 100) k <- 100
+    sd_noise = ifelse(is.null(options), 5, options$sd_noise)
+    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
+  } else if(method == 4){
+    family = "poisson"
+    multichannel = TRUE
+    k <- round(0.1*n)
+    if(k > 100) k <- 100
+    sd_noise = ifelse(is.null(options), 10, options$sd_noise)
+    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
+  } else if(method == 6){
+    if(p < 40000) warning("This method is suggested for data with higher dimension.")
+    m <- ifelse(is.null(options), 50, m)
+  }
+  
+  if(method == 1 | method == 3){
+    sim <- simulate_spike_train(n = n, p = p, family = family, 
+                                seed = seed,
+                                k = k, 
+                                multichannel = multichannel,
+                                mean_beta = mean_beta,
+                                sparse = sparse,
+                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta),
+                                sd_noise = sd_noise)
+  } else if(method == 2 | method == 4){
+    sim <- simulate_spike_train(n = n, p = p, family = family, 
+                                seed = seed,
+                                k = k, 
+                                multichannel = multichannel,
+                                mean_beta = mean_beta,
+                                sparse = sparse,
+                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta))
+  } else if(method == 5){
+    sim <- simulate_orthogonal(n = n, p = p, 
+                               n_nonzero = ifelse(is.null(options), 24, options$n_nonzero),
+                               beta_sd = ifelse(is.null(options), 0.5, options$beta_sd), 
+                               error_sd = ifelse(is.null(options), 1, options$error_sd))
+  } else if(method == 6){
+    sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options), 3, options$sd_noise))
+  }
+  
+  return(sim)
+}
+
+
+
+
+
+#' @name simulate_spike_train
+#' @title Simulate a single or multichannel spike train convoluted by a given peak shape function (PSF)
 #' 
 #' @importFrom Matrix Matrix
 #' @importFrom qlcMatrix colMax colMin
+#' @importFrom grDevices topo.colors
+#' @importFrom graphics abline matplot points
 #'
 #' @description
-#'
 #' This function generates synthetic data consisting of a time series made of a
 #' spike train convoluted by a Gaussian blur kernel ("point spread function")
 #' with Poisson or Gaussian noise added. Data of this form are
@@ -42,33 +154,34 @@
 #'   a function with as first two expected arguments \code{x} (time) and
 #'   \code{u} (the mode of the peak). Defaults to a Gaussian psf
 #'   \code{function(x, u, w=2.5) exp(((x-u)^2)/(-2*(w^2)))}.
+#' @param thresh XXX.
+#' @param sparse XXX.
+#' @param multichannel XXX.
 #' @param seed The seed used to sample the nonzero coefficients and to generate
 #'   the noisy response signal.
 #' @param Plot Should the generated data be plotted?
-#'
+#' 
 #' @return
-#' The function returns a list with the following elements:
-
-#' \item{X}{: a \code{n} by \code{p} covariate matrix. The matrix is a banded
-#' matrix with shifted versions of the specified point spread function for
-#' which a subset (where \code{beta_true>0}) has associated non-zero
-#' (true) coefficients.}
-#' \item{beta_true}{: a vector of length \code{p} containing the true
-#' coefficients.
-#' This is the spike train used to generate the data, so that
-#' \code{y = beta_true %*% X + e}.}
-#' \item{y}{: a vector of length \code{n} containing the noisy response signal
-#' given by \code{y = beta_true %*% X + e}.}
-#' \item{y_true}{: a vector of length \code{n} containing the response signal
-#' given by \code{y_true = beta_true %*% X}.}
-#' \item{x}{: a vector of length \code{n} containing the time points.}
-#' \item{x_beta}{: a vector of length \code{p} containing the locations of the
+#' Returns a list with the following elements:
+#' \item{\code{X}}{a \code{n} by \code{p} covariate matrix. The matrix is a banded
+#' matrix with time-shifted versions of the specified peak shape function
+#' (also known as the Point Spread Function or PSF).}
+#' \item{\code{beta_true}}{a vector of length \code{p} containing the true
+#' coefficients. This is the spike train used to generate the data, so that
+#' \code{y = beta_true \%*\% X + e}.}
+#' \item{\code{y}}{a vector of length \code{n} containing the noisy response signal
+#' given by \code{y = beta_true \%*\% X + e}.}
+#' \item{\code{y_true}}{a vector of length \code{n} containing the response signal
+#' given by \code{y_true = beta_true \%*\% X}.}
+#' \item{\code{x}}{a vector of length \code{n} containing the time points.}
+#' \item{\code{x_beta}}{a vector of length \code{p} containing the locations of the
 #' simulated spikes. Equal to \code{x} when \code{p=n}.}
 #'
 #' @export
-#' 
+
 simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   mean_beta = 10000, sd_logbeta = 1,
+                                  # TO DO: add intercept argument
                                   family = c("poisson","gaussian"),
                                   sd_noise = 10,
                                   psf = function(x, u, w=2.5)
@@ -76,9 +189,10 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   thresh = 1E-5,
                                   sparse = TRUE,
                                   multichannel = FALSE,
-                                  seed = 123, Plot = TRUE
+                                  seed = 123, 
+                                  Plot = if (p<=20000) { TRUE } else { FALSE }
 ){
-  require(qlcMatrix)
+
   # TODO: update documentation above
   # TODO: add intercept if desired 
   
@@ -87,11 +201,11 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   x = 1:n
   x_beta = seq(1, n, length.out = p)
   # simulated peak locations:
-  u = sample(2:p, k, replace = FALSE) # changed so does not take intercept column
+  u = sample(1:p, k, replace = FALSE) 
   
   if (multichannel) { 
-    data(simulated_spectra) # data with 100 simulated example GC/MS mass spectra
-    # simulated_spectra = sweep(simulated_spectra, 1, STATS=rowSums(simulated_spectra), FUN="/") # L1 normalize
+    data("simulated_spectra", package = "L0glm", envir = environment()) # data with 100 simulated example GC/MS mass spectra
+    simulated_spectra = sweep(simulated_spectra, 1, STATS=rowSums(simulated_spectra), FUN="/") # L1 normalize
     if (k>nrow(simulated_spectra)) stop("Maximum k is 100 when multichannel=TRUE")
     m = ncol(simulated_spectra) # 460 mass channels
     S = simulated_spectra[sample(1:nrow(simulated_spectra), k),] # Randomly select k spectra
@@ -171,3 +285,140 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
     family = family
   ))
 }
+
+
+
+
+
+
+
+
+# simulate single channel data with orthogonal variables & gaussian noise with SD of 1 ####
+# cf. Frommlet & Nuel 2016 p. 9
+
+simulate_orthogonal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_sd=1) {
+  # Generate X matrix
+  X <- matrix(rnorm(n*p), n, p)
+  
+  # # we L2 norm normalize the columns of X first
+  # X.n <- sqrt(Matrix::colSums(X^2)) 
+  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
+  
+  # Generate beta vector
+  beta <- c(rnorm(n_nonzero, 0, beta_sd), rep(0, p-n_nonzero))
+  
+  # Generate errors
+  epsilon <- rnorm(n, 0, error_sd)
+  
+  # Generate y vector
+  y <- X %*% beta + epsilon
+  
+  return(list(X=X, y=y, beta_true=beta))
+}
+
+# # Settings
+# n <- 100
+# p_values <- c(100, 250, 500, 1000, 2500, 5000, 10000)
+# k_star <- 24
+# beta_sd <- 0.5
+# error_sd <- 1
+# 
+# # Generate datasets
+# set.seed(42)  # for reproducibility
+# datasets <- lapply(p_values, function(p) {
+#   replicate(1000, simulate_orthogonal(n, p, k_star, beta_sd, error_sd), simplify=FALSE)
+# })
+
+
+
+# simulate some univariate data with sparse solution for any GLM family ####
+simulate_glm <- function(n = 10000, 
+                         p = 100, 
+                         n_nonzero = 50, 
+                         intercept = 1, 
+                         family = "gaussian",
+                         error_sd = 1,
+                         ntot = 10) {
+  # n: number of observations
+  # p: number of variables (excluding intercept)
+  # n_nonzero: nr of variables (excluding intercept term) with nonzero coefficients
+  # intercept: coefficient for intercept term
+  # family: response distribution ("gaussian", "poisson", "binomial", "gamma", "inverse.gaussian")
+  # error_sd: sd of error for Gaussian case
+  # ntot: total sample size for the binomial case
+  
+  # Create matrix of predictor variables
+  X <- cbind(1, # for intercept 
+             matrix(runif(n * p), nrow = n, ncol = p))
+  
+  # Set true coefficients 
+  beta <- c(intercept, rep(0, p))
+  # if (family=="gamma") { beta[sample(2:(p+1), n_nonzero)] <- abs(rnorm(n_nonzero)) } else { 
+  # sample from half normal distribution for gamma to make sure that true coefficients are always positive 
+  beta[sample(2:(p+1), n_nonzero)] <- rnorm(n_nonzero) 
+  # }
+  
+  # Set link function and inverse link function based on family
+  if (family == "gaussian") {
+    linkinv <- identity
+    linkf <- identity
+  } else if (family == "poisson") {
+    linkinv <- exp
+    linkf <- log
+  } else if (family == "binomial") {
+    linkinv <- plogis
+    linkf <- qlogis
+  } else if (family == "gamma") { # log link Gamma
+    linkinv <- exp
+    linkf <- log
+  } else if (family == "inverse.gaussian") { # log link inverse Gaussian
+    linkinv <- exp # function(eta) 1 / eta^2
+    linkf <- log # function(mu) sqrt(1 / mu)
+  } else {
+    stop("Invalid family")
+  }
+  
+  # Generate response variable
+  eta <- X %*% beta
+  mu <- linkinv(eta)
+  if (family == "gaussian") {
+    y <- rnorm(n, mean = mu, sd = error_sd)
+  } else if (family == "poisson") {
+    y <- rpois(n, lambda = mu)
+  } else if (family == "binomial") {
+    y <- rbinom(n, size = ntot, prob = mu)/ntot
+  } else if (family == "gamma") {
+    # shape = 1 and scale = 1/rate. scale here is mu & rate 1/mu to get the mean mu
+    y <-  rgamma(n, shape = 1, scale = mu)
+  } else if (family == "inverse.gaussian") {
+    y <- statmod::rinvgauss(n, mean = mu, shape = 1)
+  }
+  
+  # Set prior weights based on family
+  if (family == "binomial") {
+    weights <- rep(ntot, n)
+  } else {
+    weights <- rep(1, n)
+  }
+  
+  # L2 norm normalize columns of X
+  # X.n <- sqrt(Matrix::colSums(X^2)) # Calculate L2 norm of columns
+  # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
+  # beta <- beta * X.n
+  
+  list(X = X, y = y, weights = weights, beta_true = beta, eta_true = eta, mu_true = mu)
+}
+
+# data = simulate_glm(n = 100, p = 1000000, n_nonzero = 50, intercept = 1, family = "gaussian")
+
+
+simulate_ordinis <- function(n = 500, p = 50000, m = 50, sd_noise = 3){
+  beta_true <- matrix(c(runif(m), rep(0, p - m))) 
+  X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
+  y <- drop(X %*% beta_true) + rnorm(n)
+  
+  return(list(X = X, y = y, beta_true = beta_true))
+}
+
+
+
