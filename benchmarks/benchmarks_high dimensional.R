@@ -496,8 +496,10 @@ error_sd = 1
 dispersion = error_sd^2
 crit = "mbic"
 
-set.seed(1)
-data_gaus  = simulate_orthogonal(n=n, p=p, n_nonzero=n_nonzero, beta_sd=beta_sd, error_sd=error_sd) 
+data_gaus  = simulate_standardnormal(n=n, p=p, n_nonzero=n_nonzero, beta_sd=beta_sd, 
+                                     error_sd=error_sd,
+                                     seed.problem=1,
+                                     seed.noise=1) 
 X = normalizeX(data_gaus$X) # we first L2 norm normalize the columns of X
 y = data_gaus$y
 scaling = attr(X, "scaling")

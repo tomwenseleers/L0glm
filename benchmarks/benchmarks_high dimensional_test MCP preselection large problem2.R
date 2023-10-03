@@ -12,7 +12,7 @@ library(export)
 library(Matrix)
 
 
-# 1. TEST HIGH DIMENSIONAL ORTHOGONAL PROBLEM ####
+# 1. TEST HIGH DIMENSIONAL PROBLEM ####
 
 n = 500 # 500 # 1000
 p = 1000000 # 100000 # 10000 # 1000-4000 works, between 5000 and 10000 solution breaks down - maybe pre-selecting variables with MCP might still work then
@@ -23,10 +23,11 @@ beta_sd = 1 # this would directly correspond to Cohen's d - 0.2, 0.5 or 0.8 woul
 error_sd = 1 
 dispersion = error_sd^2
 
-set.seed(1)
-data_gaus  = simulate_orthogonal(n=n, p=p, n_nonzero=n_nonzero, 
+data_gaus  = simulate_standardnormal(n=n, p=p, n_nonzero=n_nonzero, 
                                  beta_sd=beta_sd, 
-                                 error_sd=error_sd) 
+                                 error_sd=error_sd,
+                                 seed.problem=1,
+                                 seed.noise=1) 
 X = normalizeX(data_gaus$X) # we first L2 norm normalize the columns of X
 Xsp = Matrix(X, sparse=T)
 y = data_gaus$y

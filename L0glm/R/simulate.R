@@ -93,7 +93,7 @@ simul <- function(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed
                                 sparse = sparse,
                                 sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta))
   } else if(method == 5){
-    sim <- simulate_orthogonal(n = n, p = p, 
+    sim <- simulate_standardnormal(n = n, p = p, 
                                n_nonzero = ifelse(is.null(options), 24, options$n_nonzero),
                                beta_sd = ifelse(is.null(options), 0.5, options$beta_sd), 
                                error_sd = ifelse(is.null(options), 1, options$error_sd))
@@ -288,26 +288,30 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
 
 
 
-
-
-
-
-
-# simulate single channel data with orthogonal variables & gaussian noise with SD of 1 ####
+# simulate single channel data with L2 norm renormalized standard normal variables & gaussian noise with SD of 1 ####
 # cf. Frommlet & Nuel 2016 p. 9
 
-simulate_orthogonal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_sd=1) {
+simulate_standardnormal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_sd=1, 
+                                    seed.problem=1, seed.noise=sample.int(1E4, 1, replace=T)) {
   # Generate X matrix
+  set.seed(seed.problem)
   X <- matrix(rnorm(n*p), n, p)
   
   # # we L2 norm normalize the columns of X first
   # X.n <- sqrt(Matrix::colSums(X^2)) 
   # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
   
+  # Generate beta vector with all zeros initially
+  beta <- rep(0, p)
+  
+  # Randomly select n_nonzero indices to assign non-zero values
+  non_zero_indices <- sample.int(n=p, size=n_nonzero)
+  
   # Generate beta vector
-  beta <- c(rnorm(n_nonzero, 0, beta_sd), rep(0, p-n_nonzero))
+  beta[non_zero_indices] <- rnorm(n_nonzero, 0, beta_sd)
   
   # Generate errors
+  set.seed(seed.noise)
   epsilon <- rnorm(n, 0, error_sd)
   
   # Generate y vector
@@ -316,18 +320,6 @@ simulate_orthogonal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_s
   return(list(X=X, y=y, beta_true=beta))
 }
 
-# # Settings
-# n <- 100
-# p_values <- c(100, 250, 500, 1000, 2500, 5000, 10000)
-# k_star <- 24
-# beta_sd <- 0.5
-# error_sd <- 1
-# 
-# # Generate datasets
-# set.seed(42)  # for reproducibility
-# datasets <- lapply(p_values, function(p) {
-#   replicate(1000, simulate_orthogonal(n, p, k_star, beta_sd, error_sd), simplify=FALSE)
-# })
 
 
 

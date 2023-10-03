@@ -8,7 +8,7 @@ devtools::load_all(".")
 # library(L0glm)
 # remotes::install_github("jaredhuling/ordinis")
 # library(ordinis)
-# library(abess)
+# library(abess) # NOTE: latest version now also supports box & nonnegativity constraints; benchmarks below should therefore be updated to reflect that
 # remotes::install_github("hazimehh/L0Learn", ref="nng") # branch of L0Learn with nonnegativity constraints
 # library(L0Learn)
 

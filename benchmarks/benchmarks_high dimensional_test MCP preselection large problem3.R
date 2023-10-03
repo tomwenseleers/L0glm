@@ -1,4 +1,6 @@
-# Test high dimensional variable selection - here I use MCP as a pre-screen on a large problem and then fit an L0glm on the pre-selected subset to remove some false positives & also test an adaptive L0glm algorithm ####
+# TEST HIGH DIMENSIONAL VARIABLE SELECTION USING L0GLM ####
+# here I use MCP as a pre-screen on a large problem and then fit an L0glm on the 
+# pre-selected subset to remove some false positives & also test an adaptive L0glm algorithm
 
 # fix to set working package repository when using Microsoft R Open with Intel MKL
 options (repos = c(CRAN="https://cloud.r-project.org/"))
@@ -12,7 +14,7 @@ library(export)
 library(Matrix)
 
 
-# 1. TEST HIGH DIMENSIONAL ORTHOGONAL PROBLEM ####
+# 1. TEST HIGH DIMENSIONAL PROBLEM ####
 
 n = 500 # 500 # 1000
 p = 1000000 # 100000 # 10000 # 1000-4000 works, between 5000 and 10000 solution breaks down - maybe pre-selecting variables with MCP might still work then
@@ -23,19 +25,16 @@ beta_sd = 1 # this would directly correspond to Cohen's d - 0.2, 0.5 or 0.8 woul
 error_sd = 1 
 dispersion = error_sd^2
 
-set.seed(1)
-data_gaus  = simulate_orthogonal(n=n, p=p, n_nonzero=n_nonzero, 
+data_gaus  = simulate_standardnormal(n=n, p=p, n_nonzero=n_nonzero, 
                                  beta_sd=beta_sd, 
-                                 error_sd=error_sd) 
-# shuffle columns of X to be on the safe side so that nonzero coefs are in random order
-set.seed(1)
-shuffled_indices <- sample(ncol(X))
-data_gaus$X <- data_gaus$X[, shuffled_indices]
-data_gaus$beta_true <- data_gaus$beta_true[shuffled_indices]
-X = normalizeX(data_gaus$X) # we first L2 norm normalize the columns of X
+                                 error_sd=error_sd,
+                                 seed.problem=1,
+                                 seed.noise=1) 
+X = normalizeX(data_gaus$X) # we first L2 norm normalize the columns of X - NOTE: this scaling should ideally be done within L0glm
 Xsp = Matrix(X, sparse=T)
 y = data_gaus$y
 # X = data_gaus$X
+w = rep(1, n) # observation weights
 
 # X = scale(data_gaus$X, center=T, scale=F)
 # y = scale(data_gaus$y, center=T, scale=F)
@@ -47,17 +46,16 @@ beta_true_set = which(beta_true!=0)
 L1norm_betatrue = sum(abs(beta_true))
 L0norm_betatrue = sum(beta_true!=0)
 L0overL1norm_betatrue = L0norm_betatrue/L1norm_betatrue
-L0overL1norm_betatrue # 1.44
+L0overL1norm_betatrue # 1.17
 family = gaussian(identity)
 
 
-# 1.0 TEST OF SOME POSSIBLE STARTING VALUES ####
+# 1.0 TEST OF SOME POSSIBLE UNIVARIATE REGRESSION STARTING VALUES ####
 
 # univariate zero intercept least square regressions as starting values ####
 # no good...
-w = rep(1, n) # observation weights
-system.time(coefs_univarLS <- apply(X, 2, function (colX) sum(w*colX*y)/sum(w*colX^2))) # 17s
-# should be done in Rcpp & multithreaded using OpenMP
+system.time(coefs_univarLS <- apply(X, 2, function (colX) sum(w*colX*y)/sum(w*colX^2))) # 12s
+# NOTE: should be done in Rcpp & multithreaded using OpenMP
 beta_univarLS = coefs_univarLS/scaling
 indices_n_largest <- sort(abs(beta_univarLS), decreasing=T, index.return=T)$ix[1:n]
 beta_univarLS2 <- rep(0, p)
@@ -65,31 +63,30 @@ beta_univarLS2[indices_n_largest] <- beta_univarLS[indices_n_largest]
 # beta_univarLS <- beta_univarLS2
 cor(beta_univarLS2, beta_true) # 0.22
 plot(beta_univarLS2, beta_true)
-sum(beta_univarLS2!=0)
-sum(beta_univarLS2!=0&beta_true!=0) # 16
-sum(beta_univarLS2!=0&beta_true==0) # 484
+sum(beta_univarLS2!=0) # =n
+sum(beta_univarLS2!=0&beta_true!=0) # 17
+sum(beta_univarLS2!=0&beta_true==0) # 483
 table(beta_univarLS2!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 
 # univariate zero intercept weighted quantile (median) regressions as starting values ####
 # even worse
 library(robsurvey)
-w = rep(1, n) # observation weights
-coefs_univarwquant = apply(X, 2, function (colX) weighted_quantile(x=y/colX, 
+system.time(coefs_univarwquant <- apply(X, 2, function (colX) weighted_quantile(x=y/colX, 
                                                                    w=abs(w * colX), 
-                                                                   probs=0.5))
+                                                                   probs=0.5))) # 37s
 # should be implemented in C++ & multithreaded using OpenMP etc
 beta_univarwquant = coefs_univarwquant/scaling
 indices_n_largest <- sort(abs(beta_univarwquant), decreasing=T, index.return=T)$ix[1:n]
 beta_univarwquant2 <- rep(0, p)
 beta_univarwquant2[indices_n_largest] <- beta_univarwquant[indices_n_largest]
-beta_univarwquant <- beta_univarwquant2
-cor(beta_univarwquant, beta_true) # 0.16
-plot(beta_univarwquant, beta_true)
-sum(beta_univarwquant!=0)
-sum(beta_univarwquant!=0&beta_true!=0)
-sum(beta_univarwquant!=0&beta_true==0)
-table(beta_univarwquant!=0, beta_true!=0, 
+# beta_univarwquant <- beta_univarwquant2
+cor(beta_univarwquant2, beta_true) # 0.19
+plot(beta_univarwquant2, beta_true)
+sum(beta_univarwquant2!=0)
+sum(beta_univarwquant2!=0&beta_true!=0) # 15
+sum(beta_univarwquant2!=0&beta_true==0) # 485
+table(beta_univarwquant2!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 
 
@@ -199,7 +196,7 @@ system.time(ordinis_fit <- ordinis(X, y, intercept=F,
                # lower.limits = rep(0, p), # force all coefficients to be positive
                # penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
                nlambda = 100L, # 100L, # for pre-screening I just need 1 solution, so nlambda=1 OK (and works best in fact)
-               lambda.min.ratio = NULL, # 0.05, # 1E-2,
+               lambda.min.ratio = NULL, # =0.05 when p>n
                dfmax = n,
                alpha = 1 #, #,
                # maxit = 1 #, # NOTE: can be set to just 1 iteration when used for pre-screening
@@ -215,26 +212,32 @@ which.min(BIC(ordinis_fit)) # NOTE: this is the smallest lambda value when nlamb
 # coefs_ordinis = ordinis_fit$beta[,which.min(BIC(ordinis_fit))][-1]
 # coefs_ordinis = ordinis_fit$beta[,which.min(AIC(ordinis_fit))][-1]
 coefs_ordinis = ordinis_fit$beta[,which.max(logLik(ordinis_fit))][-1] # gives same result as AIC & BIC here
-sum(coefs_ordinis!=0) # 115
-sum(coefs_ordinis!=0&beta_true!=0) # 36 true pos
-sum(coefs_ordinis!=0&beta_true==0) # 79 false positives still
+sum(coefs_ordinis!=0) # 45
+sum(coefs_ordinis!=0&beta_true!=0) # 44 true pos
+sum(coefs_ordinis!=0&beta_true==0) # 1 false positives still
 L1norm_coefsordinis = sum(abs(coefs_ordinis))
 L0norm_coefsordinis = sum(coefs_ordinis!=0)
 L0overL1norm_coefsordinis = L0norm_betatrue/L1norm_betatrue
-L0overL1norm_coefsordinis # 1.44
+L0overL1norm_coefsordinis # 1.17
 
 beta_est0 = coefs_ordinis/scaling
-range(beta_est0) # -2.265948  1.693443
-range(beta_true) # -2.716633  2.024688
+range(beta_est0) # -2.299470  2.258728
+range(beta_true) # -2.309376  2.257494
 
 table(beta_est0!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 #                            true beta nonzero
 # estimated beta nonzero         FALSE   TRUE
-#                         FALSE 999929     14
-#                         TRUE      21     36
+#                         FALSE 999949      6
+#                         TRUE       1     44
 
-cor(beta_est0, beta_true)  # 0.9824174
+# TODO check where this false pos is coming from
+# TODO check what tol, maxit & nlambda would be sufficient to use as starting vals in our L0glm algo
+# TODO check how performance would be affected by choice of gamma
+# (gamma close to 1 maybe results in objective function closest to that of L0glm?)
+# TODO compare with SCAD (penalty="scad")
+
+cor(beta_est0, beta_true)  # 0.9907723
 
 plot(x=beta_est0[beta_true!=0&beta_est0!=0], 
      y=beta_true[beta_true!=0&beta_est0!=0], pch=16, col="blue",
@@ -263,19 +266,19 @@ system.time(metrics_MCP <- data.frame(method="MCP_ordinis",
                                                                   family = gaussian(identity), 
                                                                   beta_true = beta_true)))) 
 metrics_MCP
-#        method timing_s       p   n m deviance deviance_true   loglik      MD_coefs    MAD_coefs
-# 1 MCP_ordinis       60 1000001 500 1 21398.17     0.6883192 998294.4 -5.180466e-07 7.798036e-06
+# method timing_s       p   n m deviance deviance_true   loglik    MD_coefs    MAD_coefs
+# 1 MCP_ordinis       60 1000001 500 1 31112.68      1.041961 998212.8 9.39089e-07 1.843079e-06
 # sMAPE_coefs bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs
-# 1 7.337925e-05  0.9716125 0.9679342 -0.01250099    0.1111841      0.7961271     0.9716125
+# 1 1.466811e-05  0.9845012 0.9816298  0.02324633   0.03068943     0.05929133     0.9845012
 # R2_selcoefs support_size_true support_size_estimated estimated_over_true_support_size TP FP
-# 1   0.9728414                50                     57                             1.14 36 21
+# 1    0.982472                50                     45                              0.9 44  1
 # TN FN precision recall specificity accuracy  F1_score      gic     ebic      bic      aic
-# 1 999929 14 0.6315789   0.72    0.999979 0.999965 0.6728972 -1995125 -1994986 -1996228 -1996473
+# 1 999949  6 0.9777778   0.88    0.999999 0.999993 0.9263158 -1995265 -1995155 -1996140 -1996334
 # mbic
-# 1 -1994787
+# 1 -1994996
 
 
-# attempt to get larger set by doing MCP fits on bootstrapped data & calculating the average of the coefficients ####
+# attempt to get larger set by doing MCP fits on bootstrapped data & calculating the average of the coefficients (i.e. using bagged MCP coefs) ####
 
 library(ordinis)
 gamma_mcp = 1.1 # default for MCP is 1.4, I am using value close to 1 to match best with my later L0 glm objective
@@ -297,28 +300,34 @@ ordinis_fit = ordinis(X[sel,,drop=F], y[sel],
                                    # tol = 0.1
 )
 # 7s with maxit 1 (with nlambda 1), 60s with defaults (with nlambda 100) 
-coefs_ordinis = ordinis_fit$beta[,which.max(logLik(ordinis_fit))][-1] # gives same result as AIC & BIC here
-sum(coefs_ordinis!=0) # 168
-sum(coefs_ordinis!=0&beta_true!=0) # 45 true pos
-sum(coefs_ordinis!=0&beta_true==0) # 123 false positives still
+coefs_ordinis_b = ordinis_fit$beta[,which.max(logLik(ordinis_fit))][-1] # gives same result as AIC & BIC here
+sum(coefs_ordinis_b!=0) # 
+sum(coefs_ordinis_b!=0&beta_true!=0) # true pos
+sum(coefs_ordinis_b!=0&beta_true==0) # false pos
 
-beta_est0 = coefs_ordinis/scaling
+beta_est0_b = coefs_ordinis_b/scaling
 
-coefs_ordinis_boot[i,] = Matrix(beta_est0, sparse=T)
+coefs_ordinis_boot[i,] = Matrix(beta_est0_b, sparse=T)
 # table(beta_est0!=0, beta_true!=0, 
 #      dnn=c("estimated beta nonzero", "true beta nonzero"))
 }
 
 # avg coefficients over all bootstrap replicates
-coefs_ordinis_boot_avg = colMeans(coefs_ordinis_boot)
-sum(coefs_ordinis_boot_avg!=0) # 225 # best to have this < n
-sum(coefs_ordinis_boot_avg!=0&beta_true!=0) # 26 true pos
-sum(coefs_ordinis_boot_avg!=0&beta_true==0) # 199 false positives still
+coefs_ordinis_boot_avg = colMeans(rbind(coefs_ordinis, coefs_ordinis_boot))
+sum(coefs_ordinis_boot_avg!=0) # 300 # best to have this < n?
+sum(coefs_ordinis_boot_avg!=0&beta_true!=0) # 44 true pos - nr of true pos did not increase by using bagged MCP estimates...
+sum(coefs_ordinis_boot_avg!=0&beta_true==0) # 256 false positives still
 
 beta_est0_boot = coefs_ordinis_boot_avg
 
 table(beta_est0_boot!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
+# true beta nonzero
+# estimated beta nonzero  FALSE   TRUE
+#                  FALSE 999694      6
+#                   TRUE     256     44
+
+# so nr of true pos did not increase by using bagged MCP estimates instead of original MCP estimate
 
 # check metrics & quality of MCP solution
 system.time(metrics_MCP_boot <- data.frame(method="MCP_ordinis",
@@ -330,15 +339,15 @@ system.time(metrics_MCP_boot <- data.frame(method="MCP_ordinis",
                                                                  beta_true = beta_true)))) 
 metrics_MCP_boot
 #        method timing_s       p   n m deviance deviance_true   loglik      MD_coefs    MAD_coefs
-# 1 MCP_ordinis       60 1000001 500 1 21537.38       1.13982 997875.8 -7.579259e-07 2.081303e-05
-# sMAPE_coefs bias_coefs R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs
-# 1 0.0008706308   1.117802 0.944821   -0.001599   0.04390934       1.836774      1.117802
+# 1 MCP_ordinis       60 1000001 500 1 21903.63         819.6 998045.6 -1.579223e-05 0.0001627937
+# sMAPE_coefs bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs
+# 1 0.0005765453  0.2264773 0.9753498 -0.05228412    0.5411056       1.881818     0.2264773
 # R2_selcoefs support_size_true support_size_estimated estimated_over_true_support_size TP  FP
-# 1    0.944821                50                    474                             9.48 50 424
+# 1   0.9761866                50                    300                                6 44 256
 # TN FN precision recall specificity accuracy  F1_score      gic     ebic      bic      aic
-# 1 999526  0 0.1054852      1    0.999576 0.999576 0.1908397 -1983763 -1982627 -1992800 -1994802
+# 1 999694  6 0.1466667   0.88    0.999744 0.999738 0.2514286 -1988494 -1987774 -1994221 -1995489
 # mbic
-# 1 -1980992
+# 1 -1986738
 
 
 # 1.3 iterative adaptive MCP fit ####
@@ -433,7 +442,7 @@ delta = delta*0.9
 }
 }) # 13s without plotting
 
-cor(beta_est0B, beta_true) # 0.9966425
+cor(beta_est0B, beta_true) # 0.9863264
 
 plot(x=beta_est0B[beta_true!=0&beta_est0B!=0], 
      y=beta_true[beta_true!=0&beta_est0B!=0], pch=16, col="blue",
@@ -445,7 +454,7 @@ points(x=beta_est0B[beta_true!=0&beta_est0B==0],
        pch=16, col="purple") # false negatives
 points(x=beta_est0B[beta_true==0&beta_est0B!=0], 
        y=beta_true[beta_true==0&beta_est0B!=0], 
-       pch=16, col="red") # false positives
+       pch=16, col="red") # false positives # TODO check where this false pos is coming from
 points(x=beta_est0B[beta_true==0&beta_est0B==0][[1]], 
        y=beta_true[beta_true==0&beta_est0B==0][[1]], 
        pch=16, col="green") # true negatives
@@ -500,7 +509,7 @@ metrics_adMCP
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3212875/
 
 # startcoefs = beta_est0*scaling # MCP starting coefficients work best
-startcoefs = beta_est0_boot*scaling # MCP starting coefficients (avg across 10 bootstrap replicates)
+startcoefs = beta_est0_boot*scaling # bagged MCP starting coefficients (avg across 5 bootstrap replicates)
 # startcoefs = coefs_glmnet1*scaling 
 # NOTE: LASSO glmnet coefficient starting values also work & 
 # results in smaller nr of true coefficients being picked in adaptive L0glm step (27 instead of 33), but requires more iterations than with MCP starting values) 
@@ -520,16 +529,16 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   family = family, 
   lambda = lambda_preset, # mbic because high dimensional 
   nonnegative = FALSE,
-  # prior.mean = priormean[nonzero],
+  prior.mean = priormean[nonzero],
   start = startcoefs[nonzero], 
   warm.start = 1, 
   # TODO make sure that with warm.start=1 vars with zero coefs are efficiently removed from the start
   gamma = 2, 
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
-  # dispersion = dispersion,
+  dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
   method = 3L, # faster than 7 here
-  relaxed = FALSE)) # 0.18s
+  relaxed = FALSE)) # 0.08s
 
 L0glm_gaus_presetlambda$dispersion # 0.9157806
 
@@ -537,7 +546,7 @@ L0glm_gaus_presetlambda_coefs = rep(0, ncol(X))
 L0glm_gaus_presetlambda_coefs[nonzero] = L0glm_gaus_presetlambda$coefficients/scaling[nonzero]
 
 beta_est1 = L0glm_gaus_presetlambda_coefs
-sum(beta_est1!=0&beta_true!=0)  # 42
+sum(beta_est1!=0&beta_true!=0)  # 41
 table(beta_est1!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 #                    true beta nonzero
@@ -551,7 +560,7 @@ plot(x=beta_est1[beta_true!=0&beta_est1!=0],
      y=beta_true[beta_true!=0&beta_est1!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
      main="L0glm on MCP preselected variables") # true positives
-min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) # 0.12
+min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) # 0.22
 abline(a=0, b=1, col="lightgrey")
 points(x=beta_est1[beta_true!=0&beta_est1==0], 
        y=beta_true[beta_true!=0&beta_est1==0], 
@@ -686,7 +695,9 @@ metrics_fullL0
 # the original starting values that are used would themselves also be optimised.
 # Given that we start from sensible starting values we can specify a prior mean here.
 
-startcoefs = beta_est0_boot*scaling # beta_est1*scaling # we start from initial L0glm estimate
+# startcoefs = beta_est0_boot*scaling # we start from bagged MCP starting values
+startcoefs = beta_est0*scaling # we start from MCP starting values
+
 # NOTE: starting from the MCP solution also works, but takes more iterations
 # to converge
 # starting from the iterative adaptive MCP solution converges very quickly
@@ -758,22 +769,22 @@ startcoefs = beta_est1B*scaling
 }
 }) # 3.6s
 
-sum(beta_est1B!=0) # 33
-sum(beta_est1B!=0&beta_true!=0)  # 33
-L0glm.out_updated$dispersion # 1.349044
+sum(beta_est1B!=0) # 42
+sum(beta_est1B!=0&beta_true!=0)  # 41
+L0glm.out_updated$dispersion # 0.19 # this is too low
 # these effect sizes in terms of Cohen's d end up as false negatives and are not detected
 range(abs(beta_true)[beta_est1B==0&beta_true!=0]) 
-# 0.004638211 0.359392207
+# 0.0395234 0.2349476
 # while these effect sizes in terms of Cohen's d are detected
 range(abs(beta_true)[beta_est1B!=0&beta_true!=0]) 
-# 0.3093196 2.7166332
+# 0.2083848 2.3093760
 
 table(beta_est1B!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                         true beta nonzero
+#               true beta nonzero
 # estimated beta nonzero  FALSE   TRUE
-# FALSE                  999950     17
-# TRUE                        0     33
+#                  FALSE 999949      9
+#                   TRUE       1     41
 
 plot(x=beta_est1B[beta_true!=0&beta_est1B!=0], 
      y=beta_true[beta_true!=0&beta_est1B!=0], pch=16, col="blue",
@@ -840,7 +851,7 @@ beta_abessafterMCP = Matrix(rep(0, p), sparse=T)
 beta_abessafterMCP[selcoefs] = beta_abessafterMCP_selcoefs
 beta_abessafterMCP = as.vector(beta_abessafterMCP)/scaling
 # beta_abessafterMCP[beta_abessafterMCP<0] = 0
-sum(beta_abessafterMCP!=0) # 33
+sum(beta_abessafterMCP!=0) # 44
 plot(x=beta_abessafterMCP[beta_true!=0&beta_abessafterMCP!=0], 
      y=beta_true[beta_true!=0&beta_abessafterMCP!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
@@ -861,8 +872,8 @@ table(beta_abessafterMCP!=0, beta_true!=0,
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 #                         true beta nonzero
 # estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999950     17
-#                   TRUE      0     33
+#                  FALSE 999949      7
+#                   TRUE      1     43
 
 
 # check metrics & quality of solution 
