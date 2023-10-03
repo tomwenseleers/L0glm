@@ -128,18 +128,17 @@ L0glm.fit.internal = function(X,
     # UPDATE RIDGE PENALTIES ####
     # browser()
     
-    # penalty weights & penalties for the Lq norm penalty ####
-    # TODO add q as option ####
-    pen.weights.Lqpen <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
-    lambdas_Lq = (1/4)*lambda*dispersion*pen.weights.Lqpen
+    # penalty weights & penalties for the L0 norm penalty ####
+    pen.weights <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
+    lambdas = (1/4)*lambda*dispersion*pen.weights
     # ridge penalties on individual coefficients, we scale these penalties 
     # by the estimated dispersion & by 1/4 (cf Frommlet & Nuel 2016) so that we 
     # can directly use the lambda penalty values implied by the AIC & BIC criteria 
     # (e.g. 2 & log(n) for AIC & BIC) (stricly speaking this was derived for 
-    # q=0 & the Gaussian case only, but it works in practice for other noise
+    # the Gaussian case only, but it works in practice for other noise
     # families too)
     
-    # NOTE: I think that for any q between 0 and 2 the factor would be
+    # NOTE: I think that with an Lq penalty and for any q between 0 and 2 the factor would be
     # L0overLqnorm*4*(1/2^(2-q)) as for q=0 this would give (1/4) as a factor,
     # and for q=2, where the penalty weights would become 1 (ie nonadaptive)
     # the correct factor should be the L0overL2norm to get lambda on the equivalent
@@ -147,8 +146,8 @@ L0glm.fit.internal = function(X,
     # the true solution) could be estimated from an L0glmfit with
     # q=0
       
-    # # penalty weights & penalties for an optional fused ridge penalty ####
-    # # TODO implement this properly ####
+    # NOTE: later we could consider also allowing for fused Lq ridge penalties,
+    # useful e.g. to enforce smoothness among the recovered coefficients
     # beta_1st_order_diff = c(0, diff(beta, 1))
     # 
     # # lambda_fused_ridge = 100
@@ -160,7 +159,7 @@ L0glm.fit.internal = function(X,
     # lambdas_fused_ridge = lambda*pen.weights.fused_ridge*sum((beta_1st_order_diff)^2)
 
     # total ridge penalties ####
-    lambdas = lambdas_Lq # + lambdas_fused_ridge
+    # lambdas = lambdas # + lambdas_fused_ridge
     lambdas[no.pen] = 0 # terms that should be left unpenalized (e.g. intercept)
     
     if (length(good)==0) {
