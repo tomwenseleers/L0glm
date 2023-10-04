@@ -31,13 +31,10 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", p
 # bestlambda = 10, time = 1.1s
 system.time(tune.QR.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
 # bestlambda = 10, time = 1.6s
-# TODO: fix iterative solvers (CG & LSCG) - they now seem to fail (but were working before):
 system.time(tune.CG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
-# TODO: fix error Error in lmridge(X = X[good, nonzero, drop = F], y = z, weights = W, lambdas = lambdas[nonzero],  : 
-# Ridge solver failed.
+# bestlambda = 10, time = 1.5s
 system.time(tune.LSCG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
-# TODO: fix error Error in lmridge(X = X[good, nonzero, drop = F], y = z, weights = W, lambdas = lambdas[nonzero],  : 
-# Ridge solver failed.
+# bestlambda = 10, time = 1.9s
 
 ## 1.1.1 Fit relaxed = FALSE ####
 # OSQP ####
@@ -101,32 +98,32 @@ sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) =
 # LSCG ####
 system.time(L0glm.LSCG <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = tune.LSCG.sc$best.lambda,
+                                    lambda = "ebic", # tune.LSCG.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 3L)) 
-# XXXs
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = XXX
+# 0.16s
+cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9790543
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 45
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 8
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 442
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 5
 
 # CG ####
 system.time(L0glm.CG <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                   family = poisson(identity), 
-                                  lambda = tune.CG.sc$best.lambda,
+                                  lambda = "ebic", # tune.CG.sc$best.lambda,
                                   nonnegative = TRUE,
                                   relaxed = TRUE,
                                   solver = "eigen",
                                   method = 5L)) 
-# XXXs
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = XXX
+# 0.09s
+cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796666
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 45
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 8
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 442
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 5
 
 ## Tune lambda relaxed = T with gic
 system.time(tune.osqp.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "osqp"))
@@ -137,13 +134,10 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", p
 # bestlambda = 10, time = 1.3s
 system.time(tune.QR.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
 # bestlambda = 10, time = 2.0s
-# TODO fix bug in iterative CG & LSCG solvers
-# Error in lmridge(X = X[good, nonzero, drop = F], y = z, weights = W, lambdas = lambdas[nonzero],  : 
-#                   Ridge solver failed.
 system.time(tune.CG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
-# bestlambda = 10, time = XXXs
+# bestlambda = 10, time = 1.6s
 system.time(tune.LSCG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
-# bestlambda = 10, time = XXXs
+# bestlambda = 10, time = 2.2s
 
 ## 1.1.2 Fit relaxed = TRUE ####
 # OSQP ####
@@ -213,12 +207,12 @@ system.time(L0glm.LSCG <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     relaxed = TRUE,
                                     solver = "eigen",
                                     method = 3L)) 
-# XXXs
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = XXX
+# 0.18s
+cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796581
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 45
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 8
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 442
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 5
 
 # CG ####
 system.time(L0glm.CG <- L0glm.fit(sim.pois$X, sim.pois$y, 
@@ -228,12 +222,12 @@ system.time(L0glm.CG <- L0glm.fit(sim.pois$X, sim.pois$y,
                                   relaxed = TRUE,
                                   solver = "eigen",
                                   method = 5L)) 
-# 0.384s
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = XXX
+# 0.08s
+cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796666
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 45
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 8
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 442
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 5
 
 
 
@@ -262,26 +256,26 @@ system.time(tune.LSCG.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", p
 # OSQP ####
 system.time(L0glm.osqp <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
-                                    lambda = tune.osqp.sc$best.lambda,
+                                    lambda = "gic", # tune.osqp.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "osqp")) 
-# 0.5s
-cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus$beta_true)) #  0.983437
+# 0.2s
+cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus$beta_true)) #  0.9836706
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # TP = 48
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 9
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 441
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 7
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 443
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 2
 
 # GLMNET ####
 system.time(L0glm.glmnet <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                       family = gaussian(identity), 
-                                      lambda = tune.glmnet.sc$best.lambda,
+                                      lambda = "gic", # tune.glmnet.sc$best.lambda,
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
                                       solver = "glmnet")) 
-# 1.6s
-cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.gaus$beta_true)) # 0.963677
+# 1.5s
+cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9637935
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # TP = 47
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # FP = 24
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # TN = 426
@@ -290,13 +284,13 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients)
 # QR ####
 system.time(L0glm.QR <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                   family = gaussian(identity), 
-                                  lambda = tune.QR.sc$best.lambda,
+                                  lambda = "gic", # tune.QR.sc$best.lambda,
                                   nonnegative = TRUE,
                                   relaxed = FALSE,
                                   solver = "eigen",
                                   method = 1L)) 
-# 0.24s
-cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9974714
+# 0.04s
+cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR$coefficients) != 0)) # TP = 49
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) != 0)) # FP = 4
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) == 0)) # TN = 446
@@ -305,13 +299,13 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) =
 # Cholesky ####
 system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
-                                    lambda = tune.chol.sc$best.lambda,
+                                    lambda = "gic", # tune.chol.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 0.05s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9974714
+# 0.03s
+cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 49
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 4
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 446
@@ -320,33 +314,33 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) =
 # LSCG ####
 system.time(L0glm.LSCG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
-                                    lambda = tune.CG.sc$best.lambda,
+                                    lambda = "gic", # tune.CG.sc$best.lambda,
                                     nonnegative = TRUE,
                                     start = rep(1, 500),
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 3L)) 
-# XXX
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.gaus$beta_true)) # XXX
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = XXX
+# 0.12s
+cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9777964
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 47
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 12
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 438
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 3
 
 # CG ####
 system.time(L0glm.CG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                   family = gaussian(identity), 
-                                  lambda = tune.CG.sc$best.lambda,
+                                  lambda = "gic", # tune.CG.sc$best.lambda,
                                   nonnegative = TRUE,
                                   relaxed = TRUE,
                                   solver = "eigen",
                                   method = 5L)) 
-# XXX
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.gaus$beta_true)) # XXX
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = XXX
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = XXX
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = XXX
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = XXX
+# 0.06s
+cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9871489
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 46
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 7
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 443
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 4
 
 
 # 2. MULTICHANNEL ####
@@ -389,8 +383,8 @@ abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9941838
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 50
-sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.osqp$coefficients)!=0) # FP = 170
-sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.osqp$coefficients)==0) # TN = 280
+sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.osqp$coefficients)!=0) # FP = 169
+sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.osqp$coefficients)==0) # TN = 281
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)==0) # FN = 0
 
 # Cholesky ####

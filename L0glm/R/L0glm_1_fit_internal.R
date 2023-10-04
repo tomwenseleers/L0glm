@@ -101,6 +101,9 @@ L0glm.fit.internal = function(X,
   # mask <- rep(FALSE, p)
   
   for (i in 1L:maxit) {
+    # print(i)
+    # print(dispersion)
+    
     var = variance(mu) # variance in function of the mean µ
     
       if (family$link == "identity"){ # simplified formula and faster than formula in else statement
@@ -183,7 +186,7 @@ L0glm.fit.internal = function(X,
                    lambdas = lambdas[nonzero],
                    nonnegative = nonnegative,
                    scaling = scaling[nonzero],
-                   start = start[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                   start = beta_old[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
                    lower = lower[nonzero], 
                    upper = upper[nonzero],
                    prior.mean = center[nonzero],

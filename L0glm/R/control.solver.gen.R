@@ -105,23 +105,23 @@ control.solver.gen <- function(solver,
       l <- list(method = "QR", pivot = 1, rowaug = rowaug)
       
     } else if (method == 3){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE
+      # rowaug <- TRUE
       l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 4){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE
+      # rowaug <- TRUE
       l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 5){
-      # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE
+      # rowaug <- TRUE
       l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
-      # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE
+      # rowaug <- TRUE
       l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){

@@ -222,8 +222,8 @@ lmridge.eigen <- function(Xw, yw,
                           verbose = FALSE){ 
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
-  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { Xw = as(Matrix(Xw, sparse=T), "generalMatrix") }
-  # always coercing Xw to sparse matrix now
+  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { 
+    Xw = as(Matrix(Xw, sparse=T), "generalMatrix") } # always coercing Xw to sparse matrix now
   
   if((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
     control.solver$rowaug <- FALSE
@@ -297,14 +297,14 @@ lmridge.eigen <- function(Xw, yw,
         coefs <- solve_sparse_LSCG(A = Xwaug,
                                    b = as.matrix(ywaug),
                                    x0 = as.matrix(start),
-                                   tol = control.solver$tol,
+                                   tol = max(control.solver$tol, 1E-4),
                                    maxit = control.solver$maxit,
                                    precond = control.solver$precond)$coefficients 
       } else {
         coefs <- solve_dense_LSCG(A = Xwaug,
                                   b = as.matrix(ywaug),
                                   x0 = as.matrix(start),
-                                  tol = control.solver$tol,
+                                  tol = max(control.solver$tol, 1E-4),
                                   maxit = control.solver$maxit,
                                   precond = control.solver$precond)$coefficients
       }
@@ -316,13 +316,13 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(solve_sparse_LSCG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
                                                b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                                x0 = as.matrix(start),
-                                               tol = control.solver$tol,
+                                               tol = max(control.solver$tol, 1E-4),
                                                precond = control.solver$precond)$coefficients)
         } else { # if it's dense
           coefs <- as.vector(solve_dense_LSCG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                               x0 = as.matrix(start),
-                                              tol = control.solver$tol,
+                                              tol = max(control.solver$tol, 1E-4),
                                               maxit = control.solver$maxit,
                                               precond = control.solver$precond)$coefficients)
         }
@@ -336,7 +336,7 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
-          # TODO; replace Matrix::solve with solve_sparse_LSCG
+          # TODO: replace Matrix::solve with solve_sparse_LSCG
         } else { # if it's dense
           # Precompute some values
           y_star <- as.vector(yw - Xw %*% prior.mean)
@@ -364,7 +364,7 @@ lmridge.eigen <- function(Xw, yw,
         coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)),
                                  x0 = as.matrix(start),
-                                 tol = control.solver$tol,
+                                 tol = max(control.solver$tol, 1E-4),
                                  maxit = control.solver$maxit,
                                  precond = control.solver$precond)$coefficients
         
@@ -372,7 +372,7 @@ lmridge.eigen <- function(Xw, yw,
         coefs <- solve_dense_CG(A = crossprod(Xwaug),
                                 b = as.matrix(crossprod(Xwaug, ywaug)),
                                 x0 = as.matrix(start),
-                                tol = control.solver$tol,
+                                tol = max(control.solver$tol, 1E-4),
                                 maxit = control.solver$maxit,
                                 precond = control.solver$precond)$coefficients
       }
@@ -385,14 +385,14 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(solve_sparse_CG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                              x0 = as.matrix(start),
-                                             tol = control.solver$tol,
+                                             tol = max(control.solver$tol, 1E-4),
                                              maxit = control.solver$maxit,
                                              precond = control.solver$precond)$coefficients)
         } else { # if it's dense
           coefs <- as.vector(solve_dense_CG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                             x0 = as.matrix(start),
-                                            tol = control.solver$tol,
+                                            tol = max(control.solver$tol, 1E-4),
                                             maxit = control.solver$maxit,
                                             precond = control.solver$precond)$coefficients)
         }
