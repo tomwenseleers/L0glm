@@ -36,9 +36,9 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
   n <- nrow(sim$X)
 
   if(family$family == "gaussian"){
-    W <- as.matrix(rep(1,p))
+    W <- rep(1,p)
   } else if(family$family == "poisson"){
-    W <- 1/(y+1E-10)
+    W <- as.vector(1/(y+0.1))
   }
   
   if(method == 1) { # L0glm
@@ -250,7 +250,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     if(is.null(options)){
       fit <- abess::abess(x = X, 
                    y = y,
-                   weights = W, 
+                   weight = W, 
                    family = "gaussian",
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
@@ -263,7 +263,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X, y = y, weights = W, 
+      args <- c(list(x = X, y = y, weight = W, 
                      family = "gaussian",
                      tune.type = "bic", # trick to support any IC that L0glm supports
                      ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
@@ -273,7 +273,10 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       fit <- do.call(abess::abess, args)
     }
     
-    coefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+    # coefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+    coefs = coef(fit,  
+                 support.size = fit[["best.size"]], 
+                 sparse = FALSE)[-1,] # coefficient matrix for best subset
     
     if(plot){
       plot(fit, type="tune")
@@ -301,7 +304,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     if(is.null(options)){
       fit <- abess::abess(x = X[,selcoefs,drop=F], 
                    y = y, 
-                   weights = W,
+                   weight = W,
                    family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
@@ -314,12 +317,19 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X[,selcoefs,drop=F], y = y, tune.type = IC, support.size = c(1:(p_selcoefs-1))), options)
+      args <- c(list(x = X[,selcoefs,drop=F], y = y, 
+                     weight = W,
+                     family = "gaussian",
+                     tune.type = IC, 
+                     support.size = c(1:(p_selcoefs-1))), options)
       fit <- do.call(abess::abess, args)
     }
     
     plot(fit, type="tune")  # optimal support size 
-    coefs.selcoefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+    # coefs.selcoefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+    coefs.selcoefs = coef(fit,  
+                          support.size = fit[["best.size"]], 
+                          sparse = FALSE)[-1,] # coefficient matrix for best subset
     coefs = Matrix(rep(0, p), sparse=T)
     coefs[selcoefs] = coefs.selcoefs
     

@@ -26,9 +26,9 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
   X <- sim$X
   y <- sim$y
   if(family$family == "gaussian"){
-    W <- as.matrix(rep(1,ncol(X)))
+    W <- rep(1,ncol(X))
   } else if(family$family == "poisson"){
-    W <- 1/(y+1E-10)
+    W <- as.vector(1/(y+0.1))
   }
   
   if(method == 1) { # L0glm
@@ -90,7 +90,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            xlab="Estimated coefficients", ylab="True coefficients")
     }
     
-  } else if(method == 3) { # adaotive LASSO using glmnet 
+  } else if(method == 3) { # adaptive LASSO using glmnet 
     # since glmnet is so much faster than ordinis & supports sparse
     # covariate matrices, let's use that to fit an adaptive LASSO model, cf
     # https://rpubs.com/kaz_yos/alasso
@@ -238,7 +238,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     if(is.null(options)){
       fit <- abess(x = X, 
                    y = y,
-                   weights = W, 
+                   weight = W, 
                    family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
@@ -251,7 +251,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X, y = y, weights = W, 
+      args <- c(list(x = X, y = y, weight = W, 
                      family = "gaussian", # identity link poisson not supported
                      tune.type = "bic", # trick to support any IC that L0glm supports
                      ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
@@ -261,7 +261,10 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
       fit <- do.call(abess, args)
     }
     
-    coefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
+    # coefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
+    coefs = coef(fit, 
+                 support.size = fit[["best.size"]], 
+                 sparse = FALSE)[-1,] # coefficient matrix for best subset
     
     if(plot){
       plot(fit, type="tune")
@@ -288,7 +291,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     if(is.null(options)){
       fit <- abess(x = X[,selcoefs,drop=F], 
                    y = y, 
-                   weights = W,
+                   weight = W,
                    family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
@@ -302,7 +305,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       args <- c(list(x = X[,selcoefs,drop=F], y = y, 
-                     weights = W,
+                     weight = W,
                      family = "gaussian",
                      tune.type = "bic", # trick to support any IC that L0glm supports
                      ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
@@ -313,7 +316,10 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     }
     
     plot(fit, type="tune")  # optimal support size 
-    coefs.selcoefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
+    # coefs.selcoefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
+    coefs.selcoefs = coef(fit, 
+                 support.size = fit[["best.size"]], 
+                 sparse = FALSE)[-1,] # coefficient matrix for best subset
     coefs = Matrix(rep(0, p), sparse=T)
     coefs[selcoefs] = coefs.selcoefs
     
@@ -416,43 +422,52 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
   X <- sim$X
   y <- sim$y
   p <- ncol(X)
+  n <- nrow(X)
+  if (family$family == "poisson") { 
+    W <- 1/(y+0.1) } else {  # approx 1/variance weights to approximate identity link poisson, which is not supported by abess
+      W <- NULL } 
   if(method == 1){ # best subset multitask learning using family="mgaussian" using abess
-    if(is.null(options)){
+    if (is.null(options)) {
       fit <- abess(x = X, 
                    y = y, 
-                   weights = ifelse(family$family == "poisson", 1/(y+0.1), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
+                   weight = W,  
                    family = "mgaussian",
                    tune.path = "sequence", 
-                   support.size = c(1:(p-1)),
+                   support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=0, 
                    warm.start = TRUE,
-                   tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
-                                            p = p, 
-                                            n = n)/log(n)) # trick to support any IC that L0glm supports
+                   tune.type = "aic" #, # trick to support any IC that L0glm supports
+                   # ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   #                         p = p, 
+                   #                         n = n)/log(n)
+                   ) 
     } else {
       fit <- abess(x = X, 
                    y = y, 
-                   weights = options$weights,  # approx 1/variance weights to approximate identity link poisson
+                   # weight = W, # right now not allowed, but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510 
                    family = "mgaussian",
                    tune.path = options$tune.path, 
-                   support.size = c(1:(p-1)),
+                   support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = "bic", # trick to support any IC that L0glm supports
                    ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
-                                            p = p, 
-                                            n = n)/log(n)) # trick to support any IC that L0glm supports
+                                             p = p, 
+                                             n = n)/log(n)
+                   ) 
     }
     
-    if(plot){
+    if (plot) {
       plot(fit, type="tune")  # optimal support size 
-      coefs = as.matrix(extract(fit)$beta) # coefficient matrix for best subset
-      coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
+      # coefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+      coefs = coef(fit, 
+                   support.size = fit[["best.size"]], 
+                   sparse = FALSE)[[1]][-1,] # coefficient matrix for best subset
+      # coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
       library(qlcMatrix)
       image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
             useRaster=TRUE,
@@ -524,7 +539,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
     beta <- do.call(cbind, lapply(seq_len(m), function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
     
     colnames(beta) = 1:ncol(beta)
-    beta[abs(beta)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
+    # beta[abs(beta)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
     
     coefs <- beta
     if(plot){

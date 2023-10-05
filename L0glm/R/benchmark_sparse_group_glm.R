@@ -31,6 +31,7 @@ benchmark_sparse_group_glm <- function(sim,
 
   X <- sim$X
   y <- sim$y
+  if (family$family=="poisson") { W <- 1/(y+0.1) } else { W <- NULL }
   p <- ncol(sim$X)
   n <- nrow(sim$X)
   m <- ncol(sim$y)
@@ -39,10 +40,10 @@ benchmark_sparse_group_glm <- function(sim,
     if(is.null(options)){
       fit <- abess:abess(x = X, 
                    y = y, 
-                   weights = ifelse(family$family == "poisson", 1/(y+1E-10), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
+                   # weights = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
                    family = "mgaussian",
                    tune.path = "sequence", 
-                   support.size = c(1:(p-1)),
+                   support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=0, 
@@ -54,10 +55,10 @@ benchmark_sparse_group_glm <- function(sim,
     } else {
       fit <- abess:abess(x = X, 
                    y = y, 
-                   weights = ifelse(family$family == "poisson", 1/(y+1E-10), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
+                   # weights = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
                    family = "mgaussian",
                    tune.path = options$tune.path, 
-                   support.size = c(1:(p-1)),
+                   support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
@@ -70,8 +71,11 @@ benchmark_sparse_group_glm <- function(sim,
     
     if(plot){
       plot(fit, type="tune")  # optimal support size 
-      coefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
-      coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
+      # coefs = as.matrix(abess::extract(fit)$beta) # coefficient matrix for best subset
+      coefs = coef(fit, 
+                   support.size = fit[["best.size"]], 
+                   sparse = FALSE)[[1]][-1,]
+      # coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
       
       image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
             useRaster=TRUE,
@@ -145,7 +149,7 @@ benchmark_sparse_group_glm <- function(sim,
                                   function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
     
     colnames(beta) = 1:ncol(beta)
-    beta[abs(beta)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
+    # beta[abs(beta)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
     
     coefs <- beta
     if(plot){
