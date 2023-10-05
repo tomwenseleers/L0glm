@@ -152,7 +152,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
       y = as.vector(y)
     }
     if(is.null(options)){
-      result <- L0Learn.fit(x = X,  # note: no support for sparse matrices
+      result <- L0Learn.fit(x = X,  # note: L0Learn branch with nonnegativity constraints does not support sparse covariate matrices
                             y = y,
                             loss = "SquaredError",
                             penalty = "L0", algorithm="CD",
@@ -179,7 +179,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            xlab="Estimated coefficients", ylab="True coefficients")
     }
     
-  } else if(method == 5) { # nonnegative L0glm after glmnet LASSO
+  } else if(method == 5) { # nonnegative L0Learn after glmnet LASSO
     # Start with regular LASSO fit
     glmnet.fit <- fit.GLM(sim = sim, method = 2, family = family, plot = F, internal = TRUE)
     LLs <- logLik(glmnet.fit, weights = W, X = X, y = y)
@@ -234,21 +234,30 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     
   } else if(method == 6) { # abess
     # fast for small problems, but becomes slow for n=p=10000
-    if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
+    # if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
     if(is.null(options)){
       fit <- abess(x = X, 
                    y = y,
                    weights = W, 
-                   family = sim$family,
+                   family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
-                   lambda=0,
+                   lambda = 0,
                    warm.start = TRUE,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X, y = y, weights = W, tune.type = IC, family = sim$family), options)
+      args <- c(list(x = X, y = y, weights = W, 
+                     family = "gaussian", # identity link poisson not supported
+                     tune.type = "bic", # trick to support any IC that L0glm supports
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                              p = p, 
+                                              n = n)/log(n) ), 
+                options)
       fit <- do.call(abess, args)
     }
     
@@ -280,16 +289,26 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
       fit <- abess(x = X[,selcoefs,drop=F], 
                    y = y, 
                    weights = W,
-                   family = "gaussian", # poisson not supported
+                   family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X[,selcoefs,drop=F], y = y, tune.type = IC, support.size = c(1:(p_selcoefs-1))), options)
+      args <- c(list(x = X[,selcoefs,drop=F], y = y, 
+                     weights = W,
+                     family = "gaussian",
+                     tune.type = "bic", # trick to support any IC that L0glm supports
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                              p = p, 
+                                              n = n)/log(n),
+                     support.size = c(1:(p_selcoefs-1))), options)
       fit <- do.call(abess, args)
     }
     
@@ -324,7 +343,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     edfs = attr(LLs, "df")
     LLs = as.vector(LLs)
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
-    coefs = fit$beta[,which.min(IC.val)]
+    coefs = fit$beta[,which.min(IC.val[-1])+1]
     
     if(plot){
       plot(fit)
@@ -353,9 +372,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     edfs = attr(LLs, "df")
     LLs = as.vector(LLs)
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
-    coefs = fit$beta[,which.min(IC.val)]
-    
-    
+    coefs = fit$beta[,which.min(IC.val[-1])+1]
     
     if(plot){
       plot(fit)
@@ -411,19 +428,25 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    beta.low = 0, # nonnegativity constraints
                    lambda=0, 
                    warm.start = TRUE,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       fit <- abess(x = X, 
                    y = y, 
-                   weights = options$weights,  # approx 1/variance weights to approximate family="poisson", which is not supported
-                   family = options$family,
+                   weights = options$weights,  # approx 1/variance weights to approximate identity link poisson
+                   family = "mgaussian",
                    tune.path = options$tune.path, 
                    support.size = c(1:(p-1)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     }
     
     if(plot){
@@ -445,7 +468,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
            main=title)
     }
     
-  }else if(method ==2){ # glmnet nonnegative mgaussian multivariate group LASSO fit. Only for Gaussian
+  } else if(method ==2){ # glmnet nonnegative mgaussian multivariate group LASSO fit. Only for Gaussian
     if(is.null(options)){
       cvfit <- cv.glmnet(x = X, 
                          y = y, 

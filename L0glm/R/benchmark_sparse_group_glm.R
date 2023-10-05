@@ -39,7 +39,7 @@ benchmark_sparse_group_glm <- function(sim,
     if(is.null(options)){
       fit <- abess:abess(x = X, 
                    y = y, 
-                   weights = ifelse(family$family == "poisson", 1/(y+0.1), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
+                   weights = ifelse(family$family == "poisson", 1/(y+1E-10), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
                    family = "mgaussian",
                    tune.path = "sequence", 
                    support.size = c(1:(p-1)),
@@ -47,19 +47,25 @@ benchmark_sparse_group_glm <- function(sim,
                    beta.low = 0, # nonnegativity constraints
                    lambda=0, 
                    warm.start = TRUE,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       fit <- abess:abess(x = X, 
                    y = y, 
-                   weights = options$weights,  # approx 1/variance weights to approximate family="poisson", which is not supported
-                   family = options$family,
+                   weights = ifelse(family$family == "poisson", 1/(y+1E-10), NULL),  # approx 1/variance weights to approximate family="poisson", which is not supported
+                   family = "mgaussian",
                    tune.path = options$tune.path, 
                    support.size = c(1:(p-1)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     }
     
     if(plot){

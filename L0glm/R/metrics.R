@@ -15,7 +15,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   if (!is(family, "family")) family = family()
   
-  
+  if (issparse(beta)) { beta <- matrix(beta) }
   if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
   if (is.vector(beta_true)) { beta_true <- matrix(beta_true, ncol=1) }
   

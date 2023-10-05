@@ -246,21 +246,30 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     
   } else if(method == 6) { # abess
     # fast for small problems, but becomes slow for n=p=10000
-    if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
+    # if(IC != "ebic") warning("Ebic is recommended with method == 6 for better performance")
     if(is.null(options)){
       fit <- abess::abess(x = X, 
                    y = y,
                    weights = W, 
-                   family = sim$family,
+                   family = "gaussian",
                    tune.path = "sequence",
                    support.size = c(1:round(p*0.5)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=0,
                    warm.start = TRUE,
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
-      args <- c(list(x = X, y = y, weights = W, tune.type = IC, family = sim$family), options)
+      args <- c(list(x = X, y = y, weights = W, 
+                     family = "gaussian",
+                     tune.type = "bic", # trick to support any IC that L0glm supports
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                              p = p, 
+                                              n = n)/log(n)), # trick to support any IC that L0glm supports, 
+                options)
       fit <- do.call(abess::abess, args)
     }
     
@@ -293,14 +302,17 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       fit <- abess::abess(x = X[,selcoefs,drop=F], 
                    y = y, 
                    weights = W,
-                   family = "gaussian", # poisson not supported
+                   family = "gaussian", # identity link poisson not supported
                    tune.path = "sequence", 
                    support.size = c(1:(p_selcoefs-1)),
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
-                   tune.type = IC)
+                   tune.type = "bic", # trick to support any IC that L0glm supports
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                                            p = p, 
+                                            n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       args <- c(list(x = X[,selcoefs,drop=F], y = y, tune.type = IC, support.size = c(1:(p_selcoefs-1))), options)
       fit <- do.call(abess::abess, args)
@@ -337,7 +349,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     edfs = attr(LLs, "df")
     LLs = as.vector(LLs)
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
-    coefs = fit$beta[,which.min(IC.val)]
+    coefs = fit$beta[,which.min(IC.val[-1])+1]
     
     if(plot){
       plot(fit)
@@ -366,9 +378,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     edfs = attr(LLs, "df")
     LLs = as.vector(LLs)
     IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
-    coefs = fit$beta[,which.min(IC.val)]
-    
-    
+    coefs = fit$beta[,which.min(IC.val[-1])+1]
     
     if(plot){
       plot(fit)
