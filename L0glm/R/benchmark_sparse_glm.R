@@ -62,7 +62,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     if(plot){
       plot(x = result$coefficients, y=sim$beta_true, pch=16, col='blue',
            main="L0 glm identity link Poisson with lambda preset to optimise BIC",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
     
     coefs <- result$coefficients
@@ -97,7 +97,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x = coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="Glmnet nonnegative weighted LASSO",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
     
   } else if(method == 3) { # adaptive LASSO using glmnet 
@@ -151,7 +151,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients \n glmnet nonnegative weighted adaptive LASSO",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
     
   } else if(method == 4) { # nonnegative L0 learn
@@ -187,7 +187,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients\n nnL0Learn weighted least squares best subset",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
     
   } else if(method == 5) { # nonnegative L0glm after glmnet LASSO
@@ -241,7 +241,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       plot(fit)
       plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients\nweighted nnL0Learn after nonnegative LASSO",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     } 
     
   } else if(method == 6) { # abess
@@ -283,7 +283,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients abess best\nsubset weighted least squares",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
     
   } else if(method == 7) { # nonnegative abess after nonnegative LASSO
@@ -338,7 +338,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
            main="True vs estimated coefficients abess best subset\nweighted least squares after nonnegative LASSO",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 8) { # nonnegative weighted MCP penalized regression in ordinis 
     if(is.null(options)){
@@ -367,7 +367,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients\nordinis nonnegative MCP",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 9) { # ordinis scad
     if(is.null(options)){
@@ -396,7 +396,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
       
       plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',
            main="True vs. estimated coefficients\nordinis nonnegative SCAD",
-           xlab="Estimated coefficients", ylab="True coefficients")
+           xlab="estimated coefficients", ylab="true coefficients")
     }
   }
   if(internal) return(result)

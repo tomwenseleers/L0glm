@@ -40,7 +40,7 @@ benchmark_sparse_group_glm <- function(sim,
     if(is.null(options)){
       fit <- abess:abess(x = X, 
                    y = y, 
-                   # weights = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
+                   # weight = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
                    family = "mgaussian",
                    tune.path = "sequence", 
                    support.size = c(1:round(p*0.5)),
@@ -55,7 +55,7 @@ benchmark_sparse_group_glm <- function(sim,
     } else {
       fit <- abess:abess(x = X, 
                    y = y, 
-                   # weights = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
+                   # weight = W,  # matrix with approx 1/variance weights to approximate family="poisson", does not work yet but I raised a ticket about this on github: https://github.com/abess-team/abess/issues/510
                    family = "mgaussian",
                    tune.path = options$tune.path, 
                    support.size = c(1:round(p*0.5)),
@@ -87,7 +87,7 @@ benchmark_sparse_group_glm <- function(sim,
                             as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
       title = paste("True vs estimated coefficients\nabess multitask weighted mgaussian\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
-           xlab="estimated coefficients nonnegative L0 group GLM",
+           xlab="estimated coefficients",
            ylab="true coefficients", col="steelblue",
            main=title)
     }
@@ -167,7 +167,7 @@ benchmark_sparse_group_glm <- function(sim,
                             as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
       title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnetn\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
-           xlab="estimated coefficients nonnegative L0 group GLM",
+           xlab="estimated coefficients",
            ylab="true coefficients", col="steelblue",
            main=title)
       
