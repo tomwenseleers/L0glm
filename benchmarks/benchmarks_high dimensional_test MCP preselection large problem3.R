@@ -5,7 +5,7 @@
 # fix to set working package repository when using Microsoft R Open with Intel MKL
 options (repos = c(CRAN="https://cloud.r-project.org/"))
 library(remotes)
-remotes::install_github("jaredhuling/ordinis")
+# remotes::install_github("jaredhuling/ordinis")
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
 # library(L0glm)
 devtools::load_all(".")

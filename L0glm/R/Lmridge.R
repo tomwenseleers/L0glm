@@ -86,9 +86,10 @@ lmridge <- function(X, y,
     
   } else if (solver == "eigen") {
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
-                           lambdas = lambdas, 
+                             lambdas = lambdas, 
                            start = start, prior.mean = prior.mean,
-                           lower = lower, upper = upper, control.solver = control.solver,
+                           lower = lower, upper = upper, 
+                           control.solver = control.solver,
                            verbose = verbose)
     
   } else if (solver == "nnls") {
@@ -160,7 +161,7 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
                            control.solver, 
                            prior.mean = NULL){
   # Set path depending on dimensions of Xw
-  if(sum(lambdas) == 0 && ncol(Xw) >= nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
+  if(sum(lambdas) == 0 | ncol(Xw) > nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
     path = TRUE
   } else {
     path = FALSE
@@ -181,11 +182,11 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
                   y = ywaug,
                   intercept = FALSE, 
                   standardize = control.solver$standardize, 
-                  standardize.response = FALSE,
+                  standardize.response = TRUE, 
                   lower.limits = c(-Inf, lower), 
                   upper.limits = c(Inf, upper),
                   family = "gaussian", 
-                  path = FALSE, 
+                  path = path, 
                   thresh = control.solver$thresh,
                   maxit = control.solver$maxit)
   coefs <- coef(model)[-1]
@@ -291,38 +292,52 @@ lmridge.eigen <- function(Xw, yw,
         Xwaug <- Xw
         ywaug <- yw
       }
-      if(is.null(start)) start <- rep(0, ncol(Xw))
+      
+      # if(is.null(start)) start <- rep(0, ncol(Xw))
+      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      
       # X.n <- sqrt(colSums(Xw^2)) 
       if(issparse(Xwaug)){
         coefs <- solve_sparse_LSCG(A = Xwaug,
                                    b = as.matrix(ywaug),
                                    x0 = as.matrix(start),
-                                   tol = max(control.solver$tol, 1E-4),
+                                   tol = control.solver$tol,
                                    maxit = control.solver$maxit,
                                    precond = control.solver$precond)$coefficients 
       } else {
         coefs <- solve_dense_LSCG(A = Xwaug,
                                   b = as.matrix(ywaug),
                                   x0 = as.matrix(start),
-                                  tol = max(control.solver$tol, 1E-4),
+                                  tol = control.solver$tol,
                                   maxit = control.solver$maxit,
                                   precond = control.solver$precond)$coefficients
       }
-    } else { # Normal equations
+    } else { # Use normal equations
       D <- Diagonal(x=1/pen.weights)
+
+      # Obtain Xwaug and ywaug
+      if(!is.null(lambdas)) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      
+      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
       if(nrow(Xw) >= ncol(Xw)){
         if(issparse(Xw)){
           coefs <- as.vector(solve_sparse_LSCG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
                                                b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                                x0 = as.matrix(start),
-                                               tol = max(control.solver$tol, 1E-4),
+                                               tol = control.solver$tol,
                                                precond = control.solver$precond)$coefficients)
         } else { # if it's dense
           coefs <- as.vector(solve_dense_LSCG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                               x0 = as.matrix(start),
-                                              tol = max(control.solver$tol, 1E-4),
+                                              tol = control.solver$tol,
                                               maxit = control.solver$maxit,
                                               precond = control.solver$precond)$coefficients)
         }
@@ -359,12 +374,15 @@ lmridge.eigen <- function(Xw, yw,
         Xwaug <- Xw
         ywaug <- yw
       }
-      if(is.null(start)) start <- rep(1, ncol(Xw))
+      
+      # if(is.null(start)) start <- rep(0, ncol(Xw))
+      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      
       if(issparse(Xwaug)){
         coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)),
                                  x0 = as.matrix(start),
-                                 tol = max(control.solver$tol, 1E-4),
+                                 tol = control.solver$tol,
                                  maxit = control.solver$maxit,
                                  precond = control.solver$precond)$coefficients
         
@@ -372,7 +390,7 @@ lmridge.eigen <- function(Xw, yw,
         coefs <- solve_dense_CG(A = crossprod(Xwaug),
                                 b = as.matrix(crossprod(Xwaug, ywaug)),
                                 x0 = as.matrix(start),
-                                tol = max(control.solver$tol, 1E-4),
+                                tol = control.solver$tol,
                                 maxit = control.solver$maxit,
                                 precond = control.solver$precond)$coefficients
       }
@@ -380,19 +398,30 @@ lmridge.eigen <- function(Xw, yw,
     } else { # normal equations
       D <- Diagonal(x=1/pen.weights)
       
+      # Obtain Xwaug and ywaug
+      if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      
+      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      
       if(nrow(Xw) >= ncol(Xw)){
         if(issparse(Xw)){
           coefs <- as.vector(solve_sparse_CG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                              x0 = as.matrix(start),
-                                             tol = max(control.solver$tol, 1E-4),
+                                             tol = control.solver$tol,
                                              maxit = control.solver$maxit,
                                              precond = control.solver$precond)$coefficients)
         } else { # if it's dense
           coefs <- as.vector(solve_dense_CG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                             x0 = as.matrix(start),
-                                            tol = max(control.solver$tol, 1E-4),
+                                            tol = control.solver$tol,
                                             maxit = control.solver$maxit,
                                             precond = control.solver$precond)$coefficients)
         }
@@ -484,7 +513,7 @@ lmridge.eigen <- function(Xw, yw,
   } else {
     stop("Invalid method.")
   }
-  coefs <- clip(coefs, lower, upper, reflect_lower = F, reflect_upper = F) # clip coefficients within allowed range - TODO: check if reflect_lower=T might work better to deal with nonnegativity constraints
+  coefs <- clip(coefs, lower, upper, reflect_lower=F, reflect_upper=F) # clip coefficients within allowed range - TODO: check if reflect_lower=F might work better to deal with nonnegativity constraints
   ifelse(!is.null(coefs), return(coefs), return(start)) #TODO remove?
 }
 
@@ -606,6 +635,7 @@ init_coefs = function( X,
                        mu,
                        weights = rep(1, nrow(X)),
                        offset = rep(0, nrow(X)),
+                       prior.mean = rep(0, ncol(X)),
                        family = poisson(identity),
                        lambda = 1) { 
   # mu = as.matrix(mu)
@@ -631,12 +661,17 @@ init_coefs = function( X,
     W <- W.ret[good]
   }
   
-  XW = Matrix(Diagonal(x = sqrt(W)) %*% X[good, , drop = F], sparse = issparse(X))
-  XWaug = Matrix(rbind(XW, Diagonal(x = sqrt(lambda))), sparse = issparse(X))
-  zwaug = as.vector(c(z * sqrt(W), rep(0, ncol(X))))
+  Xw = Matrix(Diagonal(x = sqrt(W)) %*% X[good, , drop = F], sparse = issparse(X))
+  zw = z*sqrt(W)
+
+  Xwaug <- row_augX(Xw, lambda)
+  zwaug <- augY(zw, ncol(Xwaug), 
+                lambdas = lambda, 
+                prior.mean = prior.mean)
+  
   # orthogonal initialisation (assuming variables are approx orthogonal)
-  beta_init = as.vector(crossprod(XWaug, zwaug) / colSums(XWaug ^ 2))
-  # colSums(XWaug^2) = diag(crossprod(XWaug)))
+  beta_init = as.vector(crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2))
+  # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
   # PS original variables in columns of X can be very far from orthogonal,
   # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
   # makes the assumption hold better
@@ -645,10 +680,8 @@ init_coefs = function( X,
   # diagonal initialisation (assuming system is dominated by diagonal of X)
   # for signal deconvolution problem with n=p this gives the best initial solution
   # only works if X is square though
-  # beta_init_diagonal <- z*sqrt(W) / diag(XW)
+  # beta_init_diagonal <- z*sqrt(W) / diag(Xw)
   
-  # scale.factor = 0.1 # (1+lambda[[1]]) # multiply coefs by some scale factor to compensate ridge bias a bit
-  # beta_init = beta_init*scale.factor
   return(beta_init)
 }
 

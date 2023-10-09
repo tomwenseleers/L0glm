@@ -14,229 +14,240 @@ library(L0Learn)
 library(abess)
 library(glmnet)
 
+
 # 1. SINGLE CHANNEL ####
 # Simulate SC n=p=500
 n <- p <- 500
 sim.gaus <- simul(method = 1, n = n, p = p, sparse = T)
 sim.pois <- simul(method = 2, n = n, p = p, sparse = T)
 
-## 1.1. SINGLE CHANNEL WITH POISSON NOISE ####
+## 1.1. L0GLM FIT SINGLE CHANNEL WITH POISSON NOISE ####
 
-### 1.1.1 L0glm fit with relaxed = FALSE ####
+## Tune lambda relaxed = F with ebic
+system.time(tune.osqp.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "osqp"))
+# bestlambda = 10, time = 2.7s (for n=p=500), bestlambda = 10, time = 71s (for n=p=10000)
+system.time(tune.glmnet.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "glmnet"))
+# bestlambda = 10, time = 8.1s, bestlambda = 10, time = 31s (for n=p=10000)
+system.time(tune.chol.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
+# bestlambda = 10, time = 1.1s, bestlambda = 10, time = 5s (for n=p=10000)
+system.time(tune.QR.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
+# bestlambda = 10, time = 1.6s, bestlambda = 10, time = 486s (for n=p=10000)
+system.time(tune.CG.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
+# bestlambda = 10, time = 1.5s, bestlambda = 10, time = 16s (for n=p=10000)
+system.time(tune.LSCG.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
+# bestlambda = 10, time = 1.9s, bestlambda = 10, time = 48s (for n=p=10000)
 
-## Tune lambda relaxed = F with gic
-system.time(tune.osqp.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "osqp"))
-# bestlambda = 10, time = 2.7s
-system.time(tune.glmnet.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "glmnet"))
-# bestlambda = 10, time = 8.1s
-system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
-# bestlambda = 10, time = 1.1s
-system.time(tune.QR.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
-# bestlambda = 10, time = 1.6s
-system.time(tune.CG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
-# bestlambda = 10, time = 1.5s
-system.time(tune.LSCG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
-# bestlambda = 10, time = 1.9s
-
-#### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.1 L0GLM FIT WITH OSQP SOLVER ####
+system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = "ebic", # tune.osqp.sc$best.lambda, # choose preset or tuned
+                                    lambda = "gic", # tune.osqp.sc$best.lambda, # choose preset or tuned
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "osqp")) 
-# 0.16s
-cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois$beta_true)) # 0.9780096
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 5
+# 0.16s with n=p=500, 5.5s with n=p=10000
+cor(as.vector(as.vector(L0glm.osqp.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9778754 with n=p=500, 0.9422652 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp.pois$coefficients) != 0)) # TP = 45 with n=p=500, 839 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp.pois$coefficients) != 0)) # FP = 8 with n=p=500, 173 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp.pois$coefficients) == 0)) # TN = 442 with n=p=500, 8827 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp.pois$coefficients) == 0)) # FN = 5 with n=p=500, 161 with n=p=10000
 
-#### GLMNET/bigGlm ####
-system.time(L0glm.glmnet <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.2 L0GLM FIT WITH GLMNET/bigGlm SOLVER ####
+system.time(L0glm.glmnet.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                       family = poisson(identity), 
-                                      lambda = "ebic", # tune.glmnet.sc$best.lambda,
+                                      lambda = "gic", # tune.glmnet.sc$best.lambda,
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
                                       solver = "glmnet")) 
-# 0.36s
-cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.pois$beta_true)) # 0.9777347
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # FN = 5
+# 0.36s with n=p=500, 2.13s with n=p=10000
+cor(as.vector(as.vector(L0glm.glmnet.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9776087 with n=p=500, 0.938967 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet.pois$coefficients) != 0)) # TP = 45 with n=p=500, 839 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet.pois$coefficients) != 0)) # FP = 8 with n=p=500, 176 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet.pois$coefficients) == 0)) # TN = 442 with n=p=500, 8824 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet.pois$coefficients) == 0)) # FN = 5 with n=p=500, 161 with n=p=10000
 
-#### QR ####
-system.time(L0glm.QR <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.3 L0GLM FIT WITH QR SOLVER ####
+system.time(L0glm.QR.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                   family = poisson(identity), 
-                                  lambda = "ebic", # tune.QR.sc$best.lambda,
+                                  lambda = "gic", # tune.QR.sc$best.lambda,
                                   nonnegative = TRUE,
                                   relaxed = FALSE,
                                   solver = "eigen",
                                   method = 1L)) 
-# 0.07s
-cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.pois$beta_true)) # 0.9781847
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.QR$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 5
+# 0.07s with n=p=500, 20.0s with n=p=10000
+cor(as.vector(as.vector(L0glm.QR.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9838164 with n=p=500, 0.9595521 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.QR.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR.pois$coefficients) == 0)) # TN = 443 with n=p=500, 8827 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.QR.pois$coefficients) == 0)) # FN = 5 with n=p=500, 161 with n=p=10000
 
-#### Cholesky ####
-system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.4 L0GLM FIT WITH CHOLESKY SOLVER ####
+system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = "ebic", # tune.chol.sc$best.lambda,
+                                    lambda = "gic", # tune.chol.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 0.03s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.pois$beta_true)) # 0.9781847
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 5
+# 0.03s with n=p=500, 0.23s with n=p=10000
+cor(as.vector(as.vector(L0glm.chol.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9838164 with n=p=500, 0.9595521 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol.pois$coefficients) == 0)) # TN = 443 with n=p=500, 8827 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol.pois$coefficients) == 0)) # FN = 5 with n=p=500, 159 with n=p=10000
 
-#### LSCG ####
-system.time(L0glm.LSCG <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.5 L0GLM FIT WITH LSCG SOLVER ####
+system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = "ebic", # tune.LSCG.sc$best.lambda,
+                                    lambda = "gic", # tune.LSCG.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 3L)) 
-# 0.16s
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9790543
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 8
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 442
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 5
+# 0.16s with n=p=500, 4.39s with n=p=10000
+cor(as.vector(as.vector(L0glm.LSCG.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.984469 with n=p=500, 0.9595335 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG.pois$coefficients) == 0)) # TN = 443 with n=p=500, 8827 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG.pois$coefficients) == 0)) # FN = 5 with n=p=500, 159 with n=p=10000
 
-#### CG ####
-system.time(L0glm.CG <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.6 L0GLM FIT WITH CG SOLVER ####
+system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                   family = poisson(identity), 
-                                  lambda = "ebic", # tune.CG.sc$best.lambda,
+                                  lambda = "gic", # tune.CG.sc$best.lambda,
                                   nonnegative = TRUE,
-                                  relaxed = TRUE,
+                                  relaxed = FALSE,
                                   solver = "eigen",
                                   method = 5L)) 
-# 0.09s
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796666
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 8
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 442
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 5
+# 0.09s with n=p=500, 1.35s with n=p=10000
+cor(as.vector(as.vector(L0glm.CG.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9845091 with n=p=500, 0.9593445 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG.pois$coefficients) == 0)) # TN = 443 with n=p=500, 8827 with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG.pois$coefficients) == 0)) # FN = 5 with n=p=500, 159 with n=p=10000
 
 
-### 1.1.2 L0glm fit with relaxed = TRUE ####
-
-## Tune lambda relaxed = T with gic
-system.time(tune.osqp.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "osqp"))
-# bestlambda = 10, time = 2.9s
-system.time(tune.glmnet.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "glmnet"))
-# bestlambda = 10, time = 9.2s
-system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
-# bestlambda = 10, time = 1.3s
-system.time(tune.QR.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
-# bestlambda = 10, time = 2.0s
-system.time(tune.CG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
-# bestlambda = 10, time = 1.6s
-system.time(tune.LSCG.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = TRUE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
-# bestlambda = 10, time = 2.2s
-
-#### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.pois$X, sim.pois$y, 
-                                    family = poisson(identity), 
-                                    lambda = "ebic", # tune.osqp.sc$best.lambda,
-                                    nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    solver = "osqp")) 
-# 0.18s
-cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois$beta_true)) # 0.9764704
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 5
-
-
-#### GLMNET/bigGlm ####
-system.time(L0glm.glmnet <- L0glm.fit(sim.pois$X, sim.pois$y, 
-                                      family = poisson(identity), 
-                                      lambda = "ebic", # tune.glmnet.sc$best.lambda,
-                                      nonnegative = TRUE,
-                                      relaxed = TRUE,
-                                      solver = "glmnet")) 
-# 0.4s
-cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.pois$beta_true)) # 0.9762409
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # FN = 5
-
-#### QR ####
-system.time(L0glm.QR <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.7 L0GLM FIT WITH NNLS SOLVER ####
+system.time(L0glm.nnls.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                   family = poisson(identity), 
-                                  lambda = "ebic", # tune.QR.sc$best.lambda,
+                                  lambda = "gic", # tune.CG.sc$best.lambda,
                                   nonnegative = TRUE,
-                                  relaxed = TRUE,
-                                  solver = "eigen",
-                                  method = 1L)) 
-# 0.06s
-cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.pois$beta_true)) # 0.9768456
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.QR$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 5
+                                  relaxed = FALSE,
+                                  solver = "nnls")) 
+# 0.53s with n=p=500, XXs with n=p=10000
+cor(as.vector(as.vector(L0glm.nnls.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9778754 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.pois$coefficients) != 0)) # TP = 45 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.pois$coefficients) != 0)) # FP = 8 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.pois$coefficients) == 0)) # TN = 442 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.pois$coefficients) == 0)) # FN = 5 with n=p=500, XX with n=p=10000
 
-#### Cholesky ####
-system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y, 
+
+#### 1.1.8 PLAIN NNLS FIT WITHOUT REGULARISATION ####
+system.time(L0glm.nnlsnoreg.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
-                                    lambda = "ebic", # tune.chol.sc$best.lambda,
+                                    lambda = 0,
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    solver = "eigen",
-                                    method = 7L)) 
-# 0.03s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.pois$beta_true)) # 0.9768456
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 5
-
-#### LSCG ####
-system.time(L0glm.LSCG <- L0glm.fit(sim.pois$X, sim.pois$y, 
-                                    family = poisson(identity), 
-                                    lambda = "ebic", # tune.LSCG.sc$best.lambda,
-                                    nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    solver = "eigen",
-                                    method = 3L)) 
-# 0.18s
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796581
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 8
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 442
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 5
-
-#### CG ####
-system.time(L0glm.CG <- L0glm.fit(sim.pois$X, sim.pois$y, 
-                                  family = poisson(identity), 
-                                  lambda = "ebic", # tune.CG.sc$best.lambda,
-                                  nonnegative = TRUE,
-                                  relaxed = TRUE,
-                                  solver = "eigen",
-                                  method = 5L)) 
-# 0.08s
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.pois$beta_true)) # 0.9796666
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 45
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 8
-sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 442
-sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 5
+                                    relaxed = FALSE,
+                                    solver = "nnls",
+                                    maxit = 1)) 
+# 0.08s with n=p=500, XXs with n=p=10000
+cor(as.vector(as.vector(L0glm.nnlsnoreg.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9803764 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.pois$coefficients) != 0)) # TP = 45 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.pois$coefficients) != 0)) # FP = 50 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.pois$coefficients) == 0)) # TN = 400 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.pois$coefficients) == 0)) # FN = 5 with n=p=500, XX with n=p=10000
 
 
+### 1.1.9 BENCHMARKS TABLE ####
 
-## 1.2. SINGLE CHANNEL WITH GAUSSIAN NOISE ####
+X = sim.pois$X
+y = sim.pois$y
+W = 1/(sim.pois$y+0.1)
+benchmarks_1_1 = rbind(
+  data.frame(method="L0glm_osqp", do.call(cbind, get.metrics(beta = L0glm.osqp.pois$coefficients,  # some metrics
+                                                        X = X, y = y, 
+                                                        weights = W,
+                                                        family = gaussian(identity), 
+                                                        beta_true = sim.pois$beta_true))),
+  data.frame(method="L0glm_bigglm", do.call(cbind, get.metrics(beta = L0glm.glmnet.pois$coefficients,  # some metrics
+                                                                  X = X, y = y, 
+                                                                  weights = W,
+                                                                  family = gaussian(identity), 
+                                                                  beta_true = sim.pois$beta_true))),
+  data.frame(method="L0glm_qr", do.call(cbind, get.metrics(beta = L0glm.QR.pois$coefficients,  # some metrics
+                                                                                 X = X, y = y, 
+                                                                                 weights = W,
+                                                                                 family = gaussian(identity),
+                                                                                 beta_true = as.vector(sim.pois$beta_true)) )),
+  data.frame(method="L0glm_cholesky", do.call(cbind, get.metrics(beta = L0glm.chol.pois$coefficients,  # some metrics
+                                                          X = X, y = y, 
+                                                          weights = W,
+                                                          family = gaussian(identity),
+                                                          beta_true = sim.pois$beta_true) )),
+  data.frame(method="L0glm_LSCG", do.call(cbind, get.metrics(beta = L0glm.LSCG.pois$coefficients,  # some metrics
+                                                                               X = X, y = y, 
+                                                                               weights = W,
+                                                                               family = gaussian(identity),
+                                                                               beta_true = sim.pois$beta_true) )),
+  data.frame(method="L0glm_CG", do.call(cbind, get.metrics(beta = L0glm.CG.pois$coefficients,  # some metrics
+                                                            X = X, y = y, 
+                                                            weights = W,
+                                                            family = gaussian(identity), 
+                                                            beta_true = sim.pois$beta_true) )),
+  data.frame(method="L0glm_nnls", do.call(cbind, get.metrics(beta = L0glm.nnls.pois$coefficients,  # some metrics
+                                                                 X = X, y = y, 
+                                                                 weights = W,
+                                                                 family = gaussian(identity), 
+                                                                 beta_true = sim.pois$beta_true) )),
+  data.frame(method="nnls_noreg", do.call(cbind, get.metrics(beta = L0glm.nnlsnoreg.pois$coefficients,  # some metrics
+                                                                X = X, y = y, 
+                                                                weights = W,
+                                                                family = gaussian(identity),
+                                                                beta_true = sim.pois$beta_true) )) 
+)
 
-### 1.2.1 L0glm with relaxed = FALSE ####
+benchmarks_1_1 = benchmarks_1_1[order(benchmarks_1_1[,"deviance_true"]),] # sort by deviance relative to ground truth
+benchmarks_1_1
+#           method   p   n m deviance deviance_true    loglik  MD_coefs MAD_coefs sMAPE_coefs
+# 6       L0glm_CG 501 500 1 514.2263      70.91080 -1562.391 0.2074357  37.86133  0.05302939
+# 5     L0glm_LSCG 501 500 1 514.4095      71.20591 -1562.480 0.2072647  37.86417  0.05302451
+# 4 L0glm_cholesky 501 500 1 518.3894      76.91713 -1564.407 0.2075084  38.14443  0.05304871
+# 3       L0glm_qr 501 500 1 518.3894      76.91713 -1564.407 0.2075084  38.14443  0.05304871
+# 7     L0glm_nnls 501 500 1 525.5174      84.43703 -1568.821 0.2070470  49.54378  0.05814334
+# 1     L0glm_osqp 501 500 1 525.5174      84.43705 -1568.821 0.2070470  49.54378  0.05814334
+# 2   L0glm_bigglm 501 500 1 525.4374      84.59868 -1568.783 0.2069567  49.79920  0.05817963
+# 8     nnls_noreg 501 500 1 443.1191      95.59246 -1568.185 0.1159119  72.72359  0.23426504
+#   bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs
+# 6   1.013969 0.9704626   112.75148     253.2943      0.3175903      1.013969   0.9788911
+# 5   1.014041 0.9703866   112.74984     253.3217      0.3175433      1.014041   0.9788144
+# 4   1.015115 0.9691515   112.75218     256.0164      0.3177761      1.015115   0.9775686
+# 3   1.015115 0.9691515   112.75218     256.0164      0.3177761      1.015115   0.9775686
+# 7   1.024967 0.9579401   110.62043     358.7269      0.3598428      1.024967   0.9662599
+# 1   1.024967 0.9579401   110.62043     358.7270      0.3598428      1.024967   0.9662599
+# 2   1.024829 0.9574396   110.61958     361.1366      0.3601852      1.024829   0.9657549
+# 8   1.032099 0.9626282    74.87893     308.4869      1.1277107      1.032099   0.9730918
+#   support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN
+# 6                50                     52                             1.04 45  7 443  5
+# 5                50                     52                             1.04 45  7 443  5
+# 4                50                     52                             1.04 45  7 443  5
+# 3                50                     52                             1.04 45  7 443  5
+# 7                50                     53                             1.06 45  8 442  5
+# 1                50                     53                             1.06 45  8 442  5
+# 2                50                     53                             1.06 45  8 442  5
+# 8                50                     95                             1.90 45 50 400  5
+#   precision recall specificity accuracy  F1_score      gic     ebic      bic      aic     mbic
+# 6 0.8653846    0.9   0.9844444    0.976 0.8823529 3726.710 3783.742 3454.156 3230.782 3966.169
+# 5 0.8653846    0.9   0.9844444    0.976 0.8823529 3726.888 3783.920 3454.334 3230.960 3966.347
+# 4 0.8653846    0.9   0.9844444    0.976 0.8823529 3730.742 3787.774 3458.188 3234.814 3970.201
+# 3 0.8653846    0.9   0.9844444    0.976 0.8823529 3730.742 3787.774 3458.188 3234.814 3970.201
+# 7 0.8490566    0.9   0.9822222    0.974 0.8737864 3750.927 3809.035 3473.231 3245.642 3994.904
+# 1 0.8490566    0.9   0.9822222    0.974 0.8737864 3750.927 3809.035 3473.231 3245.642 3994.904
+# 2 0.8490566    0.9   0.9822222    0.974 0.8737864 3750.851 3808.959 3473.155 3245.566 3994.828
+# 8 0.4736842    0.9   0.8888889    0.890 0.6206897 4226.655 4329.958 3732.972 3328.370 4660.392
+
+
+
+
+## 1.2. L0GLM FIT SINGLE CHANNEL WITH GAUSSIAN NOISE ####
 
 # TODO: tuning function below returns error
 # FIX BUG
@@ -244,49 +255,49 @@ sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 
 # 0 (non-NA) cases
 
 ## Tune lambda relaxed = F 
-system.time(tune.osqp.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "osqp"))
+system.time(tune.osqp.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "osqp"))
 # bestlambda = 3.162277, time = 4.614s
-system.time(tune.glmnet.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "glmnet"))
+system.time(tune.glmnet.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "glmnet"))
 # bestlambda = 316.2277, time = 5.411s
-system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
+system.time(tune.chol.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
 # bestlambda = 3.162277, time = 3.052s
-system.time(tune.QR.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
+system.time(tune.QR.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
 # bestlambda = 3.162277, time = 15.925s
-system.time(tune.CG.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
+system.time(tune.CG.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
 # bestlambda = 3.162277, time = 7.951s
-system.time(tune.LSCG.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = TRUE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
+system.time(tune.LSCG.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", plot = TRUE, coefs.true = sim.gaus$beta_true, relaxed = FALSE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
 # bestlambda = 3.162277, time = 10.929s
 
-#### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.1 L0GLM FIT WITH OSQP SOLVER ####
+system.time(L0glm.osqp.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
                                     lambda = "gic", # tune.osqp.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "osqp")) 
 # 0.2s
-cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus$beta_true)) #  0.9836706
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # TP = 48
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 2
+cor(as.vector(as.vector(L0glm.osqp.gaus$coefficients)), as.vector(sim.gaus$beta_true)) #  0.9836709
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp.gaus$coefficients) != 0)) # TP = 48
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp.gaus$coefficients) != 0)) # FP = 7
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp.gaus$coefficients) == 0)) # TN = 443
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp.gaus$coefficients) == 0)) # FN = 2
 
-#### GLMNET/bigGlm ####
-system.time(L0glm.glmnet <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.2 L0GLM FIT WITH GLMNET/bigGlm SOLVER ####
+system.time(L0glm.glmnet.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                       family = gaussian(identity), 
                                       lambda = "gic", # tune.glmnet.sc$best.lambda,
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
                                       solver = "glmnet")) 
-# 1.5s
-cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9637935
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # TP = 47
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # FP = 24
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # TN = 426
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # FN = 3
+# 1.44s
+cor(as.vector(as.vector(L0glm.glmnet.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9637935
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet.gaus$coefficients) != 0)) # TP = 47
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet.gaus$coefficients) != 0)) # FP = 24
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet.gaus$coefficients) == 0)) # TN = 426
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet.gaus$coefficients) == 0)) # FN = 3
 
-#### QR ####
-system.time(L0glm.QR <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.3 L0GLM FIT WITH QR SOLVER ####
+system.time(L0glm.QR.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                   family = gaussian(identity), 
                                   lambda = "gic", # tune.QR.sc$best.lambda,
                                   nonnegative = TRUE,
@@ -294,45 +305,45 @@ system.time(L0glm.QR <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                   solver = "eigen",
                                   method = 1L)) 
 # 0.04s
-cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR$coefficients) != 0)) # TP = 49
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) != 0)) # FP = 4
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) == 0)) # TN = 446
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 2
+cor(as.vector(as.vector(L0glm.QR.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR.gaus$coefficients) != 0)) # TP = 49
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR.gaus$coefficients) != 0)) # FP = 4
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR.gaus$coefficients) == 0)) # TN = 446
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR.gaus$coefficients) == 0)) # FN = 1
 
-#### Cholesky ####
-system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.4 L0GLM FIT WITH Cholesky SOLVER ####
+system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
                                     lambda = "gic", # tune.chol.sc$best.lambda,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 0.03s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 49
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 4
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 446
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 1
+# 0.02s
+cor(as.vector(as.vector(L0glm.chol.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol.gaus$coefficients) != 0)) # TP = 49
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol.gaus$coefficients) != 0)) # FP = 4
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol.gaus$coefficients) == 0)) # TN = 446
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol.gaus$coefficients) == 0)) # FN = 1
 
-#### LSCG ####
-system.time(L0glm.LSCG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.5 L0GLM FIT WITH LSCG SOLVER ####
+system.time(L0glm.LSCG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
                                     lambda = "gic", # tune.CG.sc$best.lambda,
                                     nonnegative = TRUE,
                                     start = rep(1, 500),
                                     relaxed = FALSE,
                                     solver = "eigen",
-                                    method = 3L)) 
-# 0.12s
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9777964
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 47
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 12
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 438
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 3
+                                    method = 4L)) 
+# 0.13s
+cor(as.vector(as.vector(L0glm.LSCG.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9777964
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG.gaus$coefficients) != 0)) # TP = 47
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG.gaus$coefficients) != 0)) # FP = 12
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG.gaus$coefficients) == 0)) # TN = 438
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG.gaus$coefficients) == 0)) # FN = 3
 
-#### CG ####
-system.time(L0glm.CG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.6 L0GLM FIT WITH CG SOLVER ####
+system.time(L0glm.CG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                   family = gaussian(identity), 
                                   lambda = "gic", # tune.CG.sc$best.lambda,
                                   nonnegative = TRUE,
@@ -340,122 +351,132 @@ system.time(L0glm.CG <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                   solver = "eigen",
                                   method = 5L)) 
 # 0.06s
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9871489
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 46
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 4
+cor(as.vector(as.vector(L0glm.CG.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9871489
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG.gaus$coefficients) != 0)) # TP = 46
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG.gaus$coefficients) != 0)) # FP = 7
+sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG.gaus$coefficients) == 0)) # TN = 443
+sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG.gaus$coefficients) == 0)) # FN = 4
 
 
-### 1.2.2 L0glm with relaxed = TRUE ####
-
-# TODO: tuning function below returns error
-# FIX BUG
-# Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
-# 0 (non-NA) cases
-
-## Tune lambda relaxed = F 
-system.time(tune.osqp.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "osqp"))
-# bestlambda = 3.162277, time = 4.614s
-system.time(tune.glmnet.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "glmnet"))
-# bestlambda = 316.2277, time = 5.411s
-system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
-# bestlambda = 3.162277, time = 3.052s
-system.time(tune.QR.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
-# bestlambda = 3.162277, time = 15.925s
-system.time(tune.CG.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = FALSE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 5L))
-# bestlambda = 3.162277, time = 7.951s
-system.time(tune.LSCG.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", plot = TRUE, coefs.true = sim.gaus$beta_true, relaxed = TRUE, family = gaussian(identity), nonnegative = TRUE, solver = "eigen", method = 3L))
-# bestlambda = 3.162277, time = 10.929s
-
-#### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
-                                    family = gaussian(identity), 
-                                    lambda = "gic", # tune.osqp.sc$best.lambda,
-                                    nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    solver = "osqp")) 
-# 0.2s
-cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus$beta_true)) #  0.9834948
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # TP = 48
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 2
-
-#### GLMNET/bigGlm ####
-system.time(L0glm.glmnet <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
-                                      family = gaussian(identity), 
-                                      lambda = "gic", # tune.glmnet.sc$best.lambda,
-                                      nonnegative = TRUE,
-                                      relaxed = TRUE,
-                                      solver = "glmnet")) 
-# 1.5s
-cor(as.vector(as.vector(L0glm.glmnet$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9629638
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # TP = 47
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) != 0)) # FP = 24
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # TN = 426
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet$coefficients) == 0)) # FN = 3
-
-#### QR ####
-system.time(L0glm.QR <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
-                                  family = gaussian(identity), 
-                                  lambda = "gic", # tune.QR.sc$best.lambda,
-                                  nonnegative = TRUE,
-                                  relaxed = TRUE,
-                                  solver = "eigen",
-                                  method = 1L)) 
-# 0.07s
-cor(as.vector(as.vector(L0glm.QR$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9974565
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR$coefficients) != 0)) # TP = 49
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) != 0)) # FP = 4
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR$coefficients) == 0)) # TN = 446
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp$coefficients) == 0)) # FN = 2
-
-#### Cholesky ####
-system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
-                                    family = gaussian(identity), 
-                                    lambda = "gic", # tune.chol.sc$best.lambda,
-                                    nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    solver = "eigen",
-                                    method = 7L)) 
-# 0.03s
-cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9974565
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) != 0)) # TP = 49
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) != 0)) # FP = 4
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) == 0)) # TN = 446
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 1
-
-#### LSCG ####
-system.time(L0glm.LSCG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.7 L0GLM FIT WITH NNLS SOLVER ####
+system.time(L0glm.nnls.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
                                     lambda = "gic", # tune.CG.sc$best.lambda,
                                     nonnegative = TRUE,
-                                    start = rep(1, 500),
-                                    relaxed = TRUE,
-                                    solver = "eigen",
-                                    method = 3L)) 
-# 0.12s
-cor(as.vector(as.vector(L0glm.LSCG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9777964
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # TP = 47
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) != 0)) # FP = 12
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # TN = 438
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG$coefficients) == 0)) # FN = 3
+                                    relaxed = FALSE,
+                                    solver = "nnls")) 
+# 0.38s with n=p=500, XXs with n=p=10000
+cor(as.vector(as.vector(L0glm.nnls.gaus$coefficients)), as.vector(sim.pois$beta_true)) # 0.9871489 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.gaus$coefficients) != 0)) # TP = 48 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.gaus$coefficients) != 0)) # FP = 7 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.gaus$coefficients) == 0)) # TN = 443 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.gaus$coefficients) == 0)) # FN = 2 with n=p=500, XX with n=p=10000
 
-#### CG ####
-system.time(L0glm.CG <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
-                                  family = gaussian(identity), 
-                                  lambda = "gic", # tune.CG.sc$best.lambda,
-                                  nonnegative = TRUE,
-                                  relaxed = TRUE,
-                                  solver = "eigen",
-                                  method = 5L)) 
-# 0.06s
-cor(as.vector(as.vector(L0glm.CG$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9871489
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) != 0)) # TP = 46
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) != 0)) # FP = 7
-sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG$coefficients) == 0)) # TN = 443
-sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG$coefficients) == 0)) # FN = 4
+
+#### 1.2.8 PLAIN NNLS FIT WITHOUT REGULARISATION ####
+system.time(L0glm.nnlsnoreg.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+                                         family = gaussian(identity), 
+                                         lambda = 0,
+                                         nonnegative = TRUE,
+                                         relaxed = FALSE,
+                                         solver = "nnls",
+                                         maxit = 1)) 
+# 0.1s with n=p=500, XXs with n=p=10000
+cor(as.vector(as.vector(L0glm.nnlsnoreg.gaus$coefficients)), as.vector(sim.pois$beta_true)) # 0.9972479 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) != 0)) # TP = 49 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) != 0)) # FP = 77 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) == 0)) # TN = 373 with n=p=500, XX with n=p=10000
+sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) == 0)) # FN = 1 with n=p=500, XX with n=p=10000
+
+
+
+### 1.2.9 BENCHMARKS TABLE ####
+
+X = sim.gaus$X
+y = sim.gaus$y
+W = rep(1, nrow(X))
+benchmarks_1_2 = rbind(
+  data.frame(method="L0glm_osqp", do.call(cbind, get.metrics(beta = L0glm.osqp.gaus$coefficients,  # some metrics
+                                                             X = X, y = y, 
+                                                             weights = W,
+                                                             family = gaussian(identity), 
+                                                             beta_true = sim.gaus$beta_true))),
+  data.frame(method="L0glm_bigglm", do.call(cbind, get.metrics(beta = L0glm.glmnet.gaus$coefficients,  # some metrics
+                                                               X = X, y = y, 
+                                                               weights = W,
+                                                               family = gaussian(identity), 
+                                                               beta_true = sim.gaus$beta_true))),
+  data.frame(method="L0glm_qr", do.call(cbind, get.metrics(beta = L0glm.QR.gaus$coefficients,  # some metrics
+                                                           X = X, y = y, 
+                                                           weights = W,
+                                                           family = gaussian(identity),
+                                                           beta_true = as.vector(sim.gaus$beta_true)) )),
+  data.frame(method="L0glm_cholesky", do.call(cbind, get.metrics(beta = L0glm.chol.gaus$coefficients,  # some metrics
+                                                                 X = X, y = y, 
+                                                                 weights = W,
+                                                                 family = gaussian(identity),
+                                                                 beta_true = sim.gaus$beta_true) )),
+  data.frame(method="L0glm_LSCG", do.call(cbind, get.metrics(beta = L0glm.LSCG.gaus$coefficients,  # some metrics
+                                                             X = X, y = y, 
+                                                             weights = W,
+                                                             family = gaussian(identity),
+                                                             beta_true = sim.gaus$beta_true) )),
+  data.frame(method="L0glm_CG", do.call(cbind, get.metrics(beta = L0glm.CG.gaus$coefficients,  # some metrics
+                                                           X = X, y = y, 
+                                                           weights = W,
+                                                           family = gaussian(identity), 
+                                                           beta_true = sim.gaus$beta_true) )),
+  data.frame(method="L0glm_nnls", do.call(cbind, get.metrics(beta = L0glm.nnls.gaus$coefficients,  # some metrics
+                                                             X = X, y = y, 
+                                                             weights = W,
+                                                             family = gaussian(identity), 
+                                                             beta_true = sim.gaus$beta_true) )),
+  data.frame(method="nnls_noreg", do.call(cbind, get.metrics(beta = L0glm.nnlsnoreg.gaus$coefficients,  # some metrics
+                                                             X = X, y = y, 
+                                                             weights = W,
+                                                             family = gaussian(identity),
+                                                             beta_true = sim.gaus$beta_true) )) 
+)
+
+benchmarks_1_2 = benchmarks_1_2[order(benchmarks_1_2[,"deviance_true"]),] # sort by deviance relative to ground truth
+benchmarks_1_2
+#         method   p   n m  deviance deviance_true    loglik   MD_coefs MAD_coefs sMAPE_coefs
+# 3       L0glm_qr 501 500 1 10063.744      1649.103 -1012.991 0.01229024  9.014314  0.02220367
+# 4 L0glm_cholesky 501 500 1 10062.394      1650.157 -1012.957 0.01228269  9.014960  0.02220381
+# 7     L0glm_nnls 501 500 1 10918.777      3177.996 -1035.377 0.02047878 26.729453  0.03747524
+# 1     L0glm_osqp 501 500 1 10985.337      3409.879 -1036.896 0.02230046 32.811943  0.03810321
+# 8     nnls_noreg 501 500 1  8040.643      3439.262 -1029.883 0.10402808 17.717465  0.31621381
+# 5     L0glm_LSCG 501 500 1 14506.473      6307.089 -1110.405 0.03529220 41.519060  0.06255280
+# 2   L0glm_bigglm 501 500 1 16220.289      8284.284 -1150.322 0.05986969 82.259515  0.12272163
+# 6       L0glm_CG 501 500 1 61265.073     57983.646 -1464.559 0.10564020 31.709166  0.04516657
+#   bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs
+# 3  0.9974662 0.9951533   16.819839     68.33680      0.1717328     0.9974662   0.9958997
+# 4  0.9974666 0.9951533   16.819768     68.34290      0.1717341     0.9974666   0.9958996
+# 7  1.0429526 0.9752123   54.385742    188.79545      0.2679568     1.0429526   0.9800624
+# 1  1.0461334 0.9687987   54.402303    244.09082      0.2736655     1.0461334   0.9736169
+# 8  1.0113971 0.9947146    7.439051     63.28116      1.2389437     1.0113971   0.9954606
+# 5  1.0605777 0.9576665   54.491444    297.66408      0.4284135     1.0605777   0.9624727
+# 2  1.0680164 0.9315111   40.781697    538.93228      0.7797298     1.0680164   0.9357567
+# 6  1.0095223 0.9754668  104.894522    195.24516      0.2751564     1.0095223   0.9854120
+#   support_size_true support_size_estimated estimated_over_true_support_size TP FP  TN FN
+# 3                50                     53                             1.06 49  4 446  1
+# 4                50                     53                             1.06 49  4 446  1
+# 7                50                     55                             1.10 48  7 443  2
+# 1                50                     55                             1.10 48  7 443  2
+# 8                50                    126                             2.52 49 77 373  1
+# 5                50                     59                             1.18 47 12 438  3
+# 2                50                     71                             1.42 47 24 426  3
+# 6                50                     53                             1.06 46  7 443  4
+#   precision recall specificity accuracy  F1_score      gic     ebic      bic      aic     mbic
+# 3 0.9245283   0.98   0.9911111    0.990 0.9514563 2639.267 2697.375 2361.571 2133.982 2883.244
+# 4 0.9245283   0.98   0.9911111    0.990 0.9514563 2639.200 2697.308 2361.503 2133.915 2883.177
+# 7 0.8727273   0.96   0.9844444    0.982 0.9142857 2706.754 2767.014 2418.772 2182.754 2959.767
+# 1 0.8727273   0.96   0.9844444    0.982 0.9142857 2709.792 2770.053 2421.811 2185.793 2962.806
+# 8 0.3888889   0.98   0.8288889    0.844 0.5568182 3502.123 3638.785 2849.022 2313.767 4075.921
+# 5 0.7966102   0.94   0.9733333    0.970 0.8623853 2902.238 2966.802 2593.686 2340.810 3173.323
+# 2 0.6619718   0.94   0.9466667    0.946 0.7768595 3118.357 3195.835 2748.095 2444.644 3443.660
+# 6 0.8679245   0.92   0.9844444    0.978 0.8932039 3542.402 3600.511 3264.706 3037.117 3786.380
+
 
 
 
@@ -469,17 +490,17 @@ sim.pois.mc <- simul(method = 4, n = n, p = p, seed = 2)
 
 ## 2.1. MULTICHANNEL WITH POISSON NOISE ####
 
-### 2.1.1 Grouped L0glm fit with relaxed = FALSE, grouped = FALSE ####
+### 2.1.1 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = FALSE ####
 
 ## Tune lambda relaxed = FALSE, grouped = FALSE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = FALSE, solver = "osqp"))
 # bestlambda = 3.16227766016838, time = 127s
 
-system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -533,17 +554,17 @@ sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol$coefficients)==0) # TN 
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN = 0
 
 
-### 2.1.2 Grouped L0glm fit with relaxed = FALSE, grouped = TRUE ####
+### 2.1.2 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = TRUE ####
 
 ## Tune lambda relaxed = FALSE, grouped = TRUE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = TRUE, solver = "osqp"))
 
 # bestlambda = 3.16227766016838, time = 253s
-system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -589,21 +610,21 @@ sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol$coefficients)==0) # TN 
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN = 1
 
 
-## 2.1.3 Grouped L0glm fit with relaxed = TRUE, grouped = TRUE ####
+## 2.1.3 GROUPED L0GLM FIT WITH relaxed = TRUE, grouped = TRUE ####
 
 # TODO: this should fit the subsequent iterations using grouped=TRUE & relaxed=FALSE
 # & only as an extra iteration then refit using grouped=TRUE & relaxed=TRUE
 # check that this is how it is done now
 
 ## Tune lambda relaxed = TRUE, grouped = TRUE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = TRUE, family = poisson(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = TRUE, solver = "osqp"))
 
 # bestlambda = 3.16227766016838, time = 275s
-system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = TRUE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -659,7 +680,7 @@ sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN 
 
 ## 2.2. MULTICHANNEL WITH GAUSSIAN NOISE ####
 
-### 2.2.1 Grouped L0glm fit with relaxed = FALSE, grouped = FALSE ####
+### 2.2.1 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = FALSE ####
 
 # TODO fix bugs that appear below
 # Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
@@ -668,14 +689,14 @@ sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN 
 # probably something going wrong with passing the dispersion
 
 ## Tune lambda relaxed = FALSE, grouped = FALSE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = FALSE, solver = "osqp"))
 # bestlambda = XXX, time = XXXs
 # TODO fix bug
-system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
@@ -735,16 +756,16 @@ sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(L0glm.chol$coefficients)==0) # TN 
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN = 0
 
 
-### 2.2.2 Grouped L0glm fit with relaxed = FALSE, grouped = TRUE ####
+### 2.2.2 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = TRUE ####
 
 ## Tune lambda relaxed = FALSE, grouped = TRUE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = TRUE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = TRUE, solver = "osqp"))
 # bestlambda = XXX, time = XXXs
-system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
@@ -801,17 +822,17 @@ sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(L0glm.chol$coefficients)!=0) # FP 
 sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(L0glm.chol$coefficients)==0) # TN = 450
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)==0) # FN = 0
 
-### 2.2.3 Grouped L0glm fit with relaxed = TRUE, grouped = TRUE ####
+### 2.2.3 GROUPED L0GLM FIT WITH relaxed = TRUE, grouped = TRUE ####
 
 ## Tune lambda relaxed = TRUE, grouped = TRUE
-system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.osqp.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = TRUE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = TRUE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
                                        parallelize = TRUE, grouped = TRUE, solver = "osqp"))
 
 # bestlambda = XX, time = XX
-system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = TRUE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
@@ -879,7 +900,7 @@ n <- p <- 500
 sim.pois <- simul(method = 2, n = n, p = p, seed = 2)
 
 ### 3.1.1 L0GLM VIA CHOLESKY ####
-system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", 
+system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -905,7 +926,7 @@ TN1
 FN1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 8
 FN1
 plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
-     main="L0 glm identity link Poisson with lambda tuned to optimise gic",
+     main="L0 glm identity link Poisson with lambda tuned to optimise ebic",
      xlab="Estimated coefficients", ylab="True coefficients")
 
 ### 3.1.2 LASSO USING GLMNET ####
@@ -1128,7 +1149,7 @@ sim.gaus <- simul(method = 1, n = n, p = p, seed = 2)
 
 ### 3.2.1 L0GLM VIA CHOLESKY ####
 
-system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", 
+system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
@@ -1151,7 +1172,7 @@ sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol$coefficients) =
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) == 0)) # FN = 6
 
 plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
-     main="L0 glm identity link gaussian with lambda tuned to optimise gic",
+     main="L0 glm identity link gaussian with lambda tuned to optimise ebic",
      xlab="Estimated coefficients", ylab="True coefficients")
 
 
@@ -1204,7 +1225,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0learn.after.lasso.sc.gau
 ### 3.2.6 ABESS ####
 system.time(abess.sc.gaus <- fit.GLM(sim = sim.gaus, method = 6, 
                                      family = gaussian(identity), 
-                                     plot = T, IC = "gic"))  
+                                     plot = T, IC = "ebic"))  
 # 1.01s 
 cor(as.vector(abess.sc.gaus), as.vector(sim.gaus$beta_true)) # 0.8706258
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.sc.gaus) != 0)) # TP = 28
@@ -1216,7 +1237,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.sc.gaus) == 0)) # FN
 ### 3.2.7 ABESS AFTER LASSO ####
 system.time(abess.after.lasso.sc.gaus <- fit.GLM(sim = sim.gaus, method = 7, 
                                                  family = gaussian(identity), 
-                                                 plot = T, IC = "gic"))  
+                                                 plot = T, IC = "ebic"))  
 # 0.19s
 cor(as.vector(abess.after.lasso.sc.gaus), as.vector(sim.gaus$beta_true))  # 0.8814479
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.after.lasso.sc.gaus) != 0)) # TP = 29
@@ -1364,7 +1385,7 @@ n <- p <- 500
 sim.pois.mc <- simul(method = 4, n = n, p = p, seed = 2)
 
 ### 3.3.1 RELAXED GROUP L0GLM VIA CHOLESKY ####
-system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -1495,7 +1516,7 @@ sim.gaus.mc <- simul(method = 3, n = n, p = p, seed = 1)
 
 ### 3.4.1 L0GLM VIA CHOLESKY ####
 
-system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
+system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "ebic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 

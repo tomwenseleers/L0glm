@@ -7,7 +7,7 @@ library(remotes)
 # library(L0glm)
 devtools::load_all(".")
 library(export)
-source("..//benchmarks/generate data.R")
+# source("..//benchmarks/generate data.R")
 
 
 # 1. HIGH DIMENSIONAL EXAMPLE IN ORDINIS PACKAGE ####

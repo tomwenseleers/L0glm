@@ -21,7 +21,7 @@ L0glm.fit.internal = function(X,
                               start = NULL,
                               dispersion = NULL,
                               offset = rep(0, nrow(X)),
-                              lambda = 1, 
+                              lambda = log(ncol(X))*log(log(nrow(X))), # = GIC criterion 
                               no.pen = 0,
                               nonnegative = FALSE,
                               normalize = TRUE,
@@ -44,6 +44,10 @@ L0glm.fit.internal = function(X,
   # or sure independent screening prescreening, as implemented in abess
   # https://cran.r-project.org/web/packages/abess/abess.pdf
   # Implementing these might further speed up the algo.
+  
+  if (grepl("_noreg",solver)) { solver = gsub("_noreg", "", solver) # use given solver without regularisation
+                                lambda = 0
+                                maxit = 1 }
   
   # Normalize columns of X to unit L2 norm? If so, calculate scaling
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
@@ -75,6 +79,13 @@ L0glm.fit.internal = function(X,
   nobs <- nrow(X)    # needed by the initialize expression below
   p <- nvars <- ncol(X)   # needed by the initialize expression below
   
+  if(!is.null(prior.mean)){ 
+    center = prior.mean # center of nonzero centered ridge regression if prior means specified = center of Gaussian priors
+  } else {
+    prior.mean = rep(0, p)
+    center = NULL # zero centered ridge regression, i.e. assume zero centered Gaussian prior
+  }
+  
   eval(init) # initialise mustart (predictions on response scale µ) and n (nr of observations) and m (total nr of trials) for binomial data
   
   if (is.null(start)) {  
@@ -83,16 +94,21 @@ L0glm.fit.internal = function(X,
     # beta <-  beta_old <- start <- init_coefs(X = X, weights = weights, offset = offset, mu = mu, family = family, lambda = lambda)
     # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
     # to initialise with constant starting values
-    beta <-  beta_old <- start <- start_coefs(X=X, family=family) # initial model coefficients - e.g. sqrt(3) correspond in a Bayesian sense to SD on Gaussian prior of 3, which is most common prior in Bayesian stats (lambda=1/start^2 and lambda=1/SD prior)
+    mu = linkinv(eta) # predictions on response scale µ
+    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean = prior.mean, family=family, lambda=lambda/4) # I CHANGED THIS TO AN ORTHOGONAL INITIALISATION # start_coefs(X=X, family=family)
+    # start <- clip(coefs=start, lower, upper, reflect_lower = TRUE, reflect_upper = FALSE)
+    start = warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
+    beta <-  beta_old <- start
   } else {  
     # eta = as.matrix(link(mustart))
     beta <- beta_old <- start # when starting coefficient values were provided
     # WE ASSUME THAT IF STARTING VALUES ARE GIVEN THEY ARE ALREADY QUITE GOOD AND SO USE
     eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # initialize η = g(µ) = predictions on link scale
+    mu = linkinv(eta) # predictions on response scale µ
   }
   names(beta) = colnames(X)
   
-  mu = linkinv(eta) # predictions on response scale µ
+
   dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
   residuals = rep(0, nobs) # worker residuals, here initialised at 0 for 1st iteration
   
@@ -113,7 +129,7 @@ L0glm.fit.internal = function(X,
         z <- z.ret[good] # subset used for fit
         W <- W.ret[good] # subset of weights used for fit
       } else {
-        gprime = mu.eta(eta) # derivative of the expected values µ with respect to predictions on line scale η = d(g-1)/dη=dμ/dη
+        gprime = mu.eta(eta) # derivative of the expected values µ with respect to predictions on link scale η = d(g-1)/dη=dμ/dη
         good = which((weights != 0) & (gprime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
         gradient = y - mu # gradient of log-likelihood with respect to η = ∂ℓ/∂η
         z.ret <- eta - offset + gradient / gprime # working (adjusted) response = linearised quadratic approximation of log-likelihood function ℓ around η
@@ -122,11 +138,6 @@ L0glm.fit.internal = function(X,
         W <- W.ret[good] # subset of weights used for fit
       }
     
-    if(!is.null(prior.mean)){ 
-      center = prior.mean # center of nonzero centered ridge regression if prior means specified = center of Gaussian priors
-    } else {
-      center = NULL # zero centered ridge regression, i.e. assume zero centered Gaussian prior
-    }
     
     # UPDATE RIDGE PENALTIES ####
     # browser()

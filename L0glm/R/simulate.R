@@ -18,6 +18,8 @@
 #' A numeric value indicating the number of observations to generate.
 #' @param p 
 #' A numeric value indicating the number of predictors (variables) to generate.
+#' @param S 
+#' Sparsity of true solution (proportion of total coefficients p that are nonzero).
 #' @param sparse
 #' Boolean indicating if the returned design matrix should be sparse (of Matrix class dsCMatrix) or dense.
 #' @param options 
@@ -44,32 +46,32 @@
 #' }
 #' 
 #' @export
-simul <- function(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed = 1){
+simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = NULL, seed = 1){
   if(method == 1){
     family = "gaussian"
     multichannel = FALSE
-    k <- ifelse(is.null(options), round(n*0.1), options$sd_noise)
+    k <- round(s*n)
     sd_noise <- ifelse(is.null(options), 5, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
+    mean_beta <- ifelse(is.null(options$mean_beta), 2000, options$mean_beta)
   } else if(method == 2){
-    family <- "poisson"
-    k <- round(0.1*n)
+    family = "poisson"
+    k <- round(s*n)
     multichannel =  FALSE
-    mean_beta <- ifelse(is.null(options), 2000, options$mean_beta)
+    mean_beta <- ifelse(is.null(options$mean_beta), 2000, options$mean_beta)
   } else if(method == 3){
     family = "gaussian"
     multichannel = TRUE
-    k <- round(0.1*n)
+    k <- round(s*n)
     if(k > 100) k <- 100
-    sd_noise = ifelse(is.null(options), 5, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
+    sd_noise = ifelse(is.null(options$sd_noise), 5, options$sd_noise)
+    mean_beta <- ifelse(is.null(options$mean_beta), 10000, options$mean_beta)
   } else if(method == 4){
     family = "poisson"
     multichannel = TRUE
-    k <- round(0.1*n)
+    k <- round(s*n)
     if(k > 100) k <- 100
-    sd_noise = ifelse(is.null(options), 10, options$sd_noise)
-    mean_beta <- ifelse(is.null(options), 10000, options$mean_beta)
+    sd_noise = ifelse(is.null(options$sd_noise), 10, options$sd_noise)
+    mean_beta <- ifelse(is.null(options$mean_beta), 10000, options$mean_beta)
   } else if(method == 6){
     if(p < 40000) warning("This method is suggested for data with higher dimension.")
     m <- ifelse(is.null(options), 50, m)
@@ -82,7 +84,7 @@ simul <- function(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed
                                 multichannel = multichannel,
                                 mean_beta = mean_beta,
                                 sparse = sparse,
-                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta),
+                                sd_logbeta = ifelse(is.null(options$sd_logbeta), 1, options$sd_logbeta),
                                 sd_noise = sd_noise)
   } else if(method == 2 | method == 4){
     sim <- simulate_spike_train(n = n, p = p, family = family, 
@@ -91,14 +93,14 @@ simul <- function(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed
                                 multichannel = multichannel,
                                 mean_beta = mean_beta,
                                 sparse = sparse,
-                                sd_logbeta = ifelse(is.null(options), 1, options$sd_logbeta))
+                                sd_logbeta = ifelse(is.null(options$sd_logbeta), 1, options$sd_logbeta))
   } else if(method == 5){
     sim <- simulate_standardnormal(n = n, p = p, 
-                               n_nonzero = ifelse(is.null(options), 24, options$n_nonzero),
-                               beta_sd = ifelse(is.null(options), 0.5, options$beta_sd), 
-                               error_sd = ifelse(is.null(options), 1, options$error_sd))
+                               n_nonzero = ifelse(is.null(options$n_nonzero), 24, options$n_nonzero),
+                               beta_sd = ifelse(is.null(options$beta_sd), 0.5, options$beta_sd), 
+                               error_sd = ifelse(is.null(options$error_sd), 1, options$error_sd))
   } else if(method == 6){
-    sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options), 3, options$sd_noise))
+    sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options$sd_noise), 3, options$sd_noise))
   }
   
   return(sim)
@@ -190,7 +192,7 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
                                   sparse = TRUE,
                                   multichannel = FALSE,
                                   seed = 123, 
-                                  Plot = if (p<=20000) { TRUE } else { FALSE }
+                                  Plot = FALSE
 ){
 
   # TODO: update documentation above

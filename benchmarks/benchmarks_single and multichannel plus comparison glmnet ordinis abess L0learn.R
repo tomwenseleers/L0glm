@@ -1282,7 +1282,7 @@ benchmarks_1_2
 
 # 2. MULTICHANNEL DECONVOLUTION ####
 
-n <- p <- 500 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
+n <- p <- 200 # 500 # 10000 # to check performance use e.g. n=p=10000, otherwise use e.g. n=p=500
 s <- 0.1 # sparsity, nr of timepoints with a peak 
 k <- round(n*s)
 mean_beta <- 10000
@@ -1495,6 +1495,9 @@ metrics_abess
 
 
 ## 2.2 Multichannel deconvolution assuming Gaussian noise ####
+
+n <- p <- 200
+
 ### 2.2.1 L0glm solution ####
 set.seed(1)
 sim <- simulate_spike_train(n = n, 
@@ -1514,15 +1517,15 @@ m <- ncol(y) # nr of tasks/channels
 # fit with preset lambda
 system.time(L0glm.out_preset <- L0glm.fit(X, y, 
                                family = family, 
-                               lambda = lambda_preset, 
+                               lambda = "ebic", # lambda_preset, 
                                grouped = TRUE,
                                relaxed = TRUE,
                                nonnegative = TRUE,
                                dispersion = NULL,
-                               start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
+                               # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 7L,
-                               parallelize = FALSE, 
+                               parallelize = TRUE, 
                                maxit = 20, # default 25
                                group.maxit = 4, # default 6
                                thresh = 1E-5
@@ -1534,7 +1537,7 @@ abline(v=which(rowMin(L0glm.out_preset_coefs)!=0), col = 'cyan')
 graph2pdf(file="..//benchmarks/plots/2_2 multichannel deconvolution Gaussian.pdf", width=7, height=5)
 
 # some metrics
-metrics_L0glm = do.call(cbind, get.metrics(beta = L0glm.out_preset_coefs, 
+metrics_L0glm = do.call(cbind, get.metrics(beta = as.matrix(L0glm.out_preset_coefs), 
                            X = X, y = y, 
                            family = family, 
                            beta_true = sim$beta_true))
@@ -1549,7 +1552,7 @@ metrics_L0glm
 # coefficients & metrics over a range of lambda values
 # calculate max lambda where all coefs would be penalized to 0
 maxlam <- maxlambda(X=X, weights=L0glm.out_preset$weights, 
-                    z=y, dispersion=L0glm.out_preset$dispersion, 
+                    z=y, dispersion=1, # L0glm.out_preset$dispersion, 
                     no.pen=NULL, coefs=L0glm.out_preset$coefficients,
                     family=family)
 maxlam # 

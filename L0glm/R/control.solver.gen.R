@@ -81,7 +81,7 @@ control.solver.gen <- function(solver,
     if(is.null(rowaug)) rowaug <- TRUE
     if(rowaug == FALSE) print("Row augmentation is required with chosen solver.")
     
-    if(is.null(standardize)) standardize <- FALSE
+    if(is.null(standardize)) standardize <- TRUE
     
     
     l <- list(thresh = abstol, maxit = maxit, standardize = standardize)
@@ -105,24 +105,24 @@ control.solver.gen <- function(solver,
       l <- list(method = "QR", pivot = 1, rowaug = rowaug)
       
     } else if (method == 3){
-      if(is.null(rowaug)) rowaug <- TRUE
-      # rowaug <- TRUE
-      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
+      # if(is.null(rowaug)) rowaug <- TRUE
+      rowaug <- TRUE # always use row augmentation with this method
+      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 4){
-      if(is.null(rowaug)) rowaug <- TRUE
-      # rowaug <- TRUE
-      l <- list(method = "LSCG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
+      # if(is.null(rowaug)) rowaug <- TRUE
+      rowaug <- TRUE # always use row augmentation with this method
+      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 5){
-      if(is.null(rowaug)) rowaug <- TRUE
-      # rowaug <- TRUE
-      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 0L, rowaug = rowaug)
+      # if(is.null(rowaug)) rowaug <- FALSE
+      rowaug <- TRUE # always use row augmentation with this method
+      l <- list(method = "CG", tol = 1E-3, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
-      if(is.null(rowaug)) rowaug <- TRUE
-      # rowaug <- TRUE
-      l <- list(method = "CG", tol = tol, maxit = 0L, precond = 1L, rowaug = rowaug)
+      # if(is.null(rowaug)) rowaug <- FALSE
+      rowaug <- TRUE # always use row augmentation with this method
+      l <- list(method = "CG", tol = 1E-3, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){
       # if(is.null(rowaug)) rowaug <- FALSE
