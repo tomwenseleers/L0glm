@@ -263,8 +263,8 @@ ggsave(file="../benchmarks/plots/timings/timings.pdf", width=7, height=5, dpi=60
 
 
 # Here Cholesky & osqp solver is clearly the best.
-# TODO try to improve solution quality for some of the solvers??
+# TODO try to improve solution quality for some of the other solvers??
 # maybe init_coefs could use some tuning
-# maybe init_coefs needs to be clipped?
+# maybe init_coefs needs to be clipped within allowed bounds?
 
 
