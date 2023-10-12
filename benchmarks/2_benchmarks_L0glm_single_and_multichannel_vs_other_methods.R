@@ -3,14 +3,12 @@
 library(remotes)
 # remotes::install_github("jaredhuling/ordinis")
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-# branch of L0Learn with nonnegativity constraints
-# remotes::install_github("hazimehh/L0Learn", ref="nng") 
 # library(L0glm)
 devtools::load_all(".")
 library(export)
 library(Matrix)
 library(ordinis)
-library(L0Learn)
+library(L0Learn) # use at least version 2
 library(abess)
 library(glmnet)
 

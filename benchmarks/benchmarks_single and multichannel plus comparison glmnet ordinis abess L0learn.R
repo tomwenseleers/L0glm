@@ -9,8 +9,7 @@ devtools::load_all(".")
 # remotes::install_github("jaredhuling/ordinis")
 # library(ordinis)
 # library(abess)
-# remotes::install_github("hazimehh/L0Learn", ref="nng") # branch of L0Learn with nonnegativity constraints
-# library(L0Learn)
+library(L0Learn)
 
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 
@@ -306,7 +305,8 @@ system.time(fit_nnL0Learn_selcoefs <- L0Learn.fit(x=as.matrix(Diagonal(x=sqrt(W)
                                          intercept=FALSE, 
                                          nLambda=100, # NOTE: 100 gave much better results than 20
                                          # activeSetNum = 3, maxSwaps = 100,
-                                         autoLambda=TRUE
+                                         autoLambda=TRUE,
+                                         lows=0 # nonnegativity constraints
                                          # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
                                          #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2)) 
 ))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
@@ -341,7 +341,8 @@ system.time(fit_nnL0Learn <- L0Learn.fit(x=as.matrix(Diagonal(x=sqrt(W)) %*% X),
                                          intercept=FALSE,
                                          nLambda=100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
                                          # activeSetNum = 3, maxSwaps = 100,
-                                         autoLambda=TRUE
+                                         autoLambda=TRUE,
+                                         lows=0 # nonneg constraints
                                          # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
                                          #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2))
 ))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
@@ -935,7 +936,8 @@ system.time(fit_nnL0Learn_selcoefs <- L0Learn.fit(x=as.matrix(X[,selcoefs,drop=F
                                                   intercept=FALSE, 
                                                   nLambda=100, # NOTE: 100 gave much better results than 20
                                                   # activeSetNum = 3, maxSwaps = 100,
-                                                  autoLambda=TRUE
+                                                  autoLambda=TRUE,
+                                                  lows=0 # nonneg constraints
                                                   # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
                                                   #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2)) 
 ))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
@@ -969,7 +971,8 @@ system.time(fit_nnL0Learn <- L0Learn.fit(x=as.matrix(X),  # note: no support for
                                          intercept=FALSE,
                                          nLambda=100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
                                          # activeSetNum = 3, maxSwaps = 100,
-                                         autoLambda=TRUE
+                                         autoLambda=TRUE,
+                                         lows=0 # nonneg constraints
                                          # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
                                          #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2))
 ))  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y

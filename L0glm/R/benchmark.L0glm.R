@@ -145,21 +145,21 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     
   } else if(method == 4) { # nonnegative L0 learn
     if(sim$family == "poisson"){
-      X = as.matrix(Diagonal(x=sqrt(W)) %*% X)
+      X = Diagonal(x=sqrt(W)) %*% X
       y = as.vector(y*sqrt(W))
     } else {
-      X = as.matrix(X)
       y = as.vector(y)
     }
     if(is.null(options)){
-      result <- L0Learn.fit(x = X,  # note: L0Learn branch with nonnegativity constraints does not support sparse covariate matrices
+      result <- L0Learn.fit(x = X,  
                             y = y,
                             loss = "SquaredError",
                             penalty = "L0", algorithm="CD",
                             maxSuppSize = round(p/2),
                             intercept = FALSE,
                             nLambda = 100, # NOTE: to make timings fair we should probably use 100 or 20 lambda values everywhere?
-                            autoLambda=TRUE)
+                            autoLambda=TRUE,
+                            lows=0) # nonnegativity constraints
     } else {
       args = c(list(x = X, y = y), options)
       result <- do.call(L0learn.fit, args)
