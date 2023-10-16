@@ -95,9 +95,17 @@ L0glm.fit.internal = function(X,
     # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
     # to initialise with constant starting values
     mu = linkinv(eta) # predictions on response scale µ
-    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean = prior.mean, family=family, lambda=lambda/4) # I CHANGED THIS TO AN ORTHOGONAL INITIALISATION # start_coefs(X=X, family=family)
-    # start <- clip(coefs=start, lower, upper, reflect_lower = TRUE, reflect_upper = FALSE)
-    start = warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
+    
+    # option1 for start: equal coefficients
+    # start <- start_coefs(X=X, family=family) 
+    # option2 for start: coordinate-wise coefficients 
+    # = crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2), 
+    # which would be exact if variables were orthogonal
+    # gave a more stable solution & converged faster
+    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean = prior.mean, family=family, lambda=lambda) 
+    start <- clip(coefs=start, lower, upper)
+    # start <- warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
+    
     beta <-  beta_old <- start
   } else {  
     # eta = as.matrix(link(mustart))
@@ -108,11 +116,12 @@ L0glm.fit.internal = function(X,
   }
   names(beta) = colnames(X)
   
-
   dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
   residuals = rep(0, nobs) # worker residuals, here initialised at 0 for 1st iteration
   
-  # nonzero coefficients
+  # nonzero coefficients 
+  # TODO: if warm.start=1 we should set nonzero from the start & kick
+  # out variables with start=0, which would get infinite penalties, from the very beginning
   if (is.null(start)) { nonzero = as.vector(beta!=0) } else { nonzero = as.vector(start!=0) } 
   # mask <- rep(FALSE, p)
   
@@ -140,7 +149,6 @@ L0glm.fit.internal = function(X,
     
     
     # UPDATE RIDGE PENALTIES ####
-    # browser()
     
     # penalty weights & penalties for the L0 norm penalty ####
     pen.weights <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
@@ -198,6 +206,7 @@ L0glm.fit.internal = function(X,
                    nonnegative = nonnegative,
                    scaling = scaling[nonzero],
                    start = beta_old[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
+                   iteration = i, # IRLS iteration passed on as extra info
                    lower = lower[nonzero], 
                    upper = upper[nonzero],
                    prior.mean = center[nonzero],

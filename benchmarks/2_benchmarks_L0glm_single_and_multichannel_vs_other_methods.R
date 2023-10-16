@@ -24,6 +24,8 @@ sim.pois <- simul(method = 2, n = n, p = p, sparse = T)
 ## Tune lambda relaxed = F with ebic
 system.time(tune.osqp.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "osqp"))
 # bestlambda = 10, time = 2.7s (for n=p=500), bestlambda = 10, time = 71s (for n=p=10000)
+# TODO fix <sparse>[ <logic> ] : .M.sub.i.logical() maybe inefficient
+
 system.time(tune.glmnet.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "glmnet"))
 # bestlambda = 10, time = 8.1s, bestlambda = 10, time = 31s (for n=p=10000)
 system.time(tune.chol.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "ebic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
@@ -517,7 +519,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = FALSE,
                                     solver = "osqp")) 
 # 7.1s
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9941838
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 50
@@ -536,7 +538,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     solver = "eigen",
                                     method = 7L)) 
 # 6.5s
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.pois.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
 title = paste("True vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
@@ -580,7 +582,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = TRUE,
                                     solver = "osqp"))
 # 14s
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9992435
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 49
@@ -599,7 +601,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     solver = "eigen",
                                     method = 7L)) 
 # 12s
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.chol$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9992436
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol$coefficients)!=0) # TP = 49
@@ -641,7 +643,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = TRUE,
                                     solver = "osqp")) 
 # 15s
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.pois.mc$beta_true)) # 0.9995664
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 49
@@ -660,7 +662,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     solver = "eigen",
                                     method = 7L)) 
 # 14s
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.pois.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
 title = paste("True vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
@@ -716,7 +718,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # TODO fix warning
 # number of rows of result is not a multiple of vector length (arg 6)
 
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus.mc$beta_true)) # 0.9898752
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 50
@@ -738,7 +740,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # TODO fix warning
 # number of rows of result is not a multiple of vector length (arg 6)
 
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
 title = paste("True vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
@@ -784,7 +786,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 23s
 # TODO fix bug In (function (..., deparse.level = 1)  :
 # number of rows of result is not a multiple of vector length (arg 6)
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus.mc$beta_true)) # 0.9999461
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 50
@@ -805,7 +807,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 12s
 # TODO fix bug In (function (..., deparse.level = 1)  :
 # number of rows of result is not a multiple of vector length (arg 6)
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
 title = paste("True vs estimated coefficients\nnonnegative L0 grouped GLM\nR2=", R2)
@@ -851,7 +853,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 23s
 # TODO fix bug In (function (..., deparse.level = 1)  :
 # number of rows of result is not a multiple of vector length (arg 6)
-abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.osqp$coefficients)!=0), col = 'cyan')
 
 cor(as.vector(as.vector(L0glm.osqp$coefficients)), as.vector(sim.gaus.mc$beta_true)) # 0.9999514
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.osqp$coefficients)!=0) # TP = 50
@@ -873,7 +875,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 30.235s
 # TODO fix bug In (function (..., deparse.level = 1)  :
 # number of rows of result is not a multiple of vector length (arg 6)
-abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
+# abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
 title = paste("True vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)

@@ -44,7 +44,7 @@ control.solver.gen <- function(solver,
                                method = NULL,
                                maxit = NULL,
                                standardize = NULL,
-                               reltol = 1E-8,
+                               reltol = NULL,
                                tol = NULL,
                                abstol = NULL,
                                verbose = FALSE,
@@ -56,28 +56,31 @@ control.solver.gen <- function(solver,
   
   if(solver == "osqp"){
     if(is.null(maxit)) {
-      maxit <- 10000
-    } else if(maxit <= 0){
       maxit <- 1e5
+    } else if(maxit <= 0){
+      maxit <- 1e6
       if(verbose) print("Control.solver$maxit needs to be a positive integer fot the chosen solver. Value was set to solver default (10000).")
     }
     
-    if(is.null(abstol)) abstol <- 1e-8
+    if(is.null(abstol)) abstol <- 1e-7
+    if(is.null(reltol)) reltol <- 1e-7
     if(is.null(rowaug)) rowaug <- TRUE
     
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
-              max_iter = maxit, linsys_solver = 0L, polish = FALSE, 
+              max_iter = maxit, 
+              linsys_solver = 0L, # 0=QDLDL, 1=MKL Pardiso
+              polish = FALSE, # polish ADMM solution?
               rowaug = rowaug)
     
   } else if (solver == "glmnet") {
     if(is.null(maxit)) {
-      maxit <- 1e5
+      maxit <- 1e6
     } else if(maxit <= 0){
-      maxit <- 1e5
+      maxit <- 1e7
       if(verbose) print("Control.solver$maxit needs to be a positive integer fot the chosen solver. Value was set to solver default (1e5).")
     }
     
-    if(is.null(abstol)) abstol <- 1e-10
+    if(is.null(abstol)) abstol <- 1e-10 # largest value that gave half decent results
     if(is.null(rowaug)) rowaug <- TRUE
     if(rowaug == FALSE) print("Row augmentation is required with chosen solver.")
     
@@ -97,41 +100,35 @@ control.solver.gen <- function(solver,
     if(is.null(tol)) tol <- 1E-10
     
     if (method == 1){
-      if(is.null(rowaug)) rowaug <- FALSE
+      if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
       l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
       
     } else if (method == 2){
-      if(is.null(rowaug)) rowaug <- FALSE
-      l <- list(method = "QR", pivot = 1, rowaug = rowaug)
+      if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
+      l <- list(method = "QR", pivot = 1L, rowaug = rowaug)
       
     } else if (method == 3){
-      # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- TRUE # always use row augmentation with this method
-      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 0L, rowaug = rowaug)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "LSCG", tol = 1E-7, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 4){
-      # if(is.null(rowaug)) rowaug <- TRUE
-      rowaug <- TRUE # always use row augmentation with this method
-      l <- list(method = "LSCG", tol = 1E-3, maxit = 0L, precond = 1L, rowaug = rowaug)
+      if(is.null(rowaug)) rowaug <- TRUE
+      l <- list(method = "LSCG", tol = 1E-7, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 5){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE # always use row augmentation with this method
-      l <- list(method = "CG", tol = 1E-3, maxit = 0L, precond = 0L, rowaug = rowaug)
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      l <- list(method = "CG", tol = 1E-7, maxit = 0L, precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE # always use row augmentation with this method
-      l <- list(method = "CG", tol = 1E-3, maxit = 0L, precond = 1L, rowaug = rowaug)
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      l <- list(method = "CG", tol = 1E-7, maxit = 0L, precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       l <- list(method = "chol", pivot = 0L, ordering = 0L, rowaug = rowaug)
       
     } else if (method == 8){
-      # if(is.null(rowaug)) rowaug <- FALSE
-      rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       l <- list(method = "chol", pivot = 1L, ordering = 0L, rowaug = rowaug)
     } else {
       stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-8).")

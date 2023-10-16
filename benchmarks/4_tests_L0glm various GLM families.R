@@ -1,4 +1,10 @@
-# Check of metrics (AIC, BIC, loglik) L0glm package & comparison regular GLM ####
+# Check of metrics (AIC, BIC, loglik) L0glm package & comparison with regular GLM ####
+
+# this was an attempt to test L0glm for some different noise families
+# but script not up to date yet
+# maybe benchmarks in abess and abess:generate.data might be good for
+# benchmarking different families too (maybe with some modification, 
+# e.g. to also allow simulated sparse covariate matrices)
 
 library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
@@ -42,11 +48,9 @@ plot(x=coef(glm_gaus), y=beta_true, pch=16, col="blue")
 system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = X, 
                                             y = y, 
                                             family = gaussian(identity), 
-                                            lambda = 1E-30, 
-                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
+                                            lambda = 1E-30,
                                             nonnegative = FALSE,
                                             normalize = FALSE,
-                                            warmupiters = 1,
                                             no.pen = 1,
                                             start = NULL, # rep(sqrt(5), ncol(data_gaus$X)), # NULL, # 
                                             solver = "eigen", # 
@@ -91,12 +95,9 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = X,
                                             y = y, 
                                             family = gaussian(identity), 
                                             lambda = lambda_preset_gaus,
-                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                            # ridge.center = XX,
                                             no.pen = 1,
                                             nonnegative = FALSE,
                                             normalize = FALSE,
-                                            warmupiters = 1,
                                             start = NULL, # =rep(sqrt(5), ncol(data_gaus$X))/scaling, # NULL, # rep(sqrt(5), ncol(data_gaus$X))*scaling, # NULL, # start_coefs(X, family=gaussian(identity)), # = rep(sqrt(5), ncol(data_gaus$X)) / scaling, 
                                             solver = "eigen", # 
                                             method = 7L, #
@@ -105,8 +106,6 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = X,
 )) # 0.41s with method 3L, 0.72s with method 7L
 # TODO: check solver method 1 here fails
 sum(L0glm_gaus_presetlambda$coefficients!=0)  # 47
-# TODO: check : not OK with nonzero.centered=TRUE - then gives 100, both if 
-# start values are or are not given, ie a non-sparse solution
 cor(L0glm_gaus_presetlambda$coefficients, data_gaus$beta_true) # 0.9940267
 plot(x=L0glm_gaus_presetlambda$coefficients, y=data_gaus$beta_true, pch=16, col="blue")
 points(x=L0glm_gaus_presetlambda$coefficients[data_gaus$beta_true==0], y=data_gaus$beta_true[data_gaus$beta_true==0], 
@@ -160,11 +159,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          family = gaussian(identity), 
                          lambda = lambda, 
                          no.pen = 1,
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                         ridge.center = NULL, # L0glm_gaus_presetlambda$coefficients, # rep(0, ncol(data_gaus$X)),
                          nonnegative = FALSE,
-                         warmupiters = 1,
-                         warmupiters.nzc = 5,
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 3L, # 3L here 2x as fast than 7L
@@ -283,12 +278,9 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
                                             y = y, 
                                             family = poisson(log), 
                                             lambda = 1E-30, 
-                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                            ridge.center = rep(0, ncol(X)),
                                             no.pen = 1,
                                             nonnegative = FALSE,
                                             normalize = FALSE,
-                                            warmupiters = 1,
                                             start = NULL, # = start_coefs(X=X, family=family) = rep(sqrt(5), ncol(X))/scaling,
                                             solver = "eigen", # 
                                             method = 7L, #
@@ -327,11 +319,9 @@ system.time(L0glm_pois_presetlambda <- L0glm.fit(X = X,
                                                  y = y, 
                                                  family = poisson(log), 
                                                  lambda = lambda_preset_pois,
-                                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                                  no.pen = 1,
                                                  nonnegative = FALSE,
                                                  normalize = FALSE,
-                                                 warmupiters = 1,
                                                  start = NULL, # =start_coefs(X=X, family=family) = rep(sqrt(5), ncol(X))/scaling
                                                  solver = "eigen", # 
                                                  method = 3L, #
@@ -384,11 +374,9 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = y, 
                          family = poisson(log), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression? 
                          no.pen = 1,
                          nonnegative = FALSE,
                          normalize = FALSE,
-                         warmupiters = 1,
                          start = start, 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 3L, 
@@ -511,11 +499,8 @@ system.time(L0glm_binom_lambda0 <- L0glm.fit(X = X,
                                             weights = weights,
                                             family = binomial(logit), 
                                             lambda = 1E-30, 
-                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                            ridge.center = rep(0, ncol(X)),
                                             nonnegative = FALSE,
                                             normalize = FALSE,
-                                            warmupiters = 1,
                                             start = NULL, # = rep(sqrt(5), ncol(data_binom$X))/scaling,
                                             no.pen = 1,
                                             solver = "eigen", # 
@@ -554,11 +539,8 @@ system.time(L0glm_binom_presetlambda <- L0glm.fit(X = X,
                                                       weights = weights,
                                                       family = binomial(logit), 
                                                       lambda = lambda_preset_binom, 
-                                                      nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                                      ridge.center = rep(0, ncol(X)),
                                                       nonnegative = FALSE,
                                                       normalize = FALSE,
-                                                      warmupiters = 1,
                                                       start = NULL, # = rep(sqrt(5), ncol(X))/scaling
                                                       no.pen = 1,
                                                       solver = "eigen", # 
@@ -612,10 +594,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = y, 
                          family = binomial(logit), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression? 
                          nonnegative = FALSE,
                          normalize = FALSE,
-                         warmupiters = 1,
                          no.pen = 1,
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
@@ -736,11 +716,8 @@ system.time(L0glm_gamma_lambda0 <- L0glm.fit(X = X,
                                             y = y, 
                                             family = Gamma(log), 
                                             lambda = 1E-30, 
-                                            nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                            ridge.center = rep(0, ncol(X)),
                                             nonnegative = FALSE,
                                             normalize = FALSE,
-                                            warmupiters = 1,
                                             no.pen = 1,
                                             start = NULL, # rep(sqrt(5), ncol(data_gamma$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
@@ -775,10 +752,8 @@ system.time(L0glm_gamma_presetlambda <- L0glm.fit(X = X,
                                                  y = y, 
                                                  family = Gamma(log), 
                                                  lambda = lambda_preset_gamma,
-                                                 nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                                  nonnegative = FALSE,
                                                  normalize = FALSE,
-                                                 warmupiters = 1,
                                                  no.pen = 1,
                                                  start = NULL, # start_coefs(X,family)/scaleX(X), # rep(sqrt(50), ncol(X)), # rep(sqrt(6), ncol(data_gamma$X)), # rep(sqrt(6), ncol(data_gamma$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                  solver = "eigen", # 
@@ -831,9 +806,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = y, 
                          family = Gamma(log), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression? 
                          nonnegative = FALSE,
-                         warmupiters = 1,
                          no.pen = 1,
                          start = start,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
@@ -954,11 +927,8 @@ system.time(L0glm_invgaus_lambda0 <- L0glm.fit(X = X,
                                              y = y, 
                                              family = inverse.gaussian(log), 
                                              lambda = 1E-30, 
-                                             nonzero.centered = FALSE, # use nonzero centered ridge regression?
-                                             ridge.center = rep(0, ncol(X)),
                                              nonnegative = FALSE,
                                              normalize = FALSE,
-                                             warmupiters = 1,
                                              no.pen = 1,
                                              start = NULL, # rep(sqrt(10), ncol(data_invgaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                              solver = "eigen", # 
@@ -992,10 +962,8 @@ system.time(L0glm_invgaus_presetlambda <- L0glm.fit(X = X,
                                                   y = y, 
                                                   family = inverse.gaussian(log), 
                                                   lambda = lambda_preset_invgaus,
-                                                  nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                                   nonnegative = FALSE,
                                                   normalize = FALSE,
-                                                  warmupiters = 1,
                                                   no.pen = 1,
                                                   start = NULL, # (abs(coef(glm_invgaus)))^(1/3), # rep(sqrt(3)/4, ncol(data_invgaus$X)), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                   solver = "eigen", # 
@@ -1049,10 +1017,8 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          y = y, 
                          family = inverse.gaussian(log), 
                          lambda = lambda, 
-                         nonzero.centered = FALSE, # use nonzero centered ridge regression? 
                          nonnegative = FALSE,
                          normalize = FALSE,
-                         warmupiters = 1,
                          no.pen = 1,
                          start = start, # coef(glm_invgaus), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)),
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values

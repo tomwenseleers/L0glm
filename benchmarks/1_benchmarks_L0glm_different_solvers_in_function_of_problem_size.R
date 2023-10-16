@@ -8,7 +8,7 @@ devtools::load_all(".")
 # library(L0glm)
 
 # Simulation sizes (with n=p)
-sizes <- c(25, 50, 100, 500, 1000, 2000, 5000) # , 10000, 20000)
+sizes <- c(25, 50, 100, 500, 1000, 10000) # 2000) # , 5000, 10000, 20000)
 
 # Solvers and methods
 solvers <- c("osqp", 
@@ -26,7 +26,7 @@ methods <- c(1,
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
-                  "bigGlm/glmnet", 
+                  "glmnet", 
                   "eigen QR", 
                   "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
                   "eigen CG", 
@@ -57,12 +57,13 @@ for (n in sizes) {
     lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
     
     # Fit model and measure time
-    # start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
-    #                   lambda=lambda_preset*(1/4)) # TODO: use this as starting coefs in L0glm
+    start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
+                       lambda=lambda_preset) # component-wise initialisation
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y,
-        start=NULL, # start, 
+        start=start, # NULL, # rep(1, ncol(X)), # NULL, # start, 
+        warm.start = 1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
         solver = solver, method = method, 
@@ -102,6 +103,12 @@ for (n in sizes) {
   }
 }
 
+warnings()
+# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
+# if tol is set too low - now falling back to 
+# Cholesky LLT if that happens - check if this can be fixed somehow?
+# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
+
 # Reshape data for plotting
 results_melt <- results %>% 
   tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, 
@@ -111,10 +118,10 @@ results_melt <- results %>%
 results_melt$Solver = factor(results_melt$Solver, 
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
-                                          "bigGlm/glmnet")),
+                                          "glmnet")),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
-                                          "L0glm_bigGlm/glmnet")))
+                                          "L0glm_glmnet")))
 
 # Plot
 ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -128,8 +135,8 @@ ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple"))) 
-ggsave(file="..//benchmarks//plots//timings//timings_metrics.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics.pdf", width=7, height=5, dpi=600)
+ggsave(file="..//benchmarks//plots//timings//timings_metrics_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_poisson.pdf", width=7, height=5, dpi=600)
 
 ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
   geom_line(aes(linewidth=I(1))) +
@@ -142,8 +149,8 @@ ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colo
                                   "purple"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings.pdf", width=7, height=5, dpi=600)
+ggsave(file="..//benchmarks//plots//timings//timings_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_poisson.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
 
@@ -174,18 +181,18 @@ for (n in sizes) {
     lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
     
     # Fit model and measure time
-    start = 0.01*y / diag(X) # diagonal initialisation - only works for n=p case though
-    # start = 0.001*init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset*(1/4)) # as.vector(coefs.true)
-    print(cor(as.vector(start), as.vector(coefs.true)))
+    start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
+
+    # print(cor(as.vector(start), as.vector(coefs.true)))
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, 
-        start=start,  # NULL
-        warm.start=0.7,
+        start=start, # NULL,
+        warm.start=1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
         solver = solver, method = method, 
-        dispersion = 1,
+        # dispersion = 1,
         control.solver = do.call(control.solver.gen, 
                                  list(solver = solver, 
                                       method = method)))
@@ -220,14 +227,20 @@ for (n in sizes) {
   }
 }
 
+warnings()
+# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
+# if tol is set too low - now falling back to 
+# Cholesky LLT if that happens - check if this can be fixed somehow?
+# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
+
 # Reshape data for plotting
 results_melt2 <- results %>% 
   tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, F1,
                         Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
   mutate(method = factor(method), solver = factor(solver))
 results_melt2$Solver = factor(results_melt2$Solver, 
-                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "bigGlm/glmnet")),
-                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_bigGlm/glmnet")))
+                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "glmnet")),
+                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_glmnet")))
 
 # Plot
 ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -241,8 +254,13 @@ ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple")))
-ggsave(file="..//benchmarks//plots//timings//timings_metrics2.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics2.pdf", width=7, height=5, dpi=600)
+ggsave(file="..//benchmarks//plots//timings//timings_metrics_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_gaussian.pdf", width=7, height=5, dpi=600)
+
+# here glmnet solver is markedly worse than the rest
+# TODO check if this can be improved
+# maybe just use glmnet to solve the first 5 iterations of the iterative
+# CG & LSCG eigen solvers??
 
 ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
                                                          colour=interaction(Solver))) +
@@ -256,15 +274,9 @@ ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value,
                                   "purple"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings.pdf", width=7, height=5, dpi=600)
+ggsave(file="..//benchmarks//plots//timings//timings_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_gaussian.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-
-# Here Cholesky & osqp solver is clearly the best.
-# TODO try to improve solution quality for some of the other solvers??
-# maybe init_coefs could use some tuning
-# maybe init_coefs needs to be clipped within allowed bounds?
 
 

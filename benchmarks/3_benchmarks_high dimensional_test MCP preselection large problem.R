@@ -18,7 +18,7 @@ library(Matrix)
 
 n = 500 # 500 obs
 p = 1000000 # 1 million variables
-s = 0.00008 # sparsity of true solution
+s = 0.00008 # prop of nonnegative coefficients
 n_nonzero = round(p*s)
 n_nonzero # 80
 suffix = paste0("n_",as.integer(n),"_p_",as.integer(p),"_n_nonzero",n_nonzero)

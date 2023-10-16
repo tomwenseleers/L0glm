@@ -7,7 +7,9 @@ library(osqp)
 library(devtools)
 library(glmnet)
 devtools::load_all()
-library(RhpcBLASctl)
+library(RhpcBLASctl) # to set nr of threads & cores to use in your BLAS
+# fix to set working package repository when using Microsoft R Open with Intel MKL
+options(repos = c(CRAN="https://cloud.r-project.org/"))
 
 blas_threads = get_num_cores() # 8
 omp_threads = get_num_procs() # 16
@@ -33,13 +35,13 @@ library(Matrix)
 
 # Simulate data
 set.seed(1)
-n <- 100
-p <- 100
+n <- 10000
+p <- 10000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
 sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
 
-system.time(Matrix::crossprod(sim$X)) # 0.02s
+system.time(Matrix::crossprod(sim$X)) # 0.02s for n=p=10000
 
 coefs_true <- as.vector(sim$beta_true)
 Xsp <- sim$X
@@ -55,27 +57,29 @@ lower <- rep(0, ncol(X))
 upper <- rep(Inf, ncol(X))
 nonnegative <- TRUE
 thresh <- 1E-3 # coefficients below this value are set to zero in each iteration
+beta <- start <- rep(1, ncol(X))
 
-# we use starting values starting from a nonnegative weighted LS fit (fit using osqp)
-system.time(start <- lmridge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights = weights,
-                             lower = lower, upper = upper, nonnegative = nonnegative,
-                             solver="osqp") / X.n) # 1.97s
-start[abs(start)<thresh] <- 0
-nonzero <- (abs(start)>0)
-pen_weights <- rep(0, ncol(X))
-lambdas <- rep(0, ncol(X))
-
-cor(coefs_true, start) # 0.65
-plot(log10(coefs_true), log10(start))
+# # we use starting values starting from a nonnegative weighted LS fit (fit using osqp)
+# system.time(start <- lmridge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights = weights,
+#                              lower = lower, upper = upper, nonnegative = nonnegative,
+#                              solver="osqp") / X.n) # 4.64s for n=p=10000
+# start[abs(start)<thresh] <- 0
+# nonzero <- (abs(start)>0)
+# 
+# cor(coefs_true, start) # 0.69
+# plot(log10(coefs_true), log10(start))
 
 
-beta <- start
 delta <- 1E-4 # not needed if thresholding is used
-gamma <- 1.5 # gamma=2 sometimes returns in instability in the fits
+gamma <- 2 # gamma=1.5 sometimes more stable
+nonzero <- beta!=0
+sum(nonzero)
+pen_weights <- rep(0, ncol(X))
 pen_weights[nonzero] <- (1/(start[nonzero]^gamma+delta)) # penalization weights of different variables (columns of X)
 pen_weights[nonzero] <- pen_weights[nonzero] / (sum(pen_weights[nonzero])/sum(nonzero)) # normalize sum of pen weights to ncol(X[,nonzero,drop=F])
 hist(log10(pen_weights[nonzero]))
 sum(pen_weights[nonzero]) == sum(nonzero) # TRUE
+lambdas <- rep(0, ncol(X))
 lambdas[nonzero] <- lambda*pen_weights[nonzero]
 D <- diag(1/pen_weights[nonzero]) # cf notation Liu & Li 2016
 Dsp <- Matrix(D, sparse=T) # .sparseDiagonal(ncol(X), 1/pen_weights)  # sparse version of D, cf notation Liu & Li 2016
@@ -96,172 +100,244 @@ verbose <- FALSE
 
 # 1. TESTS WITH SOME DEFAULT SOLVE METHODS TO SOLVE RIDGE REGRESSION, EITHER WITH DIRECT SOLVE OR VIA ROW AUGMENTATION ####
 # 1.1 TEST WITH DIFFERENT SOLVE METHODS ####
-# (using default BLAS that R is compiled against, can be Accelerate (Mac), OpenBLAS (Ubuntu/Win) or IntelMKL (Ubuntu/Win))
+
+# (using default BLAS that R is compiled against, 
+# can be Accelerate (Mac), OpenBLAS (Ubuntu/Win) or IntelMKL (Ubuntu/Win))
 # SOLVE USING BASIC FORMULA FOR n >= p, CF. Liu & Li 2016 ####
-system.time(coefs_solve_dense <- as.vector(base::solve(D %*% crossprod(Xw) + # FAST
+
+# with base R solve which uses LAPACK routines DGESV and ZGESV which use LU decomposition XXXX
+system.time(coefs_solve_dense <- as.vector(base::solve(D %*% crossprod(Xw) + 
                                                     diag(rep(lambda, sum(nonzero))),
                                                     D %*% crossprod(Xw,yw),
-                                                    tol=2*.Machine$double.eps))) # 13s for n=p=10000, 1.42s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+                                                    tol=2*.Machine$double.eps))) 
+# 13s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
+# this is faster than eigen Cholesky for dense case below
 system.time(coefs_solve_sparse <- as.vector(base::solve(Dsp %*% crossprod(Xwsp) + # FAST
                                                      .sparseDiagonal(sum(nonzero), lambda),
                                                      as.matrix(Dsp %*% crossprod(Xwsp,yw)),
-                                                     tol=2*.Machine$double.eps))) # 3.59s for n=p=10000, 3.41s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-beta[nonzero] <- coefs_solve_sparse
-cor(beta, coefs_true) # 0.8589209
+                                                     tol=2*.Machine$double.eps))) 
+# 3.59s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
 cor(coefs_solve_dense, coefs_solve_sparse) # 1
 
-
-
-system.time(coefs_qrsolve_dense <- as.vector(qr.solve(D %*% crossprod(Xw) +
-                                                   diag(rep(lambda, ncol(X))),
-                                                 D %*% crossprod(Xw,yw),
-                                                 tol=2*.Machine$double.eps))) # 386.13s for n=p=10000, 27.47s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-system.time(coefs_qrsolve_sparse <- as.vector(qr.solve(Dsp %*% crossprod(Xwsp) +
-                                                    .sparseDiagonal(sum(nonzero), lambda),
-                                                  Dsp %*% crossprod(Xwsp,yw),
-                                                  tol=2*.Machine$double.eps))) # 298s for n=p=3000, 28.35s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-beta[nonzero] <- coefs_qrsolve_sparse
-cor(beta, coefs_true) # 0.8589209
-cor(coefs_qrsolve_sparse, coefs_solve_sparse) # 1
-cor(coefs_solve_dense, coefs_qrsolve_dense) # 1
-cor(coefs_solve_dense, coefs_qrsolve_sparse) # 1
-
-
-# eigen's QR methods: slower than default QR solve methods
-system.time(coefs_eigenqrsolvepivot0_dense <- as.vector(solve_dense_QR(D %*% crossprod(Xw) +
-                                                        diag(rep(lambda, ncol(X))),
-                                                     D %*% crossprod(Xw,yw),
-                                                      pivot = 0L)$coefficients)) # 40.62s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-system.time(coefs_eigenqrsolveord0_sparse <- as.vector(solve_sparse_QR(Dsp %*% crossprod(Xwsp) +
-                                                         .sparseDiagonal(sum(nonzero), lambda),
-                                                       as.matrix(Dsp %*% crossprod(Xwsp,yw)),
-                                                       ordering = 0L)$coefficients)) # 35s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-beta[nonzero] <- coefs_eigenqrsolveord0_sparse
-cor(beta, coefs_true) # 0.8589209
-cor(coefs_eigenqrsolveord0_sparse, coefs_solve_sparse) # 1
-cor(coefs_eigenqrsolveord0_sparse, coefs_qrsolve_sparse) # 1
-
-
-# eigen's iterative preconditioned conjugate gradient method: FAST, but least squares conjugate gradient via row augmentation even faster
-system.time(coefs_eigenCGsolve_dense <- as.vector(solve_dense_CG(D %*% crossprod(Xw) +
-                                                                         diag(rep(lambda, ncol(X))),
-                                                                       D %*% crossprod(Xw,yw),
-                                                                 x0=rep(0,ncol(X)),
-                                                                 tol=0,
-                                                                 maxit=0,
-                                                                 precond = 0L)$coefficients)) # 29s for p=n=10000, 1.23s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(Dsp %*% crossprod(Xwsp) +
-                                                                         .sparseDiagonal(sum(nonzero), lambda),
-                                                                       as.matrix(Dsp %*% crossprod(Xwsp,yw)),
-                                                                       x0=as.matrix(start[nonzero]), # rep(0,ncol(X)),
-                                                                       tol=0,
-                                                                       maxit=0,
-                                                                       precond = 1L)$coefficients)) # 0.10s for p=n=10000, 2.66s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-coefs_eigenCGsolve_sparse
-# TODO returns NULL - check what's wrong
-
-# this syntax works though :
-system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(as(crossprod(Xwaugsp), "dgCMatrix"),
-                                                                   as.matrix(crossprod(Xwaugsp,ywaug)),
-                                                                   x0=as.matrix(start[nonzero]), # rep(0,ncol(X)),
-                                                                   tol=0,
-                                                                   maxit=0,
-                                                                   precond = 1L)$coefficients))
-coefs_eigenCGsolve_sparse
-
-beta[nonzero] <- coefs_eigenCGsolve_sparse
-cor(beta, coefs_true) # 0.8589209
-cor(coefs_solve_sparse, coefs_eigenCGsolve_sparse) # 1
-cor(coefs_solve_dense, coefs_eigenCGsolve_dense) # 1
-
-
-# default chol.solve: relatively fast, but not great
+# default chol.solve: FAST but only with Intel MKL & solve_sparse_CG faster
 system.time(coefs_cholsolve_dense <- as.vector(chol.solve(D %*% crossprod(Xw) +
-                                                        diag(rep(lambda, ncol(X))),
-                                                      D %*% crossprod(Xw,yw),
-                                                      tol=2*.Machine$double.eps))) # 23s for n=p=10000, 2.02s for n=p=5000, 2.16s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+                                                            diag(rep(lambda, ncol(Xw))),
+                                                          D %*% crossprod(Xw,yw),
+                                                          tol=2*.Machine$double.eps))) 
+# 15s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
 system.time(coefs_cholsolve_sparse <- as.vector(chol.solve(Dsp %*% crossprod(Xwsp) +
-                                                         .sparseDiagonal(sum(nonzero), lambda),
-                                                       Dsp %*% crossprod(Xwsp,yw),
-                                                       tol=2*.Machine$double.eps))) # 5s for n=p=10000, 48.75s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+                                                             .sparseDiagonal(sum(nonzero), lambda),
+                                                           Dsp %*% crossprod(Xwsp,yw),
+                                                           tol=2*.Machine$double.eps))) 
+# 1.58s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
 # Sometimes gives Error in chol.default(crossprod(X)) :
-# the leading minor of order 3843 is not positive definite, so overfitted, some eigenvectors near zero
+# the leading minor of order 3843 is not positive definite, so overfitted, 
+# some eigenvectors near zero
 
 # alt syntax (more stable) :
 system.time(coefs_cholsolve_sparse <- as.vector(chol.solve(as(crossprod(Xwaugsp),"dgCMatrix"),
                                                            crossprod(Xwaugsp,ywaug),
                                                            tol=2*.Machine$double.eps))) 
-beta[nonzero] <- coefs_cholsolve_sparse
-cor(beta, coefs_true) # 0.8948964
-cor(coefs_solve_sparse, coefs_true) # 0.1745552
-cor(coefs_solve_dense, coefs_cholsolve_dense) # 1
-cor(coefs_solve_dense, coefs_cholsolve_sparse) # 1
+# 1.5s for n=p=10000 
+cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
 
-# eigen's solve_dense_chol & solve_sparse_chol: FAST for sparse only
-system.time(coefs_cholsolve_dense <- as.vector(solve_dense_chol(D %*% crossprod(Xw) +
-                                                            diag(rep(lambda, ncol(X))),
-                                                          pivot=1L)$coefficients)) # 84s for n=p=10000, 7.96s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(Dsp %*% crossprod(Xwsp) +
-                                                             .sparseDiagonal(sum(nonzero), lambda),
-                                                           as.matrix(Dsp %*% crossprod(Xwsp,yw)),
-                                                           pivot=0L,
-                                                           ordering=0L)$coefficients)) # 0.08s for n=p=10000, 18.76s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-# gives bad solution
+# eigen's solve_dense_chol & solve_sparse_chol: 
+# fast only for sparse - check better solution for dense? (base LU solver faster then)
+# very slow for dense case
+system.time(coefs_cholsolve_dense <- as.vector(solve_dense_chol(A=D %*% crossprod(Xw) +
+                                                                  diag(rep(lambda, ncol(Xw))),
+                                                                b=as.matrix(D %*% crossprod(Xw,yw)),
+                                                                pivot=0L)$coefficients)) 
+# 71s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
+cor(coefs_cholsolve_dense, coefs_solve_sparse) # 1
+system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(A=Dsp %*% crossprod(Xwsp) +
+                                                                    .sparseDiagonal(sum(nonzero), lambda),
+                                                                  b=as.matrix(Dsp %*% crossprod(Xwsp,yw)),
+                                                                  pivot=0L,
+                                                                  ordering=0L)$coefficients)) 
+# 0.05s for n=p=10000 with Intel MKL, cf. Liu & Li 2016 eqn (10)
+cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
+
+
 # more stable fit:
+# FASTEST CHOLESKY SOLVER FOR SPARSE CASE : via row augmentation
 system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(Xwaugsp),"dgCMatrix"),
                                                                   as.matrix(crossprod(Xwaugsp,ywaug)),
                                                                   pivot=0L,
-                                                                  ordering=0L)$coefficients)) # 0.08s for n=p=10000, 18.76s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-beta[nonzero] <- coefs_cholsolve_sparse
-cor(beta, coefs_true) # 0.8948963
-cor(coefs_cholsolve_sparse, coefs_true) # 0.1745552
-cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
-cor(coefs_cholsolve_dense, coefs_cholsolve_sparse) # 1
+                                                                  ordering=0L)$coefficients)) 
+# 0.03s for n=p=10000, cf. Liu & Li 2016 eqn (10)
+cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
 
-system.time(coefs_cholsolve_sparse_lmridge <- lmridge(X, y, lambda,
-                                                weights = weights,
-                                                lower = lower,
-                                                upper = upper,
-                                                nonnegative = nonnegative,
-                                                solver = "eigen",
-                                                method = 7))
-
-
-
-# using row augmentation & default Cholesky decomposition -> FAST both for dense & sparse
+# using row augmentation & default Cholesky decomposition -> slower than lmridge eigen solver
 system.time(coefs_cholsolve_rowaug_dense <- as.vector(chol.solve(Xwaug,
                                                                  ywaug,
-                                                                 tol=2*.Machine$double.eps))) # 13s for n=p=10000, 0.90s for p=5000 & n=1000
+                                                                 tol=2*.Machine$double.eps))) 
+# 7.83s for n=p=10000 with Intel MKL, slower than lmridge eigen above
 system.time(coefs_cholsolve_rowaug_sparse <- as.vector(chol.solve(Xwaugsp,
                                                                   ywaug,
-                                                           tol=2*.Machine$double.eps))) # 1.6s for n=p=10000, 2.36s for p=5000 & n=1000
-
-beta[nonzero] <- coefs_cholsolve_rowaug_sparse
-cor(beta, coefs_true) # 0.8948963
-cor(coefs_cholsolve_rowaug_sparse, coefs_true) # 0.019
-cor(coefs_solve_dense, coefs_cholsolve_rowaug_dense) # 1
-cor(coefs_solve_dense, coefs_cholsolve_rowaug_sparse) # 1
+                                                                  tol=2*.Machine$double.eps))) 
+# 1.24s for n=p=10000 with Intel MKL, slower than lmridge eigen above
+cor(coefs_cholsolve_rowaug_sparse, coefs_solve_sparse) # 1
 
 
-# using row augmentation & eigen's least squares conjugate gradient -> SUPER FAST BOTH FOR SPARSE & DENSE!! -> BEST FOR US?
+
+
+# system.time(coefs_qrsolve_dense <- as.vector(qr.solve(D %*% crossprod(Xw) +
+#                                                    diag(rep(lambda, ncol(X))),
+#                                                  D %*% crossprod(Xw,yw),
+#                                                  tol=2*.Machine$double.eps))) # 386.13s for n=p=10000, 27.47s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# system.time(coefs_qrsolve_sparse <- as.vector(qr.solve(Dsp %*% crossprod(Xwsp) +
+#                                                     .sparseDiagonal(sum(nonzero), lambda),
+#                                                   Dsp %*% crossprod(Xwsp,yw),
+#                                                   tol=2*.Machine$double.eps))) # 298s for n=p=3000, 28.35s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# beta[nonzero] <- coefs_qrsolve_sparse
+# cor(beta, coefs_true) # 0.8589209
+# cor(coefs_qrsolve_sparse, coefs_solve_sparse) # 1
+# cor(coefs_solve_dense, coefs_qrsolve_dense) # 1
+# cor(coefs_solve_dense, coefs_qrsolve_sparse) # 1
+# 
+# 
+# # eigen's QR methods: slower than default QR solve methods
+# system.time(coefs_eigenqrsolvepivot0_dense <- as.vector(solve_dense_QR(D %*% crossprod(Xw) +
+#                                                         diag(rep(lambda, ncol(X))),
+#                                                      D %*% crossprod(Xw,yw),
+#                                                       pivot = 0L)$coefficients)) # 40.62s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# system.time(coefs_eigenqrsolveord0_sparse <- as.vector(solve_sparse_QR(Dsp %*% crossprod(Xwsp) +
+#                                                          .sparseDiagonal(sum(nonzero), lambda),
+#                                                        as.matrix(Dsp %*% crossprod(Xwsp,yw)),
+#                                                        ordering = 0L)$coefficients)) # 35s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# beta[nonzero] <- coefs_eigenqrsolveord0_sparse
+# cor(beta, coefs_true) # 0.8589209
+# cor(coefs_eigenqrsolveord0_sparse, coefs_solve_sparse) # 1
+# cor(coefs_eigenqrsolveord0_sparse, coefs_qrsolve_sparse) # 1
+
+
+
+# sparse Cholesky solver when called via lmridge function ####
+# EXCELLENT TIMINGS BOTH FOR SPARSE & DENSE CASE
+microbenchmark(coefs_cholsolve_sparse_lmridge <- lmridge(X=Xsp, y=y, lambdas=lambdas,
+                                                         weights = weights,
+                                                         lower = lower,
+                                                         upper = upper,
+                                                         nonnegative = nonnegative,
+                                                         # scaling = rep(1, ncol(X)),
+                                                         prior.mean = NULL,
+                                                         solver = "eigen",
+                                                         method = 7L,
+                                                         start = rep(0, ncol(X)),
+                                                         control.solver = 
+                                                           modifyList(do.call("control.solver.gen", 
+                                                                              list(solver = "eigen", 
+                                                                                   method = 7L)),
+                                                                      list(rowaug=TRUE)) )
+)
+# with n=p=10000 for sparse case: 0.058s with rowaug=Fv, 0.042s with rowaug=T
+cor(coefs_cholsolve_sparse_lmridge, coefs_solve_sparse) # 0.9965996
+# TODO
+system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(Xwaugsp),"dgCMatrix"),
+                                                                  as.matrix(crossprod(Xwaugsp,ywaug)),
+                                                                  pivot=0L,
+                                                                  ordering=0L)$coefficients))
+# gets to 0.03s for n=p=10000, so should still be possible to get this slightly faster?
+cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
+
+# dense Cholesky solver when called via lmridge function
+system.time(coefs_cholsolve_dense_lmridge <- lmridge(X=X, y=y, lambdas=lambdas,
+                                                     weights = weights,
+                                                     lower = lower,
+                                                     upper = upper,
+                                                     nonnegative = nonnegative,
+                                                     # scaling = rep(1, ncol(X)),
+                                                     prior.mean = NULL,
+                                                     solver = "eigen",
+                                                     method = 7L,
+                                                     start = rep(0, ncol(X)),
+                                                     control.solver = 
+                                                       modifyList(do.call("control.solver.gen", 
+                                                                          list(solver = "eigen", 
+                                                                               method = 7L)),
+                                                                  list(rowaug=FALSE)) )
+)
+# with n=p=10000 for dense case: 4.08s with rowaug=TRUE, 4.03s with rowaug=FALSE
+# TODO -> set rowaug=T only when n>=p & matrix is sparse?
+cor(coefs_cholsolve_sparse_lmridge, coefs_cholsolve_sparse) # 0.9965996
+
+
+
+
+# eigen's iterative preconditioned conjugate gradient method: 
+# FAST, but least squares conjugate gradient via row augmentation even faster
+system.time(coefs_eigenCGsolve_dense <- as.vector(solve_dense_CG(D %*% crossprod(Xw) +
+                                                                         diag(rep(lambda, ncol(Xw))),
+                                                                       D %*% crossprod(Xw,yw),
+                                                                 x0=rep(0,ncol(Xw)),
+                                                                 tol=0,
+                                                                 maxit=0,
+                                                                 precond = 0L)$coefficients)) 
+# 15s for p=n=10000, 1.23s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# slower than lmridge cholesky though
+system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(Dsp %*% crossprod(Xwsp) +
+                                                                         .sparseDiagonal(sum(nonzero), lambda),
+                                                                       as.matrix(Dsp %*% crossprod(Xwsp,yw)),
+                                                                       x0=rep(0,ncol(Xw)), # as.matrix(start[nonzero]), # rep(0,ncol(X)),
+                                                                       tol=0,
+                                                                       maxit=0,
+                                                                       precond = 1L)$coefficients)) 
+# 0.05s for p=n=10000, 2.66s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
+# slower than lmridge cholesky
+coefs_eigenCGsolve_sparse
+# sometimes returns NULL
+cor(coefs_eigenCGsolve_sparse, coefs_solve_sparse) # 1
+
+# using crossproduct of row augmented cov matrix: SUPER FAST
+# -> faster than using normal equations above for sparse case
+system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(A=as(crossprod(Xwaugsp), "dgCMatrix"),
+                                                                   b=as.matrix(crossprod(Xwaugsp,ywaug)),
+                                                                   x0=rep(0,ncol(Xw)), # as.matrix(start[nonzero]), # rep(0,ncol(X)),
+                                                                   tol=1E-10,
+                                                                   maxit=0,
+                                                                   precond = 1L)$coefficients)) 
+# 0.03s for n=p=10000
+cor(coefs_eigenCGsolve_sparse, coefs_solve_sparse) # 1
+
+system.time(coefs_eigenCGsolve_dense <- as.vector(solve_dense_CG(A=as.matrix(crossprod(Xwaug)),
+                                                                 b=as.matrix(crossprod(Xwaug,ywaug)),
+                                                                   x0=rep(0,ncol(Xw)), # as.matrix(start[nonzero]), # rep(0,ncol(X)),
+                                                                   tol=1E-10,
+                                                                   maxit=0,
+                                                                   precond = 0L)$coefficients)) 
+# 9.8s for n=p=10000
+
+
+# using row augmentation & eigen's least squares conjugate gradient 
+# -> SUPER FAST BOTH FOR SPARSE & DENSE!! -> BEST FOR US?
 system.time(coefs_eigenLSCG_rowaug_dense <- as.vector(solve_dense_LSCG(Xwaug,
                                                                          as.matrix(ywaug),
                                                                          x0=as.matrix(rep(0,ncol(Xwaug))),
                                                                          tol=0,
                                                                          maxit=0L,
-                                                                         precond=1L)$coefficients)) # 53s for p=n=10000, 0.42s for p=5000 & n=1000
+                                                                         precond=0L)$coefficients)) 
+# 21s for p=n=10000, CHOLESKY & CG FASTER
+cor(coefs_eigenLSCG_rowaug_dense, coefs_solve_sparse) # 1
+
+system.time(coefs_eigenLSCG_rowaug_dense2 <- as.vector(solve_sparse_LSCG(rbind(Xw, Diagonal(x=sqrt(lambdas))),
+                                                                         as.matrix(ywaug),
+                                                                         x0=as.matrix(rep(0,ncol(Xwaug))), # as.matrix(start[nonzero]), # as.matrix(rep(0,ncol(Xwaug))),
+                                                                         tol=0,
+                                                                         maxit=0L,
+                                                                         precond=0L)$coefficients)) 
+# 0.28s for p=n=10000, SUPER FAST!!!! - TODO code it like this in lmridge.eigen
+cor(coefs_eigenLSCG_rowaug_dense2, coefs_solve_sparse) # 1
+
 system.time(coefs_eigenLSCG_rowaug_sparse <- as.vector(solve_sparse_LSCG(Xwaugsp,
                                                                           as.matrix(ywaug),
-                                                                          x0=as.matrix(start[nonzero]), # as.matrix(rep(0,ncol(Xwaug))),
+                                                                          x0=as.matrix(rep(0,ncol(Xwaug))), # as.matrix(start[nonzero]), # as.matrix(rep(0,ncol(Xwaug))),
                                                                           tol=0,
                                                                           maxit=0L,
-                                                                          precond=1L)$coefficients)) # 0.19s for p=n=10000, 0.03s for p=5000 & n=1000
+                                                                          precond=1L)$coefficients)) 
+# 0.03s for p=n=10000 - SUPER FAST
 # NOTE: sometimes returns NULL
-beta[nonzero] <- coefs_eigenLSCG_rowaug_sparse
-cor(beta, coefs_true) # 0.8589209
-cor(coefs_eigenLSCG_rowaug_sparse, coefs_true) # 1
-cor(coefs_solve_dense, coefs_eigenLSCG_rowaug_dense) # 1
-cor(coefs_solve_dense, coefs_eigenLSCG_rowaug_sparse) # 1
+cor(coefs_eigenLSCG_rowaug_sparse, coefs_solve_sparse) # 1
 
 
 
@@ -270,35 +346,57 @@ cor(coefs_solve_dense, coefs_eigenLSCG_rowaug_sparse) # 1
 system.time({DXT <- tcrossprod(D, Xw); coefs_solve_largep_dense <- as.vector(DXT %*% base::solve(Xw %*% DXT +
                                                                              diag(rep(lambda, nrow(X))),
                                                                              yw,
-                                                                             tol=2*.Machine$double.eps))}) # 24s for p=n=10000, 0.26s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (28)
+                                                                             tol=2*.Machine$double.eps))}) 
+# 14s for p=n=10000 with IntelMKL, cf. Liu & Li 2016 eqn (28)
+cor(coefs_solve_largep_dense, coefs_solve_sparse) # 1
+
 system.time({DXT <- tcrossprod(Dsp, Xwsp); coefs_solve_largep_sparse <- as.vector(DXT %*% base::solve(Xwsp %*% DXT +
                                                                                     .sparseDiagonal(nrow(X), lambda),
                                                                                   yw,
-                                                                                  tol=2*.Machine$double.eps))}) # 11s for p=n=10000, 0.44s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (28)
-# coefs_solve_largep_sparse <- pmax(lower, pmin(coefs_solve_largep_sparse, upper))
-beta[nonzero] <- coefs_solve_largep_sparse
-cor(beta, coefs_true) # 0.8948963
-cor(coefs_solve_dense, coefs_solve_largep_dense) # 1
-cor(coefs_solve_dense, coefs_solve_largep_sparse) # 1
+                                                                                  tol=2*.Machine$double.eps))}) 
+# 3.2s for p=n=10000 with IntelMKL, cf. Liu & Li 2016 eqn (28)
+cor(coefs_solve_largep_sparse, coefs_solve_sparse) # 1
 
-system.time({DXT <- tcrossprod(D, Xw); coefs_solveCG_largep_dense <- as.vector(DXT %*% solve_dense_CG(Xw %*% DXT +
-                                                                                                   diag(rep(lambda, nrow(X))),
-                                                                                                 yw,
-                                                                                                 x0=rep(0,nrow(X)),
-                                                                                                 tol=0,
-                                                                                                 maxit=0,
-                                                                                                 precond = 0L)$coefficients)}) # 33s for p=n=10000, 0.28s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (28)
-system.time({DXT <- tcrossprod(Dsp, Xwsp); coefs_solveCG_largep_sparse <- as.vector(DXT %*% solve_sparse_CG(Xwsp %*% DXT +
-                                                                                                        .sparseDiagonal(nrow(X), lambda),
-                                                                                                      yw,
-                                                                                                      x0=rep(0,nrow(X)),
-                                                                                                      tol=0,
-                                                                                                      maxit=0,
-                                                                                                      precond = 0L)$coefficients)}) # 18s for p=n=10000, 0.45s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (28)
-beta[nonzero] <- coefs_solveCG_largep_sparse
-cor(beta, coefs_true) # 0.8948963
-cor(coefs_solve_dense, coefs_solveCG_largep_dense) # 1
-cor(coefs_solve_dense, coefs_solveCG_largep_sparse) # 1
+system.time({
+  DXT <-
+    tcrossprod(D, Xw)
+  coefs_solveCG_largep_dense <-
+    as.vector(
+      DXT %*% solve_dense_CG(
+        Xw %*% DXT +
+          diag(rep(lambda, nrow(X))),
+        yw,
+        x0 =
+          rep(0, nrow(X)),
+        tol =
+          0,
+        maxit =
+          0,
+        precond = 0L)$coefficients)}) 
+# 16.47s for p=n=10000, cf. Liu & Li 2016 eqn (28)
+cor(coefs_solveCG_largep_dense, coefs_solve_sparse) # 1
+
+system.time({
+  DXT <- tcrossprod(Dsp, Xwsp)
+  
+  coefs_solveCG_largep_sparse <-
+    as.vector(
+      DXT %*% solve_sparse_CG(
+        Xwsp %*% DXT +
+          .sparseDiagonal(nrow(X), lambda),
+        yw,
+        x0 =
+          rep(0, nrow(X)),
+        tol =
+          0,
+        maxit =
+          0,
+        precond = 0L
+      )$coefficients
+    )
+}) 
+# 0.05s for p=n=10000 - FAST,- cf. Liu & Li 2016 eqn (28)
+cor(coefs_solveCG_largep_sparse, coefs_solve_sparse) # 1
 
 
 
@@ -308,166 +406,282 @@ cor(coefs_solve_dense, coefs_solveCG_largep_sparse) # 1
 # PS I think we best make 1 meta lmridge_solve_eigen R function that comprises all the eigen solvers with common options
 # (some ignored for particular solvers) and that we would then have an argument solver="eigen" with
 # extra option control.solvers with the desired method & a list with the desired options
-# TO DO: Check which of the available solvers allow for the outcome y to be a matrix, ie allowing for multichannel data
-# (would be good for multitask extension with grouped variable selection, though due to the weights being different
-# we would not have the same covariate matrix for all channels, only the sparsity structure would be the same)
-# Vectorizing
 
-# CG
-system.time(coefs_CG <- lmridge(X=Xsp[,nonzero,drop=F], y, lambdas[nonzero], weights, 
-                                lower=rep(0,sum(nonzero)), 
-                                upper=rep(Inf,sum(nonzero)), 
-                                nonnegative=TRUE,
-                                solver="eigen", method = 5)) # CG, 3.0s for n=p=10000
-# RETURNS error
-beta[nonzero] <- coefs_CG
-cor(beta, coefs_true) # 0.8948963
+## 1.3.1 FOR SPARSE CASE ####
+### 1.3.1.1 CG ####
+system.time(coefs_CG <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                y=y, 
+                                lambdas=lambdas[nonzero],
+        weights = weights,
+        lower = lower[nonzero],
+        upper = upper[nonzero],
+        nonnegative = nonnegative,
+        # scaling = rep(1, ncol(X)),
+        prior.mean = NULL,
+        solver = "eigen",
+        method = 5L,
+        start = rep(0, ncol(X))[nonzero],
+        control.solver = 
+          modifyList(do.call("control.solver.gen", 
+                             list(solver = "eigen", 
+                                  method = 5L)),
+                     list(rowaug=FALSE)) )) # best with rowaug=FALSE here for sparse case?
+# 0.05s for n=p=10000
+cor(coefs_CG, coefs_solve_sparse) # 0.9965962
+# TODO make sure that start values can be passed OK via arg start (x0 in Rcpp function)
+# TODO if solver fails (returns NULL as coefficients) make it use cholesky LLT instead
 
-lines(coefs_CG, col="blue", type="h")
-cor(coefs_CG, coefs_true) # 0.9990464
-plot(coefs_CG, coefs_solve_sparse)
-
-
-# LSCG: VERY FAST!
-system.time(coefs_LSCG <- lmridge_eigen(X=Xsp, y=y, weights=weights, lambdas=rep(1,ncol(X)),
-                                        start = as.matrix(start),
-                          lower=lower, upper=upper, control.solver=control.solver.gen("eigen", 3))) # 0.18s for n=p=10000
-
-system.time(coefs_LSCG <- lmridge(X=Xsp, y, lambdas, weights, lower, upper, nonnegative,
-                                  solver="eigen", method=3)) # 0.17s TODO make sure that start values can be passed OK via arg start (x0 in Rcpp function)
-# RETURNS NULL
-beta[nonzero] <- coefs_LSCG
-cor(beta, coefs_true) #
-
-lines(coefs_LSCG, col="blue", type="h")
-cor(coefs_LSCG, coefs_solve_sparse) # 0.9990464
-plot(coefs_LSCG, coefs_solve_sparse)
-
-system.time(coefs_eigenLSCG_rowaug_sparse <- as.vector(solve_sparse_LSCG(Xwaugsp,
-                                                                         as.matrix(ywaug),
-                                                                         x0=as.matrix(rep(0,ncol(Xwaug))),
-                                                                         tol=0,
-                                                                         maxit=0L,
-                                                                         precond=0L)$coefficients)) # 0.19s for p=n=10000, 0.03s for p=5000 & n=1000
+# TODO
+system.time(coefs_cgsolve_sparse <- as.vector(solve_sparse_CG(A=as(crossprod(Xwaugsp),"dgCMatrix"),
+                                                              b=as.matrix(crossprod(Xwaugsp,ywaug)),
+                                                              x0=rep(0, ncol(X))[nonzero],
+                                                              tol=0,
+                                                              maxit=0L,
+                                                              precond=0L)$coefficients))
+# gets to 0.03s for n=p=10000, so should still be possible to get this slightly faster?
 
 
 
+### 1.3.1.2 LSCG ####
+system.time(coefs_LSCG <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                y=y, 
+                                lambdas=lambdas[nonzero],
+                                weights = weights,
+                                lower = lower[nonzero],
+                                upper = upper[nonzero],
+                                nonnegative = nonnegative,
+                                # scaling = rep(1, ncol(X)),
+                                prior.mean = NULL,
+                                solver = "eigen",
+                                method = 3L,
+                                start = rep(0, ncol(X))[nonzero],
+                                control.solver = 
+                                  modifyList(do.call("control.solver.gen", 
+                                                     list(solver = "eigen", 
+                                                          method = 3L)),
+                                             list(rowaug=TRUE)) )) # fastest with rowaug=TRUE - TODO set rowaug always to TRUE with this solver
+# 0.01s for n=p=10000
+cor(coefs_LSCG, coefs_solve_sparse) # 0.9965962
+# TODO make sure that start values can be passed OK via arg start (x0 in Rcpp function)
+# TODO if solver fails (returns NULL as coefficients) make it use cholesky LLT instead
 
-# glmnet (unbounded): FAST, but LSCG still a bit faster if there is no box constraints??
-# also allows option with desired maximum nr of variables
+
+
+### 1.3.1.3 Cholesky ####
+system.time(coefs_chol <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                  y=y, 
+                                  lambdas=lambdas[nonzero],
+                                  weights = weights,
+                                  lower = lower[nonzero],
+                                  upper = upper[nonzero],
+                                  nonnegative = nonnegative,
+                                  # scaling = rep(1, ncol(X)),
+                                  prior.mean = NULL,
+                                  solver = "eigen",
+                                  method = 7L,
+                                  start = rep(0, ncol(X))[nonzero],
+                                  control.solver = 
+                                    modifyList(do.call("control.solver.gen", 
+                                                       list(solver = "eigen", 
+                                                            method = 7L)),
+                                               list(rowaug=TRUE)) )) # fastest with rowaug=TRUE here
+# 0.05s for n=p=10000
+cor(coefs_chol, coefs_solve_sparse) # 0.9965996
+# TODO
+system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(Xwaugsp),"dgCMatrix"),
+                                                                  as.matrix(crossprod(Xwaugsp,ywaug)),
+                                                                  pivot=0L,
+                                                                  ordering=0L)$coefficients))
+# gets to 0.03s for n=p=10000, so should still be possible to get this slightly faster?
+
+
+### 1.3.1.4 QR ####
+system.time(coefs_qr <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                  y=y, 
+                                  lambdas=lambdas[nonzero],
+                                  weights = weights,
+                                  lower = lower[nonzero],
+                                  upper = upper[nonzero],
+                                  nonnegative = nonnegative,
+                                  # scaling = rep(1, ncol(X)),
+                                  prior.mean = NULL,
+                                  solver = "eigen",
+                                  method = 1L,
+                                  start = rep(0, ncol(X))[nonzero],
+                                  control.solver = 
+                                    modifyList(do.call("control.solver.gen", 
+                                                       list(solver = "eigen", 
+                                                            method = 1L)),
+                                               list(rowaug=FALSE)) )) # fastest with rowaug=FALSE for sparse case
+# 0.1s for n=p=10000
+cor(coefs_qr, coefs_solve_sparse) # 0.9965996
+
+# TODO maybe still add an eigen LU & SVD based solver too?
+
+
+### 1.3.1.5 osqp ####
+system.time(coefs_osqp <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                y=y, 
+                                lambdas=lambdas[nonzero],
+                                weights = weights,
+                                lower = lower[nonzero],
+                                upper = upper[nonzero],
+                                nonnegative = nonnegative,
+                                # scaling = rep(1, ncol(X)),
+                                prior.mean = NULL,
+                                solver = "osqp",
+                                start = rep(0, ncol(X))[nonzero],
+                                control.solver = 
+                                  modifyList(do.call("control.solver.gen", 
+                                                     list(solver = "osqp")),
+                                             list(rowaug=TRUE,
+                                                  eps_abs=1E-8,
+                                                  eps_rel=1E-8)) )) # fastest with rowaug=TRUE - always set to TRUE with this solver?
+# 0.11s for n=p=10000
+cor(coefs_osqp, coefs_solve_sparse) # 0.9844926
+
+
+### 1.3.1.6 glmnet / bigglm ####
+system.time(coefs_bigglm <- lmridge(X=Xsp[,nonzero,drop=F], 
+                                y=y, 
+                                lambdas=lambdas[nonzero],
+                                weights = weights,
+                                lower = lower[nonzero],
+                                upper = upper[nonzero],
+                                nonnegative = nonnegative,
+                                # scaling = rep(1, ncol(X)),
+                                prior.mean = NULL,
+                                solver = "glmnet",
+                                start = rep(0, ncol(X))[nonzero],
+                                control.solver = 
+                                  modifyList(do.call("control.solver.gen", 
+                                                     list(solver = "glmnet")),
+                                             list(thresh=1E-7)) )) # quite a bit faster with lower thresh
+# 0.01s for n=p=10000
+cor(coefs_bigglm, coefs_solve_sparse) # 0.9844928
+cor(coefs_bigglm, coefs_osqp) # 1
+
 # TO DO: solve by using inbuilt ridge in glmnet with alpha=0, lambda=lambda/nrow(X) & appropriate penalty weights
 # instead of using row augmentation & lambda=0 to put in ridge penalty
 # now it uses
-
-# model <- bigGlm(x = Xaug, y = yaug,
-# alpha = 0, lambda = 0, intercept = FALSE, standardize = FALSE, standardize.response = FALSE,
-# lower.limits = c(-Inf, lower), upper.limits = c(Inf, upper),
-# family = "gaussian", path = FALSE)
-# coefs <- coef(model)[-1]
-
-system.time(coefs_glmnet_unbounded <- lmridge(X=Xsp[,nonzero,drop=F], y, lambdas[nonzero], weights,
-                                              lower=rep(-Inf,sum(nonzero)),
-                                              upper=rep(Inf,sum(nonzero)),
-                                              nonnegative=F,
-                                              solver="glmnet")) # 0.56s with p=n=10000 & Intel MKL
-beta[nonzero] <- coefs_glmnet_unbounded
-cor(beta, coefs_true) # 0.8720732
-
-lines(coefs_glmnet_unbounded, col="orange", type="h")
-cor(coefs_glmnet_unbounded, coefs_solve_sparse) # 1
+system.time(model <- bigGlm(x = Xwaugsp, y = ywaug,
+  alpha = 0, lambda = 0, intercept = FALSE, 
+  standardize = FALSE, 
+  standardize.response = FALSE,
+  lower.limits = c(-Inf, lower), 
+  upper.limits = c(Inf, upper),
+  family = "gaussian", path = FALSE))
+# 0.01s
+coefs <- coef(model)[-1]
+cor(coefs, coefs_solve_sparse) # 0.9844928
 
 
-# solvers with box or nonnegativity constraints
-# glmnet (bounded): FAST, but LSCG still a bit faster?? Fastest method with explicit box constraints though.
-system.time(coefs_glmnet <- lmridge(X=Xsp[,nonzero,drop=F], y,
-                                    lambdas[nonzero],
-                                    weights,
-                                    lower=rep(0,sum(nonzero)),
-                                    upper=rep(Inf,sum(nonzero)),
-                                    nonnegative=F,
-                                    solver="glmnet")) # 0.03s with p=n=10000 & IntelMKL
-beta[nonzero] <- coefs_glmnet
-cor(beta, coefs_true) # 0.9553911
-cor(coefs_glmnet, coefs_true)
-lines(coefs_glmnet, col="blue", type="h")
-
-plot(coefs_glmnet, coefs_true)
-
-system.time(coefs_glmnet_dense <- lmridge(X=X, y, lambda, weights,
-                                          lower, upper, nonnegative,
-                                          solver="glmnet")) # 8.3s with p=n=10000 with MRO/IntelMKL
-
-
-# osqp: FASTER if  n > p & IntelMKL is installed, otherwise rather slow
-system.time(coefs_osqp <- lmridge(X=Xsp[,nonzero,drop=F], y,
-                                    lambdas[nonzero],
-                                    weights,
-                                    lower=rep(0,sum(nonzero)),
-                                    upper=rep(Inf,sum(nonzero)),
-                                    nonnegative=T,
-                                  solver="osqp")) # 0.21s with p=n=10000 with MRO/IntelMKL
-beta[nonzero] <- coefs_osqp
-cor(beta, coefs_true) # 0.9230191
-
-cor(coefs_osqp, coefs_true)
-
-lines(coefs_osqp, col="green", type="h")
-cor(coefs_osqp, coefs_true) # 0.9999903
-plot(coefs_osqp, coefs_glmnet) # correct...
-
-
-# nnls: SLOW
+### 1.3.1.7 nnls ####
+# SUPER SLOOOOW....
 system.time(coefs_nnls <- lmridge(X=Xsp[,nonzero,drop=F], y,
                                   lambdas[nonzero],
                                   weights,
                                   lower=rep(0,sum(nonzero)),
                                   upper=rep(Inf,sum(nonzero)),
-                                  nonnegative=T, solver="nnls")) # 1841s for n=p=10000
-beta[nonzero] <- coefs_nnls
-cor(beta, coefs_true) # 0.9712636
-
-lines(coefs_nnls, col="yellow", type="h")
-cor(coefs_nnls, coefs_true) # 0.98
+                                  nonnegative=T, solver="nnls")) 
+# 1841s for n=p=10000 (31 mins), ie 184100x slower than LSCG
+cor(coefs_nnls, coefs_osqp) # 0.9712636
 
 
-# fastnnls:
-system.time(coefs_fastnnls_dense <- fastnnls_dense(Xwaug,
-                                                   ywaug)) # 21s for p=n=10000
-beta[nonzero] <- coefs_fastnnls_dense
-cor(beta, coefs_true) # 0.005004153 # not OK, check where it is going wrong...
-
-
-
-# tests with some other solvers
+## tests with some other solvers ####
 # unbounded ones
 
-# fastglm (here using Eigen's Cholesky LLT solver) - slow as only dense solvers have been implemented
-fglm <- fastglm(Xwaug, ywaug, family = gaussian(), method = 2)
-coefs_LLT <- coef(fglm)
-beta[nonzero] <- coefs_LLT
-cor(beta, coefs_true) # 0.8948963
+# parglm ####
+# https://htmlpreview.github.io/?https://github.com/boennecd/parglm/blob/master/vignettes/parglm.html
+library(parglm)
+system.time(parglm_dense <- parglm.fit(
+  x = Xwaug, 
+  y = ywaug, 
+  intercept = F,
+  family = gaussian(identity), 
+  control = parglm.control(maxit = 1L, 
+                           nthreads=1L, # using more threads hardly reduces timing
+                           # block_size=1000, 
+                           method="FAST")) )
+# 9s for n=p=10000
+
+
+# speedglm ####
+# https://cran.r-project.org/web/packages/speedglm/speedglm.pdf
+library(speedglm)
+system.time(spglm_dense <- speedglm.wfit(
+  X = Xwaug, 
+  y = ywaug, 
+  intercept = F,
+  # row.chunk= XX,
+  family = gaussian(identity), 
+  chunksize = 1000, 
+  sparse = FALSE,
+  maxit = 1L))
+# 19.91s for n=p=10000
+
+system.time(spglm_sparse <- speedglm.wfit(
+  X = Xwaugsp, 
+  y = ywaug, 
+  intercept = F,
+  # row.chunk= XX,
+  family = gaussian(identity), 
+  chunksize = 1000, 
+  sparse = TRUE,
+  maxit = 1L))
+# 12.28s for n=p=10000
+
+
+# regular glm.fit ####
+system.time(plainglm <- glm.fit(
+  x = Xwaug, 
+  y = ywaug, 
+  family = gaussian(identity), 
+  control = glm.control(maxit = 1)))
+# 208s for n=p=10000
+
+
+# fastglm (here using Eigen's Cholesky LLT solver) ####
+# slow as only dense solvers have been implemented
+# and appears to be slow even for dense case
+library(fastglm)
+system.time(fglm1 <- fastglmPure(
+                            x = Xwaug, 
+                            y = ywaug, 
+                            family = gaussian(identity), 
+                            method = 2L, # LLT Cholesky
+                            maxit = 1L))
+# 237s for n=p=10000
+system.time(fglm2 <- fastglmPure(
+  x = Xwaug, 
+  y = ywaug, 
+  family = gaussian(identity), 
+  method = 3L, # LDLT Cholesky
+  maxit = 1L))
+# 347s for n=p=10000
 
 
 
-# sgd: currently no box constraints though, works if x is a big.matrix though (bigmemory package)
+# sgd: currently no box constraints; works if x is a big.matrix though (bigmemory package)
 # also allows start values
 library(sgd)
 system.time(coefs_sgd <- sgd(x = Xwaug, y = ywaug, model="lm",
                              sgd.control=list(method="ai-sgd",
                                               lr="adagrad",
                                               reltol=1E-10,
-                                              start=rep(0,ncol(X))))$coefficients) # 27s with p=n=10000
-cor(coefs_sgd, coefs_solve_sparse) # 0.9953188
+                                              start=rep(0,ncol(X))))$coefficients) 
+# 27s with p=n=10000 - SLOOOOW
 
 
 # some other options for GLMs with box constraints (returning an object of class glm, check code to see
 # how that's done)
 # holiglm, using conic solver, also allows option with desired maximum nr of variables
-library(holiglm)
+# no support for sparse design matrix though & only formula interface
+# library(holiglm)
 
 # glm.cons from zetadiv -> uses nnnpls from library(nnls) -> beter use nnnpls directly
-library(zetadiv)
-?glm.cons
+# library(zetadiv)
+# ?glm.cons
 
 # restriktor
 
@@ -476,11 +690,15 @@ library(zetadiv)
 
 
 
-# Case I: fit nonnegative identity link Poisson GLM with no penalty
-L0glm1 <- L0glm2(formula = "y ~ X + .", data = data.frame(X, y = y), solver = "osqp", family = poisson(identity),
-                lambda = 0, tune.meth = "none", nonnegative = TRUE, normalize = FALSE,
-                control.iwls = list(maxit = 100),
-                control.l0 = list(maxit = 1, delta = 1E-2, gamma = 1.8))
+# TODO: fix formula interface
+L0glm1 <- L0glm(formula = "y ~ X + .", 
+                data = list(X = Xsp, # data should be passed as list & allow X to be sparse
+                            y = y), 
+                solver = "osqp", 
+                family = poisson(identity),
+                lambda = "gic", 
+                nonnegative = TRUE, 
+                normalize = FALSE)
 
-plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
-                     main="Ground truth vs L0glm estimates")
+# plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
+#                      main="Ground truth vs L0glm estimates")

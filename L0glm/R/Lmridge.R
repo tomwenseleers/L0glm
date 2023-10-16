@@ -51,12 +51,13 @@ lmridge <- function(X, y,
                     prior.mean = NULL,
                     solver = "eigen",
                     method = ifelse(ncol(X)>=20000, 3L, 7L),
-                    start = rep(1, ncol(X)),
+                    start = rep(0, ncol(X)),
+                    iteration = 1, # IRLS iteration - passing this as extra info
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose = FALSE){
   # scale columns of X if desired
   if (sum(scaling)!=length(scaling)) { X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=TRUE)
-  start <- start * scaling }
+                                       start <- start * scaling }
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
@@ -77,11 +78,15 @@ lmridge <- function(X, y,
     coefs <- lmridge.osqp(Xw = Xw, yw = yw, lambdas = lambdas, start = start, 
                           prior.mean = prior.mean, 
                           lower = lower, upper = upper, 
-                          control.solver = control.solver)
+                          control.solver = control.solver,
+                          iteration = iteration)
     
   } else if (solver == "glmnet") {
-    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, prior.mean = prior.mean,
-                            lower = lower, upper = upper, control.solver = control.solver)
+    coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, 
+                            lower = lower, upper = upper, 
+                            control.solver = control.solver,
+                            prior.mean = prior.mean,
+                            iteration = iteration)
     
     
   } else if (solver == "eigen") {
@@ -90,11 +95,13 @@ lmridge <- function(X, y,
                            start = start, prior.mean = prior.mean,
                            lower = lower, upper = upper, 
                            control.solver = control.solver,
-                           verbose = verbose)
+                           verbose = verbose,
+                           iteration = iteration)
     
   } else if (solver == "nnls") {
     coefs <- lmridge.nnls(Xw = Xw, yw = yw, lambdas = lambdas, prior.mean = prior.mean,
-                          lower = lower, upper = upper, control.solver = control.solver)
+                          lower = lower, upper = upper, control.solver = control.solver,
+                          iteration = iteration)
   } else {
     stop("Invalid solver choice") }
   
@@ -113,7 +120,8 @@ lmridge.osqp <- function(Xw,
                          lambdas = NULL, 
                          lower, upper, start, 
                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
-                         prior.mean = NULL){
+                         prior.mean = NULL,
+                         iteration = 1){
   Xw = as(Matrix(Xw, sparse=T), "generalMatrix")
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -146,51 +154,89 @@ lmridge.osqp <- function(Xw,
   model <- osqp::osqp(P = XtX, q = -Xty, 
                 A = .sparseDiagonal(ncol(Xw)), # Diagonal(n = ncol(Xw)),
                 l = lower, u = upper, pars = settings)
-  if(is.null(start)) start <- rep(1, ncol(Xw))
+  if(is.null(start)) start <- rep(0, ncol(Xw))
   model$WarmStart(x=start)
   
   #Solve model
   coefs <- model$Solve()$x
-  coefs <- clip(coefs, lower, upper, reflect_lower=F, reflect_upper=F) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
+  coefs <- clip(coefs, lower, upper) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
   return(coefs)
 }
 
 
-lmridge.glmnet <- function(Xw, yw, lambdas = NULL, 
+lmridge.glmnet <- function(Xw, yw, 
+                           lambdas = NULL, 
                            lower, upper, 
-                           control.solver, 
-                           prior.mean = NULL){
+                           control.solver = do.call("control.solver.gen", list(solver = "glmnet")), 
+                           prior.mean = NULL,
+                           iteration = 1){
+  if (iteration<=5&ncol(Xw)>1000) {
+    # for first 5 IRLS iterations & for larger problems (p>1000) use glmnet to solve ridge regression
+    n <- nrow(Xw)
+    sd_y <- sqrt(var(yw)*(n-1)/n)
+    lambda <- mean(lambdas)
+    penalty.factor <- lambdas/lambda
+    standardize <- control.solver$standardize
+    thresh <- control.solver$thresh
+    maxit <- control.solver$maxit
+    lower.limits <- c(-Inf, lower)
+    upper.limits <- c(Inf, upper)
+    model <- do.call(glmnet,
+                     args=list(x=Xw, y=yw, alpha=0, 
+                               standardize = standardize, 
+                               standardize.response = TRUE, 
+                               lambda = sd_y*lambda/n, 
+                               penalty.factor=penalty.factor,
+                               lower.limits = lower.limits, 
+                               upper.limits = upper.limits,
+                               family = "gaussian", 
+                               nlambda = 1,
+                               intercept = F, 
+                               thresh = thresh,
+                               maxit = maxit))
+    coefs <- as.vector(coef(model, s = sd_y*lambda/n, # exact = TRUE, 
+                            x = Xw, y = yw, 
+                            lower.limits = lower.limits, 
+                            upper.limits = upper.limits,
+                            penalty.factor = penalty.factor))[-1]
+  } else {
+  
+  # for later IRLS iterations use more accurate bigGlm to solve ridge regression
+    
   # Set path depending on dimensions of Xw
-  if(sum(lambdas) == 0 | ncol(Xw) > nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
-    path = TRUE
-  } else {
-    path = FALSE
+   if(sum(lambdas) == 0 | ncol(Xw) > nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
+     path = TRUE
+   } else {
+     path = FALSE
+   }
+
+   # Obtain Xwaug and ywaug
+   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+     Xwaug <- row_augX(Xw, lambdas)
+     ywaug <- augY(yw, ncol(Xwaug),
+                   lambdas = lambdas,
+                   prior.mean = prior.mean)
+   } else {
+     Xwaug <- Xw
+     ywaug <- yw
+   }
+   model <- bigGlm(x = Xwaug,
+                   y = ywaug,
+                   intercept = FALSE,
+                   standardize = control.solver$standardize,
+                   standardize.response = TRUE,
+                   lower.limits = c(-Inf, lower),
+                   upper.limits = c(Inf, upper),
+                   family = "gaussian",
+                   path = path,
+                   thresh = control.solver$thresh,
+                   maxit = control.solver$maxit)
+   coefs <- coef(model)[-1]
   }
+
   
-  # Obtain Xwaug and ywaug
-  if(!is.null(lambdas)&(sum(lambdas)!=0)) {
-    Xwaug <- row_augX(Xw, lambdas)
-    ywaug <- augY(yw, ncol(Xwaug), 
-                  lambdas = lambdas, 
-                  prior.mean = prior.mean)
-  } else {
-    Xwaug <- Xw
-    ywaug <- yw
-  }
-  
-  model <- bigGlm(x = Xwaug, 
-                  y = ywaug,
-                  intercept = FALSE, 
-                  standardize = control.solver$standardize, 
-                  standardize.response = TRUE, 
-                  lower.limits = c(-Inf, lower), 
-                  upper.limits = c(Inf, upper),
-                  family = "gaussian", 
-                  path = path, 
-                  thresh = control.solver$thresh,
-                  maxit = control.solver$maxit)
-  coefs <- coef(model)[-1]
-  coefs <- clip(coefs, lower, upper, reflect_lower=F, reflect_upper=F) # check
+  # apply box constraints in case coefs would slightly fall outside bounds
+  coefs <- clip(coefs, lower, upper) 
   return(coefs)
 }
 
@@ -198,7 +244,8 @@ lmridge.glmnet <- function(Xw, yw, lambdas = NULL,
 
 lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper, 
                          control.solver, 
-                         prior.mean = NULL){
+                         prior.mean = NULL,
+                         iteration = 1){
   # Obtain Xwaug and ywaug
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
@@ -220,15 +267,16 @@ lmridge.eigen <- function(Xw, yw,
                           control.solver = do.call("control.solver.gen", 
                                                    list(solver = "eigen", method = 7L)), 
                           prior.mean = rep(0, ncol(Xw)),
-                          verbose = FALSE){ 
+                          verbose = FALSE,
+                          iteration = 1){ 
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
-  if (!issparse(Xw)) { Xw = as.matrix(Xw) } else { 
-    Xw = as(Matrix(Xw, sparse=T), "generalMatrix") } # always coercing Xw to sparse matrix now
+  if (issparse(Xw)) { Xw = as(Matrix(Xw, sparse=T), "generalMatrix") } else { 
+    Xw = as.matrix(Xw) } 
   
-  if((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
+  if ((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
     control.solver$rowaug <- FALSE
-    if(verbose&control.solver$method != "LSCG") print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case.")
+    if(verbose&control.solver$method != "LSCG") print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case instead.")
   }
   
   if (control.solver$method == "QR") {
@@ -254,7 +302,7 @@ lmridge.eigen <- function(Xw, yw,
       D <- Diagonal(x=1/pen.weights)
       if(nrow(Xw) >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_QR(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+          coefs <- as.vector(solve_sparse_QR(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)))$coefficients)
         } else { # if it's dense
           coefs <- as.vector(solve_dense_QR(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
@@ -268,7 +316,7 @@ lmridge.eigen <- function(Xw, yw,
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
           # Calculate β using Woodbury identity
-          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_QR(A = Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_QR(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "dgCMatrix"),
                                                                   b = y_star)$coefficients) 
         } else { # if it's dense
           # Precompute some values
@@ -293,8 +341,8 @@ lmridge.eigen <- function(Xw, yw,
         ywaug <- yw
       }
       
-      # if(is.null(start)) start <- rep(0, ncol(Xw))
-      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      if(is.null(start)) start <- rep(0, ncol(Xw))
+      # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
       # X.n <- sqrt(colSums(Xw^2)) 
       if(issparse(Xwaug)){
@@ -324,11 +372,11 @@ lmridge.eigen <- function(Xw, yw,
         ywaug <- yw
       }
       
-      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
       if(nrow(Xw) >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_LSCG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+          coefs <- as.vector(solve_sparse_LSCG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                                b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                                x0 = as.matrix(start),
                                                tol = control.solver$tol,
@@ -375,11 +423,11 @@ lmridge.eigen <- function(Xw, yw,
         ywaug <- yw
       }
       
-      # if(is.null(start)) start <- rep(0, ncol(Xw))
-      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      if(is.null(start)) start <- rep(0, ncol(Xw))
+      # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
       if(issparse(Xwaug)){
-        coefs <- solve_sparse_CG(A = as(crossprod(Xwaug), "generalMatrix"), 
+        coefs <- solve_sparse_CG(A = as(as(crossprod(Xwaug), "generalMatrix"), "dgCMatrix"), 
                                  b = as.matrix(crossprod(Xwaug, ywaug)),
                                  x0 = as.matrix(start),
                                  tol = control.solver$tol,
@@ -407,11 +455,11 @@ lmridge.eigen <- function(Xw, yw,
         ywaug <- yw
       }
       
-      start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
+      # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
       if(nrow(Xw) >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_CG(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+          coefs <- as.vector(solve_sparse_CG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                              x0 = as.matrix(start),
                                              tol = control.solver$tol,
@@ -453,52 +501,60 @@ lmridge.eigen <- function(Xw, yw,
         }
       }
     }
-  } else if (control.solver$method == "chol"){
+  } else if (control.solver$method == "chol") {
     if (control.solver$rowaug) {
+      # solve via row augmentation
       # Obtain Xwaug and ywaug
-      if(!is.null(lambdas)&(sum(lambdas)!=0)) {
+      if (!is.null(lambdas)&(sum(lambdas)!=0)) {
         Xwaug <- row_augX(Xw, lambdas)
         ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
       } else {
         Xwaug <- Xw
         ywaug <- yw
       }
-      if(issparse(Xwaug)){
-        coefs <- solve_sparse_chol(A = as(crossprod(Xwaug),"generalMatrix"), 
+      
+      if (issparse(Xwaug)) {
+        coefs <- solve_sparse_chol(A = as(as(crossprod(Xwaug),"generalMatrix"), "dgCMatrix"), 
                                    b = as.matrix(crossprod(Xwaug, ywaug)), 
                                    pivot = control.solver$pivot,
                                    ordering = control.solver$ordering)$coefficients
       } else {
-        Xwaug = row_augX(Xw, lambdas)
-        coefs <- solve_dense_chol(A = crossprod(Xwaug),
+        coefs <- solve_dense_chol(A = as.matrix(crossprod(Xwaug)),
                                   b = as.matrix(crossprod(Xwaug, ywaug)),
                                   pivot = control.solver$pivot)$coefficients
       }
-    } else { # normal equations
+    } else { 
+      # solve from normal equations
       D <- Diagonal(x=1/pen.weights)
       
-      if(nrow(Xw) >= ncol(Xw)){
-        if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_chol(A = D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))),
+      if (nrow(Xw) >= ncol(Xw)) {
+        # n>=p case
+        if (issparse(Xw)) {
+          # if it's sparse
+          coefs <- as.vector(solve_sparse_chol(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                                b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                                pivot = control.solver$pivot,
                                                ordering = control.solver$ordering)$coefficients)
-        } else { # if it's dense
+        } else { 
+          # if it's dense
           coefs <- as.vector(solve_dense_chol(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                               pivot = control.solver$pivot)$coefficients)
         }
-      } else { # if p > n
-        if(issparse(Xw)){
+      } else { 
+        # optimised form for p>n case based on Woodbury identity
+        if (issparse(Xw)) {
+          # for sparse case
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           # Calculate β using Woodbury identity
-          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_chol(A = Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
+          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_chol(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "dgCMatrix"),
                                                                     b = y_star,
                                                                     pivot = control.solver$pivot,
                                                                     ordering = control.solver$ordering)$coefficients) 
-        } else { # if it's dense
+        } else { 
+          # for dense case
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
@@ -513,8 +569,26 @@ lmridge.eigen <- function(Xw, yw,
   } else {
     stop("Invalid method.")
   }
-  coefs <- clip(coefs, lower, upper, reflect_lower=F, reflect_upper=F) # clip coefficients within allowed range - TODO: check if reflect_lower=F might work better to deal with nonnegativity constraints
-  ifelse(!is.null(coefs), return(coefs), return(start)) #TODO remove?
+  
+  # some error catching
+  if (is.null(coefs)&control.solver$method!="chol") {
+    warning(paste0("eigen ", control.solver$method, " solver failed in IRLS iteration ", iteration,", trying Cholesky LLT solver as fallback."))
+    coefs <- lmridge.eigen(Xw = Xw, yw = yw,
+              lambdas = lambdas,
+              lower = lower,
+              upper = upper,
+              start = start,
+              control.solver = do.call("control.solver.gen",
+                                       list(solver = "eigen", method = 7L)),
+              prior.mean = prior.mean,
+              verbose = verbose)
+  }
+  
+  # apply box constraints via clipping
+  coefs <- clip(coefs, lower, upper) # clip coefficients within allowed range - TODO: check if reflect_lower=F might work better to deal with nonnegativity constraints
+  
+  # returning start values if solver fails
+  ifelse(!is.null(coefs), return(coefs), return(start)) 
 }
 
 
@@ -545,10 +619,12 @@ Yweights <- function(y, weights){
 # https://stats.stackexchange.com/a/203699/27340
 row_augX <- function(Xw, lambdas = NULL){
   if (!is.null(lambdas)&(sum(lambdas)!=0)) {
-    out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else
+    if (issparse(Xw)) { out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else {
+                        out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) # now always returning augmented matrix as sparse if row augmentation method is requested
+                        # out <- rbind(Xw, diag(x=sqrt(lambdas)))
+                        }
+    } else
     { out <- Xw }
-  
-  if ("dgeMatrix" %in% class(out)) { out = as(Matrix(out, sparse=T), "generalMatrix") } # now always returning sparse matrix, as that's most efficient when using row augmentation
   
   return(out)
 }
@@ -621,7 +697,10 @@ return(out) }
 
 # function to calculate good coefficient initialisations to use as starting values in 
 # L0glm.fit which can be used as start - uses an orthogonal approximation
-# to a ridge regression
+# to a ridge regression, i.e. the component-wise solution that would be exact
+# if all variables were orthogonal to each other
+# TO DO: in L0glm allow a couple of different initialisations as start, e.g.
+# this one ("compwise"), MCP ("MCP") for high dimensional cases, etc...
 # INPUT:
 # X : covariate matrix
 # y: observations
@@ -671,10 +750,26 @@ init_coefs = function( X,
   
   # orthogonal initialisation (assuming variables are approx orthogonal)
   beta_init = as.vector(crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2))
-  # colSums(Xwaug^2) = diag(crossprod(Xwaug)))
+  # NOTE: colSums(Xwaug^2) = diag(crossprod(Xwaug)))
   # PS original variables in columns of X can be very far from orthogonal,
   # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal
   # makes the assumption hold better
+  
+  # for gaussian case
+  # rescale initial coefficients to optimally match scale of z
+  # for poisson it was not necessary to do this (performance was worse)
+  if (family$family=="gaussian") {
+  z_init = as.vector(X %*% beta_init)
+  scale_factor = (crossprod(z, z_init)/crossprod(z_init))[1,1]
+  beta_init = beta_init*scale_factor 
+  # The intuition behind this scale factor is that it represents the 
+  # cosine of the angle between the vectors z and z_init,
+  # scaled by the magnitude of z. When the cosine is close to 1, 
+  # it indicates that the predicted response is well-aligned with the 
+  # true response, but potentially off in magnitude.
+  }
+  
+
   
   # possible alternative initialisation
   # diagonal initialisation (assuming system is dominated by diagonal of X)

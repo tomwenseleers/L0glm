@@ -199,7 +199,7 @@
 #' @param warm.start 
 #' A numeric value in the range of [0, 1] that represents the level of confidence 
 #' in the initial start values when provided. This parameter is used in a weighted average to 
-#' calculate the 'start' values. Default is set at 0.1. 
+#' calculate the 'start' values. Default is set at 0.9. 
 #' The formula used is: 
 #' \deqn{start = \text{warm.start} \cdot start + (1 - \text{warm.start}) \cdot \text{rep}(\text{sd}(start)^{\frac{1}{\gamma}}, \text{ncol}(X))}
 #' If `warm.start` is closer to 1, more weight is given to the original 'start' value.
@@ -363,7 +363,7 @@ L0glm.fit = function(X,
                      grouped = TRUE, 
                      group.maxit = 6, 
                      relaxed = grouped,
-                     warm.start = 0.1,
+                     warm.start = 0.9,
                      prior.mean = NULL,
                      gamma = 2,
                      thresh = 1E-5, 
@@ -855,7 +855,8 @@ L0glm.fit = function(X,
 # the \code{L0glm.fit.internal} function on each column independently and returns the results as a matrix. The function supports weighting 
 # of observations and nonnegative constraints if specified. 
 #
-L0glmfun <- function(cols, lambda, gamma, thresh, solver, method, nonnegative, normalize, X, y, family, warm.start = 0.9, 
+L0glmfun <- function(cols, lambda, gamma, thresh, solver, method, nonnegative, normalize, X, y, family, 
+                     warm.start = 0.9, 
                 prior.mean = NULL, weights = NULL, dispersion = 1, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   fit <- lapply(cols, function(col) {

@@ -42,6 +42,7 @@
 # the allowed boundaries)
 clip = function (coefs, lower, upper, 
                  reflect_lower = FALSE, reflect_upper = FALSE) {
+  if (!is.null(coefs)) {
   reflect = reflect_lower|reflect_upper
   if (!reflect) { return(pmax(lower, pmin(coefs, upper))) } else { 
     
@@ -53,7 +54,7 @@ clip = function (coefs, lower, upper,
   # Reflect off the upper boundary
   coefs <- ifelse(coefs > upper, upper - (coefs - upper), coefs) }
     
-  coefs <- pmax(lower, pmin(coefs, upper))
+  coefs <- pmax(lower, pmin(coefs, upper)) }
   
   return(coefs)
   }
