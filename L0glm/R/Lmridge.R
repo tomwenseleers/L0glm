@@ -9,7 +9,9 @@
 #' @importFrom nnls nnls
 #' @import glmnet
 #' @importFrom osqp osqpSettings osqp solve_osqp
+#' @importFrom parglm parglm.fit parglm.control parglm
 #' @importFrom qlcMatrix colMax colMin
+#' @utils getFromNamespace
 #'
 #' @description
 #' Implementation of different solvers
@@ -55,15 +57,17 @@ lmridge <- function(X, y,
                     iteration = 1, # IRLS iteration - passing this as extra info
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose = FALSE){
+  
   # scale columns of X if desired
-  if (sum(scaling)!=length(scaling)) { X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=TRUE)
-                                       start <- start * scaling }
+  if (sum(scaling)!=length(scaling)) { 
+    X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=issparse(X)) 
+    start <- start * scaling }
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
   Xw <- Xweights(X, weights)
   yw <- Yweights(y, weights)
-  if (!issparse(Xw)) { Xw = as.matrix(Xw) }
+  # if (!issparse(Xw)) { Xw = as.matrix(Xw) }
   yw[is.nan(yw)] <- 0
   
   if(is.null(prior.mean)){
@@ -88,8 +92,15 @@ lmridge <- function(X, y,
                             prior.mean = prior.mean,
                             iteration = iteration)
     
+  } else if (solver == "parglm") {
+    coefs <- lmridge.parglm(Xw = Xw, yw = yw, lambdas = lambdas, 
+                            lower = lower, upper = upper, 
+                            start = start,
+                            control.solver = control.solver,
+                            prior.mean = prior.mean,
+                            iteration = iteration)
     
-  } else if (solver == "eigen") {
+    } else if (solver == "eigen") {
     coefs <- lmridge.eigen(Xw = Xw, yw = yw, 
                              lambdas = lambdas, 
                            start = start, prior.mean = prior.mean,
@@ -122,7 +133,7 @@ lmridge.osqp <- function(Xw,
                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
                          prior.mean = NULL,
                          iteration = 1){
-  Xw = as(Matrix(Xw, sparse=T), "generalMatrix")
+  Xw = as(as(Matrix(Xw, sparse=T), "generalMatrix"), "dgCMatrix") # here always coercing Xw to sparse format
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
     ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean) 
@@ -136,7 +147,7 @@ lmridge.osqp <- function(Xw,
     Xty <- crossprod(Xwaug, ywaug)
   } else {
     if (issparse(Xw)){
-      XtX <- as(Matrix(crossprod(Xwaug), sparse=T),"generalMatrix")
+      XtX <- as(as(Matrix(crossprod(Xwaug), sparse=T), "generalMatrix"), "dgCMatrix")
     } else {
       XtX <- crossprod(Xwaug)
     }
@@ -157,7 +168,7 @@ lmridge.osqp <- function(Xw,
   if(is.null(start)) start <- rep(0, ncol(Xw))
   model$WarmStart(x=start)
   
-  #Solve model
+  # solve model
   coefs <- model$Solve()$x
   coefs <- clip(coefs, lower, upper) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
   return(coefs)
@@ -170,12 +181,13 @@ lmridge.glmnet <- function(Xw, yw,
                            control.solver = do.call("control.solver.gen", list(solver = "glmnet")), 
                            prior.mean = NULL,
                            iteration = 1){
-  if (iteration<=5&ncol(Xw)>1000) {
-    # for first 5 IRLS iterations & for larger problems (p>1000) use glmnet to solve ridge regression
+  if (iteration<=5&(ncol(Xw)>1000|nrow(Xw)>1E6)) {
+    # for first 5 IRLS iterations & for larger problems (p>1000 or n>1E6) use glmnet to solve ridge regression
     n <- nrow(Xw)
     sd_y <- sqrt(var(yw)*(n-1)/n)
     lambda <- mean(lambdas)
     penalty.factor <- lambdas/lambda
+    penalty.factor[is.na(penalty.factor)] <- 1
     standardize <- control.solver$standardize
     thresh <- control.solver$thresh
     maxit <- control.solver$maxit
@@ -234,10 +246,119 @@ lmridge.glmnet <- function(Xw, yw,
    coefs <- coef(model)[-1]
   }
 
-  
   # apply box constraints in case coefs would slightly fall outside bounds
   coefs <- clip(coefs, lower, upper) 
   return(coefs)
+}
+
+
+parallelglm <- utils::getFromNamespace("parallelglm", "parglm") # to directly call Rcpp function
+
+lmridge.parglm <- function(Xw, 
+                           yw, 
+                           lambdas = NULL, 
+                           lower, upper, 
+                           start, 
+                           control.solver = do.call("control.solver.gen", 
+                                                    list(solver = "parglm")), 
+                           prior.mean = NULL,
+                           iteration = 1) {
+  
+  n <- nrow(Xw)
+  p <- ncol(Xw)
+  epsilon <- control.solver$epsilon
+  nthreads <- control.solver$nthreads
+  block_size <- control.solver$block_size
+  method <- control.solver$method
+  fam <- paste0(gaussian(identity)$family, "_", gaussian(identity)$link)
+  
+  # if (n>p) {
+  #   # for n > p case solve ridge regression using normal equations
+  #   # Precompute some values
+  #   lambda <- mean(lambdas)
+  #   pen.weights <- lambdas / lambda 
+  #   D <- Diagonal(x=1/pen.weights)
+  #   if (is.null(prior.mean)) { prior.mean <- rep(0,p) }
+  #   
+  #   # solve ridge regression
+  #   coefs <- as.vector(suppressWarnings(parallelglm(
+  #     X = as.matrix(D %*% Matrix::crossprod(Xw) + 
+  #                     Diagonal(x=rep(lambda, ncol(Xw)))), 
+  #     Ys = as.matrix(D %*% Matrix::crossprod(Xw,yw) + 
+  #                     lambda*Matrix::crossprod(D, prior.mean)), 
+  #     family = fam,
+  #     start = start,
+  #     weights = rep(1, nrow(X)),
+  #     offsets = rep(0,nrow(X)),
+  #     tol = epsilon,
+  #     nthreads = nthreads,
+  #     it_max = 1,
+  #     trace = FALSE,
+  #     method = method,
+  #     block_size = block_size,
+  #     use_start = TRUE)$coefficients)
+  # } else 
+  
+    if (n>=p) {
+    # solve via row augmentation
+    # Obtain Xwaug and ywaug
+    # browser()
+      
+    if (mean(lambdas)>1E-20) {
+      Xwaug <- rbind(Xw, diag(x=sqrt(lambdas)))
+      ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+    } else {
+      Xwaug <- Xw
+      ywaug <- yw
+    }
+    # solve ridge regression
+    coefs <- as.vector(suppressWarnings(parallelglm(
+      X = Xwaug, 
+      Ys = ywaug,
+      family = fam,
+      start = start,
+      weights = rep(1, nrow(Xwaug)),
+      offsets = rep(0,nrow(Xwaug)),
+      tol = epsilon,
+      nthreads = nthreads,
+      it_max = 1,
+      trace = FALSE,
+      method = method,
+      block_size = block_size,
+      use_start = TRUE)$coefficients))
+      
+  } else {
+    # for p > n case solve ridge regression using normal equations optimised based on Woodbury identity
+    # Precompute some values
+    lambda <- mean(lambdas)
+    pen.weights <- lambdas / lambda 
+    pen.weights[is.na(pen.weights)] <- 1
+    D <- Diagonal(x=1/pen.weights)
+    DXw <- Matrix::tcrossprod(D, Xw)
+    if (is.null(prior.mean)) { prior.mean <- rep(0,p) }
+    y_star <- as.vector(yw - Xw %*% prior.mean)
+    
+    # Calculate ridge regression using Woodbury identity
+    coefs <- as.vector(prior.mean + DXw %*% parallelglm(
+      X = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))), 
+      Ys = y_star, 
+      family = fam,
+      start = start,
+      weights = rep(1, nrow(X)),
+      offsets = rep(0,nrow(X)),
+      tol = epsilon,
+      nthreads = nthreads,
+      it_max = 1,
+      trace = FALSE,
+      method = method,
+      block_size = block_size,
+      use_start = TRUE)$coefficients)
+  }
+  
+  # apply box constraints via clipping
+  coefs <- clip(coefs, lower, upper) # clip coefficients within allowed range - TODO: check if reflect_lower=F might work better to deal with nonnegativity constraints
+  
+  return(coefs) 
 }
 
 
@@ -259,8 +380,9 @@ lmridge.nnls <- function(Xw, yw, lambdas = NULL, lower, upper,
   return(coefs)
 }
 
+
 lmridge.eigen <- function(Xw, yw, 
-                          lambdas = rep(1, ncol(Xw)), 
+                          lambdas = rep(0, ncol(Xw)), 
                           lower = rep(-.Machine$double.xmax,ncol(Xw)), 
                           upper = rep(.Machine$double.xmax,ncol(Xw)), 
                           start = rep(0, ncol(Xw)), 
@@ -269,9 +391,11 @@ lmridge.eigen <- function(Xw, yw,
                           prior.mean = rep(0, ncol(Xw)),
                           verbose = FALSE,
                           iteration = 1){ 
+  if (sum(lambdas)==0) { control.solver$rowaug=TRUE } # in absence of any regularisation set method to use row augmentation (with zero lambdas nothing will be augmented later on)
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
-  if (issparse(Xw)) { Xw = as(Matrix(Xw, sparse=T), "generalMatrix") } else { 
+  pen.weights[is.na(pen.weights)] = 1
+  if (issparse(Xw)) { Xw = as(as(Matrix(Xw, sparse=T), "generalMatrix"), "dgCMatrix") } else { 
     Xw = as.matrix(Xw) } 
   
   if ((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
@@ -593,8 +717,14 @@ lmridge.eigen <- function(Xw, yw,
 
 
 Xweights <- function(X, weights){
-  if(!is.null(weights)){
-    return(Diagonal(x=sqrt(weights)) %*% X) # Faster than X*sqrt(weights)
+  if (!(is.null(weights)|sum(weights)==nrow(X))) {
+    if (issparse(X)) { return( as(Matrix(Diagonal(x=sqrt(weights)) %*% X, sparse=T),"dgCMatrix") ) } else {
+      if (ncol(X)<=1E6) { return(X*sqrt(weights)) } else {
+      for (j in 1:ncol(X)) {
+        X[,j] <- X[,j] * sqrt(weights)
+      }
+      return(X) }
+    }
   } else {
     return(X)
   }
@@ -618,15 +748,14 @@ Yweights <- function(y, weights){
 # https://stats.stackexchange.com/a/164546/27340
 # https://stats.stackexchange.com/a/203699/27340
 row_augX <- function(Xw, lambdas = NULL){
-  if (!is.null(lambdas)&(sum(lambdas)!=0)) {
-    if (issparse(Xw)) { out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) } else {
-                        out <- rbind(Xw, Diagonal(x=sqrt(lambdas))) # now always returning augmented matrix as sparse if row augmentation method is requested
-                        # out <- rbind(Xw, diag(x=sqrt(lambdas)))
+  if (mean(lambdas)>1E-20&!is.null(lambdas)) {
+    if (issparse(Xw)) { return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) } else {
+                        return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) # now always returning augmented matrix as sparse if row augmentation method is requested
+                        # return( rbind(Xw, diag(x=sqrt(lambdas))) )
                         }
     } else
-    { out <- Xw }
-  
-  return(out)
+    { return(Xw) }
+
 }
 
 # augment y
@@ -641,7 +770,7 @@ row_augX <- function(Xw, lambdas = NULL){
 # In an optimisation sense, this would add "momentum" to the optimisation process.
 # Not sure how this would perform - might be worth trying quickly.
 augY <- function(yw, p, prior.mean = NULL, lambdas = NULL){
-  if (!is.null(lambdas)&(sum(lambdas)!=0)) {
+  if (mean(lambdas)>1E-20&!is.null(lambdas)) {
     if(is.null(prior.mean) | is.null(lambdas)){
       return(c(yw, rep(0, p))) # zero centered row augmentation
     } else {

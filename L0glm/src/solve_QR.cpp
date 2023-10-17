@@ -8,7 +8,7 @@
 
 // Solve Ax = b using sparse QR decomposition
 // [[Rcpp::export]]
-Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double> A,
+Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double> &A,
                            const Eigen::Map<Eigen::MatrixXd> b,
                            unsigned int ordering = 1){
 
@@ -40,7 +40,7 @@ Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double> A,
 // Solve Ax = b using dense QR decomposition(pivot=0: HouseHolderQR, pivot=1: ColPivHouseholderQR,
 // pivot=2: FullPivHouseholderQR)
 // [[Rcpp::export]]
-Rcpp::List solve_dense_QR(const Eigen::Map<Eigen::MatrixXd> A,
+Rcpp::List solve_dense_QR(const Eigen::Map<Eigen::MatrixXd> &A,
                           const Eigen::Map<Eigen::MatrixXd> b,
                           unsigned int pivot = 1) {
 

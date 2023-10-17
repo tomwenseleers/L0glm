@@ -17,7 +17,8 @@ lmridge(
   prior.mean = NULL,
   solver = "eigen",
   method = ifelse(ncol(X) >= 20000, 3L, 7L),
-  start = rep(1, ncol(X)),
+  start = rep(0, ncol(X)),
+  iteration = 1,
   control.solver = do.call("control.solver.gen", list(solver = solver, method =
     method)),
   verbose = FALSE

@@ -4,7 +4,15 @@
 \alias{simul}
 \title{Simulate data.}
 \usage{
-simul(method = 1, n = 500, p = 500, sparse = T, options = NULL, seed = 1)
+simul(
+  method = 1,
+  n = 500,
+  p = 500,
+  s = 0.1,
+  sparse = T,
+  options = NULL,
+  seed = 1
+)
 }
 \arguments{
 \item{method}{A numeric value indicating the type of data to simulate. The possible values are:
@@ -30,6 +38,8 @@ For method 6: \code{sd_noise} (standard deviation of the noise).
 If options are \code{NULL}, default values will be used.}
 
 \item{seed}{Random seed.}
+
+\item{S}{Sparsity of true solution (proportion of total coefficients p that are nonzero).}
 }
 \value{
 A variable containing the simulated data.

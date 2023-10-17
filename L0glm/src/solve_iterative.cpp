@@ -15,7 +15,7 @@ using Eigen::Success;
 
 // Solve Ax = b using sparse LeastSquaresConjugateGradient with given preconditioner with initial guess x0
 // [[Rcpp::export]]
-Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> A,
+Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> &A,
                              const Eigen::Map<Eigen::MatrixXd> b,
                              const Eigen::Map<Eigen::MatrixXd> x0,
                              double tol = 0,
@@ -58,7 +58,7 @@ Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> A,
 
 // Solve Ax = b using dense LeastSquaresConjugateGradient with given preconditioner with initial guess x0
 // [[Rcpp::export]]
-Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd A,
+Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd &A,
                             const Eigen::MatrixXd b,
                             const Eigen::MatrixXd x0,
                             double tol = 0,
@@ -103,7 +103,7 @@ Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd A,
 // Solve Ax = b using sparse Conjugate Gradient with given preconditioner with initial guess x0
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_CG(
-    Eigen::MappedSparseMatrix<double> A,
+    Eigen::MappedSparseMatrix<double> &A,
     Eigen::Map<Eigen::MatrixXd> b,
     Eigen::Map<Eigen::MatrixXd> x0,
     double tol = 0,
@@ -147,7 +147,7 @@ Rcpp::List solve_sparse_CG(
 // Solve Ax = b using dense Conjugate Gradient with given preconditioner with initial guess x0
 // [[Rcpp::export]]
 Rcpp::List solve_dense_CG(
-    Eigen::Map<Eigen::MatrixXd> A,
+    Eigen::Map<Eigen::MatrixXd> &A,
     Eigen::Map<Eigen::MatrixXd> b,
     Eigen::Map<Eigen::MatrixXd> x0,
     double tol = 0,

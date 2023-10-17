@@ -8,7 +8,7 @@ using namespace arma;
 typedef unsigned int uint;
 
 // [[Rcpp::export]]
-arma::vec fastnnls_dense(arma::mat A, arma::vec b) {
+arma::vec fastnnls_dense(arma::mat &A, arma::vec b) {
 
   // initial x is the unbounded least squares solution
   arma::vec x = arma::solve(A, b, arma::solve_opts::likely_sympd + arma::solve_opts::fast);

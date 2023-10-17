@@ -38,7 +38,6 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { 
 
-  
   # NOTE currently I haven't implemented any SCREENING RULES like
   # http://proceedings.mlr.press/v119/atamturk20a/atamturk20a.pdf
   # or sure independent screening prescreening, as implemented in abess
@@ -47,7 +46,7 @@ L0glm.fit.internal = function(X,
   
   if (grepl("_noreg",solver)) { solver = gsub("_noreg", "", solver) # use given solver without regularisation
                                 lambda = 0
-                                maxit = 1 }
+                                maxit = 1 } # strictly speaking this should only apply to gaussian case
   
   # Normalize columns of X to unit L2 norm? If so, calculate scaling
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
@@ -125,6 +124,8 @@ L0glm.fit.internal = function(X,
   if (is.null(start)) { nonzero = as.vector(beta!=0) } else { nonzero = as.vector(start!=0) } 
   # mask <- rep(FALSE, p)
   
+  if (solver=="parglm") { X <- as.matrix(X) } # this solver currently only supports dense matrices 
+  
   for (i in 1L:maxit) {
     # print(i)
     # print(dispersion)
@@ -152,7 +153,7 @@ L0glm.fit.internal = function(X,
     
     # penalty weights & penalties for the L0 norm penalty ####
     pen.weights <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
-    lambdas = (1/4)*lambda*dispersion*pen.weights
+    if (lambda!=0) { lambdas = (1/4)*lambda*dispersion*pen.weights } else { lambdas = rep(0,p) }
     # ridge penalties on individual coefficients, we scale these penalties 
     # by the estimated dispersion & by 1/4 (cf Frommlet & Nuel 2016) so that we 
     # can directly use the lambda penalty values implied by the AIC & BIC criteria 
@@ -199,6 +200,7 @@ L0glm.fit.internal = function(X,
     # centered ridge regression to
     # add automatic regularisation and with possible box constraints
     # coefficient update is based on quadratic approximation of log likelihood
+
     res <- lmridge(X = X[good, nonzero, drop=F], 
                    y = z,
                    weights = W, # fixed bug: had W[good] but already subsetted

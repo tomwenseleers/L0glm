@@ -17,7 +17,7 @@ simulate_spike_train(
   sparse = TRUE,
   multichannel = FALSE,
   seed = 123,
-  Plot = if (p <= 20000) {     TRUE } else {     FALSE }
+  Plot = FALSE
 )
 }
 \arguments{

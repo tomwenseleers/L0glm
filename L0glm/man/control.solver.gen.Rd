@@ -2,16 +2,17 @@
 % Please edit documentation in R/control.solver.gen.R
 \name{control.solver.gen}
 \alias{control.solver.gen}
-\title{Set Options of Constrained Ridge Regularised Weighted Least Squares Regression Solver}
+\title{Set Options of Constrained Ridge Regularised Weighted Least Squares Regression Solvers}
 \usage{
 control.solver.gen(
   solver,
   method = NULL,
   maxit = NULL,
   standardize = NULL,
-  reltol = 1e-08,
+  reltol = NULL,
   tol = NULL,
   abstol = NULL,
+  block_size = NULL,
   verbose = FALSE,
   rowaug = NULL
 )

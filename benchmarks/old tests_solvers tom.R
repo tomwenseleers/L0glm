@@ -594,16 +594,47 @@ cor(coefs_nnls, coefs_osqp) # 0.9712636
 # parglm ####
 # https://htmlpreview.github.io/?https://github.com/boennecd/parglm/blob/master/vignettes/parglm.html
 library(parglm)
-system.time(parglm_dense <- parglm.fit(
+system.time(parglm_dense_rowaugm <- parglm.fit(
   x = Xwaug, 
   y = ywaug, 
   intercept = F,
   family = gaussian(identity), 
   control = parglm.control(maxit = 1L, 
                            nthreads=1L, # using more threads hardly reduces timing
-                           # block_size=1000, 
+                           block_size=1000, 
                            method="FAST")) )
-# 9s for n=p=10000
+# 7.4s for n=p=10000 with nthreads=8L, 9s with nthreads=1L
+# use this for n>=p case?
+
+# using normal equations for n>=p
+system.time({parglm_dense_normeq_largen <- parglm.fit(
+  x = D %*% crossprod(Xw) + diag(rep(lambda, sum(nonzero))), 
+  y = D %*% crossprod(Xw,yw), 
+  intercept = F,
+  family = gaussian(identity), 
+  control = parglm.control(maxit = 1L, 
+                           nthreads=1L, # using more threads hardly reduces timing
+                           block_size=1000, 
+                           method="FAST"))
+  coefs_parglm_dense_normeq_largen = parglm_dense_normeq_largen$coefficients }
+)
+# 15s for n=p=10000 with nthreads=1L
+
+# using normal equations for p>n
+system.time({ DXT <- tcrossprod(D, Xw);
+              parglm_dense_normeq_largep <- parglm.fit(
+  x = Xw %*% DXT + diag(rep(lambda, nrow(X))), 
+  y = yw, 
+  intercept = F,
+  family = gaussian(identity), 
+  control = parglm.control(maxit = 1L, 
+                           nthreads=1L, # using more threads hardly reduces timing
+                           block_size=1000, 
+                           method="FAST"))
+              coefs_parglm_dense_normeq_largep = DXT %*% parglm_dense_normeq_largep$coefficients
+              })
+# 17s for n=p=10000 with nthreads=1L
+# use this for p>n case?
 
 
 # speedglm ####

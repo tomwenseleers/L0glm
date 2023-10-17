@@ -8,7 +8,7 @@
 // Solve Ax = b using sparse LLT (pivot = 0) or LDLT (pivot = 1) Cholesky decomposition
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_chol(
-    const Eigen::MappedSparseMatrix<double> A,
+    const Eigen::MappedSparseMatrix<double> &A,
     const Eigen::Map<Eigen::MatrixXd> b,
     unsigned int pivot = 1, unsigned int ordering = 0) {
 
@@ -51,7 +51,7 @@ Rcpp::List solve_sparse_chol(
 // Solve Ax = b using dense LLT (pivot = 0) or LDLT (pivot = 1) Cholesky decomposition
 // [[Rcpp::export]]
 Rcpp::List solve_dense_chol(
-    const Eigen::Map <Eigen::MatrixXd> A,
+    const Eigen::Map <Eigen::MatrixXd> &A,
     const Eigen::Map <Eigen::MatrixXd> b,
     unsigned int pivot = 1) {
 

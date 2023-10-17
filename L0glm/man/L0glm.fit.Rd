@@ -28,7 +28,7 @@ L0glm.fit(
   grouped = TRUE,
   group.maxit = 6,
   relaxed = grouped,
-  warm.start = 0.1,
+  warm.start = 0.9,
   prior.mean = NULL,
   gamma = 2,
   thresh = 1e-05,
@@ -84,7 +84,8 @@ to disable penalization.}
 
 \item{no.pen}{A vector of coefficient indices that should 
 not be penalized. Coefficients with a name that includes \code{"Intercept"}
-in their name are not penalized by default.}
+in their name are not penalized by default. Specify 0 if all terms
+should be allowed to be shrunk to zero.}
 
 \item{nonnegative}{A logical indicating whether nonnegativity constraints should be applied.
 If \code{TRUE}, \code{lower} will be set to \code{rep(0, ncol(X))}.}
@@ -167,7 +168,7 @@ selection. Defaults to \code{TRUE} when \code{grouped=TRUE}.}
 
 \item{warm.start}{A numeric value in the range of [0, 1] that represents the level of confidence 
 in the initial start values when provided. This parameter is used in a weighted average to 
-calculate the 'start' values. 
+calculate the 'start' values. Default is set at 0.9. 
 The formula used is: 
 \deqn{start = \text{warm.start} \cdot start + (1 - \text{warm.start}) \cdot \text{rep}(\text{sd}(start)^{\frac{1}{\gamma}}, \text{ncol}(X))}
 If `warm.start` is closer to 1, more weight is given to the original 'start' value.

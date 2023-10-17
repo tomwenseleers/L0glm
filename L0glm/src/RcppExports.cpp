@@ -13,24 +13,24 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // fastnnls_dense
-arma::vec fastnnls_dense(arma::mat A, arma::vec b);
+arma::vec fastnnls_dense(arma::mat& A, arma::vec b);
 RcppExport SEXP _L0glm_fastnnls_dense(SEXP ASEXP, SEXP bSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type A(ASEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type A(ASEXP);
     Rcpp::traits::input_parameter< arma::vec >::type b(bSEXP);
     rcpp_result_gen = Rcpp::wrap(fastnnls_dense(A, b));
     return rcpp_result_gen;
 END_RCPP
 }
 // solve_sparse_QR
-Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double> A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int ordering);
+Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_QR(SEXP ASEXP, SEXP bSEXP, SEXP orderingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type ordering(orderingSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_sparse_QR(A, b, ordering));
@@ -38,12 +38,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_QR
-Rcpp::List solve_dense_QR(const Eigen::Map<Eigen::MatrixXd> A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot);
+Rcpp::List solve_dense_QR(const Eigen::Map<Eigen::MatrixXd>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot);
 RcppExport SEXP _L0glm_solve_dense_QR(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type pivot(pivotSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_dense_QR(A, b, pivot));
@@ -51,12 +51,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_sparse_chol
-Rcpp::List solve_sparse_chol(const Eigen::MappedSparseMatrix<double> A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot, unsigned int ordering);
+Rcpp::List solve_sparse_chol(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_chol(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP, SEXP orderingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type pivot(pivotSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type ordering(orderingSEXP);
@@ -65,12 +65,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_chol
-Rcpp::List solve_dense_chol(const Eigen::Map <Eigen::MatrixXd> A, const Eigen::Map <Eigen::MatrixXd> b, unsigned int pivot);
+Rcpp::List solve_dense_chol(const Eigen::Map <Eigen::MatrixXd>& A, const Eigen::Map <Eigen::MatrixXd> b, unsigned int pivot);
 RcppExport SEXP _L0glm_solve_dense_chol(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map <Eigen::MatrixXd> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map <Eigen::MatrixXd>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::Map <Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type pivot(pivotSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_dense_chol(A, b, pivot));
@@ -78,12 +78,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_sparse_LSCG
-Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> A, const Eigen::Map<Eigen::MatrixXd> b, const Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
+Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, const Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
 RcppExport SEXP _L0glm_solve_sparse_LSCG(SEXP ASEXP, SEXP bSEXP, SEXP x0SEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP precondSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type x0(x0SEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
@@ -94,12 +94,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_LSCG
-Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd A, const Eigen::MatrixXd b, const Eigen::MatrixXd x0, double tol, int maxit, unsigned int precond);
+Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd& A, const Eigen::MatrixXd b, const Eigen::MatrixXd x0, double tol, int maxit, unsigned int precond);
 RcppExport SEXP _L0glm_solve_dense_LSCG(SEXP ASEXP, SEXP bSEXP, SEXP x0SEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP precondSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type A(ASEXP);
     Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type b(bSEXP);
     Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type x0(x0SEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
@@ -110,12 +110,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_sparse_CG
-Rcpp::List solve_sparse_CG(Eigen::MappedSparseMatrix<double> A, Eigen::Map<Eigen::MatrixXd> b, Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
+Rcpp::List solve_sparse_CG(Eigen::MappedSparseMatrix<double>& A, Eigen::Map<Eigen::MatrixXd> b, Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
 RcppExport SEXP _L0glm_solve_sparse_CG(SEXP ASEXP, SEXP bSEXP, SEXP x0SEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP precondSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Eigen::MappedSparseMatrix<double> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< Eigen::MappedSparseMatrix<double>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type x0(x0SEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
@@ -126,12 +126,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_CG
-Rcpp::List solve_dense_CG(Eigen::Map<Eigen::MatrixXd> A, Eigen::Map<Eigen::MatrixXd> b, Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
+Rcpp::List solve_dense_CG(Eigen::Map<Eigen::MatrixXd>& A, Eigen::Map<Eigen::MatrixXd> b, Eigen::Map<Eigen::MatrixXd> x0, double tol, int maxit, unsigned int precond);
 RcppExport SEXP _L0glm_solve_dense_CG(SEXP ASEXP, SEXP bSEXP, SEXP x0SEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP precondSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type A(ASEXP);
+    Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd>& >::type A(ASEXP);
     Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type x0(x0SEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);

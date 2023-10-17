@@ -18,11 +18,12 @@ solvers <- c("osqp",
              "eigen", 
              "eigen", 
              "eigen", 
-             "eigen")
+             "eigen",
+             "parglm")
 methods <- c(1, 
              # 1, 1, 
              1, 
-             1, 4, 6, 7)
+             1, 4, 6, 7, 1)
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
@@ -30,7 +31,8 @@ solver_names <- c("osqp",
                   "eigen QR", 
                   "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
                   "eigen CG", 
-                  "eigen Cholesky LLT")
+                  "eigen Cholesky LLT",
+                  "parglm")
 crit = "gic"
 
 
@@ -118,10 +120,10 @@ results_melt <- results %>%
 results_melt$Solver = factor(results_melt$Solver, 
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
-                                          "glmnet")),
+                                          "glmnet", "parglm")),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
-                                          "L0glm_glmnet")))
+                                          "L0glm_glmnet", "L0glm_parglm")))
 
 # Plot
 ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -134,7 +136,7 @@ ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_x_continuous(trans="log10") +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
-                                  "purple"))) 
+                                  "purple", "yellow2"))) 
 ggsave(file="..//benchmarks//plots//timings//timings_metrics_poisson.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_poisson.pdf", width=7, height=5, dpi=600)
 
@@ -146,7 +148,7 @@ ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colo
   theme(legend.position = "right") +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
-                                  "purple"))) + 
+                                  "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
 ggsave(file="..//benchmarks//plots//timings//timings_poisson.png", width=7, height=5, dpi=600)
@@ -239,8 +241,8 @@ results_melt2 <- results %>%
                         Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
   mutate(method = factor(method), solver = factor(solver))
 results_melt2$Solver = factor(results_melt2$Solver, 
-                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "glmnet")),
-                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_glmnet")))
+                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "glmnet", "parglm")),
+                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_glmnet", "L0glm_parglm")))
 
 # Plot
 ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -253,7 +255,7 @@ ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_x_continuous(trans="log10") +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
-                                  "purple")))
+                                  "purple", "yellow2")))
 ggsave(file="..//benchmarks//plots//timings//timings_metrics_gaussian.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_gaussian.pdf", width=7, height=5, dpi=600)
 
@@ -271,7 +273,7 @@ ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value,
   theme(legend.position = "right") +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
-                                  "purple"))) + 
+                                  "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
 ggsave(file="..//benchmarks//plots//timings//timings_gaussian.png", width=7, height=5, dpi=600)
