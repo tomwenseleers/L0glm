@@ -15,7 +15,7 @@ library(glmnet)
 
 # 1. SINGLE CHANNEL ####
 # Simulate SC n=p=500
-n <- p <- 500
+n <- p <- 500 # 10000
 sim.gaus <- simul(method = 1, n = n, p = p, sparse = T)
 sim.pois <- simul(method = 2, n = n, p = p, sparse = T)
 
@@ -74,6 +74,7 @@ system.time(L0glm.QR.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                   solver = "eigen",
                                   method = 1L)) 
 # 0.07s with n=p=500, 20.0s with n=p=10000
+# NOTE: TODO: check why QR solver is now slower than it used to be for n=p=10000
 cor(as.vector(as.vector(L0glm.QR.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9838164 with n=p=500, 0.9595521 with n=p=10000
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.QR.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
 sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.QR.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
@@ -88,7 +89,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 0.03s with n=p=500, 0.23s with n=p=10000
+# 0.03s with n=p=500, 0.3s with n=p=10000
 cor(as.vector(as.vector(L0glm.chol.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9838164 with n=p=500, 0.9595521 with n=p=10000
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
 sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.chol.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
@@ -103,7 +104,8 @@ system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 3L)) 
-# 0.16s with n=p=500, 4.39s with n=p=10000
+# 0.16s with n=p=500, 0.94s with n=p=10000
+# NOTE: LSCG solver now became faster in latest implementation
 cor(as.vector(as.vector(L0glm.LSCG.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.984469 with n=p=500, 0.9595335 with n=p=10000
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.LSCG.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
 sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.LSCG.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
@@ -118,7 +120,7 @@ system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                   relaxed = FALSE,
                                   solver = "eigen",
                                   method = 5L)) 
-# 0.09s with n=p=500, 1.35s with n=p=10000
+# 0.09s with n=p=500, 0.51s with n=p=10000
 cor(as.vector(as.vector(L0glm.CG.pois$coefficients)), as.vector(sim.pois$beta_true)) # 0.9845091 with n=p=500, 0.9593445 with n=p=10000
 sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.CG.pois$coefficients) != 0)) # TP = 45 with n=p=500, 841 with n=p=10000
 sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.CG.pois$coefficients) != 0)) # FP = 7 with n=p=500, 173 with n=p=10000
@@ -275,7 +277,7 @@ system.time(L0glm.osqp.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "osqp")) 
-# 0.2s
+# 0.2s for n=p=500, 42s for n=p=10000
 cor(as.vector(as.vector(L0glm.osqp.gaus$coefficients)), as.vector(sim.gaus$beta_true)) #  0.9836709
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.osqp.gaus$coefficients) != 0)) # TP = 48
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.osqp.gaus$coefficients) != 0)) # FP = 7
@@ -289,7 +291,7 @@ system.time(L0glm.glmnet.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
                                       solver = "glmnet")) 
-# 1.44s
+# 1.44s for n=p=500, 5.6s for n=p=10000 
 cor(as.vector(as.vector(L0glm.glmnet.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9637935
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.glmnet.gaus$coefficients) != 0)) # TP = 47
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.glmnet.gaus$coefficients) != 0)) # FP = 24
@@ -304,7 +306,7 @@ system.time(L0glm.QR.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                   relaxed = FALSE,
                                   solver = "eigen",
                                   method = 1L)) 
-# 0.04s
+# 0.04s for n=p=500, 143s for n=p=10000
 cor(as.vector(as.vector(L0glm.QR.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.QR.gaus$coefficients) != 0)) # TP = 49
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.QR.gaus$coefficients) != 0)) # FP = 4
@@ -319,7 +321,7 @@ system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 0.02s
+# 0.02s for n=p=500, 0.25s for n=p=10000
 cor(as.vector(as.vector(L0glm.chol.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.997474
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol.gaus$coefficients) != 0)) # TP = 49
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.chol.gaus$coefficients) != 0)) # FP = 4
@@ -331,11 +333,10 @@ system.time(L0glm.LSCG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # tune.CG.sc$best.lambda,
                                     nonnegative = TRUE,
-                                    start = rep(1, 500),
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 4L)) 
-# 0.13s
+# 0.13s for n=p=500, 8.5s for n=p=10000
 cor(as.vector(as.vector(L0glm.LSCG.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9777964
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.LSCG.gaus$coefficients) != 0)) # TP = 47
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.LSCG.gaus$coefficients) != 0)) # FP = 12
@@ -350,7 +351,7 @@ system.time(L0glm.CG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                   relaxed = TRUE,
                                   solver = "eigen",
                                   method = 5L)) 
-# 0.06s
+# 0.06s for n=p=500, 3.7s for n=p=10000
 cor(as.vector(as.vector(L0glm.CG.gaus$coefficients)), as.vector(sim.gaus$beta_true)) # 0.9871489
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.CG.gaus$coefficients) != 0)) # TP = 46
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(L0glm.CG.gaus$coefficients) != 0)) # FP = 7

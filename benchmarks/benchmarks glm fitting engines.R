@@ -80,7 +80,7 @@ system.time(m5b <- parglm:::parallelglm(X=X, Y=y,
                                         method="FAST", block_size=1000, 
                                         use_start=FALSE)$coefficients) 
 # 0.45s for n<-1000000, 4.8s for n<-10000000
-# TODO: fix L0glm.fit so that it doesn't run out of memory with n<-10000000 & lambda="aic"
+
 system.time(m6 <- L0glm.fit(X, y, 
                             lambda=0, # "aic",
                             family=Gamma(log),
@@ -88,9 +88,12 @@ system.time(m6 <- L0glm.fit(X, y,
                             solver="parglm",
                             method=3L)$coefficients)  
 # 11s with parglm, 15s with eigen LSCG for n<-1000000
-# 112s with parglm for n<-10000000
+# 104s with parglm for n<-10000000
 # NOTE: for dense n>>p problems parglm:::parallelglm solution could be used
 # as starting values in L0glm
+# TODO: fix L0glm.fit so that it doesn't run out of memory with n<-10000000 & lambda="aic"
+# check if memory efficiency could be improved & where exactly things are 
+# going wrong
 # 
 # prob still a lot of scope for further code optimisation, given that using parglm
 # within my algo is so much slower than the full Rcpp coded parglm:::parallelglm
