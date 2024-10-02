@@ -19,11 +19,19 @@ L0glm.fit(
   normalize = FALSE,
   solver = "eigen",
   method = 7L,
-  lower = if (nonnegative) {     rep(0, ncol(X)) } else {    
-    rep(-.Machine$double.xmax, ncol(X)) },
+  lower = if (nonnegative) {
+     rep(0, ncol(X))
+ } else {
+    
+    rep(-.Machine$double.xmax, ncol(X))
+ },
   upper = rep(.Machine$double.xmax, ncol(X)),
   parallelize = TRUE,
-  ncores = if (parallelize) {     round(parallel::detectCores()/2) } else {     1 },
+  ncores = if (parallelize) {
+     round(parallel::detectCores()/2)
+ } else {
+     1
+ },
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,
@@ -33,8 +41,7 @@ L0glm.fit(
   gamma = 2,
   thresh = 1e-05,
   tol = 1e-10,
-  control.solver = do.call("control.solver.gen", list(solver = solver, method =
-    method)),
+  control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE
 )
 }

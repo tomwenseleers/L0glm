@@ -19,8 +19,7 @@ lmridge(
   method = ifelse(ncol(X) >= 20000, 3L, 7L),
   start = rep(0, ncol(X)),
   iteration = 1,
-  control.solver = do.call("control.solver.gen", list(solver = solver, method =
-    method)),
+  control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE
 )
 }

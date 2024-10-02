@@ -22,7 +22,11 @@ L0glm(
   lower = rep(-.Machine$double.xmax, ncol(X)),
   upper = rep(.Machine$double.xmax, ncol(X)),
   parallelize = TRUE,
-  ncores = if (parallelize) {     round(parallel::detectCores()/2) } else {     1 },
+  ncores = if (parallelize) {
+     round(parallel::detectCores()/2)
+ } else {
+     1
+ },
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,

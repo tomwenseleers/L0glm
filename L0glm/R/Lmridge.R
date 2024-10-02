@@ -257,7 +257,8 @@ parallelglm <- utils::getFromNamespace("parallelglm", "parglm") # to directly ca
 lmridge.parglm <- function(Xw, 
                            yw, 
                            lambdas = NULL, 
-                           lower, upper, 
+                           lower, 
+                           upper, 
                            start, 
                            control.solver = do.call("control.solver.gen", 
                                                     list(solver = "parglm")), 
@@ -325,7 +326,9 @@ lmridge.parglm <- function(Xw,
       trace = FALSE,
       method = method,
       block_size = block_size,
-      use_start = TRUE)$coefficients))
+      use_start = TRUE,
+      lower = lower,
+      upper = upper)$coefficients))
       
   } else {
     # for p > n case solve ridge regression using normal equations optimised based on Woodbury identity
@@ -352,7 +355,9 @@ lmridge.parglm <- function(Xw,
       trace = FALSE,
       method = method,
       block_size = block_size,
-      use_start = TRUE)$coefficients)
+      use_start = TRUE,
+      lower = lower,
+      upper = upper)$coefficients)
   }
   
   # apply box constraints via clipping
@@ -398,7 +403,7 @@ lmridge.eigen <- function(Xw, yw,
   if (issparse(Xw)) { Xw = as(as(Matrix(Xw, sparse=T), "generalMatrix"), "dgCMatrix") } else { 
     Xw = as.matrix(Xw) } 
   
-  if ((ncol(Xw) > nrow(Xw))&control.solver$rowaug) { # &(control.solver$method != "LSCG")
+  if ((ncol(Xw) > nrow(Xw)*100)&control.solver$rowaug) { # &(control.solver$method != "LSCG")
     control.solver$rowaug <- FALSE
     if(verbose&control.solver$method != "LSCG") print("Row augmentation is not recommended for p > n with this solver. Using Woodbury identity optimized normal equations appropriate for p > n case instead.")
   }
@@ -423,8 +428,9 @@ lmridge.eigen <- function(Xw, yw,
                                 pivot = control.solver$pivot)$coefficients
       }
     } else {
+      
       D <- Diagonal(x=1/pen.weights)
-      if(nrow(Xw) >= ncol(Xw)){
+      if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
           coefs <- as.vector(solve_sparse_QR(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)))$coefficients)
@@ -433,7 +439,7 @@ lmridge.eigen <- function(Xw, yw,
                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
                                             pivot = control.solver$pivot)$coefficients)
         }
-      } else { # if p > n
+      } else { # if p >> n
         if(issparse(Xw)){
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
@@ -498,7 +504,7 @@ lmridge.eigen <- function(Xw, yw,
       
       # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
-      if(nrow(Xw) >= ncol(Xw)){
+      if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
           coefs <- as.vector(solve_sparse_LSCG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                                b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
@@ -581,7 +587,7 @@ lmridge.eigen <- function(Xw, yw,
       
       # start = crossprod(Xwaug, ywaug) / colSums(Xwaug ^ 2) # orthogonal initialisation
       
-      if(nrow(Xw) >= ncol(Xw)){
+      if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
           coefs <- as.vector(solve_sparse_CG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "dgCMatrix"),
                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
@@ -651,7 +657,7 @@ lmridge.eigen <- function(Xw, yw,
       # solve from normal equations
       D <- Diagonal(x=1/pen.weights)
       
-      if (nrow(Xw) >= ncol(Xw)) {
+      if (nrow(Xw)*100 >= ncol(Xw)) {
         # n>=p case
         if (issparse(Xw)) {
           # if it's sparse
