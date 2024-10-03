@@ -45,7 +45,7 @@ X_test <- X[-idx_train, ]
 y_test <- y[-idx_train]
 
 
-# Solve using nnls from the nnls package (analogous to the classic Fortran Lawson & Hanson approach) ####
+# Solve using nnls from the nnls package (classic Fortran Lawson & Hanson approach) ####
 t <- system.time( fit_nnls <- nnls::nnls(A = X_train, b = y_train)$x )
 
 print(paste0("NNLS execution time: ", t[[3]]))
@@ -55,28 +55,9 @@ print(paste0("R2 Score NNLS: ", r2_score_nnls))
 nonzero_nnls <- sum(fit_nnls!=0)
 print(paste0("Nonzero coefs NNLS: ", nonzero_nnls))
 
-# "NNLS execution time:  830.01999999999"
+# "NNLS execution time:  902.740000000005"
 # "R2 Score NNLS: 0.997749375716445"
 # "Nonzero coefs NNLS: 7471"
-
-
-
-# # Solve using FAST-nnls (Fast Approximate Solution Trajectory-NNLS) ####
-t <- system.time(fit_fastnnls <- RcppML::nnls(a = crossprod(X_train),
-                                              b = crossprod(X_train, y_train)))
-# # t <- system.time( fit_fastnnls <- fastnnls_dense(A = X_train, b = y_train))
-# # t <- system.time( fit_fastnnls <- fastnnls_sparse(A = X_train_sp, b = y_train))
-# 
-# print(paste0("FAST-NNLS execution time: ", t[[3]]))
-# predicted_fastnnls <- X_test %*% fit_fastnnls
-# r2_score_fastnnls <- 1 - sum((y_test - predicted_fastnnls)^2) / sum((y_test - mean(y_test))^2)
-# print(paste0("R2 Score FAST-NNLS: ", r2_score_fastnnls))
-# nonzero_fastnnls <- sum(fit_fastnnls!=0)
-# print(paste0("Nonzero coefs FAST-NNLS: ", nonzero_fastnnls))
-# 
-# # "FAST-NNLS execution time:  XXX"
-# # "R2 Score FAST-NNLS: XXX"
-# # "Nonzero coefs FAST-NNLS: XXX"
 
 
 # Solve using glmnet (analogous to scikit-learn's coordinate descent) ####
@@ -93,11 +74,51 @@ print(paste0("R2 Score glmnet Coordinate Descent: ", r2_score_cd))
 nonzero_cd <- sum(coefs_cd!=0)
 print(paste0("Nonzero coefs glmnet Coordinate Descent: ", nonzero_cd))
 
-# "glmnet Coordinate Descent execution time: 2.59999999999991"
+# "glmnet Coordinate Descent execution time: 2.71999999998661"
 # "R2 Score glmnet Coordinate Descent: 0.995265957065691"
 # "Nonzero coefs glmnet Coordinate Descent: 7797"
 # TODO: THIS ONE COULD BE A GOOD INITIALISATION FOR THE DENSE CASE WHERE THERE 
 # ARE NONNEGATIVITY CONSTRAINTS
+
+
+# Solve using glmnet::bigGlm ####
+t <- system.time(fit_cd <- glmnet::bigGlm(X_train, y_train, 
+                                  lower.limits = 0))
+
+print(paste0("glmnet::bigGlm execution time: ", t[[3]]))
+coefs_cd <- coef(fit_cd, s=0)
+predicted_cd <- predict(fit_cd, s = 0, newx = X_test)
+r2_score_cd <- 1 - sum((y_test - predicted_cd)^2) / sum((y_test - mean(y_test))^2)
+print(paste0("R2 Score glmnet::bigGlm: ", r2_score_cd))
+nonzero_cd <- sum(coefs_cd!=0)
+print(paste0("Nonzero coefs glmnet::bigGlm: ", nonzero_cd))
+
+# "glmnet Coordinate Descent execution time: 2.66999999999825"
+# "R2 Score glmnet Coordinate Descent: 0.995265957065691"
+# "Nonzero coefs glmnet Coordinate Descent: 7797"
+
+
+# # Solve using FAST-nnls (Fast Approximate Solution Trajectory-NNLS) ####
+# see https://stackoverflow.com/questions/58006606/rcpp-implementation-of-fast-nonnegative-least-squares#:~:text=4.%20EDIT%20Jan%202022:%20Use%20the%20nnls%20function
+t <- system.time(fit_fastnnls <- RcppML::nnls(a = crossprod(X_train),
+                                              b = crossprod(X_train, y_train),
+                                              cd_maxit = 0L, # set to 0L to use FAST-NNLS without coordinate descent step
+                                              fast_nnls=TRUE
+                                              )) 
+# # t <- system.time( fit_fastnnls <- fastnnls_dense(A = X_train, b = y_train))
+# # t <- system.time( fit_fastnnls <- fastnnls_sparse(A = X_train_sp, b = y_train))
+
+print(paste0("FAST-NNLS execution time: ", t[[3]]))
+predicted_fastnnls <- X_test %*% fit_fastnnls
+r2_score_fastnnls <- 1 - sum((y_test - predicted_fastnnls)^2) / sum((y_test - mean(y_test))^2)
+print(paste0("R2 Score FAST-NNLS: ", r2_score_fastnnls))
+nonzero_fastnnls <- sum(fit_fastnnls!=0)
+print(paste0("Nonzero coefs FAST-NNLS: ", nonzero_fastnnls))
+
+"FAST-NNLS execution time:  486.139999999999"
+"R2 Score FAST-NNLS: 0.391182631236245" # realy poor
+"Nonzero coefs FAST-NNLS: 4244"
+
 
 
 # Solve using osqp ####
@@ -118,13 +139,17 @@ nonzero_osqp <- sum(fit_osqp!=0)
 print(paste0("Nonzero coefs osqp: ", nonzero_osqp))
 
 
+
+
+
 # Solve using L0glm via LSCG ####
 t <- system.time( fit_L0glm_LSCG <- L0glm.fit(
-  X = X_train, y = y_train,
+  X = Matrix(X_train, sparse=T), # note: due to recent change in Matrix package error when using dense X Error in as(Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T),  : no method or default for coercing “dgRMatrix” to “dgCMatrix” 
+  y = y_train,
   start = rep(1, ncol(X_train)),
   warm.start = 1,
   family = gaussian(link="identity"), 
-  lambda = "bic", 
+  lambda = "gic", 
   nonnegative = TRUE,
   solver = "eigen", method = 3L)$coefficients )
 
@@ -135,19 +160,20 @@ print(paste0("R2 Score L0glm LSCG: ", r2_score_L0glm_LSCG))
 nonzero_L0glm_LSCG <- sum(fit_L0glm_LSCG!=0)
 print(paste0("Nonzero coefs L0glm LSCG: ", nonzero_L0glm_LSCG))
 
-# "L0glm LSCG execution time: 162.49000000002"
-# "R2 Score L0glm LSCG: 0.997891746563844"
-# "Nonzero coefs L0glm LSCG: 4566"
+# "L0glm LSCG execution time: 107.760000000009"
+# "R2 Score L0glm LSCG: 0.995738817265223"
+# "Nonzero coefs L0glm LSCG: 4264"
 
 
 
-# # Solve using L0glm via Cholesky LLT ####
+
+# Solve using L0glm via Cholesky LLT ####
 # t <- system.time( fit_L0glm_chol <- L0glm.fit(
-#   X = X_train, y = y_train,
+#   X = Matrix(X_train, sparse=T), y = y_train,
 #   start = rep(1, ncol(X_train)),
 #   warm.start = 1,
-#   family = gaussian(link="identity"), 
-#   lambda = "bic", 
+#   family = gaussian(link="identity"),
+#   lambda = "bic",
 #   nonnegative = TRUE,
 #   solver = "eigen", method = 7L)$coefficients )
 # 
@@ -181,7 +207,7 @@ print(paste0("R2 Score L0glm glmnet: ", r2_score_L0glm_glmnet))
 nonzero_L0glm_glmnet <- sum(fit_L0glm_glmnet!=0)
 print(paste0("Nonzero coefs L0glm glmnet: ", nonzero_L0glm_glmnet))
 
-# "L0glm glmnet execution time: 202.11"
+# "L0glm glmnet execution time: 140.770000000004"
 # "R2 Score L0glm glmnet: 0.99866311501799"
 # "Nonzero coefs L0glm glmnet: 4690"
 
