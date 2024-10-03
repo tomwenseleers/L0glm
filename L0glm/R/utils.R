@@ -29,6 +29,12 @@
 #   return(x$coefficients)
 # }
 
+# to allow conversion of dgRMatrix to dgCMatrix & avoiding having to substitute dgCMatrix by CsparseMatrix in code 
+# BUT: ideally dgRMatrix class should never be produced, only dgCMatrix should be used
+# so removed this code again
+# setAs("dgRMatrix", to = "dgCMatrix", function(from){
+#   as(as(from, "CsparseMatrix"), "dgCMatrix")
+# })
 
 ########################################
 #### NON-EXPORTED UTILITY FUNCTIONS ####

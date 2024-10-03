@@ -20,12 +20,15 @@ solvers <- c("osqp",
              "eigen", 
              "eigen", 
              "eigen", 
-             "eigen",
-             "parglm")
+             "eigen"#,
+             #"parglm"
+             )
 methods <- c(1, 
              # 1, 1, 
              1, 
-             1, 4, 6, 7, 1)
+             1, 4, 6, 7# , 
+             #1
+             )
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
@@ -33,8 +36,9 @@ solver_names <- c("osqp",
                   "eigen QR", 
                   "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
                   "eigen CG", 
-                  "eigen Cholesky LLT",
-                  "parglm")
+                  "eigen Cholesky LLT" # ,
+                  #"parglm"
+                  )
 crit = "gic"
 
 
@@ -122,10 +126,13 @@ results_melt <- results %>%
 results_melt$Solver = factor(results_melt$Solver, 
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
-                                          "glmnet", "parglm")),
+                                          "glmnet" # , "parglm"
+                                          )),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
-                                          "L0glm_glmnet", "L0glm_parglm")))
+                                          "L0glm_glmnet" # , 
+                                          #"L0glm_parglm"
+                                          )))
 
 # Plot
 ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -243,8 +250,16 @@ results_melt2 <- results %>%
                         Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
   mutate(method = factor(method), solver = factor(solver))
 results_melt2$Solver = factor(results_melt2$Solver, 
-                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "glmnet", "parglm")),
-                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_glmnet", "L0glm_parglm")))
+                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
+                                           #"nnls", "nnls_noreg",
+                                           "glmnet"
+                                           #, "parglm"
+                                           )),
+                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
+                                           #"L0glm_nnls", "nnls_noreg", 
+                                           "L0glm_glmnet"
+                                           # "L0glm_parglm"
+                                           )))
 
 # Plot
 ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -265,6 +280,7 @@ ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.pdf", w
 # TODO check if this can be improved
 # maybe just use glmnet to solve the first 5 iterations of the iterative
 # CG & LSCG eigen solvers??
+# or use nonnegative glmnet::bigGlm unregularised fit as initialisation?
 
 ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
                                                          colour=interaction(Solver))) +
@@ -300,12 +316,15 @@ solvers <- c("osqp",
              "eigen", 
              "eigen", 
              "eigen", 
-             "eigen",
-             "parglm")
+             "eigen" #,
+             # "parglm"
+             )
 methods <- c(1, 
              # 1, 1, 
              1, 
-             1, 4, 6, 7, 1)
+             1, 4, 6, 7
+             #, 1
+             )
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
@@ -313,8 +332,9 @@ solver_names <- c("osqp",
                   "eigen QR", 
                   "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
                   "eigen CG", 
-                  "eigen Cholesky LLT",
-                  "parglm")
+                  "eigen Cholesky LLT"# ,
+                  #"parglm"
+                  )
 crit = "gic"
 
 
@@ -387,6 +407,13 @@ for (n in sizes) {
   }
 }
 
+# TODO= ERROR arises in eigen solver in line
+# as(Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T), "dgCMatrix"):
+# no method or default for coercing “dgRMatrix” to “dgCMatrix”
+# should use dgCMatrix only
+# problem with Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T)
+# is that it produces a dgRMatrix instead of a dgCMatrix
+
 warnings()
 # TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
 # if tol is set too low - now falling back to 
@@ -402,10 +429,14 @@ results_melt <- results %>%
 results_melt$Solver = factor(results_melt$Solver, 
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
-                                          "glmnet", "parglm")),
+                                          "glmnet"
+                                          #, "parglm"
+                                          )),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
-                                          "L0glm_glmnet", "L0glm_parglm")))
+                                          "L0glm_glmnet"
+                                          #, "L0glm_parglm"
+                                          )))
 
 # Plot
 ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -523,8 +554,16 @@ results_melt2 <- results %>%
                         Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
   mutate(method = factor(method), solver = factor(solver))
 results_melt2$Solver = factor(results_melt2$Solver, 
-                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", "nnls", "nnls_noreg", "glmnet", "parglm")),
-                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", "L0glm_nnls", "nnls_noreg", "L0glm_glmnet", "L0glm_parglm")))
+                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
+                                           #"nnls", "nnls_noreg", 
+                                           "glmnet"
+                                           #, "parglm"
+                                           )),
+                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
+                                           #"L0glm_nnls", "nnls_noreg", 
+                                           "L0glm_glmnet"
+                                           #, "L0glm_parglm"
+                                           )))
 
 # Plot
 ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +

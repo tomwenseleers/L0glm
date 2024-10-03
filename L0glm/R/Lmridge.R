@@ -756,8 +756,8 @@ Yweights <- function(y, weights){
 row_augX <- function(Xw, lambdas = NULL){
   if (mean(lambdas)>1E-20&!is.null(lambdas)) {
     if (issparse(Xw)) { return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) } else {
-                        return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) # now always returning augmented matrix as sparse if row augmentation method is requested
-                        # return( rbind(Xw, diag(x=sqrt(lambdas))) )
+                        # return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) # always returning augmented matrix as sparse if row augmentation method is requested
+                        return( rbind(Xw, diag(x=sqrt(lambdas))) )
                         }
     } else
     { return(Xw) }
