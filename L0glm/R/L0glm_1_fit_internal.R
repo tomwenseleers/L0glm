@@ -95,12 +95,13 @@ L0glm.fit.internal = function(X,
     # to initialise with constant starting values
     mu = linkinv(eta) # predictions on response scale µ
     
-    # option1 for start: equal coefficients
+    # option1 for start: equal coefficients (used in Frommlet & Nuel)
     # start <- start_coefs(X=X, family=family) 
     # option2 for start: coordinate-wise coefficients 
     # = crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2), 
     # which would be exact if variables were orthogonal
     # gave a more stable solution & converged faster
+    # alt 3d option if there are nonnegativity constraints: use glmnet::bigGlm with lower=0 and no regularisation as starting coefs?
     start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean = prior.mean, family=family, lambda=lambda) 
     start <- clip(coefs=start, lower, upper)
     # start <- warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
