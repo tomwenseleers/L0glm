@@ -112,10 +112,6 @@ for (n in sizes) {
 }
 
 warnings()
-# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
-# if tol is set too low - now falling back to 
-# Cholesky LLT if that happens - check if this can be fixed somehow?
-# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
 
 # Reshape data for plotting
 results_melt <- results %>% 
@@ -407,13 +403,6 @@ for (n in sizes) {
   }
 }
 
-# TODO= ERROR arises in eigen solver in line
-# as(Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T), "dgCMatrix"):
-# no method or default for coercing “dgRMatrix” to “dgCMatrix”
-# should use dgCMatrix only
-# problem with Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T)
-# is that it produces a dgRMatrix instead of a dgCMatrix
-
 warnings()
 # TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
 # if tol is set too low - now falling back to 
@@ -468,8 +457,6 @@ ggsave(file="..//benchmarks//plots//timings//timings_dense_poisson.png", width=7
 ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-# results look good for all solvers & solution much better & faster than plain nnls
 
 
 
@@ -543,10 +530,6 @@ for (n in sizes) {
 }
 
 warnings()
-# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
-# if tol is set too low - now falling back to 
-# Cholesky LLT if that happens - check if this can be fixed somehow?
-# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
 
 # Reshape data for plotting
 results_melt2 <- results %>% 
@@ -584,6 +567,7 @@ ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_gaussian.pdf", wi
 # TODO check if this can be improved
 # maybe just use glmnet to solve the first 5 iterations of the iterative
 # CG & LSCG eigen solvers??
+# TODO test if initialisation with nonnegative unregularised glmnet::bigGlm would speed up things & give better solution?
 
 ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
                                                          colour=interaction(Solver))) +

@@ -133,7 +133,9 @@ lmridge.osqp <- function(Xw,
                          control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
                          prior.mean = NULL,
                          iteration = 1){
-  Xw = as(as(Matrix(Xw, sparse=T), "generalMatrix"), "dgCMatrix") # here always coercing Xw to sparse format
+  if (!inherits(Xw, "dgCMatrix")) {
+    Xw <- Matrix(Xw, sparse = TRUE)
+  } # # Xw = as(as(Matrix(Xw, sparse=T), "generalMatrix"), "dgCMatrix") # here always coercing Xw to sparse format
   if(!is.null(lambdas)&(sum(lambdas)!=0)) {
     Xwaug <- row_augX(Xw, lambdas)
     ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean) 
@@ -756,8 +758,9 @@ Yweights <- function(y, weights){
 row_augX <- function(Xw, lambdas = NULL){
   if (mean(lambdas)>1E-20&!is.null(lambdas)) {
     if (issparse(Xw)) { return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) } else {
-                        # return( as(Matrix(rbind(Xw, Diagonal(x=sqrt(lambdas))), sparse=T), "dgCMatrix") ) # always returning augmented matrix as sparse if row augmentation method is requested
-                        return( rbind(Xw, diag(x=sqrt(lambdas))) )
+                        return( rbind2(as(Xw, "CsparseMatrix"), Diagonal(x = sqrt(lambdas))) # always returning augmented matrix as sparse dgCMatrix if row augmentation method is requested
+                        # return( rbind(Xw, diag(x=sqrt(lambdas)))
+                        )
                         }
     } else
     { return(Xw) }
