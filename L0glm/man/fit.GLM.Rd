@@ -2,9 +2,7 @@
 % Please edit documentation in R/benchmark.L0glm.R
 \name{fit.GLM}
 \alias{fit.GLM}
-\title{Fit a simulated object created with \code{\link{simulate}} function.
-This function simulates different types of data based on the method specified. 
-Various aspects of the data generation can be controlled using the \code{options} parameter.}
+\title{Fit Sparse Nonnegative Identity Link Generalized Linear Models using Various Methods}
 \usage{
 fit.GLM(
   sim,
@@ -17,23 +15,84 @@ fit.GLM(
 )
 }
 \arguments{
-\item{sim}{Simulated data generated using \code\link{simulate} function.}
+\item{sim}{Simulated data generated using the \code{\link{simulate}}
+function.}
 
-\item{method}{A numeric value indicating the method that needs to be used to fit the GLM. 
-The possible values are:
-1: ...}
+\item{family}{An optional \code{family} object specifying the GLM family. Currently (nonnegative) identity link \code{gaussian()} and \code{poisson()} are supported.}
 
-\item{options}{Here specify the options that each method accepts the options that the package
-that method calls accepts (and to refer to the respective packages and functions)}
+\item{method}{A numeric value indicating the method to use for fitting the
+  GLM. The possible values are:
+\describe{
+  \item{1}{\strong{Nonnegative L0glm}: Uses the \code{L0glm.fit} function to produce a nonnegative L0-penalized GLM fit.}
+  \item{2}{\strong{Nonnegative LASSO using glmnet}: Employs the \code{glmnet} package for LASSO regression with nonnegativity constraints.}
+  \item{3}{\strong{Adaptive nonnegative LASSO using glmnet}: Performs adaptive LASSO with weights from an initial nonnegative LASSO fit.}
+  \item{4}{\strong{Nonnegative L0Learn}: Uses the \code{L0Learn} package for L0-penalized regression with nonnegativity constraints.}
+  \item{5}{\strong{Nonnegative L0Learn after glmnet LASSO}: Applies \code{L0Learn} after selecting variables with a LASSO fit from \code{glmnet}.}
+  \item{6}{\strong{Nonnegative abess}: Utilizes the \code{abess} package for best subset selection with nonnegativity constraints.}
+  \item{7}{\strong{Nonnegative abess after nonnegative LASSO}: Performs best subset selection with \code{abess} after a nonnegative LASSO.}
+  \item{8}{\strong{Nonnegative weighted MCP in ordinis}: Fit an MCP penalized GLM model with nonnegativity constraints using the \code{ordinis} package.}
+  \item{9}{\strong{ordinis SCAD}: Fit a SCAD penalized GLM model with nonnegativity constraints using the \code{ordinis} package.}
+}}
 
-\item{internal}{For internal calls (like method = 3) where we need a starting fit, the function self calls
-and requires the whole resulting fit (not only the coefficients, which is what is returned)}
+\item{options}{A list of additional options specific to the method being
+used. These options are passed to the underlying functions from the
+respective packages. Refer to the documentation of those packages for
+details.}
+
+\item{plot}{Logical; if \code{TRUE}, plots related to the fitting process are
+displayed.}
+
+\item{IC}{Character string specifying the information criterion to use for
+model selection. Possible values are \code{"gic"}, \code{"aic"}, \code{"bic"}, \code{"mbic"} or \code{"ebic"}.}
+
+\item{internal}{Logical; for internal calls (e.g., when \code{method = 3})
+where a starting fit is needed. If \code{TRUE}, the function returns the
+full fitted model object instead of just the coefficients.}
 }
 \value{
-A vector or matrix of coefficients.
+If \code{internal = FALSE}, returns a vector or matrix of
+coefficients from the fitted model. If \code{internal = TRUE}, returns the
+full fitted model object from the underlying fitting function.
 }
 \description{
-Fit a simulated object created with \code{\link{simulate}} function.
-This function simulates different types of data based on the method specified. 
-Various aspects of the data generation can be controlled using the \code{options} parameter.
+Fits a sparse generalized linear model to simulated data using different
+methods specified by the user subject to nonnegativity constraints. 
+This function utilizes different algorithms
+and packages to fit sparse nonnegative identity link GLMs, and various aspects of the fitting process can
+be controlled using the \code{options} parameter.
+}
+\details{
+This function supports various methods for fitting GLMs, including
+L0 penalization (using \code{L0glm}, \code{abess} or \code{L0Learn}), LASSO or adaptive LASSO (using \code{glmnet}) and MCP or SCAD (using \code{ordinis}). 
+The \code{options} parameter allows passing additional arguments to these underlying functions.
+
+**Method Details:**
+
+- **Method 1 (Nonnegative L0glm):** Fits a GLM using L0 penalization via the \code{L0glm.fit} function.
+- **Method 2 (Nonnegative LASSO using glmnet):** Fits a LASSO regression model using the \code{glmnet} package.
+- **Method 3 (Adaptive nonnegative LASSO using glmnet):** Performs an adaptive LASSO by weighting coefficients from an initial LASSO fit.
+- **Method 4 (Nonnegative L0Learn):** Fits a nonnegative L0-penalized regression using \code{L0Learn}.
+- **Method 5 (Nonnegative L0Learn after glmnet LASSO):** Applies \code{L0Learn} on variables selected by a previous LASSO fit.
+- **Method 6 (Nonnegative abess):** Uses \code{abess} for best subset selection with nonnegativity constraints.
+- **Method 7 (Nonnegative abess after nonnegative LASSO):** Performs best subset selection after a nonnegative LASSO.
+- **Method 8 (Nonnegative MCP):** Fits a model using the MCP penalty with nonnegativity constraints via \code{ordinis}.
+- **Method 9 (Nonnegative SCAD):** Fits a model using the SCAD penalty with nonnegativity constraints via via \code{ordinis}.
+}
+\examples{
+\dontrun{
+# Simulate data
+sim_data <- simulate(n = 100, p = 10, family = "gaussian")
+
+# Fit using method 2 (glmnet)
+fit <- fit.GLM(sim = sim_data, method = 2)
+
+# View coefficients
+print(fit)
+}
+
+}
+\seealso{
+\code{\link{simulate}}, \code{\link[glmnet]{glmnet}},
+\code{\link[L0Learn]{L0Learn}}, \code{\link[abess]{abess}},
+\code{\link[ordinis]{ordinis}}
 }

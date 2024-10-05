@@ -44,6 +44,7 @@ L0glm.fit.internal = function(X,
   # https://cran.r-project.org/web/packages/abess/abess.pdf
   # Implementing these might further speed up the algo.
   
+  #if the solver contains the _noreg key it means the regularization needs to be disabled
   if (grepl("_noreg",solver)) { solver = gsub("_noreg", "", solver) # use given solver without regularisation
                                 lambda = 0
                                 maxit = 1 } # strictly speaking this should only apply to gaussian case
@@ -102,9 +103,9 @@ L0glm.fit.internal = function(X,
     # which would be exact if variables were orthogonal
     # gave a more stable solution & converged faster
     # alt 3d option if there are nonnegativity constraints: use glmnet::bigGlm with lower=0 and no regularisation as starting coefs?
-    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean = prior.mean, family=family, lambda=lambda) 
+    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean=prior.mean, family=family, lambda=lambda) 
     start <- clip(coefs=start, lower, upper)
-    # start <- warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
+    start <- warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
     
     beta <-  beta_old <- start
   } else {  
@@ -125,7 +126,7 @@ L0glm.fit.internal = function(X,
   if (is.null(start)) { nonzero = as.vector(beta!=0) } else { nonzero = as.vector(start!=0) } 
   # mask <- rep(FALSE, p)
   
-  if (solver=="parglm") { X <- as.matrix(X) } # this solver currently only supports dense matrices 
+  # if (solver=="parglm") { X <- as.matrix(X) } # this solver currently only supports dense matrices # removed this solver
   
   for (i in 1L:maxit) {
     # print(i)

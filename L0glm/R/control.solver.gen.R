@@ -91,14 +91,14 @@ control.solver.gen <- function(solver,
     
     l <- list(thresh = abstol, maxit = maxit, standardize = standardize)
     
-  } else if (solver == "parglm"){
-    if(is.null(tol)) tol <- 1e-8
-    if(is.null(block_size)) block_size <- 1000
-    l <- list(epsilon = tol, 
-              nthreads = RhpcBLASctl::get_num_cores(), # didn't see much improvement if I tried to use more
-              block_size = block_size,
-              method = "FAST"  # "FAST"=Armadillo Cholesky LLT or "LINPACK" or "LAPACK"
-              )
+  # } else if (solver == "parglm"){ # removed this solver
+  #   if(is.null(tol)) tol <- 1e-8
+  #   if(is.null(block_size)) block_size <- 1000
+  #   l <- list(epsilon = tol, 
+  #             nthreads = RhpcBLASctl::get_num_cores(), # didn't see much improvement if I tried to use more
+  #             block_size = block_size,
+  #             method = "FAST"  # "FAST"=Armadillo Cholesky LLT or "LINPACK" or "LAPACK"
+  #             )
     
   } else if (solver == "nnls"){
     l <- list()

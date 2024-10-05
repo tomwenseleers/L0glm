@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0glm_4_tune.R
 \name{L0glm.tune}
 \alias{L0glm.tune}
-\title{Tunes the regulatisation parameter lambda of an L0glm fit.}
+\title{Tunes the regularisation parameter lambda of an L0glm fit.}
 \usage{
 L0glm.tune(
   X,

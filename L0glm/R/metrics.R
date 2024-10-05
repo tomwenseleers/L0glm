@@ -7,7 +7,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
                         family = gaussian(identity), 
                         beta_true = NULL, 
-                        p = NULL # to pass in case model concerns one fitted on a pre-selected subset 
+                        p = NULL # to pass in case model concerns one fitted on a pre-selected subset (p=nr of original variables)
                         # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
                         # lower=rep(0, ncol(X)),
                         # upper=rep(Inf,ncol(X)) 
@@ -15,9 +15,11 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   if (!is(family, "family")) family = family()
   
-  if (issparse(beta)) { beta <- matrix(beta) }
-  if (is.vector(beta)) { beta <- matrix(beta, ncol=1) }
-  if (is.vector(beta_true)) { beta_true <- matrix(beta_true, ncol=1) }
+  # alwayse coerce beta & beta_true to a sparse dgCMatrix if either is a dense vector
+  if (is.vector(beta_true)) beta_true <- Matrix(beta_true, ncol=1, sparse=T)
+  if (is.vector(beta)) beta <- Matrix(beta, ncol=1, sparse=T)
+  if (!issparse(beta_true)) beta_true <- Matrix(beta_true, sparse=T)
+  if (!issparse(beta)) beta <- Matrix(beta, sparse=T)
   
   y <- as.matrix(y)
   
@@ -79,12 +81,13 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     MD_selcoefs = mean(beta[sel]-beta_true[sel]) # mean deviation
     MAD_selcoefs = mean(abs(beta[sel]-beta_true[sel])) # mean absolute deviation
     sMAPE_selcoefs =  mean(2 * abs(beta[sel] - beta_true[sel]) / (abs(beta[sel]) + abs(beta_true[sel]) + 1E-10)) # symmetric mean absolute percentage error, 0 = perfect agreement
-    bias_selcoefs = as.vector(coef(lm(as.vector(beta_true[sel]) ~ 0 + as.vector(beta[sel])))[[1]]) # regression beta true on beta (closer to 1 is better, >1 means you underestimate true coefs, <1 means you overestimate true coefs)
-    R2_selcoefs = summary(lm(as.vector(beta_true[sel]) ~ 0+as.vector(beta[sel])))$r.squared # I use R2 from zero intercept regression of beta_true on beta
+    bias_selcoefs = ifelse(sum(sel)!=0, as.vector(coef(lm(as.vector(beta_true[sel]) ~ 0 + as.vector(beta[sel])))[[1]]), 0) # regression beta true on beta (closer to 1 is better, >1 means you underestimate true coefs, <1 means you overestimate true coefs)
+    R2_selcoefs = ifelse(sum(sel)!=0, summary(lm(as.vector(beta_true[sel]) ~ 0+as.vector(beta[sel])))$r.squared, 0) # I use R2 from zero intercept regression of beta_true on beta
     
   } else {
     TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
   }
+  
   # metrics related to prediction accuracy ####
   # calculate deviance
   if (is.null(beta_true)) { # calculated weights based on expected value

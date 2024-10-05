@@ -1,24 +1,77 @@
 # Functions for benchmarking L0glm algo against other algorithms
 
-#' Fit a simulated object created with \code{\link{simulate}} function.
-#' This function simulates different types of data based on the method specified. 
-#' Various aspects of the data generation can be controlled using the \code{options} parameter.
-#' @param sim
-#' Simulated data generated using \code\link{simulate} function. 
-#' @param method 
-#' A numeric value indicating the method that needs to be used to fit the GLM. 
-#' The possible values are:
-#' 1: ...
-#' @param options 
-#' Here specify the options that each method accepts the options that the package
-#' that method calls accepts (and to refer to the respective packages and functions)
-#' @param internal
-#' For internal calls (like method = 3) where we need a starting fit, the function self calls
-#' and requires the whole resulting fit (not only the coefficients, which is what is returned)
+#' Fit Sparse Nonnegative Identity Link Generalized Linear Models using Various Methods
 #'
-#' @return A vector or matrix of coefficients.
+#' Fits a sparse generalized linear model to simulated data using different
+#' methods specified by the user subject to nonnegativity constraints. 
+#' This function utilizes different algorithms
+#' and packages to fit sparse nonnegative identity link GLMs, and various aspects of the fitting process can
+#' be controlled using the \code{options} parameter.
 #'
-#' 
+#' @param sim Simulated data generated using the \code{\link{simulate}}
+#'   function.
+#' @param family An optional \code{family} object specifying the GLM family. Currently (nonnegative) identity link \code{gaussian()} and \code{poisson()} are supported.
+#' @param method A numeric value indicating the method to use for fitting the
+#'   GLM. The possible values are:
+#' \describe{
+#'   \item{1}{\strong{Nonnegative L0glm}: Uses the \code{L0glm.fit} function to produce a nonnegative L0-penalized GLM fit.}
+#'   \item{2}{\strong{Nonnegative LASSO using glmnet}: Employs the \code{glmnet} package for LASSO regression with nonnegativity constraints.}
+#'   \item{3}{\strong{Adaptive nonnegative LASSO using glmnet}: Performs adaptive LASSO with weights from an initial nonnegative LASSO fit.}
+#'   \item{4}{\strong{Nonnegative L0Learn}: Uses the \code{L0Learn} package for L0-penalized regression with nonnegativity constraints.}
+#'   \item{5}{\strong{Nonnegative L0Learn after glmnet LASSO}: Applies \code{L0Learn} after selecting variables with a LASSO fit from \code{glmnet}.}
+#'   \item{6}{\strong{Nonnegative abess}: Utilizes the \code{abess} package for best subset selection with nonnegativity constraints.}
+#'   \item{7}{\strong{Nonnegative abess after nonnegative LASSO}: Performs best subset selection with \code{abess} after a nonnegative LASSO.}
+#'   \item{8}{\strong{Nonnegative weighted MCP in ordinis}: Fit an MCP penalized GLM model with nonnegativity constraints using the \code{ordinis} package.}
+#'   \item{9}{\strong{ordinis SCAD}: Fit a SCAD penalized GLM model with nonnegativity constraints using the \code{ordinis} package.}
+#' }
+#' @param options A list of additional options specific to the method being
+#'   used. These options are passed to the underlying functions from the
+#'   respective packages. Refer to the documentation of those packages for
+#'   details.
+#' @param plot Logical; if \code{TRUE}, plots related to the fitting process are
+#'   displayed.
+#' @param IC Character string specifying the information criterion to use for
+#'   model selection. Possible values are \code{"gic"}, \code{"aic"}, \code{"bic"}, \code{"mbic"} or \code{"ebic"}.
+#' @param internal Logical; for internal calls (e.g., when \code{method = 3})
+#'   where a starting fit is needed. If \code{TRUE}, the function returns the
+#'   full fitted model object instead of just the coefficients.
+#'
+#' @return If \code{internal = FALSE}, returns a vector or matrix of
+#' coefficients from the fitted model. If \code{internal = TRUE}, returns the
+#' full fitted model object from the underlying fitting function.
+#'
+#' @details This function supports various methods for fitting GLMs, including
+#' L0 penalization (using \code{L0glm}, \code{abess} or \code{L0Learn}), LASSO or adaptive LASSO (using \code{glmnet}) and MCP or SCAD (using \code{ordinis}). 
+#' The \code{options} parameter allows passing additional arguments to these underlying functions.
+#'
+#' **Method Details:**
+#'
+#' - **Method 1 (Nonnegative L0glm):** Fits a GLM using L0 penalization via the \code{L0glm.fit} function.
+#' - **Method 2 (Nonnegative LASSO using glmnet):** Fits a LASSO regression model using the \code{glmnet} package.
+#' - **Method 3 (Adaptive nonnegative LASSO using glmnet):** Performs an adaptive LASSO by weighting coefficients from an initial LASSO fit.
+#' - **Method 4 (Nonnegative L0Learn):** Fits a nonnegative L0-penalized regression using \code{L0Learn}.
+#' - **Method 5 (Nonnegative L0Learn after glmnet LASSO):** Applies \code{L0Learn} on variables selected by a previous LASSO fit.
+#' - **Method 6 (Nonnegative abess):** Uses \code{abess} for best subset selection with nonnegativity constraints.
+#' - **Method 7 (Nonnegative abess after nonnegative LASSO):** Performs best subset selection after a nonnegative LASSO.
+#' - **Method 8 (Nonnegative MCP):** Fits a model using the MCP penalty with nonnegativity constraints via \code{ordinis}.
+#' - **Method 9 (Nonnegative SCAD):** Fits a model using the SCAD penalty with nonnegativity constraints via via \code{ordinis}.
+#'
+#' @seealso \code{\link{simulate}}, \code{\link[glmnet]{glmnet}},
+#' \code{\link[L0Learn]{L0Learn}}, \code{\link[abess]{abess}},
+#' \code{\link[ordinis]{ordinis}}
+#'
+#' @examples
+#' \dontrun{
+#' # Simulate data
+#' sim_data <- simulate(n = 100, p = 10, family = "gaussian")
+#'
+#' # Fit using method 2 (glmnet)
+#' fit <- fit.GLM(sim = sim_data, method = 2)
+#'
+#' # View coefficients
+#' print(fit)
+#' }
+#'
 #' @export
 fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, 
                     IC = "gic", internal = FALSE){
@@ -51,7 +104,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     }
     if(plot){
       plot(x = result$coefficients, y=sim$beta_true, pch=16, col='blue',
-           main="L0 glm identity link Poisson with lambda preset to optimise BIC",
+           main=paste0("L0glm identity link Poisson with lambda preset to optimise ", toupper(IC)),
            xlab="estimated coefficients", ylab="true coefficients")
     }
     
@@ -82,11 +135,11 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     
     if(plot){
       plot(result, xvar='lambda',
-           main = "Regularisation path negative weighted LASSO with Glmnet")
+           main = "Regularisation path glmnet nonnegative weighted LASSO")
       abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
       
       plot(x = coefs[-1], y=sim$beta_true, pch=16, col='blue',
-           main="Glmnet nonnegative weighted LASSO",
+           main="glmnet nonnegative weighted LASSO",
            xlab="estimated coefficients", ylab="true coefficients")
     }
     
@@ -135,7 +188,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
     
     if(plot){
       plot(result, xvar='lambda',
-           main = "Regularisation path adaptive LASSO with Glmnet")
+           main = "Regularisation path glmnet nonnegative weighted adaptive LASSO")
       abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
       
       plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',
@@ -270,7 +323,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
       plot(fit, type="tune")
       
       plot(x=coefs, y=sim$beta_true, pch=16, col='blue',
-           main="True vs. estimated coefficients abess best\nsubset weighted least squares",
+           main="True vs. estimated coefficients abess best\nsubset nonnegative weighted least squares",
            xlab="estimated coefficients", ylab="true coefficients")
     }
     
@@ -397,26 +450,65 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 
 
 
-#' Fit a multichannel simulated object created with \code{\link{simulate}} function.
-#' This function simulates different types of data based on the method specified. 
-#' Various aspects of the data generation can be controlled using the \code{options} parameter.
-#' @param sim
-#' Simulated data generated using \code\link{simulate} function. 
-#' @param method 
-#' A numeric value indicating the method that needs to be used to fit the GLM. 
-#' The possible values are:
-#' 1: ...
-#' @param options 
-#' Here specify the options that each method accepts the options that the package
-#' that method calls accepts (and to refer to the respective packages and functions)
-#' @param internal
-#' For internal calls (like method = 3) where we need a starting fit, the function self calls
-#' and requires the whole resulting fit (not only the coefficients, which is what is returned)
+#' Fit Sparse Multichannel Nonnegative Gaussian or Identity Link Poisson Generalized Linear Models using Various Methods
 #'
-#' @return A vector or matrix of coefficients.
+#' Fits a multichannel nonnegative identity link generalized linear model (GLM) to simulated data using different methods specified by the user. 
+#' This function supports fitting multivariate response models, utilizing various algorithms and packages. The fitting process can be customized using the \code{options} parameter.
 #'
+#' @param sim Simulated data generated using the \code{\link{simulate}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).
+#' @param family An optional \code{family} object specifying the GLM family. Currently supports (nonnegative) identity link \code{gaussian()} and \code{poisson()}. Default is \code{NULL}, which tries to infer from \code{sim}.
+#' @param method A numeric value indicating the method to use for fitting the multichannel GLM. The possible values are:
+#' \describe{
+#'   \item{1}{\strong{abess Multitask Learning}: Uses the \code{\link[abess]{abess}} package for best subset selection with multivariate Gaussian responses.}
+#'   \item{2}{\strong{glmnet Multivariate Group LASSO}: Employs the \code{\link[glmnet]{glmnet}} package for multivariate LASSO regression with nonnegativity constraints.}
+#' }
+#' @param options A list of additional options specific to the method being used. These options are passed to the underlying functions from the respective packages. Refer to the documentation of those packages for details.
+#' @param plot Logical; if \code{TRUE}, plots related to the fitting process are displayed. Default is \code{TRUE}.
+#' @param IC Character string specifying the information criterion to use for model selection. Possible values are \code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"} and \code{"mbic"}.
+#' @param internal Logical; for internal calls where a starting fit is needed. If \code{TRUE}, the function returns the full fitted model object instead of just the coefficients. Default is \code{FALSE}.
+#'
+#' @return A matrix of coefficients from the fitted model. Each column corresponds to a response variable (channel).
+#'
+#' @details
+#' This function supports fitting multichannel GLMs using different methods. The methods utilize different packages such as \code{\link[abess]{abess}} and \code{\link[glmnet]{glmnet}}. The \code{options} parameter allows passing additional arguments to these underlying functions.
+#'
+#' **Method Details:**
+#'
+#' - **Method 1 (abess Best Subset of Group Selection):**
+#'   - Uses the \code{\link[abess]{abess}} package to perform best subset of group selection for multivariate Gaussian responses (\code{family = "mgaussian"}) subject to nonnegativity constraints.
+#'   - Nonnegativity constraints are applied via the \code{beta.low} parameter.
+#'
+#' - **Method 2 (glmnet Multivariate Group LASSO):**
+#'   - Utilizes the \code{\link[glmnet]{glmnet}} package to fit a multivariate group LASSO regression model with nonnegativity constraints.
+#'   - Performs cross-validation to select the best lambda value.
+#'
+#' @seealso
+#' \code{\link{simulate}},
+#' \code{\link[abess]{abess}},
+#' \code{\link[glmnet]{glmnet}}
+#'
+#' @examples
+#' \dontrun{
+#' # Simulate multichannel data
+#' sim_data <- simulate(n = 100, p = 10, m = 5, family = "gaussian")
 #' 
+#' # Fit using method 1 (abess Best Subset of Group Selection)
+#' fit <- fit.GLM.mc(sim = sim_data, method = 1)
+#' 
+#' # View coefficients
+#' print(fit)
+#' 
+#' # Fit using method 2 (glmnet Multivariate Group LASSO)
+#' fit <- fit.GLM.mc(sim = sim_data, method = 2)
+#' 
+#' }
+#'
 #' @export
+
+# TODO: method 1 should be a group L0glm fit, method 2 abess best subset of groups
+# method 3 glmnet multivariate group LASSO (identity link Poisson can also be obtained approximately by using 1/(y+0.1) 1/variance weights)
+# TODO: add option relaxed=T/F which if T should (for all methods) after initial multitask feature selection
+# refit the model unregularised for the selected variables only
 fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic", internal = FALSE){
   require(scales)
   X <- sim$X
@@ -577,6 +669,15 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
 
 # logLik method for gaussian glmnet
 # cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+
+#' @title Compute Log-Likelihood for glmnet Objects
+#' @description Calculates the log-likelihood for models fitted using `glmnet`.
+#' @param object A `glmnet` model object.
+#' @param weights Observation weights.
+#' @param X The design matrix.
+#' @param y The response vector.
+#' @return The log-likelihood of the model.
+#' @export
 logLik.glmnet = function(object, weights, X, y) {
   n  = as.numeric(object$nobs)
   df = Matrix::colSums(object$beta!=0)
@@ -600,6 +701,14 @@ logLik.glmnet = function(object, weights, X, y) {
 
 # log-likelihood method for gaussian L0Learn fit,
 # cf logLik.ordinis in https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_methods.R
+#' @title Compute Log-Likelihood for L0Learn Objects
+#' @description Calculates the log-likelihood for models fitted using `L0Learn`.
+#' @param object An `L0Learn` model object.
+#' @param weights Observation weights.
+#' @param X The design matrix.
+#' @param y The response vector.
+#' @return The log-likelihood of the model.
+#' @export
 logLik.L0Learn = function(object, weights, X, y) {
   n  = object$n
   p = object$p

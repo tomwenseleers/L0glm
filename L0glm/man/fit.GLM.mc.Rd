@@ -2,9 +2,7 @@
 % Please edit documentation in R/benchmark.L0glm.R
 \name{fit.GLM.mc}
 \alias{fit.GLM.mc}
-\title{Fit a multichannel simulated object created with \code{\link{simulate}} function.
-This function simulates different types of data based on the method specified. 
-Various aspects of the data generation can be controlled using the \code{options} parameter.}
+\title{Fit Sparse Multichannel Nonnegative Gaussian or Identity Link Poisson Generalized Linear Models using Various Methods}
 \usage{
 fit.GLM.mc(
   sim,
@@ -17,23 +15,63 @@ fit.GLM.mc(
 )
 }
 \arguments{
-\item{sim}{Simulated data generated using \code\link{simulate} function.}
+\item{sim}{Simulated data generated using the \code{\link{simulate}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).}
 
-\item{method}{A numeric value indicating the method that needs to be used to fit the GLM. 
-The possible values are:
-1: ...}
+\item{family}{An optional \code{family} object specifying the GLM family. Currently supports (nonnegative) identity link \code{gaussian()} and \code{poisson()}. Default is \code{NULL}, which tries to infer from \code{sim}.}
 
-\item{options}{Here specify the options that each method accepts the options that the package
-that method calls accepts (and to refer to the respective packages and functions)}
+\item{method}{A numeric value indicating the method to use for fitting the multichannel GLM. The possible values are:
+\describe{
+  \item{1}{\strong{abess Multitask Learning}: Uses the \code{\link[abess]{abess}} package for best subset selection with multivariate Gaussian responses.}
+  \item{2}{\strong{glmnet Multivariate Group LASSO}: Employs the \code{\link[glmnet]{glmnet}} package for multivariate LASSO regression with nonnegativity constraints.}
+}}
 
-\item{internal}{For internal calls (like method = 3) where we need a starting fit, the function self calls
-and requires the whole resulting fit (not only the coefficients, which is what is returned)}
+\item{options}{A list of additional options specific to the method being used. These options are passed to the underlying functions from the respective packages. Refer to the documentation of those packages for details.}
+
+\item{plot}{Logical; if \code{TRUE}, plots related to the fitting process are displayed. Default is \code{TRUE}.}
+
+\item{IC}{Character string specifying the information criterion to use for model selection. Possible values are \code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"} and \code{"mbic"}.}
+
+\item{internal}{Logical; for internal calls where a starting fit is needed. If \code{TRUE}, the function returns the full fitted model object instead of just the coefficients. Default is \code{FALSE}.}
 }
 \value{
-A vector or matrix of coefficients.
+A matrix of coefficients from the fitted model. Each column corresponds to a response variable (channel).
 }
 \description{
-Fit a multichannel simulated object created with \code{\link{simulate}} function.
-This function simulates different types of data based on the method specified. 
-Various aspects of the data generation can be controlled using the \code{options} parameter.
+Fits a multichannel nonnegative identity link generalized linear model (GLM) to simulated data using different methods specified by the user. 
+This function supports fitting multivariate response models, utilizing various algorithms and packages. The fitting process can be customized using the \code{options} parameter.
+}
+\details{
+This function supports fitting multichannel GLMs using different methods. The methods utilize different packages such as \code{\link[abess]{abess}} and \code{\link[glmnet]{glmnet}}. The \code{options} parameter allows passing additional arguments to these underlying functions.
+
+**Method Details:**
+
+- **Method 1 (abess Best Subset of Group Selection):**
+  - Uses the \code{\link[abess]{abess}} package to perform best subset of group selection for multivariate Gaussian responses (\code{family = "mgaussian"}) subject to nonnegativity constraints.
+  - Nonnegativity constraints are applied via the \code{beta.low} parameter.
+
+- **Method 2 (glmnet Multivariate Group LASSO):**
+  - Utilizes the \code{\link[glmnet]{glmnet}} package to fit a multivariate group LASSO regression model with nonnegativity constraints.
+  - Performs cross-validation to select the best lambda value.
+}
+\examples{
+\dontrun{
+# Simulate multichannel data
+sim_data <- simulate(n = 100, p = 10, m = 5, family = "gaussian")
+
+# Fit using method 1 (abess Best Subset of Group Selection)
+fit <- fit.GLM.mc(sim = sim_data, method = 1)
+
+# View coefficients
+print(fit)
+
+# Fit using method 2 (glmnet Multivariate Group LASSO)
+fit <- fit.GLM.mc(sim = sim_data, method = 2)
+
+}
+
+}
+\seealso{
+\code{\link{simulate}},
+\code{\link[abess]{abess}},
+\code{\link[glmnet]{glmnet}}
 }

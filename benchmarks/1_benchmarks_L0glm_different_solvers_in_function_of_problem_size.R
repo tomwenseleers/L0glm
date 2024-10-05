@@ -10,7 +10,7 @@ devtools::load_all(".")
 ## 1.1 SINGLE CHANNEL ####
 
 # Simulation sizes (with n=p)
-sizes <- c(25, 50, 100, 500, 1000, 10000) # 2000) # , 5000, 10000, 20000)
+sizes <- c(25, 50, 100, 500, 1000, 10000)
 
 # Solvers and methods
 solvers <- c("osqp", 
@@ -20,24 +20,21 @@ solvers <- c("osqp",
              "eigen", 
              "eigen", 
              "eigen", 
-             "eigen"#,
-             #"parglm"
+             "eigen"
              )
 methods <- c(1, 
              # 1, 1, 
              1, 
-             1, 4, 6, 7# , 
-             #1
+             1, 4, 6, 7
              )
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
                   "glmnet", 
                   "eigen QR", 
-                  "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
+                  "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - investigate? now made to fall back to Cholesky LLT solver
                   "eigen CG", 
-                  "eigen Cholesky LLT" # ,
-                  #"parglm"
+                  "eigen Cholesky LLT"
                   )
 crit = "gic"
 
@@ -57,20 +54,19 @@ for (n in sizes) {
   y <- sim$y
   coefs.true <- sim$beta_true
   method <- 1
+  # Generate regularisation parameter
+  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
+                     lambda=lambda_preset) # component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
     method = methods[[i]]
     solver_name = solver_names[[i]]
-    # Generate regularisation parameter
-    lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-    
     # Fit model and measure time
-    start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
-                       lambda=lambda_preset) # component-wise initialisation
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y,
-        start=start, # NULL, # rep(1, ncol(X)), # NULL, # start, 
+        start=start, # NULL, # rep(1, ncol(X)), 
         warm.start = 1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
@@ -111,7 +107,7 @@ for (n in sizes) {
   }
 }
 
-warnings()
+warnings() # no warnings here
 
 # Reshape data for plotting
 results_melt <- results %>% 
@@ -122,12 +118,11 @@ results_melt <- results %>%
 results_melt$Solver = factor(results_melt$Solver, 
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
-                                          "glmnet" # , "parglm"
+                                          "glmnet" 
                                           )),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
-                                          "L0glm_glmnet" # , 
-                                          #"L0glm_parglm"
+                                          "L0glm_glmnet" 
                                           )))
 
 # Plot
@@ -180,16 +175,16 @@ for (n in sizes) {
   y <- sim$y
   coefs.true <- sim$beta_true
   method <- 1
+  # Generate regularisation parameter
+  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
+  # start = coef(glmnet::bigGlm(x=X, y=y, family="gaussian", lower=0, path=FALSE))[-1] # this worked less well: initialise with unregularised nonnegative bigGlm fit
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
     method = methods[[i]]
     solver_name = solver_names[[i]]
-    # Generate regularisation parameter
-    lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
     
     # Fit model and measure time
-    start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
-
     # print(cor(as.vector(start), as.vector(coefs.true)))
     fit.time <- system.time(
       L0glm <- L0glm.fit(
@@ -238,7 +233,6 @@ warnings()
 # TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
 # if tol is set too low - now falling back to 
 # Cholesky LLT if that happens - check if this can be fixed somehow?
-# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
 
 # Reshape data for plotting
 results_melt2 <- results %>% 
@@ -249,12 +243,10 @@ results_melt2$Solver = factor(results_melt2$Solver,
                               levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                            #"nnls", "nnls_noreg",
                                            "glmnet"
-                                           #, "parglm"
                                            )),
                               labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                            #"L0glm_nnls", "nnls_noreg", 
                                            "L0glm_glmnet"
-                                           # "L0glm_parglm"
                                            )))
 
 # Plot
@@ -274,9 +266,6 @@ ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.pdf", w
 
 # here glmnet solver is markedly worse than the rest
 # TODO check if this can be improved
-# maybe just use glmnet to solve the first 5 iterations of the iterative
-# CG & LSCG eigen solvers??
-# or use nonnegative glmnet::bigGlm unregularised fit as initialisation?
 
 ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
                                                          colour=interaction(Solver))) +
@@ -312,24 +301,21 @@ solvers <- c("osqp",
              "eigen", 
              "eigen", 
              "eigen", 
-             "eigen" #,
-             # "parglm"
+             "eigen"
              )
 methods <- c(1, 
              # 1, 1, 
              1, 
              1, 4, 6, 7
-             #, 1
              )
 solver_names <- c("osqp", 
                   # "nnls", 
                   # "nnls_noreg", 
                   "glmnet", 
                   "eigen QR", 
-                  "eigen LSCG",  # TODO eigen LSCG & CG failing sometimes - FIX
+                  "eigen LSCG",  
                   "eigen CG", 
-                  "eigen Cholesky LLT"# ,
-                  #"parglm"
+                  "eigen Cholesky LLT"
                   )
 crit = "gic"
 
@@ -349,16 +335,16 @@ for (n in sizes) {
   y <- sim$y
   coefs.true <- sim$beta_true
   method <- 1
+  # Generate regularisation parameter
+  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
+                     lambda=lambda_preset) # component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
     method = methods[[i]]
     solver_name = solver_names[[i]]
-    # Generate regularisation parameter
-    lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
     
     # Fit model and measure time
-    start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
-                       lambda=lambda_preset) # component-wise initialisation
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y,
@@ -419,12 +405,10 @@ results_melt$Solver = factor(results_melt$Solver,
                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                           # "nnls", "nnls_noreg", 
                                           "glmnet"
-                                          #, "parglm"
                                           )),
                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                           # "L0glm_nnls", "nnls_noreg", 
                                           "L0glm_glmnet"
-                                          #, "L0glm_parglm"
                                           )))
 
 # Plot
@@ -475,16 +459,15 @@ for (n in sizes) {
   y <- sim$y
   coefs.true <- sim$beta_true
   method <- 1
+  # Generate regularisation parameter
+  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
     method = methods[[i]]
     solver_name = solver_names[[i]]
-    # Generate regularisation parameter
-    lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
     
     # Fit model and measure time
-    start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
-    
     # print(cor(as.vector(start), as.vector(coefs.true)))
     fit.time <- system.time(
       L0glm <- L0glm.fit(
@@ -540,12 +523,10 @@ results_melt2$Solver = factor(results_melt2$Solver,
                               levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
                                            #"nnls", "nnls_noreg", 
                                            "glmnet"
-                                           #, "parglm"
                                            )),
                               labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
                                            #"L0glm_nnls", "nnls_noreg", 
                                            "L0glm_glmnet"
-                                           #, "L0glm_parglm"
                                            )))
 
 # Plot

@@ -1,6 +1,6 @@
 #' @name L0glm.tune
 #' @aliases L0glm.tune
-#' @title Tunes the regulatisation parameter lambda of an L0glm fit.
+#' @title Tunes the regularisation parameter lambda of an L0glm fit.
 #'
 #' @importFrom qlcMatrix colMax colMin
 #' 
