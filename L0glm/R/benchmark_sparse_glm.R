@@ -146,7 +146,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
     
     if(plot){
       plot(result, xvar='lambda',
-           main = "Regularisation path adaptive LASSO with Glmnet")
+           main = "Regularisation path adaptive LASSO with glmnet")
       abline(h=as.vector(sim$beta_true[sim$beta_true!=0]), col=alpha(1:6,0.2))
       
       plot(x=coefs[-1], y=sim$beta_true, pch=16, col='blue',

@@ -10,7 +10,6 @@ library(remotes)
 # library(L0glm)
 devtools::load_all(".") # if you forked & cloned L0glm first to your laptop
 library(export)
-# source("..//benchmarks/generate data.R")
 library(Matrix)
 
 
@@ -43,7 +42,7 @@ beta_true_set = which(beta_true!=0)
 L1norm_betatrue = sum(abs(beta_true))
 L0norm_betatrue = sum(beta_true!=0)
 L0overL1norm_betatrue = L0norm_betatrue/L1norm_betatrue
-L0overL1norm_betatrue # 1.29
+L0overL1norm_betatrue # 1.35
 family = gaussian(identity)
 
 
@@ -63,7 +62,8 @@ timing_ordinis = system.time(ordinis_fit <- ordinis(X, y,
                alpha = 1,
                # maxit = 10,
                # tol = 0.1
-               ))[[3]] # 7s with maxit 1 (with nlambda 1), 63s with defaults (with nlambda 100) 
+               ))[[3]] 
+timing_ordinis # 66s with defaults (with nlambda 100), 7s with maxit 1 (with nlambda 1)
 # note: to initialise L0glm solution with MCP solution you could use fewer
 # nlmabda & higher tol & smaller nr of maxit
 # plot(ordinis_fit)
@@ -135,20 +135,16 @@ system.time(metrics_MCP <- data.frame(method=method,
 metrics_MCP
 
 
-# 1.2 L0glm fit on MCP pre-selected variables ####
+# 1.2A L0glm fit on MCP pre-selected variables ####
 
-# NOTE: fitting an L0glm directly on the whole dataset results in much
+# NOTE: fitting an L0glm model directly on the whole dataset (see 1.2B below) results in much
 # reduced sensitivity, so for ultra high dimensional situation clearly 
-# best to start from MCP coefficients
-
-# TODO check if MCP-like penalties could be used within L0glm itself
-# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3212875/
+# best to start with more informative prior, e.g. starting from MCP coefficients
 
 startcoefs = beta_est0 # MCP starting coefficients work best
-# startcoefs = beta_est0_boot # bagged MCP starting coefficients (avg across 5 bootstrap replicates)
-# startcoefs = coefs_glmnet1 
 # NOTE: LASSO glmnet coefficient starting values also work & 
-# results in smaller nr of true coefficients being picked in adaptive L0glm step (27 instead of 33), but requires more iterations than with MCP starting values) 
+# results in smaller nr of true coefficients being picked in adaptive L0glm step (27 instead of 33), 
+# but requires more iterations than with MCP starting values) 
 
 # priormean = startcoefs
 # cutoff = quantile(abs(priormean)[priormean!=0], 0.8) 
@@ -177,7 +173,7 @@ timing_L0glmafterMCP = system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   relaxed = FALSE))[[3]] # 0.15s
 timing_L0glmafterMCP = timing_L0glmafterMCP+timing_ordinis
 
-L0glm_gaus_presetlambda$dispersion # 
+L0glm_gaus_presetlambda$dispersion # 13.71269
 L0glm_gaus_presetlambda_coefs = rep(0, ncol(X))
 L0glm_gaus_presetlambda_coefs[nonzero] = L0glm_gaus_presetlambda$coefficients
 
@@ -221,6 +217,75 @@ system.time(metrics_L0 <- data.frame(method=method,
                                                                   beta_true = beta_true))))  # 0.5s
 metrics_L0
 
+
+
+# # 1.2B Full L0glm fit on whole dataset ####
+# 
+# # without prior MCP variable preselection this doesn't work well
+# # TODO check if other variable preselection methods could work, e.g.
+# # sure independent screening as in abess
+# 
+# # we use mbic because original problem is high dimensional
+# lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+#                               p = ncol(X), 
+#                               n = nrow(X))
+# timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- L0glm.fit(
+#   X = X, 
+#   y = y, 
+#   family = family, 
+#   lambda = lambda_preset, 
+#   nonnegative = FALSE,
+#   start = NULL, 
+#   gamma = 2, 
+#   normalize = FALSE, 
+#   # dispersion = dispersion,
+#   solver = "eigen", 
+#   method = 7L, # cholesky TODO using solver 4=LSCG gives out of memory error - check if anything can be improved there?
+#   relaxed = FALSE))[[3]] 
+# timing_fullL0glm
+# # 300s
+# 
+# fullL0glm_gaus_presetlambda$dispersion # 1
+# 
+# beta_est1 = fullL0glm_gaus_presetlambda$coefficients
+# sum(beta_est1!=0&beta_true!=0)  # 0
+# table(beta_est1!=0, beta_true!=0, 
+#       dnn=c("estimated beta nonzero", "true beta nonzero"))
+# #                    true beta nonzero
+# # estimated beta nonzero  FALSE   TRUE
+# #                  FALSE 999920     80
+# 
+# cor(beta_est1, beta_true) # 
+# 
+# plot(x=beta_est1[beta_true!=0&beta_est1!=0], 
+#      y=beta_true[beta_true!=0&beta_est1!=0], pch=16, col="blue",
+#      xlab="Estimated coefficients", ylab="True coefficients",
+#      main="L0glm") # true positives
+# min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) # 
+# abline(a=0, b=1, col="lightgrey")
+# points(x=beta_est1[beta_true!=0&beta_est1==0], 
+#        y=beta_true[beta_true!=0&beta_est1==0], 
+#        pch=16, col="purple") # false negatives
+# points(x=beta_est1[beta_true==0&beta_est1!=0], 
+#        y=beta_true[beta_true==0&beta_est1!=0], 
+#        pch=16, col="red") # false positives !!!!!
+# points(x=beta_est1[beta_true==0&beta_est1==0][[1]], 
+#        y=beta_true[beta_true==0&beta_est1==0][[1]], 
+#        pch=16, col="green") # true negatives
+# method="L0glm"
+# # graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
+# #          width=7, height=5)
+# 
+# # check metrics & quality of solution with preset lambda
+# system.time(metrics_fullL0 <- data.frame(method=method,
+#                                      timing_s=timing_fullL0glm,
+#                                      do.call(cbind, get.metrics(beta = beta_est1,  # some metrics
+#                                                                 X = X, 
+#                                                                 y = y,
+#                                                                 family = gaussian(identity), 
+#                                                                 beta_true = beta_true))))  # 0.5s
+# metrics_fullL0
+# 
 
 
 # 1.3 EXPERIMENTAL ITERATIVE ADAPTIVE L0GLM ALGO TO FURTHER REDUCE FALSE POS RATE ####
@@ -307,6 +372,7 @@ range(abs(beta_true)[beta_est1B==0&beta_true!=0])
 # while these effect sizes in terms of Cohen's d are detected
 range(abs(beta_true)[beta_est1B!=0&beta_true!=0]) 
 # 0.7615661 2.3655293
+# i.e. only large effects would be picked up with this sample size (Cohen's d > 0.8)
 
 table(beta_est1B!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
@@ -406,6 +472,7 @@ system.time(metrics_abess_afterMCP <- data.frame(method="abess_after_MCP",
                                                                      family = gaussian(identity), 
                                                                      beta_true = beta_true))))  # 0.5s
 metrics_abess_afterMCP
+
 
 
 # 1.5 FULL abess FIT using MCP preselected set as initial active set ####
@@ -548,7 +615,7 @@ table(beta_L0Learn_after_MCP!=0, beta_true!=0,
 
 
 # check metrics & quality of solution with preset lambda
-system.time(metrics_L0Learn <- data.frame(method="timing_L0LearnafterMCP",
+system.time(metrics_L0Learn <- data.frame(method="L0LearnafterMCP",
                                           timing_s=timing_L0LearnafterMCP,
                                           do.call(cbind, get.metrics(beta = beta_L0Learn_after_MCP,  # some metrics
                                                                 X = X, 
@@ -576,23 +643,23 @@ timing_cvglmnet = system.time(glmnet_cvfit <- cv.glmnet(x = X, y = y, nfolds = 5
                                       intercept=F, alpha=1))[[3]] # 136s
 plot(glmnet_cvfit)
 bestlambda1 <- glmnet_cvfit$lambda.min #
-bestlambda1 # 0.6624504
+bestlambda1 # 0.4783427
 bestlambda2 <- glmnet_cvfit$lambda.1se #
-bestlambda2 # 1.394394
+bestlambda2 # 1.157651
 timing_glmnetfull = system.time(glmnet_fit <- glmnet(x = X, y = y, intercept = F, 
                                                      alpha = 1))[[3]] # 25s
 timing_glmnet = timing_cvglmnet+timing_glmnetfull
 plot(glmnet_fit)
 coefs_glmnet1 <- as.vector(coef(glmnet_fit, s=bestlambda1)[-1])
-sum(coefs_glmnet1!=0) # 205
+sum(coefs_glmnet1!=0) # 276
 glmnet_set1 <- which(coefs_glmnet1!=0)
 length(intersect(glmnet_set1, beta_true_set)) # 23
 table(coefs_glmnet1!=0, beta_true!=0,  
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 #                    true beta nonzero
 # estimated beta nonzero  FALSE   TRUE
-# FALSE                  999738     57
-# TRUE                      182     23
+# FALSE                  999667     57
+# TRUE                      253     23
 
 beta_LASSO = coefs_glmnet1
 plot(x=beta_LASSO[beta_true!=0&beta_LASSO!=0], 
@@ -663,8 +730,8 @@ table(coefs_glmnet1relaxed!=0, beta_true!=0,
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 #                    true beta nonzero
 # estimated beta nonzero  FALSE   TRUE
-# FALSE                  999908     68
-# TRUE                       12     12
+# FALSE                  999916     72
+# TRUE                       4      8
 
 beta_LASSOrelaxed = coefs_glmnet1relaxed
 plot(x=beta_LASSOrelaxed[beta_true!=0&beta_LASSOrelaxed!=0], 
@@ -710,51 +777,42 @@ benchmarks = bind_rows(metrics_LASSO,
                        metrics_L0Learn)
 benchmarks = benchmarks[order(benchmarks$F1_score, decreasing=T),]
 benchmarks
-#                               method timing_s       p   n m   deviance deviance_true   loglik
-# 6                    abess_after_MCP    64.90 1000001 500 1  7684.0557     7135.9699 998585.5
-# 5 iterative_adaptive_L0glm_after_MCP    68.15 1000001 500 1  7631.4103     7167.0018 998586.2
-# 4                    L0glm_after_MCP    64.82 1000001 500 1  6403.8240     5923.6036 998620.0
-# 7              abess_MCP_initial_set   169.41 1000001 500 1  7440.8172     7942.4573 998593.5
-# 8             timing_L0LearnafterMCP    64.59 1000001 500 1  1197.0288      922.3419 999003.3
-# 2               glmnet_relaxed_LASSO   161.00 1000001 500 1 10933.4488    10534.1682 998495.3
-# 3                        MCP_ordinis    64.54 1000001 500 1   714.5266      214.2935 999052.3
-# 1                       glmnet_LASSO   164.55 1000001 500 1  7853.6100     7695.3407 998397.0
-#       MD_coefs    MAD_coefs  sMAPE_coefs bias_coefs  R2_coefs  MD_selcoefs MAD_selcoefs
-# 6 5.350454e-06 3.053394e-05 0.0001186759  0.9727985 0.7418590 0.0427150500    0.1772086
-# 5 7.515924e-06 3.180458e-05 0.0001218726  0.9867476 0.7276358 0.0483509400    0.2301083
-# 4 8.176878e-06 3.322297e-05 0.0001364081  1.0715341 0.7333310 0.1092906943    0.2589226
-# 7 5.555376e-06 3.201309e-05 0.0001222228  0.9500401 0.7162749 0.0866463333    0.2098259
-# 8 6.641015e-06 5.368340e-05 0.0002062479  0.8013139 0.5918034 0.0300105804    0.4203605
-# 2 6.989105e-06 5.201936e-05 0.0001626092  0.9034791 0.3866253 0.0159113220    0.5419753
-# 3 8.375465e-06 6.366255e-05 0.0003657603  0.7699911 0.5790339 0.0255381181    0.2616378
-# 1 6.152113e-06 6.348239e-05 0.0005061737  1.8737438 0.4359878 0.0009656156    0.1825365
-#   sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
-# 6      0.1216335     0.9727985   0.9808786                80                     22
-# 5      0.2553290     0.9867476   0.9575115                80                     23
-# 4      0.7396381     1.0715341   0.9346716                80                     33
-# 7      0.1919461     0.9500401   0.9578239                80                     22
-# 8      1.3659110     0.8013139   0.7542867                80                     69
-# 2      1.1087186     0.9034791   0.7446841                80                     24
-# 3      1.7030892     0.7699911   0.7380113                80                    149
-# 1      1.9130426     1.8737438   0.5757616                80                    205
-#   estimated_over_true_support_size TP  FP     TN FN precision recall specificity accuracy
-# 6                           0.2750 22   0 999920 58 1.0000000 0.2750    1.000000 0.999942
-# 5                           0.2875 22   1 999919 58 0.9565217 0.2750    0.999999 0.999941
-# 4                           0.4125 24   9 999911 56 0.7272727 0.3000    0.999991 0.999935
-# 7                           0.2750 21   1 999919 59 0.9545455 0.2625    0.999999 0.999940
-# 8                           0.8625 24  45 999875 56 0.3478261 0.3000    0.999955 0.999899
-# 2                           0.3000 12  12 999908 68 0.5000000 0.1500    0.999988 0.999920
-# 3                           1.8625 24 125 999795 56 0.1610738 0.3000    0.999875 0.999819
-# 1                           2.5625 23 182 999738 57 0.1121951 0.2875    0.999818 0.999761
-#    F1_score      gic     ebic      bic      aic     mbic
-# 6 0.4313725 -1996590 -1996535 -1997028 -1997125 -1996456
-# 5 0.4271845 -1996567 -1996509 -1997023 -1997124 -1996427
-# 4 0.4247788 -1996382 -1996301 -1997029 -1997172 -1996184
-# 7 0.4117647 -1996606 -1996551 -1997044 -1997141 -1996472
-# 8 0.3221477 -1996240 -1996072 -1997572 -1997867 -1995831
-# 2 0.2307692 -1996360 -1996300 -1996835 -1996941 -1996214
-# 3 0.2096070 -1994319 -1993960 -1997172 -1997805 -1993444
-# 1 0.1614035 -1991595 -1991102 -1995514 -1996382 -1990393
+#                      method timing_s       p   n m   deviance deviance_true   loglik     MD_coefs    MAD_coefs  sMAPE_coefs
+# 6                    abess_after_MCP    66.61 1000001 500 1  7684.0557     7135.9699 998585.5 5.350454e-06 3.053394e-05 0.0001186759
+# 5 iterative_adaptive_L0glm_after_MCP    70.19 1000001 500 1  7631.4103     7167.0018 998586.2 7.515924e-06 3.180458e-05 0.0001218726
+# 4                    L0glm_after_MCP    66.38 1000001 500 1  6403.8240     5923.6036 998620.0 8.176878e-06 3.322297e-05 0.0001364081
+# 7              abess_MCP_initial_set   179.67 1000001 500 1  7440.8172     7942.4573 998593.5 5.555376e-06 3.201309e-05 0.0001222228
+# 8                    L0LearnafterMCP    66.26 1000001 500 1  1197.0288      922.3419 999003.3 6.641015e-06 5.368340e-05 0.0002062479
+# 3                        MCP_ordinis    66.22 1000001 500 1   714.5266      214.2935 999052.3 8.375465e-06 6.366255e-05 0.0003657603
+# 2               glmnet_relaxed_LASSO   161.00 1000001 500 1 16720.4994    16176.7879 998401.1 6.401181e-06 5.140240e-05 0.0001530765
+# 1                       glmnet_LASSO   177.79 1000001 500 1  4300.2035     4327.8398 998476.6 6.846402e-06 6.816187e-05 0.0006465021
+#   bias_coefs  R2_coefs  MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
+# 6  0.9727985 0.7418590  0.042715050    0.1772086      0.1216335     0.9727985   0.9808786                80                     22
+# 5  0.9867476 0.7276358  0.048350940    0.2301083      0.2553290     0.9867476   0.9575115                80                     23
+# 4  1.0715341 0.7333310  0.109290694    0.2589226      0.7396381     1.0715341   0.9346716                80                     33
+# 7  0.9500401 0.7162749  0.086646333    0.2098259      0.1919461     0.9500401   0.9578239                80                     22
+# 8  0.8013139 0.5918034  0.030010580    0.4203605      1.3659110     0.8013139   0.7542867                80                     69
+# 3  0.7699911 0.5790339  0.025538118    0.2616378      1.7030892     0.7699911   0.7380113                80                    149
+# 2  0.8429514 0.3047069 -0.089966059    0.5245184      0.7563791     0.8429514   0.8036939                80                     12
+# 1  1.7069702 0.4253950  0.003232753    0.1525343      1.9293555     1.7069702   0.5617728                80                    276
+#   estimated_over_true_support_size TP  FP     TN FN  precision recall specificity accuracy  F1_score      gic     ebic      bic
+# 6                           0.2750 22   0 999920 58 1.00000000 0.2750    1.000000 0.999942 0.4313725 -1996590 -1996535 -1997028
+# 5                           0.2875 22   1 999919 58 0.95652174 0.2750    0.999999 0.999941 0.4271845 -1996567 -1996509 -1997023
+# 4                           0.4125 24   9 999911 56 0.72727273 0.3000    0.999991 0.999935 0.4247788 -1996382 -1996301 -1997029
+# 7                           0.2750 21   1 999919 59 0.95454545 0.2625    0.999999 0.999940 0.4117647 -1996606 -1996551 -1997044
+# 8                           0.8625 24  45 999875 56 0.34782609 0.3000    0.999955 0.999899 0.3221477 -1996240 -1996072 -1997572
+# 3                           1.8625 24 125 999795 56 0.16107383 0.3000    0.999875 0.999819 0.2096070 -1994319 -1993960 -1997172
+# 2                           0.1500  8   4 999916 72 0.66666667 0.1000    0.999996 0.999924 0.1739130 -1996474 -1996443 -1996721
+# 1                           3.4500 23 253 999667 57 0.08333333 0.2875    0.999747 0.999690 0.1292135 -1989962 -1989299 -1995232
+#        aic     mbic
+# 6 -1997125 -1996456
+# 5 -1997124 -1996427
+# 4 -1997172 -1996184
+# 7 -1997141 -1996472
+# 8 -1997867 -1995831
+# 3 -1997805 -1993444
+# 2 -1996776 -1996398
+# 1 -1996399 -1988346
 
 # CONCLUSION: in terms of F score to recover the true support,
 # abess after MCP & adaptive L0glm are both very good

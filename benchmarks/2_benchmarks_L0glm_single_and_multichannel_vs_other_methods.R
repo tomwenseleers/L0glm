@@ -529,9 +529,9 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 # 6.5s
 
 R2 = round(cor(as.vector(rowMeans(sim.pois.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative independent L0 GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -656,9 +656,9 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 # abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.pois.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -737,9 +737,9 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # abline(v=which(rowMin(L0glm.chol$coefficients)!=0), col = 'cyan')
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -801,9 +801,9 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 12s for n=p=500
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative L0 grouped GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative L0 grouped GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -864,9 +864,9 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 # 13.71s
 
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -886,9 +886,6 @@ n <- p <- 500
 sim.pois <- simul(method = 2, n = n, p = p, seed = 2)
 
 ### 3.1.1 L0GLM VIA CHOLESKY ####
-# TODO: fix bug Error in if (is.vector(beta) | (ncol(beta) > 1)) { : 
-# argument is of length zero
-
 system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", 
                                        plot = FALSE, coefs.true = sim.pois$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
@@ -916,13 +913,13 @@ FN1 <- sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.chol$coeffici
 FN1
 plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
      main="L0 glm identity link Poisson with lambda tuned to optimise gic",
-     xlab="Estimated coefficients", ylab="True coefficients")
+     xlab="estimatedcoefficients", ylab="true coefficients")
 
 
 ### 3.1.2 LASSO USING GLMNET ####
 system.time(glmnet.sc.pois <- fit.GLM(sim = sim.pois, method = 2, 
                                       family = poisson(identity), plot = TRUE)) 
-# 0.24s
+# 0.19s
 
 cor2 <- cor(as.vector(glmnet.sc.pois[-1]), as.vector(sim.pois$beta_true)) # 0.9203877
 cor2
@@ -1151,7 +1148,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(L0glm.chol$coefficients) =
 
 plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
      main="L0 glm identity link gaussian with lambda tuned to optimise gic",
-     xlab="Estimated coefficients", ylab="True coefficients")
+     xlab="estimatedcoefficients", ylab="true coefficients")
 
 
 ### 3.2.2 LASSO USING GLMNET ####
@@ -1216,7 +1213,7 @@ sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.sc.gaus) == 0)) # FN
 system.time(abess.after.lasso.sc.gaus <- fit.GLM(sim = sim.gaus, method = 7, 
                                                  family = gaussian(identity), 
                                                  plot = T, IC = "gic"))  
-# 0.20s for n=p=500
+# 0.15s for n=p=500
 cor(as.vector(abess.after.lasso.sc.gaus), as.vector(sim.gaus$beta_true))  # 0.8814479
 sum((as.vector(sim.gaus$beta_true) != 0) & (as.vector(abess.after.lasso.sc.gaus) != 0)) # TP = 29
 sum((as.vector(sim.gaus$beta_true) == 0) & (as.vector(abess.after.lasso.sc.gaus) != 0)) # FP = 19
@@ -1357,30 +1354,31 @@ sim.pois.mc <- simul(method = 4, n = n, p = p, seed = 2)
 ### 3.3.1 RELAXED GROUP L0GLM VIA CHOLESKY ####
 system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 
-                                       relaxed = TRUE, family = poisson(identity), 
+                                       family = poisson(identity), 
                                        nonnegative = TRUE, 
-                                       parallelize = TRUE, grouped = TRUE,
-                                       solver = "eigen", method = 7L)) 
-# XX
-# TODO fix bug 
-# Error in h(simpleError(msg, call)) : 
-# error in evaluating the argument 'x' in selecting a method for function 'mean': non-conformable matrix dimensions in .Arith.Csparse(e1, e2, .Generic, class. = "dgCMatrix")
+                                       grouped = TRUE,
+                                       relaxed = TRUE, 
+                                       parallelize = FALSE, 
+                                       solver = "eigen", 
+                                       method = 7L)) 
+# 345s with parallelize=F, returns error with parallelize=TRUE
+# probably something in L0glm_2_fit.R?
 
 system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
-                                         relaxed = TRUE,
-                                         parallelize = TRUE,
                                          grouped = TRUE,
+                                         relaxed = TRUE,
+                                         parallelize = FALSE,
                                          solver = "eigen",
                                          method = 7L)) 
-# 12.6s for n=p=500
+# 21s
 
 R2 = round(cor(as.vector(rowMeans(sim.pois.mc$beta_true)), as.vector(rowMeans(L0glm.chol.pois$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nnonnegative relaxed L0 grouped GLM\nR2=", R2)
+title = paste("true vs estimated coefficients\nnonnegative relaxed L0 grouped GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol.pois$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients nonnegative relaxed L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -1399,11 +1397,16 @@ sum(rowMin(sim.pois.mc$beta_true)==0 & rowMin(L0glm.chol.pois$coefficients)==0) 
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(L0glm.chol.pois$coefficients)==0) # FN = 1
 
 
-### 3.3.2 BSGS USING ABESS ####
+### 3.3.2 BEST SUBSET OF GROUP SELECTION (BSGS) USING ABESS ####
 system.time(bsgs.abess.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 1, 
                                              family = poisson(identity), 
                                              plot = T, IC = "gic")) 
 # 4.4s for n=p=500
+# NOTE: this is now fit as if noise was Gaussian
+# TODO also compare what solution & timings you get with
+# https://skscope.readthedocs.io/en/latest/gallery/GeneralizedLinearModels/poisson-identity-link.html
+# maybe implement this as an additional fitting method in 
+# fit.GLM.mc?
 
 cor(as.vector(as.vector(sim.pois.mc$beta_true)), as.vector(bsgs.abess.pois)) # 0.9060618
 sum(rowMin(sim.pois.mc$beta_true)!=0 & rowMin(bsgs.abess.pois)!=0) # TP = 9
@@ -1482,40 +1485,50 @@ benchmarks_3_3
 n <- p <- 500
 sim.gaus.mc <- simul(method = 3, n = n, p = p, seed = 1)
 
-### 3.4.1 RELAXES GROUP L0GLM VIA CHOLESKY ####
+### 3.4.1 RELAXED GROUP L0GLM VIA CHOLESKY ####
 
 system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "gic", 
                                        plot = FALSE, coefs.true = sim.gaus.mc$beta_true, 
-                                       relaxed = TRUE, family = gaussian(identity), 
+                                       family = gaussian(identity), 
                                        nonnegative = TRUE, 
-                                       parallelize = TRUE, grouped = TRUE,
-                                       solver = "eigen", method = 7L)) 
-# XXs
-# TODO fix bug
-# Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
-# 0 (non-NA) cases
-# In addition: There were 50 or more warnings (use warnings() to see the first 50)
+                                       grouped = TRUE,
+                                       relaxed = TRUE, 
+                                       parallelize = FALSE, # TODO fix error in L0glm.tune when set to TRUE
+                                       solver = "eigen", 
+                                       method = 7L)) 
+# 278s with parallelize=F else returns error, best lambda 3.16227766016838
+# TODO fix error when option parallelize = TRUE
+# Error in `[<-`(`*tmp*`, variable.indices, , value = Matrix(do.call(cbind,  : 
+#                                                                      subscript out of bounds
+#                                                                    In addition: There were 50 or more warnings (use warnings() to see the first 50)
+#                                                                    Called from: L0glm.fit(X = X, y = y, family = family, weights = weights, lambda = lambda, 
+#                                                                                           dispersion = dispersion, start = start, offset = offset, 
+#                                                                                           ...)
+# > traceback()
+# 3: drop0(X)
+# 2: as.simple_triplet_matrix(drop0(X))
+# 1: rowMin(L0glm.chol.pois$coefficients) # not sure where L0glm.chol.pois$coefficients comes from...
 
 system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
                                     family = gaussian(identity), 
                                     lambda = "gic", 
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
-                                    parallelize = TRUE,
                                     grouped = TRUE,
+                                    relaxed = TRUE,
+                                    parallelize = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 11s for n=p=500
-# TODO fix warning
+# 18s for n=p=500 with parallelize = FALSE else returns some warnings
+# TODO fix warnings when parallelize = TRUE
 # Warning messages:
 # 1: In (function (..., deparse.level = 1)  :
 #         number of rows of result is not a multiple of vector length (arg 6)
        
 R2 = round(cor(as.vector(rowMeans(sim.gaus.mc$beta_true)), as.vector(rowMeans(L0glm.chol.gaus$coefficients))), digits = 4)^2 # Calculate R2
-title = paste("True vs estimated coefficients\nrelaxed nonnegative L0 grouped GLM\nR2=", R2)
+title = paste("Relaxed nonnegative L0 group GLM\nR2=", R2)
 plot(as.vector(rowMeans(L0glm.chol.gaus$coefficients)), 
      as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients relaxed nonnegative L0 group GLM",
+     xlab="estimated coefficients",
      ylab="true coefficients", col="steelblue",
      main=title)
 
@@ -1532,11 +1545,15 @@ sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(L0glm.chol.gaus$coefficients)==0) 
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(L0glm.chol.gaus$coefficients)==0) # FN = 0
 
 
-### 3.4.2 BSGS USING ABESS ####
+### 3.4.2 BEST SUBSET OF GROUP SELECTION (BSGS) USING ABESS ####
 system.time(bsgs.abess.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 1, 
                                           family = gaussian(identity), plot = T, 
                                           IC = "gic")) 
-# 3.99s for n=p=500
+# 4.2s for n=p=500
+# TODO post this as a reproducible example in https://github.com/abess-team/abess/issues/510
+# and ask if the solution quality could be improved here somehow
+# TODO also compare what solution & timings you get with
+# https://skscope.readthedocs.io/en/latest/gallery/GeneralizedLinearModels/poisson-identity-link.html
 
 cor(as.vector(as.vector(sim.gaus.mc$beta_true)), as.vector(bsgs.abess.gaus)) # 0.6662117
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(bsgs.abess.gaus)!=0) # TP = 17
@@ -1559,10 +1576,10 @@ abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], c
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cyan")
 
 
-cor(as.vector(as.vector(sim.gaus.mc$beta_true)), as.vector(glmnet.mc.gaus)) # 0.9813059
+cor(as.vector(as.vector(sim.gaus.mc$beta_true)), as.vector(glmnet.mc.gaus)) # 0.9815128
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(glmnet.mc.gaus)!=0) # 47
-sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(glmnet.mc.gaus)!=0) # 29
-sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(glmnet.mc.gaus)==0) # 421
+sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(glmnet.mc.gaus)!=0) # 32
+sum(rowMin(sim.gaus.mc$beta_true)==0 & rowMin(glmnet.mc.gaus)==0) # 418
 sum(rowMin(sim.gaus.mc$beta_true)!=0 & rowMin(glmnet.mc.gaus)==0) # 3
 
 
@@ -1586,17 +1603,17 @@ benchmarks_3_4 = benchmarks_3_4[order(benchmarks_3_4[,"deviance_true"]),] # sort
 benchmarks_3_4
 #                              method   p   n   m  deviance deviance_true    loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs
 # 1      Relaxed_group_L0glm_gaussian 501 500 165   1125238        207933 -231325.7  0.09550816  0.254989  0.09548499  1.0000758
-# 3 multivariate_group_LASSO_gaussian 501 500 165  13686303      12778628 -338260.7 -0.26342699  2.501517  0.20460851  1.0499710
+# 3 multivariate_group_LASSO_gaussian 501 500 165  11803607      10895240 -332418.1 -0.22903666  2.471618  0.21089491  1.0481612
 # 2               BSGS_abess_gaussian 501 500 165 312127788     311389742 -460225.2 -0.73411430  7.242264  0.12506039  0.6556086
 #    R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
 # 1 0.9999020   1.2232292      2.92006       1.067991     1.0000758   0.9999054                50                     50
-# 3 0.9631330   0.1455829     16.86431       1.485233     1.0499710   0.9703332                50                     76
+# 3 0.9635367   0.4048812     16.23747       1.495982     1.0481612   0.9707416                50                     79
 # 2 0.4456978  69.6143367     70.57427       1.393076     0.6556086   0.7048314                50                     24
 #   estimated_over_true_support_size TP FP  TN FN precision recall specificity accuracy  F1_score      gic     ebic      bic      aic
-# 1                             1.00 50  0 450  0 1.0000000   1.00   1.0000000    1.000 1.0000000 541924.1 549435.2 506029.3 476611.3
-# 3                             1.52 47 29 421  3 0.6184211   0.94   0.9355556    0.936 0.7460317 799814.5 811496.4 743987.2 698233.4
-# 2                             0.48 17  7 443 33 0.7083333   0.34   0.9844444    0.920 0.4594595 963959.5 968082.0 944258.5 928112.4
+# 1                             1.00 50  0 450  0 1.0000000   1.00   1.0000000     1.00 1.0000000 541924.1 549435.2 506029.3 476611.3
+# 3                             1.58 47 32 418  3 0.5949367   0.94   0.9288889     0.93 0.7286822 791104.9 803068.7 733930.2 687072.2
+# 2                             0.48 17  7 443 33 0.7083333   0.34   0.9844444     0.92 0.4594595 963959.5 968082.0 944258.5 928112.4
 #       mbic
 # 1 573460.5
-# 3 848863.0
+# 3 841337.1
 # 2 981268.4

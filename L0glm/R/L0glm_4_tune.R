@@ -108,7 +108,7 @@ L0glm.tune <- function(X, y, family,
     start = NULL
   }
 
-  coefmat <- Matrix(0, nrow=length(lambdas), ncol = p)
+  coefmat <- Matrix(0, nrow=length(lambdas), ncol = p) # TODO use sparse = T throughout?
   metrics <- data.frame(do.call(rbind, lapply(1:(length(lambdas)), function (i) { 
     print(i)
     lambda <- lambdas[[i]]

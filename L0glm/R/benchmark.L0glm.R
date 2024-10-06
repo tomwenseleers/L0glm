@@ -506,9 +506,10 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 #' @export
 
 # TODO: method 1 should be a group L0glm fit, method 2 abess best subset of groups
-# method 3 glmnet multivariate group LASSO (identity link Poisson can also be obtained approximately by using 1/(y+0.1) 1/variance weights)
+# method 3 glmnet multivariate group LASSO
 # TODO: add option relaxed=T/F which if T should (for all methods) after initial multitask feature selection
 # refit the model unregularised for the selected variables only
+
 fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic", internal = FALSE){
   require(scales)
   X <- sim$X
@@ -518,9 +519,14 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
   m <- ncol(sim$y)
   
   if (family$family == "poisson") { 
-    W <- 1/(y+0.1) } else {  # approx 1/variance weights to approximate identity link poisson, which is not supported by abess
+    W <- 1/(y+0.1) } else {  # approx 1/variance weights to approximate identity link poisson
       W <- NULL } 
   if(method == 1){ # best subset multitask learning using family="mgaussian" using abess
+    # TODO check solution quality & timings of multiple response Poisson case using
+    # https://skscope.readthedocs.io/en/latest/gallery/GeneralizedLinearModels/poisson-identity-link.html
+    # (can be called from R via reticulate package)
+    # for tuning sparsity based on IC see
+    # https://skscope.readthedocs.io/en/latest/gallery/SparsityLevelSelection/supported-information-criteria-and-cross-validation.html
     if (is.null(options)) {
       fit <- abess(x = X, 
                    y = y, 
@@ -562,25 +568,25 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    support.size = fit[["best.size"]], 
                    sparse = FALSE)[[1]][-1,] # coefficient matrix for best subset
       # coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
-      library(qlcMatrix)
       image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
             useRaster=TRUE,
             xlab="Time", ylab="Channel", main="abess multitask weighted mgaussian\n(red = true peaks, cyan = estimated peaks)")
-      abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
-      abline(v=(1:nrow(sim$X))[as.vector(rowMin(coefs)!=0)], col="cyan")
+      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
+      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
       
       R2 = round(cor(as.vector(rowMeans(sim$beta_true)), as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
-      title = paste("True vs estimated coefficients\nabess multitask weighted mgaussian\nR2=", R2)
+      title = paste("True vs estimated coefficients\nabess multitask mgaussian\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
            xlab="estimated coefficients",
            ylab="true coefficients", col="steelblue",
            main=title)
     }
     
-  } else if(method ==2){ # glmnet nonnegative mgaussian multivariate group LASSO fit. Only for Gaussian
+  } else if(method ==2){ # glmnet nonnegative mgaussian multivariate group LASSO fit. Currently only support nonnegativity unweighted identity link Gaussian. Normally it should also allow using family=poisson(identity) but in practice that one returns an error.
     if(is.null(options)){
       cvfit <- cv.glmnet(x = X, 
                          y = y, 
+                         # weights = W, # passing matrix of weights not currently supported
                          alpha = 1,  # lasso
                          family = "mgaussian", 
                          nlambda = 100,
@@ -594,6 +600,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
       # Fit the nonnegative group LASSO glmnet model over a sequence of lambda values
       fit <- glmnet(x = X, 
                     y = y,
+                    # weights = W, # passing matrix of weights not currently supported
                     alpha = 1, # lasso
                     family = "mgaussian", 
                     nlambda = 100,
@@ -605,6 +612,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
     } else {
       cvfit <- cv.glmnet(x = X, 
                          y = y, 
+                         # weights = W, # passing matrix of weights not currently supported
                          alpha = 1,  # lasso
                          family = "mgaussian", 
                          nlambda = options$nlambda,
@@ -619,6 +627,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
       fit <- glmnet(x = X, 
                     y = y,
                     alpha = 1, # lasso
+                    # weights = W, # passing matrix of weights not currently supported
                     family = "mgaussian", 
                     nlambda = options$nlambda,
                     standardize = options$standardize,
@@ -643,12 +652,12 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
       # image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
       #      useRaster=TRUE,
       #      xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet\n(red = true peaks, cyan = estimated peaks)")
-      # abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
-      # abline(v=(1:nrow(sim$X))[as.vector(rowMin(coefs)!=0)], col="cyan")
+      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
+      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
       
       
       R2 = round(cor(as.vector(rowMeans(sim$beta_true)), as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
-      title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnetn\nR2=", R2)
+      title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnet\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
            xlab="estimated coefficients",
            ylab="true coefficients", col="steelblue",
