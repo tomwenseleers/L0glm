@@ -223,7 +223,9 @@ metrics_L0
 # 
 # # without prior MCP variable preselection this doesn't work well
 # # TODO check if other variable preselection methods could work, e.g.
-# # sure independent screening as in abess
+# # sure independence screening as in abess
+# # Or if in each iteration we should only keep the min(p, round(n/(log(log(n))*log(p))))
+# variables with the largest coefficients as in abess
 # 
 # # we use mbic because original problem is high dimensional
 # lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
