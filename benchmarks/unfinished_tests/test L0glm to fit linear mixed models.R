@@ -151,7 +151,7 @@ summary(fit2_lmer)
 # Random effects:
 # Groups   Name        Variance Std.Dev. Corr
 # CLONE    (Intercept) 8.9154   2.9859       
-# TIME        4.0820   2.0204   0.04
+#          TIME        4.0820   2.0204   0.04
 # Residual             0.9904   0.9952       
 # Number of obs: 15000, groups:  CLONE, 1000
 # 
@@ -217,6 +217,8 @@ cor(fit2_L0glm_u1, u_intercept) # 0.976875
 mean(fit2_L0glm_u2) # -6.654746e-17
 sd(fit2_L0glm_u2) # 2.018681
 cor(fit2_L0glm_u2, u_slope) # 0.9918059
+cor(fit2_L0glm_u1, fit2_L0glm_u2) # 0.04824489
+cor(u_intercept, u_slope) # 0.03877533
 
 
 hist(fit2_L0glm_u1) # artificial 2nd peak at -mean(fit2_L0glm_u1) (coefficients that were originally shrunk to zero) with lambda="gic", but not with lambda="aic"
