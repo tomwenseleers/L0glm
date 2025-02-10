@@ -350,6 +350,7 @@ L0glm.fit = function(X,
                      start = NULL,
                      offset = NULL,
                      lambda = 1,
+                     intercept = FALSE,
                      no.pen = if(!is.null(colnames(X))) which(grepl("Intercept", colnames(X))), # if there is an Intercept do not penalize it
                      nonnegative = FALSE,
                      normalize = FALSE,
@@ -370,9 +371,28 @@ L0glm.fit = function(X,
                      tol = 1E-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose = FALSE) {
+  
   if (lambda %in% c("aic","bic","gic","ebic","mbic")) { lambda = preset.lambda(IC=lambda, p=ncol(X), n=nrow(X)) }
   y = as.matrix(y)
-  if (issparse(X)) { X = as(Matrix(X, sparse = TRUE), "generalMatrix") } else { X = Matrix(X, sparse = FALSE) }
+  is_sparse_matrix <- function(X) {
+    return(any(class(X) %in% c("dgCMatrix", "dsCMatrix", "sparseMatrix")))
+  }
+  if (is_sparse_matrix(X)) { 
+    X = as(Matrix(X, sparse = TRUE), "dgCMatrix")  
+  } else { 
+    X = Matrix(X, sparse = FALSE) 
+  }
+  
+  if (intercept) {
+    X <- cbind(1, X)  # Ensure first column is an intercept
+    colnames(X)[1] <- "Intercept"  # Name the intercept column for clarity
+    
+    # 🔹 Ensure intercept is always excluded from penalty
+    if (!1 %in% no.pen) {
+      no.pen <- c(1, no.pen)  # Ensure intercept is unpenalized
+    }
+  }
+  
   no.pen.start <- no.pen
   init.lambda <- lambda
   # Make weights, offset and start into a matrix if they are provided as a vector and y is multichannel.
@@ -883,6 +903,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method, nonnegative, n
                        nonnegative = nonnegative,
                        normalize = normalize,
                        method = method,
+                       intercept = intercept,
                        verbose = verbose)
   })
   

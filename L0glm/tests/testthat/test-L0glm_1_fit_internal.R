@@ -604,3 +604,16 @@ test_that("L0glm.fit.internal handles all coefficients penalized to zero", {
   }
 })
 
+test_that("L0glm.fit.internal handles intercept correctly", {
+  set.seed(123)
+  
+  X <- matrix(rnorm(100 * 5), nrow = 100, ncol = 5)
+  y <- X %*% c(2, 0, 3, 0, 1) + 5 + rnorm(100)  # Intercept = 5
+  
+  lambda <- 0.1
+  fit <- L0glm.fit.internal(X, y, lambda, intercept = TRUE)
+  
+  expect_equal(length(fit$coefficients), 6)  # 5 predictors + intercept
+  expect_true(abs(fit$coefficients[1] - 5) < 1)  # Intercept should be ~5
+})
+

@@ -14,6 +14,10 @@
 #  estimated using the specified regularization method and solver. The function
 #  it is called by the higher level \code{L0glm.fit}.
 #
+# There is an optional intercept term, which is FALSE by default. If TRUE, the intercept
+# term is added to the design matrix X and the coefficients are estimated for the
+# intercept term as well. The intercept term is always unpenalized.
+#
 L0glm.fit.internal = function(X, 
                               y, 
                               family = poisson(identity),
@@ -35,6 +39,7 @@ L0glm.fit.internal = function(X,
                               gamma = 2,
                               thresh = 1e-5,
                               tol = 1E-10,
+                              intercept = FALSE,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { 
 
@@ -48,6 +53,17 @@ L0glm.fit.internal = function(X,
   if (grepl("_noreg",solver)) { solver = gsub("_noreg", "", solver) # use given solver without regularisation
                                 lambda = 0
                                 maxit = 1 } # strictly speaking this should only apply to gaussian case
+  
+  # Added intercept as a column of 1s to the design matrix
+  if (intercept) {
+    X <- cbind(1, X)  
+    p <- p + 1        
+    
+    # Ensure the intercept is always unpenalized
+    if (!1 %in% no.pen) {
+      no.pen <- c(1, no.pen)  
+    }
+  }
   
   # Normalize columns of X to unit L2 norm? If so, calculate scaling
   if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
