@@ -155,7 +155,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                      ncores = if (parallelize) { round(parallel::detectCores()/2) } else { 1 },
                      family = gaussian(link="identity")) {
   
-  D <- Matrix(D, sparse = TRUE)
+  D <- as.matrix(D) # coerce to dense
   Dt <- t(D)
   n <- nrow(D); p <- ncol(D)
   if (!is.null(Wstart)) { k <- ncol(Wstart) }
