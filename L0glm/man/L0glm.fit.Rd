@@ -14,6 +14,7 @@ L0glm.fit(
   start = NULL,
   offset = NULL,
   lambda = 1,
+  intercept = FALSE,
   no.pen = if (!is.null(colnames(X))) which(grepl("Intercept", colnames(X))),
   nonnegative = FALSE,
   normalize = FALSE,
@@ -89,10 +90,16 @@ in which case \code{lambda} will be preset with a value that would be expected t
 optimise that particular information criterion. Set \code{lambda = 0} 
 to disable penalization.}
 
+\item{intercept}{Logical: Whether to include an intercept term in the model.
+If `TRUE`, a column of ones will be added to the design matrix `X`, and this term will **not** be penalized.
+If `FALSE`, no intercept column will be added, and the user must ensure that `X` already contains an intercept if needed.
+Defaults to `FALSE`.}
+
 \item{no.pen}{A vector of coefficient indices that should 
 not be penalized. Coefficients with a name that includes \code{"Intercept"}
 in their name are not penalized by default. Specify 0 if all terms
-should be allowed to be shrunk to zero.}
+should be allowed to be shrunk to zero.
+If `intercept = TRUE`, the first column (intercept) is automatically excluded from penalization.}
 
 \item{nonnegative}{A logical indicating whether nonnegativity constraints should be applied.
 If \code{TRUE}, \code{lower} will be set to \code{rep(0, ncol(X))}.}
@@ -208,14 +215,14 @@ for more details on the available parameters for the different solvers.}
 }
 \value{
 Returns a list with the following elements:
-\item{\code{coefficients}}{a vector or matrix of fitted coefficients.}
+\item{\code{coefficients}}{a vector or matrix of fitted coefficients.If `intercept = TRUE`, the first element is the intercept.}
 \item{\code{weights}}{a vector or matrix of observation weights.}
 \item{\code{init.lambda}}{intial lambda.}
 \item{\code{lambdas}}{a vector or matrix with the adaptive penalties lambdas.}
 \item{\code{family}}{The error structure used to fit the data.}
 \item{\code{z}}{a vector or matrix containing the working response in the 
 final iteration of \code{L0glm.fit}}
-\item{\code{X}}{design matrix X}
+\item{\code{X}}{design matrix X, including the intercept column if added}
 \item{\code{y}}{response vector or matrix y.}
 }
 \description{

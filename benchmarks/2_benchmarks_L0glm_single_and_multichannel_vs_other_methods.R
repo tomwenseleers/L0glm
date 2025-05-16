@@ -488,6 +488,7 @@ system.time(tune.osqp.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "g
                                        parallelize = TRUE, grouped = FALSE, solver = "osqp"))
 # bestlambda = 3.16227766016838, time = 127s
 # abline(h=tune.osqp.mc$best.lambda, col = 'cyan')
+# TODO fix bug 8 nodes produced errors; first error: object 'intercept' not found
 
 system.time(tune.chol.mc <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, IC = "gic", 
                                        plot = FALSE, coefs.true = sim.pois.mc$beta_true, 

@@ -535,6 +535,7 @@ L0glm.fit = function(X,
                               maxit = maxit,
                               tol = tol,
                               no.pen = no.pen,
+                              intercept = intercept,
                               thresh = thresh, 
                               solver = solver, 
                               warm.start = warm.start,
@@ -883,7 +884,9 @@ L0glm.fit = function(X,
 #
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method, nonnegative, normalize, X, y, family, 
                      warm.start = 0.9, 
-                prior.mean = NULL, weights = NULL, dispersion = 1, start = NULL, lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
+                prior.mean = NULL, weights = NULL, dispersion = 1, start = NULL, 
+                lower, upper, verbose = FALSE, maxit, tol, offset, no.pen = 0, 
+                intercept = FALSE,
                 control.solver = do.call("control.solver.gen", list(solver = solver, method = method))) { 
   fit <- lapply(cols, function(col) {
     y = as.vector(y[,col,drop=F])

@@ -2,6 +2,7 @@
 
 S3method(logLik,L0Learn)
 S3method(logLik,glmnet)
+export(L0BestRankGNMF)
 export(L0glm)
 export(L0glm.fit)
 export(L0glm.tune)
