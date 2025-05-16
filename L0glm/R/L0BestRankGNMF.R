@@ -22,14 +22,24 @@
 #' which means one can start with \code{k} larger than the true rank.
 #' The optimal best rank is then typically very well recovered.
 #'
-#' The *penalised objective* minimised is
+#' The objective minimised after each full W–H sweep is
 #' \deqn{
-#'   \sum_{ij}\frac12\,D\_{F}\!\bigl(D\_{ij}\,\|\,\mu\_{ij}\bigr) \;+\;
-#'   \lambda_{W}\!\sum_{k}\mathbf 1[\|W_{\cdot k}\|_2>0] \;+\;
-#'   \lambda_{H}\!\sum_{k}\mathbf 1[\|H_{k\cdot}\|_2>0],
+#'   \underbrace{\frac{1}{\phi}\sum_{ij} D_{F}\!\bigl(D_{ij}\,\|\,\mu_{ij}\bigr)}
+#'   _{-2\,\mathrm{logLik}}
+#'   \;+\;
+#'   \lambda_W \sum_{k}\mathbf 1[\|W_{\cdot k}\|_2>0]
+#'   \;+\;
+#'   \begin{cases}
+#'     \lambda_H\sum_{k}\mathbf 1[\|H_{k\cdot}\|_2>0],
+#'         &\text{if } grouped\_Hupdate=TRUE\\[6pt]
+#'     \lambda_H\!\sum_{k,j}\mathbf 1[H_{kj}\neq 0],
+#'         &\text{otherwise.}
+#'   \end{cases}
 #' }
-#' where \eqn{D\_{F}} is the Bregman (half-deviance) loss of the chosen
-#' family and \eqn{\mu = W\,H}.
+#'
+#' The two penalty terms correspond exactly to the
+#' \eqn{L_{0,\infty}} \emph{group} norm (whole component on/off) and the
+#' plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
 #'
 #' @section Implementation notes:
 #' * Dispersion \eqn{\phi} is re-estimated after every sweep for
@@ -57,7 +67,7 @@
 #' @param max_iter Maximum number of outer iterations.
 #' @param tol    Relative change in penalised objective to determine convergence.
 #' @param method  Eigen solver to use, as in `L0glm.fit()` (e.g. 4L=least squares
-#'               conjugate gradient, 7L=Cholesky LDL).
+#'               conjugate gradient, 7L=Cholesky LLT).
 #' @param parallelize  Use parallelisation? May only be faster for larger problems.
 #' @param ncores  Number of cores to use when \code{"parallelize=TRUE"}.
 #' @param family A \link[stats]{family} object defining the exponential
@@ -69,8 +79,8 @@
 #' \describe{
 #'   \item{\code{W}}{Estimated \eqn{n\times \hat k} W matrix.}
 #'   \item{\code{H}}{Estimated \eqn{\hat k\times p} H matrix.}
-#'   \item{\code{dev}}{Final penalised objective value, i.e. Bregman (half-deviance) 
-#'   loss plus imposed L0 or grouped L0 penalties).}
+#'   \item{\code{dev}}{Final penalised objective value, i.e. scaled Bregman (deviance) 
+#'   loss (=-2*log-likelihood), with added L0 or grouped L0,infinity mixed norm penalties).}
 #'   \item{\code{k}}{Discovered rank \eqn{\hat k}.}
 #'   \item{\code{iter}}{Number of outer iterations run.}
 #'   \item{\code{dev_trace}}{Vector of penalised objective values over iterations.}
@@ -103,7 +113,7 @@
 #'
 #' ## build a design matrix consisting of time-shifted copies of the peak shape function (PSF)
 #' Wband <- sim$X            # n × n banded matrix with time-shifted copies of PSF
-#' ## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram
+#' ## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram (here fit using osqp solver)
 #' sel   <- L0glm.fit(Wband, rowSums(D),
 #'                    lambda = 0, nonnegative = TRUE,
 #'                    family = poisson(link=identity),
@@ -114,7 +124,7 @@
 #' nmf <- L0BestRankGNMF(D,
 #'                       Wstart          = Matrix(Winit, sparse = TRUE),
 #'                       grouped_Hupdate = TRUE,
-#'                       IC              = "gic",
+#'                       IC              = "bic", # we can use BIC as after variable pre-selection we are working in low-dimensional regime
 #'                       max_iter        = 5,
 #'                       family          = poisson("identity"))
 #'
@@ -184,7 +194,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
   k <- nrow(H)
   
   ## --- calculate objective ---------------------------------------------------
-  obj <- penalised_nll(W, H, D, family, lambdaW, lambdaH)
+  obj <- penalised_nll(W, H, D, family, lambdaW, lambdaH, grouped_Hupdate)
   trace <- obj
   
   for (iter in seq_len(max_iter)) {
@@ -194,6 +204,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                               y = Dt, # p x n data matrix, now regressing on rows of D
                               intercept = FALSE,
                               start = t(W), # use warm starts to speed up algo
+                              warm.start = 1,
                               family = family,
                               lambda = lambdaW,
                               nonnegative = TRUE,
@@ -213,6 +224,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                    y = D, # n x p data matrix, now regressing on columns of D
                    intercept = FALSE,
                    start = H, # use warm starts to speed up algo
+                   warm.start = 1,
                    family = family,
                    lambda = lambdaH,
                    nonnegative = TRUE,
@@ -232,7 +244,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
     k <- nrow(H)
 
     ## --- convergence check---------------------------------------------
-    obj_new <- penalised_nll(W, H, D, family, lambdaW, lambdaH)
+    obj_new <- penalised_nll(W, H, D, family, lambdaW, lambdaH, grouped_Hupdate)
     if (obj_new > obj) { H <- H_old
                          W <- W_old
                          k <- nrow(H)
@@ -252,7 +264,8 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
 
 # a few internal helper functions (not exported):
 
-# un-penalised negative log-likelihood objective = summed Bregman divergence
+# un-penalised -2*negative log-likelihood objective = scaled Bregman / deviance loss
+# (i.e. -2*log-likelihood)
 # (beta divergence is a special case of Bregman divergence, and for beta divergence
 # squared Euclidean, Kullback-Leibler, Itakura-Saito and beta=-1 divergences are
 # special cases that are often used in the NMF literature to deal with
@@ -264,17 +277,24 @@ neg_loglik <- function(D, mu, fam, disp = 1) {
                         as.vector(mu), 
                         wt = rep_len(1, length(D)))
   good <- !is.infinite(dev)
-  return(sum(dev[good]) / (2 * disp))
+  return(sum(dev[good]) / disp) # no /2 to get L0 penalties on same scale as in L0glm.fit, i.e. use -2*LL+lambda*L0 penalty
 }
 
 # L0 penalized negative log-likelihood objective
-penalised_nll <- function(W, H, D, fam, lambdaW, lambdaH) {
+penalised_nll <- function(W, H, D, fam, lambdaW, lambdaH, grouped_Hupdate) {
   mu  <- W %*% H
-  disp <- estimate_phi(D, mu, fam, # estimate dispersion if need be
-                       df = sum(colSums(W)!=0) + sum(rowSums(H)!=0))
+  disp <- estimate_phi(D, mu, fam,
+                       df = sum(colSums(W)!=0) +
+                         if (grouped_Hupdate)
+                           sum(rowSums(H)!=0) else sum(H!=0))
   loss <- neg_loglik(D, mu, fam, disp)
-  pen  <- lambdaW * sum(colSums(W) > 0) + lambdaH * sum(rowSums(H) > 0)
-  return(loss + pen)
+  
+  penW <- lambdaW * sum(colSums(W) > 0)
+  penH <- if (grouped_Hupdate)
+    lambdaH * sum(rowSums(H) > 0)      # L0,∞
+  else
+    lambdaH * sum(H != 0)              # L0 element-wise=L0,0
+  return(loss + penW + penH)
 }
 
 # helper function to estimate dispersion coefficient phi

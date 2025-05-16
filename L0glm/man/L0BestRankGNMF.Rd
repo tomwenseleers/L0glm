@@ -49,7 +49,7 @@ well for both low- and high-dimensional settings.}
 \item{tol}{Relative change in penalised objective to determine convergence.}
 
 \item{method}{Eigen solver to use, as in `L0glm.fit()` (e.g. 4L=least squares
-conjugate gradient, 7L=Cholesky LDL).}
+conjugate gradient, 7L=Cholesky LLT).}
 
 \item{parallelize}{Use parallelisation? May only be faster for larger problems.}
 
@@ -65,11 +65,14 @@ A list with components
 \describe{
   \item{\code{W}}{Estimated \eqn{n\times \hat k} W matrix.}
   \item{\code{H}}{Estimated \eqn{\hat k\times p} H matrix.}
-  \item{\code{dev}}{Final penalised objective value, i.e. Bregman (half-deviance) 
-  loss plus imposed L0 or grouped L0 penalties).}
+  \item{\code{dev}}{Final penalised objective value, i.e. scaled Bregman (deviance) 
+  loss (=-2*log-likelihood), with added L0 or grouped L0,infinity mixed norm penalties).}
   \item{\code{k}}{Discovered rank \eqn{\hat k}.}
   \item{\code{iter}}{Number of outer iterations run.}
   \item{\code{dev_trace}}{Vector of penalised objective values over iterations.}
+  \item{\code{lambdaW}}{Lambda penalty used for W.}
+  \item{\code{lambdaH}}{Lambda penalty used for H.}
+  
 }
 }
 \description{
@@ -96,14 +99,24 @@ After each full sweep factors that are shrunk exactly to 0 are pruned,
 which means one can start with \code{k} larger than the true rank.
 The optimal best rank is then typically very well recovered.
 
-The *penalised objective* minimised is
+The objective minimised after each full W–H sweep is
 \deqn{
-  \sum_{ij}\frac12\,D\_{F}\!\bigl(D\_{ij}\,\|\,\mu\_{ij}\bigr) \;+\;
-  \lambda_{W}\!\sum_{k}\mathbf 1[\|W_{\cdot k}\|_2>0] \;+\;
-  \lambda_{H}\!\sum_{k}\mathbf 1[\|H_{k\cdot}\|_2>0],
+  \underbrace{\frac{1}{\phi}\sum_{ij} D_{F}\!\bigl(D_{ij}\,\|\,\mu_{ij}\bigr)}
+  _{-2\,\mathrm{logLik}}
+  \;+\;
+  \lambda_W \sum_{k}\mathbf 1[\|W_{\cdot k}\|_2>0]
+  \;+\;
+  \begin{cases}
+    \lambda_H\sum_{k}\mathbf 1[\|H_{k\cdot}\|_2>0],
+        &\text{if } grouped\_Hupdate=TRUE\\[6pt]
+    \lambda_H\!\sum_{k,j}\mathbf 1[H_{kj}\neq 0],
+        &\text{otherwise.}
+  \end{cases}
 }
-where \eqn{D\_{F}} is the Bregman (half-deviance) loss of the chosen
-family and \eqn{\mu = W\,H}.
+
+The two penalty terms correspond exactly to the
+\eqn{L_{0,\infty}} \emph{group} norm (whole component on/off) and the
+plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
 }
 \section{Implementation notes}{
 
@@ -138,7 +151,7 @@ D <- sim$y                # observed GC/MS chromatogram
 
 ## build a design matrix consisting of time-shifted copies of the peak shape function (PSF)
 Wband <- sim$X            # n × n banded matrix with time-shifted copies of PSF
-## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram
+## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram (here fit using osqp solver)
 sel   <- L0glm.fit(Wband, rowSums(D),
                    lambda = 0, nonnegative = TRUE,
                    family = poisson(link=identity),
@@ -149,7 +162,7 @@ Winit <- as.matrix(Wband[, sel, drop = FALSE])
 nmf <- L0BestRankGNMF(D,
                       Wstart          = Matrix(Winit, sparse = TRUE),
                       grouped_Hupdate = TRUE,
-                      IC              = "gic",
+                      IC              = "bic", # we can use BIC as after variable pre-selection we are working in low-dimensional regime
                       max_iter        = 5,
                       family          = poisson("identity"))
 
