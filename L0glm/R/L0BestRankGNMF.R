@@ -155,7 +155,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                      ncores = if (parallelize) { round(parallel::detectCores()/2) } else { 1 },
                      family = gaussian(link="identity")) {
   
-  D <- as.matrix(D) # coerce to dense
+  # D <- as.matrix(D) # coerce to dense
   Dt <- t(D)
   n <- nrow(D); p <- ncol(D)
   if (!is.null(Wstart)) { k <- ncol(Wstart) }
@@ -254,7 +254,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
     obj <- obj_new
   }
   
-  ## --- rescale row sums of H to unit L2 norm --------------------------
+  ## --- rescale row sums of H to unit L2 norm & jointly rescale W -------------
   s <- sqrt(rowSums(H^2))
   H <- sweep(H, 1, s, FUN="/")
   W <- sweep(W, 2, s, FUN="*")

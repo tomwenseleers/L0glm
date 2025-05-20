@@ -290,6 +290,159 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
 
 
 
+#' Simulate synthetic GC/MS chromatograms with known ground truth
+#'
+#' `simulate_GCMS()` generates an \eqn{n \times m}{n x m} data matrix \eqn{D}
+#' that mimics a GC/MS chromatogram with \eqn{k} compounds whose peaks have
+#' Gaussian shape, but slightly varying widths, and whose electron-impact (EI)
+#' spectra are drawn from a reference library.  Each compound elutes once as a
+#' Gaussian peak with a random centre, width and total-ion height.  Compound
+#' peaks are returned in *time-sorted* order.  Either Poisson (counting) noise
+#' or additive Gaussian noise can be added.
+#'
+#' @details
+#' \strong{Spectral library}\cr
+#' Let \eqn{S} have one compound per \emph{row} and mass channels in
+#' \emph{columns}; rows are renormalised to unit sum.\cr\cr
+#'
+#' \strong{Elution profile}\cr
+#' For compound \eqn{j} the underlying profile is
+#' \deqn{%
+#'   W_{ij} = \beta_j
+#'            \exp\!\Bigl[-\tfrac12\bigl((t_i-c_j)/\sigma_j\bigr)^2\Bigr],
+#'            \qquad i = 1,\dots,n%
+#' }{%
+#'   W_ij = beta_j * exp(-0.5 * ((t_i - c_j)/sigma_j)^2),
+#'   i = 1,…,n%
+#' }
+#' where
+#' \eqn{c_j \sim \mathrm{Unif}(1,n),                 }{c[j] ~ Unif(1,n),}
+#' \eqn{\sigma_j \sim \mathrm{Unif}(a,b),             }{sigma[j] ~ Unif(a,b),}
+#' \eqn{\beta_j  \sim \mathrm{LogNormal}(\mu,\sigma).}{beta[j]  ~ LogNormal(mu,sigma).}
+#' Here \code{c(a,b) = peak_width_range},
+#' \code{mu = mean_beta} and \code{sigma = sd_logbeta}.
+#'\cr\cr
+#'
+#' \strong{Signal and noise}\cr
+#' The noiseless signal is
+#' \deqn{ D_{\mathrm{true}} = W_{\mathrm{true}}\,H_{\mathrm{true}} }
+#' If \code{family = "poisson"} each entry is replaced by a Poisson draw with
+#' that mean; otherwise Gaussian noise with standard deviation
+#' \code{sd_noise} is added, and negative values are truncated to 0.
+#'\cr\cr
+#'
+#' \strong{Returned order}\cr
+#' Peaks are returned in increasing order of their peak centre \eqn{c_j}.
+#'\cr\cr
+#'
+#' \strong{Background}\cr
+#' Any background is assumed to have been subtracted in advance (e.g. by a
+#' quantile spline under-approximation).
+#'
+#' @param n  Integer. Number of time points (rows) in the simulated chromatogram.
+#' @param k  Integer. True number of compounds/peaks present (true rank).
+#' @param S  Matrix whose rows are EI spectra.  If \code{NULL}, the example data
+#'           set \code{data(simulated_spectra)} is used.
+#' @param peak_width_range Numeric length-2. Uniform range for Gaussian peak
+#'           widths (\eqn{\sigma}) in time points.
+#' @param mean_beta  Mean of the total-ion peak heights (original scale).
+#' @param sd_logbeta Standard deviation on the \emph{log} scale for the
+#'           log-normal peak heights.
+#' @param family  \code{"poisson"} (default) or \code{"gaussian"}.
+#' @param sd_noise s.d. of additive Gaussian noise (ignored for Poisson).
+#' @param seed     Integer seed for reproducibility.
+#'
+#' @return A list with components
+#' \describe{
+#'   \item{\code{D}}{Observed \eqn{n \times m}{n x m} chromatogram (dense).}
+#'   \item{\code{W_true}}{\eqn{n \times k}{n x k} true elution profiles (sparse).}
+#'   \item{\code{H_true}}{\eqn{k \times m}{k x m} true spectra (sparse).}
+#'   \item{\code{k}}{True number of compounds.}
+#'   \item{\code{centres}, \code{widths}, \code{heights}, \code{peak_width_range}}{Peak parameters.}
+#'   \item{\code{family}}{Noise model used.}
+#'   \item{\code{sd_noise}}{s.d. of noise if Gaussian.}
+#'   \item{\code{compound_idx}}{Row indices of \code{S} that were selected.}
+#' }
+#'
+#' @examples
+#' data(simulated_spectra)               # 100 × 460 reference library
+#' library(Matrix)
+#' sim <- simulate_GCMS(
+#'          n = 200, k = 50,
+#'          S = simulated_spectra,
+#'          family = "poisson")
+#' image(as.matrix(sim$D))               # chromatogram with noise
+#' matplot(sim$W_true, type = "l")       # true elution profiles
+#' image(sim$H_true)                     # EI spectra
+#'
+#' @import Matrix
+#' @export
+simulate_GCMS <- function(n = 200,
+                          k = 50,
+                          S = NULL,              # spectral library (n × m)
+                          peak_width_range = c(1, 5),
+                          mean_beta   = 1e4,
+                          sd_logbeta  = 1,
+                          family      = c("poisson", "gaussian"),
+                          sd_noise    = if (family=="gaussian") { 1 } else { NULL },
+                          seed        = 123) {
+  
+  if (is.null(S)) {
+    data(simulated_spectra, envir = environment())
+    S <- simulated_spectra
+  } else { S <- Matrix(S, sparse = TRUE) }
+
+  family <- match.arg(family)
+  set.seed(seed)
+  
+  ## -------- helper ------------------------------------------------------
+  psf_fun <- function(x, centre, width)
+    exp(-0.5 * ((x - centre) / width)^2)
+  
+  ## -------- pick k spectra ---------------------------------------------
+  if (k > nrow(S)) stop("k exceeds number of available spectra")
+  idx <- sample(nrow(S), k)
+  H_true   <- Matrix(S[idx, , drop = FALSE], sparse = TRUE)
+  H_true   <- sweep(H_true, 1, rowSums(H_true), "/")             # rows made to sum to 1
+  
+  ## -------- elution matrix W -------------------------------------------
+  tvec    <- seq_len(n)
+  centres <- sort(runif(k, 1, n)) # sorted peak centres
+  widths  <- runif(k, peak_width_range[1], peak_width_range[2])
+  heights <- rlnorm(k, meanlog = log(mean_beta) - 0.5 * sd_logbeta^2,
+                    sdlog   = sd_logbeta)
+  
+  W_true <- Matrix(sapply(seq_len(k), function(j)
+    heights[j] * psf_fun(tvec, centres[j], widths[j])), sparse = TRUE)
+  dimnames(W_true) <- list(NULL, paste0("peak", idx))
+  
+  ## -------- noiseless signal -------------------------------------------
+  D_true <- W_true %*% H_true
+  
+  ## -------- add noise ---------------------------------------------------
+  if (family == "poisson") {
+    D <- matrix(rpois(length(D_true), lambda = as.vector(D_true)), nrow = n)
+  } else {
+    D <- D_true + rnorm(length(D_true), sd = sd_noise)
+    D[D < 0] <- 0
+  }
+  
+  list(D = as.matrix(D),
+       D_true = as.matrix(D_true),
+       W_true = W_true,
+       H_true = H_true,
+       k = k,
+       centres = centres,
+       widths  = widths,
+       heights = heights,
+       peak_width_range = peak_width_range,
+       family = family,
+       sd_noise = sd_noise,
+       compound_idx = idx)
+}
+
+
+
 # simulate single channel data with L2 norm renormalized standard normal variables & gaussian noise with SD of 1 ####
 # cf. Frommlet & Nuel 2016 p. 9
 
