@@ -2,116 +2,134 @@
 % Please edit documentation in R/simulate.R
 \name{simulate_GCMS}
 \alias{simulate_GCMS}
-\title{Simulate synthetic GC/MS chromatograms with known ground truth}
+\title{Simulate synthetic GC-MS chromatograms with ground-truth signal + background}
 \usage{
 simulate_GCMS(
-  n = 200,
-  k = 50,
+  n = 10000,
+  k = 500,
   S = NULL,
-  peak_width_range = c(1, 5),
+  peak_width_range = c(3, 5),
   mean_beta = 10000,
   sd_logbeta = 1,
+  width_height_coef = 3,
+  rt_height_coef = 0.02,
+  sample_nr = 1,
+  rt_drift_coef = 0.001,
+  bg_scale = mean_beta/10,
   family = c("poisson", "gaussian"),
-  sd_noise = if (family == "gaussian") {
-     1
- } else {
-     NULL
- },
-  seed = 123
+  sd_noise = if (match.arg(family) == "gaussian") 1 else NULL,
+  seed_compounds = 123,
+  seed_peaks = 456
 )
 }
 \arguments{
-\item{n}{Integer. Number of time points (rows) in the simulated chromatogram.}
+\item{n}{Integer ≥ 1. Number of time points (rows).}
 
-\item{k}{Integer. True number of compounds/peaks present (true rank).}
+\item{k}{Integer ≥ 1. Number of compounds/peaks.}
 
-\item{S}{Matrix whose rows are EI spectra.  If \code{NULL}, the example data
-set \code{data(simulated_spectra)} is used.}
+\item{S}{Spectral library.  If `NULL` the example data
+`data(simulated_spectra)` (2000 × 518) is loaded.}
 
-\item{peak_width_range}{Numeric length-2. Uniform range for Gaussian peak
-widths (\eqn{\sigma}) in time points.}
+\item{peak_width_range}{Length-2 numeric. Uniform base range for Gaussian peak width σ
+(*before* any height-coupling is applied and on time point scale).}
 
-\item{mean_beta}{Mean of the total-ion peak heights (original scale).}
+\item{mean_beta, sd_logbeta}{Parameters of the log-normal height distribution.}
 
-\item{sd_logbeta}{Standard deviation on the \emph{log} scale for the
-log-normal peak heights.}
+\item{width_height_coef}{Numeric ≥ 0.  Multiplicative widening:
+\deqn{\sigma_j \leftarrow \sigma_j\bigl[1+\texttt{coef}\,h_j\bigr]}{} where
+\eqn{h_j=(\beta_j-\min\beta)/(\max\beta-\min\beta)}.}
 
-\item{family}{\code{"poisson"} (default) or \code{"gaussian"}.}
+\item{rt_height_coef}{Numeric.  Positive values push high peaks to slightly
+larger RTs: \deqn{c_j \leftarrow c_j
+\bigl[1+\texttt{rt\_height\_coef}\,h_j\bigr]}{}}
 
-\item{sd_noise}{s.d. of additive Gaussian noise (ignored for Poisson).}
+\item{sample_nr}{Integer ≥ 1. Injection/order number.}
 
-\item{seed}{Integer seed for reproducibility.}
+\item{rt_drift_coef}{Numeric.  Additive drift in *time points* per injection:
+\eqn{c_j \leftarrow c_j + \texttt{rt\_drift\_coef}\,
+(\texttt{sample\_nr}-1)}.}
+
+\item{bg_scale}{Numeric ≥ 0. Multiplicative factor applied to the whole
+B-spline background.}
+
+\item{family}{`"poisson"` (default) or `"gaussian"`.}
+
+\item{sd_noise}{s.d. of additive Gaussian noise (`family="gaussian"`).}
+
+\item{seed_compounds}{Integer seed controlling which library spectra are
+drawn.}
+
+\item{seed_peaks}{Integer seed for all other random quantities (heights,
+widths, noise, …).}
 }
 \value{
-A list with components
+A list with matrices:
 \describe{
-  \item{\code{D}}{Observed \eqn{n \times m}{n x m} chromatogram (dense).}
-  \item{\code{W_true}}{\eqn{n \times k}{n x k} true elution profiles (sparse).}
-  \item{\code{H_true}}{\eqn{k \times m}{k x m} true spectra (sparse).}
-  \item{\code{k}}{True number of compounds.}
-  \item{\code{centres}, \code{widths}, \code{heights}, \code{peak_width_range}}{Peak parameters.}
-  \item{\code{family}}{Noise model used.}
-  \item{\code{sd_noise}}{s.d. of noise if Gaussian.}
-  \item{\code{compound_idx}}{Row indices of \code{S} that were selected.}
+  \item{D}{Observed chromatogram (signal + background + noise) (dense matrix).}
+  \item{D_true}{Noiseless signal `W_true H_true + W_background H_background` (dense matrix).}
+  \item{W_true, H_true}{Elution profiles and EI spectra of the *k* peaks (sparse matrices).}
+  \item{W_background, H_background}{Smooth B-spline background bases and spectra (sparse matrices).}
+  \item{k_background}{Number of B-spline basis columns (`max(2, n/1000)`).}
+  \item{centres, widths, heights}{Peak parameters after all applied
+        height/RT/drift adjustments.}
+  \item{widths_base}{Base compound width before intensity-based broadening.}
+  \item{compound_idx}{Row indices of `S` that were selected.}
+  \item{sample_nr, rt_drift_coef, width_height_coef, rt_height_coef}{Echoed.}
 }
 }
 \description{
-`simulate_GCMS()` generates an \eqn{n \times m}{n x m} data matrix \eqn{D}
-that mimics a GC/MS chromatogram with \eqn{k} compounds whose peaks have
-Gaussian shape, but slightly varying widths, and whose electron-impact (EI)
-spectra are drawn from a reference library.  Each compound elutes once as a
-Gaussian peak with a random centre, width and total-ion height.  Compound
-peaks are returned in *time-sorted* order.  Either Poisson (counting) noise
-or additive Gaussian noise can be added.
+`simulate_GCMS()` draws \eqn{k} compounds from an EI reference library `S`
+(rows = compounds, columns = m/z values, e.g. 33–550) and generates an \eqn{n \times m}{n
+× m} chromatogram `D` whose signal is the sum of
+k Gaussian peaks (`W_true H_true`) and
+a smooth, monotonically increasing B-spline background
+(`W_background*bg_scale H_background`).
 }
 \details{
-\strong{Spectral library}\cr
-Let \eqn{S} have one compound per \emph{row} and mass channels in
-\emph{columns}; rows are renormalised to unit sum.\cr\cr
-
-\strong{Elution profile}\cr
-For compound \eqn{j} the underlying profile is
-\deqn{%
-  W_{ij} = \beta_j
-           \exp\!\Bigl[-\tfrac12\bigl((t_i-c_j)/\sigma_j\bigr)^2\Bigr],
-           \qquad i = 1,\dots,n%
-}{%
-  W_ij = beta_j * exp(-0.5 * ((t_i - c_j)/sigma_j)^2),
-  i = 1,…,n%
+\itemize{
+  \item A \emph{compound-specific base width} \eqn{\sigma_{0}} is drawn
+        once when the compound is first selected from the library.
+  \item In subsequent simulated chromatograms the same compound retains
+        the same \eqn{\sigma_{0}}, but the \emph{effective} width becomes
+        \deqn{\sigma \;=\; \sigma_{0}\Bigl(1 +
+              \texttt{width\_height\_coef}\,h_{\mathrm{norm}}\Bigr),}
+        so it can still broaden or narrow in proportion to its
+        (possibly resampled) peak height.
 }
-where
-\eqn{c_j \sim \mathrm{Unif}(1,n),                 }{c[j] ~ Unif(1,n),}
-\eqn{\sigma_j \sim \mathrm{Unif}(a,b),             }{sigma[j] ~ Unif(a,b),}
-\eqn{\beta_j  \sim \mathrm{LogNormal}(\mu,\sigma).}{beta[j]  ~ LogNormal(mu,sigma).}
-Here \code{c(a,b) = peak_width_range},
-\code{mu = mean_beta} and \code{sigma = sd_logbeta}.
-\cr\cr
 
-\strong{Signal and noise}\cr
-The noiseless signal is
-\deqn{ D_{\mathrm{true}} = W_{\mathrm{true}}\,H_{\mathrm{true}} }
-If \code{family = "poisson"} each entry is replaced by a Poisson draw with
-that mean; otherwise Gaussian noise with standard deviation
-\code{sd_noise} is added, and negative values are truncated to 0.
-\cr\cr
-
-\strong{Returned order}\cr
-Peaks are returned in increasing order of their peak centre \eqn{c_j}.
-\cr\cr
-
-\strong{Background}\cr
-Any background is assumed to have been subtracted in advance (e.g. by a
-quantile spline under-approximation).
+Gaussian peak width and RT can be coupled to peak height; an additional
+*chromatographic drift* proportional to the injection number `sample_nr` is
+also included.  Independent random seeds allow you to keep the same compounds
+while resampling peak heights (or vice-versa).
 }
+\section{Reference library}{
+ `S` must contain
+- column names (character) for the m/z channels (e.g. `"33":"550"`), and
+- attribute `attr(S, "RT")` for the retention times *(numeric, unit: mins)*.
+}
+
 \examples{
-data(simulated_spectra)               # 100 × 460 reference library
-library(Matrix)
-sim <- simulate_GCMS(
-         n = 200, k = 50,
-         S = simulated_spectra,
-         family = "poisson")
-image(as.matrix(sim$D))               # chromatogram with noise
-matplot(sim$W_true, type = "l")       # true elution profiles
-image(sim$H_true)                     # EI spectra
+data(simulated_spectra)
+sim <- simulate_GCMS(n = 10000,
+                     k = 500,
+                     S = simulated_spectra,
+                     peak_width_range = c(3, 5),
+                     mean_beta  = 1e4,
+                     sd_logbeta = 1,
+                     width_height_coef = 3,
+                     rt_height_coef    = 0.02,
+                     sample_nr = 1,
+                     rt_drift_coef = 0.001,
+                     bg_scale = 100,
+                     family = "poisson")
+cols <- colorRampPalette(c("black", "black","blue","green","yellow","orange", "red"))(1000) 
+Dvis <- sim$D[seq(1, 10000, by = 10), , drop = FALSE]^0.12
+image(x = as.numeric(rownames(Dvis)), 
+      y = as.numeric(colnames(Dvis)),
+      z = Dvis,
+      col    = cols,
+      xlab   = "Time (min)",
+      ylab   = "Mass (m/z)",
+      main   = "Simulated GC/MS chromatogram")
 
 }
