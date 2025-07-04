@@ -1,9 +1,6 @@
 #' @name kernel
 #' @title Generate normalised 1-D convolution kernels (point-spread functions)
 #'
-#' @importFrom gsignal conv
-#' @importFrom stats   approx
-#'
 #' @description
 #'
 #' Generates a numeric vector of length *L* representing a point-spread
@@ -101,6 +98,8 @@
 #'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand align_percentile = 0.001)",
 #'   col = cols, lty = 1,
 #'   type="l") 
+#' @importFrom gsignal conv
+#' @importFrom stats   approx
 #' @export
 kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
                                "laplace","exponential","gamma","gammaexp"),
