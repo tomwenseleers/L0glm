@@ -6,10 +6,10 @@
 \title{Simulated Spectra Dataset}
 \format{
 The data consists of a sparse \code{dgCMatrix} matrix with 
-2000 rows corresponding to different compounds and 518 columns, corresponding
-to different mass fragments (m/z 33 to 550).
+2000 rows corresponding to different compounds and 258 columns, corresponding
+to different mass fragments (m/z 41 to 298).
 \describe{
-  The 2000 rows correspond to different compounds and the 518 columns correspond 
+  The 2000 rows correspond to different compounds and the 258 columns correspond 
   to different mass fragments (given as column names). Simulated retention
   times (in mins) and retention indices are given as attributes 
   attr(simulated_spectra, "RT") and attr(simulated_spectra, "RI").
