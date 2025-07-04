@@ -12,30 +12,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// fastnnls_dense
-arma::vec fastnnls_dense(arma::mat& A, arma::vec b);
-RcppExport SEXP _L0glm_fastnnls_dense(SEXP ASEXP, SEXP bSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat& >::type A(ASEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(fastnnls_dense(A, b));
-    return rcpp_result_gen;
-END_RCPP
-}
-// fastnnls_sparse
-arma::vec fastnnls_sparse(arma::sp_mat& A, arma::vec b);
-RcppExport SEXP _L0glm_fastnnls_sparse(SEXP ASEXP, SEXP bSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::sp_mat& >::type A(ASEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(fastnnls_sparse(A, b));
-    return rcpp_result_gen;
-END_RCPP
-}
 // solve_sparse_QR
 Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_QR(SEXP ASEXP, SEXP bSEXP, SEXP orderingSEXP) {
@@ -153,22 +129,8 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// weightedDotProduct
-arma::mat weightedDotProduct(const arma::mat& Y, const arma::mat& weights);
-RcppExport SEXP _L0glm_weightedDotProduct(SEXP YSEXP, SEXP weightsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type weights(weightsSEXP);
-    rcpp_result_gen = Rcpp::wrap(weightedDotProduct(Y, weights));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_L0glm_fastnnls_dense", (DL_FUNC) &_L0glm_fastnnls_dense, 2},
-    {"_L0glm_fastnnls_sparse", (DL_FUNC) &_L0glm_fastnnls_sparse, 2},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_sparse_chol", (DL_FUNC) &_L0glm_solve_sparse_chol, 4},
@@ -177,7 +139,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_dense_LSCG", (DL_FUNC) &_L0glm_solve_dense_LSCG, 6},
     {"_L0glm_solve_sparse_CG", (DL_FUNC) &_L0glm_solve_sparse_CG, 6},
     {"_L0glm_solve_dense_CG", (DL_FUNC) &_L0glm_solve_dense_CG, 6},
-    {"_L0glm_weightedDotProduct", (DL_FUNC) &_L0glm_weightedDotProduct, 2},
     {NULL, NULL, 0}
 };
 
