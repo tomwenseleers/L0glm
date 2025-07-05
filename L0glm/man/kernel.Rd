@@ -9,7 +9,7 @@ kernel(
     "gamma", "gammaexp"),
   L,
   params = list(),
-  align_percentile = NULL
+  p = NULL
 )
 }
 \arguments{
@@ -22,9 +22,9 @@ exponential), `"exponential"` (one-sided exponential), `"gamma"`,
 
 \item{params}{Named list of shape parameters (see Details).}
 
-\item{align_percentile}{Numeric in [0, 1].
+\item{p}{Numeric in [0, 1].
 Position the chosen percentile of the kernel’s CDF at index
-`1 + align_percentile·(L – 1)`.  
+`1 + p·(L – 1)`.  
 Defaults to `0` for causal families
 (`exponential`, `gamma`, `gammaexp`) and to `0.5`
 for all other types (resulting in the middle of the kernel lying at
@@ -104,13 +104,17 @@ legend("topright",
 cols=1:3
 matplot(cbind(
   kernel("bigaussian", 51,
-         list(sigma1 = 2, sigma2 = 4), align_percentile = 0.001),
+         list(sigma1 = 2, sigma2 = 4), p = 0.001),
   kernel("bigaussian", 51,
-         list(sigma1 = 2*2, sigma2 = 4*2), align_percentile = 0.001),
+         list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
   kernel("bigaussian", 51,
-         list(sigma1 = 2*3, sigma2 = 4*3), align_percentile = 0.001)), 
+         list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
   xlab = "kernel index", ylab = "density",
-  main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand align_percentile = 0.001)",
+  main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand p = 0.001)",
   col = cols, lty = 1,
   type="l") 
+}
+\seealso{
+\code{\link{ConvMatrix_Banded}}  to make banded convolution design matrices,
+  \code{\link{ConvMatrix_Rect}}    to make rectangular convolution design matrices.
 }

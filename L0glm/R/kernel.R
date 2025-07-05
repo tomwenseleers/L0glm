@@ -2,7 +2,6 @@
 #' @title Generate normalised 1-D convolution kernels (point-spread functions)
 #'
 #' @description
-#'
 #' Generates a numeric vector of length *L* representing a point-spread
 #' function (PSF) or impulse-response kernel.  
 #' The kernel is **L¹-normalised** (area = 1).  
@@ -44,9 +43,9 @@
 #'   `"gammaexp"` (convolution of Gamma with exponential).
 #' @param L     Integer (≥ 3).  Kernel length.
 #' @param params Named list of shape parameters (see Details).
-#' @param align_percentile Numeric in [0, 1].  
+#' @param p Numeric in [0, 1].  
 #'   Position the chosen percentile of the kernel’s CDF at index
-#'   `1 + align_percentile·(L – 1)`.  
+#'   `1 + p·(L – 1)`.  
 #'   Defaults to `0` for causal families
 #'   (`exponential`, `gamma`, `gammaexp`) and to `0.5`
 #'   for all other types (resulting in the middle of the kernel lying at
@@ -89,34 +88,37 @@
 #' cols=1:3
 #' matplot(cbind(
 #'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2, sigma2 = 4), align_percentile = 0.001),
+#'          list(sigma1 = 2, sigma2 = 4), p = 0.001),
 #'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2*2, sigma2 = 4*2), align_percentile = 0.001),
+#'          list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
 #'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2*3, sigma2 = 4*3), align_percentile = 0.001)), 
+#'          list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
 #'   xlab = "kernel index", ylab = "density",
-#'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand align_percentile = 0.001)",
+#'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand p = 0.001)",
 #'   col = cols, lty = 1,
 #'   type="l") 
 #' @importFrom gsignal conv
 #' @importFrom stats   approx
+#' @seealso
+#'   \code{\link{ConvMatrix_Banded}}  to make banded convolution design matrices,
+#'   \code{\link{ConvMatrix_Rect}}    to make rectangular convolution design matrices.
 #' @export
 kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
                                "laplace","exponential","gamma","gammaexp"),
                    L,
                    params  = list(),
-                   align_percentile = NULL)     
+                   p = NULL)     
 {
   `%||%` <- function(a,b) if (is.null(a)) b else a
   type <- match.arg(type)
   stopifnot(L >= 3L, L == as.integer(L))
   
   ## ---------------- choose default alignment ----------------------------
-  if (is.null(align_percentile)) {
+  if (is.null(p)) {
     causal  <- type %in% c("exponential","gamma","gammaexp")
-    align_percentile <- if (causal) 0 else 0.5
+    p <- if (causal) 0 else 0.5
   }
-  stopifnot(align_percentile >= 0, align_percentile <= 1)
+  stopifnot(p >= 0, p <= 1)
   
   idx <- seq_len(L)
   x   <- idx - (L + 1)/2        # symmetric grid for analytic formulas
@@ -202,7 +204,7 @@ kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
   )
   
   ## ---- percentile-based shift --------------------------------------------
-  g <- percentile_shift(g, align_percentile)
+  g <- percentile_shift(g, p)
 
   ## ---- return kernel normalised to unit L1 norm --------------------------
   return(g / sum(g)) 
@@ -211,14 +213,14 @@ kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
 
 
 
-# helper function: shift convolution kernel to given percentile in CDF
-# input arguments: kernel g and align_percentile
-# output: kernel with CDF aligned to given percentile in CDF
-percentile_shift <- function (g, align_percentile = 0.01) 
+# helper function: shift convolution kernel to given percentile p in CDF
+# input arguments: kernel g and percentile p
+# output: kernel with CDF aligned to given percentile p in CDF
+percentile_shift <- function (g, p = 0.01) 
   {
-  stopifnot(align_percentile >= 0, align_percentile <= 1)
+  stopifnot(p >= 0, p <= 1)
   
-  if (align_percentile > 0) {
+  if (p > 0) {
   L <- length(g)
   idx <- seq_len(L)
   
@@ -226,11 +228,11 @@ percentile_shift <- function (g, align_percentile = 0.01)
   cdf <- cumsum(g) / sum(g)
   
   # position where CDF crosses desired percentile (linear interp)
-  pos_p <- stats::approx(cdf, idx, xout = align_percentile,
+  pos_p <- stats::approx(cdf, idx, xout = p,
                          ties = "ordered")$y
   
   # target index:  1 + p·(L-1)
-  target <- 1 + align_percentile * (L - 1)
+  target <- 1 + p * (L - 1)
   
   delta <- target - pos_p
   if (abs(delta) > .Machine$double.eps)
