@@ -1,4 +1,4 @@
-#' @name kernel
+#' @name convkernel
 #' @title Generate normalised 1-D convolution kernels (point-spread functions)
 #'
 #' @description
@@ -33,8 +33,8 @@
 #'         chromatographic peak shapes.
 #' }
 #'
-#' All kernels returned by `kernel()` integrate to 1 and are ready for use
-#' in convolution or deconvolution pipelines.
+#' All kernels returned by `convkernel()` integrate to 1 and are ready for use
+#' in convolution or deconvolution algorithms
 #'
 #'
 #' @param type  One of `"gaussian"`, `"bigaussian"`, `"emg"` (exponentially
@@ -67,14 +67,14 @@
 #' @examples
 #' ## available convolution kernels
 #' cols <- 1:8
-#' k1 <- kernel("gaussian",    51, list(sigma = 4))
-#' k2 <- kernel("bigaussian",  51, list(sigma1 = 2, sigma2 = 6))
-#' k3 <- kernel("emg",         51, list(sigma = 2, tau = 6))
-#' k4 <- kernel("lorentzian",  51, list(gamma = 3))
-#' k5 <- kernel("laplace",     51, list(tau = 4))
-#' k6 <- kernel("exponential", 51, list(tau = 5))
-#' k7 <- kernel("gamma",       51, list(k = 9, tau = 0.5))
-#' k8 <- kernel("gammaexp",    51, list(k = 9, tau_g = 0.7, tau_e = 0.7))
+#' k1 <- convkernel("gaussian",    51, list(sigma = 4))
+#' k2 <- convkernel("bigaussian",  51, list(sigma1 = 2, sigma2 = 6))
+#' k3 <- convkernel("emg",         51, list(sigma = 2, tau = 6))
+#' k4 <- convkernel("lorentzian",  51, list(gamma = 3))
+#' k5 <- convkernel("laplace",     51, list(tau = 4))
+#' k6 <- convkernel("exponential", 51, list(tau = 5))
+#' k7 <- convkernel("gamma",       51, list(k = 9, tau = 0.5))
+#' k8 <- convkernel("gammaexp",    51, list(k = 9, tau_g = 0.7, tau_e = 0.7))
 #' matplot(cbind(k1,k2,k3,k4,k5,k6,k7,k8), type = "l", lty = 1, col = cols,
 #'         xlab = "kernel index", ylab = "density",
 #'         main = "Convolution kernels\n(point–spread functions)")
@@ -87,12 +87,12 @@
 #' ## peak broadening as observed at higher concentrations in GC/MS analysis
 #' cols=1:3
 #' matplot(cbind(
-#'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2, sigma2 = 4), p = 0.001),
-#'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
-#'   kernel("bigaussian", 51,
-#'          list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
+#'   convkernel("bigaussian", 51,
+#'              list(sigma1 = 2, sigma2 = 4), p = 0.001),
+#'   convkernel("bigaussian", 51,
+#'              list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
+#'   convkernel("bigaussian", 51,
+#'              list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
 #'   xlab = "kernel index", ylab = "density",
 #'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand p = 0.001)",
 #'   col = cols, lty = 1,
@@ -100,11 +100,10 @@
 #' @importFrom gsignal conv
 #' @importFrom stats   approx
 #' @seealso
-#'   \code{\link{ConvMatrix_Banded}}  to make banded convolution design matrices,
-#'   \code{\link{ConvMatrix_Rect}}    to make rectangular convolution design matrices.
+#'   \code{\link{convmatrix}}  to make convolution design matrices.
 #' @export
-kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
-                               "laplace","exponential","gamma","gammaexp"),
+convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
+                                "laplace","exponential","gamma","gammaexp"),
                    L,
                    params  = list(),
                    p = NULL)     
@@ -124,7 +123,7 @@ kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
   x   <- idx - (L + 1)/2        # symmetric grid for analytic formulas
   
   ## ---- analytic kernels -------------------------------------------------
-  g <- switch(type,
+  kernel <- switch(type,
               
               gaussian = {
                 s <- params$sigma %||% 2.5
@@ -204,10 +203,10 @@ kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
   )
   
   ## ---- percentile-based shift --------------------------------------------
-  g <- percentile_shift(g, p)
+  kernel <- percentile_shift(kernel, p)
 
   ## ---- return kernel normalised to unit L1 norm --------------------------
-  return(g / sum(g)) 
+  return(kernel / sum(kernel)) 
 }
 
 
@@ -216,29 +215,29 @@ kernel <- function(type    = c("gaussian","bigaussian","emg","lorentzian",
 # helper function: shift convolution kernel to given percentile p in CDF
 # input arguments: kernel g and percentile p
 # output: kernel with CDF aligned to given percentile p in CDF
-percentile_shift <- function (g, p = 0.01) 
+percentile_shift <- function (kernel, p = 0.01) 
   {
   stopifnot(p >= 0, p <= 1)
   
   if (p > 0) {
-  L <- length(g)
+  L <- length(kernel)
   idx <- seq_len(L)
   
   # empirical CDF on discrete grid
-  cdf <- cumsum(g) / sum(g)
+  cdf <- cumsum(kernel) / sum(kernel)
   
   # position where CDF crosses desired percentile (linear interp)
   pos_p <- stats::approx(cdf, idx, xout = p,
                          ties = "ordered")$y
   
-  # target index:  1 + p·(L-1)
+  # target index
   target <- 1 + p * (L - 1)
   
   delta <- target - pos_p
   if (abs(delta) > .Machine$double.eps)
-    g <- stats::approx(idx, g, xout = idx - delta,
+    kernel <- stats::approx(idx, kernel, xout = idx - delta,
                        rule = 2)$y
   }
-  return(g)
+  return(kernel)
 }
 
