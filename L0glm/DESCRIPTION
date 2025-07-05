@@ -19,6 +19,7 @@ Imports: Matrix,
          ordinis,
          osqp,
          qlcMatrix,
+         RhpcBLASctl,
          methods,
          scales,
          statmod
