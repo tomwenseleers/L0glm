@@ -2,6 +2,7 @@
 % Please edit documentation in R/convkernel.R
 \name{convkernel}
 \alias{convkernel}
+\alias{shift_kernel}
 \title{Generate normalised 1-D convolution kernels (point-spread functions)}
 \usage{
 convkernel(
@@ -11,6 +12,8 @@ convkernel(
   params = list(),
   p = NULL
 )
+
+shift_kernel(kernel, p = "mean", method = c("linear", "integer"))
 }
 \arguments{
 \item{type}{One of `"gaussian"`, `"bigaussian"`, `"emg"` (exponentially
@@ -22,58 +25,58 @@ exponential), `"exponential"` (one-sided exponential), `"gamma"`,
 
 \item{params}{Named list of shape parameters (see Details).}
 
-\item{p}{Numeric in [0, 1].
-Position the chosen percentile of the kernel’s CDF at index
-`1 + p·(L – 1)`.  
-Defaults to `0` for causal families
-(`exponential`, `gamma`, `gammaexp`) and to `0.5`
-for all other types (resulting in the middle of the kernel lying at
-the centroid).}
+\item{p}{Either `"mean"` (shift the centroid) or a
+numeric percentile in [0, 1].}
+
+\item{kernel}{Numeric vector – the PSF to be shifted.}
+
+\item{method}{`"linear"` (sub-sample interpolation) or
+`"integer"` (whole-sample shift).}
 }
 \value{
 Numeric vector of length *L*.
+
+shifted vector of the same length as `kernel`
 }
 \description{
-Generates a numeric vector of length *L* representing a point-spread
-function (PSF) or impulse-response kernel.  
-The kernel is **L¹-normalised** (area = 1).  
-Optionally it is shifted so that a user-chosen percentile *p*
-of the cumulative distribution falls on index  
-`1 + p·(L – 1)`.  
-`p = 0.5` results in the centroid lying in the middle of the kernel; 
-`p = 0` leaves the kernel unshifted.
+Generates a numeric vector of length \emph{L} that represents a
+point–spread function (PSF) or impulse–response kernel.
+The kernel is \eqn{L^{1}}-normalised (area = 1).
+Optionally it is shifted with \code{\link{shift_kernel}} so that a
+user-chosen percentile \eqn{p} of the cumulative distribution falls on
+index \eqn{1 + p \cdot (L - 1)}; setting \code{p = 0} leaves the
+kernel unshifted.  Alternatively, using \code{p = "mean"} will move the
+centroid to the middle of the kernel.
 
-The helper is useful for simulating blurred spike trains in 1-D
-spectroscopy (GC-MS, NMR), calcium-imaging traces, or epidemic curves
-where diagnosed cases are the convolution of infections with a delay
-distribution kernel.  The main kernel families are:
+The helper is useful for simulating blurred spike trains as observed in
+one-dimensional spectroscopy (GC–MS, NMR), calcium neuro-imaging, or
+epidemic curves where diagnosed cases are obtained by convolving
+infections with a delay-distribution kernel.  The available kernel
+families are:
 
 \itemize{
-  \item \strong{Gaussian / Bigaussian / Exponentially Modified Gaussian
-        (Gaussian ⊗ Exp)} – common peak-shape models in
+  \item \strong{Gaussian / Bigaussian / Exponentially Modified
+        Gaussian (Gaussian * Exp)} – common peak-shape models in
         gas-chromatography / mass-spectrometry.
-
   \item \strong{Lorentzian} – arises in 1-D NMR as the Fourier transform
         of an exponentially decaying free-induction decay
         (Cauchy–Lorentz distribution).
-
-  \item \strong{Exponential} – standard calcium-indicator impulse response
-        in neuro-imaging studies.
-
-  \item \strong{Gamma / Gamma ⊗ Exp} – typical infection-to-diagnosis
-        delay distributions in epidemiology, but also usable to describe
-        chromatographic peak shapes.
+  \item \strong{Exponential} – standard calcium-indicator impulse
+        response in neuro-imaging studies.
+  \item \strong{Gamma / Gamma * Exp} – typical
+        infection-to-diagnosis delay distributions in epidemiology and
+        sometimes used for chromatographic peak shapes.
 }
 
-All kernels returned by `convkernel()` integrate to 1 and are ready for use
-in convolution or deconvolution algorithms
+All kernels returned by \code{convkernel()} integrate to 1 and are ready
+for use in convolution or deconvolution pipelines.
 }
 \details{
 Default parameters for the different distributions are as
   follows:\cr gaussian: `sigma=2.5`\cr bigaussian:  `sigma1=1`, `sigma2=5`\cr
-  emg (gaussian ⊗ exponential):`sigma=2`,`tau=6 ` lorentzian: `gamma=2`\cr
+  emg (gaussian * exponential):`sigma=2`,`tau=6 ` lorentzian: `gamma=2`\cr
   laplace: `tau=3`\cr exponential: `tau=3`\cr gamma: `k=9`, `tau=0.5`\cr
-  gammaexp (gamma ⊗ exponential): `k=9` , ` tau_g=0.7` , `tau_e=0.7` \cr
+  gammaexp (gamma * exponential): `k=9` , ` tau_g=0.7` , `tau_e=0.7` \cr
 
 Returned vectors are **L¹-normalised**.  
 If `align_percentile > 0` the kernel is shifted (by sub-sample
@@ -115,5 +118,5 @@ matplot(cbind(
   type="l") 
 }
 \seealso{
-\code{\link{convmatrix}}  to make convolution design matrices.
+\code{\link{shift_kernel}}, \code{\link{convmatrix}}
 }

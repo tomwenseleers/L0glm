@@ -2,40 +2,37 @@
 #' @title Generate normalised 1-D convolution kernels (point-spread functions)
 #'
 #' @description
-#' Generates a numeric vector of length *L* representing a point-spread
-#' function (PSF) or impulse-response kernel.  
-#' The kernel is **L¹-normalised** (area = 1).  
-#' Optionally it is shifted so that a user-chosen percentile *p*
-#' of the cumulative distribution falls on index  
-#' `1 + p·(L – 1)`.  
-#' `p = 0.5` results in the centroid lying in the middle of the kernel; 
-#' `p = 0` leaves the kernel unshifted.
+#' Generates a numeric vector of length \emph{L} that represents a
+#' point–spread function (PSF) or impulse–response kernel.
+#' The kernel is \eqn{L^{1}}-normalised (area = 1).
+#' Optionally it is shifted with \code{\link{shift_kernel}} so that a
+#' user-chosen percentile \eqn{p} of the cumulative distribution falls on
+#' index \eqn{1 + p \cdot (L - 1)}; setting \code{p = 0} leaves the
+#' kernel unshifted.  Alternatively, using \code{p = "mean"} will move the
+#' centroid to the middle of the kernel.
 #'
-#' The helper is useful for simulating blurred spike trains in 1-D
-#' spectroscopy (GC-MS, NMR), calcium-imaging traces, or epidemic curves
-#' where diagnosed cases are the convolution of infections with a delay
-#' distribution kernel.  The main kernel families are:
+#' The helper is useful for simulating blurred spike trains as observed in
+#' one-dimensional spectroscopy (GC–MS, NMR), calcium neuro-imaging, or
+#' epidemic curves where diagnosed cases are obtained by convolving
+#' infections with a delay-distribution kernel.  The available kernel
+#' families are:
 #'
 #' \itemize{
-#'   \item \strong{Gaussian / Bigaussian / Exponentially Modified Gaussian
-#'         (Gaussian ⊗ Exp)} – common peak-shape models in
+#'   \item \strong{Gaussian / Bigaussian / Exponentially Modified
+#'         Gaussian (Gaussian * Exp)} – common peak-shape models in
 #'         gas-chromatography / mass-spectrometry.
-#'
 #'   \item \strong{Lorentzian} – arises in 1-D NMR as the Fourier transform
 #'         of an exponentially decaying free-induction decay
 #'         (Cauchy–Lorentz distribution).
-#'
-#'   \item \strong{Exponential} – standard calcium-indicator impulse response
-#'         in neuro-imaging studies.
-#'
-#'   \item \strong{Gamma / Gamma ⊗ Exp} – typical infection-to-diagnosis
-#'         delay distributions in epidemiology, but also usable to describe
-#'         chromatographic peak shapes.
+#'   \item \strong{Exponential} – standard calcium-indicator impulse
+#'         response in neuro-imaging studies.
+#'   \item \strong{Gamma / Gamma * Exp} – typical
+#'         infection-to-diagnosis delay distributions in epidemiology and
+#'         sometimes used for chromatographic peak shapes.
 #' }
 #'
-#' All kernels returned by `convkernel()` integrate to 1 and are ready for use
-#' in convolution or deconvolution algorithms
-#'
+#' All kernels returned by \code{convkernel()} integrate to 1 and are ready
+#' for use in convolution or deconvolution pipelines.
 #'
 #' @param type  One of `"gaussian"`, `"bigaussian"`, `"emg"` (exponentially
 #'   modified Gaussian), `"lorentzian"` (Cauchy), `"laplace"` (two-sided
@@ -53,9 +50,9 @@
 #'
 #' @details Default parameters for the different distributions are as
 #'   follows:\cr gaussian: `sigma=2.5`\cr bigaussian:  `sigma1=1`, `sigma2=5`\cr
-#'   emg (gaussian ⊗ exponential):`sigma=2`,`tau=6 ` lorentzian: `gamma=2`\cr
+#'   emg (gaussian * exponential):`sigma=2`,`tau=6 ` lorentzian: `gamma=2`\cr
 #'   laplace: `tau=3`\cr exponential: `tau=3`\cr gamma: `k=9`, `tau=0.5`\cr
-#'   gammaexp (gamma ⊗ exponential): `k=9` , ` tau_g=0.7` , `tau_e=0.7` \cr
+#'   gammaexp (gamma * exponential): `k=9` , ` tau_g=0.7` , `tau_e=0.7` \cr
 #'
 #' Returned vectors are **L¹-normalised**.  
 #' If `align_percentile > 0` the kernel is shifted (by sub-sample
@@ -100,7 +97,7 @@
 #' @importFrom gsignal conv
 #' @importFrom stats   approx
 #' @seealso
-#'   \code{\link{convmatrix}}  to make convolution design matrices.
+#'   \code{\link{shift_kernel}}, \code{\link{convmatrix}}
 #' @export
 convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
                                 "laplace","exponential","gamma","gammaexp"),
@@ -202,8 +199,8 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
               }
   )
   
-  ## ---- percentile-based shift --------------------------------------------
-  kernel <- percentile_shift(kernel, p)
+  ## ---- shift kernel ------------------------------------------------------
+  kernel <- shift_kernel(kernel, p, method = "linear")
 
   ## ---- return kernel normalised to unit L1 norm --------------------------
   return(kernel / sum(kernel)) 
@@ -212,32 +209,60 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
 
 
 
-# helper function: shift convolution kernel to given percentile p in CDF
-# input arguments: kernel g and percentile p
-# output: kernel with CDF aligned to given percentile p in CDF
-percentile_shift <- function (kernel, p = 0.01) 
-  {
-  stopifnot(p >= 0, p <= 1)
+#' @rdname convkernel
+#'
+#' @param kernel Numeric vector – the PSF to be shifted.
+#' @param p      Either `"mean"` (shift the centroid) or a
+#'               numeric percentile in [0, 1].
+#' @param method `"linear"` (sub-sample interpolation) or
+#'               `"integer"` (whole-sample shift).
+#' @return shifted vector of the same length as `kernel`
+shift_kernel <- function(kernel,
+                         p      = "mean",
+                         # numeric for percentile or 'mean' to center at centroid
+                         method = c("linear", "integer"))
+{
+  method <- match.arg(method)
+  stopifnot(is.numeric(kernel),
+            length(kernel) >= 3L,
+            (is.numeric(p) && 0 <= p && p <= 1) || is.character(p))
   
-  if (p > 0) {
-  L <- length(kernel)
+  L   <- length(kernel)
   idx <- seq_len(L)
   
-  # empirical CDF on discrete grid
-  cdf <- cumsum(kernel) / sum(kernel)
-  
-  # position where CDF crosses desired percentile (linear interp)
-  pos_p <- stats::approx(cdf, idx, xout = p,
-                         ties = "ordered")$y
-  
-  # target index
-  target <- 1 + p * (L - 1)
-  
-  delta <- target - pos_p
-  if (abs(delta) > .Machine$double.eps)
-    kernel <- stats::approx(idx, kernel, xout = idx - delta,
-                       rule = 2)$y
+  ## -------- position of the reference point ----------------------------
+  if (is.character(p)) {
+    ## centroid (= mean)
+    mu   <- sum(idx * kernel) / sum(kernel)
+    pos  <- mu                           # location already on index scale
+  } else {
+    ## p-quantile -------------------------------------------
+    cdf  <- cumsum(kernel) / sum(kernel)
+    pos  <- stats::approx(cdf, idx, xout = p, ties = "ordered")$y
   }
-  return(kernel)
+  
+  ## -------- where we want it -------------------------------------------
+  target <- if (is.character(p))
+    (L + 1) / 2       # centre for centroid
+  else
+    1 + p * (L - 1)   # 1-based p-quantile
+  
+  delta  <- target - pos                           # +ve → shift right
+  if (abs(delta) < .Machine$double.eps)
+    return(kernel / sum(kernel))                             # already aligned
+  
+  out <- switch(method, linear = {
+    f <- stats::approxfun(idx, kernel, yleft = 0, yright = 0)
+    f(idx - delta)
+  }, integer = {
+    s <- round(delta)                            # integer shift
+    if (s > 0)
+      c(rep(0, s), head(kernel, L - s))
+    else if (s < 0)
+      c(tail(kernel, L + s), rep(0, -s))
+    else
+      kernel
+  })
+  
+  out / sum(out)                                   # keep L¹ = 1
 }
-

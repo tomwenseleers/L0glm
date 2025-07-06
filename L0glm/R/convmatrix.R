@@ -2,17 +2,25 @@
 #' @title Make banded or rectangular convolution design matrices
 #'
 #' @description
-#' `convmatrix()` builds a sparse Toeplitz (*convolution*) matrix **A** such
-#' that \code{as.vector(A %*% x) == gsignal::conv(x, kernel, shape)}
+#' \code{convmatrix()} builds a sparse Toeplitz (convolution) matrix
+#' \strong{A} such that
+#' \code{as.vector(A \%*\% x)} is numerically identical to
+#' \code{gsignal::conv(x, kernel, shape)}.
 #'
-#' If `n_cols` is omitted it returns the classical banded design
-#'   (square for `shape="same"`, tall for `shape="full"`).
-#' If `n_cols` is given it keeps only the first `n_cols` time–shifts,
-#'   producing an `n x n_cols` rectangular design matrix that is handy in PSF
-#'   update steps of blind-deconvolution algorithms.
+#' \itemize{
+#'   \item If \code{n_cols} is \emph{omitted}, the function returns the
+#'         classical \emph{banded} design matrix:
+#'         square when \code{shape = "same"} and tall
+#'         when \code{shape = "full"}.
+#'   \item If \code{n_cols} is supplied, only the first
+#'         \code{n_cols} time–shifts of \code{kernel} are kept, yielding an
+#'         \code{n x n_cols} rectangular design.  Such matrices are useful
+#'         for point–spread-function (PSF) update steps in
+#'         blind-deconvolution algorithms.
+#' }
 #'
-#' The function is memory-efficient: the requested sparse matrix is generated
-#' in a single pass; no intermediate (larger) object is allocated.
+#' The matrix is produced in a single pass, so no intermediate (larger)
+#' object is ever allocated, keeping memory usage to a minimum.
 #'
 #' @param kernel Numeric vector (`length L`) – FIR filter / PSF
 #'               **in forward-time order**.

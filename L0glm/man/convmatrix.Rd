@@ -33,7 +33,25 @@ A sparse matrix of class **`dgCMatrix`** with
 rows, and `n_cols` columns.
 }
 \description{
+\code{convmatrix()} builds a sparse Toeplitz (convolution) matrix
+\strong{A} such that
+\code{as.vector(A \%*\% x)} is numerically identical to
+\code{gsignal::conv(x, kernel, shape)}.
 
+\itemize{
+  \item If \code{n_cols} is \emph{omitted}, the function returns the
+        classical \emph{banded} design matrix:
+        square when \code{shape = "same"} and tall
+        when \code{shape = "full"}.
+  \item If \code{n_cols} is supplied, only the first
+        \code{n_cols} time–shifts of \code{kernel} are kept, yielding an
+        \code{n x n_cols} rectangular design.  Such matrices are useful
+        for point–spread-function (PSF) update steps in
+        blind-deconvolution algorithms.
+}
+
+The matrix is produced in a single pass, so no intermediate (larger)
+object is ever allocated, keeping memory usage to a minimum.
 }
 \examples{
 ## 1. synthetic spike-train convolved with a bi-Gaussian PSF ------------
