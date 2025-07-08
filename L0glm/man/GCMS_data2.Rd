@@ -55,5 +55,11 @@ matplot(x = as.numeric(rownames(GCMS_data2)),
         xlab = "Elution time (min)",
         ylab = "Intensity ^ 0.2",
         main = "Section of beer headspace GC/MS profile")
+plot(x=as.numeric(names(attr(GCMS_data2, "alkanes_TIC"))), 
+     y=attr(GCMS_data2, "alkanes_TIC"), 
+     xlab="Retention time (min)", 
+     ylab="Total ion intensity", 
+     main="C7 to C22 alkane ladder standard", 
+     type="l")
 }
 \keyword{datasets}
