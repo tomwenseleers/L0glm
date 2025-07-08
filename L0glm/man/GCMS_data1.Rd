@@ -3,7 +3,7 @@
 \docType{data}
 \name{GCMS_data1}
 \alias{GCMS_data1}
-\title{GC/MS Chromatogram Section – Cuticular Profile of a Cataglyphis iberica Ant Queen}
+\title{GC/MS Chromatogram Section – Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen}
 \format{
 A numeric matrix with 119 rows (time slices) and 671 columns (m/z values).
 \describe{
@@ -12,6 +12,13 @@ A numeric matrix with 119 rows (time slices) and 671 columns (m/z values).
               (26.80 ≤ RT ≤ 27.20).}
   \item{Columns}{Unit-mass channels, m/z 30:700.
                 Column names are the integer m/z values.}
+Additional attribute:
+\itemize{
+  \item \code{attr(GCMS_data1, "alkanes_TIC")}: named numeric vector with
+        the total ion chromatogram of a C9 to C40 alkane ladder standard run
+        in the same sample batch; names give the retention time in minutes;
+        the total ion trace for the entire chromatogram is included.
+}
 }
 }
 \source{
@@ -23,15 +30,16 @@ Van Oystaeyen, A. et al. (2014) “Conserved class of queen pheromones
 GCMS_data1
 }
 \description{
-A 0.4 min section of a GC/MS chromatogram (RT 26.80–27.20 min) obtained from the
-cuticular hydrocarbon extract of a *Cataglyphis iberica* queen (cf. 
-Van Oystaeyen et al. Science 2014). Six compounds with near-Gaussian peak 
-shapes co-elute in this segment. Data were collected on a Shimadzu QP-2010 Ultra
-equipped with a 30 m × 0.25 mm × 0.25 µm DB-5ms column after
-liquid injection of a hexane extract.
+A small 0.4 min section of a GC/MS chromatogram (RT 26.80–27.20 min) obtained from 
+the cuticular hydrocarbon extract of a *Cataglyphis iberica* queen. 
+Six compounds with near-Gaussian peak shapes co-elute in this segment. 
+Data were collected on a Shimadzu QP-2010 Ultra 
+equipped with a 30 m × 0.25 mm × 0.25 µm DB-5ms column after 
+liquid injection of a hexane extract. For details  
+see Van Oystaeyen et al. Science 2014.
 }
 \details{
-Co-eluting compounds with retention times and diagnostic ions: 
+Co-eluting compounds present with retention times and diagnostic ions: 
         \tabular{lll}{
           \strong{RT (min)} \tab \strong{Compound} \tab \strong{Diagnostic ions} \cr
           26.84 \tab 15-Methylnonacosane \tab 224, 225 \cr

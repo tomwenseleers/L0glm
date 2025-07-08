@@ -12,6 +12,14 @@ A numeric matrix with 764 rows (time slices) and 518 columns (m/z values).
               (19.00 ≤ RT ≤ 25.00).}
   \item{Columns}{Unit-mass channels, m/z 33:550.
                 Column names are the integer m/z values.}
+Additional attribute:
+\itemize{
+  \item \code{attr(GCMS_data2, "alkanes_TIC")}: named numeric vector with
+        the total ion chromatogram of a C7 to C22 alkane ladder standard run
+        in the same sample batch; names give the retention time in minutes;
+        the total ion trace for the chromatogram starting from a RT of
+        6 mins is included.
+}
 }
 }
 \source{
@@ -24,12 +32,12 @@ GCMS_data2
 }
 \description{
 A 6 min segment (RT 19.00–25.00 min) of a GC/MS chromatogram recorded from
-the SPME-headspace of beer.Data were acquired on a Thermo ISQ single-quad
+the SPME-headspace of beer. Data were acquired on a Thermo ISQ single-quad
 coupled to a 30 m × 0.25 mm × 0.25 µm RXi-5Sil MS column using a
 DVB/Carboxen/PDMS (50/30 µm) fibre. Many volatiles
 co-elute in this interval, including by a prominent, triangular,
-“shark-fin” octanoic-acid peak whose apex lies at RT 21.50 min (for details 
-see Schreurs et al. Nature Communications 2024).
+“shark-fin” octanoic-acid peak whose apex lies at RT 21.50 min. For details 
+see Schreurs et al. Nature Communications 2024.
 }
 \examples{
 data(GCMS_data2)
