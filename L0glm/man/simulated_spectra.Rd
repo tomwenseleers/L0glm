@@ -3,7 +3,7 @@
 \docType{data}
 \name{simulated_spectra}
 \alias{simulated_spectra}
-\title{Simulated Spectra Dataset}
+\title{Simulated Electron Impact Mass Spectra Dataset}
 \format{
 The data consists of a sparse \code{dgCMatrix} matrix with 
 2000 rows corresponding to different compounds and 258 columns, corresponding
@@ -22,8 +22,8 @@ Tom Wenseleers, derived from actually measured GC/MS spectra.
 simulated_spectra
 }
 \description{
-A dataset containing simulated mass spectra with a structure similar
-to as they would be encountered in GC/MS analysis.
+A dataset containing simulated electron impact mass spectra with a structure 
+similar to as they would be encountered in GC/MS analysis.
 }
 \examples{
 \dontrun{

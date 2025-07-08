@@ -1,7 +1,7 @@
-#' Simulated Spectra Dataset
+#' Simulated Electron Impact Mass Spectra Dataset
 #'
-#' A dataset containing simulated mass spectra with a structure similar
-#' to as they would be encountered in GC/MS analysis.
+#' A dataset containing simulated electron impact mass spectra with a structure 
+#' similar to as they would be encountered in GC/MS analysis.
 #'
 #' @format The data consists of a sparse \code{dgCMatrix} matrix with 
 #' 2000 rows corresponding to different compounds and 258 columns, corresponding
@@ -20,3 +20,94 @@
 #' data(simulated_spectra)
 #' }
 "simulated_spectra"
+
+#' GC/MS Chromatogram Section – Cuticular Profile of a Cataglyphis iberica Ant Queen
+#'
+#' A 0.4 min section of a GC/MS chromatogram (RT 26.80–27.20 min) obtained from the
+#' cuticular hydrocarbon extract of a *Cataglyphis iberica* queen (cf. 
+#' Van Oystaeyen et al. Science 2014). Six compounds with near-Gaussian peak 
+#' shapes co-elute in this segment. Data were collected on a Shimadzu QP-2010 Ultra
+#' equipped with a 30 m × 0.25 mm × 0.25 µm DB-5ms column after
+#' liquid injection of a hexane extract.
+#'
+#' @format A numeric matrix with 119 rows (time slices) and 671 columns (m/z values).
+#' \describe{
+#'   \item{Rows}{Individual full-scan acquisitions (time scans).
+#'               Row names give the scan mid-point in minutes
+#'               (26.80 ≤ RT ≤ 27.20).}
+#'   \item{Columns}{Unit-mass channels, m/z 30:700.
+#'                 Column names are the integer m/z values.}
+#' }
+#' @details
+#' Co-eluting compounds with retention times and diagnostic ions: 
+#'         \tabular{lll}{
+#'           \strong{RT (min)} \tab \strong{Compound} \tab \strong{Diagnostic ions} \cr
+#'           26.84 \tab 15-Methylnonacosane \tab 224, 225 \cr
+#'           26.91 \tab 13-Methylnonacosane \tab 196, 225 \cr
+#'           26.94 \tab 11-Methylnonacosane \tab 168, 280 \cr
+#'           26.95 \tab Eicosamethylcyclodecasiloxane \tab 73, 147, 221, 281, 355, 429, 503 \cr
+#'           27.01 \tab 9-Methylnonacosane \tab 140, 308 \cr
+#'           27.11 \tab 7-Methylnonacosane \tab 112, 336
+#'         }
+#' @source Van Oystaeyen, A. et al. (2014) “Conserved class of queen pheromones
+#'        stops social insect workers from reproducing.” *Science* **343**,
+#'        287–290. \doi{10.1126/science.1244899}
+#'
+#' @examples
+#' data(GCMS_data1)
+#' cols <- colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000) 
+#' image(x = as.numeric(rownames(GCMS_data1)), 
+#'       y = as.numeric(colnames(GCMS_data1)), 
+#'       z = GCMS_data1^0.15, 
+#'       useRaster = TRUE,
+#'       col = cols,
+#'       xlab = "Elution time (min)",
+#'       ylab = "Mass (m/z)",
+#'       main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
+#' matplot(x = as.numeric(rownames(GCMS_data1)), 
+#'         y = GCMS_data1^0.2, type = "l", lty = 1, col = rgb(0, 0, 0, 0.1),
+#'         xlab = "Elution time (min)",
+#'         ylab = "Intensity ^ 0.2",
+#'         main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
+"GCMS_data1"
+
+
+#' GC/MS Chromatogram Section – Beer Headspace Volatiles
+#'
+#' A 6 min segment (RT 19.00–25.00 min) of a GC/MS chromatogram recorded from
+#' the SPME-headspace of beer.Data were acquired on a Thermo ISQ single-quad
+#' coupled to a 30 m × 0.25 mm × 0.25 µm RXi-5Sil MS column using a
+#' DVB/Carboxen/PDMS (50/30 µm) fibre. Many volatiles
+#' co-elute in this interval, including by a prominent, triangular,
+#' “shark-fin” octanoic-acid peak whose apex lies at RT 21.50 min (for details 
+#' see Schreurs et al. Nature Communications 2024).
+#'
+#' @format A numeric matrix with 764 rows (time slices) and 518 columns (m/z values).
+#' \describe{
+#'   \item{Rows}{Individual full-scan acquisitions (time scans).
+#'               Row names give the scan mid-point in minutes
+#'               (19.00 ≤ RT ≤ 25.00).}
+#'   \item{Columns}{Unit-mass channels, m/z 33:550.
+#'                 Column names are the integer m/z values.}
+#' }
+#' @source Schreurs, M. et al. (2024) “Predicting and improving complex beer
+#'        flavor through machine learning.” *Nature Communications* **15**, 2368.
+#'        \doi{10.1038/s41467-024-46346-0}
+#'
+#' @examples
+#' data(GCMS_data2)
+#' cols <- colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000) 
+#' image(x = seq(min(rownames(GCMS_data2)), max(rownames(GCMS_data2)), length.out=nrow(GCMS_data2)), 
+#'       y = as.numeric(colnames(GCMS_data2)), 
+#'       z = GCMS_data2^0.15, 
+#'       useRaster = TRUE,
+#'       col = cols,
+#'       xlab = "Elution time (min)",
+#'       ylab = "Mass (m/z)",
+#'       main = "Section of beer headspace GC/MS profile")
+#' matplot(x = as.numeric(rownames(GCMS_data2)), 
+#'         y = GCMS_data2^0.2, type = "l", lty = 1, col = rgb(0, 0, 0, 0.1),
+#'         xlab = "Elution time (min)",
+#'         ylab = "Intensity ^ 0.2",
+#'         main = "Section of beer headspace GC/MS profile")
+"GCMS_data2"
