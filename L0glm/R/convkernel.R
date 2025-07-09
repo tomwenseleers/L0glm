@@ -221,6 +221,7 @@ shift_kernel <- function(kernel,
                          method = c("linear", "integer"))
 {
   method <- match.arg(method)
+  if (!is.vector(kernel)) kernel <- as.vector(kernel)
   stopifnot(is.numeric(kernel),
             length(kernel) >= 3L,
             (is.numeric(perc) && 0 <= perc && perc <= 1) || is.character(perc))
