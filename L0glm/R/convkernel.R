@@ -6,9 +6,9 @@
 #' point–spread function (PSF) or impulse–response kernel.
 #' The kernel is \eqn{L^{1}}-normalised (area = 1).
 #' Optionally it is shifted with \code{\link{shift_kernel}} so that a
-#' user-chosen percentile \eqn{p} of the cumulative distribution falls on
-#' index \eqn{1 + p \cdot (L - 1)}; setting \code{p = 0} leaves the
-#' kernel unshifted.  Alternatively, using \code{p = "mean"} will move the
+#' user-chosen percentile \eqn{perc} of the cumulative distribution falls on
+#' index \eqn{1 + perc \cdot (L - 1)}; setting \code{perc = 0} leaves the
+#' kernel unshifted.  Alternatively, using \code{perc = "mean"} will move the
 #' centroid to the middle of the kernel.
 #'
 #' The helper is useful for simulating blurred spike trains as observed in
@@ -40,13 +40,12 @@
 #'   `"gammaexp"` (convolution of Gamma with exponential).
 #' @param L     Integer (≥ 3).  Kernel length.
 #' @param params Named list of shape parameters (see Details).
-#' @param p Numeric in [0, 1].  
+#' @param perc Numeric in [0, 1] or "mean".  
 #'   Position the chosen percentile of the kernel’s CDF at index
-#'   `1 + p·(L – 1)`.  
+#'   `1 + perc·(L – 1)` or `mean` for centroid centering.  
 #'   Defaults to `0` for causal families
-#'   (`exponential`, `gamma`, `gammaexp`) and to `0.5`
-#'   for all other types (resulting in the middle of the kernel lying at
-#'   the centroid).
+#'   (`exponential`, `gamma`, `gammaexp`) and to `mean`
+#'   for all other types (resulting in centroid centering).
 #'
 #' @details Default parameters for the different distributions are as
 #'   follows:\cr gaussian: `sigma=2.5`\cr bigaussian:  `sigma1=1`, `sigma2=5`\cr
@@ -85,13 +84,13 @@
 #' cols=1:3
 #' matplot(cbind(
 #'   convkernel("bigaussian", 51,
-#'              list(sigma1 = 2, sigma2 = 4), p = 0.001),
+#'              list(sigma1 = 2, sigma2 = 4), perc = 0.001),
 #'   convkernel("bigaussian", 51,
-#'              list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
+#'              list(sigma1 = 2*2, sigma2 = 4*2), perc = 0.001),
 #'   convkernel("bigaussian", 51,
-#'              list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
+#'              list(sigma1 = 2*3, sigma2 = 4*3), perc = 0.001)), 
 #'   xlab = "kernel index", ylab = "density",
-#'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand p = 0.001)",
+#'   main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand perc = 0.001)",
 #'   col = cols, lty = 1,
 #'   type="l") 
 #' @importFrom gsignal conv
@@ -103,18 +102,18 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
                                 "laplace","exponential","gamma","gammaexp"),
                    L,
                    params  = list(),
-                   p = NULL)     
+                   perc = NULL)     
 {
   `%||%` <- function(a,b) if (is.null(a)) b else a
   type <- match.arg(type)
   stopifnot(L >= 3L, L == as.integer(L))
   
   ## ---------------- choose default alignment ----------------------------
-  if (is.null(p)) {
+  if (is.null(perc)) {
     causal  <- type %in% c("exponential","gamma","gammaexp")
-    p <- if (causal) 0 else 0.5
+    perc <- if (causal) 0 else "mean"
   }
-  stopifnot(p >= 0, p <= 1)
+  stopifnot((is.numeric(perc) && 0 <= perc && perc <= 1) || is.character(perc))
   
   idx <- seq_len(L)
   x   <- idx - (L + 1)/2        # symmetric grid for analytic formulas
@@ -200,7 +199,7 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
   )
   
   ## ---- shift kernel ------------------------------------------------------
-  kernel <- shift_kernel(kernel, p, method = "linear")
+  kernel <- shift_kernel(kernel, perc, method = "linear")
 
   ## ---- return kernel normalised to unit L1 norm --------------------------
   return(kernel / sum(kernel)) 
@@ -212,40 +211,51 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
 #' @rdname convkernel
 #'
 #' @param kernel Numeric vector – the PSF to be shifted.
-#' @param p      Either `"mean"` (shift the centroid) or a
+#' @param perc   Either `"mean"` (shift the centroid) or a
 #'               numeric percentile in [0, 1].
 #' @param method `"linear"` (sub-sample interpolation) or
 #'               `"integer"` (whole-sample shift).
 #' @return shifted vector of the same length as `kernel`
 shift_kernel <- function(kernel,
-                         p      = "mean",
-                         # numeric for percentile or 'mean' to center at centroid
+                         perc = "mean",
                          method = c("linear", "integer"))
 {
   method <- match.arg(method)
   stopifnot(is.numeric(kernel),
             length(kernel) >= 3L,
-            (is.numeric(p) && 0 <= p && p <= 1) || is.character(p))
+            (is.numeric(perc) && 0 <= perc && perc <= 1) || is.character(perc))
   
   L   <- length(kernel)
   idx <- seq_len(L)
   
-  ## -------- position of the reference point ----------------------------
-  if (is.character(p)) {
+  ## -------- locate the reference point ---------------------------------
+  if (is.character(perc)) {
+    
     ## centroid (= mean)
-    mu   <- sum(idx * kernel) / sum(kernel)
-    pos  <- mu                           # location already on index scale
+    pos <- sum(idx * kernel) / sum(kernel)
+    
+  } else if (perc == 0) {
+    
+    ## 0-percentile  -> left boundary
+    pos <- 1
+    
+  } else if (perc == 1) {
+    
+    ## 100-percentile -> right boundary
+    pos <- L
+    
   } else {
-    ## p-quantile -------------------------------------------
-    cdf  <- cumsum(kernel) / sum(kernel)
-    pos  <- stats::approx(cdf, idx, xout = p, ties = "ordered")$y
+    
+    ## p-quantile inside (0, 1)  ------------------------------------------
+    cdf <- cumsum(kernel) / sum(kernel)
+    pos <- stats::approx(cdf, idx, xout = perc,
+                         ties = "ordered", rule = 2)$y
   }
   
   ## -------- where we want it -------------------------------------------
-  target <- if (is.character(p))
-    (L + 1) / 2       # centre for centroid
-  else
-    1 + p * (L - 1)   # 1-based p-quantile
+  target <- if (is.character(perc)) { (L + 1) / 2 } else {  # centre for centroid
+    1 + perc * (L - 1)                                      # 1-based percentile
+  }
   
   delta  <- target - pos                           # +ve → shift right
   if (abs(delta) < .Machine$double.eps)

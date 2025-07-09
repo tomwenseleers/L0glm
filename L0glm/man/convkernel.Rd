@@ -10,10 +10,10 @@ convkernel(
     "gamma", "gammaexp"),
   L,
   params = list(),
-  p = NULL
+  perc = NULL
 )
 
-shift_kernel(kernel, p = "mean", method = c("linear", "integer"))
+shift_kernel(kernel, perc = "mean", method = c("linear", "integer"))
 }
 \arguments{
 \item{type}{One of `"gaussian"`, `"bigaussian"`, `"emg"` (exponentially
@@ -25,7 +25,7 @@ exponential), `"exponential"` (one-sided exponential), `"gamma"`,
 
 \item{params}{Named list of shape parameters (see Details).}
 
-\item{p}{Either `"mean"` (shift the centroid) or a
+\item{perc}{Either `"mean"` (shift the centroid) or a
 numeric percentile in [0, 1].}
 
 \item{kernel}{Numeric vector – the PSF to be shifted.}
@@ -43,9 +43,9 @@ Generates a numeric vector of length \emph{L} that represents a
 point–spread function (PSF) or impulse–response kernel.
 The kernel is \eqn{L^{1}}-normalised (area = 1).
 Optionally it is shifted with \code{\link{shift_kernel}} so that a
-user-chosen percentile \eqn{p} of the cumulative distribution falls on
-index \eqn{1 + p \cdot (L - 1)}; setting \code{p = 0} leaves the
-kernel unshifted.  Alternatively, using \code{p = "mean"} will move the
+user-chosen percentile \eqn{perc} of the cumulative distribution falls on
+index \eqn{1 + perc \cdot (L - 1)}; setting \code{perc = 0} leaves the
+kernel unshifted.  Alternatively, using \code{perc = "mean"} will move the
 centroid to the middle of the kernel.
 
 The helper is useful for simulating blurred spike trains as observed in
@@ -107,13 +107,13 @@ legend("topright",
 cols=1:3
 matplot(cbind(
   convkernel("bigaussian", 51,
-             list(sigma1 = 2, sigma2 = 4), p = 0.001),
+             list(sigma1 = 2, sigma2 = 4), perc = 0.001),
   convkernel("bigaussian", 51,
-             list(sigma1 = 2*2, sigma2 = 4*2), p = 0.001),
+             list(sigma1 = 2*2, sigma2 = 4*2), perc = 0.001),
   convkernel("bigaussian", 51,
-             list(sigma1 = 2*3, sigma2 = 4*3), p = 0.001)), 
+             list(sigma1 = 2*3, sigma2 = 4*3), perc = 0.001)), 
   xlab = "kernel index", ylab = "density",
-  main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand p = 0.001)",
+  main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand perc = 0.001)",
   col = cols, lty = 1,
   type="l") 
 }
