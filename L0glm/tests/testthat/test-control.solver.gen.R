@@ -129,3 +129,4 @@ test_that("control.solver.gen handles missing parameters gracefully", {
   expect_equal(params_glmnet$maxit, 1e6)
   expect_equal(params_glmnet$thresh, 1e-10)
 })
+

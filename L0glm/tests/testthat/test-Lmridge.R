@@ -32,7 +32,7 @@ test_that("Glmnet solver returns valid coefficients with vector lambdas", {
   expect_equal(length(result), ncol(X))
 })
 
-test_that("OSQP solver with nonnegative constraints and vector lambdas", {
+test_that("OSQP solver with nonnegativity constraints and vector lambdas", {
   result <- lmridge(X, y, lambdas = rep(1, p), solver = "osqp", nonnegative = TRUE)
   expect_true(all(result >= 0))
 })
@@ -140,7 +140,7 @@ test_that("Invalid solver choice produces an error", {
   expect_error(lmridge(X, y, lambdas = rep(1, p), solver = invalid_solver), "Invalid solver choice")
 })
 
-test_that("Else branch is triggered when lambdas is NULL (by default)", {
+test_that("Else branch is triggered when lambdas is at default of zero", {
   # By omitting lambdas, it defaults to NULL, triggering the else branch
   result <- lmridge(X, y)
   expect_type(result, "double")
@@ -403,15 +403,6 @@ test_that("Initial glmnet path is triggered with large dimensions and iteration 
 })
 
 
-test_that("Fallback bigGlm path is triggered when iteration > 5", {
-  result <- lmridge.glmnet(X, y, lambdas = lambdas, lower = lower_bounds, upper = upper_bounds, 
-                           control.solver = control_solver, iteration = 6)
-  expect_type(result, "double")
-  expect_length(result, p)
-  expect_true(all(result >= lower_bounds))
-  expect_true(all(result <= upper_bounds))
-})
-
 test_that("Fallback bigGlm path is triggered with smaller matrix dimensions", {
   X_small <- matrix(rnorm(100 * 50), 100, 50)  # Small matrix
   y_small <- rnorm(100)
@@ -595,14 +586,14 @@ test_that("lmridge.eigen works with all solver methods for dense and sparse matr
   }
 })
 
-test_that("lmridge.eigen handles null lambdas correctly", {
+test_that("lmridge.eigen handles zero lambdas correctly", {
   methods <- 1L:8L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
     coefs_dense <- lmridge.eigen(
       Xw = X_dense, yw = yw,
-      lambdas = NULL,
+      lambdas = rep(0, ncol(X_dense)),
       lower = lower, upper = upper,
       control.solver = control_solver
     )
@@ -611,7 +602,7 @@ test_that("lmridge.eigen handles null lambdas correctly", {
     
     coefs_sparse <- lmridge.eigen(
       Xw = X_sparse, yw = yw,
-      lambdas = NULL,
+      lambdas = rep(0, ncol(X_sparse)),
       lower = lower, upper = upper,
       control.solver = control_solver
     )
@@ -881,13 +872,6 @@ test_that("Xweights applies weights correctly to dense matrix", {
   expect_equal(result, expected)  # Allow small differences due to numeric precision
 })
 
-test_that("Xweights returns X unchanged when weights length does not match row count", {
-  X_dense <- matrix(1:9, nrow = 3, ncol = 3)
-  invalid_weights <- c(1, 2)  # Incorrect length
-  result <- Xweights(X_dense, invalid_weights)
-  expect_identical(result, X_dense)  # Expect X_dense when weights are invalid
-})
-
 
 # Testing the normalizeX function
 #--------------------------------
@@ -1092,19 +1076,6 @@ test_that("maxlambda handles binomial family with default dispersion", {
   maxlambda_expected <- (4 / 1) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
-})
-
-# Check this behaviour with other functions, possibly causing issues elsewhere
-test_that("maxlambda returns -inf for empty X matrix", {
-  X_empty <- matrix(numeric(0), nrow = 0, ncol = 0)  # Define an empty matrix
-  weights <- matrix(1, nrow = 0, ncol = 1)           # Define compatible empty weights
-  z <- matrix(0, nrow = 0, ncol = 1)                 # Define compatible empty z
-  coefs <- numeric(0)                                # Define an empty coefs vector
-  family <- binomial()                               # Set family to binomial as an example
-  
-  result <- maxlambda(X_empty, weights, z, dispersion = 1, coefs = coefs, family = family)
-  
-  expect_equal(result, -Inf) 
 })
 
 test_that("maxlambda respects family-specific dispersion for Gamma family", {

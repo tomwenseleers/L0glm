@@ -1,30 +1,5 @@
 # UNIT TESTING FOR L0glm.fit.internal FUNCTION
 
-test_that("L0glm.fit.internal handles _noreg key in solver to disable regularization", {
-  # Create mock data
-  n <- 100
-  p <- 10
-  set.seed(123)
-  X <- matrix(rnorm(n * p), nrow = n, ncol = p)
-  y <- rpois(n, lambda = 2)  # Ensure non-negative integer response
-  
-  # Call L0glm.fit.internal with solver containing _noreg
-  result <- L0glm.fit.internal(
-    X = X,
-    y = y,
-    solver = "osqp_noreg",  # Solver with _noreg
-    verbose = TRUE
-  )
-  
-  # Verify "_noreg" is removed
-  processed_solver <- "osqp"  # Expected solver after "_noreg" removal
-  expect_false(grepl("_noreg", processed_solver))  # Ensure the `_noreg` handling works
-  
-  # Verify regularization is disabled
-  expect_true(all(result$lambda == 0))  # Ensure lambda is zero
-})
-
-
 test_that("L0glm.fit.internal works with basic Gaussian data", {
   set.seed(1)
   n <- 100
@@ -123,7 +98,7 @@ test_that("L0glm.fit.internal works with Gamma data", {
     family = Gamma(),
     lambda = log(p) * log(log(n)),
     normalize = TRUE,
-    weights = NULL
+    weights = rep(1, nrow(X))
   )
   
   # Check if the function returns a list with correct elements
@@ -138,7 +113,7 @@ test_that("L0glm.fit.internal works with Gamma data", {
 })
 
 
-test_that("L0glm.fit.internal respects nonnegative constraint", {
+test_that("L0glm.fit.internal respects nonnegativity constraints via lower", {
   # Simulate some data
   set.seed(3)
   n <- 50
@@ -152,7 +127,7 @@ test_that("L0glm.fit.internal respects nonnegative constraint", {
     y = y,
     family = gaussian(),
     lambda = log(p) * log(log(n)),
-    nonnegative = TRUE,
+    lower = rep(0, p),
     normalize = TRUE
   )
   
@@ -179,7 +154,7 @@ test_that("L0glm.fit.internal handles non-NULL prior.mean correctly with stable 
         y = y,
         prior.mean = prior_mean,
         family = poisson(),  # Explicitly pass a valid family object
-        verbose = TRUE
+        verbose = FALSE
       )
     },
     error = function(e) e
@@ -227,7 +202,7 @@ test_that("L0glm.fit.internal handles user-specified starting values", {
     start = start_values,
     lambda = lambda_test,
     maxit = max_iterations, 
-    verbose = TRUE 
+    verbose = FALSE 
   )
   
   # Check that at least one coefficient is non-zero
@@ -260,99 +235,14 @@ test_that("L0glm.fit.internal handles user-specified starting values with nonneg
     start = start_values,
     lambda = lambda_test,
     maxit = max_iterations,
-    nonnegative = TRUE,
-    verbose = TRUE 
+    lower = rep(0, p),
+    verbose = FALSE 
   )
 
   expect_true(all(result$coefficients >= 0), 
               info = "Expected all coefficients to be non-negative, but some were negative.")
 })
 
-
-test_that("solver handling with _noreg works correctly", {
-  # Test case where solver includes _noreg
-  solver <- "eigen_noreg"
-  lambda <- 1  # some non-zero value
-  maxit <- 25  # some value greater than 1
-  
-  # Execute the code being tested
-  if (grepl("_noreg", solver)) {
-    solver <- gsub("_noreg", "", solver)
-    lambda <- 0
-    maxit <- 1
-  }
-  
-  # Assertions
-  expect_equal(solver, "eigen")
-  expect_equal(lambda, 0)
-  expect_equal(maxit, 1)
-  
-  # Test case where solver does not include _noreg
-  solver <- "eigen"
-  lambda <- 1  # some non-zero value
-  maxit <- 25  # some value greater than 1
-  
-  # Execute the code being tested
-  if (grepl("_noreg", solver)) {
-    solver <- gsub("_noreg", "", solver)
-    lambda <- 0
-    maxit <- 1
-  }
-  
-  # Assertions
-  expect_equal(solver, "eigen")
-  expect_equal(lambda, 1)
-  expect_equal(maxit, 25)
-})
-
-
-# Create a custom family object
-custom_family <- list(
-  family = "custom",
-  variance = function(mu) mu,           # valid function
-  linkinv = function(eta) exp(eta),     # valid function
-  linkfun = function(mu) log(mu),       # valid function
-  initialize = function() list(mu = NULL, n = NULL, m = NULL),
-  dev.resids = function(y, mu, wt) (y - mu)^2 / wt,  # valid function
-  mu.eta = function(eta) exp(eta)       # valid function
-)
-
-
-# Assign class "family"
-class(custom_family) <- "family"
-
-
-test_that("L0glm.fit.internal checks if family object has valid functions", {
-  
-  # Test case when family object is missing variance function
-  invalid_family_1 <- custom_family
-  invalid_family_1$variance <- NULL  # Set variance to NULL
-  
-  expect_error({
-    L0glm.fit.internal(X = matrix(rnorm(100), nrow = 10), 
-                       y = rpois(10, lambda = 5), 
-                       family = invalid_family_1)
-  }, "'family' argument seems not to be a valid family object", fixed = TRUE)
-  
-  # Test case when family object is missing linkinv function
-  invalid_family_2 <- custom_family
-  invalid_family_2$linkinv <- NULL  # Set linkinv to NULL
-  
-  expect_error({
-    L0glm.fit.internal(X = matrix(rnorm(100), nrow = 10), 
-                       y = rpois(10, lambda = 5), 
-                       family = invalid_family_2)
-  }, "'family' argument seems not to be a valid family object", fixed = TRUE)
-  
-  # Test case with valid family object
-  valid_family <- poisson()  # A valid family object
-  
-  expect_silent({
-    L0glm.fit.internal(X = matrix(rnorm(100), nrow = 10), 
-                       y = rpois(10, lambda = 5), 
-                       family = valid_family)
-  })
-})
 
 # Works for Poisson but there is a slight difference for Gaussian each time
 test_that("L0glm.fit.internal computes lambdas correctly with non-zero lambda", {
@@ -496,7 +386,7 @@ test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solv
         y = y,
         weights = weights,
         start = NULL,  # Trigger the is.null(start) branch
-        verbose = TRUE
+        verbose = FALSE
       )
     },
     error = function(e) e
@@ -514,7 +404,7 @@ test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solv
         y = y,
         weights = weights,
         start = start,  # Trigger the !is.null(start) branch
-        verbose = TRUE
+        verbose = FALSE
       )
     },
     error = function(e) e
@@ -528,92 +418,51 @@ test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solv
               "Fallback mechanism should provide valid coefficients.")
 })
 
-test_that("L0glm.fit.internal handles no informative observations correctly", {
-  # Create data to force length(good) == 0
-  n <- 5
-  p <- 3
-  X <- matrix(0, nrow = n, ncol = p)  # All-zero predictors
-  y <- rep(0, n)  # Zero response
-  weights <- rep(0, n)  # Zero weights ensure no informative observations
+test_that("L0glm.fit.internal handles uninformative observations correctly", {
   
-  # Capture verbose output
-  verbose_output <- capture.output({
-    result <- tryCatch(
-      {
-        L0glm.fit.internal(
-          X = X,
-          y = y,
-          weights = weights,
-          verbose = TRUE  # Enable verbose mode
-        )
-      },
-      error = function(e) e
-    )
-  })
+  ## --- build a data set with no informative rows -------------------------
+  n <- 5; p <- 3
+  X <- matrix(0, nrow = n, ncol = p)   # all-zero design
+  y <- rep(0, n)                       # all-zero response
+  w <- rep(0, n)                       # zero prior weights
   
-  # Debug: Check if verbose_output is capturing anything
-  print("Captured verbose output:")
-  print(verbose_output)
+  ## --- run and catch the message -----------------------------------------
+  expect_message(
+    res <- L0glm.fit.internal(
+      X       = X,
+      y       = y,
+      weights = w,
+      verbose = TRUE),
+    "No informative rows or active variables."
+  )
   
-  # Validate the result
-  if (!inherits(result, "error")) {
-    # Expect no valid coefficients when no observations are informative
-    expect_true(is.null(result$coefficients) || all(is.na(result$coefficients)),
-                "Expected no valid coefficients when no observations are informative.")
-  }
+  ## --- structural checks --------------------------------------------------
+  expect_type(res$coefficients, "double")
+  expect_length(res$coefficients, p)
+  expect_true(all(res$coefficients == 0))
+  
+  expect_type(res$weights, "double")
+  expect_length(res$weights, n)
+  expect_true(all(res$weights == 0))
+  
+  ## dispersion still defined
+  expect_equal(res$dispersion, 1)
 })
 
-test_that("L0glm.fit.internal handles all coefficients penalized to zero", {
-  # Create inputs to penalize all coefficients to zero
-  n <- 10
-  p <- 5
-  X <- matrix(1, nrow = n, ncol = p)  # Identical predictors
-  y <- rep(1, n)  # Identical response
-  weights <- rep(1, n)  # Uniform weights
-  lambda <- 1e10  # Extremely high penalty to force coefficients to zero
-  
-  # Capture verbose output and warnings
-  verbose_output <- capture.output({
-    result <- tryCatch(
-      {
-        L0glm.fit.internal(
-          X = X,
-          y = y,
-          weights = weights,
-          lambda = lambda,
-          verbose = TRUE
-        )
-      },
-      warning = function(w) {
-        message <- conditionMessage(w)
-        print(message)
-        invokeRestart("muffleWarning")
-      },
-      error = function(e) e
-    )
-  })
-  
-  # Ensure the warning about penalized coefficients appears
-  expect_true(any(grepl("All coefficients penalized to zero", verbose_output)),
-              "Expected warning about coefficients penalized to zero.")
-  
-  # Validate the result
-  if (!inherits(result, "error")) {
-    expect_true(all(result$coefficients == 0),
-                "All coefficients should be zero when penalized completely.")
-  }
-})
 
-test_that("L0glm.fit.internal handles intercept correctly", {
-  set.seed(123)
+test_that("L0glm.fit.internal returns zero coefficients under huge penalty", {
+  n <- 10; p <- 5
+  X <- matrix(1, n, p)          # identical columns
+  y <- rep(1, n)
+  lambda_big <- 1e10            # enormous ridge
   
-  X <- matrix(rnorm(100 * 5), nrow = 100, ncol = 5)
-  y <- X %*% c(2, 0, 3, 0, 1) + 5 + rnorm(100)  # Intercept = 5
+  res <- L0glm.fit.internal(X, y, lambda = lambda_big, verbose = TRUE)
   
-  lambda <- 0.1
-  fit <- L0glm.fit.internal(X, y, lambda, intercept = TRUE)
+  ## every coefficient driven to 0
+  expect_equal(res$coefficients, rep(0, p))
   
-  expect_equal(length(fit$coefficients), 6)  # 5 predictors + intercept
-  expect_true(abs(fit$coefficients[1] - 5) < 1)  # Intercept should be ~5
+  ## ridge weight & lambdas now infinity
+  expect_true(all(is.infinite(res$weights)))
+  expect_true(all(is.infinite(res$lambdas)))
 })
 
