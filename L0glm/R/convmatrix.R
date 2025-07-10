@@ -109,6 +109,11 @@
 #'              origin = (Lpsf + 1L) %/% 2L)[, 1:Lpsf, drop = FALSE], tol = 0)
 #' @importFrom Matrix bandSparse
 #' @export
+#' @author
+#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
+#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
+#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 convmatrix <- function(kernel,
                        n,
                        shape   = c("same", "full"),

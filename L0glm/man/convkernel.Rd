@@ -120,3 +120,9 @@ matplot(cbind(
 \seealso{
 \code{\link{shift_kernel}}, \code{\link{convmatrix}}
 }
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
+}

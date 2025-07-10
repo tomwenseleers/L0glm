@@ -119,3 +119,9 @@ all.equal(            # identical to the first Lpsf columns of the banded design
 \seealso{
 \code{\link{convkernel}} to generate the 1-D PSF vectors used here.
 }
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
+}

@@ -14,6 +14,11 @@
 #' }
 #'
 #' @source Tom Wenseleers, derived from actually measured GC/MS spectra.
+#' @author
+#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
+#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
+#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #'
 #' @examples
 #' \dontrun{
@@ -61,7 +66,11 @@
 #' @source Van Oystaeyen, A. et al. (2014) “Conserved class of queen pheromones
 #'        stops social insect workers from reproducing.” *Science* **343**,
 #'        287–290. \doi{10.1126/science.1244899}
-#'
+#' @author
+#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
+#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
+#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #' @examples
 #' data(GCMS_data1)
 #' cols <- colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000) 
@@ -116,6 +125,11 @@
 #' @source Schreurs, M. et al. (2024) “Predicting and improving complex beer
 #'        flavor through machine learning.” *Nature Communications* **15**, 2368.
 #'        \doi{10.1038/s41467-024-46346-0}
+#' @author
+#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
+#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
+#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #'
 #' @examples
 #' data(GCMS_data2)

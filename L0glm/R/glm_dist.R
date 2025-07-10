@@ -10,21 +10,68 @@
 #' Poisson, Binomial, Gaussian, Gamma, Inverse-Gaussian).
 #'
 #' Two flavours are implemented:
+#' \itemize{
+#'   \item \strong{Symmetrised unit deviance}
+#'         (\code{method = "deviance"}, default) —
+#'         equal to \emph{two} times the Jensen–Shannon divergence for any
+#'         exponential-family distributed data.  
+#'         For the Gaussian(identity) family this becomes
+#'         one half of the weighted squared Euclidean distance.
+#'         Observation-level precision weights (e.g. Binomial totals,
+#'         1/variance for Gaussian) can be taken into account.
 #'
-#' * **Symmetrised unit deviance** (`method = "deviance"`, default) —
-#'   Jensen–Shannon divergence / Bregman information, calculated from the 
-#'   symmetrised unit deviance of any exponential-family GLM distribution. 
-#'   Reduces to squared Euclidean distance for the Gaussian case but more general
-#'   as it can be used as a squared distance metric also for any of the other
-#'   exponential-family distributions. Accepts observation-level precision 
-#'   weights, e.g. total count weights in case of Binomial data.
-#' * **Poisson–size-factor distance**
-#'   (`method = "poissondist"`) — the Witten (2011)
-#'   distance that removes a column-specific size factor *before*
-#'   computing the symmetrised Poisson deviance.  This distance
-#'   assumes that scaling differences across outcomes are nuisance). Equivalent 
-#'   to `PoiClaClu::PoissonDistance(t(Y), type = "mle", transform = FALSE)$dd` but
-#'   slightly faster.
+#'   \item \strong{Poisson size-factor distance}
+#'         (\code{method = "poissondist"}) —
+#'         Witten (2011) distance that divides each column by its
+#'         size factor before computing the symmetrised Poisson deviance,
+#'         treating global scale differences as nuisance.
+#'         Numerically identical to
+#'         \code{PoiClaClu::PoissonDistance(t(Y), type = "mle",
+#'         transform = FALSE)$dd} but computed much faster.
+#' }
+#' @details
+#' \itemize{
+#'        \item \strong{Symmetrised unit deviance}
+#'                     (\code{method = "deviance"}, default)\cr
+#' For two columns *i* and *j* let
+#' \deqn{\mu_t^{(i,j)} \;=\;
+#'       \frac{w_{ti} y_{ti} + w_{tj} y_{tj}}
+#'            {w_{ti} + w_{tj}}}{
+#'       \mu = (w_i y_i + w_j y_j)/(w_i + w_j)}
+#' be the precision–weighted mean at row *t*.  With
+#' \eqn{d(y,\mu,w)} the unit deviance returned by
+#' \code{family\$dev.resids}, the distance is
+#' \deqn{D_{ij}^{(\mathrm{dev})}
+#'       = \sum_t \bigl[d(y_{ti},\mu_t^{(i,j)},w_{ti})
+#'                     + d(y_{tj},\mu_t^{(i,j)},w_{tj})\bigr].}
+#' For the Gaussian(identity) family
+#' \eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
+#' \eqn{D_{ij}^{(\mathrm{dev})}= \tfrac12\;
+#'       \Vert y_{\bullet i}-y_{\bullet j}\Vert_2^2}, i.e. **one half of
+#' the squared Euclidean distance** (so its square-root equals Euclidean
+#' distance up to \eqn{\sqrt{1/2}}).
+#'
+#'      \item \strong{Poisson size-factor distance (Witten 2011)}
+#'                   (\code{method = "poissondist"})\cr
+#' With column size factors
+#' \eqn{s_i = \mathrm{size\_fac}[i]}, row totals
+#' \eqn{c_t = y_{ti}+y_{tj}}, and a Gamma–Poisson smoothing constant
+#' \eqn{\beta} (default 1), define
+#' \deqn{n_{ti} = \frac{s_i c_t}{s_i+s_j},\qquad
+#'       d_i = \frac{y_{ti}+\beta}{n_{ti}+\beta}}
+#' and analogously for *j*.  The Witten (2011) distance is
+#' \deqn{D_{ij}^{(\mathrm{pois})}
+#'       = \sum_t\!\bigl[n_{ti}+n_{tj}
+#'       - n_{ti}d_i-n_{tj}d_j
+#'       + y_{ti}\log d_i + y_{tj}\log d_j\bigr].}
+#' Setting \code{size_fac = rowSums(Y)} yields the
+#' row-wise variant identical to
+#' \code{PoiClaClu::PoissonDistance(x,\dots)} without transposing *x*.
+#' }
+#'
+#' Both distances are twice the Jensen–Shannon divergence of the
+#' corresponding exponential-family distributions; for Gaussian this
+#' again equals \eqn{\tfrac12\Vert\Delta\Vert_2^2}.
 #'
 #' @param Y  A numeric matrix (`nrow(Y)` observations × `ncol(Y)` variables).
 #'           Sparse `Matrix::dgCMatrix` is accepted. Proportion data should
@@ -33,31 +80,45 @@
 #'   weights (e.g. total counts for Binomial, `1/var` for Gaussian).
 #'   Only used with `method = "deviance"`.
 #' @param family  A **stats** family object (default
-#'   `poisson(identity)`).  Ignored when `method = "poissondist"`.
-#' @param method  `"deviance"` or `"poissondist"` (default for Poisson).
+#'   `poisson(identity)`).
+#' @param method  `"deviance"` or `"poissondist"` (default for family `poisson(identity)`).
+#' @param size_fac  Size factors used for method `"poissondist"` (default colSums(Y),
+#'                  should be changed to rowSums(Y) if t(Y) is analysed to cluster
+#'                  rows rather than columns).
 #'
 #' @return An object of class **dist**.
 #'
 #' @references
-#' Witten, D. M. (2011). *Classification and Clustering of Sequencing Data 
-#' using a Poisson Model.* Ann. Appl. Stat. 5(4): 2493–2518.
+#' Witten, D. M. (2011). 
+#' \emph{Classification and Clustering of Sequencing Data 
+#' using a Poisson Model.} 
+#' Annals of Applied Statistics 5(4): 2493–2518.
 #'
 #' @examples
 #' ## example: calculating distance among different m/z mass traces in GC/MS datasets
-#' data(simulated_spectra)
-#' Y <- simulate_GCMS(n = 5000,
-#'                    k = 200,
-#'                    S = simulated_spectra,
-#'                    family = "poisson")$D
-#' dim(Y) # 5000 x 258
-#' D1 <- glm_dist(Y = Y, family  = poisson(identity), method="poissondist")
-#' # identical to D1b <- PoiClaClu::PoissonDistance(t(Y), type = "mle", transform = FALSE)$dd
+#' data(GCMS_data2) # section of a GC/MS chromatogram of beer volatiles
+#' Y <- GCMS_data2
+#' dim(Y) # 1764 timepoints x 518 m/z mass traces
+#' # we aggregate together every bin of 5 subsequent timepoints for extra performance:
+#' Y2 <- t(glm_aggregate(t(Y), 
+#'                     family = poisson(identity), 
+#'                     clusterids = rep(1L:ceiling(nrow(Y)/5), each=5)[1:nrow(Y)])$Y_agg)
+#' dim(Y2) # 353 time bins x 518 m/z mass channels                     
+#' D1 <- glm_dist(Y = Y2, family  = poisson(identity), method="poissondist")
+#' # identical to D1b <- PoiClaClu::PoissonDistance(t(Y2), type = "mle", transform = FALSE)$dd
+#' # but faster
 #' 
 #' @export
+#' @author
+#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
+#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
+#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 glm_dist <- function(Y,
                      weights = NULL,
                      family  = poisson(identity),
-                     method  = c("deviance", "poissondist")) {
+                     method  = c("deviance", "poissondist"),
+                     size_fac = colSums(Y)) {
   
   method <- match.arg(method)
   Y <- as.matrix(Y)                       # ensure matrix
@@ -95,7 +156,6 @@ glm_dist <- function(Y,
   ## 2.  Poisson size-factor distance (Witten 2011)                     
   ## ----------------------------------------------------------------------------
   if (method == "poissondist") {
-    size_fac <- colSums(Y)
     beta <- 1L   # default of PoiClaClu::PoissonDistance , here hard coded
     D <- matrix(0, p, p)
     

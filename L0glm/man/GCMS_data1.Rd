@@ -73,4 +73,10 @@ plot(x=as.numeric(names(attr(GCMS_data1, "alkanes_TIC"))),
      main="C9 to C40 alkane ladder standard", 
      type="l")
 }
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
+}
 \keyword{datasets}

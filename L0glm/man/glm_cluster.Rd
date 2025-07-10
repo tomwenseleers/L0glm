@@ -10,7 +10,8 @@ glm_cluster(
   Y,
   weights = NULL,
   family = poisson(identity),
-  method = if (family$family == "poisson") "poissondist" else "deviance"
+  method = if (family$family == "poisson") "poissondist" else "deviance",
+  size_fac = colSums(Y)
 )
 
 glm_aggregate(Y, weights = NULL, family = poisson(identity), clusterids)
@@ -25,9 +26,13 @@ weights (e.g. total counts for Binomial, `1/var` for Gaussian).
 Only used with `method = "deviance"`.}
 
 \item{family}{A **stats** family object (default
-`poisson(identity)`).  Ignored when `method = "poissondist"`.}
+`poisson(identity)`).}
 
-\item{method}{`"deviance"` or `"poissondist"` (default for Poisson).}
+\item{method}{`"deviance"` or `"poissondist"` (default for family `poisson(identity)`).}
+
+\item{size_fac}{Size factors used for method `"poissondist"` (default colSums(Y),
+should be changed to rowSums(Y) if t(Y) is analysed to cluster
+rows rather than columns).}
 
 \item{clusterids}{Integer vector of cluster labels (length =
 \code{ncol(Y)}); required by \code{glm_aggregate()}, returned by
@@ -47,7 +52,7 @@ A list
 }
 \description{
 \code{glm_cluster()} performs Ward hierarchical clustering on a
-Jensen–Shannon / deviance dissimilarity matrix from
+deviance (Jensen–Shannon divergence) dissimilarity matrix from
 \code{\link{glm_dist}}, adaptively cuts the dendrogram using 
 (\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to 
 aggregate columns belonging to the same cluster.
@@ -63,8 +68,9 @@ multivariate GLM data conforming to any exponential-family distribution
 For aggregation, we use summation for count families and weighted or 
 unweighted means for the other distributions. 
 
-Applications include grouping correlated mass traces in GC/MS datasets or 
-clustering genes with correlated gene-expression patterns in RNA-seq datasets.
+Applications, among others, include grouping correlated mass traces in 
+GC/MS datasets or clustering genes with correlated gene-expression 
+patterns in RNA-seq datasets.
 }
 \details{
 Clustering via \emph{Ward’s minimisation of within-cluster deviance},
@@ -74,7 +80,56 @@ case of \strong{agglomerative Bregman clustering}
 Bregman divergence for exponential-family log-likelihoods
 (Banerjee et al. 2005).  Because \eqn{\sqrt{\mathrm{JS}}} is a true
 metric (Endres & Schindelin 2003), Ward linkage yields monotone
-dendrograms (see Nielsen 2016, Example 3).
+dendrograms (see Nielsen 2016, Example 3). The
+dendrogram height equals the cumulative increase in cluster
+Bregman information.
+
+\strong{Distance formulas used internally} (see \code{\link{glm_dist}}) \cr 
+For two columns \emph{i} and \emph{j} we write
+\eqn{y_{ti}}, \eqn{y_{tj}} for their values at row \emph{t} and
+\eqn{w_{ti}}, \eqn{w_{tj}} for optional precision weights.
+
+\itemize{
+\item \strong{Symmetrised unit deviance}
+                    (\code{method = "deviance"}, default)\cr
+\deqn{
+  D_{ij}^{\text{dev}} \;=\;
+  \sum_t
+    \Bigl[ d\!\bigl(y_{ti},\;\bar\mu_t,\;w_{ti}\bigr) \;+\;
+           d\!\bigl(y_{tj},\;\bar\mu_t,\;w_{tj}\bigr) \Bigr], \qquad
+  \bar\mu_t \;=\;
+  \frac{w_{ti}y_{ti}+w_{tj}y_{tj}}{w_{ti}+w_{tj}},
+}{
+  D = Σ_t [ d(y_i,μ̄,w_i)+d(y_j,μ̄,w_j) ],  μ̄ = (w_i y_i + w_j y_j)/(w_i+w_j)
+}
+where \eqn{d(y,\mu,w)} is the unit deviance returned by
+\code{family$dev.resids(y, mu, w)}. For the Gaussian(identity) family
+\eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
+\eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} —
+exactly \emph{one-half} the (weighted) squared Euclidean distance, so
+\eqn{\sqrt{\mathrm{JS}}} is Euclidean up to the constant
+\eqn{\sqrt{1/2}}.
+
+\item \strong{Poisson size-factor distance (Witten 2011)}
+                  (\code{method = "poissondist"})\cr
+With column size factors \eqn{s_i}, row totals
+\eqn{c_t=y_{ti}+y_{tj}} and smoothing \eqn{\beta} (default 1):
+\deqn{
+  n_{ti}= \frac{s_i\,c_t}{s_i+s_j}, \qquad
+  d_i   = \frac{y_{ti}+\beta}{n_{ti}+\beta}
+}
+\deqn{
+  D_{ij}^{\mathrm{pois}} =
+    \sum_t \Bigl[ n_{ti}+n_{tj} - n_{ti}d_i-n_{tj}d_j +
+                    y_{ti}\log d_i + y_{tj}\log d_j \Bigr].
+}
+}
+
+Both expressions equal \emph{twice} the Jensen–Shannon divergence
+between the empirical distributions of columns \emph{i} and \emph{j};
+taking the square‐root gives a proper metric.  Ward’s linkage then minimises 
+the increase in within-cluster Bregman information (see
+Telgarsky & Dasgupta 2012).
 
 Note that hierarchical clustering is feasible only for moderately large data
 sets; for very large matrices more scalable Bregman
@@ -86,36 +141,37 @@ k-means/X-means alternatives could be considered (Banerjee et al. 2005).
 
 }}
 \examples{
-## example: clustering and aggregating m/z mass traces in GC/MS datasets
-data(simulated_spectra)
-Y <- simulate_GCMS(n = 5000,
-                   k = 200,
-                   S = simulated_spectra,
-                   family = "poisson")$D
-dim(Y) # 5000 x 258
-matplot(Y ^ 0.2, type="l", lty=1, col=rgb(0,0,0,0.1),
-        xlab = "Time index",
+data(GCMS_data2) # section of a GC/MS chromatogram of beer volatiles
+Y <- GCMS_data2
+dim(Y) # 1764 timepoints x 518 m/z mass traces
+# we aggregate together every bin of 5 subsequent timepoints for extra performance:
+Y2 <- t(glm_aggregate(t(Y),
+                      family = poisson(identity),
+                      clusterids = rep(1L:ceiling(nrow(Y)/5), each=5)[1:nrow(Y)])$Y_agg)
+dim(Y2) # 353 time bins x 518 m/z mass channels
+matplot(Y2 ^ 0.2, type="l", lty=1, col=rgb(0,0,0,0.1),
+        xlab = "Time bin",
         ylab = "Mass trace ion intensity ^ 0.2",
-        main="258 m/z mass channels in original GC/MS dataset")
+        main="518 m/z mass channels in original GC/MS dataset")
 
 # aggregate correlated m/z mass channels by clustering using Witten 2011's Poisson size-factor distance
-Yagg1 <- glm_cluster(Y = Y, family  = poisson(identity), method="poissondist")$Y_agg
-dim(Yagg1) # 5000 x 10
-matplot(Yagg1 ^ 0.2, type="l", lty=1,
-        xlab = "Time index",
+Y2agg1 <- glm_cluster(Y = Y2, family  = poisson(identity), method="poissondist")$Y_agg
+dim(Y2agg1) # 353 x 4
+matplot(Y2agg1 ^ 0.2, type="l", lty=1,
+        xlab = "Time bin",
         ylab = "Mass cluster ion intensity ^ 0.2",
-        main="258 m/z mass channels clustered into 10 aggregate traces\nusing Witten 2011's Poisson size-factor distance")
-# NOTE: this uses distance matrix D1 <- glm_dist(Y = Y, family  = poisson(identity), method="poissondist")
-# which is identical to D1b <- PoiClaClu::PoissonDistance(t(Y), type = "mle", transform = FALSE)$dd
+        main="518 m/z mass channels clustered into 4 aggregate traces\nusing Witten 2011's Poisson size-factor distance")
+# NOTE: this uses distance matrix D1 <- glm_dist(Y = Y2, family  = poisson(identity), method="poissondist")
+# which is identical to D1b <- PoiClaClu::PoissonDistance(t(Y2), type = "mle", transform = FALSE)$dd
+# but calculates much faster
 
-# aggregate correlated m/z mass channels by clustering using Jensen–Shannon divergence / symmetrised deviance
-Yagg2 <- glm_cluster(Y = Y, family  = poisson(identity), method="deviance")$Y_agg
-dim(Yagg2) # 5000 x 4
-matplot(Yagg2 ^ 0.2, type="l", lty=1,
-        xlab = "Time index",
+# aggregate correlated m/z mass channels by clustering using symmetrised deviance (Jensen–Shannon divergence)
+Y2agg2 <- glm_cluster(Y = Y2, family  = poisson(identity), method="deviance")$Y_agg
+dim(Y2agg2) # 353 x 5
+matplot(Y2agg2 ^ 0.2, type="l", lty=1,
+        xlab = "Time bin",
         ylab = "Mass cluster ion intensity ^ 0.2",
-        main="258 m/z mass channels clustered into 4 aggregate traces\nusing Jensen–Shannon deviance distance")
-
+        main="518 m/z mass channels clustered into 5 aggregate traces\nusing Jensen–Shannon deviance distance")
 }
 \references{
 Telgarsky, M. & Dasgupta, S. (2012).  
@@ -132,5 +188,15 @@ In: Nielsen, F., Barbaresco, F. (eds.)
 \emph{Geometric Theory of Information},
 Lecture Notes in Computer Science 10589,
 pp. 369–395. Springer, Cham.
-\url{https://doi.org/10.1007/978-3-319-21903-5_8}
+\url{https://doi.org/10.1007/978-3-319-21903-5_8} \cr
+Witten, D. M. (2011). 
+\emph{Classification and Clustering of Sequencing Data 
+using a Poisson Model.} 
+Annals of Applied Statistics 5(4): 2493–2518.
+}
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 }
