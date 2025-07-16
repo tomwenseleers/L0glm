@@ -8,11 +8,16 @@
 lmridge(
   X,
   y,
-  lambdas = NULL,
+  lambdas = rep(0, ncol(X)),
   weights = NULL,
-  lower = rep(-.Machine$double.xmax, ncol(X)),
-  upper = rep(.Machine$double.xmax, ncol(X)),
   nonnegative = FALSE,
+  lower = if (nonnegative) {
+     rep(0, ncol(X))
+ } else {
+    
+    rep(-.Machine$double.xmax, ncol(X))
+ },
+  upper = rep(.Machine$double.xmax, ncol(X)),
   scaling = rep(1, ncol(X)),
   prior.mean = NULL,
   solver = "eigen",
@@ -28,15 +33,15 @@ lmridge(
 
 \item{y}{A numeric vector of responses.}
 
-\item{lambdas}{Numeric value or vector specifying the ridge penalty parameter(s). If \code{NULL}, a default value is used.}
+\item{lambdas}{Numeric value or vector specifying the ridge penalty parameter(s).}
 
 \item{weights}{Optional numeric vector of observation weights. Default is \code{NULL}.}
+
+\item{nonnegative}{Logical; if \code{TRUE}, nonnegativity constraints are imposed on the coefficients (equivalent to setting \code{lower = 0}). Default is \code{FALSE}.}
 
 \item{lower}{Numeric vector specifying lower bounds on the coefficients. Default is a vector of \code{-Inf}.}
 
 \item{upper}{Numeric vector specifying upper bounds on the coefficients. Default is a vector of \code{Inf}.}
-
-\item{nonnegative}{Logical; if \code{TRUE}, nonnegativity constraints are imposed on the coefficients (equivalent to setting \code{lower = 0}). Default is \code{FALSE}.}
 
 \item{scaling}{Numeric vector specifying scaling factors for the columns of \code{X}. Default is a vector of ones (no scaling). This allows scaling of columns of \code{X}, e.g., by their L2 norm.}
 
@@ -108,4 +113,10 @@ abline(0, 1, col = "red")
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}}, \code{\link[nnls]{nnls}}, \code{\link{control.solver.gen}}
+}
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 }
