@@ -137,7 +137,7 @@ ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple", "yellow2"))) 
-ggsave(file="..//benchmarks//plots//timings//timings_metrics_sparse_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_poisson.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_poisson.pdf", width=7, height=5, dpi=600)
 
 ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -151,7 +151,7 @@ ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colo
                                   "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings_sparse_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_sparse_poisson.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_sparse_poisson.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
@@ -230,7 +230,7 @@ for (n in sizes) {
 }
 
 warnings()
-# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
+# TODO CG & LSCG solvers sometimes fail in first 6 IRLS iterations
 # if tol is set too low - now falling back to 
 # Cholesky LLT if that happens - check if this can be fixed somehow?
 
@@ -261,7 +261,7 @@ ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple", "yellow2")))
-ggsave(file="..//benchmarks//plots//timings//timings_metrics_sparse_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.pdf", width=7, height=5, dpi=600)
 
 # here glmnet solver is markedly worse than the rest
@@ -279,7 +279,7 @@ ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value,
                                   "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings_sparse_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
@@ -291,7 +291,7 @@ ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.pdf", width=7, 
 ## 2.1 SINGLE CHANNEL ####
 
 # Simulation sizes (with n=p)
-sizes <- c(25, 50, 100, 500, 1000, 10000) # 2000) # , 5000, 10000, 20000)
+sizes <- c(25, 50, 100, 500, 1000, 10000)
 
 # Solvers and methods
 solvers <- c("osqp", 
@@ -393,7 +393,6 @@ warnings()
 # TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
 # if tol is set too low - now falling back to 
 # Cholesky LLT if that happens - check if this can be fixed somehow?
-# maybe for iterative CG & LSCG solvers use glmnet for first 6 IRLS iterations?
 
 # Reshape data for plotting
 results_melt <- results %>% 
@@ -423,7 +422,7 @@ ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple", "yellow2"))) 
-ggsave(file="..//benchmarks//plots//timings//timings_metrics_dense_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_poisson.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_poisson.pdf", width=7, height=5, dpi=600)
 
 ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
@@ -437,7 +436,7 @@ ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colo
                                   "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings_dense_poisson.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
@@ -541,13 +540,11 @@ ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
   scale_color_manual(values=rev(c("green2", "magenta", "red", "orange", "cyan2", 
                                   # "blue", "cyan2", # nnls
                                   "purple", "yellow2")))
-ggsave(file="..//benchmarks//plots//timings//timings_metrics_dense_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_gaussian.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_gaussian.pdf", width=7, height=5, dpi=600)
 
 # here glmnet solver is markedly worse than the rest
 # TODO check if this can be improved
-# maybe just use glmnet to solve the first 5 iterations of the iterative
-# CG & LSCG eigen solvers??
 # TODO test if initialisation with nonnegative unregularised glmnet::bigGlm would speed up things & give better solution?
 
 ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
@@ -562,7 +559,7 @@ ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value,
                                   "purple", "yellow2"))) + 
   ylab("Time (s)") + xlab("Problem size (n=p)") +
   scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="..//benchmarks//plots//timings//timings_dense_gaussian.png", width=7, height=5, dpi=600)
+ggsave(file="../benchmarks/plots/timings/timings_dense_gaussian.png", width=7, height=5, dpi=600)
 ggsave(file="../benchmarks/plots/timings/timings_dense_gaussian.pdf", width=7, height=5, dpi=600)
 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")

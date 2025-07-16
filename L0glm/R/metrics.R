@@ -23,8 +23,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   y <- as.matrix(y)
   
-  # nr of tasks, variables & observations
-  m = ncol(y) # nr of tasks
+  # nr of tasks/outcomes, variables & observations
+  m = ncol(y) # nr of tasks/outcomes
   # nr of variables, cases & tasks & effective degrees of freedom ####
   if (is.null(p)) p = ncol(X) # nr of variables
   
@@ -38,7 +38,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   #             if(!is.null(w <- object$prior.weights)) sum(w != 0) else length(object$residuals) # with residuals <- (y - mu)/mu.eta(eta)
   
   # effective degrees of freedom
-  edf = sum(beta!=0) # as in abess package
+  edf = sum(beta!=0) # as in abess package, note we assume beta includes intercept if present
   # allow for estimated dispersion, cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
   if (family$family %in% c("gaussian", "Gamma", "inverse.gaussian", "quasibinomial", "quasipoisson")) edf <- edf + 1
   
@@ -93,9 +93,10 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   if (is.null(beta_true)) { # calculated weights based on expected value
     y = as.matrix(y)
     # Compute the fitted mean values using the fitted coefficients
-    nonzero = as.vector(rowMax(abs(beta))!=0) # nonzero coefficients
+    nonzero = which(rowMax(abs(beta))!=0) # nonzero coefficients
     eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
     mu = family$linkinv(eta=eta) # fitted values on response scale
+    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) 
     # Compute the weights at the fitted values
     gprime = family$mu.eta(eta=eta) # derivative of the expected values
     varg = family$variance(mu=mu) # variance
@@ -108,7 +109,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     
   } else { # calculate weights based on the "true" responses if beta_true is given
     # calculate true response used in simulation given true coefficients beta_true
-    nonzero = as.vector(rowMax(abs(beta_true))!=0) # nonzero coefficients
+    nonzero = which(rowMax(abs(beta_true))!=0) # nonzero coefficients
     eta_true = as.matrix(X[,nonzero,drop=F] %*% beta_true[nonzero,,drop=F] + offset) # true eta = true values on link scale
     mu_true <- as.matrix(family$linkinv(eta=eta_true)) # true mu = true values on response scale
     
@@ -116,53 +117,40 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     gprime_true = family$mu.eta(eta=eta_true) # derivative of the true values
     varg_true = family$variance(mu=mu_true)
     W = as.vector(weights)*(gprime_true^2)/varg_true
-    good = !is.na(W) & W != 0 & !is.infinite(W) & gprime_true!=0 & as.vector(weights)!=0
+    good = is.finite(W) & W != 0 & as.vector(weights)!=0 # !is.na(W) & W != 0 & !is.infinite(W) & gprime_true!=0 & as.vector(weights)!=0
     W[!good] = 0
     dim(W) = dim(eta_true)
     
     # Compute the fitted mean values using the actual fitted coefficients
-    nonzero = as.vector(rowMax(abs(beta))!=0) # nonzero coefficients
+    nonzero = which(rowMax(abs(beta))!=0) # nonzero coefficients
     eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
     mu = family$linkinv(eta=eta) # fitted values on response scale
-    
+    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
+
     # calculated true theoretical deviance compared to ground truth
-    dev_res = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(weights)) # as.vector(W)
-    dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
-    dev_res[is.na(dev_res)] = 0
-    deviance_true = sum(dev_res) # deviance compared to ground truth 
+    dev_res_true = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(weights))
+    keep = which(as.vector(weights) != 0)
+    deviance_true = sum(dev_res_true[keep]) # deviance compared to ground truth = true deviance = how well the model fits the latent noise-free mean, cf McCullagh, P. & Nelder, J. (1989) Generalized Linear Models, §2.3, §12.2.
   }
   
   
-  # calculated deviance
-  dev_res = family$dev.resids(y=as.vector(y), mu=as.vector(mu), wt=as.vector(weights)) # as.vector(W)
-  # dev_res = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(W)) # using ground truth
-  dev_res[is.infinite(dev_res)] = sign(dev_res[is.infinite(dev_res)])*1E10
-  dev_res[is.na(dev_res)] = 0 # is.infinite(dev_res)|
-  deviance = sum(dev_res) # deviance 
+  # calculated observed residual deviance
+  dev_res = family$dev.resids(y=as.vector(y), mu=as.vector(mu), wt=as.vector(weights))
+  keep = which(as.vector(weights) != 0)
+  deviance = sum(dev_res[keep]) # observed residual deviance = how good model fits the realised noisy data
   
-  # calculate some information criteria See Zhang & Chen 2010 ####
+  # calculate some information criteria, cf. Zhang & Chen 2010 ####
   # see also https://github.com/abess-team/abess/blob/master/R-package/R/deviance.abess.R
-  # Get -2 * log-likelihood & log likelihood
+  # get -2 * log-likelihood & log likelihood from family$aic slot & observed deviance
   y = as.vector(y)
-  # y = as.vector(mu_true) # using ground truth
-
   if (family$family=="poisson") { y = round(y) } 
-  good = which(as.vector(W!=0)) # &(as.vector(as.numeric(mu))!=0)
-  # using deviance relative to observed signal
-  aic.model = family$aic(y = as.vector(y)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-                         n = as.vector(weights)[good], # check this is correct for family(binomial)
-                         mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-                         wt = weights[good], 
-                         dev = deviance) 
-  # # using deviance relative to ground truth
-  # aic.model_true = family$aic(y = as.vector(mu_true)[good], # aic slot as calculated by glm / glm.fit https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-  #                             n = as.vector(weights)[good], # check this is correct for family(binomial)
-  #                             mu = as.vector(as.numeric(mu))[good],  # mu = y.hat
-  #                             wt = weights[good], 
-  #                             dev = deviance_true) 
-  
-  loglik = p - (aic.model + 2*sum(beta!=0)) / 2
-
+  # aic slot of family is -2.log-likelihood
+  min2LL = family$aic(y = as.vector(y)[keep], # = proportions for binomial
+                      n = as.vector(weights)[keep], # = total counts for binomial 
+                      mu = as.vector(mu)[keep],  
+                      wt = as.vector(weights)[keep], # prior weights for families other than binomial
+                      dev = deviance) 
+  loglik = -0.5 * min2LL # plain log‑likelihood
   IC = get.IC(loglik = loglik, n = n, p = p, edf = edf) 
   
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))

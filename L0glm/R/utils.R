@@ -40,30 +40,10 @@
 #### NON-EXPORTED UTILITY FUNCTIONS ####
 ########################################
 
-# clip vector of coefficients between vectors with bounds lower and upper
-# (with reflect_lower = TRUE coefficients will be reflected off the
-# lower & upper bounds to stay within the allowed range,
-# note I am currently not doing multiple reflections, which
-# might be needed if coefficients are extremely far outside of
-# the allowed boundaries)
-clip = function (coefs, lower, upper, 
-                 reflect_lower = FALSE, reflect_upper = FALSE) {
+# clamp vector of coefficients between vectors with bounds lower and upper
+clamp = function (coefs, lower, upper) {
   if (!is.null(coefs)) {
-  reflect = reflect_lower|reflect_upper
-  if (!reflect) { return(pmax(lower, pmin(coefs, upper))) } else { 
-    
-    if (reflect_lower) { 
-  # Reflect off the lower boundary
-  coefs <- ifelse(coefs < lower, lower + (lower - coefs), coefs) }
-    
-    if (reflect_upper) {
-  # Reflect off the upper boundary
-  coefs <- ifelse(coefs > upper, upper - (coefs - upper), coefs) }
-    
-  coefs <- pmax(lower, pmin(coefs, upper)) }
-  
-  return(coefs)
-  }
+  return(pmax(lower, pmin(coefs, upper))) }
 }
   
 
@@ -384,9 +364,9 @@ preset.lambda <- function(IC="gic", p, n) {
 }
 
 
-##########################
-#### UTILITY FUNCTION ####
-##########################
+####################################
+#### EXPORTED UTILITY FUNCTIONS ####
+####################################
 
 
 #' Plot benchmark examples
@@ -470,6 +450,7 @@ print_progress <- function(current, total, before = "Progress: ", after = "", ..
 }
 
 
-
-
-
+# is matrix X sparse? ####
+issparse <- function(X) {
+  any(class(X) %in% c("dgCMatrix", "dsCMatrix", "sparseMatrix"))
+}

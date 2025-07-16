@@ -1,45 +1,42 @@
 # Internal helper function with the core modified IRLS L0glm algorithm
 #
-# The weighted least square step of the standard IRLS Fisher-scoring based
-# GLM algorithm is replaced with a weighted least square regression with
-# adaptive ridge penalty (as in Frommlet & Nuel 2016, but also estimating
-# the correct dispersion multiplier in the ridge penalty, and using
-# Fisher scoring instead of Newton-Raphson, plus adding provisions for
-# nonnegativity or box constraints).
+# The weighted least square step of the standard IRLS Fisher-scoring based GLM
+# algorithm is replaced with a weighted least square regression with adaptive
+# ridge penalty (as in Frommlet & Nuel 2016), but also accounting for the
+# estimated dispersion in the ridge penalty, plus adding provisions for
+# nonnegativity or box constraints, and allowing for any exponential family
+# error destribution plus associated link functions (canonical or non-canonical).
 #
-#  Fits a generalized linear model with L0 regularization and option for
-#  nonnegativity and box constraints. It takes as input parameters the design
-#  matrix X, the response variable y, regularization parameters, solver options,
-#  and control parameters. The result is a fitted model with coefficients
-#  estimated using the specified regularization method and solver. The function
-#  it is called by the higher level \code{L0glm.fit}.
+# Fits a generalized linear model with L0 regularization and option for
+# nonnegativity and box constraints. It takes as input parameters the design
+# matrix X (here including any intercept), the response variable y, regularization
+# parameters, solver options, and control parameters. The result is a fitted
+# model with coefficients estimated using the specified regularization method
+# and solver. The function is called by the higher level \code{L0glm.fit}.
 #
-# There is an optional intercept term, which is FALSE by default. If TRUE, the intercept
-# term is added to the design matrix X and the coefficients are estimated for the
-# intercept term as well. The intercept term is always unpenalized.
-#
+# An optional intercept term is already added by the L0glm.fit function. The
+# intercept term is always left unpenalized & fit unconstrained.
+# 
 L0glm.fit.internal = function(X, 
                               y, 
-                              family = poisson(identity),
                               weights = rep(1, nrow(X)),
+                              family = poisson(identity),
                               start = NULL,
                               dispersion = NULL,
-                              offset = rep(0, nrow(X)),
+                              offset = NULL,
                               lambda = log(ncol(X))*log(log(nrow(X))), # = GIC criterion 
-                              no.pen = 0,
-                              nonnegative = FALSE,
+                              no.pen = c(),
                               normalize = TRUE,
                               solver = "eigen", 
                               method = 7L, 
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
                               maxit = 25,
-                              warm.start = 0.9,
+                              warm.start = 1,
                               prior.mean = NULL,
                               gamma = 2,
-                              thresh = 1e-5,
+                              thresh = 1e-6,
                               tol = 1E-10,
-                              intercept = FALSE,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { 
 
@@ -49,214 +46,167 @@ L0glm.fit.internal = function(X,
   # https://cran.r-project.org/web/packages/abess/abess.pdf
   # Implementing these might further speed up the algo.
   
-  #if the solver contains the _noreg key it means the regularization needs to be disabled
-  if (grepl("_noreg",solver)) { solver = gsub("_noreg", "", solver) # use given solver without regularisation
-                                lambda = 0
-                                maxit = 1 } # strictly speaking this should only apply to gaussian case
+  ## 1. sanity checks ---------------------------------------------------------
+  n <- nobs <- nrow(X); p <- nvars <- ncol(X)
   
-  # Added intercept as a column of 1s to the design matrix
-  if (intercept) {
-    X <- cbind(1, X)  
-    p <- p + 1        
-    
-    # Ensure the intercept is always unpenalized
-    if (!1 %in% no.pen) {
-      no.pen <- c(1, no.pen)  
-    }
+  if (length(weights) != n) stop("length(weights) must equal nrow(X)")
+  if (length(offset) != n) stop("length(offset) must equal nrow(X)")
+  if (length(lower) != p) stop("length(lower) must equal ncol(X)")
+  if (length(upper) != p) stop("length(upper) must equal ncol(X)")
+  
+  if (is.null(offset)) {
+    offset <- Matrix(0, n, 1, sparse = TRUE)
   }
-  
-  # Normalize columns of X to unit L2 norm? If so, calculate scaling
-  if(normalize) { scaling = scaleX(X) } else { # L2 norm of columns of X
-                  scaling = rep(1, ncol(X)) }
-  
-  # interpret all zero starting coefficient values as start values still requiring initialisation
-  if (!is.null(start)) { if (sum(start==0)==length(start)) start = NULL } 
-
+    
+  ##  2. dispersion initialisation --------------------------------------------
+  #  * binomial / poisson : fixed at 1
+  #  * user supplied      : keep unchanged
+  #  * otherwise          : start at 1 and iteratively update
+  if (is.list(dispersion)) dispersion <- unlist(dispersion)[1L]
   dispersion_init = dispersion 
   # if NULL dispersion will be estimated (=variance for gaussian), 
   # except for binomial & poisson where it is 1
   if (family$family %in% c("binomial", "poisson")) { dispersion_init <- 1 }
   if (is.null(dispersion)) { dispersion <- 1 }
+  residuals = rep(0, n)                   # unweighted working residuals, here initialised at 0 for 1st iteration
 
+  ##  3. prior mean (vector of length p) --------------------------------------  
+  if (is.null(prior.mean)) { prior.mean <- rep(0, p) } 
+     else if (length(prior.mean)==1) { prior.mean <- rep(prior.mean, p) } 
+     else if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
+  
+  ## 4. optional normalisation ------------------------------------------------
+  scaling <- if (normalize) scaleX(X) else rep(1, p)
+  if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
+
+  ## 5. family helpers --------------------------------------------------------
   if (!is(family, "family")) family = family()
-  variance = family$variance # variance in function of the mean µ
-  linkinv = family$linkinv # inverse link function, to get predictions on response scale µ from η
-  link = family$linkfun # link function g(µ), to get predictions on link scale η from µ
-  init = family$initialize # initialisation function to initialise mustart (predictions on response scale µ) and n (nr of observations) and m (total nr of trials) for binomial data
-  dev.resids = family$dev.resids # deviance residuals function in function of y, mu and prior weights wt 
-  mu.eta = family$mu.eta # function of derivative of the predicted values on response scale µ with respect to predicted values on link scale η = d(g-1)/dη=dμ/dη
-  
-  if (!is.function(variance) || !is.function(linkinv) )
-    stop("'family' argument seems not to be a valid family object", call. = FALSE)
 
-  etastart = NULL
-  mustart = NULL
-  n = NULL
-  nobs <- nrow(X)    # needed by the initialize expression below
-  p <- nvars <- ncol(X)   # needed by the initialize expression below
+  variance  <- family$variance      # variance in function of the mean µ
+  linkinv   <- family$linkinv       # inverse link function, to get predictions on response scale µ from η
+  linkfun   <- family$linkfun       # link function g(µ), to get predictions on link scale η from µ
+  mu_eta    <- family$mu.eta        # function of derivative of the predicted values on response scale µ with respect to predicted values on link scale η = d(g-1)/dη=dμ/dη
+  # dev_res   <- family$dev.resids  # deviance residuals in function of y, mu and prior weights wt 
+  initexpr  <- family$initialize    # initialisation expression to initialise mustart (predictions on response scale µ) and n (nr of observations) and m (total nr of trials) for binomial data
   
-  if(!is.null(prior.mean)){ 
-    center = prior.mean # center of nonzero centered ridge regression if prior means specified = center of Gaussian priors
-  } else {
-    prior.mean = rep(0, p)
-    center = NULL # zero centered ridge regression, i.e. assume zero centered Gaussian prior
+  ## set mustart (and possibly n & m), requires nobs and nvars to be preset
+  etastart <- NULL
+  mustart <- NULL
+  eval(initexpr)  
+  
+  eta <- linkfun(mustart)                 # g(μ)  on link scale
+  mu  <- mustart                          # on response scale
+  
+  # dev <- sum(dev_res(y, mu, weights))
+  # W.ret     <- rep(0, n)                # working weights
+  # z.ret     <- rep(0, n)                # working response
+  
+  ## 6. set starting coefficients ---------------------------------------------
+  if (!is.null(start) && all(start == 0)) start <- NULL
+  if (is.null(start)) {
+    start <- init_coefs(X, y, mu, weights, offset,
+                        prior.mean, family, lambda) # component-wise initialisation
+    start <- clamp(start, lower, upper)
+    start <- warm.start * start +
+      (1 - warm.start) * rep(sd(start)^(1/gamma), p)
   }
+  beta <- beta_old <- start
+  # names(beta) = colnames(X)
   
-  eval(init) # initialise mustart (predictions on response scale µ) and n (nr of observations) and m (total nr of trials) for binomial data
-  
-  if (is.null(start)) {  
-    eta = as.matrix(link(mustart)) # initialize η = g(µ) = predictions on link scale
-    # to initialise using an orthogonal initialisation
-    # beta <-  beta_old <- start <- init_coefs(X = X, weights = weights, offset = offset, mu = mu, family = family, lambda = lambda)
-    # eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # eta = expected value on link scale
-    # to initialise with constant starting values
-    mu = linkinv(eta) # predictions on response scale µ
-    
-    # option1 for start: equal coefficients (used in Frommlet & Nuel)
-    # start <- start_coefs(X=X, family=family) 
-    # option2 for start: coordinate-wise coefficients 
-    # = crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2), 
-    # which would be exact if variables were orthogonal
-    # gave a more stable solution & converged faster
-    # alt 3d option if there are nonnegativity constraints: use glmnet::bigGlm with lower=0 and no regularisation as starting coefs?
-    start <- init_coefs(X=X, y=y, mu=mustart, weights=weights, offset=offset, prior.mean=prior.mean, family=family, lambda=lambda) 
-    start <- clip(coefs=start, lower, upper)
-    start <- warm.start*start + (1-warm.start)*rep(sd(start)^(1/gamma), ncol(X))
-    
-    beta <-  beta_old <- start
-  } else {  
-    # eta = as.matrix(link(mustart))
-    beta <- beta_old <- start # when starting coefficient values were provided
-    # WE ASSUME THAT IF STARTING VALUES ARE GIVEN THEY ARE ALREADY QUITE GOOD AND SO USE
-    eta = as.matrix(offset + as.vector(if (p == 1L) X * start else X %*% start)) # initialize η = g(µ) = predictions on link scale
-    mu = linkinv(eta) # predictions on response scale µ
-  }
-  names(beta) = colnames(X)
-  
-  dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
-  residuals = rep(0, nobs) # worker residuals, here initialised at 0 for 1st iteration
-  
-  # nonzero coefficients 
-  # TODO: if warm.start=1 we should set nonzero from the start & kick
-  # out variables with start=0, which would get infinite penalties, from the very beginning
-  if (is.null(start)) { nonzero = as.vector(beta!=0) } else { nonzero = as.vector(start!=0) } 
-  # mask <- rep(FALSE, p)
-  
-  # if (solver=="parglm") { X <- as.matrix(X) } # this solver currently only supports dense matrices # removed this solver
-  
-  for (i in 1L:maxit) {
-    # print(i)
-    # print(dispersion)
-    
+  # dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
+
+  # TODO: if warm.start=1 & start!=NULL we should kick out variables with 
+  # start=0 from the very beginning, as they would get infinite penalties
+
+  ## 7. main IRLS loop with adaptive ridge step -------------------------------
+  for (iter in seq_len(maxit)) {
+    ## ---------- working response & weights ---------------------------
     var = variance(mu) # variance in function of the mean µ
     
-      if (family$link == "identity"){ # simplified formula and faster than formula in else statement
-        W.ret <- as.vector(weights / var) # updated 1/variance (* weights) weights with identity link, where variance = 1 with Gaussian noise, variance = mu, mu^2 and mu^3 with Poisson, Gamma & inverse Gaussian noise
-        good = which(!is.na(W.ret) & (W.ret!=0) & !is.infinite(W.ret)) # valid rows # (gprime != 0)
-        z.ret <- (y - offset) # working (adjusted) response (returned non-subsetted version)
-        z <- z.ret[good] # subset used for fit
-        W <- W.ret[good] # subset of weights used for fit
+    if (family$link == "identity"){ # then use simplified formula
+        W.ret <- as.numeric(weights / var) # updated 1/variance (* weights) weights with identity link, where variance = 1 with Gaussian noise, variance = mu, mu^2 and mu^3 with Poisson, Gamma & inverse Gaussian noise
+        good <- which(W.ret > 0 & is.finite(W.ret))
+        z.ret <- y - offset # working (adjusted) response
       } else {
-        gprime = mu.eta(eta) # derivative of the expected values µ with respect to predictions on link scale η = d(g-1)/dη=dμ/dη
-        good = which((weights != 0) & (gprime != 0) & !is.infinite(weights) & !is.na(weights)) # valid rows
-        gradient = y - mu # gradient of log-likelihood with respect to η = ∂ℓ/∂η
-        z.ret <- eta - offset + gradient / gprime # working (adjusted) response = linearised quadratic approximation of log-likelihood function ℓ around η
-        z <- z.ret[good] 
-        W.ret <- weights * as.vector(gprime^2 / var) # updated working weights = diagonal of expected Hessian = reliability of observations
-        W <- W.ret[good] # subset of weights used for fit
+        gprime <- mu_eta(eta) # derivative of the expected values µ with respect to predictions on link scale η = d(g-1)/dη=dμ/dη
+        good <- which(weights != 0 & gprime != 0 & is.finite(weights))
+        grad <- y - mu # gradient of log-likelihood with respect to η = ∂ℓ/∂η
+        z.ret <- eta - offset + grad / gprime # working (adjusted) response = linearised quadratic approximation of log-likelihood function ℓ around η
+        W.ret <- weights * as.numeric(gprime^2 / var) # updated working weights
       }
+    z <- z.ret[good] # subset used for fit
+    W <- W.ret[good] # subset of weights used for fit
     
-    
-    # UPDATE RIDGE PENALTIES ####
-    
+    ## ---------- adaptive ridge penalties ----------------------------
+
     # penalty weights & penalties for the L0 norm penalty ####
-    pen.weights <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
-    if (lambda!=0) { lambdas = (1/4)*lambda*dispersion*pen.weights } else { lambdas = rep(0,p) }
-    # ridge penalties on individual coefficients, we scale these penalties 
-    # by the estimated dispersion & by 1/4 (cf Frommlet & Nuel 2016) so that we 
+    pen.w <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
+
+    lambda_tilde <- lambda*dispersion/4
+    lambda_tilde[no.pen] <- 0 # terms that should be left unpenalized (e.g. intercept)
+    lambdas <- lambda_tilde * pen.w
+    
+    # lambda_tilde ridge penalties on individual coefficients, we scale these penalties 
+    # by (1/4)*dispersion (cf Frommlet & Nuel 2016) so that we 
     # can directly use the lambda penalty values implied by the AIC & BIC criteria 
     # (e.g. 2 & log(n) for AIC & BIC) (stricly speaking this was derived for 
-    # the Gaussian case only, but it works in practice for other noise
-    # families too)
+    # the Gaussian case with dispersion=sigma^1=1 only, but this is the more
+    # generic relation that is correct for all families & any estimated dispersion
+    # (for binomial & poisson & negative binomial dispersion is fixed at 1)
     
-    # NOTE: I think that with an Lq penalty and for any q between 0 and 2 the factor would be
-    # L0overLqnorm*4*(1/2^(2-q)) as for q=0 this would give (1/4) as a factor,
-    # and for q=2, where the penalty weights would become 1 (ie nonadaptive)
-    # the correct factor should be the L0overL2norm to get lambda on the equivalent
-    # scale of the L0 penalty - the L0overL2norm (for the solution approximating
-    # the true solution) could be estimated from an L0glmfit with
-    # q=0
+    ## ----- update coefs using adaptive ridge regression  (zero or nonzero centered) ---
+    nonzero <- beta != 0L          # logical mask
+    if (!any(nonzero)) {           
+      if (verbose) warning("All coefficients zero – nothing to fit")
+      break
+    }
+
+    if (any(!is.finite(beta))) { 
+      conv <- FALSE
+      if (verbose) warning(paste("Non-finite coefficiente at iteration", iter))
+      break
+      }
+    
+    if (verbose) print(paste("IRLS iteration", iter))
+    
+    beta_sub <- lmridge(X              = X[good, which(nonzero), drop = FALSE],
+                        y              = z, # already subsetted to [good]
+                        weights        = W, # already subsetted to [good]
+                        lambdas        = lambdas[nonzero],
+                        scaling        = scaling[nonzero],
+                        start          = beta[nonzero],
+                        iteration      = iter,
+                        lower          = lower[nonzero],
+                        upper          = upper[nonzero],
+                        prior.mean     = prior.mean[nonzero],
+                        solver         = solver,
+                        control.solver = control.solver,
+                        method         = method)
+    
+    beta[nonzero]            <- beta_sub
+    beta[(abs(beta) < max(abs(beta))*thresh)|abs(beta) < 1E-20] <- 0
+    nonzero <- beta != 0L
+    
+    ## ----- update mu and eta --------------------------------------
+    eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale η
+    mu  <- linkinv(eta)    # predictions on response scale µ
+    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
+    
+    ## ----- dispersion update (once, if free) ----------------------
+    if (is.null(dispersion_init)) {
+      residuals_old <- if (family$link == "identity") y - mu else (y - mu) / gprime
+      res2          <- residuals_old^2
+      n.ok          <- length(good)
+      rank          <- sum(nonzero) # cheap approximation of the trace of the hat matrix
+      df.res        <- n.ok - min(rank, n.ok)
+      disp_new      <- sum(W.ret[good] * res2[good]) / df.res
       
-    # NOTE: later we could consider also allowing for fused Lq ridge penalties,
-    # useful e.g. to enforce smoothness among the recovered coefficients
-    # beta_1st_order_diff = c(0, diff(beta, 1))
-    # 
-    # # lambda_fused_ridge = 100
-    # pen.weights.fused_ridge <- AR.weights(beta = beta_1st_order_diff, 
-    #                                       delta = max(max(abs(beta_1st_order_diff))/10, 1E-10), 
-    #                                       gamma = 2, 
-    #                                       q = 1) # ridge pentalty weights, 1 with q=2
-    # pen.weights.fused_ridge <- length(pen.weights.fused_ridge) * pen.weights.fused_ridge/sum(abs(pen.weights.fused_ridge))
-    # lambdas_fused_ridge = lambda*pen.weights.fused_ridge*sum((beta_1st_order_diff)^2)
-
-    # total ridge penalties ####
-    # lambdas = lambdas # + lambdas_fused_ridge
-    lambdas[no.pen] = 0 # terms that should be left unpenalized (e.g. intercept)
-    
-    if (length(good)==0) {
-      conv <- FALSE
-      if(verbose) print(gettextf("No observations informative at iteration %d",
-                                 i), domain = NA)
-      break
+      if (abs(disp_new - dispersion) / dispersion < 0.1) {
+        dispersion       <- disp_new
+        dispersion_init  <- 1        # lock further updates
+      }
     }
     
-    beta_old = beta
-
-    # browser()
-    
-    # weighted least square step in IRLS algo, here replaced by (zero or nonzero 
-    # centered ridge regression to
-    # add automatic regularisation and with possible box constraints
-    # coefficient update is based on quadratic approximation of log likelihood
-
-    res <- lmridge(X = X[good, nonzero, drop=F], 
-                   y = z,
-                   weights = W, # fixed bug: had W[good] but already subsetted
-                   lambdas = lambdas[nonzero],
-                   nonnegative = nonnegative,
-                   scaling = scaling[nonzero],
-                   start = beta_old[nonzero], # as.vector(crossprod(Xwaug, ywaug) / colSums(Xwaug^2)),
-                   iteration = i, # IRLS iteration passed on as extra info
-                   lower = lower[nonzero], 
-                   upper = upper[nonzero],
-                   prior.mean = center[nonzero],
-                   solver = solver,
-                   control.solver = control.solver,
-                   method = method)
-  
-    if (sum(abs(res)) != 0) {
-      beta[nonzero] <- res
-    } 
-
-    beta[nonzero][abs(beta[nonzero]) < thresh] = 0
-    nonzero = as.vector(beta!=0) # nonzero coefficients
-    if(sum(nonzero) == 0){
-      conv <- TRUE
-      if(verbose) warning("All coefficients penalized to zero")
-      break
-    }
-    if (any(!is.finite(beta))) {
-      conv <- FALSE
-      if(verbose) warning(gettextf("Non-finite coefficients at iteration %d", i), domain = NA)
-      break
-    }
-    
-    ## calculate updated values of predictions on link & response scale η and µ with new coefs:
-    # predictions on link scale η
-    eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero] + offset) 
-    # predictions on response scale µ
-    mu = linkinv(eta) # expected value / predictions on response scale
-
     # update estimated dispersion for all distributions except binomial & poisson
     # and if relative change in estimated dispersion drops below threshold
     # update dispersion to use it in calculated ridge penalty
@@ -266,48 +216,46 @@ L0glm.fit.internal = function(X,
       
       residuals_old = residuals # old unweighted working residuals (on adjusted z scale)
       
-      if (family$link == "identity"){ # simplified formula and faster than formula in else statement
+      if (family$link == "identity"){ 
         residuals <- y-mu # updated unweighted residuals
       } else {
         residuals <- (y-mu)/gprime # updated unweighted residuals
       }
       
       n.ok <- length(good) # good observations
-      rank <- sum(nonzero) # estimated rank
-      df.residual <- n.ok # residual degrees of freedom
-      if (rank<n.ok) { df.residual <- df.residual - rank } # to also allow for high dimensional case
-      # print(df.residual)
+      rank <- sum(nonzero) # estimated rank - cheap approx of trace of the hat matrix
+      df.residual <- n.ok - min(rank, n.ok) + 1 # residual degrees of freedom
       dispersion_old <- sum((W.ret[good] * residuals_old[good]^2))/df.residual # previous iteration's estimated dispersion # TODO sometimes causes Error longer object length is not a multiple of shorter object length
       dispersion_new <- sum((W.ret[good] * residuals[good]^2))/df.residual # updated estimate of dispersion (variance for Gaussian case)
-      disp_rel_change <- abs(dispersion_new - dispersion_old) / dispersion_old
-      # print(i)
-      # print(disp_rel_change)
+      disp_rel_change <- abs(dispersion_new - dispersion_old) / (dispersion_old+1E-10)
       # start updating dispersion used in calculation of lambda when estimated dispersion 
       # converged (relative change in dispersion between iterations < 10%)
       if (disp_rel_change < 0.1) {
         dispersion <- dispersion_new 
-        # dispersion_init <- 1 # to stop updating dispersion in subsequent iterations, unmark if you would like to keep on updating dispersion
+        # dispersion_init <- 1 # if we would like to stop updating dispersion in subsequent iterations, unmark if you would like to keep on updating dispersion
       }
-      # print(dispersion)
     }
       
-    dev_old = dev
-    dev = sum(dev.resids(y, mu, weights)) # deviance
     
-    dev_rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in L2 norm of coefficient vector
-    if (dev_rel_change < tol) break
-    dev_old = dev
-    beta_old = beta 
+    # dev_old = dev
+    # dev = sum(dev.resids(y, mu, weights)) # deviance
+    
+    ## ----- convergence test ---------------------------------------
+    if ( sqrt(sum((beta - beta_old)^2)) /
+         max(1e-12, sqrt(sum(beta^2))) < tol ) break
+    beta_old <- beta
+    
+    # dev_rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in L2 norm of coefficient vector
+    # if (dev_rel_change < tol) break
+    # dev_old = dev
   }
 
   # browser()
   
-  return(list(coefficients = as.vector(beta), 
-              weights = as.vector(W.ret), # working weights
-              # residuals = as.vector(residuals.ret), # working residuals
-              dispersion = dispersion, # estimated dispersion
-              # pen.weights = as.vector(pen.weights), 
-              lambdas = as.vector(lambdas), 
-              z = as.vector(z.ret)))
+  ## 8. return output ------------------------------------------------
+  list(coefficients = as.numeric(beta),
+       weights      = as.numeric(W.ret),
+       dispersion   = dispersion,
+       lambdas      = as.numeric(lambdas),
+       z            = as.numeric(z.ret))
 }
-
