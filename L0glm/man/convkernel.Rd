@@ -51,13 +51,13 @@ centroid to the middle of the kernel.
 The helper is useful for simulating blurred spike trains as observed in
 one-dimensional spectroscopy (GC–MS, NMR), calcium neuro-imaging, or
 epidemic curves where diagnosed cases are obtained by convolving
-infections with a delay-distribution kernel.  The available kernel
-families are:
+infections with a delay-distribution kernel.  Some of the available
+kernel families are:
 
 \itemize{
   \item \strong{Gaussian / Bigaussian / Exponentially Modified
-        Gaussian (Gaussian * Exp)} – common peak-shape models in
-        gas-chromatography / mass-spectrometry.
+        Gaussian (Gaussian * Exp)} – common 
+        peak-shape models in gas-chromatography / mass-spectrometry.
   \item \strong{Lorentzian} – arises in 1-D NMR as the Fourier transform
         of an exponentially decaying free-induction decay
         (Cauchy–Lorentz distribution).
@@ -65,7 +65,7 @@ families are:
         response in neuro-imaging studies.
   \item \strong{Gamma / Gamma * Exp} – typical
         infection-to-diagnosis delay distributions in epidemiology and
-        sometimes used for chromatographic peak shapes.
+        also sometimes used for chromatographic peak shapes.
 }
 
 All kernels returned by \code{convkernel()} integrate to 1 and are ready
