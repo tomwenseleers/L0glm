@@ -35,7 +35,7 @@ system.time(L0glm.chol_originaldata <- L0glm.fit(X,
                                          warm.start = 1,
                                          parallelize = FALSE,
                                          solver = "eigen",
-                                         method = 7L)) # 106s
+                                         method = 7L)) # 87s
 selected_features = which(rowSums(L0glm.chol_originaldata$coefficients!=0)!=0)
 length(selected_features) # 950
 length(intersect(selected_features, true_features)) # 929 true positives
@@ -46,19 +46,21 @@ rsq # 0.9912648
 
 plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], 
      y=as.vector(beta_true)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], pch=16, col="blue",
-     xlab = "Estimated coefficients", ylab = "True coefficients")
+     xlab = "estimated coefficients", ylab = "true coefficients",
+     main = "True vs. estimated coefficients grouped L0glm\n(no preclustering)")
 
 
 ### CLUSTERING ####
-# for clustering we aggregate together every bin of binsize subsequent timepoints for extra performance:
-binsize <- 5
-Ybinned <- t(glm_aggregate(t(Y), 
+# for clustering we aggregate together every bin of rowbins=5 subsequent timepoints for extra performance:
+rowbins <- 5
+Ybinned <- t(glm_aggregate(Y = t(Y),
+                           weights = matrix(1, nrow=ncol(Y), ncol=nrow(Y)), # or t(weights) if given as argument
                            family = poisson(identity), 
-                           clusterids = rep(1L:ceiling(nrow(Y)/binsize), each=binsize)[1:nrow(Y)])$Y_agg)
+                           clusterids = rep(1L:ceiling(nrow(Y)/rowbins), each=rowbins)[1:nrow(Y)])$Y_agg)
 
 ### 1.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST? ####
 # cluster & aggregate
-system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 6s
+system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 5s
 cl1 <- Ybinnedcl1$clusterids # obtained clusters
 Yagg1 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl1)$Y_agg # aggregate original data within these clusters
 dim(Yagg1) # 10000     14
@@ -107,12 +109,13 @@ rsq # 0.9806827
 
 plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], 
      y=as.vector(beta_true)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], pch=16, col="blue",
-     xlab = "Estimated coefficients", ylab = "True coefficients")
+     xlab = "estimated coefficients", ylab = "true coefficients",
+     main = "True vs. estimated coefficients grouped L0glm\n(with Poisson distance preclustering)")
 
 
 ### 1.2. WORKING ON DEVIANCE DISTANCE CLUSTERED DATA ####
 # cluster & aggregate
-system.time(Ybinnedcl2 <- glm_cluster(Ybinned, family=poisson(identity), method="deviance")) # 4s
+system.time(Ybinnedcl2 <- glm_cluster(Ybinned, family=poisson(identity), method="deviance")) # 3s
 cl2 <- Ybinnedcl2$cluster # obtained clusters
 Yagg2 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl2)$Y_agg # aggregate original data within these clusters
 dim(Yagg2) # 10000     4
@@ -128,7 +131,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X, Yagg2,
                                                warm.start = 1,
                                                parallelize = FALSE,
                                                solver = "eigen",
-                                               method = 7L)) # 2s
+                                               method = 7L)) # 2.5s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
 length(selected_features) # 1028
 length(intersect(selected_features, true_features)) # 917 true positives
@@ -158,19 +161,46 @@ rsq # 0.9659199
 
 plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], 
      y=as.vector(beta_true)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], pch=16, col="blue",
-     xlab = "Estimated coefficients", ylab = "True coefficients")
+     xlab = "estimated coefficients", ylab = "true coefficients",
+     main = "True vs. estimated coefficients grouped L0glm\n(with deviance distance preclustering)")
 
 
 
 ## 2. TEST WITH ACTUAL GC/MS SAMPLES ####
 
-Y <- GCMS_data1 # GCMS_data2 # 
+# function to plot matrix as image, also taking sparse matrix as input
+plotmat <- function(M, 
+                    row_subsamp=round(nrow(M)/min(nrow(M),2000)), 
+                    col_subsamp=round(ncol(M)/min(ncol(M),2000)),
+                    gamma=0.12, ...) { 
+  cols = colorRampPalette(c("black", "black","blue","green","yellow","orange", "red"))(1000)
+  M = M[seq(1,nrow(M),by=row_subsamp),
+        seq(1,ncol(M),by=col_subsamp), drop=FALSE]
+  M=as.matrix(M) # convert sparse to dense matrix
+  M[is.na(M)]=0
+  M[M<0]=0
+  if (!is.null(as.numeric(rownames(M))[[1]])) { xrange = range(as.numeric(rownames(M)))
+                                                xvals = seq(min(xrange), max(xrange), length.out = nrow(M)) } else { xvals = 1:nrow(M) }
+  if (!is.null(as.numeric(colnames(M))[[1]])) { yrange = range(as.numeric(colnames(M)))
+                                                yvals = seq(min(yrange), max(yrange), length.out = ncol(M)) } else { yvals = 1:ncol(M) }
+  image(x=xvals,
+        y=yvals,
+        z=M^gamma, 
+        col = cols,
+        useRaster=TRUE,
+        ...)
+}
+
+# load data
+Y <- GCMS_data1 # or GCMS_data2 
 weights=1/(Y+0.1) # approx Poisson 1/variance weights
 Yw = Y*sqrt(weights) # to take into account approx 1/variance Poisson weights
 L2n_cols = sqrt(colSums(Yw^2)) # L2 norm rows (timepoints)
 Yw_colnorm = sweep(Yw, 2, L2n_cols+0.1, FUN="/")  # columns (mz) normalized by per-row L2 norm
 sqrt(colSums(Yw_colnorm^2)) # ca 1
-plotmat(Y, subsamp=1)
+plotmat(Y, 
+        xlab="Retention time (mins)",
+        ylab="Mass (m/z)")
 matplot(Y^0.4, type="l", col = rgb(0, 0, 0, 0.1), lty = 1)
 
 psf_fun <- function(x, centre, width) exp(-0.5 * ((x - centre) / width)^2)
@@ -190,13 +220,11 @@ system.time(L0glm.chol_originaldata <- L0glm.fit(X,
                                                  lambda = "gic",
                                                  nonnegative = TRUE,
                                                  grouped = TRUE,
-                                                 maxit = 25,
-                                                 group.maxit = 20,
                                                  relaxed = FALSE,
                                                  warm.start = 1,
                                                  parallelize = FALSE,
                                                  solver = "eigen",
-                                                 method = 7L)) # 64s
+                                                 method = 7L)) # 57s
 selected_features = which(rowSums(L0glm.chol_originaldata$coefficients!=0)!=0)
 length(selected_features) # 17 - quite a few false positives
 # plotmat(L0glm.chol_originaldata$coefficients, subsamp=1, xlab="row", ylab="col")
@@ -224,15 +252,16 @@ for (i in (1:length(selected_features))) {
 
 
 ### CLUSTERING ####
-# for clustering we aggregate together every bin of binsize subsequent timepoints for extra performance:
-binsize <- 5
-Ybinned <- t(glm_aggregate(t(Y), 
+# for clustering we aggregate together every bin of rowbins subsequent timepoints for extra performance:
+rowbins <- 5
+Ybinned <- t(glm_aggregate(Y = t(Y), 
+                           weights = matrix(1, nrow=ncol(Y), ncol=nrow(Y)), # or t(weights) if given as argument
                            family = poisson(identity), 
-                           clusterids = rep(1L:ceiling(nrow(Y)/binsize), each=binsize)[1:nrow(Y)])$Y_agg)
+                           clusterids = rep(1L:ceiling(nrow(Y)/rowbins), each=rowbins)[1:nrow(Y)])$Y_agg)
 
-### 2.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST? ####
+### 2.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST SOLUTION ####
 # cluster & aggregate
-system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 2.5s
+system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 1.3s
 cl1 <- Ybinnedcl1$cluster # obtained clusters
 Yagg1 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl1)$Y_agg # aggregate original data within these clusters
 dim(Yagg1) # 119 3
@@ -306,13 +335,13 @@ range(Y_res)
 range(Y)
 colnames(Y_est) = colnames(Y)
 rownames(Y_est) = rownames(Y)
-plotmat(Y_est, subsamp=1, main="reconstructed signal")
-plotmat(Y, subsamp=1, main="true signal")
-plotmat(Y-Y_est, subsamp=1, main="residual")
+plotmat(Y_est, main="reconstructed signal")
+plotmat(Y, main="true signal")
+plotmat(Y-Y_est, main="residual")
 
 
 
-### 2.2. WORKING ON DEVIANCE DISTANCE CLUSTERED DATA ####
+### 2.2. WORKING ON DEVIANCE DISTANCE CLUSTERED DATA - SLIGHTLY WORSE SOLUTION ####
 # cluster & aggregate
 system.time(Ybinnedcl2 <- glm_cluster(Ybinned, family=poisson(identity), method="deviance")) # 4s
 cl2 <- Ybinnedcl2$cluster # obtained clusters
