@@ -22,31 +22,26 @@ readcdf = function(file, mz.ignore = NULL, profmethod = "bin", profparam = list(
 
 
 # function to plot matrix as image, also taking sparse matrix as input
-plotmat <- function(M,subsamp=10,gamma=0.12,xlab="Retention time (mins)",ylab="Mass (m/z)", ...) { 
-  colpalette=colorRampPalette(c("black", "black","blue","green","yellow","orange", "red")) 
-  M=M[seq(1,nrow(M),subsamp),]
+plotmat <- function(M, 
+                    row_subsamp=round(nrow(M)/min(nrow(M),2000)), 
+                    col_subsamp=round(ncol(M)/min(ncol(M),2000)),
+                    gamma=0.12, ...) { 
+  cols = colorRampPalette(c("black", "black","blue","green","yellow","orange", "red"))(1000)
+  M = M[seq(1,nrow(M),by=row_subsamp),
+        seq(1,ncol(M),by=col_subsamp), drop=FALSE]
   M=as.matrix(M) # convert sparse to dense matrix
   M[is.na(M)]=0
-  M[M<0]=0
-  if (length(rownames(M))!=0) { xvals = as.numeric(rownames(M)) } else { xvals = 1:nrow(M) }
-  xrange = range(xvals)
-  image(x=1:nrow(M),
-        y=1:ncol(M),
+  # M[M<0]=0
+  if (!is.null(as.numeric(rownames(M))[[1]])) { xrange = range(as.numeric(rownames(M)))
+  xvals = seq(min(xrange), max(xrange), length.out = nrow(M)) } else { xvals = 1:nrow(M) }
+  if (!is.null(as.numeric(colnames(M))[[1]])) { yrange = range(as.numeric(colnames(M)))
+  yvals = seq(min(yrange), max(yrange), length.out = ncol(M)) } else { yvals = 1:ncol(M) }
+  image(x=xvals,
+        y=yvals,
         z=M^gamma, 
-        col = colpalette(1000),
-        useRaster=T,
-        xlab=xlab,ylab=ylab,
-        axes=FALSE, 
-        ...)    # xaxt="n" # ylim=c(180,350) to zoom in on mass spec
-  xlabls=as.character(round(xvals))
-  xsel=((as.numeric(xlabls) %% 10)==0)&(c(TRUE,diff(as.numeric(xlabls))!=0))
-  ylabls=as.character(round(as.numeric(colnames(M))))
-  ysel=((as.numeric(ylabls) %% 100)==0)&(c(TRUE,diff(as.numeric(ylabls))!=0))
-  box()
-  axis(1, at = (1:nrow(M))[xsel], labels=xlabls[xsel], tick=TRUE, tcl=-0.4)
-  axis(2, at = (1:ncol(M))[ysel], labels=ylabls[ysel], tick=TRUE, las=1, tcl=-0.4)
-  # plot(x=xvals, y=rowSums(M)+1E6, type="l",
-  #     xlab="Retention time (mins)", ylab="Relative intensity", xaxs="i", log="y")
+        col = cols,
+        useRaster=TRUE,
+        ...)
 }
 
 ## SAMPLE 1 ####
