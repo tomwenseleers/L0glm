@@ -380,12 +380,7 @@ system.time(L0glm.QR.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 #                                     relaxed = FALSE,
 #                                     solver = "nnls")) 
 # XXs with n=p=10000
-# cor(as.vector(L0glm.nnls.gaus$coefficients), as.vector(sim.pois$beta_true)) # 0.9991312 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.gaus$coefficients) != 0)) # TP = 49 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.gaus$coefficients) != 0)) # FP = 4 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnls.gaus$coefficients) == 0)) # TN = 446 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnls.gaus$coefficients) == 0)) # FN = 1 with n=p=500, XX with n=p=10000
- 
+
  
 # #### 1.2.8 PLAIN NNLS FIT WITHOUT REGULARISATION ####
 # system.time(L0glm.nnlsnoreg.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
@@ -396,11 +391,6 @@ system.time(L0glm.QR.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 #                                          solver = "nnls",
 #                                          maxit = 1)) 
 # XXs with n=p=10000
-# cor(as.vector(L0glm.nnlsnoreg.gaus$coefficients), as.vector(sim.pois$beta_true)) # 0.9972479 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) != 0)) # TP = 49 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) != 0)) # FP = 77 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) == 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) == 0)) # TN = 373 with n=p=500, XX with n=p=10000
-# sum((as.vector(sim.pois$beta_true) != 0) & (as.vector(L0glm.nnlsnoreg.gaus$coefficients) == 0)) # FN = 1 with n=p=500, XX with n=p=10000
 
 
 
