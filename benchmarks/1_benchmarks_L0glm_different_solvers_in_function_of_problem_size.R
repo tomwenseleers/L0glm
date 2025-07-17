@@ -185,7 +185,6 @@ for (n in sizes) {
     solver_name = solver_names[[i]]
     
     # Fit model and measure time
-    # print(cor(as.vector(start), as.vector(coefs.true)))
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, 
@@ -467,7 +466,6 @@ for (n in sizes) {
     solver_name = solver_names[[i]]
     
     # Fit model and measure time
-    # print(cor(as.vector(start), as.vector(coefs.true)))
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, 
