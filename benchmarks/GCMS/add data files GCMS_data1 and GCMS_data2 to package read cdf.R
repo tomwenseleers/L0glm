@@ -31,7 +31,7 @@ plotmat <- function(M,
         seq(1,ncol(M),by=col_subsamp), drop=FALSE]
   M=as.matrix(M) # convert sparse to dense matrix
   M[is.na(M)]=0
-  # M[M<0]=0
+  M[M<0]=0
   if (!is.null(as.numeric(rownames(M))[[1]])) { xrange = range(as.numeric(rownames(M)))
   xvals = seq(min(xrange), max(xrange), length.out = nrow(M)) } else { xvals = 1:nrow(M) }
   if (!is.null(as.numeric(colnames(M))[[1]])) { yrange = range(as.numeric(colnames(M)))
