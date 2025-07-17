@@ -454,3 +454,26 @@ print_progress <- function(current, total, before = "Progress: ", after = "", ..
 issparse <- function(X) {
   any(class(X) %in% c("dgCMatrix", "dsCMatrix", "sparseMatrix"))
 }
+
+
+
+gauspeak = function(x, u, w, h=1) h*exp(((x-u)^2)/(-2*(w^2)))
+
+bigauspeak = function(x, u, w1, w2, h=1, center=TRUE) { # asymmetrical bigaussian peak with centroids centered at u
+  ## analytic offset that moves the centroid onto u
+  delta <- if (center) (w2 - w1) * sqrt(2 / pi) else 0
+  u0    <- u - delta            # new "mode" position
+  out <- numeric(length(x))
+  left <- x <= u0
+  out[left]  <- h * exp(- (x[left]  - u0)^2 / (2 * w1^2))
+  out[!left] <- h * exp(- (x[!left] - u0)^2 / (2 * w2^2))
+  return(out)
+}
+
+# centroid of a peak
+centroid <- function(g) { 
+  stopifnot(is.numeric(g), length(g) > 0)
+  n       <- length(g)
+  idx     <- seq_len(n)
+  return(sum(idx * g) / sum(g))
+}
