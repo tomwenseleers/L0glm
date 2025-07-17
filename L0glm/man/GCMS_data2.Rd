@@ -41,12 +41,7 @@ see Schreurs et al. Nature Communications 2024.
 }
 \examples{
 data(GCMS_data2)
-cols <- colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000) 
-image(x = seq(min(rownames(GCMS_data2)), max(rownames(GCMS_data2)), length.out=nrow(GCMS_data2)), 
-      y = as.numeric(colnames(GCMS_data2)), 
-      z = GCMS_data2^0.15, 
-      useRaster = TRUE,
-      col = cols,
+plotmat(GCMS_data2, 
       xlab = "Elution time (min)",
       ylab = "Mass (m/z)",
       main = "Section of beer headspace GC/MS profile")

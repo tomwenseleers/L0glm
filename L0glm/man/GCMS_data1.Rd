@@ -52,12 +52,7 @@ Co-eluting compounds present with retention times and diagnostic ions:
 }
 \examples{
 data(GCMS_data1)
-cols <- colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000) 
-image(x = as.numeric(rownames(GCMS_data1)), 
-      y = as.numeric(colnames(GCMS_data1)), 
-      z = GCMS_data1^0.15, 
-      useRaster = TRUE,
-      col = cols,
+plotmat(GCMS_data1, 
       xlab = "Elution time (min)",
       ylab = "Mass (m/z)",
       main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")

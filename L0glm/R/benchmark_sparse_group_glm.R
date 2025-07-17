@@ -77,9 +77,10 @@ benchmark_sparse_group_glm <- function(sim,
                    sparse = FALSE)[[1]][-1,]
       # coefs[abs(coefs)<1E-5] = 0 # apply same thresholding as in L0glm
       
-      image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
-            useRaster=TRUE,
-            xlab="Time", ylab="Channel", main="abess multitask weighted mgaussian\n(red = true peaks, cyan = estimated peaks)")
+      plotmat(coefs,
+            xlab="Time", 
+            ylab="Channel", 
+            main="abess multitask weighted mgaussian\n(red = true peaks, cyan = estimated peaks)")
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
       
@@ -152,15 +153,6 @@ benchmark_sparse_group_glm <- function(sim,
     
     coefs <- beta
     if(plot){
-      # plot(cvfit) # TODO remove?
-      # plot(fit, xvar="lambda")
-      
-      # image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=coefs^0.1, col = topo.colors(255),
-      #      useRaster=TRUE,
-      #      xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet\n(red = true peaks, cyan = estimated peaks)")
-      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
-      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
-      
       R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2) # Calculate R2
       
       title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnetn\nR2=", R2)

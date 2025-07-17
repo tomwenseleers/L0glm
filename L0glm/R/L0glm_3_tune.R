@@ -241,7 +241,7 @@ tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = 
   IC = toupper(IC) # better for plot titles
   # PLOT TRUE VS ESTIMATED COEFFICIENTS 
   if(!is.null(coefs.true)){
-    R2 = round(100*summary(lm(as.vector(coefs.true) ~ 0+as.vector(beta_relaxedgroupL0))))$r.squared,2) # Calculate R2
+    R2 = round(100*summary(lm(as.vector(coefs.true) ~ 0+as.vector(beta_relaxedgroupL0)))$r.squared,2) # Calculate R2
     title = paste("True vs estimated coefficients\nnonnegative L0 group GLM\nR2=", R2)
     plot(as.vector(beta_relaxedgroupL0), as.vector(coefs.true), pch=16, 
          xlab="estimated coefficients nonnegative L0 group GLM",

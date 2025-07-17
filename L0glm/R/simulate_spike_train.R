@@ -151,12 +151,13 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
     lines(x_beta, beta_true, type = "h", col = "red") } else {
       # plot for multichannel simulation
       par(mfrow = c(1,1))
-      image(x=1:n, y=1:m, z=as.matrix(y)^0.2, 
-            col = topo.colors(255), useRaster=TRUE,
-            main = paste0(
-              "Simulated blurred multichannel spike train\n(red = true support) with ",
-              family, " noise"), 
-            xlab="Time", ylab="Channel")
+      plotmat(as.matrix(y),
+              xlab="Time", 
+              ylab="Channel",
+              main = paste0(
+                "Simulated blurred multichannel spike train\n(red = true support) with ",
+                family, " noise") 
+              )
       abline(v=u*n/p, col="red")
     }
   }

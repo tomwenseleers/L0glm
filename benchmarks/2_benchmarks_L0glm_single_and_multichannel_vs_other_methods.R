@@ -1382,8 +1382,7 @@ plot(as.vector(rowMeans(L0glm.chol.pois$coefficients)), as.vector(rowMeans(sim.p
      main=title)
 
 
-image(x=1:nrow(sim.pois.mc$y), y=1:ncol(sim.pois.mc$y), z=as.matrix(L0glm.chol.pois$coefficients)^0.1, col = topo.colors(255),
-      useRaster=TRUE,
+plotmat(L0glm.chol.pois$coefficients,
       xlab="Time", ylab="Channel", 
       main="nonnegative relaxed L0 group GLM\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
@@ -1411,9 +1410,7 @@ system.time(glmnet.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2,
                                     IC = "gic"))
 # 32.75s for n=p=500
 
-image(x=1:nrow(sim.pois.mc$y), y=1:ncol(sim.pois.mc$y), z=as.matrix(glmnet.mc.pois)^0.1, 
-      col = topo.colors(255),
-      useRaster=TRUE,
+plotmat(glmnet.mc.pois, 
       xlab="Time", ylab="Channel", 
       main="glmnet nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
@@ -1511,9 +1508,9 @@ plot(as.vector(rowMeans(L0glm.chol.gaus$coefficients)),
      ylab="true coefficients", col="steelblue",
      main=title)
 
-image(x=1:nrow(sim.gaus.mc$y), y=1:ncol(sim.gaus.mc$y), z=as.matrix(L0glm.chol.gaus$coefficients)^0.1, col = topo.colors(255),
-      useRaster=TRUE,
-      xlab="Time", ylab="Channel", main="relaxed nonnegative group L0glm\n(red = true peaks, cyan = estimated peaks)")
+plotmat(L0glm.chol.gaus$coefficients,
+      xlab="Time", ylab="Channel", 
+      main="relaxed nonnegative group L0glm\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(L0glm.chol.gaus$coefficients)!=0)], col="cyan")
 
@@ -1535,8 +1532,7 @@ system.time(glmnet.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2,
                                     IC = "gic"))
 # 42s for n=p=500
 
-image(x=1:nrow(sim.gaus.mc$y), y=1:ncol(sim.gaus.mc$y), z=as.matrix(glmnet.mc.gaus)^0.1, col = topo.colors(255),
-      useRaster=TRUE,
+plotmat(glmnet.mc.gaus,
       xlab="Time", ylab="Channel", 
       main="nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")

@@ -1,62 +1,49 @@
-#' Plot a (Possibly Sparse) Matrix as a False-Colour Image
+#' Plot a (Possibly Sparse) Matrix as a False‑Colour Image
 #'
 #' @description
 #' Plot a numeric matrix (dense or sparse) as a raster image with a colour
-#' gradient. The function optionally downscales large matrices to respect a
+#' gradient.  The function optionally down‑scales large matrices to respect a
 #' maximum resolution, applies a gamma transformation for contrast enhancement,
-#' and maps the values to a user-defined or default colour palette.
+#' and maps the values to a user‑supplied or default colour palette.
 #'
 #' @usage
-#' plotmat(M, maxresolution = 2000,
-#'         row_subsamp = round(nrow(M)/min(nrow(M), maxresolution)),
-#'         col_subsamp = round(ncol(M)/min(ncol(M), maxresolution)),
-#'         gamma = 0.12,
+#' plotmat(M, maxresolution = 2000, gamma = 0.13,
 #'         cols = grDevices::colorRampPalette(
 #'           c("black","black","blue","green","yellow","orange","red"))(1000),
 #'         ...)
 #'
-#' @arguments
-#' \describe{
-#'   \item{\code{M}}{A numeric matrix or a sparse matrix from the \pkg{Matrix}
-#'   package (e.g., \code{dgCMatrix}).}
-#'
-#'   \item{\code{maxresolution}}{Integer. Maximum number of pixels in either
-#'   dimension after downscaling. Default is \code{2000}.} Ignored if NULL.
-#'
-#'   \item{\code{gamma}}{Numeric > 0. Gamma correction applied to matrix values
-#'   prior to colour mapping. Values are transformed as
-#'   \eqn{v^\gamma}. Smaller values enhance contrast in low-intensity regions.
-#'   Default is \code{0.13}.}
-#'
-#'   \item{\code{cols}}{Character vector of colours to be used by
-#'   \code{\link[graphics]{image}}. Defaults to a 1,000-colour palette from
-#'   black to red.}
-#'
-#'   \item{\code{...}}{Additional arguments passed to
-#'   \code{\link[graphics]{image}} (e.g., \code{axes = FALSE}, \code{xlab},
-#'   \code{ylab}, \code{main}).}
-#' }
+#' @param M A numeric matrix or a sparse matrix from the \pkg{Matrix} package
+#'   (e.g., \code{dgCMatrix}).
+#' @param maxresolution Integer. Maximum number of pixels in either dimension
+#'   after down‑scaling.  Set to \code{NULL} to disable down‑scaling.  Default
+#'   is \code{2000}.
+#' @param gamma Positive numeric.  Gamma correction applied to the matrix
+#'   values prior to colour mapping (\eqn{v^\gamma}).  Smaller values enhance
+#'   contrast in low‑intensity regions.  Default is \code{0.13}.
+#' @param cols A character vector of colours (e.g., created by
+#'   \code{\link[grDevices]{colorRampPalette}}) passed to
+#'   \code{\link[graphics]{image}}.  Defaults to a 1000‑colour palette ranging
+#'   from black to red.
+#' @param ... Further arguments passed to \code{\link[graphics]{image}}
+#'   (e.g., \code{axes = FALSE}, \code{xlab}, \code{ylab}, \code{main}).
 #'
 #' @details
 #' \itemize{
-#'   \item \strong{Downscaling:} If the matrix is larger than
-#'   \code{maxresolution} in either dimension, it is downscaled to fit.
-#'
-#'   \item \strong{Sparse input:} Sparse matrices are converted to dense form
-#'   via \code{\link[base]{as.matrix}}. Missing values are set to zero and
-#'   negative values truncated to zero.
-#'
-#'   \item \strong{Axis scaling:} If row or column names can be coerced to
-#'   numeric, they are used for the \code{x} and \code{y} axes; otherwise,
-#'   integer indices are used.
-#'
-#'   \item \strong{Colour mapping:} A gamma transformation
-#'   (\eqn{z^\gamma}) is applied before mapping to the colour palette.
+#'   \item \strong{Down‑scaling:}  If the matrix exceeds \code{maxresolution}
+#'     in either dimension it is down‑scaled by block averaging.
+#'   \item \strong{Sparse input:}  Sparse matrices are converted to dense form
+#'     via \code{\link[base]{as.matrix}}.  Missing values are set to zero and
+#'     negative values truncated to zero.
+#'   \item \strong{Axis scaling:}  If row or column names can be coerced to
+#'     numeric, they are used as \code{x} and \code{y} axes; otherwise, integer
+#'     indices are used.
+#'   \item \strong{Colour mapping:}  After gamma transformation the values are
+#'     mapped to the chosen palette via \code{\link[graphics]{image}}.
 #' }
 #'
-#' @value
-#' Invisibly returns the list produced by \code{\link[graphics]{image}}. The
-#' main purpose of the function is the graphical output.
+#' @return
+#' Invisibly returns the list produced by \code{\link[graphics]{image}}.  The
+#' primary purpose of the function is its graphical side‑effect.
 #'
 #' @author
 #' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
@@ -78,7 +65,6 @@
 #'         main = "GC/MS chromatogram")
 #'
 #' @importFrom grDevices colorRampPalette
-#' @importFrom graphics image
 #' @export
 plotmat <- function(M,
                     maxresolution = 2000,
@@ -108,7 +94,7 @@ plotmat <- function(M,
   }
   
   # Plot
-  graphics::image(
+  image(
     x = xvals,
     y = yvals,
     z = M2 ^ gamma,

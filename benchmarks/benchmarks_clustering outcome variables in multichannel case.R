@@ -168,30 +168,6 @@ plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))
 
 ## 2. TEST WITH ACTUAL GC/MS SAMPLES ####
 
-# function to plot matrix as image, also taking sparse matrix as input
-plotmat <- function(M, 
-                    row_subsamp=round(nrow(M)/min(nrow(M),2000)), 
-                    col_subsamp=round(ncol(M)/min(ncol(M),2000)),
-                    gamma=0.12, ...) { 
-  cols = colorRampPalette(c("black", "black","blue","green","yellow","orange", "red"))(1000)
-  M = M[seq(1,nrow(M),by=row_subsamp),
-        seq(1,ncol(M),by=col_subsamp), drop=FALSE]
-  M=as.matrix(M) # convert sparse to dense matrix
-  M[is.na(M)]=0
-  M[M<0]=0
-  if (!is.null(as.numeric(rownames(M))[[1]])) { xrange = range(as.numeric(rownames(M)))
-                                                xvals = seq(min(xrange), max(xrange), length.out = nrow(M)) } else { xvals = 1:nrow(M) }
-  if (!is.null(as.numeric(colnames(M))[[1]])) { yrange = range(as.numeric(colnames(M)))
-                                                yvals = seq(min(yrange), max(yrange), length.out = ncol(M)) } else { yvals = 1:ncol(M) }
-  image(x=xvals,
-        y=yvals,
-        z=M^gamma, 
-        col = cols,
-        useRaster=TRUE,
-        ...)
-}
-
-# load data
 Y <- GCMS_data1 # or GCMS_data2 
 weights=1/(Y+0.1) # approx Poisson 1/variance weights
 Yw = Y*sqrt(weights) # to take into account approx 1/variance Poisson weights
@@ -199,7 +175,7 @@ L2n_cols = sqrt(colSums(Yw^2)) # L2 norm rows (timepoints)
 Yw_colnorm = sweep(Yw, 2, L2n_cols+0.1, FUN="/")  # columns (mz) normalized by per-row L2 norm
 sqrt(colSums(Yw_colnorm^2)) # ca 1
 plotmat(Y, 
-        xlab="Retention time (mins)",
+        xlab="Elution time (mins)",
         ylab="Mass (m/z)")
 matplot(Y^0.4, type="l", col = rgb(0, 0, 0, 0.1), lty = 1)
 
@@ -304,7 +280,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X[,selected_features,drop=F],
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # intercept+6 with grouped=F or T
 dim(L0glm.chol_full$coefficients) # (intercept+6) x 671
-image(L0glm.chol_full$coefficients)
+plotmat(L0glm.chol_full$coefficients)
 matplot(Y^0.5, type="l", lty=1, col=rgb(0,0,0,0.1))
 matplot((0.5*X[,selected_features,drop=F]*max(Y))^0.5, type="l", 
         lty=1, lwd=3, add=TRUE)
@@ -384,7 +360,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X[,selected_features,drop=F],
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # intercept+7, with grouped=F or T
 dim(L0glm.chol_full$coefficients) # (intercept+7) x 671
-image(L0glm.chol_full$coefficients)
+plotmat(L0glm.chol_full$coefficients)
 matplot(Y^0.5, type="l", lty=1, col=rgb(0,0,0,0.1))
 matplot((0.5*X[,selected_features,drop=F]*max(Y))^0.5, type="l", 
         lty=1, lwd=3, add=TRUE)
