@@ -19,7 +19,7 @@ X=dat$X
 dim(Y) # 10000 timepoints x 228 mass channels
 true_features = which(rowSums(dat$beta_true!=0)!=0)
 beta_true = dat$beta_true
-length(true_features) # 500
+length(true_features)
 matplot(Y^0.5, type="l", lty=1, col=rgb(0,0,0,0.1))
 plot(rowSums(Y)^0.5, type="l", lty=1)
 
