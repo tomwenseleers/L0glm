@@ -240,6 +240,7 @@ get.IC = function(loglik, n, p, edf) {
   gic = min2LL + log(p) * log(log(n)) * edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117
   ebic = min2LL + (log(n) + 2 * (1 - log(n) / (2 * log(p))) * log(p)) * edf # extended BIC, Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
   mbic = min2LL + log(n * (p ^ 2) / 16) * edf # see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
+  # TODO maybe still add mbic2, cf Frommlet paper
   # c = 2 # TODO default, add as a parameter
   # hq = min2LL + c*log(log(n))*edf # Hannan and Quinnn information criterion - maybe worth to keep?
   # ric = min2LL + 2 * log(p) # risk inflation criterion
