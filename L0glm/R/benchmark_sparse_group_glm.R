@@ -83,8 +83,7 @@ benchmark_sparse_group_glm <- function(sim,
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
       
-      R2 = round(stats::cor(as.vector(rowMeans(sim$beta_true)), 
-                            as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
+      R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2)
       title = paste("True vs estimated coefficients\nabess multitask weighted mgaussian\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
            xlab="estimated coefficients",
@@ -162,9 +161,8 @@ benchmark_sparse_group_glm <- function(sim,
       # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
       # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
       
+      R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2) # Calculate R2
       
-      R2 = round(stats::cor(as.vector(rowMeans(sim$beta_true)), 
-                            as.vector(rowMeans(coefs))), digits = 4)^2 # Calculate R2
       title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnetn\nR2=", R2)
       plot(as.vector(rowMeans(coefs)), as.vector(rowMeans(sim$beta_true)), pch=16, 
            xlab="estimated coefficients",
