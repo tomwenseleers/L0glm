@@ -24,61 +24,6 @@ centroid <- function(g) {
   }
 
 
-# One–stop log-concave smoothing of a discrete density estimate
-#
-# Args
-#   y        : numeric vector (length n≥ 3) — raw, non-negative “data” on x = 1:length(y)
-#   const    : constant added inside the log  (default 1e-3)
-#   tau      : tau argument to cobs (default 0.5 : median fit)
-#   nknots   : knots value for cobs; by default length(y) − 1
-#
-# Returns
-#   log-concave smoothed vector
-log_conc_smooth <- function(y, 
-                            tau    = 0.5, # fit median
-                            nknots = NULL) {
-
-  n <- length(y)
-  if (n < 3L) stop("Need at least three points (n ≥ 3).")
-  if (!is.vector(y)) y <- as.vector(y)
-  if (is.null(nknots)) nknots <- length(y)-1
-  
-  x_raw <- seq_len(n)
-  
-  offs <- max(y) * 1e-6
-  weights <- (y + offs) # empirically gave best convergence
-  weights <- weights/sum(weights)*length(weights)
-  
-  ## ---- 1.  primary cobs fit --------------------------------------------
-  fit <- cobs::cobs(x = x_raw,
-                    y = log10(y + offs),
-                    constraint = "concave",
-                    w = weights, 
-                    knots = seq(min(x_raw), max(x_raw),
-                                length.out = nknots),
-                    nknots = nknots,
-                    knots.add = FALSE, 
-                    repeat.delete.add = FALSE,
-                    tau = tau,
-                    degree = 2,
-                    lambda = 0)
-  
-  eval_y <- function(x) {
-    10^predict(fit, z = x, na.action = stats::na.pass)[, "fit"] + offs
-  }
-  
-  y_fit <- eval_y(x_raw)
-  
-  ## ---- 2.  post-processing & output -----------------------------------
-  y_final <- y_fit - min(y_fit, na.rm = TRUE)
-  if (!all(y_final == 0)) y_final <- y_final / max(y_final, na.rm = TRUE)
-  
-  return(y_final)
-}
-
-
-
-
 # SPARSE DECONVOLUTION FUNCTION - DECONVOLVE BLURRED SPIKE TRAIN WITH PSF TO ORIGINAL IMPULSES USING L0glm ####
 
 L0_sparse_deco <- function(y,                            # response to be deconvolved (vector or matrix, i.e. univariate or multivariate)
