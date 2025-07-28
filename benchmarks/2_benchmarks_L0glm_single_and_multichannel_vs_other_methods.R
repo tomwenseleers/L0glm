@@ -484,7 +484,7 @@ benchmarks_1_2
 
 # 2. MULTICHANNEL ####
 
-# TODO: add option precluster = T or F?
+# TODO: add option precluster = T or F to L0glm.fit?
 # (see ?glm_cluster)
 
 # Simulate MC n=p=500
@@ -548,12 +548,19 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     method = 7L)) 
 # 4.01s with parallelize=F, 5.63s with parallelize=T
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.pois.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative independent L0 GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("nonnegative independent L0 Poisson GLMs",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
+
 
 
 #### OSQP ####
@@ -685,12 +692,18 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     method = 7L)) 
 # 20s
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.pois.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("relaxed nonnegative L0 grouped Poisson GLM",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
 
 
 
@@ -763,12 +776,20 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     method = 7L)) 
 # 4s
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.gaus.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative L0 independent GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("nonnegative L0 independent Gaussian GLMs",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
+
+
 
 
 #### OSQP ####
@@ -837,12 +858,18 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     method = 7L)) 
 # 19s for n=p=500
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.gaus.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative L0 grouped GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("nonnegative L0 grouped Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
 
 
 #### OSQP ####
@@ -911,12 +938,19 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     method = 7L)) 
 # 19s
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.gaus.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative L0 grouped relaxed GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol$coefficients)), as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("relaxed nonnegative L0 grouped Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
+
 
 
 #### OSQP ####
@@ -1374,16 +1408,22 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                          method = 7L)) 
 # 21s
 
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.pois.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol.pois$coefficients)))))$r.squared,2)
-title = paste("true vs estimated coefficients\nnonnegative relaxed L0 grouped GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol.pois$coefficients)), as.vector(rowMeans(sim.pois.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol.pois$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("relaxed nonnegative L0 grouped Poisson GLM",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
 
 
 plotmat(L0glm.chol.pois$coefficients,
-      xlab="Time", ylab="Channel", 
+      xlab="Time index", ylab="Channel", 
       main="nonnegative relaxed L0 group GLM\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(L0glm.chol.pois$coefficients)!=0)], col="cyan")
@@ -1411,7 +1451,7 @@ system.time(glmnet.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2,
 # 32.75s for n=p=500
 
 plotmat(glmnet.mc.pois, 
-      xlab="Time", ylab="Channel", 
+      xlab="Time index", ylab="Channel", 
       main="glmnet nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cyan")
@@ -1422,7 +1462,7 @@ abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cya
 ### 3.3.4 BENCHMARKS TABLE ####
 
 benchmarks_3_3 = rbind(
-  data.frame(method="Relaxed_group_L0glm_poisson", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.pois$coefficients),  # TODO: make sure that metrics work with either dense or sparse coefs
+  data.frame(method="relaxed_group_L0glm_poisson", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.pois$coefficients),  # TODO: make sure that metrics work with either dense or sparse coefs
                                                                         X = sim.pois.mc$X, y = sim.pois.mc$y,
                                                                         family = poisson(identity), 
                                                                         beta_true = sim.pois.mc$beta_true) ) ),
@@ -1438,7 +1478,7 @@ benchmarks_3_3 = rbind(
 benchmarks_3_3 = benchmarks_3_3[order(benchmarks_3_3[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_3
 #                             method   p   n   m     deviance
-# 1      Relaxed_group_L0glm_poisson 500 500 168     40521.27
+# 1      relaxed_group_L0glm_poisson 500 500 168     40521.27
 # 3 multivariate_group_LASSO_poisson 500 500 168     94770.17
 # 2               BSGS_abess_poisson 500 500 168 153465982.78
 #   deviance_true      loglik     MD_coefs MAD_coefs sMAPE_coefs
@@ -1500,16 +1540,21 @@ system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     method = 7L)) 
 # 20s for n=p=500 with parallelize = FALSE
        
-R2 = round(100*summary(lm(as.vector(rowMeans(sim.gaus.mc$beta_true) ~ 0+as.vector(rowMeans(L0glm.chol.gaus$coefficients)))))$r.squared,2)
-title = paste("Relaxed nonnegative L0 group GLM\nR2=", R2)
-plot(as.vector(rowMeans(L0glm.chol.gaus$coefficients)), 
-     as.vector(rowMeans(sim.gaus.mc$beta_true)), pch=16, 
-     xlab="estimated coefficients",
-     ylab="true coefficients", col="steelblue",
-     main=title)
+x_vals <- as.vector(rowMeans(L0glm.chol.gaus$coefficients))        # estimated
+y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
+fit <- lm(y_vals ~ 0 + x_vals)
+R2p <- round(100 * summary(fit)$r.squared, 2)
+main_expr <- bquote(
+  atop("true vs estimated coefficients",
+       atop("relaxed nonnegative L0 grouped Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2)) * "%")))
+plot(x_vals, y_vals, pch = 16, col = "steelblue",
+     xlab = "estimated coefficients", 
+     ylab = "true coefficients",
+     main = main_expr)
 
 plotmat(L0glm.chol.gaus$coefficients,
-      xlab="Time", ylab="Channel", 
+      xlab="Time index", ylab="Channel", 
       main="relaxed nonnegative group L0glm\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(L0glm.chol.gaus$coefficients)!=0)], col="cyan")
@@ -1533,7 +1578,7 @@ system.time(glmnet.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2,
 # 42s for n=p=500
 
 plotmat(glmnet.mc.gaus,
-      xlab="Time", ylab="Channel", 
+      xlab="Time index", ylab="Channel", 
       main="nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
 abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cyan")
@@ -1544,7 +1589,7 @@ abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cya
 ### 3.4.3 BENCHMARKS TABLE ####
 
 benchmarks_3_4 = rbind(
-  data.frame(method="Relaxed_group_L0glm_gaussian", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.gaus$coefficients),  # TODO: allow coefs to be either dense or sparse matrix in get.metrics
+  data.frame(method="relaxed_group_L0glm_gaussian", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.gaus$coefficients),  # TODO: allow coefs to be either dense or sparse matrix in get.metrics
                                                                          X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                          family = gaussian(identity),
                                                                          beta_true = sim.gaus.mc$beta_true)) ),
@@ -1560,7 +1605,7 @@ benchmarks_3_4 = rbind(
 benchmarks_3_4 = benchmarks_3_4[order(benchmarks_3_4[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_4
 #                              method   p   n   m  deviance deviance_true
-# 1      Relaxed_group_L0glm_gaussian 501 500 178   1190956      226789.9
+# 1      relaxed_group_L0glm_gaussian 501 500 178   1190956      226789.9
 # 3 multivariate_group_LASSO_gaussian 501 500 178   9862040     8916586.6
 # 2               BSGS_abess_gaussian 501 500 178 235538580   234573516.3
 #      loglik   MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
