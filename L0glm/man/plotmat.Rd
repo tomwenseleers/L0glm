@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotmat.R
 \name{plotmat}
 \alias{plotmat}
-\title{Plot a (Possibly Sparse) Matrix as a False‑Colour Image}
+\title{Plot a (Possibly Sparse) Matrix as a False-Colour Image}
 \usage{
 plotmat(M, maxresolution = 2000, gamma = 0.13, axes = TRUE,
         cols = grDevices::colorRampPalette(
@@ -14,65 +14,66 @@ plotmat(M, maxresolution = 2000, gamma = 0.13, axes = TRUE,
 (e.g., \code{dgCMatrix}).}
 
 \item{maxresolution}{Integer. Maximum number of pixels in either dimension
-after down‑scaling. Set to \code{NULL} to disable down‑scaling. Default \code{2000}.}
+after down-scaling. Set to \code{NULL} to disable down-scaling. Default \code{2000}.}
 
 \item{gamma}{Positive numeric. Gamma correction applied to matrix values
 prior to colour mapping (\eqn{v^\gamma}). Smaller values enhance contrast
-in low‑intensity regions. Default \code{0.13}.}
+in low-intensity regions. Default \code{0.13}.}
 
 \item{axes}{Logical. If \code{TRUE} (default), draw custom axes after plotting
-on the index grid. If row/column names are numeric they are used to label
-ticks; otherwise default index ticks are used. Set \code{FALSE} to draw no axes.}
+on the index grid. If row/column names are fully numeric they are used to
+label ticks; otherwise default index ticks are used. Set \code{FALSE} to draw no axes.}
 
 \item{cols}{A character vector of colours (e.g., created by
-\code{\link[grDevices]{colorRampPalette}}) passed to the plot. Defaults to a
-1000‑colour palette ranging from black to red.}
+\code{\link[grDevices]{colorRampPalette}}). Defaults to a 1000-colour palette.}
 
 \item{...}{Further arguments passed to \code{\link[graphics]{image}}
 (e.g., \code{xlab}, \code{ylab}, \code{main}, graphical parameters).}
 }
 \value{
 Invisibly returns the list produced by \code{\link[graphics]{image}}. The
-primary purpose of the function is its graphical side‑effect.
+primary purpose of the function is its graphical side-effect.
 }
 \description{
 Plot a numeric matrix (dense or sparse) as a raster image with a colour
-gradient. The function optionally down‑scales large matrices to respect a
+gradient. The function optionally down-scales large matrices to respect a
 maximum resolution, applies a gamma transformation for contrast enhancement,
-and maps the values to a user‑supplied or default colour palette.
-Internally, the raster is drawn on an index grid (\code{x = 1:nrow}, \code{y = 1:ncol});
+and maps the values to a user-supplied or default colour palette.
+Internally, the image is drawn on an index grid (\code{x = 1:nrow}, \code{y = 1:ncol});
 if numeric row/column names are available, custom axes are added afterwards
-whose tick labels reflect those values.
+and tick labels reflect those values.
 }
 \details{
 \itemize{
-  \item \strong{Down‑scaling:} If the matrix exceeds \code{maxresolution}
-    in either dimension, it is down‑scaled by block averaging (see \code{downscale()}).
+  \item \strong{Down-scaling:} If the matrix exceeds \code{maxresolution}
+    in either dimension, it is down-scaled by block averaging (see \code{downscale()}).
   \item \strong{Sparse input:} Sparse matrices are converted to dense form
     via \code{\link[base]{as.matrix}}. Missing values are set to zero and
     negative values truncated to zero.
-  \item \strong{Axes:} The image is rendered on the index grid
-    \code{x = 1:nrow(M2)}, \code{y = 1:ncol(M2)} with \code{axes = FALSE} in
-    the internal \code{\link[graphics]{image}} call; if \code{axes = TRUE},
-    axes are added afterwards. When row/column names are numeric, tick marks
-    are placed at positions corresponding to those values (using linear
-    mapping from values to indices) and labeled accordingly; otherwise
-    default index ticks are drawn.
-  \item \strong{Colour mapping:} After gamma transformation the values are
-    mapped to \code{cols}.
+  \item \strong{Axes:} The image is rendered on the index grid with
+    \code{axes = FALSE} in the internal \code{\link[graphics]{image}} call.
+    When \code{axes = TRUE}, tick locations are computed by mapping “value
+    space” (from numeric row/column names, if available) to index positions
+    via linear interpolation; if names are missing or not all numeric,
+    integer index ticks are used.
 }
 }
 \examples{
-## Dense matrix example: plot a simulated GC/MS chromatogram
-M <- simulate_GCMS()$D
-plotmat(M,
-        gamma = 0.13,
-        xlab = "Elution time (mins)",
+## Dense matrix example: plot a GC/MS chromatogram
+M = simulate_GCMS()$D # simulated GC/MS chromatogram
+plotmat(M = M, 
+        gamma = 0.13, 
+        xlab = "Elution time (mins)", 
         ylab = "Mass (m/z)",
         main = "GC/MS chromatogram")
-
+        
 }
 \seealso{
-\code{\link[graphics]{image}}, \code{\link[grDevices]{colorRampPalette}},
-\code{\link[Matrix]{Matrix}}
+\code{\link[graphics]{image}}, \code{\link[grDevices]{colorRampPalette}}, \code{\link[Matrix]{Matrix}}
+}
+\author{
+Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
+Laboratory of Socioecology and Social Evolution, KU Leuven \\
+\url{https://bio.kuleuven.be/eeb/tw/research} \\
+ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 }
