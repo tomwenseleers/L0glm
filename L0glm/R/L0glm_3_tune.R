@@ -36,16 +36,16 @@
 #' @param nlambda Number of lambda values to use for tuning (default 10). 
 #' If \code{nlambda} is even, half of the values lie above 
 #' the lambda value that would be expected to optimise
-#' the chosen IC (\code{lambda_IC}) and half below;  
+#' the chosen IC (\code{lambda_preset}) and half below;  
 #' if odd, the upper branch receives the extra point so that
-#' \code{lambda_IC} is included exactly once.
+#' \code{lambda_preset} is included exactly once.
 #' @param prop_range Numeric in \((0,\,1]\).  
-#' Proportion of the log10 distance between \code{lambda_IC} and
+#' Proportion of the log10 distance between \code{lambda_preset} and
 #' \code{lambda_max} (that would penalise all coefficients to zero
 #' or the chosen prior.mean) that is *retained on each side* of 
-#' \code{lambda_IC}. \code{prop_range = 1} (default) keeps the 
+#' \code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
 #' entire range, whilst smaller values "zoom‑in", yielding grids 
-#' that are denser around \code{lambda_IC}. For example, 
+#' that are denser around \code{lambda_preset}. For example, 
 #' \code{prop_range = 0.1} preserves only 10% of the original 
 #' log10 span above and below the preset lambda value that 
 #' a priori would be expected to optimise the chosen IC.
@@ -66,8 +66,8 @@
 #' with different regularization parameters.}
 #' \item{\code{lambda_best}}{best lambda according to the \code{IC} 
 #' criterion specified.}
-#' \item{\code{lambda_IC}}{lambda that was a priori expected to approx. optimise
-#'the chosen \code{IC}.}
+#' \item{\code{lambda_preset}}{preset lambda value that a priori would be expected 
+#' to approximately optimise the chosen \code{IC}.}
 #' \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
 #' 
 #' @export
@@ -113,14 +113,14 @@ L0glm.tune <- function(X, y,
   if (all(beta0 == 0))
     stop("warm-up produced only zero coefficients — cannot build lambda sequence.")
   
-  ## ---- lambda grid (ceiling(nlambda/2) points between lambda_IC and lambda_max on log10 scale, remaining below lambda_IC with same log10 step size)
+  ## ---- lambda grid (ceiling(nlambda/2) points between lambda_preset and lambda_max on log10 scale, remaining below lambda_preset with same log10 step size)
   lambda_max <- maxlambda(X, weights = W, z = Z,
                      coefs = beta0, family = family) # max lambda where all coefs would be penalised to zero
-  lambda_IC <- preset.lambda(IC=IC, p, n) # lambda that would be expected to approx optimise the chosen IC
-  n_up   <- ceiling(nlambda / 2)        # includes lambda_IC
-  n_down <- nlambda - n_up              # below lambda_IC
+  lambda_preset <- preset.lambda(IC=IC, p, n) # lambda that would be expected to approx optimise the chosen IC
+  n_up   <- ceiling(nlambda / 2)        # includes lambda_preset
+  n_down <- nlambda - n_up              # below lambda_preset
   # ---- log10 limits, shrunk by prop_range 
-  g_IC  <- log10(lambda_IC)
+  g_IC  <- log10(lambda_preset)
   g_max <- log10(lambda_max)
   g_up_max <- g_IC + prop_range * (g_max - g_IC)   # new “effective” lambda_max
   log_step <- (g_up_max - g_IC) / (n_up - 1)
@@ -194,7 +194,7 @@ L0glm.tune <- function(X, y,
             main = "Regularisation path")
     abline(v = log10(lambda_max), col = "black", lty = 3)
     abline(v = log10(lambda_best), col = "red", lty = 2)
-    abline(v = log10(lambda_IC), col = "red", lty = 3)
+    abline(v = log10(lambda_preset), col = "red", lty = 3)
     if (!is.null(coefs.true)) {
       if (m > 1) coefs.true <- Matrix::rowMeans(coefs.true)
       abline(h = as.vector(coefs.true[coefs.true!=0]),
@@ -207,14 +207,14 @@ L0glm.tune <- function(X, y,
          xlab = expression(log[10](lambda)), ylab = toupper(IC),
          main = paste("Tuning –", toupper(IC)))
     abline(v = log10(lambda_best), col = "red", lty = 2)
-    abline(v = log10(lambda_IC), col = "red", lty = 3)
+    abline(v = log10(lambda_preset), col = "red", lty = 3)
   }
   
   ## ----------------------------------------------------------------- return
   list(IC           = IC, # chosen IC
        metrics      = metrics,
        lambda_best  = lambda_best, # 
-       lambda_IC    = lambda_IC, # lambda preset expected to optimise chosen IC
+       lambda_preset    = lambda_preset, # lambda preset expected to optimise chosen IC
        lambdas      = lambda_grid)
 }
 

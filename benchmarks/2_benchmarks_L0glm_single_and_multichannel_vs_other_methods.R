@@ -3,8 +3,8 @@
 library(remotes)
 # remotes::install_github("jaredhuling/ordinis")
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-devtools::load_all(".")
-# library(L0glm)
+# devtools::load_all(".")
+library(L0glm)
 library(export)
 library(Matrix)
 library(ordinis)
@@ -36,15 +36,18 @@ tune_full <- L0glm.tune(X=sim.pois$X,
                    nonnegative = TRUE, 
                    solver = "eigen", 
                    method = 7L)
+tune_full$lambda_best # 20.44997 (best lambda tune)
+tune_full$lambda_preset # 20.44997 (lambda preset)
+min(tune_full$metrics$gic) # 102992
 
 ## tuning plot (zoomed in)
-# with lambda grid more zoomed in around lambda_IC preset
+# with lambda grid more zoomed in around lambda_preset preset
 tune_zoomed <- L0glm.tune(X=sim.pois$X, 
            y=sim.pois$y, 
            IC = "gic", 
            nlambda = 10,
-           prop_range = 0.2, # to zoom in around lambda_IC preset
-           warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+           prop_range = 0.2, # to zoom in around lambda_preset preset
+           warm.start = 0.01, 
            plot = TRUE, 
            coefs.true = sim.pois$beta_true, 
            relaxed = FALSE, 
@@ -54,9 +57,9 @@ tune_zoomed <- L0glm.tune(X=sim.pois$X,
            method = 7L)
 # here best lambda (dashed line) is very close to lambda preset expected 
 # to optimise GIC (dotted line) so tuning in practice unnecessary
-tune_zoomed$lambda_best # 11.49116
-tune_zoomed$lambda_IC # 20.44997
-min(tune_zoomed$metrics$gic) # 102113.2
+tune_zoomed$lambda_best # 6.457064 (best lambda tune)
+tune_zoomed$lambda_preset # 20.44997 (lambda preset)
+min(tune_zoomed$metrics$gic) # 102656
 
 # tuning lambda with different solvers
 system.time(tune.chol.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
@@ -71,11 +74,12 @@ system.time(tune.glmnet.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "
 # Best lambda by GIC = 20.4, time = 35.92s for n=p=10000
 system.time(tune.QR.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 1L))
 # Best lambda by GIC = 20.4, time = 182.98s for n=p=10000
+# -> all solvers give same optimal lambda value, but Cholesky fastest
 
-# Chosen lambda here matches expected lambda value that
-# was expected to optimise GIC, so tuning not needed
-preset.lambda(IC="gic", p, n) # 20.44997
-tune.chol.sc.pois$lambda_IC # 20.44997
+# Chosen lambda also matches expected lambda value that
+# was expected to optimise GIC, so tuning is in fact not needed
+preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+tune.chol.sc.pois$lambda_preset # 20.44997 (lambda preset)
 tune.chol.sc.pois$lambda_best # 20.44997
 
 
@@ -266,15 +270,18 @@ tune_full <- L0glm.tune(X=sim.gaus$X,
                    nonnegative = TRUE, 
                    solver = "eigen", 
                    method = 7L)
+tune_full$lambda_best # 20.44997 (best lambda tune)
+tune_full$lambda_preset # 20.44997 (lambda preset)
+min(tune_full$metrics$gic) # 80792.55
 
 ## tuning plot (zoomed in)
-# tuning plots - with lambda grid more zoomed in around lambda_IC preset
+# tuning plots - with lambda grid more zoomed in around lambda_preset preset
 tune_zoomed <- L0glm.tune(X=sim.gaus$X, 
                    y=sim.gaus$y, 
                    IC = "gic", 
                    nlambda = 10,
-                   prop_range = 0.2, # to zoom in around lambda_IC preset
-                   warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+                   prop_range = 0.2, # to zoom in around lambda_preset preset
+                   warm.start = 0.01, 
                    plot = TRUE, 
                    coefs.true = sim.gaus$beta_true, 
                    relaxed = FALSE, 
@@ -282,11 +289,11 @@ tune_zoomed <- L0glm.tune(X=sim.gaus$X,
                    nonnegative = TRUE, 
                    solver = "eigen", 
                    method = 7L)
-# here best lambda (dashed line) is very close to lambda preset expected 
-# to optimise GIC (dotted line) so tuning in practice unnecessary
-tune_zoomed$lambda_best # 60.73341
-tune_zoomed$lambda_IC # 20.44997
-min(tune_zoomed$metrics$gic) # 82200.08
+# here best lambda (dashed line) is identical to lambda preset expected 
+# to optimise GIC (dotted line) so tuning in fact not needed
+tune_zoomed$lambda_best # 60.73341 (best lambda tune)
+tune_zoomed$lambda_preset # 20.44997 (lambda preset)
+min(tune_zoomed$metrics$gic) # 80792.55
 
 # TODO: check why coefs are going to zero before calculated lambda_max
 
@@ -304,10 +311,10 @@ system.time(tune.QR.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic"
 # Best lambda by GIC = 20.4, time = 167.56s with n=p=10000
 
 # Chosen lambda here matches expected lambda value that
-# was expected to optimise GIC, so tuning not needed
-preset.lambda(IC="gic", p, n) # 20.44997
-tune.chol.sc.gaus$lambda_IC # 20.44997
-tune.chol.sc.gaus$lambda_best # 20.44997
+# was expected to optimise GIC, so tuning in fact not needed
+preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+tune.chol.sc.gaus$lambda_preset # 20.44997 (lambda preset)
+tune.chol.sc.gaus$lambda_best # 20.44997 (best lambda tune)
 
 
 #### 1.2.1 L0GLM FIT WITH Cholesky SOLVER ####
@@ -505,34 +512,34 @@ m <- ncol(sim.pois.mc$y)
 tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
            IC = "gic", 
            nlambda = 10,
-           prop_range = 1, # to zoom in around lambda_IC preset
-           warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
+           prop_range = 1, # to zoom in around lambda_preset preset
+           warm.start = 0.01, #  set to 0 for no warm starts to not affect location of optimal lambda
            plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
            relaxed = FALSE, family = poisson(identity), 
            nonnegative = TRUE, 
            parallelize = FALSE, 
            grouped = FALSE,
            solver = "eigen", method = 7L)
-tune_full$lambda_best # 0.9753673
-tune_full$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_full$lambda_best # 0.9753673 (best lambda tune)
+tune_full$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
 tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
            IC = "gic", 
            nlambda = 10,
-           prop_range = 0.2, # to zoom in around lambda_IC preset
-           warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+           prop_range = 0.2, # to zoom in around lambda_preset preset
+           warm.start = 0.01, # set to 0 for no warm starts to not affect location of optimal lambda
            plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
            relaxed = FALSE, family = poisson(identity), 
            nonnegative = TRUE, 
            parallelize = FALSE, 
            grouped = FALSE,
            solver = "eigen", method = 7L)
-tune_zoomed$lambda_best # 2.60347
-tune_zoomed$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_zoomed$lambda_best # 1.593531 (best lambda tune)
+tune_zoomed$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -555,7 +562,7 @@ R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
        atop("nonnegative independent L0 Poisson GLMs",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -585,7 +592,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
                         IC = "gic", 
                         nlambda = 10,
-                        prop_range = 1, # to zoom in around lambda_IC preset
+                        prop_range = 1, # to zoom in around lambda_preset preset
                         warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
                         plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                         relaxed = FALSE, family = poisson(identity), 
@@ -593,26 +600,26 @@ tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                         parallelize = FALSE, 
                         grouped = TRUE,
                         solver = "eigen", method = 7L)
-tune_full$lambda_best # 0.9753657
-tune_full$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_full$lambda_best # 0.9753657 (best lambda tune)
+tune_full$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
 tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
                           IC = "gic", 
                           nlambda = 10,
-                          prop_range = 0.2, # to zoom in around lambda_IC preset
-                          warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+                          prop_range = 0.2, # to zoom in around lambda_preset preset
+                          warm.start = 0.01, # set to 0 for no warm starts to not affect location of optimal lambda
                           plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                           relaxed = FALSE, family = poisson(identity), 
                           nonnegative = TRUE, 
                           parallelize = FALSE, 
                           grouped = TRUE,
                           solver = "eigen", method = 7L)
-tune_zoomed$lambda_best # 2.60347
-tune_zoomed$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_zoomed$lambda_best # 2.60347 (best lambda tune)
+tune_zoomed$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 
@@ -650,7 +657,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
                         IC = "gic", 
                         nlambda = 10,
-                        prop_range = 1, # to zoom in around lambda_IC preset
+                        prop_range = 1, # to zoom in around lambda_preset preset
                         warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
                         plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                         relaxed = TRUE, family = poisson(identity), 
@@ -658,26 +665,26 @@ tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                         parallelize = FALSE, 
                         grouped = TRUE,
                         solver = "eigen", method = 7L)
-tune_full$lambda_best # 0.9753657
-tune_full$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_full$lambda_best # 0.9753657 (best lambda tune)
+tune_full$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 10x higher than best lambda
 tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
                           IC = "gic", 
                           nlambda = 10,
-                          prop_range = 0.2, # to zoom in around lambda_IC preset
-                          warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+                          prop_range = 0.2, # to zoom in around lambda_preset preset
+                          warm.start = 0.01, # set to 0 for no warm starts to not affect location of optimal lambda
                           plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                           relaxed = TRUE, family = poisson(identity), 
                           nonnegative = TRUE, 
                           parallelize = FALSE, 
                           grouped = TRUE,
                           solver = "eigen", method = 7L)
-tune_zoomed$lambda_best # 0.9755287
-tune_zoomed$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_zoomed$lambda_best # 0.9755287 (best lambda tune)
+tune_zoomed$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -698,8 +705,8 @@ fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients  (row means)",
-       atop("relaxed nonnegative L0 grouped Poisson GLM",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+       atop("relaxed nonnegative grouped L0 Poisson GLM",
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -731,7 +738,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                         IC = "gic", 
                         nlambda = 10,
-                        prop_range = 1, # to zoom in around lambda_IC preset
+                        prop_range = 1, # to zoom in around lambda_preset preset
                         warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
                         plot = TRUE, 
                         coefs.true = sim.gaus.mc$beta_true, 
@@ -742,7 +749,7 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         grouped = FALSE,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 11.35348
-tune_full$lambda_IC # 11.35348 
+tune_full$lambda_preset # 11.35348 
 preset.lambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
@@ -750,7 +757,7 @@ preset.lambda(IC="gic", p, n) # 11.35348
 tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                           IC = "gic", 
                           nlambda = 10,
-                          prop_range = 0.2, # to zoom in around lambda_IC preset
+                          prop_range = 0.2, # to zoom in around lambda_preset preset
                           warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
                           plot = TRUE, 
                           coefs.true = sim.gaus.mc$beta_true, 
@@ -761,7 +768,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           grouped = FALSE,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 11.35348
-tune_zoomed$lambda_IC # 11.35348 
+tune_zoomed$lambda_preset # 11.35348 
 preset.lambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky ####
@@ -783,7 +790,7 @@ R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients  (row means)",
        atop("nonnegative L0 independent Gaussian GLMs",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -813,7 +820,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                         IC = "gic", 
                         nlambda = 10,
-                        prop_range = 1, # to zoom in around lambda_IC preset
+                        prop_range = 1, # to zoom in around lambda_preset preset
                         warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
                         plot = TRUE, 
                         coefs.true = sim.gaus.mc$beta_true, 
@@ -824,7 +831,7 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         grouped = TRUE,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 11.35348
-tune_full$lambda_IC # 11.35348 
+tune_full$lambda_preset # 11.35348 
 preset.lambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
@@ -832,7 +839,7 @@ preset.lambda(IC="gic", p, n) # 11.35348
 tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                           IC = "gic", 
                           nlambda = 10,
-                          prop_range = 0.2, # to zoom in around lambda_IC preset
+                          prop_range = 0.2, # to zoom in around lambda_preset preset
                           warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
                           plot = TRUE, 
                           coefs.true = sim.gaus.mc$beta_true, 
@@ -843,7 +850,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           grouped = TRUE,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 11.35348
-tune_zoomed$lambda_IC # 11.35348 
+tune_zoomed$lambda_preset # 11.35348 
 preset.lambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky ####
@@ -864,8 +871,8 @@ fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
-       atop("nonnegative L0 grouped Gaussian GLM",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+       atop("nonnegative grouped L0 Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -892,7 +899,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                         IC = "gic", 
                         nlambda = 10,
-                        prop_range = 1, # to zoom in around lambda_IC preset
+                        prop_range = 1, # to zoom in around lambda_preset preset
                         warm.start = 0.01, # here set to 0 for no warm starts to not affect location of optimal lambda
                         plot = TRUE, 
                         coefs.true = sim.gaus.mc$beta_true, 
@@ -902,17 +909,17 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         parallelize = FALSE, 
                         grouped = TRUE,
                         solver = "eigen", method = 7L)
-tune_full$lambda_best # 11.35348
-tune_full$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_full$lambda_best # 11.35348 (best lambda tune)
+tune_full$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
-# here best lambda is identical to preset lambda
+# here best lambda is again very close to preset lambda
 tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
                           IC = "gic", 
                           nlambda = 10,
-                          prop_range = 0.2, # to zoom in around lambda_IC preset
-                          warm.start = 0, # here set to 0 for no warm starts to not affect location of optimal lambda
+                          prop_range = 0.2, # to zoom in around lambda_preset preset
+                          warm.start = 0.01, # set to 0 for no warm starts to not affect location of optimal lambda
                           plot = TRUE, 
                           coefs.true = sim.gaus.mc$beta_true, 
                           relaxed = TRUE, 
@@ -921,9 +928,9 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           parallelize = FALSE, 
                           grouped = TRUE,
                           solver = "eigen", method = 7L)
-tune_zoomed$lambda_best # 11.35348
-tune_zoomed$lambda_IC # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+tune_zoomed$lambda_best # 4.82 (best lambda tune)
+tune_zoomed$lambda_preset # 11.35348 (lambda preset)
+preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -944,8 +951,8 @@ fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
-       atop("relaxed nonnegative L0 grouped Gaussian GLM",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+       atop("relaxed nonnegative grouped L0 Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -1017,7 +1024,7 @@ system.time(L0learn.sc.pois <- fit.GLM(sim = sim.pois, method = 4,
 
 
 ### 3.1.5 L0LEARN AFTER LASSO ####
-# Slightly better than regular L0Learn & faster
+# better solution than regular L0Learn
 system.time(L0learn.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 5, family = poisson(identity), plot = T)) 
 # 0.36s
 
@@ -1027,7 +1034,8 @@ system.time(abess.sc.pois <- fit.GLM(sim = sim.pois, method = 6,
                                      family = poisson(identity), 
                                      plot = T, IC = "gic"))  
 # 1.2s
-
+# TODO: NOTE: result is better if I do not use weights 
+# CHECK WHY
 
 ### 3.1.7 ABESS AFTER LASSO ####
 system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 7, 
@@ -1036,6 +1044,8 @@ system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 7,
                                                  IC = "gic"))  
 # 0.19s
 # TODO: NOTE: result is better if I do not use weights - then cor 0.8849495 - CHECK
+# CHECK WHY
+
 
 ### 3.1.8 MCP USING ORDINIS ####
 system.time(ordinis.mcp.sc.pois <- fit.GLM(sim = sim.pois, method = 8, 
@@ -1414,8 +1424,8 @@ fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
-       atop("relaxed nonnegative L0 grouped Poisson GLM",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+       atop("relaxed nonnegative grouped L0 Poisson GLM",
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
@@ -1527,7 +1537,7 @@ system.time(tune.chol.mc <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, IC = "g
                                        method = 7L)) 
 # Best lambda by GIC = 11.4 = identical to preset lambda
 tune.chol.mc$lambda_best # 11.35348
-tune.chol.mc$lambda_IC # 11.35348
+tune.chol.mc$lambda_preset # 11.35348
 
 system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
                                     family = gaussian(identity), 
@@ -1546,8 +1556,8 @@ fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
-       atop("relaxed nonnegative L0 grouped Gaussian GLM",
-            R^2 == .(sprintf("%.2f", R2)) * "%")))
+       atop("relaxed nonnegative grouped L0 Gaussian GLM",
+            R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",

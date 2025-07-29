@@ -44,17 +44,17 @@ model selection. It should be one of \code{"aic"},
 \item{nlambda}{Number of lambda values to use for tuning (default 10). 
 If \code{nlambda} is even, half of the values lie above 
 the lambda value that would be expected to optimise
-the chosen IC (\code{lambda_IC}) and half below;  
+the chosen IC (\code{lambda_preset}) and half below;  
 if odd, the upper branch receives the extra point so that
-\code{lambda_IC} is included exactly once.}
+\code{lambda_preset} is included exactly once.}
 
 \item{prop_range}{Numeric in \((0,\,1]\).
-Proportion of the log10 distance between \code{lambda_IC} and
+Proportion of the log10 distance between \code{lambda_preset} and
 \code{lambda_max} (that would penalise all coefficients to zero
 or the chosen prior.mean) that is *retained on each side* of 
-\code{lambda_IC}. \code{prop_range = 1} (default) keeps the 
+\code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
 entire range, whilst smaller values "zoom‑in", yielding grids 
-that are denser around \code{lambda_IC}. For example, 
+that are denser around \code{lambda_preset}. For example, 
 \code{prop_range = 0.1} preserves only 10% of the original 
 log10 span above and below the preset lambda value that 
 a priori would be expected to optimise the chosen IC.}
@@ -80,8 +80,8 @@ in the description, all in function of regularization (lambda).}
 with different regularization parameters.}
 \item{\code{lambda_best}}{best lambda according to the \code{IC} 
 criterion specified.}
-\item{\code{lambda_IC}}{lambda that was a priori expected to approx. optimise
-the chosen \code{IC}.}
+\item{\code{lambda_preset}}{preset lambda value that a priori would be expected 
+to approximately optimise the chosen \code{IC}.}
 \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
 }
 \description{
