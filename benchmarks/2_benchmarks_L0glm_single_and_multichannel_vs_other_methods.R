@@ -553,7 +553,7 @@ y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients (row means)",
        atop("nonnegative independent L0 Poisson GLMs",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -697,7 +697,7 @@ y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients  (row means)",
        atop("relaxed nonnegative L0 grouped Poisson GLM",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -781,7 +781,7 @@ y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients  (row means)",
        atop("nonnegative L0 independent Gaussian GLMs",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -863,7 +863,7 @@ y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients (row means)",
        atop("nonnegative L0 grouped Gaussian GLM",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -943,7 +943,7 @@ y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients (row means)",
        atop("relaxed nonnegative L0 grouped Gaussian GLM",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -1413,7 +1413,7 @@ y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients (row means)",
        atop("relaxed nonnegative L0 grouped Poisson GLM",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
@@ -1545,7 +1545,7 @@ y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
-  atop("true vs estimated coefficients",
+  atop("true vs estimated coefficients (row means)",
        atop("relaxed nonnegative L0 grouped Gaussian GLM",
             R^2 == .(sprintf("%.2f", R2)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
