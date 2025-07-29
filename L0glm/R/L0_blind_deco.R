@@ -13,7 +13,7 @@
 #' drops below \code{tol}.
 #'
 #' @inheritParams L0_sparse_deco
-#' @param kernel_est Optional initial PSF (L1-normalised internally).
+#' @param kernel_est Initial starting estimate of PSF (L1-normalised internally).
 #' @param p          Passed to \code{\link{shift_kernel}} when the PSF is
 #'                   updated; `"mean"` recentres the centroid.
 #' @param kernel_smoothfun Optional smoother applied to the raw PSF in

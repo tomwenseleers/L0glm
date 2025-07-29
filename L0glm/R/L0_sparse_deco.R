@@ -87,7 +87,11 @@ L0_sparse_deco <- function(y,                            # response to be deconv
   if (is.vector(y)) y <- as.matrix(y)
   n <- nrow(y)
   p <- ncol(y)
-  if (!is.null(kernelfunc)&!is.null(L)&is.null(X)) { kernel <- kernelfunc(x=1:L) } else { L <- length(kernel) } # kernel to use for deconvolution
+  
+  if (is.null(kernel)) {
+    kernel <- kernelfunc(1L:L)
+    L      <- length(kernel)
+  }  
   
   if (is.null(X)) { 
     X <- convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf 

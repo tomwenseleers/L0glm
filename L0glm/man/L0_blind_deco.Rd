@@ -26,7 +26,7 @@ A matrix is treated as \eqn{n \times p} parallel channels.}
 link (e.g. `poisson(identity)`, `gaussian(identity)`
 or `Gamma(identity)`).}
 
-\item{kernel_est}{Optional initial PSF (L1-normalised internally).}
+\item{kernel_est}{Initial starting estimate of PSF (L1-normalised internally).}
 
 \item{L}{Desired kernel length when `kernel` is `NULL`.}
 
