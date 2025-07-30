@@ -18,8 +18,8 @@
 #'                   updated; `"mean"` recentres the centroid.
 #' @param kernel_smoothfun Optional smoother applied to the raw PSF in
 #'                   each iteration (default: \code{\link{log_conc_smooth}}).
-#' @param maxiter Integer ≥ 1.  Maximum alternating steps.
-#' @param tol      Relative L1 change in the PSF that triggers early stop.
+#' @param maxiter Integer ≥ 1.  Maximum alternating steps. Default 30.
+#' @param tol      Relative L1 change in the PSF that triggers early stop (default 1e-9).
 #'
 #' @return A list with components
 #'   \describe{
@@ -57,8 +57,8 @@ L0_blind_deco <- function(y,
                           p = "mean",
                           IC = "gic",
                           grouped = FALSE,
-                          maxiter = 20,
-                          tol = 1e-4)
+                          maxiter = 30,
+                          tol = 1e-9)
 {
   if (is.vector(y)) y <- as.matrix(y)
   n  <- nrow(y)

@@ -14,8 +14,8 @@ L0_blind_deco(
   p = "mean",
   IC = "gic",
   grouped = FALSE,
-  maxiter = 20,
-  tol = 1e-04
+  maxiter = 30,
+  tol = 1e-09
 )
 }
 \arguments{
@@ -48,9 +48,9 @@ updated; `"mean"` recentres the centroid.}
 whether to perform grouped L0 feature selection, i.e. best subset
 of group selection (BSGS).}
 
-\item{maxiter}{Integer ≥ 1.  Maximum alternating steps.}
+\item{maxiter}{Integer ≥ 1.  Maximum alternating steps. Default 30.}
 
-\item{tol}{Relative L1 change in the PSF that triggers early stop.}
+\item{tol}{Relative L1 change in the PSF that triggers early stop (default 1e-9).}
 }
 \value{
 A list with components

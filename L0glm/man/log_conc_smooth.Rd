@@ -15,7 +15,7 @@ non-negative data sampled at the integer points
 \code{0.5} (median fit).}
 
 \item{nknots}{integer; number of interior knots for the spline.
-If \code{NULL} (default) it is set to \code{length(y) - 1}.}
+If \code{NULL} (default) it is set to \code{round(length(y)/5)}.}
 }
 \value{
 A numeric vector of length \code{length(y)}:
@@ -47,13 +47,13 @@ x      <- seq(-5, 5, length.out = 101)
 f_true <- dnorm(x)
 f_true <- f_true / sum(f_true)          # ensure it integrates to 1
 
-N      <- 10000                         # total expected counts
+N      <- 100000                        # total expected counts
 lambda <- N * f_true                    # Poisson means in each bin
 
 y_cnt  <- rpois(length(x), lambda)      # Poisson-noisy counts
 y      <- y_cnt / sum(y_cnt)            # rescale back to a density
 
-g <- log_conc_smooth(y, nknots=17)
+g <- log_conc_smooth(y)
 
 matplot(cbind(y, f_true, g), type = "l", lty = 1,
         col = c(2, 1, 4), ylab = "density",

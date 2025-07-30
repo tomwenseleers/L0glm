@@ -15,7 +15,7 @@
 #' @param tau    quantile to be fitted by \code{cobs}; defaults to
 #'               \code{0.5} (median fit).
 #' @param nknots integer; number of interior knots for the spline.
-#'               If \code{NULL} (default) it is set to \code{length(y) - 1}.
+#'               If \code{NULL} (default) it is set to \code{round(length(y)/5)}.
 #'
 #' @return A numeric vector of length \code{length(y)}:
 #' \itemize{
@@ -48,13 +48,13 @@
 #' f_true <- dnorm(x)
 #' f_true <- f_true / sum(f_true)          # ensure it integrates to 1
 #' 
-#' N      <- 10000                         # total expected counts
+#' N      <- 100000                        # total expected counts
 #' lambda <- N * f_true                    # Poisson means in each bin
 #' 
 #' y_cnt  <- rpois(length(x), lambda)      # Poisson-noisy counts
 #' y      <- y_cnt / sum(y_cnt)            # rescale back to a density
 #' 
-#' g <- log_conc_smooth(y, nknots=17)
+#' g <- log_conc_smooth(y)
 #' 
 #' matplot(cbind(y, f_true, g), type = "l", lty = 1,
 #'         col = c(2, 1, 4), ylab = "density",
@@ -73,12 +73,12 @@ log_conc_smooth <- function(y,
   n <- length(y)
   if (n < 3L) stop("Need at least three points (n ≥ 3).")
   if (!is.vector(y)) y <- as.vector(y)
-  if (is.null(nknots)) nknots <- length(y)-1
+  if (is.null(nknots)) nknots <- round(length(y)/5)
   
   x_raw <- seq_len(n)
   
   offs <- max(y) * 1e-6
-  weights <- (y + offs) # empirically gave best convergence
+  weights <- y + offs # empirically gave best convergence
   weights <- weights/sum(weights)*length(weights)
   
   ## ---- 1.  primary cobs fit --------------------------------------------
@@ -89,9 +89,9 @@ log_conc_smooth <- function(y,
                     knots = seq(min(x_raw), max(x_raw),
                                 length.out = nknots),
                     nknots = nknots,
-                    knots.add = FALSE, 
-                    repeat.delete.add = FALSE,
-                    tau = tau,
+                    knots.add = FALSE, # adding extra knots disabled for stability
+                    repeat.delete.add = FALSE, # removing unneeded knots disabled for stability
+                    tau = tau, 
                     degree = 2,
                     lambda = 0)
   
