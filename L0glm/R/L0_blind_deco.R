@@ -1,5 +1,5 @@
 #' @name L0_blind_deco
-#' @title Alternating sparse L0-penalised blind deconvolution
+#' @title Alternating sparse L0 glm powered blind deconvolution
 #'
 #' @description
 #' Runs a simple block-coordinate (alternating) optimisation:
@@ -18,7 +18,13 @@
 #'                   updated; `"mean"` recentres the centroid.
 #' @param kernel_smoothfun Optional smoother applied to the raw PSF in
 #'                   each iteration (default: \code{\link{log_conc_smooth}}).
-#' @param maxiter Integer ≥ 1.  Maximum alternating steps. Default 30.
+#' @param kernel_true Optional vector with convolution kernel / PSF ground truth 
+#'                    for cases where simulated data is used. Can be plotted 
+#'                    alongside the estimated PSF in each iteration when 
+#'                    \code{plot=TRUE}.
+#' @param plot Boolean specifying whether to plot the estimated PSF in each iteration
+#'             (alongside the true PSF if \code{kernel_true} is given).                                        
+#' @param maxiter  Integer ≥ 1.  Maximum alternating steps. Default 30.
 #' @param tol      Relative L1 change in the PSF that triggers early stop (default 1e-9).
 #'
 #' @return A list with components
@@ -57,6 +63,8 @@ L0_blind_deco <- function(y,
                           p = "mean",
                           IC = "gic",
                           grouped = FALSE,
+                          kernel_true = NULL,
+                          plot = FALSE,
                           maxiter = 30,
                           tol = 1e-9)
 {
@@ -71,6 +79,18 @@ L0_blind_deco <- function(y,
   
   dev_trace <- numeric()
   for (it in seq_len(maxiter)) {
+    if (plot) {
+      if (is.null(kernel_true)) { plot(g_hat, type = "l", 
+                                       ylab = "Density",
+                                       main = paste0("ESTIMATED PSF\niteration ", it-1), 
+                                       col = "red", lwd = 3) } else {   
+        plot(kernel_true, type="l", 
+             ylab = "Density",
+             main = paste0("TRUE (grey) & ESTIMATED (red) PSF\niteration ", it-1),
+             col = "grey",lwd = 7)
+        lines(g_hat, col = "red", lwd = 3) 
+    }
+    }
     
     ## 1. spike update -----------------------------------------------------
     Xg  <- convmatrix(g_hat, n)              # banded design

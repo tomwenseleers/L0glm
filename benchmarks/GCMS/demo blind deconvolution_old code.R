@@ -317,9 +317,9 @@ for (iter in 1:(maxiter+1)) {
   print(iter)
 
   if (is.null(g_true)) { plot(g_est, type="l", main=paste0("ESTIMATED PSF\niteration ", iter-1)) } else {   
-    plot(g_true, type="l", col="grey",lwd=5, 
+    plot(g_true, type="l", col="grey",lwd=7, 
            main=paste0("TRUE (grey) & ESTIMATED (red) PSF\niteration ", iter-1))
-      lines(g_est, col="red", lwd=1) 
+      lines(g_est, col="red", lwd=3) 
       }
 
   # SPARSE DECONVOLUTION WITH CURRENT ESTIMATE OF PSF TO ESTIMATE SPIKE TRAIN USING L0GLM & L0_sparse_deco ####

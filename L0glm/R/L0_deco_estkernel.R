@@ -1,12 +1,12 @@
 #' @name L0_deco_estkernel
-#' @title Estimate the PSF given an (approximate) spike train
+#' @title Estimate the PSF given an (approximate) spike train using L0 glm
 #'
 #' @description
 #' Solves the *transpose* problem:
 #' given an (estimated) latent signal \eqn{a} and the observation \eqn{y},
 #' find the PSF \eqn{g} that minimises the deviance in
 #' \eqn{y \approx X(g)\,a}.  Regularisation is again via \pkg{L0glm};
-#' optional post-processing can log-concave-smooth and/or recentre the PSF.
+#' optional post-processing applies log-concave-smooth and/or recentres the PSF.
 #'
 #' @inheritParams L0_sparse_deco
 #' @param y_deconv Matrix or vector with the (already estimated) latent

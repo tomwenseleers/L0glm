@@ -84,13 +84,16 @@ system.time(fit <- L0_blind_deco(y = y,
                           L = L, # PSF kernel length 
                           kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6, sigma=3.5 to 30 all converge to same solution, only can get stuck with too low w0, e.g. sigma=3
                           kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
+                          p = "mean", # use centroid centering
+                          kernel_true = g_true,
                           IC = "gic",
+                          plot = TRUE,
                           tol = 1e-9))
-# 5.32s
+# 8s
 fit$deviance_trace
 plot(fit$deviance_trace, type="l", log="y",
      xlab="Iteration", ylab="Deviance", 
-     main="Poisson L0 glm blind deconvolution convergence behaviour")
+     main="Poisson L0 glm blind deconvolution\nconvergence behaviour")
 a_est_blind = fit$a_hat # estimated spikes
 g_est_blind = fit$g_hat # estimated PSF
 
@@ -147,7 +150,9 @@ system.time(fit <- L0_blind_deco(y = y_std_subs,
                                  L = L, # PSF kernel length 
                                  kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6
                                  kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
+                                 p = "mean", # use centroid centering
                                  IC = "gic",
+                                 plot = TRUE,
                                  tol = 1e-9))
 # 6s
 fit$deviance_trace
@@ -166,7 +171,9 @@ system.time(fit <- L0_blind_deco(y = y_TIC,
                                  L = L, # PSF kernel length 
                                  kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6
                                  kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)), # 
+                                 p = "mean", # use centroid centering
                                  IC = "gic",
+                                 plot = TRUE,
                                  tol = 1e-9))
 # 6s
 fit$deviance_trace

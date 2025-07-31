@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0_blind_deco.R
 \name{L0_blind_deco}
 \alias{L0_blind_deco}
-\title{Alternating sparse L0-penalised blind deconvolution}
+\title{Alternating sparse L0 glm powered blind deconvolution}
 \usage{
 L0_blind_deco(
   y,
@@ -14,6 +14,8 @@ L0_blind_deco(
   p = "mean",
   IC = "gic",
   grouped = FALSE,
+  kernel_true = NULL,
+  plot = FALSE,
   maxiter = 30,
   tol = 1e-09
 )
@@ -47,6 +49,14 @@ updated; `"mean"` recentres the centroid.}
 \item{grouped}{Logical, passed unchanged to \code{L0glm::L0glm.fit}, specifying
 whether to perform grouped L0 feature selection, i.e. best subset
 of group selection (BSGS).}
+
+\item{kernel_true}{Optional vector with convolution kernel / PSF ground truth 
+for cases where simulated data is used. Can be plotted 
+alongside the estimated PSF in each iteration when 
+\code{plot=TRUE}.}
+
+\item{plot}{Boolean specifying whether to plot the estimated PSF in each iteration
+(alongside the true PSF if \code{kernel_true} is given).}
 
 \item{maxiter}{Integer ≥ 1.  Maximum alternating steps. Default 30.}
 

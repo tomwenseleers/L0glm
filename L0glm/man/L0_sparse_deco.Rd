@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0_sparse_deco.R
 \name{L0_sparse_deco}
 \alias{L0_sparse_deco}
-\title{Sparse (L0-penalised) deconvolution given a fixed PSF}
+\title{Obtain a sparse deconvolution of a signal with a fixed PSF using L0 glm}
 \usage{
 L0_sparse_deco(
   y,
@@ -60,7 +60,7 @@ Estimates the *latent*, un-blurred spike train \eqn{a} from an observed
 signal \eqn{y} that is assumed to follow the convolution model
 \deqn{y \;=\; X(\theta)\,a + \varepsilon,}
 where \eqn{X(\theta)} is a Toeplitz design matrix that contains
-time-shifted copies of a known point-spread function (PSF, a.k.a. kernel).
+time-shifted copies of a known point-spread function (PSF, a.k.a. convolution kernel).
 The coefficient vector (or matrix) \eqn{a} is found with **best-subset
 (L0)** regularisation via \pkg{L0glm}.
 }
