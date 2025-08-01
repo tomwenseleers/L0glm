@@ -118,7 +118,7 @@
 #'                    lambda = 0, nonnegative = TRUE,
 #'                    family = poisson(link=identity),
 #'                    solver = "osqp")$coefficients != 0
-#' Winit <- as.matrix(Wband[, sel, drop = FALSE])
+#' Winit <- as.matrix(Wband[, which(sel), drop = FALSE])
 #'
 #' ## sparse Poisson Best-Rank NMF with grouped-L0 penalty to infer mass spectra, elution profiles and number of compounds present
 #' nmf <- L0BestRankGNMF(D,
@@ -148,12 +148,12 @@
 #' @import Matrix
 #' @export
 L0BestRankGNMF <- function(D, k, Wstart = NULL,
-                     grouped_Hupdate = FALSE, # use plain L0 or grouped L0 penalty in H update?
-                     IC = "gic", # information criterion to be optimised
-                     max_iter = 5, tol = 1e-4, 
-                     method = 4L, parallelize = FALSE,
-                     ncores = if (parallelize) { round(parallel::detectCores()/2) } else { 1 },
-                     family = gaussian(link="identity")) {
+                           grouped_Hupdate = FALSE, # use plain L0 or grouped L0 penalty in H update?
+                           IC = "gic", # information criterion to be optimised
+                           max_iter = 5, tol = 1e-4, 
+                           method = 4L, parallelize = FALSE,
+                           ncores = if (parallelize) { round(parallel::detectCores()/2) } else { 1 },
+                           family = gaussian(link="identity")) {
   
   # D <- as.matrix(D) # coerce to dense
   Dt <- t(D)
@@ -166,25 +166,25 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
   
   ## --- initialise W and H ----------------------------------------------------
   if (!is.null(Wstart)) { W <- Wstart # n x k_init matrix
-         suppressWarnings(H <- L0glm.fit(X = W, 
-                                         y = D, # n x p data matrix, now regressing on columns of D
-                                         intercept = FALSE,
-                                         family = family,
-                                         lambda = lambdaH,
-                                         nonnegative = TRUE,
-                                         parallelize = parallelize, 
-                                         ncores = ncores,
-                                         maxit = 10, 
-                                         group.maxit = 3, 
-                                         grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
-                                         relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
-                                         solver = "eigen", # method 4L: least squares conjugate gradient
-                                         method = method)$coefficients) # k_init x p matrix
+  suppressWarnings(H <- L0glm.fit(X = W, 
+                                  y = D, # n x p data matrix, now regressing on columns of D
+                                  intercept = FALSE,
+                                  family = family,
+                                  lambda = lambdaH,
+                                  nonnegative = TRUE,
+                                  parallelize = parallelize, 
+                                  ncores = ncores,
+                                  maxit = 10, 
+                                  group.maxit = 3, 
+                                  grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
+                                  relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
+                                  solver = "eigen", # method 4L: least squares conjugate gradient
+                                  method = method)$coefficients) # k_init x p matrix
   } else {
-     # NNDSVD initialisation
-     suppressWarnings(nndsvd <- NMF:::.nndsvd.internal(A=D, k=k))
-     W <- Matrix(nndsvd$W, sparse=T) # n x k
-     H <- Matrix(nndsvd$H, sparse=T) # k x p
+    # NNDSVD initialisation
+    suppressWarnings(nndsvd <- NMF:::.nndsvd.internal(A=D, k=k))
+    W <- Matrix(nndsvd$W, sparse=T) # n x k
+    H <- Matrix(nndsvd$H, sparse=T) # k x p
   } 
   
   # prune empty factors
@@ -200,19 +200,19 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
   for (iter in seq_len(max_iter)) {
     ## --- update W -------------------------------------------------------
     suppressWarnings(W <- t(L0glm.fit(
-                              X = t(H), # p x k matrix
-                              y = Dt, # p x n data matrix, now regressing on rows of D
-                              intercept = FALSE,
-                              start = t(W), # use warm starts to speed up algo
-                              warm.start = 1,
-                              family = family,
-                              lambda = lambdaW,
-                              nonnegative = TRUE,
-                              parallelize = parallelize,
-                              maxit = 10, 
-                              grouped = FALSE,
-                              solver = "eigen", # method 4L: least squares conjugate gradient
-                              method = method)$coefficients)) # n x k matrix
+      X = t(H), # p x k matrix
+      y = Dt, # p x n data matrix, now regressing on rows of D
+      intercept = FALSE,
+      start = t(W), # use warm starts to speed up algo
+      warm.start = 1,
+      family = family,
+      lambda = lambdaW,
+      nonnegative = TRUE,
+      parallelize = parallelize,
+      maxit = 10, 
+      grouped = FALSE,
+      solver = "eigen", # method 4L: least squares conjugate gradient
+      method = method)$coefficients)) # n x k matrix
     if (sum(range(W) == 0)==2) { 
       message("All factors were penalized to zero in the NMF")
       return(list(W = NULL, H = NULL, dev = obj, k = 0, iter = iter, 
@@ -220,35 +220,35 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
     
     ## --- update H -------------------------------------------------------
     suppressWarnings(H <- L0glm.fit(
-                   X = W, # n x k matrix
-                   y = D, # n x p data matrix, now regressing on columns of D
-                   intercept = FALSE,
-                   start = H, # use warm starts to speed up algo
-                   warm.start = 1,
-                   family = family,
-                   lambda = lambdaH,
-                   nonnegative = TRUE,
-                   parallelize = parallelize,
-                   ncores = ncores,
-                   maxit = 10, 
-                   group.maxit = 3, 
-                   grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
-                   relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
-                   solver = "eigen", # method 4L: least squares conjugate gradient
-                   method = method)$coefficients) # k x p matrix
+      X = W, # n x k matrix
+      y = D, # n x p data matrix, now regressing on columns of D
+      intercept = FALSE,
+      start = H, # use warm starts to speed up algo
+      warm.start = 1,
+      family = family,
+      lambda = lambdaH,
+      nonnegative = TRUE,
+      parallelize = parallelize,
+      ncores = ncores,
+      maxit = 10, 
+      group.maxit = 3, 
+      grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
+      relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
+      solver = "eigen", # method 4L: least squares conjugate gradient
+      method = method)$coefficients) # k x p matrix
     
     ## --- prune dead factors --------------------------------------------
     keep <- which(rowSums(H)!=0 & colSums(W)!=0) # only keep factors with nonzero row sums in H & nonzero column sums in W
     H <- H[keep, , drop=FALSE] 
     W <- W[, keep, drop=FALSE] 
     k <- nrow(H)
-
+    
     ## --- convergence check---------------------------------------------
     obj_new <- penalised_nll(W, H, D, family, lambdaW, lambdaH, grouped_Hupdate)
     if (obj_new > obj) { H <- H_old
-                         W <- W_old
-                         k <- nrow(H)
-                         obj_new <- obj } # fit deteriorated so return previous iteration estimates
+    W <- W_old
+    k <- nrow(H)
+    obj_new <- obj } # fit deteriorated so return previous iteration estimates
     trace <- c(trace, obj_new)
     if (abs(obj_new - obj)/(abs(obj) + 1e-12) < tol) break
     obj <- obj_new
