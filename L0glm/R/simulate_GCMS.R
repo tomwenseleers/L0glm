@@ -138,7 +138,7 @@ simulate_GCMS <- function(
     stop("k exceeds number of available spectra in library.")
   idx <- sample(nrow(S), k)
   H_true <- Matrix(S[idx, , drop = FALSE], sparse = TRUE)
-  H_true <- sweep(H_true, 1, rowSums(H_true), "/")     # rows sum to 1
+  H_true <- sweep(H_true, 1, rowSums(H_true), "/")     # so that rowSums(H_true)=1
   rownames(H_true) <- paste0("cmp", idx)
   colnames(H_true) <- mz_names        # keep m/z names
   
@@ -195,7 +195,7 @@ simulate_GCMS <- function(
   dimnames(W_true) <- list(NULL, paste0("peak", idx))
   
   ## -------- B-spline background ------------------------------------------
-  k_background <- max(2L, ceiling(n / 1000))
+  k_background <- max(4L, ceiling(n / 1000))
   B            <- splines::bs(
     x         = seq(0, 1, length.out = n),
     df        = k_background,
