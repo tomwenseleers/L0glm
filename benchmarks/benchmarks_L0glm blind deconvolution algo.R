@@ -20,7 +20,7 @@ sum(g_true) # 1
 
 ## ----   latent spike train --------------------------------------
 n        <- 10000                      # timepoints
-npeaks   <- round(n / 20)              # 500, ~5 % non-zero
+npeaks   <- round(n / 10)              # 1000, ~10 % non-zero
 idx      <- sample(n, npeaks)          # spike locations (1 … n)
 amplitudes  <- sample(1000:100000, npeaks)  # spike amplitudes = peak areas after convolution with PSF
 a_true           <- numeric(n)

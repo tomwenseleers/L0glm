@@ -148,7 +148,7 @@ if (requireNamespace("L0glm", quietly = TRUE)) {
 
   ## --- latent sparse spike-train ------------------------------------
   n        <- 10000                   # timepoints
-  npeaks   <- round(n / 20)           # 500, ~5 \% non-zero
+  npeaks   <- round(n / 10)           # 1000, ~10 \% non-zero
   idx      <- sample(n, npeaks)
   amps     <- sample(1000:100000, npeaks)
   a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
