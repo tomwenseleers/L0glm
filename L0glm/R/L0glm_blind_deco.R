@@ -101,7 +101,7 @@
 #'                    iteration when \code{plot=TRUE}.
 #' @param plot Boolean specifying whether to plot the estimated PSF in each iteration
 #'             (alongside the true PSF if \code{kernel_true} is given).                                        
-#' @param maxiter  Integer ≥ 1.  Maximum alternating steps. Default 30.
+#' @param maxiter  Integer ≥ 1.  Maximum alternating steps. Default 15.
 #' @param tol      Relative L1 change in the PSF that triggers early stop (default 1e-3).
 #'
 #' @return A list with components
@@ -239,7 +239,7 @@ L0glm_blind_deco <- function(y,
                           grouped = FALSE,
                           kernel_true = NULL,
                           plot = FALSE,
-                          maxiter = 30,
+                          maxiter = 15,
                           tol = 1e-3)
 {
   if (is.vector(y)) y <- as.matrix(y)
