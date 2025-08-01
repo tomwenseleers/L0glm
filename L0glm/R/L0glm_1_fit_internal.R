@@ -49,14 +49,14 @@ L0glm.fit.internal = function(X,
   ## 1. sanity checks ---------------------------------------------------------
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
   
+  if (is.null(offset)) {
+    offset <- Matrix(0, n, 1, sparse = TRUE)
+  }
+  
   if (length(weights) != n) stop("length(weights) must equal nrow(X)")
   if (length(offset) != n) stop("length(offset) must equal nrow(X)")
   if (length(lower) != p) stop("length(lower) must equal ncol(X)")
   if (length(upper) != p) stop("length(upper) must equal ncol(X)")
-  
-  if (is.null(offset)) {
-    offset <- Matrix(0, n, 1, sparse = TRUE)
-  }
     
   ##  2. dispersion initialisation --------------------------------------------
   #  * binomial / poisson : fixed at 1

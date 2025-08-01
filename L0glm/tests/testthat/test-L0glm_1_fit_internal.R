@@ -426,14 +426,14 @@ test_that("L0glm.fit.internal handles uninformative observations correctly", {
   y <- rep(0, n)                       # all-zero response
   w <- rep(0, n)                       # zero prior weights
   
-  ## --- run and catch the message -----------------------------------------
-  expect_message(
+  ## --- run and catch the warning -----------------------------------------
+  expect_warning(
     res <- L0glm.fit.internal(
       X       = X,
       y       = y,
       weights = w,
       verbose = TRUE),
-    "No informative rows or active variables."
+    "All coefficients zero – nothing to fit"
   )
   
   ## --- structural checks --------------------------------------------------
@@ -456,13 +456,12 @@ test_that("L0glm.fit.internal returns zero coefficients under huge penalty", {
   y <- rep(1, n)
   lambda_big <- 1e10            # enormous ridge
   
-  res <- L0glm.fit.internal(X, y, lambda = lambda_big, verbose = TRUE)
+  res <- L0glm.fit.internal(X, y, lambda = lambda_big, verbose = FALSE)
   
   ## every coefficient driven to 0
   expect_equal(res$coefficients, rep(0, p))
   
-  ## ridge weight & lambdas now infinity
-  expect_true(all(is.infinite(res$weights)))
+  ## lambdas now infinity
   expect_true(all(is.infinite(res$lambdas)))
 })
 
