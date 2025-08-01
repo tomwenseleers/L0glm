@@ -30,7 +30,8 @@ Imports: Matrix,
 SystemRequirements: C++11
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
-Description: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
+Description: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection 
+             and Best Subset of Group Selection.
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true

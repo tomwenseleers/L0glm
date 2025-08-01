@@ -156,7 +156,7 @@ sel   <- L0glm.fit(Wband, rowSums(D),
                    lambda = 0, nonnegative = TRUE,
                    family = poisson(link=identity),
                    solver = "osqp")$coefficients != 0
-Winit <- as.matrix(Wband[, sel, drop = FALSE])
+Winit <- as.matrix(Wband[, which(sel), drop = FALSE])
 
 ## sparse Poisson Best-Rank NMF with grouped-L0 penalty to infer mass spectra, elution profiles and number of compounds present
 nmf <- L0BestRankGNMF(D,
