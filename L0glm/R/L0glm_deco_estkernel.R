@@ -135,7 +135,9 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
     kernel_est <- kernel_est/sum(kernel_est) # scale kernel_est / PSF_est to unit L1 norm (standard for PSF)
   } else { prior.mean <- NULL }
     
-  # L1 norm normalise each column of y_deconv so that with Poisson noise estimated kernel would have expected Poisson noise
+  # L1 norm normalise each column of y_deconv so that we end up with a discrete 
+  # density distribution of where the peaks are 
+  # in this way, with Poisson noise, the estimated kernel would also have expected Poisson noise
   cs <- colSums(y_deconv)
   y_deconv_scalings <- ifelse(cs > 0, 1/cs, 1)
   y_deconv <- y_deconv %*% Diagonal(x = y_deconv_scalings)
