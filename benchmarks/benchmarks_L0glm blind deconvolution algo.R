@@ -1,4 +1,4 @@
-# BLIND DECONVOLUTION EXAMPLE: SIMULTANEOUSLY ESTIMATE CONVOLUTION KERNEL/PSF/IMPULSE RESPONSE FUNCTION & PEAK LOCATIONS FROM BLURRED SPIKE TRAIN USING L0glm ####
+# DECONVOLUTION & BLIND DECONVOLUTION EXAMPLES: SIMULTANEOUSLY ESTIMATE CONVOLUTION KERNEL/PSF/IMPULSE RESPONSE FUNCTION & PEAK LOCATIONS FROM BLURRED SPIKE TRAIN USING L0glm ####
 
 # 1. SIMULATE SPIKE TRAIN BLURRED BY BIGAUSSIAN PSF ####
 
@@ -19,14 +19,14 @@ g_true <- convkernel("bigaussian", # true PSF: bigaussian peak
 sum(g_true) # 1
 
 ## ----   latent spike train --------------------------------------
-n        <- 10000                      # observation window
-npeaks   <- round(n / 20)              # ~5 % non-zero
+n        <- 10000                      # timepoints
+npeaks   <- round(n / 20)              # 500, ~5 % non-zero
 idx      <- sample(n, npeaks)          # spike locations (1 … n)
 amplitudes  <- sample(1000:100000, npeaks)  # spike amplitudes = peak areas after convolution with PSF
 a_true           <- numeric(n)
 a_true[idx]      <- amplitudes         # latent, unblurred signal
 
-## ----   generate blurred noisy observation -----------------------
+## ----   generate blurred observations with Poisson noise ---------
 X_sim  <- convmatrix(g_true, n)          # sparse Toeplitz conv-matrix
 y_true <- as.vector(X_sim %*% a_true)    # noiseless convolution
 y      <- rpois(length(y_true), y_true)  # with Poisson noise added
@@ -38,9 +38,9 @@ plot(y,      type = "l", main = "Spike train blurred with bigaussian PSF (Poisso
 
 
 # 2. DECONVOLUTION WITH MEASURED/KNOWN PSF ####
+# see ?L0glm_sparse_deco
 
-# see ?L0_sparse_deco
-system.time(a_est_nonblind <- L0_sparse_deco(y = y, 
+system.time(a_est_nonblind <- L0glm_sparse_deco(y = y, 
                           family = poisson(identity), 
                           # X = X_sim, # equivalent to passing g_true as kernel
                           kernel = g_true, # measured/known PSF
@@ -73,23 +73,50 @@ plot(x=a_est_nonblind, y=a_true,
      main = main_expr)
 
 
-# 3. BLIND DECONVOLUTION, ESTIMATE UNKNOWN PSF & PEAK LOCATIONS USING ALTERNATING L0glm FITS (BLOCK COORDINATE DESCENT) ####
-# alternates L0_sparse_deco and L0_deco_estkernel
-# see ?L0_blind_deco, ?L0_sparse_deco & ?L0_deco_estkernel
+# 3. REVERSE STEP: ESTIMATE PSF GIVEN SPIKE TRAIN ESTIMATE (SINGLE STEP) ####
+# see ?L0glm_deco_estkernel
 
-## 3.1 BLIND DECONVOLUTION OF SIMULATED DATA ####
+# get spike train estimate by deconvolving y with gaussian PSF
+system.time(a_est_1iter <- L0glm_sparse_deco(y = y, 
+                                               family = poisson(identity), 
+                                               kernel = convkernel("gaussian", L, list(sigma = 6)),
+                                               IC = "gic")$y_deconv)
+# 0.59s
 
-system.time(fit <- L0_blind_deco(y = y, 
+# estimate PSF given spike train estimate
+system.time(g_est_1iter <- L0glm_deco_estkernel(y = y, 
+                                                   y_deconv = a_est_1iter,
+                                                   kernel_est = convkernel("gaussian", L, list(sigma = 6)), # optional, but more stable & faster convergence when used
+                                                   L = L,
+                                                   family = poisson(identity),
+                                                   IC = "gic")$kernel)
+# 0.03s
+
+plot(g_true, col="red", 
+     lwd=7, type="l",
+     ylab = "Density",
+     main = "True (red) vs. estimated (blue) bigaussian PSF\nafter 1 iteration of Poisson L0 glm blind deconvolution")
+lines(g_est_1iter, col="blue", lwd=3)
+
+
+
+# 4. BLIND DECONVOLUTION, ESTIMATE UNKNOWN PSF & PEAK LOCATIONS USING ALTERNATING L0glm FITS (BLOCK COORDINATE DESCENT) ####
+# alternates L0glm_sparse_deco and L0glm_deco_estkernel
+# see ?L0glm_blind_deco, ?L0glm_sparse_deco & ?L0glm_deco_estkernel
+
+## 4.1 BLIND DECONVOLUTION OF SIMULATED DATA ####
+
+system.time(fit <- L0glm_blind_deco(y = y, 
                           family = poisson(identity), 
                           L = L, # PSF kernel length 
                           kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6, sigma=3.5 to 30 all converge to same solution, only can get stuck with too low w0, e.g. sigma=3
                           kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
-                          p = "mean", # use centroid centering
+                          perc = "mean", # use centroid centering
                           kernel_true = g_true,
                           IC = "gic",
                           plot = TRUE,
-                          tol = 1e-9))
-# 8s
+                          tol = 1e-3))
+# 4s
 fit$deviance_trace
 plot(fit$deviance_trace, type="l", log="y",
      xlab="Iteration", ylab="Deviance", 
@@ -129,9 +156,9 @@ plot(g_true, col="red",
 lines(g_est_blind, col="blue", lwd=3)
 
 
-## 3.2 BLIND DECONVOLUTION OF REAL GC/MS DATA ####
+## 4.2 BLIND DECONVOLUTION OF REAL GC/MS DATA ####
 
-## 3.2.1 BLIND DECONVOLUTION GCMS_data1 ####
+## 4.2.1 BLIND DECONVOLUTION GCMS_data1 ####
 # see ?GCMS_data1 
 
 y_TIC = rowSums(GCMS_data1) # total ion chromatogram (TIC)
@@ -145,15 +172,15 @@ lines(x=as.numeric(rownames(GCMS_data1)), y=y_TIC, col="blue") # TIC
 
 # PSF estimated from alkane ladder standard section
 L <- 51
-system.time(fit <- L0_blind_deco(y = y_std_subs, 
+system.time(fit <- L0glm_blind_deco(y = y_std_subs, 
                                  family = poisson(identity), 
                                  L = L, # PSF kernel length 
                                  kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6
                                  kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
-                                 p = "mean", # use centroid centering
+                                 perc = "mean", # use centroid centering
                                  IC = "gic",
                                  plot = TRUE,
-                                 tol = 1e-9))
+                                 tol = 1e-3))
 # 6s
 fit$deviance_trace
 plot(fit$deviance_trace, type="l", log="y",
@@ -162,19 +189,19 @@ plot(fit$deviance_trace, type="l", log="y",
 a_est_blind = fit$a_hat # estimated spikes
 g_est_blind = fit$g_hat # estimated PSF
 plot(g_est_blind, type="o")
-sum(a_est_blind!=0) # 235
+sum(a_est_blind!=0) # 224
 
 # PSF estimated from TIC of chromatogram section
 L <- 51
-system.time(fit <- L0_blind_deco(y = y_TIC, 
+system.time(fit <- L0glm_blind_deco(y = y_TIC, 
                                  family = poisson(identity), 
                                  L = L, # PSF kernel length 
                                  kernel_est = convkernel("gaussian", L, list(sigma = 6)), # intial kernel estimate, here we use a Gaussian with sigma=6
                                  kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)), # 
-                                 p = "mean", # use centroid centering
+                                 perc = "mean", # use centroid centering
                                  IC = "gic",
                                  plot = TRUE,
-                                 tol = 1e-9))
+                                 tol = 1e-3))
 # 6s
 fit$deviance_trace
 plot(fit$deviance_trace, type="l", log="y",
@@ -183,21 +210,5 @@ plot(fit$deviance_trace, type="l", log="y",
 a_est_blind = fit$a_hat # estimated spikes
 g_est_blind = fit$g_hat # estimated PSF
 plot(g_est_blind, type="o")
-sum(a_est_blind!=0) # 30
+sum(a_est_blind!=0) # 32
 plot(a_est_blind, type="h", col="blue")
-
-
-
-
-# L = 101 # round(length(y)/5)
-# # y = rowSums(GCMS_data2) # more challenging real beer GC/MS examples with triangular acid peak
-# # y = Yagg1[,2] # Yagg1[,1]
-# # y = attr(GCMS_data2, "alkanes_TIC") # alkane ladder
-# # plot(Yagg2[,4] ^ 0.2, type="l")
-# y = Yagg3[,3]
-# y = Yagg3[,2]
-# y = Yagg3
-# matplot(y ^ 0.2, type="l", lty=1)
-# # n = length(y)
-# n = nrow(y)
-# g_true = NULL
