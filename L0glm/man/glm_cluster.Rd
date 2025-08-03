@@ -11,7 +11,8 @@ glm_cluster(
   weights = NULL,
   family = poisson(identity),
   method = if (family$family == "poisson") "poissondist" else "deviance",
-  size_fac = colSums(Y)
+  size_fac = colSums(Y),
+  rowbins = 1L
 )
 
 glm_aggregate(Y, weights = NULL, family = poisson(identity), clusterids)
@@ -33,6 +34,13 @@ Only used with `method = "deviance"`.}
 \item{size_fac}{Size factors used for method `"poissondist"` (default colSums(Y),
 should be changed to rowSums(Y) if t(Y) is analysed to cluster
 rows rather than columns).}
+
+\item{rowbins}{Positive integer.  If \code{rowbins > 1} the
+function first aggregates every \code{rowbins} successive rows
+(time points, samples) to speed up distance computation and
+clustering; clusters are inferred on the binned matrix, but the
+final \code{Y_agg} is computed from the original (unbinned) data.
+Default \code{rowbins = 1} skips this step.}
 
 \item{clusterids}{Integer vector of cluster labels (length =
 \code{ncol(Y)}); required by \code{glm_aggregate()}, returned by
@@ -141,37 +149,33 @@ k-means/X-means alternatives could be considered (Banerjee et al. 2005).
 
 }}
 \examples{
-data(GCMS_data2) # section of a GC/MS chromatogram of beer volatiles
-Y <- GCMS_data2
-dim(Y) # 1764 timepoints x 518 m/z mass traces
-# we aggregate together every bin of 5 subsequent timepoints for extra performance:
-Y2 <- t(glm_aggregate(t(Y),
-                      family = poisson(identity),
-                      clusterids = rep(1L:ceiling(nrow(Y)/5), each=5)[1:nrow(Y)])$Y_agg)
-dim(Y2) # 353 time bins x 518 m/z mass channels
-matplot(Y2 ^ 0.2, type="l", lty=1, col=rgb(0,0,0,0.1),
-        xlab = "Time bin",
-        ylab = "Mass trace ion intensity ^ 0.2",
-        main="518 m/z mass channels in original GC/MS dataset")
+data(GCMS_data2)                        # GC/MS beer-volatile window
+Y <- GCMS_data2                         # 1764 scans × 518 m/z traces
 
-# aggregate correlated m/z mass channels by clustering using Witten 2011's Poisson size-factor distance
-Y2agg1 <- glm_cluster(Y = Y2, family  = poisson(identity), method="poissondist")$Y_agg
-dim(Y2agg1) # 353 x 4
-matplot(Y2agg1 ^ 0.2, type="l", lty=1,
-        xlab = "Time bin",
-        ylab = "Mass cluster ion intensity ^ 0.2",
-        main="518 m/z mass channels clustered into 4 aggregate traces\nusing Witten 2011's Poisson size-factor distance")
-# NOTE: this uses distance matrix D1 <- glm_dist(Y = Y2, family  = poisson(identity), method="poissondist")
-# which is identical to D1b <- PoiClaClu::PoissonDistance(t(Y2), type = "mle", transform = FALSE)$dd
-# but calculates much faster
+##––– 1. Ward–Bregman clustering with Poisson size-factor distance –––
+## We bin every 5 successive scans to speed up the distance calculation
+out_pois <- glm_cluster(Y,
+                        family   = poisson(identity),
+                        method   = "poissondist",
+                        rowbins  = 5)
 
-# aggregate correlated m/z mass channels by clustering using symmetrised deviance (Jensen–Shannon divergence)
-Y2agg2 <- glm_cluster(Y = Y2, family  = poisson(identity), method="deviance")$Y_agg
-dim(Y2agg2) # 353 x 5
-matplot(Y2agg2 ^ 0.2, type="l", lty=1,
-        xlab = "Time bin",
-        ylab = "Mass cluster ion intensity ^ 0.2",
-        main="518 m/z mass channels clustered into 5 aggregate traces\nusing Jensen–Shannon deviance distance")
+dim(out_pois$Y_agg)                    # 1764 scans × 4 trace-clusters
+matplot(out_pois$Y_agg ^ 0.2, type = "l", lty = 1,
+        xlab = "Scan index",
+        ylab = "Cluster intensity ^ 0.2",
+        main = "518 m/z traces collapsed into 4 clusters\nWitten Poisson distance, rowbins = 5")
+
+##––– 2. Same with symmetrised deviance (Jensen–Shannon) –––
+out_js  <- glm_cluster(Y,
+                       family   = poisson(identity),
+                       method   = "deviance",
+                       rowbins  = 5)
+
+dim(out_js$Y_agg)                      # 1764 scans × 5 trace-clusters
+matplot(out_js$Y_agg ^ 0.2, type = "l", lty = 1,
+        xlab = "Scan index",
+        ylab = "Cluster intensity ^ 0.2",
+        main = "518 m/z traces collapsed into 5 clusters\nJensen–Shannon deviance, rowbins = 5")
 }
 \references{
 Telgarsky, M. & Dasgupta, S. (2012).  

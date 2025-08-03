@@ -51,20 +51,16 @@ plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))
 
 
 ### CLUSTERING ####
-# for clustering we aggregate together every bin of rowbins=5 subsequent timepoints for extra performance:
-rowbins <- 5
-Ybinned <- t(glm_aggregate(Y = t(Y),
-                           weights = matrix(1, nrow=ncol(Y), ncol=nrow(Y)), # or t(weights) if given as argument
-                           family = poisson(identity), 
-                           clusterids = rep(1L:ceiling(nrow(Y)/rowbins), each=rowbins)[1:nrow(Y)])$Y_agg)
 
 ### 1.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST? ####
 # cluster & aggregate
-system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 5s
-cl1 <- Ybinnedcl1$clusterids # obtained clusters
-Yagg1 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl1)$Y_agg # aggregate original data within these clusters
+system.time(Yagg1 <- glm_cluster(Y,
+                     family   = poisson(identity),
+                     method   = "poissondist",
+                     rowbins  = 5)$Y_agg) # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
+# 5s  
 dim(Yagg1) # 10000     14
-matplot(Yagg1^0.5, type="l", lty=1) # looks good & distance in line with PoiClaClu::PoissonDistance
+matplot(Yagg1^0.5, type="l", lty=1) # looks good
 
 # fit grouped L0glm model using aggregated Yagg data
 system.time(L0glm.chol_aggregated <- L0glm.fit(X, Yagg1, 
@@ -115,11 +111,13 @@ plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))
 
 ### 1.2. WORKING ON DEVIANCE DISTANCE CLUSTERED DATA ####
 # cluster & aggregate
-system.time(Ybinnedcl2 <- glm_cluster(Ybinned, family=poisson(identity), method="deviance")) # 3s
-cl2 <- Ybinnedcl2$cluster # obtained clusters
-Yagg2 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl2)$Y_agg # aggregate original data within these clusters
+system.time(Yagg2 <- glm_cluster(Y,
+                                 family   = poisson(identity),
+                                 method   = "deviance",
+                                 rowbins  = 5)$Y_agg) # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
+# 4.59s  
 dim(Yagg2) # 10000     4
-matplot(Yagg2, type="l", lty=1)
+matplot(Yagg2^0.5, type="l", lty=1)
 
 # fit grouped L0glm model using aggregated Yagg data
 system.time(L0glm.chol_aggregated <- L0glm.fit(X, Yagg2, 
@@ -228,18 +226,14 @@ for (i in (1:length(selected_features))) {
 
 
 ### CLUSTERING ####
-# for clustering we aggregate together every bin of rowbins subsequent timepoints for extra performance:
-rowbins <- 5
-Ybinned <- t(glm_aggregate(Y = t(Y), 
-                           weights = matrix(1, nrow=ncol(Y), ncol=nrow(Y)), # or t(weights) if given as argument
-                           family = poisson(identity), 
-                           clusterids = rep(1L:ceiling(nrow(Y)/rowbins), each=rowbins)[1:nrow(Y)])$Y_agg)
 
 ### 2.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST SOLUTION ####
 # cluster & aggregate
-system.time(Ybinnedcl1 <- glm_cluster(Ybinned, family=poisson(identity), method="poissondist")) # 1.3s
-cl1 <- Ybinnedcl1$cluster # obtained clusters
-Yagg1 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl1)$Y_agg # aggregate original data within these clusters
+system.time(Yagg1 <- glm_cluster(Y,
+                                 family   = poisson(identity),
+                                 method   = "poissondist",
+                                 rowbins  = 5)$Y_agg) # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
+# 1.28s
 dim(Yagg1) # 119 3
 matplot(Yagg1^0.5, type="l", lty=1) # looks good & distance in line with PoiClaClu::PoissonDistance
 
@@ -319,9 +313,10 @@ plotmat(Y-Y_est, main="residual")
 
 ### 2.2. WORKING ON DEVIANCE DISTANCE CLUSTERED DATA - SLIGHTLY WORSE SOLUTION ####
 # cluster & aggregate
-system.time(Ybinnedcl2 <- glm_cluster(Ybinned, family=poisson(identity), method="deviance")) # 4s
-cl2 <- Ybinnedcl2$cluster # obtained clusters
-Yagg2 <- glm_aggregate(Y, family=poisson(identity), clusterids = cl2)$Y_agg # aggregate original data within these clusters
+system.time(Yagg2 <- glm_cluster(Y,
+                                 family   = poisson(identity),
+                                 method   = "deviance",
+                                 rowbins  = 5)$Y_agg) # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
 dim(Yagg2) # 119     4
 matplot(Yagg2, type="l", lty=1)
 

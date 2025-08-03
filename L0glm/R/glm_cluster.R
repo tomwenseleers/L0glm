@@ -88,6 +88,12 @@
 #' k-means/X-means alternatives could be considered (Banerjee et al. 2005).
 #' 
 #' @inheritParams glm_dist
+#' @param rowbins Positive integer.  If \code{rowbins > 1} the
+#'   function first aggregates every \code{rowbins} successive rows
+#'   (time points, samples) to speed up distance computation and
+#'   clustering; clusters are inferred on the binned matrix, but the
+#'   final \code{Y_agg} is computed from the original (unbinned) data.
+#'   Default \code{rowbins = 1} skips this step.
 #' @param clusterids Integer vector of cluster labels (length =
 #'   \code{ncol(Y)}); required by \code{glm_aggregate()}, returned by
 #'   \code{glm_cluster()}.
@@ -125,37 +131,33 @@
 #' Annals of Applied Statistics 5(4): 2493–2518.
 #' 
 #' @examples
-#' data(GCMS_data2) # section of a GC/MS chromatogram of beer volatiles
-#' Y <- GCMS_data2
-#' dim(Y) # 1764 timepoints x 518 m/z mass traces
-#' # we aggregate together every bin of 5 subsequent timepoints for extra performance:
-#' Y2 <- t(glm_aggregate(t(Y),
-#'                       family = poisson(identity),
-#'                       clusterids = rep(1L:ceiling(nrow(Y)/5), each=5)[1:nrow(Y)])$Y_agg)
-#' dim(Y2) # 353 time bins x 518 m/z mass channels
-#' matplot(Y2 ^ 0.2, type="l", lty=1, col=rgb(0,0,0,0.1),
-#'         xlab = "Time bin",
-#'         ylab = "Mass trace ion intensity ^ 0.2",
-#'         main="518 m/z mass channels in original GC/MS dataset")
+#' data(GCMS_data2)                        # GC/MS beer-volatile window
+#' Y <- GCMS_data2                         # 1764 scans × 518 m/z traces
 #' 
-#' # aggregate correlated m/z mass channels by clustering using Witten 2011's Poisson size-factor distance
-#' Y2agg1 <- glm_cluster(Y = Y2, family  = poisson(identity), method="poissondist")$Y_agg
-#' dim(Y2agg1) # 353 x 4
-#' matplot(Y2agg1 ^ 0.2, type="l", lty=1,
-#'         xlab = "Time bin",
-#'         ylab = "Mass cluster ion intensity ^ 0.2",
-#'         main="518 m/z mass channels clustered into 4 aggregate traces\nusing Witten 2011's Poisson size-factor distance")
-#' # NOTE: this uses distance matrix D1 <- glm_dist(Y = Y2, family  = poisson(identity), method="poissondist")
-#' # which is identical to D1b <- PoiClaClu::PoissonDistance(t(Y2), type = "mle", transform = FALSE)$dd
-#' # but calculates much faster
+#' ##––– 1. Ward–Bregman clustering with Poisson size-factor distance –––
+#' ## We bin every 5 successive scans to speed up the distance calculation
+#' out_pois <- glm_cluster(Y,
+#'                         family   = poisson(identity),
+#'                         method   = "poissondist",
+#'                         rowbins  = 5)
 #' 
-#' # aggregate correlated m/z mass channels by clustering using symmetrised deviance (Jensen–Shannon divergence)
-#' Y2agg2 <- glm_cluster(Y = Y2, family  = poisson(identity), method="deviance")$Y_agg
-#' dim(Y2agg2) # 353 x 5
-#' matplot(Y2agg2 ^ 0.2, type="l", lty=1,
-#'         xlab = "Time bin",
-#'         ylab = "Mass cluster ion intensity ^ 0.2",
-#'         main="518 m/z mass channels clustered into 5 aggregate traces\nusing Jensen–Shannon deviance distance")
+#' dim(out_pois$Y_agg)                    # 1764 scans × 4 trace-clusters
+#' matplot(out_pois$Y_agg ^ 0.2, type = "l", lty = 1,
+#'         xlab = "Scan index",
+#'         ylab = "Cluster intensity ^ 0.2",
+#'         main = "518 m/z traces collapsed into 4 clusters\nWitten Poisson distance, rowbins = 5")
+#' 
+#' ##––– 2. Same with symmetrised deviance (Jensen–Shannon) –––
+#' out_js  <- glm_cluster(Y,
+#'                        family   = poisson(identity),
+#'                        method   = "deviance",
+#'                        rowbins  = 5)
+#' 
+#' dim(out_js$Y_agg)                      # 1764 scans × 5 trace-clusters
+#' matplot(out_js$Y_agg ^ 0.2, type = "l", lty = 1,
+#'         xlab = "Scan index",
+#'         ylab = "Cluster intensity ^ 0.2",
+#'         main = "518 m/z traces collapsed into 5 clusters\nJensen–Shannon deviance, rowbins = 5")
 #' @importFrom fastcluster hclust
 #' @importFrom dynamicTreeCut cutreeDynamic
 #' @export
@@ -168,21 +170,46 @@ glm_cluster <- function(Y,
                         weights = NULL,
                         family  = poisson(identity),
                         method  = if (family$family == "poisson") "poissondist" else "deviance",
-                        size_fac = colSums(Y)) {
+                        size_fac = colSums(Y),
+                        rowbins   = 1L) {
   
-  ## 1. calculate symmetrised deviance (2 x Jensen-Shannon divergence) distance matrix
-  D <- glm_dist(Y, weights = weights, family = family, method = method, size_fac = size_fac)
+  if (rowbins < 1 || rowbins != as.integer(rowbins))
+    stop("`rowbins` must be a positive integer.")
   
-  ## 2. Ward clustering (uses squared distances)
+  ## 0. (optional) bin rows for speed -------------------------------------
+  Y_work  <- Y                  # default: original data
+  W_work  <- weights
+  if (rowbins > 1L) {
+    row_clust <- rep(seq_len(ceiling(nrow(Y)/rowbins)),
+                     each = rowbins, length.out = nrow(Y))
+    
+    tmp <- glm_aggregate(t(Y),
+                         if (!is.null(weights)) t(weights) else NULL,
+                         family      = family,
+                         clusterids  = row_clust)
+    
+    Y_work <- t(tmp$Y_agg)
+    if (!is.null(weights))
+      W_work <- if (!is.null(tmp$weights_agg)) t(tmp$weights_agg) else NULL
+  }
+  
+  
+  ## 1. distance & clustering on (possibly) row-binned matrix -------------
+  ### 1a. calculate symmetrised deviance (2 x Jensen-Shannon divergence) distance matrix 
+  D <- glm_dist(Y_work, weights = W_work, family = family, 
+                method = method, 
+                size_fac = if (rowbins == 1L) size_fac else colSums(Y_work))
+  
+  ### 1b. Ward clustering (uses squared distances)
   hc <- fastcluster::hclust(D, method = "ward.D")  # Ward on squared JS divergences
   
-  ## 3. adaptive tree cut
+  ### 1c. adaptive tree cut
   clusterids <- dynamicTreeCut::cutreeDynamic(hc,
                                       distM = as.matrix(D),
                                       deepSplit = 2,
                                       minClusterSize = 1)
   
-  ## 4. aggregation ----------------------------------------------------
+  ## 2. aggregate ORIGINAL matrix with those column cluster ---------------
   agg <- glm_aggregate(Y, weights, family, clusterids)
   
   list(D = D,

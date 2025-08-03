@@ -12,97 +12,116 @@
 # of false positives, as well as with worse prediction performance.
 
 library(Matrix)
-devtools::load_all(".")
+# devtools::load_all(".")
 library(L0glm)
 
-n <- 200 # timepoints
-k_true <- 50 # true rank (nr of compounds)
-peak_width <- 2.5 # width / sigma of Gaussian peak shapes 
-psf_fun <- function(x, u, w=peak_width) { exp(((x-u)^2)/(-2*(w^2))) } # gaussian point spread / peak shape function
-psf <- psf_fun(x=0:20, u=10) # vector with PSF
-plot(psf, type="o")
-sim.pois.mc <- simulate_spike_train(n = n, k = k_true, family = "poisson", 
-                                    seed = 123,
-                                    multichannel = TRUE,
-                                    mean_beta = 10000,
-                                    sparse = TRUE,
-                                    sd_logbeta = 1,
-                                    psf = psf_fun)
-D = sim.pois.mc$y # n x p with n timepoints and p mass channels
-H_true = sim.pois.mc$beta_true[rowSums(sim.pois.mc$beta_true)!=0,,drop=F]
-image(D)
-image(H_true)
+n <- 500 # timepoints
+k_true <- 100 # true rank (nr of compounds)
+peak_width_range <- c(1, 5) # peak width range
+sim <- simulate_GCMS(n = n, 
+                     k = k_true,
+                     peak_width_range = peak_width_range,
+                     mean_beta   = 1e4,
+                     sd_logbeta  = 1)
+D = sim$D # n x m with n timepoints and m mass channels
+H_true = sim$H_true
+W_true = sim$W_true
+matplot(W_true, type="l") # true elution profiles
+plotmat(D, xlab="Elution time (min)", ylab="Mass (m/z)") # observed chromatogram
+plotmat(H_true, xlab="Compound", ylab="Mass (m/z)") # true mass spectra
 
 # initialise elution profiles (W matrix)
-# we initialise W with an n x n banded matrix with 
-# time-shifted copies of the point spread / peak shape function (PSF) 
-# (this can be estimated by running standards or tuned based on the IC of different L0glm fits 
-# with banded matrices with different peak widths)
-Wstart = sim.pois.mc$X  
+# we estimate a sensible starting estimate of the typical PSF using
+# L0glm_blind_deco 
+# (it would also be possible to estimate it from an alkane ladder standard)
+L = 51 # length of PSF
+g0 = convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
+system.time(fitpsf <- L0glm_blind_deco(y = rowSums(D), # we use TIC 
+                          family = poisson(identity), 
+                          L = L,                 # PSF kernel length 
+                          kernel_est = g0, 
+                          kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
+                          perc = "mean",         # use centroid centering
+                          IC = "gic",
+                          plot = TRUE,
+                          tol = 1e-3))
+# 3s
+Wstart = convmatrix(fitpsf$g_hat, nrow(D)) # n x n banded convolution matrix
 
-# TODO: add another simulate_spike_train matrix to D
-# with say 10 compounds and much wider & higher peaks, to see how the algo
-# would then be able to resolve those elution profiles together with the other peaks
-
-# this matrix can subsequently be pre-subsetted by regressing the row sums of D
-# (=total ion chromatogram) on our banded covariate matrix Wstart using an
-# L0-penalised nonnegative identity link Poisson fit, fit using L0glm.fit  and with
-# lambda=0, after which we can retain only the columns of Wstart with nonzero
-# coefficients and use this as initialisation for W
+# this matrix can subsequently be pre-subsetted by doing a best subset
+# regression of the row sums of D
+# (=total ion chromatogram) on our banded covariate matrix Wstart using L0glm
 keep <- (L0glm.fit(X = Wstart, 
                         y = rowSums(D), # n x p data matrix, now regressing on row sums of D (=total ion chromatogram)
                         intercept = FALSE,
                         family = poisson(link=identity),
-                        lambda = 0,  
+                        lambda = "gic",  
                         nonnegative = TRUE,
-                        solver = "osqp" # using unregularised nonnegative identity link Poisson fit using osqp solver and with lambda=0
+                        solver = "eigen",
+                        method = 7L # using unregularised nonnegative identity link Poisson fit using osqp solver and with lambda=0
            )$coefficients != 0)
-sum(keep) # 77
-Wstart_rowsums = as.matrix(Wstart[, keep, drop=F])
+sum(keep) # 103
+Wstart = as.matrix(Wstart[, which(keep), drop=F])
+matplot(Wstart, type="l")
 
-IC = "bic" # information criterion to be optimised, we choose BIC since after
-# initial variable preselection we are working in a low-dimensional regime
+# for faster NMF performance we first cluster & pool correlated mass traces ####
+Dagg <- glm_cluster(D,
+            family   = poisson(identity),
+            method   = "poissondist",
+            rowbins  = 5)$Y_agg # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
+matplot(Dagg^0.5, type="l", lty=1) # looks good
 
-system.time(nmf <- L0BestRankGNMF(D, 
-                                  Wstart = Wstart_rowsums,  # initially selected elution profiles
+# now fit L0BestRankGNMF model on aggregated data Dagg
+IC = "gic" # information criterion to be optimised
+
+system.time(nmfDagg <- L0BestRankGNMF(Dagg, 
+                                  Wstart = Wstart,  # initially selected elution profiles
                                   grouped_Hupdate = TRUE, # here in the H=t(S) with S=mass spectra we use a grouped L0 penalty 
                                   IC = IC, # information criterion to be optimised
-                                  max_iter = 5, tol = 1e-4,
-                                  method = 4L, parallelize = FALSE, 
+                                  max_iter = 10, tol = 1e-4,
+                                  method = 7L, parallelize = FALSE, 
                                   family = poisson(link="identity"))) # nonnegative identity link Poisson here
-# 23s unparallelized
-dim(nmf$W)
-dim(nmf$H)
-nmf$iter # run for 4 iterations here
-nmf$k # 48 out of 50 components recovered
-nmf$dev_trace # objective over subsequent iterations 
-plot(nmf$dev_trace, type="o", ylab="Penalized deviance loss", xlab="Iteration")
-loss_nmf <- neg_loglik(D, mu = as.matrix(nmf$W %*% nmf$H), fam = poisson(identity))
+# 37s unparallelized
+dim(nmfDagg$W) # 500 x 103
+dim(nmfDagg$H) # 103 x 13
+nmfDagg$iter # run for 10 iterations here
+nmfDagg$k # 103 components retained
+nmfDagg$dev_trace # objective over subsequent iterations 
+plot(nmfDagg$dev_trace, type="o", log="y", 
+     ylab="Penalized deviance loss", xlab="Iteration")
+loss_nmf <- neg_loglik(Dagg, mu = as.matrix(nmf$W %*% nmf$H), fam = poisson(identity))
 loss_nmf # unpenalised -2*negative log likelihood 
-# 24750.79
+# 7051.291
 penloss_nmf <- nmf$dev # final penalised negative log-likelihood objective
 penloss_nmf
-# 22708.34
+# 8373.072
 
-FP = max((nmf$k - k_true), 0) 
-FP # 0 false positives
-FN = max((k_true - nmf$k), 0) 
-FN # 2 false negatives
-nmf$k / k_true # 0.96, i.e. nearly all compounds recovered
+nmf$k / k_true # 1.03 - approx correct?
 
-matplot(nmf$W, type="l") # obtained elution profiles
-image(H_true) # true spectra
-image(nmf$H) # recovered spectra
-# image(nmf$H-sim.pois.mc$beta_true[rowSums(sim.pois.mc$beta_true)!=0,, drop=F]) # residual against ground truth for spectra
+matplot(W_true, type="l", lty=1, 
+        xlab = "Time index",
+        ylab = "Elution profile",
+        main = "True (top) & estimated (bottom) elution profiles (W)",
+        ylim=c(-max(W_true), max(W_true))) # true elution profiles
+matplot(-nmf$W, type="l", lty=1, ylim=c(-max(W_true), max(W_true)), add=TRUE) # obtained elution profiles
 
-image(as.matrix(nmf$W %*% nmf$H))    # sparse NMF reconstruction
-image(as.matrix(sim.pois.mc$y))      # observed data matrix (with Poisson noise)
-image(as.matrix(sim.pois.mc$y_true)) # ground truth (without Poisson noise)
-image(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y_true)) # residual against ground truth
-range(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y_true)) # -239.2441  181.8252
-mean(abs(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y_true))) # MAE against ground truth = 2.743787
-image(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y)) # residual against observed signal
-range(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y)) # -299.5757  211.6712
+# finally refit selected features on original nonaggregated data
+nmfD <- 
+
+
+plotmat(nmf$H) # recovered spectra
+plotmat(H_true) # true spectra
+
+plotmat(nmf$W %*% nmf$H)    # sparse NMF reconstruction in aggregated space
+
+plotmat(sim$D)              # observed data matrix (with Poisson noise)
+plotmat(sim$D_true)         # ground truth (without Poisson noise)
+
+# plotmat(nmf$W %*% nmf$H-sim$D_true) # residual against ground truth
+# range(as.matrix(nmf$W %*% nmf$H-sim$D_true)) # -239.2441  181.8252
+# mean(abs(as.matrix(nmf$W %*% nmf$H-sim$D_true))) # MAE against ground truth = 2.743787
+# plotmat(nmf$W %*% nmf$H-sim$D) # residual against observed signal
+# range(as.matrix(nmf$W %*% nmf$H-sim$D)) # -299.5757  211.6712
 
 # TODO: calculate maximum pairwise cosine similarity between each recovered spectrum (rows in nmf$H)
 # and the best matching true spectra (rows in H_true) and report boxplot with average cosine similarities of best match 
@@ -110,16 +129,14 @@ range(as.matrix(nmf$W %*% nmf$H-sim.pois.mc$y)) # -299.5757  211.6712
 # cf ALS::matchFactor(S[,1],test0$S[,1]) (dot product match factor)
 
 # NOTE: there are still significant optimisations of our algorithm possible.
-# E.g. we could pre-cluster the outcome mass channels, e.g. using XMeans clustering,
-# aggregate the signal within each cluster, determine elution profiles and optimal
-# rank within that reduced aggregate latent space, and finally refit on the original data
-# In addition, it would be possible to use a hierarchical-ALS style (here
+# E.g. it would be possible to use a hierarchical-ALS style (here
 # hierarchical-maximum likelihood) algorithm with local component-wise updates, 
 # instead of using global updates as in our L0BestRankGNMF algo. That would have
 # the advantage that unimodality constraints could more easily and be more stably
 # incorporated, e.g. by smoothing the obtained estimates with a log-concave spline
-# fit obtained using the cobs package after each component-wise update.
+# fit (see ?log_conc_smooth).
 # This would scale better and more stably to large datasets.
+
 # Further extensions for tensor factorisation or simultaneous nonnegative matrix
 # factorisation with automatic best rank estimation would also be possible, but 
 # this remains an avenue for future research.
@@ -150,16 +167,16 @@ penloss_nmf_als
 # 58572.09 vs 22251.9 for L0BestRankGNMF (so much worse)
 
 matplot(nmf_als$W, type="l") # obtained elution profiles
-image(sim.pois.mc$beta_true[rowSums(sim.pois.mc$beta_true)!=0,, drop=F]) # true spectra
+image(sim$beta_true[rowSums(sim$beta_true)!=0,, drop=F]) # true spectra
 image(Matrix(nmf_als$H, sparse=T)) # recovered spectra, with 36 false positives
 
 image(as.matrix(nmf_als$W %*% nmf_als$H))    # sparse NMF reconstruction
-image(as.matrix(sim.pois.mc$y))      # observed data matrix (with Poisson noise)
-image(as.matrix(sim.pois.mc$y_true)) # ground truth (without Poisson noise)
-image(as.matrix(nmf_als$W %*% nmf_als$H-sim.pois.mc$y_true)) # residual against ground truth
-range(as.matrix(nmf_als$W %*% nmf_als$H-sim.pois.mc$y_true)) # -198.0029  216.6830
-mean(abs(as.matrix(nmf_als$W %*% nmf_als$H-sim.pois.mc$y_true))) # MAE against ground truth = 4.589117
-image(as.matrix(nmf_als$W %*% nmf_als$H-sim.pois.mc$y)) # residual against observed signal
-range(as.matrix(nmf_als$W %*% nmf_als$H-sim.pois.mc$y)) # -181.44258   92.20318
+image(as.matrix(sim$y))      # observed data matrix (with Poisson noise)
+image(as.matrix(sim$y_true)) # ground truth (without Poisson noise)
+image(as.matrix(nmf_als$W %*% nmf_als$H-sim$y_true)) # residual against ground truth
+range(as.matrix(nmf_als$W %*% nmf_als$H-sim$y_true)) # -198.0029  216.6830
+mean(abs(as.matrix(nmf_als$W %*% nmf_als$H-sim$y_true))) # MAE against ground truth = 4.589117
+image(as.matrix(nmf_als$W %*% nmf_als$H-sim$y)) # residual against observed signal
+range(as.matrix(nmf_als$W %*% nmf_als$H-sim$y)) # -181.44258   92.20318
 
 # TODO: make proper graphs with nice colours etc
