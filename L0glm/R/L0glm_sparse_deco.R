@@ -220,7 +220,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                                         L        = length(x),   # <- same length
                                         params   = list(sigma = 6),
                                         perc     = 0),          # no recentering as this PSF is already centered
-                           L = 41,
+                           L = if (!is.null(kernel)) length(kernel) else 51,
                            X = NULL, # (sparse) deconvolution kernel - can be used to specify matrix with time-varying PSFs & which would then override kernel
                            IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
                            grouped = TRUE) {  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
@@ -229,14 +229,9 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
   n <- nrow(y)
   p <- ncol(y)
   
-  if (is.null(kernel)) {
-    kernel <- kernelfunc(1L:L)
-    L      <- length(kernel)
-  }  
-  
-  if (is.null(X)) { 
-    X <- convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf 
-  } else { X <- Matrix(X, sparse = TRUE) }
+  if (is.null(kernel)) kernel <- kernelfunc(1L:L)
+  if (is.null(X)) X <- convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf 
+
   y_deconv <- L0glm.fit(y = y,   # nonnegative L0-norm penalised GLM
                         X = X,  
                         family = family, 

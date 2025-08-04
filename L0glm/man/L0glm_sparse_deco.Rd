@@ -10,7 +10,7 @@ L0glm_sparse_deco(
   kernel = NULL,
   kernelfunc = function(x) convkernel("gaussian", L = length(x), params = list(sigma =
     6), perc = 0),
-  L = 41,
+  L = if (!is.null(kernel)) length(kernel) else 51,
   X = NULL,
   IC = "gic",
   grouped = TRUE
