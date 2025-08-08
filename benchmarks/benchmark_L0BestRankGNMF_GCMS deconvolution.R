@@ -38,6 +38,7 @@ L = 51 # length of PSF
 g0 = convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
 system.time(fitpsf <- L0glm_blind_deco(y = rowSums(D), # we use TIC 
                           family = poisson(identity), 
+                          baseline = NULL, # or "intercept" or "bspline"
                           L = L,                 # PSF kernel length 
                           kernel_est = g0, 
                           kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
@@ -60,7 +61,7 @@ keep <- (L0glm.fit(X = Wstart,
                         solver = "eigen",
                         method = 7L # using unregularised nonnegative identity link Poisson fit using osqp solver and with lambda=0
            )$coefficients != 0)
-sum(keep) # 103
+sum(keep) # 101
 Wstart = as.matrix(Wstart[, which(keep), drop=F])
 matplot(Wstart, type="l")
 
@@ -81,32 +82,35 @@ system.time(nmfDagg <- L0BestRankGNMF(Dagg,
                                   max_iter = 10, tol = 1e-4,
                                   method = 7L, parallelize = FALSE, 
                                   family = poisson(link="identity"))) # nonnegative identity link Poisson here
-# 37s unparallelized
-dim(nmfDagg$W) # 500 x 103
-dim(nmfDagg$H) # 103 x 13
-nmfDagg$iter # run for 10 iterations here
-nmfDagg$k # 103 components retained
+# 27s unparallelized
+dim(nmfDagg$W) # 500 x 100
+dim(nmfDagg$H) # 100 x 13
+nmfDagg$iter # run for 7 iterations here
+nmfDagg$k # 100 components retained
 nmfDagg$dev_trace # objective over subsequent iterations 
 plot(nmfDagg$dev_trace, type="o", log="y", 
      ylab="Penalized deviance loss", xlab="Iteration")
-loss_nmf <- neg_loglik(Dagg, mu = as.matrix(nmf$W %*% nmf$H), fam = poisson(identity))
+loss_nmf <- neg_loglik(Dagg, mu = as.matrix(nmfDagg$W %*% nmfDagg$H), fam = poisson(identity))
 loss_nmf # unpenalised -2*negative log likelihood 
-# 7051.291
-penloss_nmf <- nmf$dev # final penalised negative log-likelihood objective
+# 23647.15
+penloss_nmf <- nmfDagg$dev # final penalised negative log-likelihood objective
 penloss_nmf
-# 8373.072
+# 9047.767
 
-nmf$k / k_true # 1.03 - approx correct?
+nmfDagg$k / k_true # 1 - approx correct?
 
 matplot(W_true, type="l", lty=1, 
         xlab = "Time index",
         ylab = "Elution profile",
         main = "True (top) & estimated (bottom) elution profiles (W)",
         ylim=c(-max(W_true), max(W_true))) # true elution profiles
-matplot(-nmf$W, type="l", lty=1, ylim=c(-max(W_true), max(W_true)), add=TRUE) # obtained elution profiles
+matplot(-nmfDagg$W, type="l", lty=1, ylim=c(-max(W_true), max(W_true)), add=TRUE) # obtained elution profiles
+# for compounds with peaks that are wider than normal peaks would still be split
+# these could still be regrouped based on the cosine similarity (in aggregated space) 
+# in a post-clustering step
 
-# finally refit selected features on original nonaggregated data
-nmfD <- 
+# finally refit selected features on original nonaggregated data to get mass spectra
+# nmfD <- XXX FINISH XXX
 
 
 plotmat(nmf$H) # recovered spectra
