@@ -195,7 +195,7 @@ simulate_GCMS <- function(
   dimnames(W_true) <- list(NULL, paste0("peak", idx))
   
   ## -------- B-spline background ------------------------------------------
-  k_background <- max(4L, ceiling(n / 1000))
+  k_background <- max(4L, ceiling(n / 500)) # number of knots
   B            <- splines::bs(
     x         = seq(0, 1, length.out = n),
     df        = k_background,
