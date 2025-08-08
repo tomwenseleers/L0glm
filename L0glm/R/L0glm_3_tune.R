@@ -203,7 +203,7 @@ L0glm.tune <- function(X, y,
     
     ## 2. chosen information criterion
     plot(log10(metrics$lambda), metrics[[IC]],
-         type = "b", pch = 19,
+         type = "b", pch = 19, log = "y",
          xlab = expression(log[10](lambda)), ylab = toupper(IC),
          main = paste("Tuning –", toupper(IC)))
     abline(v = log10(lambda_best), col = "red", lty = 2)

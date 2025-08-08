@@ -793,7 +793,7 @@ if (out) out = attr(X, "normalized")
 return(out) }
 
 # function to calculate good coefficient initialisations to use as starting values in 
-# L0glm.fit which can be used as start - uses ae component-wise initialisation 
+# L0glm.fit which can be used as start - uses a component-wise initialisation 
 # that would be exact if all variables were orthogonal to each other
 # TO DO: in L0glm allow a couple of different initialisations as start, e.g.
 # this one ("compwise"), MCP ("MCP") for high dimensional cases, etc...
@@ -899,10 +899,10 @@ start_coefs = function (X, family=gaussian(identity)) {
 
 
 # maximum lambda that would be expected to penalize all penalized coefficients to zero
-# this takes into account some terms that are unpenalized (e.g. intercept) & 
+# this takes into account some terms will always be included (e.g. intercept) & 
 # prior coefficient estimates
 # see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
-maxlambda = function (X, weights, z, dispersion=1, no.pen=NULL, coefs, family) {
+maxlambda = function (X, weights, z, dispersion=1, always.include=NULL, coefs, family) {
   z <- as.matrix(z)
   weights <- as.matrix(weights)
   sel_task <- which.max(colMeans(abs(z))) # for multitask select column with max mean abs value?
@@ -910,10 +910,10 @@ maxlambda = function (X, weights, z, dispersion=1, no.pen=NULL, coefs, family) {
   weights <- weights[, sel_task, drop=F]
   if (family$family %in% c("binomial", "poisson")) { dispersion = 1 }
   
-  # remove contribution of unpenalized terms
-  if (!is.null(no.pen)) { X_penalized <- X[, -no.pen, drop=F]
-  # Calculate the contribution to z of the unpenalized terms
-  unpen_contrib = X[, no.pen, drop=F] %*% coefs[no.pen]
+  # remove contribution of terms that are always included
+  if (!is.null(always.include)) { X_penalized <- X[, -always.include, drop=F]
+  # Calculate the contribution to z of the terms that are always included
+  unpen_contrib = X[, always.include, drop=F] %*% coefs[always.include]
   # Adjust z by subtracting the unpenalized contribution
   z <- z - unpen_contrib
   X <- X_penalized

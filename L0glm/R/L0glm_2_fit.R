@@ -115,17 +115,21 @@
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
 #'   be added, and the user must ensure that `X` already contains an intercept
 #'   if needed. Defaults to `FALSE`.
-#' @param no.pen A vector of coefficient indices that should not be penalized.
-#'   Coefficients with a name that includes \code{"Intercept"} in their name are
-#'   not penalized by default. Specify 0 if all terms should be allowed to be
-#'   shrunk to zero. If `intercept = TRUE`, the first column (intercept) is
-#'   automatically excluded from penalization.
+#' @param always.include A vector of coefficient indices that should always be
+#'   estimated & included in the model. This is done by updating \code{prior.mean}
+#'   in each IRLS iteration for these coefficients, instead of using sceptical
+#'   zero-centered prior updates for the other coefficients. Coefficients with 
+#'   a name that includes \code{"Intercept"} in their name are always included. 
+#'   Specify 0 if all terms should be allowed to be
+#'   shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
+#'   always be estimated and included in the model.
 #' @param nonnegative A logical indicating whether nonnegativity constraints
 #'   should be applied. If \code{TRUE}, \code{lower} will be set to \code{rep(0,
 #'   ncol(X))}.
 #' @param normalize Logical indicating whether the columns of the design matrix
 #'   \strong{X} should be scaled to have unit \eqn{L_2} norm. It is advised to
 #'   use normalization unless the covariates were measured on a similar scale.
+#'   Defaults to \code{TRUE}
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"glmnet"} (\code{"bigGlm"}, using coordinate
@@ -195,7 +199,7 @@
 #'   \code{lambda=1E-10}). This can eliminate any remaining bias on the
 #'   coefficients and increase sensitivity, especially for the multivariate case
 #'   with grouped variable selection. Defaults to \code{TRUE} when
-#'   \code{grouped=TRUE}.
+#'   \code{grouped=TRUE} & multichannel data are passed in \code{y}.
 #' @param warm.start A numeric value in the range of [0, 1] that represents the
 #'   level of confidence in the initial start values when provided. This
 #'   parameter is used in a weighted average to calculate the 'start' values.
@@ -349,7 +353,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       offset        = NULL,
                       lambda        = 1,
                       intercept     = (family$family=="binomial"), # always fit an intercept with binomial family
-                      no.pen        = NULL,
+                      always.include        = NULL,
                       nonnegative   = FALSE,
                       normalize     = FALSE,
                       solver        = "eigen",
@@ -361,11 +365,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       maxit         = 25,
                       grouped       = TRUE,
                       group.maxit   = 6,
-                      relaxed       = grouped,
+                      relaxed       = grouped & ncol(y)>1,
                       warm.start    = 0.9,
                       prior.mean    = NULL,
                       gamma         = 2,
-                      thresh        = 1e-5,
+                      thresh        = 1e-6,
                       tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE) {
@@ -395,7 +399,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   if (intercept) {
     X <- cbind(Intercept = 1, X)
     intercept.col <- 1  # remember its position
-    no.pen <- c(1, no.pen+1)   # never penalize the intercept (indexing for no.pen is for non-intercept coefs)
+    always.include <- c(1, always.include+1)   # always include intercept (indexing for always.include is for non-intercept coefs)
     lower <- c(-.Machine$double.xmax, lower) # fit intercept unconstrained (important e.g. for binomial)
     upper <- c(.Machine$double.xmax, upper)
     p <- ncol(X)               # update p after intercept addition
@@ -437,10 +441,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       start <- matrix(rep(start, m), nrow = nrow(start), ncol = m)
     if (!identical(dim(start), c(p, m)))
       stop("start must have dimension p x m (or length p for univariate)")
-    if (normalize) {
-      Xscaled <- normalizeX(X, no.norm = intercept.col)
-      start   <- start * scaling
-    }
+    # if (normalize) { # normalisation is done in L0glm.fit.internal
+    #   Xscaled <- normalizeX(X, no.norm = intercept.col)
+    #   scaling <- attr(Xscaled, "scaling")
+    #   # start   <- start * scaling
+    # }
     start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
   } else {
     start <- NULL # leave initialisation to internal function
@@ -476,7 +481,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   
   # 6 misc --------------------------------------------------
   if (nonnegative) lower[lower < 0] <- 0
-  no.pen.start <- no.pen
+  always.include.start <- always.include
   init.lambda <- lambda
   
   
@@ -506,7 +511,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         if (iter > 1) {
           avgc   <- Matrix::rowMeans(coefficients)
           vars   <- which(avgc != 0)
-          no.pen <- match(no.pen.start[no.pen.start %in% vars], vars)
+          always.include <- match(always.include.start[always.include.start %in% vars], vars)
           start  <- matrix(rep(avgc, m), length(avgc), m)
         } else {
           vars <- seq_len(p)
@@ -531,7 +536,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         gamma         = gamma,
                                         maxit         = maxit,
                                         tol           = tol,
-                                        no.pen        = no.pen,
+                                        always.include        = always.include,
                                         thresh        = thresh,
                                         solver        = solver,
                                         warm.start    = warm.start,
@@ -568,7 +573,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                solver      = solver,
                                method      = method,
                                tol         = tol,
-                               no.pen      = no.pen,
+                               always.include      = always.include,
                                control.solver = control.solver,
                                verbose     = verbose)
           })
@@ -589,7 +594,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         avgc   <- Matrix::rowMeans(coefficients)
         vars   <- which(avgc != 0)
         if (length(vars)) {
-          no.pen <- match(no.pen.start[no.pen.start %in% vars], vars)
+          always.include <- match(always.include.start[always.include.start %in% vars], vars)
           start  <- matrix(rep(avgc, m), length(avgc), m)
           coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
           weights.mat  <- Matrix(0, n, m, sparse = TRUE)
@@ -605,7 +610,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           gamma         = gamma,
                                           maxit         = maxit,
                                           tol           = tol,
-                                          no.pen        = no.pen,
+                                          always.include        = always.include,
                                           thresh        = thresh,
                                           solver        = solver,
                                           warm.start    = warm.start,
@@ -642,7 +647,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  solver      = solver,
                                  method      = method,
                                  tol         = tol,
-                                 no.pen      = no.pen,
+                                 always.include      = always.include,
                                  control.solver = control.solver,
                                  verbose     = verbose)
             })
@@ -697,7 +702,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               method      = method,
                               maxit       = maxit,
                               tol         = tol,
-                              no.pen      = no.pen,
+                              always.include      = always.include,
                               control.solver = control.solver,
                               verbose     = verbose)
     
@@ -711,7 +716,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     if (relaxed) { 
       vars <- which(coefficients != 0)
       if (length(vars)) {
-        no.pen <- match(no.pen.start[no.pen.start %in% vars], vars)
+        always.include <- match(always.include.start[always.include.start %in% vars], vars)
         fit     <- L0glm.fit.internal(X          = X[, vars, drop = FALSE],
                                       y          = y,
                                       weights    = weights,
@@ -731,7 +736,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       method      = method,
                                       maxit       = maxit,
                                       tol         = tol,
-                                      no.pen      = no.pen,
+                                      always.include      = always.include,
                                       control.solver = control.solver,
                                       verbose     = verbose)
         coefficients[]     <- 0
@@ -783,7 +788,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      warm.start = 0.9,
                      prior.mean = NULL, weights = NULL, dispersion = NULL,
                      start = NULL, lower, upper,
-                     verbose = FALSE, maxit, tol, offset, no.pen = 0,
+                     verbose = FALSE, maxit, tol, offset, always.include = 0,
                      control.solver = do.call("control.solver.gen",
                                               list(solver = solver, method = method))) {
   
@@ -800,7 +805,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       start        = as.vector(start[, col]),
       maxit        = maxit,
       tol          = tol,
-      no.pen       = no.pen,
+      always.include       = always.include,
       lower        = lower,
       offset       = as.vector(offset[, col]),
       upper        = upper,

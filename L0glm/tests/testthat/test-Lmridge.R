@@ -1031,7 +1031,7 @@ test_that("maxlambda calculates correctly for Gaussian family without unpenalize
   coefs <- c(0.5, 1, 1.5)
   family <- gaussian(identity)
   
-  result <- maxlambda(X, weights, z, dispersion = 1, no.pen = NULL, coefs, family)
+  result <- maxlambda(X, weights, z, dispersion = 1, always.include = NULL, coefs, family)
   
   # Calculations for expected values
   Xw <- Diagonal(x = sqrt(weights)) %*% X
@@ -1041,20 +1041,20 @@ test_that("maxlambda calculates correctly for Gaussian family without unpenalize
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })
 
-test_that("maxlambda calculates correctly for Poisson family with unpenalized terms", {
+test_that("maxlambda calculates correctly for Poisson family with terms that are always included", {
   X <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, ncol = 3)
   weights <- matrix(c(1, 1), nrow = 2, ncol = 1)
   z <- matrix(c(2, 3), nrow = 2, ncol = 1)
   coefs <- c(0.5, 1, 1.5)
-  no.pen <- 1  # Exclude the first column from penalization
+  always.include <- 1  # Always include first column
   family <- poisson(link = "log")
   
-  result <- maxlambda(X, weights, z, dispersion = 1, no.pen, coefs, family)
+  result <- maxlambda(X, weights, z, dispersion = 1, always.include, coefs, family)
   
   # Calculations for expected values
-  unpen_contrib <- X[, no.pen, drop = FALSE] %*% coefs[no.pen]
-  z_adjusted <- z - unpen_contrib
-  X_penalized <- X[, -no.pen, drop = FALSE]
+  contrib_alwaysincl <- X[, always.include, drop = FALSE] %*% coefs[always.include]
+  z_adjusted <- z - contrib_alwaysincl
+  X_penalized <- X[, -always.include, drop = FALSE]
   Xw <- Diagonal(x = sqrt(weights)) %*% X_penalized
   zw <- Diagonal(x = sqrt(weights)) %*% z_adjusted
   maxlambda_expected <- (4 / 1) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
@@ -1069,7 +1069,7 @@ test_that("maxlambda handles binomial family with default dispersion", {
   coefs <- c(0.5, 1, 1.5)
   family <- binomial(link = "logit")
   
-  result <- maxlambda(X, weights, z, dispersion = 1, no.pen = NULL, coefs, family)
+  result <- maxlambda(X, weights, z, dispersion = 1, always.include = NULL, coefs, family)
   
   Xw <- Diagonal(x = sqrt(weights)) %*% X
   zw <- Diagonal(x = sqrt(weights)) %*% z
@@ -1085,7 +1085,7 @@ test_that("maxlambda respects family-specific dispersion for Gamma family", {
   coefs <- c(0.5, 1, 1.5)
   family <- Gamma(link = "inverse")
   
-  result <- maxlambda(X, weights, z, dispersion = 1.5, no.pen = NULL, coefs, family)
+  result <- maxlambda(X, weights, z, dispersion = 1.5, always.include = NULL, coefs, family)
   
   Xw <- Diagonal(x = sqrt(weights)) %*% X
   zw <- Diagonal(x = sqrt(weights)) %*% z

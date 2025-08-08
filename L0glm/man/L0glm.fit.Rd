@@ -16,7 +16,7 @@ L0glm.fit(
   offset = NULL,
   lambda = 1,
   intercept = (family$family == "binomial"),
-  no.pen = NULL,
+  always.include = NULL,
   nonnegative = FALSE,
   normalize = FALSE,
   solver = "eigen",
@@ -28,11 +28,11 @@ L0glm.fit(
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,
-  relaxed = grouped,
+  relaxed = grouped & ncol(y) > 1,
   warm.start = 0.9,
   prior.mean = NULL,
   gamma = 2,
-  thresh = 1e-05,
+  thresh = 1e-06,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE
@@ -95,11 +95,14 @@ this term will **not** be penalized. If `FALSE`, no intercept column will
 be added, and the user must ensure that `X` already contains an intercept
 if needed. Defaults to `FALSE`.}
 
-\item{no.pen}{A vector of coefficient indices that should not be penalized.
-Coefficients with a name that includes \code{"Intercept"} in their name are
-not penalized by default. Specify 0 if all terms should be allowed to be
-shrunk to zero. If `intercept = TRUE`, the first column (intercept) is
-automatically excluded from penalization.}
+\item{always.include}{A vector of coefficient indices that should always be
+estimated & included in the model. This is done by updating \code{prior.mean}
+in each IRLS iteration for these coefficients, instead of using sceptical
+zero-centered prior updates for the other coefficients. Coefficients with 
+a name that includes \code{"Intercept"} in their name are always included. 
+Specify 0 if all terms should be allowed to be
+shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
+always be estimated and included in the model.}
 
 \item{nonnegative}{A logical indicating whether nonnegativity constraints
 should be applied. If \code{TRUE}, \code{lower} will be set to \code{rep(0,
@@ -107,7 +110,8 @@ ncol(X))}.}
 
 \item{normalize}{Logical indicating whether the columns of the design matrix
 \strong{X} should be scaled to have unit \eqn{L_2} norm. It is advised to
-use normalization unless the covariates were measured on a similar scale.}
+use normalization unless the covariates were measured on a similar scale.
+Defaults to \code{TRUE}}
 
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic
@@ -186,7 +190,7 @@ unpenalized fit on the L0glm selected variables (using
 \code{lambda=1E-10}). This can eliminate any remaining bias on the
 coefficients and increase sensitivity, especially for the multivariate case
 with grouped variable selection. Defaults to \code{TRUE} when
-\code{grouped=TRUE}.}
+\code{grouped=TRUE} & multichannel data are passed in \code{y}.}
 
 \item{warm.start}{A numeric value in the range of [0, 1] that represents the
 level of confidence in the initial start values when provided. This
