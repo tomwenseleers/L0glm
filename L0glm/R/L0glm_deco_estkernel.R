@@ -36,6 +36,8 @@
 #'
 #' @inheritParams L0glm_sparse_deco
 #' @param y_deconv Matrix or vector with the (already estimated) latent spikes.
+#' @param offset Matrix or vector with a model offset (same shape as \code{y}),
+#'               e.g. a previously fitted baseline/background.
 #' @param L        Length of the PSF to estimate (ignored when \code{kernel_est}
 #'   is supplied).
 #' @param kernel_est Optional prior guess for the PSF.  It is L1-normalised
@@ -59,68 +61,99 @@
 #' \code{\link{log_conc_smooth}}
 #'
 #' @examples
-#' if (requireNamespace("L0glm", quietly = TRUE)) {
 #'
-#'   ## ------------------------------------------------------------------------
-#'   ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
-#'   ## ------------------------------------------------------------------------
-#'   set.seed(123)
-#'   library(Matrix)
-#'
-#'   ## --- true point–spread function (PSF) -----------------------------
-#'   L       <- 51                       # kernel length
-#'   sigma1  <- 1.25                     # left-hand σ
-#'   sigma2  <- 5                        # right-hand σ
-#'   g_true  <- convkernel("bigaussian", L,
-#'                         params = list(sigma1 = sigma1,
-#'                                       sigma2 = sigma2),
-#'                         perc   = 0)   # already centred
-#'
-#'   ## --- latent sparse spike-train ------------------------------------
-#'   n        <- 10000                   # timepoints
-#'   npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
-#'   idx      <- sample(n, npeaks)
-#'   amps     <- sample(1000:100000, npeaks)
-#'   a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
-#'
-#'   ## --- generate blurred, noisy observations -------------------------
-#'   X_sim  <- convmatrix(g_true, n)
-#'   y_true <- as.vector(X_sim %*% a_true)     # noiseless convolution
-#'   y      <- rpois(n, y_true)                # with Poisson noise
-#'
-#'   ## ------------------------------------------------------------------------
-#'   ## 2  Deconvolution with an initial PSF guess
-#'   ## ------------------------------------------------------------------------
-#'
-#'   g0 <- convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
-#'   fit <- L0glm_sparse_deco(y, kernel = g0,
-#'                            family = poisson(identity), IC = "gic")
-#'   a_est <- as.vector(fit$y_deconv)                  # estimated spike train
-#'
-#'   ## ------------------------------------------------------------------------
-#'   ## 3  Update PSF estimate given initial spike train estimate
-#'   ## ------------------------------------------------------------------------
-#'
-#'   fit <- L0glm_deco_estkernel(y,
-#'                               y_deconv = a_est,  # estimated spike train
-#'                               kernel_est = g0,   # for more stable & faster convergence
-#'                               L = L,
-#'                               family = poisson(identity),
-#'                               IC = "gic")
-#'   g_est <- fit$kernel
-#'
-#'   plot(g_true, col="red",
-#'        lwd=7, type="l",
-#'        ylab = "Density",
-#'        main = "True (red) vs. estimated (blue) bigaussian PSF\nafter 1 iteration of Poisson L0 glm blind deconvolution")
-#'   lines(g_est, col="blue", lwd=3)
-#' }
+#' ## ------------------------------------------------------------------------
+#' ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
+#' ## ------------------------------------------------------------------------
+#' library(Matrix)
+#' library(splines)
+#' set.seed(123)
+#' family <- poisson(identity)
+#' 
+#' ## --- true point–spread function (PSF) -----------------------------
+#' L       <- 51                       # kernel length
+#' sigma1  <- 1.25                     # left-hand σ
+#' sigma2  <- 5                        # right-hand σ
+#' g_true  <- convkernel("bigaussian", L,
+#'                       params = list(sigma1 = sigma1,
+#'                                     sigma2 = sigma2),
+#'                       perc   = 0)   # already centred
+#' 
+#' ## --- latent sparse spike-train ------------------------------------
+#' n        <- 10000                   # timepoints
+#' npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
+#' idx      <- sample(n, npeaks)
+#' amps     <- sample(1000:100000, npeaks)
+#' a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
+#' 
+#' ## --- baseline -----------------------------------------------------
+#' baseline <- "intercept" # or "bspline" or NULL
+#' if (!is.null(baseline)) {if (baseline=="intercept") {
+#'   X_baseline <- Matrix::Matrix(1, n, 1, sparse = TRUE)
+#'   a_baseline <- 5000
+#' } else if (baseline=="bspline") {
+#'   nknots <- max(4L, floor(n/500))
+#'   X_baseline <- splines::bs(seq_len(n), df = nknots, degree = 3)
+#'   X_baseline <- Matrix::Matrix(X_baseline, sparse = TRUE)
+#'   a_baseline <- runif(nknots, min = 2000, max = 6000)
+#' }} else { X_baseline <- NULL }
+#' 
+#' ## --- generate blurred, noisy observations -------------------------
+#' X_sim  <- convmatrix(g_true, n)
+#' if (!is.null(X_baseline)) { X_full <- cbind(X_baseline, X_sim)
+#' a_full <- c(a_baseline, a_true)
+#' y_baseline <- as.vector(X_baseline %*% a_baseline) # noiseless baseline
+#' } else {
+#'   X_full <- X_sim
+#'   a_full <- a_true
+#'   y_baseline <- rep(0, n) }
+#' 
+#' y_true <- as.vector(X_full %*% a_full)    # noiseless convolution
+#' y      <- rpois(n, y_true)                # with Poisson noise
+#' 
+#' 
+#' # quick sanity plot
+#' plot(y, type = "l", ylim = c(0,max(y)), main = "Simulated blurred spike train with baseline in red")
+#' lines(y_baseline, col="red")
+#' 
+#' ## ------------------------------------------------------------------------
+#' ## 2  Deconvolution with an initial PSF guess
+#' ## ------------------------------------------------------------------------
+#' g0 <- convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
+#' fit <- L0glm_sparse_deco(y, 
+#'                          kernel = g0,
+#'                          baseline = baseline,
+#'                          family = poisson(identity), 
+#'                          IC = "gic")
+#' a_est <- as.vector(fit$coef_spikes)               # estimated spike train
+#' a_baseline <- fit$coef_baseline                   # estimated baseline coefs
+#' X_baseline <- fit$X_baseline                      # design matrix for baseline 
+#' if (!is.null(X_baseline)) { offset <- X_baseline %*% a_baseline } else { offset <- NULL }
+#' 
+#' ## ------------------------------------------------------------------------
+#' ## 3  Update PSF estimate given initial spike train estimate
+#' ## ------------------------------------------------------------------------
+#' fit <- L0glm_deco_estkernel(y,
+#'                             y_deconv = a_est,  # estimated spike train
+#'                             kernel_est = g0,   # for more stable & faster convergence
+#'                             offset = offset,   # offset for baseline
+#'                             L = L,
+#'                             family = poisson(identity),
+#'                             IC = "gic")
+#' g_est <- fit$kernel
+#' 
+#' plot(g_true, col="red",
+#'      lwd=7, type="l",
+#'      ylab = "Density",
+#'      main = "True (red) vs. estimated (blue) bigaussian PSF\nafter 1 iteration of Poisson L0 glm blind deconvolution")
+#' lines(g_est, col="blue", lwd=3)
 #'
 #' @importFrom Matrix Matrix Diagonal colSums
 #' @importFrom L0glm L0glm.fit
 #' @export
 L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) with response(s) to be deconvolved
                               y_deconv, # vector or matrix (for multivariate case) with estimated deconvolved unblurred signal(s)
+                              offset = NULL, # model offset for background/baseline
                               kernel_est = NULL, # vector with prior estimate of kernel, if available - is always normalised to unit L1 norm before use
                               L = ifelse(!is.null(kernel_est), length(kernel_est), 51), # desired length of  convolution kernel / PSF to be estimated
                               family = poisson(identity),   # noise model, we only support identity link families here
@@ -128,6 +161,7 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                               perc = "mean", # shift PSF to centroid
                               IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic)  
   if (is.vector(y)) y <- as.matrix(y)
+  if (!is.null(offset)) { if (is.vector(offset)) offset <- as.matrix(offset) } else { offset <- 0 }
   if (is.vector(y_deconv)) y_deconv <- Matrix(y_deconv, sparse=TRUE)
   n <- nrow(y)
   
@@ -138,7 +172,7 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
   # L1 norm normalise each column of y_deconv so that we end up with a discrete 
   # density distribution of where the peaks are 
   # in this way, with Poisson noise, the estimated kernel would also have expected Poisson noise
-  cs <- colSums(y_deconv)
+  cs <- Matrix::colSums(y_deconv)
   y_deconv_scalings <- ifelse(cs > 0, 1/cs, 1)
   y_deconv <- y_deconv %*% Diagonal(x = y_deconv_scalings)
   
@@ -151,19 +185,22 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                                                      origin = (L + 1L) %/% 2L)
                                      # shrink towards prior kernel estimate if kernel_est given (more stable)
                                      if (!is.null(kernel_est)) { prior.mean = kernel_est/y_deconv_scalings[col] } 
-                                     kernel <- L0glm.fit(y = y[, col, drop = FALSE],  # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate 
+                                     kernel <- L0glm.fit(y = y[, col, drop = FALSE], # -offset[, col, drop = FALSE] # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate 
                                                          X = X, 
                                                          family = family, 
                                                          intercept = FALSE,
-                                                         # no.pen = seq(1, ncol(X), by=2), # not penalising every other scan line could be similar to penalising the difference between consecutive coefficients, i.e. to using a fused ridge penalty, but with pre-set lambda that will approx optimise GIC
+                                                         offset = offset,
+                                                         always.include = seq(1, ncol(X), by=2), # TODO worth testing: always including every other scan line, similar to penalising the difference between consecutive coefficients, i.e. to using a fused ridge penalty, but with pre-set lambda that will approx optimise GIC
                                                          nonnegative = TRUE,
-                                                         start = prior.mean,
+                                                         start = NULL,
+                                                         normalize = FALSE,
                                                          warm.start = 1,
                                                          prior.mean = prior.mean, 
                                                          grouped = FALSE, 
                                                          lambda = IC,
                                                          method = 7L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
                                                          solver = "eigen")$coefficients
+                                     kernel <- pmax(kernel-quantile(kernel, 0.5), 0) # remove any kernel baseline
                                      # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)
                                      if (!is.null(kernel_smoothfun)) { kernel <- kernel_smoothfun(y = kernel) }
                                      # center PSF at given percentile p or with "mean" put centroid in middle

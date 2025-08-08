@@ -90,6 +90,18 @@
 #' @param X       Optional.  A sparse design matrix that overrides
 #'                the automatic call to \code{\link{convmatrix}}.  This is
 #'                useful when you need time-varying PSFs.
+#' @param baseline  Character.  One of
+#'                  \code{NULL} (no baseline, default),
+#'                  \code{"intercept"} (a single constant column),
+#'                  or \code{"bspline"} (cubic B-spline basis).
+#'                  The baseline columns are prepended to the Toeplitz
+#'                  design and are \emph{always included} in the model.
+#'                  Their fitted contribution is used as an \code{offset}
+#'                  in the \code{L0glm_deco_estkernel} kernel–update step.
+#' @param nknots    Integer ≥ 4.  Number of spline knots
+#'                  to use when \\code{baseline = "bspline"}. With \code{nknots<4}
+#'                  and \code{baseline="bspline"} \code{baseline} is changed
+#'                  to \code{intercept}. 
 #' @param IC      Information criterion that sets the penalty parameter in
 #'                \pkg{L0glm}. One of `"gic"` (default), `"aic"`, `"bic"`,
 #'                `"mbic"` or `"ebic"`.
@@ -100,9 +112,15 @@
 #'
 #' @return A list with
 #' \describe{
-#'   \item{\code{y_deconv}}{Estimated un-blurred spikes (same shape as \code{y}).}
-#'   \item{\code{fitted.values}}{\eqn{X a}, the fitted (re-blurred) signal.}
+#'   \item{\code{coef_spikes}}{Estimated un-blurred spikes, i.e. the coefficients
+#'                             for design matrix \code{X_spikes} (same shape as \code{y}).}
+#'   \item{\code{coef_baseline}}{Estimated baseline coefficients for baseline
+#'                               design matrix \code{X_baseline}.}
+#'   \item{\code{fitted_values}}{\eqn{X a}, the fitted signal.}
+#'   \item{\code{fitted_baseline}}{\eqn{X a}, the fitted baseline}
 #'   \item{\code{deviance}}{Residual deviance of the fit.}
+#'   \item{\code{X_spikes}}{Toeplitz design matrix for the spikes.}
+#'   \item{\code{X_baseline}}{Design matrix for the baseline.}
 #' }
 #'
 #' @references
@@ -147,70 +165,104 @@
 #'   \code{\link{convkernel}} (PSF generator).
 #'
 #' @examples
-#' if (requireNamespace("L0glm", quietly = TRUE)) {
-#'
-#'   ## ------------------------------------------------------------------------
-#'   ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
-#'   ## ------------------------------------------------------------------------
-#'   set.seed(123)
-#'
-#'   ## --- true point–spread function (PSF) -----------------------------
-#'   L       <- 51                       # kernel length
-#'   sigma1  <- 1.25                     # left-hand σ
-#'   sigma2  <- 5                        # right-hand σ
-#'   g_true  <- convkernel("bigaussian", L,
-#'                         params = list(sigma1 = sigma1,
-#'                                        sigma2 = sigma2),
-#'                         perc   = 0)   # already centred
-#'
-#'   ## --- latent sparse spike-train ------------------------------------
-#'   n        <- 10000                   # timepoints
-#'   npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
-#'   idx      <- sample(n, npeaks)
-#'   amps     <- sample(1000:100000, npeaks)
-#'   a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
-#'
-#'   ## --- generate blurred, noisy observations -------------------------
-#'   X_sim  <- convmatrix(g_true, n)
-#'   y_true <- as.vector(X_sim %*% a_true)     # noiseless convolution
-#'   y      <- rpois(n, y_true)                # with Poisson noise
-#'
-#'   ## ------------------------------------------------------------------------
-#'   ## 2  Deconvolution with the known PSF
-#'   ## ------------------------------------------------------------------------
-#'   fit <- L0glm_sparse_deco(y, kernel = g_true,
-#'                            family = poisson(identity), IC = "gic")
-#'   a_est <- as.vector(fit$y_deconv)
-#'
-#'   ## ---------- summary statistics ------------------------------------
-#'   n_true <- sum(a_true != 0)
-#'   n_est  <- sum(a_est  != 0)
-#'   tp     <- sum(a_true != 0 & a_est != 0)
-#'   precision <- tp / n_est
-#'   recall    <- tp / n_true
-#'   F1        <- 2 * precision * recall / (precision + recall)
-#'   R2p <- 100 *
-#'     summary(lm(a_true ~ 0 + a_est))$r.squared
-#'
-#'   ## ---------- scatter-plot with true vs. estimated peak areas -------
-#'   main_expr <- bquote(
-#'     atop("Poisson L0-glm deconvolution with known PSF",
-#'          atop("true vs. estimated peak areas",
-#'               italic(R)^2 == .(sprintf("%.2f", R2p)) * "%" ~ "|" ~
+#' ## ------------------------------------------------------------------------
+#' ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
+#' ## ------------------------------------------------------------------------
+#' library(Matrix)
+#' library(splines)
+#' set.seed(123)
+#' family <- poisson(identity)
+#' 
+#' ## --- true point–spread function (PSF) -----------------------------
+#' L       <- 51                       # kernel length
+#' sigma1  <- 1.25                     # left-hand σ
+#' sigma2  <- 5                        # right-hand σ
+#' g_true  <- convkernel("bigaussian", L,
+#'                       params = list(sigma1 = sigma1,
+#'                                     sigma2 = sigma2),
+#'                       perc   = 0)   # already centred
+#' 
+#' ## --- latent sparse spike-train ------------------------------------
+#' n        <- 10000                   # timepoints
+#' npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
+#' idx      <- sample(n, npeaks)
+#' amps     <- sample(1000:100000, npeaks)
+#' a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
+#' 
+#' ## --- baseline -----------------------------------------------------
+#' baseline <- "intercept" # or "bspline" or NULL 
+#' if (!is.null(baseline)) {if (baseline=="intercept") {
+#'   X_baseline <- Matrix::Matrix(1, n, 1, sparse = TRUE)
+#'   a_baseline <- 5000
+#' } else if (baseline=="bspline") {
+#'   nknots <- max(4L, floor(n/500))
+#'   X_baseline <- splines::bs(seq_len(n), df = nknots, degree = 3)
+#' X_baseline <- Matrix::Matrix(X_baseline, sparse = TRUE)
+#'   a_baseline <- runif(nknots, min = 2000, max = 6000)
+#' }} else { X_baseline <- NULL }
+#' 
+#' ## --- generate blurred, noisy observations -------------------------
+#' X_sim  <- convmatrix(g_true, n)
+#' if (!is.null(X_baseline)) { X_full <- cbind(X_baseline, X_sim)
+#' a_full <- c(a_baseline, a_true)
+#' y_baseline <- as.vector(X_baseline %*% a_baseline) # noiseless baseline  
+#' } else { 
+#'   X_full <- X_sim
+#'   a_full <- a_true
+#'   y_baseline <- rep(0, n) }
+#' 
+#' y_true <- as.vector(X_full %*% a_full)    # noiseless convolution
+#' y      <- rpois(n, y_true)                # with Poisson noise
+#' 
+#' 
+#' # quick sanity plot
+#' plot(y, type = "l", ylim = c(0,max(y)), main = "Simulated blurred spike train with baseline in red")
+#' lines(y_baseline, col="red")
+#' 
+#' ## ------------------------------------------------------------------------
+#' ## 2  Deconvolution with the known PSF
+#' ## ------------------------------------------------------------------------
+#' 
+#' fit <- L0glm_sparse_deco(y, kernel = g_true,
+#'                          family = poisson(identity),
+#'                          baseline = baseline, 
+#'                          IC = "gic")
+#' a_est_baseline <- as.vector(fit$coef_baseline) 
+#' a_est <- as.vector(fit$coef_spikes)
+#' sum(a_est!=0) 
+#' # 992 with NULL baseline, 1030 with intercept baseline, 1043 with bspline baseline
+#' 
+#' ## ---------- summary statistics ------------------------------------
+#' n_true <- sum(a_true != 0)
+#' n_est  <- sum(a_est  != 0)
+#' tp     <- sum(a_true != 0 & a_est != 0)
+#' precision <- tp / n_est
+#' recall    <- tp / n_true
+#' F1        <- 2 * precision * recall / (precision + recall)
+#' R2p <- 100 *
+#'   summary(lm(a_true ~ 0 + a_est))$r.squared
+#' R2p
+#' # 99.80369 with NULL baseline, 96.70126 with intercept baseline, 97.15414 with bspline baseline
+#' 
+#' ## ---------- scatter-plot with true vs. estimated peak areas -------
+#' main_expr <- bquote(
+#'   atop("Poisson L0-glm deconvolution with known PSF",
+#'        atop("true vs. estimated peak areas",
+#'             italic(R)^2 == .(sprintf("%.2f", R2p)) * "%" ~ "|" ~
 #'               "peaks:" ~ .(n_true) ~ "(true)," ~ .(n_est) ~ "(est.)" ~ "|" ~
 #'               "F1 =" ~ .(sprintf("%.2f", 100 * F1)) * "%")))
-#'
-#'   plot(a_est, a_true,
-#'        xlim = range(a_est, a_true),
-#'        ylim = range(a_est, a_true),
-#'        pch  = 16, col = "blue",
-#'        xlab = "estimated value",
-#'        ylab = "true value",
-#'        main = main_expr)
-#' }
+#' 
+#' plot(a_est, a_true,
+#'      xlim = range(a_est, a_true),
+#'      ylim = range(a_est, a_true),
+#'      pch  = 16, col = "blue",
+#'      xlab = "estimated value",
+#'      ylab = "true value",
+#'      main = main_expr)
 #'
 #' @importFrom Matrix Matrix Diagonal
 #' @importFrom L0glm L0glm.fit
+#' @importFrom splines bs
 #' @export
 L0glm_sparse_deco <- function(y,                         # response to be deconvolved (vector or matrix, i.e. univariate or multivariate)
                            family = poisson(identity),   # noise model, e.g. poisson/gaussian/Gamma, we only support identity link families here
@@ -222,29 +274,83 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                                         perc     = 0),          # no recentering as this PSF is already centered
                            L = if (!is.null(kernel)) length(kernel) else 51,
                            X = NULL, # (sparse) deconvolution kernel - can be used to specify matrix with time-varying PSFs & which would then override kernel
+                           baseline    = NULL,
+                           nknots      = max(4L, floor(nrow(as.matrix(y))/500)),
                            IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
                            grouped = TRUE) {  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
   dev_res <- family$dev.resids # deviance residuals function
   if (is.vector(y)) y <- as.matrix(y)
   n <- nrow(y)
-  p <- ncol(y)
   
+  ## ---------- PSF design ----------
   if (is.null(kernel)) kernel <- kernelfunc(1L:L)
   if (is.null(X)) X <- convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf 
 
-  y_deconv <- L0glm.fit(y = y,   # nonnegative L0-norm penalised GLM
-                        X = X,  
-                        family = family, 
-                        intercept = FALSE,
-                        warm.start = 1,
-                        nonnegative = TRUE, # imposing nonnegativity constraints on coefficients
-                        lambda = IC, 
-                        grouped = grouped,
-                        method = 7L, # using sparse Cholesky LLT solver
-                        solver = "eigen")$coefficients
-  y_hat <- X %*% y_deconv # fitted values
-  deviance <- sum(dev_res(y = as.numeric(y), 
-                          mu = as.numeric(y_hat+1E-10), # to avoid Inf values with poisson
-                          wt = rep(1, prod(dim(y)))))
-  return(list(y_deconv = y_deconv, fitted.values = y_hat, deviance = deviance))
+  ## ---------- baseline design ----------
+  if (!is.null(baseline) & nknots < 4) baseline <- "intercept"
+  if (!is.null(baseline)) {
+    if (baseline == "intercept") {
+      X_base <- Matrix::Matrix(1, n, 1, sparse = TRUE)
+    } else if (baseline == "bspline") {
+      X_base <- splines::bs(seq_len(n), df = nknots, degree = 3, intercept = TRUE)
+      X_base <- Matrix::Matrix(X_base, sparse = TRUE)
+  }} else {
+    X_base <- NULL
+  }
+  
+  ## ---------- final model matrix ----------
+  X_full <- if (is.null(X_base)) X else cbind(X_base, X)
+  
+  ## ---------- L0glm fit -------------------
+  fit <- L0glm.fit(y = y,   # nonnegative L0-norm penalised GLM
+                   X = X_full, 
+                   family = family, 
+                   intercept = FALSE,
+                   start = rep(1, ncol(X_full)), # WORKED WHILE start=NULL DID NOT
+                   warm.start = 1,
+                   # lower = rep(0, ncol(X_full)), # nonneg constraints on all coefs - gives different result than with nonnegative=TRUE though - CHECK WHY - LIKELY BUG
+                   nonnegative = TRUE, # nonneg constraints on all coefs - works, but not if I pass lower = rep(0, ncol(X_full)) CHECK BUG
+                   lambda = IC, 
+                   grouped = grouped,
+                   prior.mean = if (!is.null(X_base)) c(rep(min(y), ncol(X_base)), rep(0,ncol(X))) else NULL, # NEEDED FOR STABLE CONVERGENCE WHEN THERE IS A BASELINE
+                   # using a quantile regression underapproximation with tau=0.05 (=sum(y<a_baseline)/n) 
+                   # instead of rep(min(y), ncol(X_base))
+                   # would also be an option (likely better solution)
+                   always.include = if (!is.null(X_base)) 1:ncol(X_base) else NULL,
+                   normalize = !is.null(X_base), # required
+                   maxit = 100,
+                   method = 7L, # sparse Cholesky
+                   solver = "eigen",
+                   # verbose = TRUE,
+                   gamma = 2,
+                   thresh = 1e-10,
+                   tol = 1E-4)
+  # NOTE: we include X_baseline in design matrix & include those terms in always.include
+  # (those terms get their prior.mean updated in each IRLS iteration as opposed
+  # to having their estimates shrunk to zero).
+  # + use start=rep(1, ncol(X_baseline)+ncol(X_sim)) & normalize = TRUE
+  # & prior.mean = c(rep(min(y), ncol(X_baseline)), rep(0,ncol(X_sim)))
+  # to shrink baseline coefficients towards expected baseline.
+  # This works much better than presubtracting baseline, e.g. using
+  # X = X_sim & y = pmax(y-quantile(y, 0.05), 0).
+  
+  beta      <- fit$coefficients
+  
+  k_base    <- if (is.null(X_base)) 0 else ncol(X_base)
+  beta_base <- if (k_base) beta[seq_len(k_base), , drop = FALSE] else NULL
+  beta_spk  <- if (k_base!=0) beta[-seq_len(k_base), , drop = FALSE] else beta
+  
+  y_hat  <- X_full %*% beta
+  y_base <- if (!is.null(X_base)) X_base %*% beta_base else Matrix(0, ncol = ncol(y_hat), nrow = nrow(y_hat), sparse = TRUE)
+  dev    <- sum(dev_res(y = as.vector(y), 
+                        mu = pmax(as.vector(y_hat), .Machine$double.eps), # to avoid Inf values with poisson
+                        wt = 1))
+  
+  return(list(coef_spikes     = beta_spk,
+              coef_baseline   = beta_base,
+              fitted_values   = y_hat,
+              fitted_baseline = y_base,
+              deviance        = dev,
+              X_spikes        = X,
+              X_baseline      = X_base))
 }
