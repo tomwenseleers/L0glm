@@ -25,8 +25,8 @@ L0glm.fit.internal = function(X,
                               dispersion = NULL,
                               offset = NULL,
                               lambda = log(ncol(X))*log(log(nrow(X))), # = GIC criterion 
-                              no.pen = c(),
-                              normalize = TRUE,
+                              always.include = NULL,
+                              normalize = FALSE,
                               solver = "eigen", 
                               method = 7L, 
                               lower = rep(-.Machine$double.xmax, ncol(X)),
@@ -71,13 +71,13 @@ L0glm.fit.internal = function(X,
   residuals = rep(0, n)                   # unweighted working residuals, here initialised at 0 for 1st iteration
 
   ##  3. prior mean (vector of length p) --------------------------------------  
-  if (is.null(prior.mean)) { prior.mean <- rep(0, p) } 
-     else if (length(prior.mean)==1) { prior.mean <- rep(prior.mean, p) } 
-     else if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
+  if (is.null(prior.mean)) { prior.mean <- rep(0, p) } else 
+    if (length(prior.mean)==1) { prior.mean <- rep(prior.mean, p) } else 
+      if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
   
   ## 4. optional normalisation ------------------------------------------------
-  scaling <- if (normalize) scaleX(X) else rep(1, p)
-  if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
+  scaling <- if (normalize) scaleX(X) else rep(1, p) # to normalise to unit L2 norm
+  # if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
 
   ## 5. family helpers --------------------------------------------------------
   if (!is(family, "family")) family = family()
@@ -92,7 +92,8 @@ L0glm.fit.internal = function(X,
   ## set mustart (and possibly n & m), requires nobs and nvars to be preset
   etastart <- NULL
   mustart <- NULL
-  eval(initexpr)  
+  eval(initexpr)                          # initialise mustart and n and m (total counts) for binomial
+  # n <- nobs
   
   eta <- linkfun(mustart)                 # g(μ)  on link scale
   mu  <- mustart                          # on response scale
@@ -143,9 +144,9 @@ L0glm.fit.internal = function(X,
     pen.w <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
 
     lambda_tilde <- lambda*dispersion/4
-    lambda_tilde[no.pen] <- 0 # terms that should be left unpenalized (e.g. intercept)
     lambdas <- lambda_tilde * pen.w
-    
+    # if (!is.null(always.include)) lambdas[always.include] <- 0 # terms that should be left unpenalized (e.g. intercept)
+
     # lambda_tilde ridge penalties on individual coefficients, we scale these penalties 
     # by (1/4)*dispersion (cf Frommlet & Nuel 2016) so that we 
     # can directly use the lambda penalty values implied by the AIC & BIC criteria 
@@ -156,6 +157,8 @@ L0glm.fit.internal = function(X,
     
     ## ----- update coefs using adaptive ridge regression  (zero or nonzero centered) ---
     nonzero <- beta != 0L          # logical mask
+    if (verbose) { print(paste("IRLS iteration", iter))
+                   print(paste(sum(nonzero), "coefficients nonzero; range:", min(beta), "-", max(beta))) }
     if (!any(nonzero)) {           
       if (verbose) warning("All coefficients zero – nothing to fit")
       break
@@ -166,8 +169,6 @@ L0glm.fit.internal = function(X,
       if (verbose) warning(paste("Non-finite coefficiente at iteration", iter))
       break
       }
-    
-    if (verbose) print(paste("IRLS iteration", iter))
     
     beta_sub <- lmridge(X              = X[good, which(nonzero), drop = FALSE],
                         y              = z, # already subsetted to [good]
@@ -185,7 +186,11 @@ L0glm.fit.internal = function(X,
     
     beta[nonzero]            <- beta_sub
     beta[(abs(beta) < max(abs(beta))*thresh)|abs(beta) < 1E-20] <- 0
+    # beta[abs(beta) < thresh] <- 0
     nonzero <- beta != 0L
+    
+    # use informative prior updates for terms that should always be kept (e.g. for intercept)
+    if (!is.null(always.include)) prior.mean[always.include] <- as.vector(beta)[always.include] 
     
     ## ----- update mu and eta --------------------------------------
     eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale η
@@ -225,7 +230,7 @@ L0glm.fit.internal = function(X,
       n.ok <- length(good) # good observations
       rank <- sum(nonzero) # estimated rank - cheap approx of trace of the hat matrix
       df.residual <- n.ok - min(rank, n.ok) + 1 # residual degrees of freedom
-      dispersion_old <- sum((W.ret[good] * residuals_old[good]^2))/df.residual # previous iteration's estimated dispersion # TODO sometimes causes Error longer object length is not a multiple of shorter object length
+      dispersion_old <- sum((W.ret[good] * residuals_old[good]^2))/df.residual # previous iteration's estimated dispersion
       dispersion_new <- sum((W.ret[good] * residuals[good]^2))/df.residual # updated estimate of dispersion (variance for Gaussian case)
       disp_rel_change <- abs(dispersion_new - dispersion_old) / (dispersion_old+1E-10)
       # start updating dispersion used in calculation of lambda when estimated dispersion 
