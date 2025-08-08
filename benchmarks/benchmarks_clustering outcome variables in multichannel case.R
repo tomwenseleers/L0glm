@@ -67,7 +67,7 @@ system.time(psf_est <- L0glm_blind_deco(y = rowSums(Y), # note: using Yagg1/Yagg
                                         baseline = NULL, # or "intercept" or "bspline"
                                         L = L,                 # PSF kernel length 
                                         kernel_est = g0, 
-                                        kernel_smoothfun = NULL, # function(y) log_conc_smooth(y, nknots=round(L/5)),
+                                        kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
                                         perc = "mean",         # use centroid centering
                                         IC = "gic",
                                         kernel_true = psf_true/sum(psf_true),

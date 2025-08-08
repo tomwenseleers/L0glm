@@ -269,6 +269,7 @@ L0glm_blind_deco <- function(y,
 {
   if (is.vector(y)) y <- as.matrix(y)
   n  <- nrow(y)
+  offset <- NULL
   
   ## --- initial PSF -------------------------------------------------------
   g_hat <- if (is.null(kernel_est)) {
