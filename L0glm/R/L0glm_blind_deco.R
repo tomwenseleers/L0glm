@@ -293,8 +293,8 @@ L0glm_blind_deco <- function(y,
     
     ## 1. spike update -----------------------------------------------------
     Xg <- convmatrix(g_hat, n)              # banded design
-    est_baseline <- (it==1)                 # iteration in which baseline should be estimated
-    fit <- L0glm_sparse_deco(y = if (est_baseline) y else pmax(y-offset, 0), 
+    est_baseline <- (it==1)&(!is.null(baseline))     # should baseline be estimated?
+    fit <- L0glm_sparse_deco(y = if (est_baseline|is.null(baseline)) y else pmax(y-offset, 0), 
                              family = family, 
                              X = Xg,
                              baseline = if (est_baseline) baseline else NULL,
@@ -308,7 +308,7 @@ L0glm_blind_deco <- function(y,
     }
     
     ## 2. PSF update -------------------------------------------------------
-    g_new <- L0glm_deco_estkernel(y = if (est_baseline) y else pmax(y-offset, 0), 
+    g_new <- L0glm_deco_estkernel(y = if (est_baseline|is.null(baseline)) y else pmax(y-offset, 0), 
                                   y_deconv = a_hat,
                                   offset = if (est_baseline) offset else NULL,
                                   L = L,

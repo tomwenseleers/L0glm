@@ -43,12 +43,12 @@ system.time(L0glm.chol_originaldata <- L0glm.fit(X_true,
                                          solver = "eigen",
                                          method = 7L)) # 105s
 selected_features = which(rowSums(L0glm.chol_originaldata$coefficients!=0)!=0)
-length(selected_features) # 950
+length(selected_features) # 951
 length(intersect(selected_features, true_features)) # 929 true positives
-length(selected_features)-length(intersect(selected_features, true_features)) # 21 false positives
+length(selected_features)-length(intersect(selected_features, true_features)) # 22 false positives
 beta_est = L0glm.chol_originaldata$coefficients
 rsq = summary(lm(as.vector(beta_true) ~ 0 + as.vector(beta_est)))$r.squared
-rsq # 0.9912648
+rsq # 0.9912684
 
 plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], 
      y=as.vector(beta_true)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))], pch=16, col="blue",
@@ -62,16 +62,17 @@ plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))
 # NOTE: using Yagg1 or Yagg2 below also works but is much slower & solution not better
 L <- 41 # length of estimated PSF
 g0 <- convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
-system.time(psf_est <- L0glm_blind_deco(rowSums(Y), # note: using Yagg1/Yagg2 is slower & gives same fit
-                                         family = poisson(identity), 
-                                         L = L,                 # PSF kernel length 
-                                         kernel_est = g0, 
-                                         kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
-                                         perc = "mean",         # use centroid centering
-                                         IC = "gic",
-                                         kernel_true = psf_true/sum(psf_true),
-                                         plot = TRUE,
-                                         tol = 1e-3)$g_hat) # 5s
+system.time(psf_est <- L0glm_blind_deco(y = rowSums(Y), # note: using Yagg1/Yagg2 is slower & gives same fit
+                                        family = poisson(identity), 
+                                        baseline = NULL, # or "intercept" or "bspline"
+                                        L = L,                 # PSF kernel length 
+                                        kernel_est = g0, 
+                                        kernel_smoothfun = NULL, # function(y) log_conc_smooth(y, nknots=round(L/5)),
+                                        perc = "mean",         # use centroid centering
+                                        IC = "gic",
+                                        kernel_true = psf_true/sum(psf_true),
+                                        plot = TRUE,
+                                        tol = 1e-3)$g_hat) # 5s
 X_est <- convmatrix(psf_est, n)
 
 ### 1.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST? ####
