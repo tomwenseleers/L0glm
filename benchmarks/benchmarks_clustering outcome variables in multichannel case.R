@@ -98,9 +98,9 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg1,
                                     solver = "eigen",
                                     method = 7L)) # 10s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
-length(selected_features) # 1021
-length(intersect(selected_features, true_features)) # 923 true positives
-length(selected_features)-length(intersect(selected_features, true_features)) # 98 false positives
+length(selected_features) # 1020
+length(intersect(selected_features, true_features)) # 925 true positives
+length(selected_features)-length(intersect(selected_features, true_features)) # 95 false positives
 
 # fit selected features on all mass channels, now using ungrouped L0glm since features are already grouped
 system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F], 
@@ -117,13 +117,13 @@ system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F],
                                                solver = "eigen",
                                                method = 7L)) # 12s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
-length(selected_features_full) # 1021
-length(intersect(selected_features_full, true_features)) # 923 true positives
-length(selected_features_full)-length(intersect(selected_features_full, true_features)) # 98 false positives
+length(selected_features_full) # 1019
+length(intersect(selected_features_full, true_features)) # 925 true positives
+length(selected_features_full)-length(intersect(selected_features_full, true_features)) # 94 false positives
 beta_est = Matrix(0, nrow=nrow(beta_true), ncol=ncol(beta_true), sparse=T)
 beta_est[selected_features,] = L0glm.chol_full$coefficients
 rsq = summary(lm(as.vector(beta_true) ~ 0 + as.vector(beta_est)))$r.squared
-rsq # 0.9771916
+rsq # 0.9773037
 # NOTE: using X_true performance is only very slightly better, i.e. blind
 # deconvolution worked almost as well than if we knew the PSF in advance
 
@@ -218,6 +218,7 @@ g0 <- convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
 plot(g0, type="l")
 system.time(psf_est <- L0glm_blind_deco(rowSums(Y), # note: using Yagg1/Yagg2 is slower & gives same fit
                                         family = poisson(identity), 
+                                        baseline = NULL, 
                                         L = L,                 # PSF kernel length 
                                         kernel_est = g0, 
                                         kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
@@ -247,6 +248,7 @@ g0 <- convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
 plot(g0, type="l")
 system.time(psf_est1 <- L0glm_blind_deco(Yagg1,
                                         family = poisson(identity), 
+                                        baseline = NULL,
                                         L = L,                 # PSF kernel length 
                                         kernel_est = g0, 
                                         kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
@@ -255,14 +257,19 @@ system.time(psf_est1 <- L0glm_blind_deco(Yagg1,
                                         grouped = TRUE,
                                         plot = TRUE,
                                         tol = 1e-3)$g_hat) # 2s
-X_est <- convmatrix(psf_est1, n)
+X_est <- convmatrix(psf_est1, n) 
+# using this PSF estimate in the deconvolution below did not give a good result
+# though (too many peaks - 25 instead of the ca 6 expected)
+# It seems that deconvoluting with a PSF that is slightly wider works better.
+# So we will use our visually fitted Gaussian PSF
 X_est <- X
 
 
 # fit grouped L0glm model using aggregated Yagg data
 system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg1, 
                                                family = poisson(identity), 
-                                               intercept = FALSE,
+                                               intercept = TRUE,
+                                               normalize = TRUE,
                                                lambda = "gic",
                                                nonnegative = TRUE,
                                                grouped = TRUE,
@@ -272,7 +279,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg1,
                                                solver = "eigen",
                                                method = 7L)) # 0.31s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
-length(selected_features) # 6
+length(selected_features) # 7
 # plotmat(L0glm.chol_aggregated$coefficients, subsamp=1, xlab="row", ylab="col")
 matplot(Yagg1^0.5, type="l", lty=1) # looks good & distance in line with PoiClaClu::PoissonDistance
 matplot((0.5*X[,selected_features,drop=F]*max(Yagg1))^0.5, type="l", 
@@ -283,6 +290,7 @@ matplot((0.5*X[,selected_features,drop=F]*max(Yagg1))^0.5, type="l",
 system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F], 
                                          Y, 
                                          intercept = TRUE,
+                                         normalize = TRUE,
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
@@ -294,8 +302,8 @@ system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F],
                                          solver = "eigen",
                                          method = 7L)) # 5s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
-length(selected_features_full) # intercept+6 with grouped=F or T
-dim(L0glm.chol_full$coefficients) # (intercept+6) x 671
+length(selected_features_full) # intercept+7 with grouped=F or T
+dim(L0glm.chol_full$coefficients) # (intercept+7) x 671
 plotmat(L0glm.chol_full$coefficients)
 matplot(Y^0.5, type="l", lty=1, col=rgb(0,0,0,0.1))
 matplot((0.5*X[,selected_features,drop=F]*max(Y))^0.5, type="l", 
@@ -309,12 +317,13 @@ for (i in (2:nrow(L0glm.chol_full$coefficients))) { # we leave out peak 1 = inte
        ylab="Ion count",
        xlab="Mass (m/z)",
        type="h", col="blue") }
-# peak 1=15-Methylnonacosane 224+225 RT 26.877
-# peak 2=13-Methylnonacosane 196+252 RT 26.91
-# peak 3=Cyclodecasiloxane, eicosamethyl 73+147+221+281+355++429+503 RT 26.94 + 168 from 11-Methylnonacosane
-# peak 4=9-Methylnonacosane 140+308 RT 27.01
-# peak 5=7-Methylnonacosane 112+336 RT 27.11
-# peak 6=noise (low ion intensity) RT 27.20
+# peak 1=noise (likely edge artefact)
+# peak 2=15-Methylnonacosane 224+225 RT 26.86
+# peak 3=13-Methylnonacosane 196+252 RT 26.91
+# peak 4=Cyclodecasiloxane, eicosamethyl 73+147+221+281+355++429+503 RT 26.95 + 168 from 11-Methylnonacosane
+# peak 5=9-Methylnonacosane 140+308 RT 27.01
+# peak 6=noise (low ion intensity) (likely edge artefact) RT 27.107
+# peak 7=7-Methylnonacosane 112+336 RT 27.113
 # BEST SOLUTION
 # see
 ?GCMS_data1
@@ -344,7 +353,8 @@ matplot(Yagg2, type="l", lty=1)
 
 # fit grouped L0glm model using aggregated Yagg data
 system.time(L0glm.chol_aggregated <- L0glm.fit(X, Yagg2, 
-                                               intercept = FALSE,
+                                               intercept = TRUE,
+                                               normalize = TRUE,
                                                family = poisson(identity), 
                                                lambda = "gic",
                                                nonnegative = TRUE,
@@ -365,6 +375,7 @@ matplot((0.5*X[,selected_features,drop=F]*max(Yagg1))^0.5, type="l",
 system.time(L0glm.chol_full <- L0glm.fit(X[,selected_features,drop=F], 
                                          Y, 
                                          intercept = TRUE,
+                                         normalize = TRUE,
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
@@ -390,12 +401,12 @@ for (i in (2:nrow(L0glm.chol_full$coefficients))) { # we leave out peak 1 = inte
        ylab="Ion count",
        xlab="Mass (m/z)",
        type="h", col="blue") }
-# peak 1=noise (due to edge artefact)
-# peak 2=15-Methylnonacosane 224+225 RT 26.88
-# peak 3=13-Methylnonacosane 196+252 RT 26.91
-# peak 4=Cyclodecasiloxane, eicosamethyl 73+147+221+281+355++429+503 RT 26.94 + 168 from 11-Methylnonacosane
-# peak 5=9-Methylnonacosane 140+308 RT 27.01
-# peak 6=noise (very low ion count) (likely edge artefact)
+# peaks 1 & 2=noise (due to edge artefact)
+# peak 3=15-Methylnonacosane 224+225 RT 26.87
+# peak 4=13-Methylnonacosane 196+252 RT 26.92
+# peak 5=Cyclodecasiloxane, eicosamethyl 73+147+221+281+355++429+503 RT 26.94 + 168 from 11-Methylnonacosane
+# peak 6=9-Methylnonacosane 140+308 RT 27.01
+# peak 7=7-Methylnonacosane 112+336 RT 27.12
 # LESS GOOD SOLUTION
 # see
 ?GCMS_data1
