@@ -1,9 +1,9 @@
 # BENCHMARKS & TIMINGS OF L0GLM FITS IN FUNCTION OF PROBLEM SIZE & SOLVER USED ####
 
-library(ggplot2)
+# devtools::load_all(".")
+library(L0glm)
 library(dplyr)
-devtools::load_all(".")
-# library(L0glm)
+library(ggplot2)
 
 # 1. SPARSE CASE ####
 

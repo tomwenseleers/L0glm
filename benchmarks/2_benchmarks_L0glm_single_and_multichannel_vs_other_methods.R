@@ -28,7 +28,7 @@ tune_full <- L0glm.tune(X=sim.pois$X,
                    IC = "gic", 
                    nlambda = 10,
                    prop_range = 1, # full range up to lambda_max
-                   warm.start = 0.01, # choose 0 for no warm starts
+                   warm.start = 0, # 0.01, # choose 0 for no warm starts
                    plot = TRUE, 
                    coefs.true = sim.pois$beta_true, 
                    relaxed = FALSE, 
@@ -38,7 +38,7 @@ tune_full <- L0glm.tune(X=sim.pois$X,
                    method = 7L)
 tune_full$lambda_best # 20.44997 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
-min(tune_full$metrics$gic) # 102992
+min(tune_full$metrics$gic) # 102767
 
 ## tuning plot (zoomed in)
 # with lambda grid more zoomed in around lambda_preset preset
@@ -47,7 +47,7 @@ tune_zoomed <- L0glm.tune(X=sim.pois$X,
            IC = "gic", 
            nlambda = 10,
            prop_range = 0.2, # to zoom in around lambda_preset preset
-           warm.start = 0.01, 
+           warm.start = 0, # 0.01, 
            plot = TRUE, 
            coefs.true = sim.pois$beta_true, 
            relaxed = FALSE, 
@@ -57,9 +57,9 @@ tune_zoomed <- L0glm.tune(X=sim.pois$X,
            method = 7L)
 # here best lambda (dashed line) is very close to lambda preset expected 
 # to optimise GIC (dotted line) so tuning in practice unnecessary
-tune_zoomed$lambda_best # 6.457064 (best lambda tune)
+tune_zoomed$lambda_best # 11.49116 (best lambda tune)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
-min(tune_zoomed$metrics$gic) # 102656
+min(tune_zoomed$metrics$gic) # 102133.6
 
 # tuning lambda with different solvers
 system.time(tune.chol.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", plot = FALSE, coefs.true = sim.pois$beta_true, relaxed = FALSE, family = poisson(identity), nonnegative = TRUE, solver = "eigen", method = 7L))
@@ -89,6 +89,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
                                          relaxed = FALSE,
+                                         # verbose = TRUE,
                                          solver = "eigen",
                                          method = 7L)) 
 # 0.25s with n=p=10000
@@ -262,7 +263,7 @@ tune_full <- L0glm.tune(X=sim.gaus$X,
                    IC = "gic", 
                    nlambda = 10,
                    prop_range = 1, # full range up to lambda_max
-                   warm.start = 0.01, # choose 0 for no warm starts
+                   warm.start = 0, # 0.01, # choose 0 for no warm starts
                    plot = TRUE, 
                    coefs.true = sim.gaus$beta_true, 
                    relaxed = FALSE, 
@@ -272,7 +273,7 @@ tune_full <- L0glm.tune(X=sim.gaus$X,
                    method = 7L)
 tune_full$lambda_best # 20.44997 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
-min(tune_full$metrics$gic) # 80792.55
+min(tune_full$metrics$gic) # 82400.61
 
 ## tuning plot (zoomed in)
 # tuning plots - with lambda grid more zoomed in around lambda_preset preset
@@ -281,7 +282,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus$X,
                    IC = "gic", 
                    nlambda = 10,
                    prop_range = 0.2, # to zoom in around lambda_preset preset
-                   warm.start = 0.01, 
+                   warm.start = 0, # 0.01, 
                    plot = TRUE, 
                    coefs.true = sim.gaus$beta_true, 
                    relaxed = FALSE, 
@@ -289,11 +290,11 @@ tune_zoomed <- L0glm.tune(X=sim.gaus$X,
                    nonnegative = TRUE, 
                    solver = "eigen", 
                    method = 7L)
-# here best lambda (dashed line) is identical to lambda preset expected 
+# here best lambda (dashed line) is very close to lambda preset expected 
 # to optimise GIC (dotted line) so tuning in fact not needed
 tune_zoomed$lambda_best # 60.73341 (best lambda tune)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
-min(tune_zoomed$metrics$gic) # 80792.55
+min(tune_zoomed$metrics$gic) # 82203.1
 
 # TODO: check why coefs are going to zero before calculated lambda_max
 
