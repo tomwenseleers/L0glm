@@ -751,7 +751,7 @@ logLik2 = function(object, weights, X, y) {
   n  = as.numeric(object$nobs)
   p = object$nvars
   df = Matrix::colSums(object$beta!=0)  
-  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
+  # df = nr of nonzero coefficients (incl intercept)
   
   # Compute y_pred for all columns of object$beta at once
   y_pred =  cbind(1, X) %*% object$beta
@@ -767,4 +767,3 @@ logLik2 = function(object, weights, X, y) {
   attr(logL, "p") = p
   return(logL)
 }
-
