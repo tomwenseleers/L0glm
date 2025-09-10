@@ -348,21 +348,6 @@ block.fit <- function(y, X, coefs = rep(0, ncol(X)), nonnegative = FALSE,
 #   return(beta)
 # }
 
-# preset.lambda ####
-# Function to compute the best lambda implied by a particular IC given p=ncol(X) and n=nrow(X). 
-preset.lambda <- function(IC="gic", p, n) {
-  lambda <- switch(IC,
-                   gic = log(p)*log(log(n)),
-                   aic = 2,
-                   bic = log(n),
-                   ebic = (log(n) + 2*(1-log(n)/(2*log(p)))*log(p)),
-                   mbic = log(n*(p^2)/16),
-                   # bicq = log(n) - 2*log(0.25/(1-0.25)) # TODO q = 0.25 should be a constant to optimize...
-                   # hq = 2*log(log(n)), # Hannan and Quinnn information criterion,
-                   stop("invalid information criterion for initializing lambda. It must be one of 'gic', 'aic', 'bic', 'ebic', 'mbic'."))
-  return(lambda)
-}
-
 
 ####################################
 #### EXPORTED UTILITY FUNCTIONS ####

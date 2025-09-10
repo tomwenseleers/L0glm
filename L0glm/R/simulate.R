@@ -12,8 +12,7 @@
 #' 2: Single channel data with Poisson noise.
 #' 3: Multichannel data with Gaussian noise.
 #' 4: Multichannel data with Poisson noise.
-#' 5: Orthogonal data.
-#' 6: High dimensional data (p > 40000 suggested).
+#' 5: Data with standard normal design matrix and Gaussian noise.
 #' @param n 
 #' A numeric value indicating the number of observations to generate.
 #' @param p 
@@ -26,9 +25,8 @@
 #' A list of optional parameters to control the data generation process. This can include:
 #'   For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
 #'   \code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
-#'   For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_sd} (standard deviation of the beta coefficients), 
+#'   For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_range} (range of the beta model coefficients), 
 #'   \code{error_sd} (standard deviation of the error term).
-#'   For method 6: \code{sd_noise} (standard deviation of the noise).
 #'   If options are \code{NULL}, default values will be used.
 #' @param seed
 #' Random seed.
@@ -72,9 +70,6 @@ simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = N
     if(k > 100) k <- 100
     sd_noise = ifelse(is.null(options$sd_noise), 10, options$sd_noise)
     mean_beta <- ifelse(is.null(options$mean_beta), 10000, options$mean_beta)
-  } else if(method == 6){
-    if(p < 40000) warning("This method is suggested for data with higher dimension.")
-    m <- ifelse(is.null(options), 50, m)
   }
   
   if(method == 1 | method == 3){
@@ -96,12 +91,10 @@ simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = N
                                 sd_logbeta = ifelse(is.null(options$sd_logbeta), 1, options$sd_logbeta))
   } else if(method == 5){
     sim <- simulate_standardnormal(n = n, p = p, 
-                               n_nonzero = ifelse(is.null(options$n_nonzero), 24, options$n_nonzero),
-                               beta_sd = ifelse(is.null(options$beta_sd), 0.5, options$beta_sd), 
+                               n_nonzero = ifelse(is.null(options$n_nonzero), min(10, p), options$n_nonzero),
+                               beta_range = ifelse(is.null(options$beta_range), c(-1, 1), options$beta_range), 
                                error_sd = ifelse(is.null(options$error_sd), 1, options$error_sd))
-  } else if(method == 6){
-    sim <- simulate_ordinis(n = n, p = p, m = m, sd_noise = ifelse(is.null(options$sd_noise), 3, options$sd_noise))
-  }
+  } 
   
   return(sim)
 }
@@ -109,46 +102,38 @@ simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = N
 
 
 
-# simulate single channel data with L2 norm renormalized standard normal variables & gaussian noise with SD of 1 ####
-# cf. Frommlet & Nuel 2016 p. 9
+# simulate single channel data with standard normal design matrix & gaussian noise with given error SD & uniformly distributed coefs within given range ####
 
-simulate_standardnormal <- function(n=100, p=100, n_nonzero=24, beta_sd=0.5, error_sd=1, 
-                                    seed.problem=1, seed.noise=sample.int(1E4, 1, replace=T)) {
-  # Generate X matrix
+simulate_standardnormal <- function(n=100, p=100, 
+                                    n_nonzero=50, 
+                                    beta_range=c(-1, 1), 
+                                    error_sd=1, 
+                                    seed.problem=123, 
+                                    seed.noise=sample.int(1E4, 1, replace=T)) {
+  # Generate iid standard normal design matrix X
   set.seed(seed.problem)
-  X <- matrix(rnorm(n*p), n, p)
+  X <- matrix(rnorm(n*p, sd = 1), n, p)
   
-  # # we L2 norm normalize the columns of X first
+  # # normalize columns of X to unit L2 norm
   # X.n <- sqrt(Matrix::colSums(X^2)) 
   # X <- as.matrix(X %*% Matrix::Diagonal(x = 1 / X.n))
-  
-  # Generate beta vector with all zeros initially
-  beta <- rep(0, p)
   
   # Randomly select n_nonzero indices to assign non-zero values
   non_zero_indices <- sample.int(n=p, size=n_nonzero)
   
   # Generate beta vector
-  beta[non_zero_indices] <- rnorm(n_nonzero, 0, beta_sd)
+  beta <- rep(0, p)
+  beta[non_zero_indices] <- runif(n_nonzero, beta_range[[1]], beta_range[[2]]) # rnorm(n_nonzero, 0, beta_sd)
   
   # Generate errors
   set.seed(seed.noise)
-  epsilon <- rnorm(n, 0, error_sd)
+  epsilon <- rnorm(n, mean = 0, sd = error_sd)
   
-  # Generate y vector
-  y <- X %*% beta + epsilon
+  # Generate y vector without noise y_true
+  y_true <- X %*% beta
+  y <-  y_true + epsilon
   
-  return(list(X=X, y=y, beta_true=beta))
-}
-
-
-
-simulate_ordinis <- function(n = 500, p = 50000, m = 50, sd_noise = 3){
-  beta_true <- matrix(c(runif(m), rep(0, p - m))) 
-  X <- matrix(rnorm(n * p, sd = sd_noise), n, p)
-  y <- drop(X %*% beta_true) + rnorm(n)
-  
-  return(list(X = X, y = y, beta_true = beta_true))
+  return(list(X=X, y=y, y_true=y_true, beta_true=beta))
 }
 
 

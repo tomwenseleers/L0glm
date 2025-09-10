@@ -7,109 +7,92 @@ options(repos = c(CRAN="https://cloud.r-project.org/"))
 library(remotes)
 # remotes::install_github("jaredhuling/ordinis")
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
-# library(L0glm)
-devtools::load_all(".") # if you forked & cloned L0glm first to your laptop
+library(L0glm)
+# devtools::load_all(".") # if you forked & cloned L0glm first to your laptop
 library(export)
 library(Matrix)
+library(qlcMatrix)
+library(matrixStats)
+library(dplyr)
+library(ncvreg)
+library(SIS)
+library(abess)
 
 
 # 1. TEST HIGH DIMENSIONAL PROBLEM ####
 
-n = 500 # 500 obs
-p = 1000000 # 1 million variables
-s = 0.00008 # prop of nonnegative coefficients
-n_nonzero = round(p*s)
-n_nonzero # 80
-suffix = paste0("n_",as.integer(n),"_p_",as.integer(p),"_n_nonzero",n_nonzero)
-beta_sd = 1 # this would directly correspond to Cohen's d - 0.2, 0.5 or 0.8 would be considered small, medium or large
+n = 500         # 500 obs
+p = 1E6         # 1 million variables
+n_nonzero = 60  # 60 nonzero coefs
+s = n_nonzero/p # prop of nonnegative coefficients
+avg_cohen_f = 0.4 # average Cohen's f effect size of nonzero effects in model
+nonnegative = FALSE # constrain coefficients to be positive?
+beta_range <- c(-avg_cohen_f*2*(1-nonnegative), avg_cohen_f*2) 
+# NOTE: abs(beta) can be interpreted as Cohen's f in terms of effect sizes 
+# (0.4=large, 0.25=medium, 0.1=small)
 error_sd = 1 
 dispersion = error_sd^2
+suffix = paste0("n_",as.integer(n),"_p_",as.integer(p),"_n_nonzero",n_nonzero)
 
 data_gaus  = simulate_standardnormal(n=n, p=p, n_nonzero=n_nonzero, 
-                                 beta_sd=beta_sd, 
+                                 beta_range=beta_range, 
                                  error_sd=error_sd,
-                                 seed.problem=1,
+                                 seed.problem=123,
                                  seed.noise=1) 
-# X = normalizeX(data_gaus$X) # we first L2 norm normalize the columns of X
-# TODO: this scaling should be done within L0glm
 X = data_gaus$X
 Xsp = Matrix(X, sparse=T)
 y = data_gaus$y
+y_true = data_gaus$y_true
 w = rep(1, n) # observation weights
-
-beta_true = data_gaus$beta_true
+beta_true = data_gaus$beta_true # NOTE: abs(beta_true) can be interpreted as Cohen's f in terms of effect sizes (0.8=large, 0.5=medium, 0.2=small)
 beta_true_set = which(beta_true!=0)
+
+hist(beta_true[beta_true!=0])
+range(beta_true)
 L1norm_betatrue = sum(abs(beta_true))
 L0norm_betatrue = sum(beta_true!=0)
 L0overL1norm_betatrue = L0norm_betatrue/L1norm_betatrue
-L0overL1norm_betatrue # 1.35
+L0overL1norm_betatrue # 2.525916
 family = gaussian(identity)
+IC = "gic" # we use abess's GIC throughout, EBIC gives very similar results
 
-
-# 1.1 MCP fit using ordinis ####
-
-library(ordinis)
-gamma_mcp = 1.1 # default for MCP is 1.4, I am using value close to 1 to match best with my later L0 glm objective
-timing_ordinis = system.time(ordinis_fit <- ordinis(X, y, 
-               intercept=T,
-               penalty = "mcp",
-               gamma = gamma_mcp, 
-               # lower.limits = rep(0, p), # force all coefficients to be positive
-               # penalty.factor = c(0, 0, rep(1, p-2)), # don't penalize first two coefficients
-               nlambda = 100L, # 100L, # for pre-screening I just need 1 solution, so nlambda=1 OK (and works best in fact)
-               lambda.min.ratio = 0.01, # NULL, # =0.05 when p>n
-               dfmax = n,
-               alpha = 1,
-               # maxit = 10,
-               # tol = 0.1
-               ))[[3]] 
-timing_ordinis # 66s with defaults (with nlambda 100), 7s with maxit 1 (with nlambda 1)
-# note: to initialise L0glm solution with MCP solution you could use fewer
-# nlmabda & higher tol & smaller nr of maxit
-# plot(ordinis_fit)
-max(ordinis_fit$niter) # 115
-which.max(logLik(ordinis_fit)) # 100
-which.min(BIC(ordinis_fit)) # 100
-
-ordinis_fit$lambda[which.max(logLik(ordinis_fit))] # best lambda
-
-min(AIC(ordinis_fit)) #
-min(BIC(ordinis_fit)) #
-# coefs_ordinis = ordinis_fit$beta[,which.min(BIC(ordinis_fit))][-1]
-# coefs_ordinis = ordinis_fit$beta[,which.min(AIC(ordinis_fit))][-1]
-coefs_ordinis = ordinis_fit$beta[-1,which.max(logLik(ordinis_fit))] # gives same result as AIC & BIC here
-coefs_ordinis[1] = 0 # first coef sometimes comes out as 1 for some reason - prob a bug in ordinis? now setting it to zero, as it's usually a false pos
-
-sum(coefs_ordinis!=0) # 149
-sum(coefs_ordinis!=0&beta_true!=0) # 24 true pos
-sum(coefs_ordinis!=0&beta_true==0) # 125 false pos
-L1norm_coefsordinis = sum(abs(coefs_ordinis))
-L0norm_coefsordinis = sum(coefs_ordinis!=0)
-L0overL1norm_coefsordinis = L0norm_betatrue/L1norm_betatrue
-L0overL1norm_coefsordinis # 1.35051
-
-beta_est0 = coefs_ordinis
-range(beta_est0) # -1.990271  2.492420
-range(beta_true) # -2.267722  2.365529
-
-table(beta_est0!=0, beta_true!=0, 
+# NOTE: best possible "oracle" model that would be achievable with L0glm is
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                              p = ncol(X), # using original problem size
+                              n = nrow(X))
+L0glm_bestfit = L0glm.fit(X = X[,beta_true_set,drop=F], # X
+                          y = y, 
+                          family = gaussian(identity), 
+                          lambda = lambda_preset, # "bic", # lambda_preset,  
+                          nonnegative = nonnegative,
+                          # prior.mean = beta_true[beta_true_set], # we can now specify our prior centers
+                          start = rep(1, length(beta_true_set)), # beta_true, 
+                          warm.start = 1,
+                          # warm.start = 0.8, # 0.5-0.8 work well
+                          # dispersion = dispersion, 
+                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                          method = 7L, #
+                          gamma = 2.1, # set it slightly above 2 for p>>n case
+                          thresh = 1E-5,
+                          relaxed = FALSE
+)  # 
+beta_bestest = rep(0, ncol(X))
+beta_bestest[beta_true_set] = L0glm_bestfit$coefficients
+# beta_bestest = L0glm_bestfit$coefficients
+sum(beta_bestest!=0) 
+# 46, 43, 32 or 32 with aic, bic, gic or ebic p=1E6 lambda preset
+min(abs(beta_bestest[beta_bestest!=0])) # 0.1828672
+table(beta_bestest!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                            true beta nonzero
-# estimated beta nonzero         FALSE   TRUE
-#                         FALSE 999795     56
-#                         TRUE     125     24
 
-# TODO check what tol, maxit & nlambda would be sufficient to use as starting vals in our L0glm algo
-# TODO check how performance would be affected by choice of gamma
-# (gamma close to 1 maybe results in objective function closest to that of L0glm?)
-# TODO compare with SCAD (penalty="scad")
+fitted = X %*% beta_bestest
+cor(y_true, fitted)^2 # population R2=0.9483818
 
-cor(beta_est0, beta_true)  # 0.7609432
-
+beta_est0 = beta_bestest
 plot(x=beta_est0[beta_true!=0&beta_est0!=0], 
      y=beta_true[beta_true!=0&beta_est0!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main="MCP penalized regression (ordinis)") # true positives
+     main="oracle L0glm estimate (GIC tuned)") # true positives
 abline(a=0, b=1, col="lightgrey")
 points(x=beta_est0[beta_true!=0&beta_est0==0], 
        y=beta_true[beta_true!=0&beta_est0==0], 
@@ -120,384 +103,494 @@ points(x=beta_est0[beta_true==0&beta_est0!=0],
 points(x=beta_est0[beta_true==0&beta_est0==0][[1]], 
        y=beta_true[beta_true==0&beta_est0==0][[1]], 
        pch=16, col="green") # true negatives
-method="MCP_ordinis"
+method="oracle_L0glm"
+graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
+          width=7, height=5)
+
+
+
+
+
+# 1.1 HYBRID ITERATIVE SURE INDEPENDENCE SCREENING (ISIS) - L0glm METHOD TO GET STABLE VARIABLE SELECTION IN p>>n REGIME, BASED ON MARGINAL LIKELIHOOD GAIN OF ADDING VARIABLE TO NULL MODEL ####
+
+# WORKS & RECOVERS NEARLY AS GOOD A SOLUTION AS ABESS & MCP BUT FASTER!
+
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                              p = ncol(X), # note that we use original problem size
+                              n = nrow(X))  
+# iterating SIS & L0glm:
+beta_start <- rep(0, ncol(X))
+S <- NULL
+timing_SISL0glm <- system.time(for (iter in 1:10) {
+  sis <- sis_glm(X, y, family, 
+                 weights = NULL, 
+                 offset = X %*% beta_start,
+                 nsis = min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
+                 return_stats = FALSE)
+  S   <- union(S, sis$indices)
+  print(paste("Iteration", iter))
+  print(paste("Size of SIS set:", length(S)))
+  for (j in 1:2) { # iterated twice to remove some false positives
+  L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+                                 y = y, 
+                                 family = family, 
+                                 lambda = lambda_preset,  
+                                 nonnegative = nonnegative,
+                                 start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
+                                 warm.start = 1,
+                                 solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                                 method = 7L, # Cholesky
+                                 gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
+  )  # 
+  beta_start = rep(0, ncol(X))
+  beta_start[S] = L0glmfit_updated$coefficients
+  S <- which(beta_start!=0)
+  }
+  print(paste("Number of nonzero coefficients:", sum(beta_start!=0)))
+  print(paste("Number of true positives:", length(intersect(S, beta_true_set))))
+  
+})[[3]] 
+timing_SISL0glm
+# 28s
+
+system.time(L0glmfit_final <- L0glm.fit(X = X[,S,drop=F], 
+                              y = y, 
+                              family = family, 
+                              lambda = lambda_preset,  
+                              nonnegative = nonnegative,
+                              start = beta_start[S],  
+                              warm.start = 0.99,
+                              solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
+                              method = 7L, # Cholesky
+                              gamma = 2
+))  # 0.09s
+beta_final = rep(0, ncol(X))
+beta_final[S] = L0glmfit_final$coefficients
+# beta_final = L0glmfit_final$coefficients
+sum(beta_final!=0) # 38
+
+beta_SISL0glm = as.numeric(beta_final) # beta_start
+
+plot(x=beta_SISL0glm[beta_true!=0&beta_SISL0glm!=0], 
+     y=beta_true[beta_true!=0&beta_SISL0glm!=0], pch=16, col="blue",
+     xlab="Estimated coefficients", ylab="True coefficients",
+     main=paste0("ISIS-L0glm best subset fit (GIC tuned)")) # true positives
+abline(a=0, b=1, col="lightgrey")
+points(x=beta_SISL0glm[beta_true!=0&beta_SISL0glm==0], 
+       y=beta_true[beta_true!=0&beta_SISL0glm==0], 
+       pch=16, col="purple") # false negatives
+points(x=beta_SISL0glm[beta_true==0&beta_SISL0glm!=0], 
+       y=beta_true[beta_true==0&beta_SISL0glm!=0], 
+       pch=16, col="red") # false positives
+points(x=beta_SISL0glm[beta_true==0&beta_SISL0glm==0][[1]], 
+       y=beta_true[beta_true==0&beta_SISL0glm==0][[1]], 
+       pch=16, col="green") # true negatives
+method="ISIS_L0glm"
+graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
+          width=7, height=5)
+
+table(beta_SISL0glm!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+cor(beta_SISL0glm, beta_true)     # 0.9631295
+sum(abs(beta_SISL0glm-beta_true)) # 4.653414
+
+fitted = X %*% beta_SISL0glm
+cor(y_true, fitted)^2 # population R2=0.9425312
+
+# check metrics & quality of ISIS-L0glm solution
+method = "ISIS_L0glm"
+system.time(metrics_ISISL0glm <- data.frame(method=method,
+                                            timing_s=timing_SISL0glm,
+                                            do.call(cbind, get.metrics(beta = beta_SISL0glm,  # some metrics
+                                                                       X = X, 
+                                                                       y = y,
+                                                                       family = gaussian(identity), 
+                                                                       beta_true = beta_true)))) 
+metrics_ISISL0glm
+
+
+
+# NOTE: Sure Independence Screening via SIS::SIS is very slow
+# and only supports canonical link & a couple of families
+# and only dense design matrices & no weights or offset
+system.time(SIS_noreg <- SIS(X, y, family="gaussian", 
+                             nsis = round(n/log(n)),
+                             iter=FALSE)) 
+# 22s for n=500 & p=1E6; for n=1000 & p=1E6 runs out of memory
+S_SIS_noreg <- SIS_noreg$sis.ix0
+length(S_SIS_noreg) # 80=round(n/log(n))
+length(intersect(S_SIS_noreg, beta_true_set)) # 14 TPs
+
+# our SIS function supports all of R's families & link functions 
+# plus offsets, weights and sparse design matrices & is ca 10x faster
+system.time(SIS_glm <- sis_glm(X, y, family, 
+                               weights = NULL, 
+                               offset = NULL,
+                               nsis = round(n/log(n)), # value used by SIS package
+                               return_stats = FALSE)) 
+# 2.33s for n=500 & p=1E6, 4s for n=1000 & p=1E6
+S_SIS_glm <- SIS_glm$indices
+length(S_SIS_glm) # 80=round(n/log(n))
+length(intersect(S_SIS_glm, beta_true_set)) # 14 TPs
+length(intersect(S_SIS_glm, S_SIS_noreg)) 
+# 79/80 the same as SIS but 11x faster and supports all of R's 
+# family distributions & link functions plus sparse design matrices, 
+# weights and offset term
+
+# TODO compare performance with simulation scenarios considered in
+# https://www.jstatsoft.org/article/view/v083i02/0
+# & empirical datasets
+
+
+
+# 1.2A MCP fit using ordinis (box constraints support) ####
+
+library(ordinis)
+gamma_ord = 1.01 # default for MCP is 1.4 & 3.7 for SCAD, I am using value close to 1 to match best with my later L0 glm objective
+timing_ordinis = system.time(ordinis_fit <- ordinis(X, y, 
+               intercept=F,
+               family="gaussian",
+               penalty = "mcp",
+               gamma = gamma_ord, 
+               nlambda = 10L, 
+               # lower.limits = rep(0, p), # force all coefficients to be positive
+               # maxit = 10,
+               # maxit.irls = 1,
+               dfmax = n-1, # min(n-1, round(2*n/(log(log(n))*log(p)))),
+               alpha = 1 #, # worse solution with 0.9 
+               # tol = 0.1 # good enough to use as initialisation, default 1E-4 for gaussian, 1E-3 for rest
+               ))[[3]] 
+timing_ordinis 
+# 42s with default tol (1E-4 for gaussian, 1E-3 for the rest), 21s with tol=0.1
+plot(ordinis_fit)
+max(ordinis_fit$niter) # 21
+median(ordinis_fit$niter) # 12.5
+ordinis_fit$niter
+
+# calculate ebic, mbic & gic/sic (cf. abess) criterion at each lambda in grid
+LLs = logLik2(ordinis_fit, weights=w, X, y)
+edfs = attr(LLs, "df")
+LLs = as.vector(LLs)
+IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
+# ebic or gic would identity 5th lambda as best, mbic the 4th but too strict
+best = which.min(IC.val) 
+best # 5th lambda best
+secondbest = min(length(IC.val), best+1)
+secondbest # 2nd best (slightly less sparse) solution
+
+# # NOTE: in ordinis LLs weights seem to be ignored (not important here):
+# loglik = as.numeric(logLik(ordinis_fit))
+# edf = colSums(ordinis_fit$beta!=0)
+# IC = "ebic"
+# IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edf)[,IC]
+# best = which.min(IC.val[-1])+1 
+# best # 5th lambda best
+
+ordinis_fit$lambda[best] # best lambda=0.252913
+
+colSums(ordinis_fit$beta!=0) # support sizes
+colSums(ordinis_fit$beta!=0)[best] # selected support size: 32
+apply(ordinis_fit$beta, 2, function (col) sum(col[-1]!=0&beta_true!=0)) # TPs
+
+coefs_ordinis = ordinis_fit$beta[,best] 
+coefs_ordinis_set = which(coefs_ordinis!=0)-1
+coefs_ordinis_secondbest = ordinis_fit$beta[,secondbest] 
+# coefs_ordinis["V1"] # first non-intercept coef sometimes comes out as 1 or at ridiculously high value - is this a bug??
+# prob a bug in ordinis? now setting it to zero, as it's usually a false pos
+# coefs_ordinis[which(names(coefs_ordinis)=="V1")] = 0 
+coefs_ordinis = coefs_ordinis[-which(names(coefs_ordinis)=="(Intercept)")] # dropping intercept
+coefs_ordinis_secondbest = coefs_ordinis_secondbest[-which(names(coefs_ordinis_secondbest)=="(Intercept)")] # dropping intercept
+
+# the max coefficients observed for any of the lambda values works best
+# to use as starting coefficients in L0glm
+coefs_ordinis_max = as.numeric(rowMax(ordinis_fit$beta))[-1] # drop intercept
+# coefs_ordinis_max[2] = 0 # to drop weird first coefficient if needed
+
+min(abs(coefs_ordinis)[coefs_ordinis!=0&beta_true!=0]) # 0.2827183 - det threshold
+min(abs(coefs_ordinis_max)[coefs_ordinis_max!=0&beta_true!=0]) # 0.2463528 - det threshold
+
+sum(coefs_ordinis!=0) # 32
+sum(coefs_ordinis_max!=0) # 101
+L1norm_coefsordinis = sum(abs(coefs_ordinis))
+L0norm_coefsordinis = sum(coefs_ordinis!=0)
+L0overL1norm_coefsordinis = L0norm_betatrue/L1norm_betatrue
+L0overL1norm_coefsordinis # 2.525916
+
+range(coefs_ordinis) # -0.8166635  0.7726816
+range(beta_true) # -0.7984196  0.6614568
+
+table(coefs_ordinis!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+table(coefs_ordinis_secondbest!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+table(coefs_ordinis_max!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+# TODO check how performance would be affected by choice of gamma
+# (gamma close to 1 maybe results in objective function closest to that of L0glm?)
+
+# TODO compare with SCAD (penalty="scad")
+
+cor(coefs_ordinis, beta_true)              # 0.9669323
+cor(coefs_ordinis_secondbest, beta_true)   # 0.9325962
+cor(coefs_ordinis_max, beta_true)          # 0.8768902
+
+fitted = X %*% coefs_ordinis
+cor(y_true, fitted)^2 # population R2=0.9499114
+
+fitted = X %*% coefs_ordinis_secondbest
+cor(y_true, fitted)^2 # population R2=0.933854
+
+fitted_max = X %*% coefs_ordinis_max
+cor(y_true, fitted_max)^2 # population R2=0.8641589
+
+beta_est0 = coefs_ordinis
+plot(x=beta_est0[beta_true!=0&beta_est0!=0], 
+     y=beta_true[beta_true!=0&beta_est0!=0], pch=16, col="blue",
+     xlab="Estimated coefficients", ylab="True coefficients",
+     main="MCP penalized regression (ordinis, GIC tuned)") # true positives
+abline(a=0, b=1, col="lightgrey")
+points(x=beta_est0[beta_true!=0&beta_est0==0], 
+       y=beta_true[beta_true!=0&beta_est0==0], 
+       pch=16, col="purple") # false negatives
+points(x=beta_est0[beta_true==0&beta_est0!=0], 
+       y=beta_true[beta_true==0&beta_est0!=0], 
+       pch=16, col="red") # false positives
+points(x=beta_est0[beta_true==0&beta_est0==0][[1]], 
+       y=beta_true[beta_true==0&beta_est0==0][[1]], 
+       pch=16, col="green") # true negatives
+method="ordinis_MCP"
 graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
           width=7, height=5)
 
 # check metrics & quality of MCP solution
-system.time(metrics_MCP <- data.frame(method=method,
+system.time(metrics_ordinis_MCP <- data.frame(method=method,
                                       timing_s=timing_ordinis,
                                       do.call(cbind, get.metrics(beta = beta_est0,  # some metrics
                                                                   X = X, 
                                                                   y = y,
                                                                   family = gaussian(identity), 
                                                                   beta_true = beta_true)))) 
-metrics_MCP
+metrics_ordinis_MCP
 
 
-# 1.2A L0glm fit on MCP pre-selected variables ####
 
-# NOTE: fitting an L0glm model directly on the whole dataset (see 1.2B below) results in much
-# reduced sensitivity, so for ultra high dimensional situation clearly 
-# best to start with more informative prior, e.g. starting from MCP coefficients
+# 1.2B MCP fit using ncvreg (no box constraints support & only canonical links for gaussian, binomial & poisson) ####
 
-startcoefs = beta_est0 # MCP starting coefficients work best
-# NOTE: LASSO glmnet coefficient starting values also work & 
-# results in smaller nr of true coefficients being picked in adaptive L0glm step (27 instead of 33), 
-# but requires more iterations than with MCP starting values) 
+library(ncvreg)
+gamma_ncvreg = 1.1 # default for MCP is 3 & 3.7 for SCAD, I am using value close to 1 to match best with my later L0 glm objective
+timing_ncvreg = system.time(ncvreg_fit <- ncvreg(X, y, 
+                                                 # note: intercept is always added
+                                                 penalty = "MCP",
+                                                 family = "gaussian",
+                                                 gamma = gamma_ncvreg, 
+                                                 nlambda = 10L, 
+                                                 # lower.limits = rep(0, p), # force all coefficients to be positive
+                                                 # maxit = 10,
+                                                 # maxit.irls = 1,
+                                                 dfmax = n-1, # min(n-1, round(2*n/(log(log(n))*log(p)))),
+                                                 alpha = 1 # , # worse solution with 0.9 
+                                                 # eps = 1E-4 # good enough to use as initialisation, default 1E-4
+))[[3]] 
+timing_ncvreg # 21s with default eps, 23.5s with eps=0.1
+plot(ncvreg_fit)
+max(ncvreg_fit$iter) # 74
+median(ncvreg_fit$iter) # 24.5
+ncvreg_fit$iter
 
-# priormean = startcoefs
-# cutoff = quantile(abs(priormean)[priormean!=0], 0.8) 
-# priormean[abs(priormean)<=cutoff] = 0 # we shrink small coefficients to zero & keep larger ones at their original value
+# calculate ebic, mbic & gic/sic (cf. abess) criterion at each lambda in grid
+LLs = logLik(ncvreg_fit) # logLik2(ncvreg_fit, weights=w, X, y)
+edfs = attr(LLs, "df")
+LLs = as.vector(LLs)
+# ebic or gic would identity 5th lambda as best, mbic the 4th but too strict
+IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,IC]
+best = which.min(IC.val) 
+best # 5th lambda best
+secondbest = min(length(IC.val), best+1)
+secondbest # 2nd best (slightly less sparse) solution
 
-nonzero = startcoefs!=0
-# we use mbic because original problem is high dimensional
-lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-                              p = ncol(X), # note that we use original problem size
-                              n = nrow(X))
-timing_L0glmafterMCP = system.time(L0glm_gaus_presetlambda <- L0glm.fit(
-  X = X[, nonzero, drop=F], 
-  y = y, 
-  family = family, 
-  lambda = lambda_preset, 
-  nonnegative = FALSE,
-  # prior.mean = priormean[nonzero],
-  start = startcoefs[nonzero], 
-  warm.start = 0.1, 
-  # TODO make sure that with warm.start=1 vars with zero coefs are efficiently removed from the start
-  gamma = 2, 
-  normalize = FALSE, # normalize = T doesn't work yet - too sparse then
-  # dispersion = dispersion,
-  solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-  method = 7L, # use 7 or maybe 5?
-  relaxed = FALSE))[[3]] # 0.15s
-timing_L0glmafterMCP = timing_L0glmafterMCP+timing_ordinis
+ncvreg_fit$lambda[best] # best lambda=0.2526485
 
-L0glm_gaus_presetlambda$dispersion # 13.71269
-L0glm_gaus_presetlambda_coefs = rep(0, ncol(X))
-L0glm_gaus_presetlambda_coefs[nonzero] = L0glm_gaus_presetlambda$coefficients
+colSums(ncvreg_fit$beta!=0) # support sizes
+colSums(ncvreg_fit$beta!=0)[best] # selected support size: 33
+apply(ncvreg_fit$beta, 2, function (col) sum(col[-1]!=0&beta_true!=0)) # TPs
 
-beta_est1 = L0glm_gaus_presetlambda_coefs
-sum(beta_est1!=0&beta_true!=0)  # 24
-table(beta_est1!=0, beta_true!=0, 
+coefs_ncvreg = ncvreg_fit$beta[,best] 
+coefs_ncvreg_set = (which(coefs_ncvreg!=0)-1)[-1]
+coefs_ncvreg_secondbest = ncvreg_fit$beta[,secondbest] 
+coefs_ncvreg = coefs_ncvreg[-which(names(coefs_ncvreg)=="(Intercept)")] # dropping intercept
+coefs_ncvreg_secondbest = coefs_ncvreg_secondbest[-which(names(coefs_ncvreg_secondbest)=="(Intercept)")] # dropping intercept
+
+# the max coefficients observed for any of the lambda values works best
+# to use as starting coefficients in L0glm
+coefs_ncvreg_max = as.numeric(rowMax(ncvreg_fit$beta))[-1] # drop intercept
+# coefs_ncvreg_max[2] = 0 # to drop weird first coefficient if needed
+
+min(abs(coefs_ncvreg)[coefs_ncvreg!=0&beta_true!=0]) # 0.2847526 - det threshold
+min(abs(coefs_ncvreg_max)[coefs_ncvreg_max!=0&beta_true!=0]) # 0.2404359 - det threshold
+
+sum(coefs_ncvreg!=0) # 32
+sum(coefs_ncvreg_max!=0) # 101
+L1norm_coefsncvreg = sum(abs(coefs_ncvreg))
+L0norm_coefsncvreg = sum(coefs_ncvreg!=0)
+L0overL1norm_coefsncvreg = L0norm_betatrue/L1norm_betatrue
+L0overL1norm_coefsncvreg # 2.525916
+
+range(coefs_ncvreg) # -0.8277528  0.7738667
+range(beta_true) # -0.7984196  0.6614568
+
+table(coefs_ncvreg!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                    true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999911     56
-#                   TRUE      9     24
 
-cor(beta_est1, beta_true) # 0.8563481
+table(coefs_ncvreg_secondbest!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
 
-plot(x=beta_est1[beta_true!=0&beta_est1!=0], 
-     y=beta_true[beta_true!=0&beta_est1!=0], pch=16, col="blue",
+table(coefs_ncvreg_max!=0, beta_true!=0, 
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+# TODO check how performance would be affected by choice of gamma
+# (gamma close to 1 maybe results in objective function closest to that of L0glm?)
+
+cor(coefs_ncvreg, beta_true)              # 0.963178
+cor(coefs_ncvreg_secondbest, beta_true)   # 0.9278255
+cor(coefs_ncvreg_max, beta_true)          # 0.8951456
+
+fitted = X %*% coefs_ncvreg
+cor(y_true, fitted)^2 # population R2=0.945889
+
+fitted = X %*% coefs_ncvreg_secondbest
+cor(y_true, fitted)^2 # population R2=0.9337874
+
+fitted_max = X %*% coefs_ncvreg_max
+cor(y_true, fitted_max)^2 # population R2=0.8960235
+
+beta_est0 = coefs_ncvreg
+plot(x=beta_est0[beta_true!=0&beta_est0!=0], 
+     y=beta_true[beta_true!=0&beta_est0!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main="L0glm on MCP preselected variables") # true positives
-min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) # 
+     main="MCP penalized regression (ncvreg, GIC tuned)") # true positives
 abline(a=0, b=1, col="lightgrey")
-points(x=beta_est1[beta_true!=0&beta_est1==0], 
-       y=beta_true[beta_true!=0&beta_est1==0], 
+points(x=beta_est0[beta_true!=0&beta_est0==0], 
+       y=beta_true[beta_true!=0&beta_est0==0], 
        pch=16, col="purple") # false negatives
-points(x=beta_est1[beta_true==0&beta_est1!=0], 
-       y=beta_true[beta_true==0&beta_est1!=0], 
-       pch=16, col="red") # false positives !!!!!
-points(x=beta_est1[beta_true==0&beta_est1==0][[1]], 
-       y=beta_true[beta_true==0&beta_est1==0][[1]], 
+points(x=beta_est0[beta_true==0&beta_est0!=0], 
+       y=beta_true[beta_true==0&beta_est0!=0], 
+       pch=16, col="red") # false positives
+points(x=beta_est0[beta_true==0&beta_est0==0][[1]], 
+       y=beta_true[beta_true==0&beta_est0==0][[1]], 
        pch=16, col="green") # true negatives
-method="L0glm_after_MCP"
+method="ncvreg_MCP"
 graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
           width=7, height=5)
 
-# check metrics & quality of solution with preset lambda
-system.time(metrics_L0 <- data.frame(method=method,
-                                     timing_s=timing_L0glmafterMCP,
-                                     do.call(cbind, get.metrics(beta = beta_est1,  # some metrics
-                                                                  X = X, 
-                                                                  y = y,
-                                                                  family = gaussian(identity), 
-                                                                  beta_true = beta_true))))  # 0.5s
-metrics_L0
+# check metrics & quality of MCP solution
+system.time(metrics_ncvreg_MCP <- data.frame(method=method,
+                                      timing_s=timing_ncvreg,
+                                      do.call(cbind, get.metrics(beta = beta_est0,  # some metrics
+                                                                 X = X, 
+                                                                 y = y,
+                                                                 family = gaussian(identity), 
+                                                                 beta_true = beta_true)))) 
+metrics_ncvreg_MCP
 
 
 
-# # 1.2B Full L0glm fit on whole dataset ####
-# 
+# # 1.3 L0glm fit without SIS ####
+#
 # # without prior MCP variable preselection this doesn't work well
-# # TODO check if other variable preselection methods could work, e.g.
-# # sure independence screening as in abess
-# # Or if in each iteration we should only keep the min(p, round(n/(log(log(n))*log(p))))
-# variables with the largest coefficients as in abess
-# 
+# (returns an empty set)
+
 # # we use mbic because original problem is high dimensional
-# lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-#                               p = ncol(X), 
+# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+#                               p = ncol(X),
 #                               n = nrow(X))
 # timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- L0glm.fit(
-#   X = X, 
-#   y = y, 
-#   family = family, 
-#   lambda = lambda_preset, 
+#   X = X,
+#   y = y,
+#   family = family,
+#   lambda = lambda_preset,
 #   nonnegative = FALSE,
-#   start = NULL, 
-#   gamma = 2, 
-#   normalize = FALSE, 
+#   start = rep(1, p),
+#   gamma = 2.1,
+#   normalize = FALSE,
 #   # dispersion = dispersion,
-#   solver = "eigen", 
-#   method = 7L, # cholesky TODO using solver 4=LSCG gives out of memory error - check if anything can be improved there?
-#   relaxed = FALSE))[[3]] 
+#   solver = "eigen",
+#   method = 7L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmridge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmridge.R#722
+#   relaxed = FALSE))[[3]]
 # timing_fullL0glm
-# # 300s
+# # 34s
 # 
-# fullL0glm_gaus_presetlambda$dispersion # 1
+# fullL0glm_gaus_presetlambda$dispersion # 11.91098
 # 
 # beta_est1 = fullL0glm_gaus_presetlambda$coefficients
 # sum(beta_est1!=0&beta_true!=0)  # 0
-# table(beta_est1!=0, beta_true!=0, 
+# table(beta_est1!=0, beta_true!=0,
 #       dnn=c("estimated beta nonzero", "true beta nonzero"))
-# #                    true beta nonzero
-# # estimated beta nonzero  FALSE   TRUE
-# #                  FALSE 999920     80
 # 
-# cor(beta_est1, beta_true) # 
+# cor(beta_est1, beta_true) #
 # 
-# plot(x=beta_est1[beta_true!=0&beta_est1!=0], 
+# plot(x=beta_est1[beta_true!=0&beta_est1!=0],
 #      y=beta_true[beta_true!=0&beta_est1!=0], pch=16, col="blue",
 #      xlab="Estimated coefficients", ylab="True coefficients",
 #      main="L0glm") # true positives
-# min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) # 
+# min(abs(beta_est1)[beta_true!=0&beta_est1!=0]) #
 # abline(a=0, b=1, col="lightgrey")
-# points(x=beta_est1[beta_true!=0&beta_est1==0], 
-#        y=beta_true[beta_true!=0&beta_est1==0], 
+# points(x=beta_est1[beta_true!=0&beta_est1==0],
+#        y=beta_true[beta_true!=0&beta_est1==0],
 #        pch=16, col="purple") # false negatives
-# points(x=beta_est1[beta_true==0&beta_est1!=0], 
-#        y=beta_true[beta_true==0&beta_est1!=0], 
+# points(x=beta_est1[beta_true==0&beta_est1!=0],
+#        y=beta_true[beta_true==0&beta_est1!=0],
 #        pch=16, col="red") # false positives !!!!!
-# points(x=beta_est1[beta_true==0&beta_est1==0][[1]], 
-#        y=beta_true[beta_true==0&beta_est1==0][[1]], 
+# points(x=beta_est1[beta_true==0&beta_est1==0][[1]],
+#        y=beta_true[beta_true==0&beta_est1==0][[1]],
 #        pch=16, col="green") # true negatives
 # method="L0glm"
-# # graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
+# # graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"),
 # #          width=7, height=5)
 # 
 # # check metrics & quality of solution with preset lambda
 # system.time(metrics_fullL0 <- data.frame(method=method,
 #                                      timing_s=timing_fullL0glm,
 #                                      do.call(cbind, get.metrics(beta = beta_est1,  # some metrics
-#                                                                 X = X, 
+#                                                                 X = X,
 #                                                                 y = y,
-#                                                                 family = gaussian(identity), 
+#                                                                 family = gaussian(identity),
 #                                                                 beta_true = beta_true))))  # 0.5s
 # metrics_fullL0
 # 
-
-
-# 1.3 EXPERIMENTAL ITERATIVE ADAPTIVE L0GLM ALGO TO FURTHER REDUCE FALSE POS RATE ####
-
-# For the high dimensional case a solution with fewer false positives
-# can be obtained by using the 1st iteration
-# solution and then using the L0glm output coefficients as starting values in 
-# subsequent iterations. This would be sort of like an "adaptive L0 glm" then, where
-# the original starting values that are used would themselves also be optimised.
-# Given that we start from sensible starting values we can specify a prior mean here.
-
-# startcoefs = beta_est0_boot # we start from bagged MCP starting values
-startcoefs = beta_est0 # we start from MCP starting values
-
-# NOTE: starting from the MCP solution also works, but takes more iterations
-# to converge
-# starting from the iterative adaptive MCP solution converges very quickly
-# but I need to find out how to do those fits on X subsetting to nonzero coefs
-
-timing_adL0glmafterMCP = system.time({
- for (iter in (1:15)) {
-  priormean = startcoefs # means of prior towards we will shrink
-  cutoff = quantile(abs(priormean)[priormean!=0], 0.2) # find a better smooth functional form instead of a hard cutoff?
-  priormean[abs(priormean)<=cutoff] = 0 # still using zero prior center for small coefficients
-
-sel = startcoefs!=0
-
-# we use mbic because original problem is high dimensional
-lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
-                              p = ncol(X), # note that we use original problem size
-                              n = nrow(X))
-
-L0glm.out_updated <- L0glm.fit(X = X[,sel,drop=F], 
-                                    y = y, 
-                                    family = gaussian(identity), 
-                                    lambda = lambda_preset,  
-                                    # no.pen = 1,
-                                    nonnegative = FALSE,
-                                    prior.mean = priormean[sel], # we can now specify our prior centers
-                                    start = startcoefs[sel], # 
-                                    warm.start = 0.8, # 0.5-0.8 work well
-                                    # dispersion = L0glm_gaus_presetlambda$dispersion, # L0glm.out_2nditeration$dispersion,
-                                    solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                    method = 7L, #
-                                    gamma = 2, #
-                                    thresh = 1E-5,
-                                    relaxed = FALSE
-)  # 
-
-L0glm.out_updated_coefs = rep(0, ncol(X))
-L0glm.out_updated_coefs[sel] = L0glm.out_updated$coefficients
-print(sum(L0glm.out_updated_coefs!=0)) # 23
-L0glm.out_updated$dispersion # 15.99876
-
-beta_est1B = L0glm.out_updated_coefs
-
-plot(x=beta_est1B[beta_true!=0&beta_est1B!=0], 
-     y=beta_true[beta_true!=0&beta_est1B!=0], pch=16, col="blue",
-     xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("iterative adaptive L0glm on MCP preselected variables iter ", iter)) # true positives
-abline(a=0, b=1, col="lightgrey")
-points(x=beta_est1B[beta_true!=0&beta_est1B==0], 
-       y=beta_true[beta_true!=0&beta_est1B==0], 
-       pch=16, col="purple") # false negatives
-points(x=beta_est1B[beta_true==0&beta_est1B!=0], 
-       y=beta_true[beta_true==0&beta_est1B!=0], 
-       pch=16, col="red") # false positives
-points(x=beta_est1B[beta_true==0&beta_est1B==0][[1]], 
-       y=beta_true[beta_true==0&beta_est1B==0][[1]], 
-       pch=16, col="green") # true negatives
-
-startcoefs = beta_est1B
-}
-})[[3]] 
-
-timing_adL0glmafterMCP = timing_adL0glmafterMCP + timing_ordinis # to add cost of MCP fit
-
-sum(beta_est1B!=0) # 23
-sum(beta_est1B!=0&beta_true!=0)  # 22
-L0glm.out_updated$dispersion # 
-# these effect sizes in terms of Cohen's d end up as false negatives and are not detected
-range(abs(beta_true)[beta_est1B==0&beta_true!=0]) 
-# 0.03105975 1.03903399
-# while these effect sizes in terms of Cohen's d are detected
-range(abs(beta_true)[beta_est1B!=0&beta_true!=0]) 
-# 0.7615661 2.3655293
-# i.e. only large effects would be picked up with this sample size (Cohen's d > 0.8)
-
-table(beta_est1B!=0, beta_true!=0, 
-      dnn=c("estimated beta nonzero", "true beta nonzero"))
-#               true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999919     58
-#                   TRUE      1     22
-
-plot(x=beta_est1B[beta_true!=0&beta_est1B!=0], 
-     y=beta_true[beta_true!=0&beta_est1B!=0], pch=16, col="blue",
-     xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("iterative adaptive L0glm on MCP preselected variables")) # true positives
-abline(a=0, b=1, col="lightgrey")
-points(x=beta_est1B[beta_true!=0&beta_est1B==0], 
-       y=beta_true[beta_true!=0&beta_est1B==0], 
-       pch=16, col="purple") # false negatives
-points(x=beta_est1B[beta_true==0&beta_est1B!=0], 
-       y=beta_true[beta_true==0&beta_est1B!=0], 
-       pch=16, col="red") # false positives
-# which(beta_true==0&beta_est1B!=0)
-points(x=beta_est1B[beta_true==0&beta_est1B==0][[1]], 
-       y=beta_true[beta_true==0&beta_est1B==0][[1]], 
-       pch=16, col="green") # true negatives
-method="iterative_adaptive_L0glm_after_MCP"
-graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
-          width=7, height=5)
-
-system.time(metrics_adL0 <- data.frame(method=method,
-                                       timing_s=timing_adL0glmafterMCP,
-                                       do.call(cbind, get.metrics(beta = beta_est1B,  # some metrics
-                                                                   X = X, 
-                                                                   y = y,
-                                                                   family = gaussian(identity), 
-                                                                   beta_true = beta_true)))) 
-metrics_adL0
+# # TODO check if L0glm can be fixed to give a decent solution out of
+# # the box without doing ISIS prescreening? 
 
 
 
-# 1.4 abess fit on MCP pre-selected variables ####
+
+
+# 1.4 abess best subset FIT ####
 
 library(abess)
-startcoefs = beta_est0 # MCP starting coefficients work best
-
-selcoefs = which(startcoefs!=0)
-p_selcoefs = length(selcoefs)
-timing_abessafterMCP = system.time(fit_abessafterMCP_selcoefs <- abess(x = X[,selcoefs,drop=F], 
-                                                  y = y, 
-                                                  family = "gaussian",
-                                                  tune.path = "sequence", 
-                                                  support.size = c(1:(p_selcoefs-1)),
-                                                  lambda = 0,
-                                                  ic.scale = (1/log(n))*preset.lambda(IC="mbic", p=p, n=n), # in this way supporting all IC that L0glm supports
-                                                  warm.start = TRUE, 
-                                                  tune.type = "bic"))[[3]]  
-# 0.36s
-timing_abessafterMCP = timing_abessafterMCP + timing_ordinis
-plot(fit_abessafterMCP_selcoefs, type="tune")  # optimal support size 
-beta_abessafterMCP_selcoefs = as.matrix(extract(fit_abessafterMCP_selcoefs)$beta) # coefficient matrix for best subset
-beta_abessafterMCP = Matrix(rep(0, p), sparse=T)
-beta_abessafterMCP[selcoefs] = beta_abessafterMCP_selcoefs
-beta_abessafterMCP = as.vector(beta_abessafterMCP)
-# beta_abessafterMCP[beta_abessafterMCP<0] = 0
-sum(beta_abessafterMCP!=0) # 22
-plot(x=beta_abessafterMCP[beta_true!=0&beta_abessafterMCP!=0], 
-     y=beta_true[beta_true!=0&beta_abessafterMCP!=0], pch=16, col="blue",
-     xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("abess best subset on MCP preselected variables")) # true positives
-abline(a=0, b=1, col="lightgrey")
-points(x=beta_abessafterMCP[beta_true!=0&beta_abessafterMCP==0], 
-       y=beta_true[beta_true!=0&beta_abessafterMCP==0], 
-       pch=16, col="purple") # false negatives
-points(x=beta_abessafterMCP[beta_true==0&beta_abessafterMCP!=0], 
-       y=beta_true[beta_true==0&beta_abessafterMCP!=0], 
-       pch=16, col="red") # false positives
-points(x=beta_abessafterMCP[beta_true==0&beta_abessafterMCP==0][[1]], 
-       y=beta_true[beta_true==0&beta_abessafterMCP==0][[1]], 
-       pch=16, col="green") # true negatives
-method="abess_after_MCP"
-graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
-          width=7, height=5)
-
-table(beta_abessafterMCP!=0, beta_true!=0, 
-      dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                         true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999920     58
-#                   TRUE      0     22
-
-
-# check metrics & quality of solution 
-system.time(metrics_abess_afterMCP <- data.frame(method="abess_after_MCP",
-                                                 timing_s=timing_abessafterMCP,
-                                                 do.call(
-                                                         cbind, get.metrics(beta = beta_abessafterMCP,  # some metrics
-                                                                     X = X, 
-                                                                     y = y,
-                                                                     family = gaussian(identity), 
-                                                                     beta_true = beta_true))))  # 0.5s
-metrics_abess_afterMCP
-
-
-
-# 1.5 FULL abess FIT using MCP preselected set as initial active set ####
-timing_abessMCPinitialset = system.time(fit_abess_full <- abess(x = X, 
+# optionally to speed up things can use SIS-L0glm or MCP preselected set as initial active set
+# startcoefs <- beta_SISL0glm
+timing_abess = system.time(fit_abess_full <- abess(x = X, 
                                                 y = y, 
                                                 family = "gaussian",
                                                 tune.path = "sequence", 
-                                                support.size = c(1:(p_selcoefs-1)),
+                                                support.size = 0:min(n, round(4*n/(log(log(n))*log(p))) ), # sum(startcoefs!=0), # 
                                                 lambda = 0,
-                                                ic.scale = (1/log(n))*preset.lambda(IC="mbic", p=p, n=n), # to convert BIC criterion to MBIC
-                                                init.active.set = as.integer(which(startcoefs!=0)),
+                                                ic.scale = (1/log(n))*preset.lambda(IC=IC, p=p, n=n), # to convert BIC criterion to other IC
+                                                # init.active.set = as.integer(which(startcoefs!=0)),
                                                 warm.start = TRUE, 
-                                                tune.type = "bic"))[[3]] # 55s
-timing_abessMCPinitialset = timing_abessMCPinitialset + timing_ordinis
-# NOTE: full abess fit not specifying this starting set gives nearly identical
-# result but is ca 4x slower
+                                                tune.type = "bic"))[[3]]
+timing_abess # 72s
 plot(fit_abess_full, type="tune")  # optimal support size 
 beta_abess = as.vector(extract(fit_abess_full)$beta) 
-sum(beta_abess!=0) # 22
+sum(beta_abess!=0) # 32
 plot(x=beta_abess[beta_true!=0&beta_abess!=0], 
      y=beta_true[beta_true!=0&beta_abess!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("abess best subset fit")) # true positives
+     main=paste0("abess best subset fit (GIC tuned)")) # true positives
 abline(a=0, b=1, col="lightgrey")
 points(x=beta_abess[beta_true!=0&beta_abess==0], 
        y=beta_true[beta_true!=0&beta_abess==0], 
@@ -508,20 +601,16 @@ points(x=beta_abess[beta_true==0&beta_abess!=0],
 points(x=beta_abess[beta_true==0&beta_abess==0][[1]], 
        y=beta_true[beta_true==0&beta_abess==0][[1]], 
        pch=16, col="green") # true negatives
-method="abess_MCP_initial_set"
+method="abess"
 graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
           width=7, height=5)
 
 table(beta_abess!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
-# true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999919     59
-#                  TRUE       1     21
 
 # check metrics & quality of solution 
-system.time(metrics_abess_full <- data.frame(method="abess_MCP_initial_set",
-                                             timing_s=timing_abessMCPinitialset,
+system.time(metrics_abess_full <- data.frame(method="abess",
+                                             timing_s=timing_abess,
                                              do.call(cbind, get.metrics(beta = beta_abess,  # some metrics
                                                                    X = X, 
                                                                    y = y,
@@ -531,9 +620,9 @@ metrics_abess_full
 
 
 
-# 1.6 L0Learn fit on MCP pre-selected variables ####
+# 1.5 L0Learn fit on MCP pre-selected variables (bad solution) ####
 library(L0Learn)
-startcoefs = beta_est0 # MCP starting coefficients
+startcoefs = coefs_ncvreg # MCP starting coefficients
 
 selcoefs = which(startcoefs!=0)
 p_selcoefs = length(selcoefs)
@@ -551,6 +640,7 @@ timing_L0LearnafterMCP = system.time(fit_L0Learn_selcoefs <- L0Learn.fit(x=as.ma
                                                   # lambdaGrid=list(10^seq(-5,5,length.out=nlam)/ # DECREASING sequence recommended, but INCREASING works better under nonnegativity, see https://cran.r-project.org/web/packages/L0Learn/vignettes/L0Learn-vignette.html
                                                   #                   (norm(sim$y*sqrt(1/(sim$y+1)),"2")^2)) 
 ))[[3]]  # lambda of 1 is scaled by 1/(norm(weighted y,"2")) because L0Learn scales y by L2 norm of y
+timing_L0LearnafterMCP # 0.01s
 timing_L0LearnafterMCP = timing_L0LearnafterMCP + timing_ordinis
 plot(fit_L0Learn_selcoefs)
 
@@ -580,20 +670,19 @@ logLik.L0Learn = function(object, weights, X, y) {
 LLs = logLik(fit_L0Learn_selcoefs, weights=W, X[,selcoefs,drop=F], y)
 edfs = attr(LLs, "df")
 LLs = as.vector(LLs)
-crit = "mbic"
-IC = get.IC(loglik = LLs, n = n, p = p_selcoefs, edf = edfs)[,crit]
+ICs = get.IC(loglik = LLs, n = n, p = p_selcoefs, edf = edfs)[,IC]
 beta_L0Learn_selcoefs = coef(fit_L0Learn_selcoefs,
-                                lambda = fit_L0Learn_selcoefs$lambda[[1]][which.min(IC)],
+                                lambda = fit_L0Learn_selcoefs$lambda[[1]][which.min(ICs)],
                                 gamma = 0)
 beta_L0Learn_after_MCP = matrix(0, p)
 beta_L0Learn_after_MCP[selcoefs] = beta_L0Learn_selcoefs
 beta_L0Learn_after_MCP = as.vector(beta_L0Learn_after_MCP)
-sum(beta_L0Learn_after_MCP!=0) # 69
+sum(beta_L0Learn_after_MCP!=0) # 31
 
 plot(x=beta_L0Learn_after_MCP[beta_true!=0&beta_L0Learn_after_MCP!=0], 
      y=beta_true[beta_true!=0&beta_L0Learn_after_MCP!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("L0Learn on MCP preselected variables")) # true positives
+     main=paste0("L0Learn on MCP preselected variables (GIC tuned)")) # true positives
 abline(a=0, b=1, col="lightgrey")
 points(x=beta_L0Learn_after_MCP[beta_true!=0&beta_L0Learn_after_MCP==0], 
        y=beta_true[beta_true!=0&beta_L0Learn_after_MCP==0], 
@@ -610,14 +699,10 @@ graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix
 
 table(beta_L0Learn_after_MCP!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                         true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-#                  FALSE 999875     56
-#                   TRUE     45     24
 
 
 # check metrics & quality of solution with preset lambda
-system.time(metrics_L0Learn <- data.frame(method="L0LearnafterMCP",
+system.time(metrics_L0Learn <- data.frame(method="L0Learn_after_MCP",
                                           timing_s=timing_L0LearnafterMCP,
                                           do.call(cbind, get.metrics(beta = beta_L0Learn_after_MCP,  # some metrics
                                                                 X = X, 
@@ -625,49 +710,81 @@ system.time(metrics_L0Learn <- data.frame(method="L0LearnafterMCP",
                                                                 family = gaussian(identity), 
                                                                 beta_true = beta_true))))  # 0.5s
 metrics_L0Learn
-#          method timing_s       p   n m deviance deviance_true   loglik     MD_coefs
-# 1 timing_L0LearnafterMCP    64.59 1000001 500 1 1197.029      922.3419 999003.3 6.641015e-06
-#     MAD_coefs  sMAPE_coefs bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs
-# 1 5.36834e-05 0.0002062479  0.8013139 0.5918034  0.03001058    0.4203605       1.365911
-#   bias_selcoefs R2_selcoefs support_size_true support_size_estimated
-# 1     0.8013139   0.7542867                80                     69
-#   estimated_over_true_support_size TP FP     TN FN precision recall specificity accuracy
-# 1                           0.8625 24 45 999875 56 0.3478261    0.3    0.999955 0.999899
-#    F1_score      gic     ebic      bic      aic     mbic
-# 1 0.3221477 -1996240 -1996072 -1997572 -1997867 -1995831
 
 
 
-# 1.7 LASSO fit using glmnet ####
+# 1.6 LASSO fit using glmnet ####
 
 library(glmnet)
-timing_cvglmnet = system.time(glmnet_cvfit <- cv.glmnet(x = X, y = y, nfolds = 5,
-                                      intercept=F, alpha=1))[[3]] # 136s
+timing_cvglmnet = system.time(glmnet_cvfit <- cv.glmnet(x = X, y = y, 
+                                                        nfolds = 5,
+                                                        intercept=F, 
+                                                        nlambda=10,
+                                                        relaxed=F,
+                                                        alpha=1))[[3]] 
+timing_cvglmnet # 95s
 plot(glmnet_cvfit)
-bestlambda1 <- glmnet_cvfit$lambda.min #
-bestlambda1 # 0.4783427
-bestlambda2 <- glmnet_cvfit$lambda.1se #
-bestlambda2 # 1.157651
-timing_glmnetfull = system.time(glmnet_fit <- glmnet(x = X, y = y, intercept = F, 
-                                                     alpha = 1))[[3]] # 25s
+bestlambdaCV1 <- glmnet_cvfit$lambda.min #
+bestlambdaCV1 # 0.3441614
+bestlambdaCV2 <- glmnet_cvfit$lambda.1se #
+bestlambdaCV2 # 0.3441614
+timing_glmnetfull = system.time(glmnet_fit <- glmnet(x = X, y = y, 
+                                                     intercept = F, 
+                                                     nlambda=10,
+                                                     relaxed=F,
+                                                     alpha = 1))[[3]] 
+timing_glmnetfull # 8.6s
 timing_glmnet = timing_cvglmnet+timing_glmnetfull
+timing_glmnet # 105s
 plot(glmnet_fit)
-coefs_glmnet1 <- as.vector(coef(glmnet_fit, s=bestlambda1)[-1])
-sum(coefs_glmnet1!=0) # 276
-glmnet_set1 <- which(coefs_glmnet1!=0)
-length(intersect(glmnet_set1, beta_true_set)) # 23
-table(coefs_glmnet1!=0, beta_true!=0,  
-      dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                    true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-# FALSE                  999667     57
-# TRUE                      253     23
 
-beta_LASSO = coefs_glmnet1
+# TPs for LASSO coefficients obtained with different lambda
+# 6th best?
+apply(coef(glmnet_fit)[-1,], 2, function (coefs) length(intersect(which(coefs!=0), beta_true_set)))
+apply(coef(glmnet_fit)[-1,], 2, function (coefs) sum(coefs!=0)) # support size
+
+# # tune based on IC calculated from unpenalised GLM refitted LASSO selected coefs
+# tab  <- score_ic_glmnet(glmnet_fit, X, y,
+#                         family = gaussian(), 
+#                         family_name = "gaussian",
+#                         weights = rep(1, nrow(X)), offset = NULL,
+#                         intercept = FALSE,
+#                         refit_method = "bigGlm",
+#                         bigGlm_path = TRUE,                 # warm-start if k ~ n
+#                         lower.limits = -Inf, upper.limits = Inf,
+#                         p_total = ncol(X),
+#                         gamma_ebic = max(0, 1 - log(nrow(X))/(2*log(ncol(X)))),                    # or omit to use CC lower bound
+#                         Cn_hbic = log(log(nrow(X))), 
+#                         min_resid_df = 3L # prevent saturation
+#                         )                 
+# tab
+# # IC-selected lambda and refitted coefficients
+# bestIC    <- which.min(tab$bic)
+# bestIC # 6 # BIC gives set 6, EBIC would return 1 (empty set)
+# lam  <- tab$lambda[bestIC]
+# S    <- tab$active[[bestIC]]
+# length(intersect(S, beta_true_set)) # 23
+# beta_refit <- as.vector(tab$coef_full[[bestIC]])  # refitted unpenalised coefs 
+# # coefficients on S (slope-only)
+# coefs_glmnetIC = as.vector(coef(glmnet_fit, 
+#                                 s = lam)[-1])
+# sum(coefs_glmnetIC!=0) # 432
+# length(intersect(which(coefs_glmnetIC!=0), beta_true_set)) # 23
+# table(coefs_glmnetIC!=0, beta_true!=0,  
+#       dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+coefs_glmnetCV1 <- as.vector(coef(glmnet_fit, s=bestlambdaCV1)[-1])
+sum(coefs_glmnetCV1!=0) # 135
+length(intersect(which(coefs_glmnetCV1!=0), beta_true_set)) # 20
+table(coefs_glmnetCV1!=0, beta_true!=0,  
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+
+beta_LASSO = coefs_glmnetCV1
 plot(x=beta_LASSO[beta_true!=0&beta_LASSO!=0], 
      y=beta_true[beta_true!=0&beta_LASSO!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("LASSO fit (glmnet)")) # true positives
+     main=paste0("LASSO fit (glmnet, 5-fold CV tuned)")) # true positives
 abline(a=0, b=1, col="lightgrey")
 points(x=beta_LASSO[beta_true!=0&beta_LASSO==0], 
        y=beta_true[beta_true!=0&beta_LASSO==0], 
@@ -678,155 +795,222 @@ points(x=beta_LASSO[beta_true==0&beta_LASSO!=0],
 points(x=beta_LASSO[beta_true==0&beta_LASSO==0][[1]], 
        y=beta_true[beta_true==0&beta_LASSO==0][[1]], 
        pch=16, col="green") # true negatives
-method="glmnet_LASSO"
+method="glmnet_LASSO_CV"
 graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
           width=7, height=5)
 
-# check metrics & quality of LASSO solution
-system.time(metrics_LASSO <- data.frame(method="glmnet_LASSO",
+# check metrics & quality of LASSO solution tuned via CV
+system.time(metrics_LASSO_CV <- data.frame(method=method,
                                         timing_s=timing_glmnet,
-                                        do.call(cbind, get.metrics(beta = coefs_glmnet1,  # some metrics
+                                        do.call(cbind, get.metrics(beta = coefs_glmnetCV1,  # some metrics
                                                                    X = X, 
                                                                    y = y,
                                                                    family = gaussian(identity), 
                                                                    beta_true = beta_true)))) 
-metrics_LASSO
+metrics_LASSO_CV
 
 # note: the cross validation I might not really need, as I can just select a model
-# with max n variables
-# 
-# # note: adaptive LASSO fit also doesn't help to select more variables
+# with max n variables, but performance worse than MCP
+ 
+# note: adaptive LASSO fit also doesn't help to select more variables
 
 
-# 1.8 relaxed LASSO fit using glmnet ####
+
+# 1.7 (fully) relaxed LASSO fit using glmnet ####
 # see https://cran.r-project.org/web/packages/glmnet/vignettes/relax.pdf
 
 library(glmnet)
-timing_cvglmnetrelaxed = system.time(glmnet_cvfitrelaxed <- cv.glmnet(x = X, y = y, nfolds = 5,
-                                                        intercept=F, alpha = 1,
-                                                        gamma = c(0, 0.25, 0.5, 0.75, 1), # fully relaxed fit for 5 gamma values (0=fully relaxed)
-                                                        relax = T, # relaxed LASSO
-                                                        maxp=round(n/2)))[[3]] # 629s
+timing_cvglmnetrelaxed = system.time(glmnet_cvfitrelaxed <- cv.glmnet(x = X, y = y, 
+                                                                      nfolds = 5,
+                                                        intercept=F, 
+                                                        alpha = 1,
+                                                        nlambda = 10,
+                                                        gamma = 0, # fully relaxed fit
+                                                        relax = T # relaxed LASSO
+                                                        ))[[3]] 
+timing_cvglmnetrelaxed # 247s
 plot(glmnet_cvfitrelaxed)
-bestlambda1 <- glmnet_cvfitrelaxed$relaxed$lambda.min #
-bestlambda1 # 
-bestlambda2 <- glmnet_cvfitrelaxed$relaxed$lambda.1se #
-bestlambda2 # 
-bestgamma <- glmnet_cvfitrelaxed$relaxed$gamma.min
-bestgamma # 0.25 - close to fully relaxed (0)
+bestlambdaCV1 <- glmnet_cvfitrelaxed$relaxed$lambda.min #
+bestlambdaCV1 # 0.5740958
+bestlambdaCV2 <- glmnet_cvfitrelaxed$relaxed$lambda.1se #
+bestlambdaCV2 # 0.5740958
+# bestgamma <- glmnet_cvfitrelaxed$relaxed$gamma.min
+# bestgamma 
+
 timing_glmnetfullrelaxed = system.time(glmnet_fitrelaxed <- glmnet(x = X, y = y, 
                                                             intercept = F, 
                                                             alpha = 1,
-                                                            gamma = c(0, 0.25, 0.5, 0.75, 1),
+                                                            gamma = 0,
+                                                            nlambda = 10,
                                                             relax = T,
-                                                            maxp=round(n/2)))[[3]] # 122s
-timing_glmnetrelaxed = timing_cvglmnetrelaxed+timing_glmnetfullrelaxed
-plot(glmnet_fitrelaxed)
-abline(v=log(bestlambda1), col="red")
-coefs_glmnet1relaxed <- as.vector(coef(glmnet_fitrelaxed$relaxed, 
-                                       s=bestlambda1, gamma=bestgamma)[-1])
-sum(coefs_glmnet1relaxed!=0) # 24
-glmnet_set1relaxed <- which(coefs_glmnet1relaxed!=0)
-length(intersect(glmnet_set1relaxed, beta_true_set)) # 12
-table(coefs_glmnet1relaxed!=0, beta_true!=0,  
-      dnn=c("estimated beta nonzero", "true beta nonzero"))
-#                    true beta nonzero
-# estimated beta nonzero  FALSE   TRUE
-# FALSE                  999916     72
-# TRUE                       4      8
+                                                            maxp = n-1))[[3]] # 
+timing_glmnetfullrelaxed # 26s
+timing_glmnetrelaxed_CV = timing_cvglmnetrelaxed+timing_glmnetfullrelaxed
+timing_glmnetrelaxed_BIC = timing_glmnetfullrelaxed
 
-beta_LASSOrelaxed = coefs_glmnet1relaxed
-plot(x=beta_LASSOrelaxed[beta_true!=0&beta_LASSOrelaxed!=0], 
-     y=beta_true[beta_true!=0&beta_LASSOrelaxed!=0], pch=16, col="blue",
+plot(glmnet_fitrelaxed$relaxed)
+abline(v=log(bestlambdaCV1), col="red")
+
+# coefficients obtained by 5-fold CV tuning
+coefs_glmnetrelaxed_CV <- as.vector(coef(glmnet_fitrelaxed$relaxed, 
+                                         s=bestlambdaCV1, gamma=0)[-1])
+sum(coefs_glmnetrelaxed_CV!=0) # 26
+glmnet_set1relaxed <- which(coefs_glmnetrelaxed_CV!=0)
+length(intersect(glmnet_set1relaxed, beta_true_set)) # 13
+table(coefs_glmnetrelaxed_CV!=0, beta_true!=0,  
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+# coefficients obtained by BIC tuning
+LLs <- L0glm::logLik.glmnet(glmnet_fitrelaxed$relaxed, weights=w, X=X, y=y)
+edfs = attr(LLs, "df")
+# aic gives same result here, all other IC return intercept only model
+IC.val = get.IC(loglik = LLs, n = n, p = p, edf = edfs)[,"bic"]
+IC.val
+bestBIC = which.min(IC.val)
+bestBIC # 4
+bestlambda_BIC = glmnet_fitrelaxed$relaxed$lambda[bestBIC] 
+bestlambda_BIC # 0.2063193
+coefs_glmnetrelaxed_BIC = as.vector(coef(glmnet_fitrelaxed$relaxed, 
+                                         s = bestlambda_BIC, gamma=0)[-1])
+table(coefs_glmnetrelaxed_BIC!=0, beta_true!=0,  
+      dnn=c("estimated beta nonzero", "true beta nonzero"))
+
+
+# CONCLUSION: here BIC yield more TPs but also very large nr of FPs
+
+# plots & metrics for coefficients tuned via CV
+if (sum(coefs_glmnetrelaxed_CV!=0)!=p) {
+beta_LASSOrelaxedCV = coefs_glmnetrelaxed_CV
+plot(x=beta_LASSOrelaxedCV[beta_true!=0&beta_LASSOrelaxedCV!=0], 
+     y=beta_true[beta_true!=0&beta_LASSOrelaxedCV!=0], pch=16, col="blue",
      xlab="Estimated coefficients", ylab="True coefficients",
-     main=paste0("relaxed LASSO fit (glmnet)")) # true positives
+     main=paste0("relaxed LASSO fit (glmnet, 5-fold CV tuned)")) # true positives
 abline(a=0, b=1, col="lightgrey")
-points(x=beta_LASSOrelaxed[beta_true!=0&beta_LASSOrelaxed==0], 
-       y=beta_true[beta_true!=0&beta_LASSOrelaxed==0], 
+points(x=beta_LASSOrelaxedCV[beta_true!=0&beta_LASSOrelaxedCV==0], 
+       y=beta_true[beta_true!=0&beta_LASSOrelaxedCV==0], 
        pch=16, col="purple") # false negatives
-points(x=beta_LASSOrelaxed[beta_true==0&beta_LASSOrelaxed!=0], 
-       y=beta_true[beta_true==0&beta_LASSOrelaxed!=0], 
+points(x=beta_LASSOrelaxedCV[beta_true==0&beta_LASSOrelaxedCV!=0], 
+       y=beta_true[beta_true==0&beta_LASSOrelaxedCV!=0], 
        pch=16, col="red") # false positives
-points(x=beta_LASSOrelaxed[beta_true==0&beta_LASSOrelaxed==0][[1]], 
-       y=beta_true[beta_true==0&beta_LASSOrelaxed==0][[1]], 
+points(x=beta_LASSOrelaxedCV[beta_true==0&beta_LASSOrelaxedCV==0][[1]], 
+       y=beta_true[beta_true==0&beta_LASSOrelaxedCV==0][[1]], 
        pch=16, col="green") # true negatives
-method="glmnet_relaxed_LASSO"
+method="glmnet_relaxed_LASSO_CV"
 graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
           width=7, height=5)
 
 # check metrics & quality of LASSO solution
-system.time(metrics_relaxedLASSO <- data.frame(method=method,
-                                        timing_s=161,
-                                        do.call(cbind, get.metrics(beta = coefs_glmnet1relaxed,  # some metrics
+system.time(metrics_relaxedLASSO_CV <- data.frame(method=method,
+                                        timing_s=timing_glmnetrelaxed_CV,
+                                        do.call(cbind, get.metrics(beta = beta_LASSOrelaxedCV,  # some metrics
                                                                    X = X, 
                                                                    y = y,
                                                                    family = gaussian(identity), 
                                                                    beta_true = beta_true)))) 
-metrics_relaxedLASSO
+metrics_relaxedLASSO_CV
+}
+
+# plots & metrics for coefficients tuned based on BIC
+beta_LASSOrelaxedBIC = coefs_glmnetrelaxed_BIC
+plot(x=beta_LASSOrelaxedBIC[beta_true!=0&beta_LASSOrelaxedBIC!=0], 
+     y=beta_true[beta_true!=0&beta_LASSOrelaxedBIC!=0], pch=16, col="blue",
+     xlab="Estimated coefficients", ylab="True coefficients",
+     main=paste0("relaxed LASSO fit (glmnet, BIC tuned)")) # true positives
+abline(a=0, b=1, col="lightgrey")
+points(x=beta_LASSOrelaxedBIC[beta_true!=0&beta_LASSOrelaxedBIC==0], 
+       y=beta_true[beta_true!=0&beta_LASSOrelaxedBIC==0], 
+       pch=16, col="purple") # false negatives
+points(x=beta_LASSOrelaxedBIC[beta_true==0&beta_LASSOrelaxedBIC!=0], 
+       y=beta_true[beta_true==0&beta_LASSOrelaxedBIC!=0], 
+       pch=16, col="red") # false positives
+points(x=beta_LASSOrelaxedBIC[beta_true==0&beta_LASSOrelaxedBIC==0][[1]], 
+       y=beta_true[beta_true==0&beta_LASSOrelaxedBIC==0][[1]], 
+       pch=16, col="green") # true negatives
+method="glmnet_relaxed_LASSO_BIC"
+graph2png(file=paste0("..//benchmarks/plots/high_dimensional/",method,"_",suffix,".png"), 
+          width=7, height=5)
+
+# check metrics & quality of LASSO solution
+system.time(metrics_relaxedLASSO_BIC <- data.frame(method=method,
+                                                  timing_s=timing_glmnetrelaxed_BIC,
+                                                  do.call(cbind, get.metrics(beta = beta_LASSOrelaxedBIC,  # some metrics
+                                                                             X = X, 
+                                                                             y = y,
+                                                                             family = gaussian(identity), 
+                                                                             beta_true = beta_true)))) 
+metrics_relaxedLASSO_BIC
 
 
 
-# 1.9 COMPARISON OF METRICS ####
+# 1.8 COMPARISON OF METRICS ####
 
-library(dplyr)
-benchmarks = bind_rows(metrics_LASSO, 
-                       metrics_relaxedLASSO,
-                       metrics_MCP,
-                       metrics_L0,
-                       metrics_adL0,
+benchmarks = bind_rows(metrics_LASSO_CV, 
+                       # metrics_relaxedLASSO_CV,
+                       metrics_relaxedLASSO_BIC,
+                       metrics_ncvreg_MCP,
+                       metrics_ordinis_MCP,
+                       metrics_ISISL0glm,
                        metrics_abess_afterMCP,
                        metrics_abess_full,
                        metrics_L0Learn)
-benchmarks = benchmarks[order(benchmarks$F1_score, decreasing=T),]
+benchmarks = benchmarks[order(benchmarks$deviance_true, decreasing=F),]
 benchmarks
-#                      method timing_s       p   n m   deviance deviance_true   loglik     MD_coefs    MAD_coefs  sMAPE_coefs
-# 6                    abess_after_MCP    66.61 1000001 500 1  7684.0557     7135.9699 998585.5 5.350454e-06 3.053394e-05 0.0001186759
-# 5 iterative_adaptive_L0glm_after_MCP    70.19 1000001 500 1  7631.4103     7167.0018 998586.2 7.515924e-06 3.180458e-05 0.0001218726
-# 4                    L0glm_after_MCP    66.38 1000001 500 1  6403.8240     5923.6036 998620.0 8.176878e-06 3.322297e-05 0.0001364081
-# 7              abess_MCP_initial_set   179.67 1000001 500 1  7440.8172     7942.4573 998593.5 5.555376e-06 3.201309e-05 0.0001222228
-# 8                    L0LearnafterMCP    66.26 1000001 500 1  1197.0288      922.3419 999003.3 6.641015e-06 5.368340e-05 0.0002062479
-# 3                        MCP_ordinis    66.22 1000001 500 1   714.5266      214.2935 999052.3 8.375465e-06 6.366255e-05 0.0003657603
-# 2               glmnet_relaxed_LASSO   161.00 1000001 500 1 16720.4994    16176.7879 998401.1 6.401181e-06 5.140240e-05 0.0001530765
-# 1                       glmnet_LASSO   177.79 1000001 500 1  4300.2035     4327.8398 998476.6 6.846402e-06 6.816187e-05 0.0006465021
-#   bias_coefs  R2_coefs  MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
-# 6  0.9727985 0.7418590  0.042715050    0.1772086      0.1216335     0.9727985   0.9808786                80                     22
-# 5  0.9867476 0.7276358  0.048350940    0.2301083      0.2553290     0.9867476   0.9575115                80                     23
-# 4  1.0715341 0.7333310  0.109290694    0.2589226      0.7396381     1.0715341   0.9346716                80                     33
-# 7  0.9500401 0.7162749  0.086646333    0.2098259      0.1919461     0.9500401   0.9578239                80                     22
-# 8  0.8013139 0.5918034  0.030010580    0.4203605      1.3659110     0.8013139   0.7542867                80                     69
-# 3  0.7699911 0.5790339  0.025538118    0.2616378      1.7030892     0.7699911   0.7380113                80                    149
-# 2  0.8429514 0.3047069 -0.089966059    0.5245184      0.7563791     0.8429514   0.8036939                80                     12
-# 1  1.7069702 0.4253950  0.003232753    0.1525343      1.9293555     1.7069702   0.5617728                80                    276
-#   estimated_over_true_support_size TP  FP     TN FN  precision recall specificity accuracy  F1_score      gic     ebic      bic
-# 6                           0.2750 22   0 999920 58 1.00000000 0.2750    1.000000 0.999942 0.4313725 -1996590 -1996535 -1997028
-# 5                           0.2875 22   1 999919 58 0.95652174 0.2750    0.999999 0.999941 0.4271845 -1996567 -1996509 -1997023
-# 4                           0.4125 24   9 999911 56 0.72727273 0.3000    0.999991 0.999935 0.4247788 -1996382 -1996301 -1997029
-# 7                           0.2750 21   1 999919 59 0.95454545 0.2625    0.999999 0.999940 0.4117647 -1996606 -1996551 -1997044
-# 8                           0.8625 24  45 999875 56 0.34782609 0.3000    0.999955 0.999899 0.3221477 -1996240 -1996072 -1997572
-# 3                           1.8625 24 125 999795 56 0.16107383 0.3000    0.999875 0.999819 0.2096070 -1994319 -1993960 -1997172
-# 2                           0.1500  8   4 999916 72 0.66666667 0.1000    0.999996 0.999924 0.1739130 -1996474 -1996443 -1996721
-# 1                           3.4500 23 253 999667 57 0.08333333 0.2875    0.999747 0.999690 0.1292135 -1989962 -1989299 -1995232
-#        aic     mbic
-# 6 -1997125 -1996456
-# 5 -1997124 -1996427
-# 4 -1997172 -1996184
-# 7 -1997141 -1996472
-# 8 -1997867 -1995831
-# 3 -1997805 -1993444
-# 2 -1996776 -1996398
-# 1 -1996399 -1988346
+#                     method timing_s       p   n m  deviance deviance_true     loglik     MD_coefs    MAD_coefs
+# 5               ISIS_L0glm    28.40 1000001 500 1  783.5221      365.5327  -822.7671 1.470970e-06 5.539483e-06
+# 2 glmnet_relaxed_LASSO_BIC    24.48 1000001 500 1  267.1526      673.5117  -553.7723 5.417878e-06 3.789864e-05
+# 8                    abess    63.33 1000001 500 1 1919.2327     1714.5316 -1046.7374 5.898213e-06 1.828169e-05
+# 3               ncvreg_MCP    20.31 1000001 500 1 3380.5188     2987.8866 -1188.2634 3.809486e-06 2.452741e-05
+# 9        L0Learn_after_MCP    44.65 1000001 500 1 3837.3013     3332.4957 -1219.9484 2.856453e-06 2.285687e-05
+# 6          L0glm_after_MCP    20.36 1000001 500 1 4347.9834     3700.3422 -1251.1841 3.866821e-06 2.062117e-05
+# 7          abess_after_MCP    20.32 1000001 500 1 4607.9978     3994.9692 -1265.7044 4.301412e-06 2.052152e-05
+# 4              ordinis_MCP    44.65 1000001 500 1 5339.3327     4574.5681 -1302.5312 5.155387e-06 2.461274e-05
+# 1          glmnet_LASSO_CV    62.86 1000001 500 1 5823.8818     5050.0364 -1324.2478 6.929808e-06 2.442414e-05
+#    sMAPE_coefs bias_coefs   R2_coefs  MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs
+# 5 4.851911e-05  1.0063953 0.93694967  0.002829568   0.05567598      0.1189240     1.0063953   0.9872315
+# 2 4.387157e-04  0.8599231 0.19630980  0.008861523   0.13481324      1.8974241     0.8599231   0.3215343
+# 8 9.898516e-05  0.7589768 0.49834459  0.132191790   0.21878243      0.6532755     0.7589768   0.8209510
+# 3 1.173056e-04  0.5624954 0.20124643 -0.091567537   0.34896751      0.9565987     0.5624954   0.6508893
+# 9 1.115838e-04  0.6393360 0.23588006 -0.186008686   0.30099513      0.7372170     0.6393360   0.7629045
+# 6 1.091134e-04  0.8970345 0.27349700 -0.117312091   0.13976993      0.5927860     0.8970345   0.8845686
+# 7 1.040369e-04  0.7943968 0.30726152 -0.108128203   0.17528730      0.2263195     0.7943968   0.9937728
+# 4 1.183236e-04  0.5663658 0.09128508 -0.120785775   0.34934859      0.9033776     0.5663658   0.5778110
+# 1 1.683153e-04  2.5174740 0.22328877  0.073217334   0.19335741      1.8125679     2.5174740   0.5300069
+#   support_size_true support_size_estimated estimated_over_true_support_size TP  FP     TN FN precision
+# 5                60                     38                        0.6333333 38   0 999940 22 1.0000000
+# 2                60                    188                        3.1333333 19 169 999771 41 0.1010638
+# 8                60                     26                        0.4333333 19   7 999933 41 0.7307692
+# 3                60                     16                        0.2666667  9   7 999933 51 0.5625000
+# 9                60                     13                        0.2166667  9   4 999936 51 0.6923077
+# 6                60                     12                        0.2000000  9   3 999937 51 0.7500000
+# 7                60                      9                        0.1500000  9   0 999940 51 1.0000000
+# 4                60                      7                        0.1166667  4   3 999937 56 0.5714286
+# 1                60                     41                        0.6833333 13  28 999912 47 0.3170732
+#       recall specificity accuracy  F1_score      gic     ebic      bic      aic     mbic
+# 5 0.63333333    1.000000 0.999978 0.7755102 2629.878 2723.144 1887.904 1723.534 2857.383
+# 2 0.31666667    0.999831 0.999790 0.1532258 5877.828 6329.808 2282.105 1485.545 6980.350
+# 8 0.31666667    0.999993 0.999952 0.4418605 2774.944 2839.512 2261.269 2147.475 2932.447
+# 3 0.15000000    0.999993 0.999942 0.2368421 2805.600 2846.254 2482.175 2410.527 2904.768
+# 9 0.15000000    0.999996 0.999945 0.2465753 2793.251 2826.731 2526.901 2467.897 2874.919
+# 6 0.15000000    0.999997 0.999946 0.2500000 2830.483 2861.571 2583.158 2528.368 2906.318
+# 7 0.15000000    1.000000 0.999949 0.2608696 2783.805 2807.719 2593.555 2551.409 2842.139
+# 4 0.06666667    0.999997 0.999941 0.1194030 2806.979 2826.111 2654.779 2621.062 2853.647
+# 1 0.21666667    0.999972 0.999925 0.2574257 3708.559 3808.999 2909.509 2732.496 3953.563
 
-# CONCLUSION: in terms of F score to recover the true support,
-# abess after MCP & adaptive L0glm are both very good
-# LASSO & MCP far too many false positives
-# relaxed LASSO has poor 
+# CONCLUSION: ISIS_L0glm clear winner
+
+benchmarks[benchmarks$method %in% c("abess", "abess_after_MCP", "ncvreg_MCP", "ISIS_L0glm", "glmnet_relaxed_LASSO_BIC", "glmnet_LASSO_CV"),
+           c("method","timing_s","deviance_true", "TP", "FP", "TN", "FN", "F1_score", "gic")]
+#                     method timing_s deviance_true TP  FP     TN FN  F1_score      gic
+# 5               ISIS_L0glm    28.40      365.5327 38   0 999940 22 0.7755102 2629.878
+# 2 glmnet_relaxed_LASSO_BIC    24.48      673.5117 19 169 999771 41 0.1532258 5877.828
+# 8                    abess    63.33     1714.5316 19   7 999933 41 0.4418605 2774.944
+# 3               ncvreg_MCP    20.31     2987.8866  9   7 999933 51 0.2368421 2805.600
+# 7          abess_after_MCP    20.32     3994.9692  9   0 999940 51 0.2608696 2783.805
+# 1          glmnet_LASSO_CV    62.86     5050.0364 13  28 999912 47 0.2574257 3708.559
 
 # TODO : remove benchmarks related to bias on all coefficients, as measures of
 # bias on selected variables are then confounded with the efficiency of variable
 # selection / support recovery?
-
-
-
 
 
 
@@ -923,7 +1107,7 @@ table(beta_est0_boot!=0, beta_true!=0,
 # so nr of true pos did not increase by using bagged MCP estimates instead of original MCP estimate
 
 # check metrics & quality of MCP solution
-system.time(metrics_MCP_boot <- data.frame(method="MCP_ordinis",
+system.time(metrics_MCP_boot <- data.frame(method="ordinis_MCP",
                                       timing_s=60,
                                       do.call(cbind, get.metrics(beta = beta_est0_boot,  # some metrics
                                                                  X = X,

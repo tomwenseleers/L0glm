@@ -230,7 +230,9 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
 # return information criteria based on log likelihood, n, p & edf
 # for a good discussion on information criteria see
 # https://www.sciencedirect.com/science/article/pii/S016794731100171X
-get.IC = function(loglik, n, p, edf) {
+get.IC = function(loglik, n, p, edf, 
+                  gamma_ebic = max(0, 1 - log(n)/(2*log(p))), # abess uses conservative gamma_ebic=1, we use recommended max(0, 1 - log(n)/(2*log(p))) so that it becomes BIC for n>p
+                  Cn_hbic = log(log(n))) {
   min2LL = -2 * loglik
   
   # p=nr of vars, n=nr of cases, edf=effective degrees of freedom
@@ -238,19 +240,27 @@ get.IC = function(loglik, n, p, edf) {
   # aicc = ifelse(n > edf, min2LL + 2*edf*n/(n-edf), NA) # small sample AIC
   bic = min2LL + log(n) * edf # Bayesian information criterion
   gic = min2LL + log(p) * log(log(n)) * edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117
-  ebic = min2LL + (log(n) + 2 * (1 - log(n) / (2 * log(p))) * log(p)) * edf # extended BIC, Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
-  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
+   
+  ebic = min2LL + (log(n) + 2 * gamma_ebic * log(p)) * edf # extended BIC, for high dimensional settings, cf. Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
+  hbic = min2LL + Cn_hbic * log(p) * edf # HBIC, recommended for ultra-high dimensional settings, cf https://arxiv.org/pdf/1311.4981 & https://www.annualreviews.org/docserver/fulltext/statistics/7/1/annurev-statistics-030718-105038.pdf
+  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # for high dimensional settings with FDR control, see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
   # TODO maybe still add mbic2, cf Frommlet paper
-  # c = 2 # TODO default, add as a parameter
-  # hq = min2LL + c*log(log(n))*edf # Hannan and Quinnn information criterion - maybe worth to keep?
-  # ric = min2LL + 2 * log(p) # risk inflation criterion
-  # mric = min2LL + 2 * sum(log(p/(1:edf))) # modified risk inflation criterion
-  # cic = min2LL + 4 * sum(log(p/(1:edf))) # covariance inflation criterion
-  # See Xu thesis 2010, Model Selection with Information Criteria
-  # g = 1 # TODO Default, add as argument
-  # bicg =  min2LL + log(n)*edf + 2*g*lchoose(p,round(edf))
-  # q = 0.25 # TODO Default, add as argument
-  # bicq =  min2LL + log(n)*edf - 2*edf*log(q/(1-q))
-  
-  return(data.frame(aic = aic, bic = bic, gic = gic, ebic = ebic, mbic = mbic))
+  return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mbic = mbic))
+}
+
+
+# preset.lambda ####
+# Function to compute the best lambda implied by a particular IC given p=ncol(X) and n=nrow(X). 
+preset.lambda <- function(IC="gic", p, n, 
+                          gamma_ebic = max(0, 1 - log(n)/(2*log(p))), # abess uses conservative gamma_ebic=1, we use recommended formula so that it becomes BIC for n>p
+                          Cn_hbic = log(log(n))) { # given recommendation
+  lambda <- switch(IC,
+                   gic = log(p)*log(log(n)),
+                   aic = 2,
+                   bic = log(n),
+                   ebic = log(n) + 2*gamma_ebic*log(p),
+                   hbic = Cn_hbic * log(p),
+                   mbic = log(n*(p^2)/16),
+                   stop("invalid information criterion for initializing lambda. It must be one of 'gic', 'aic', 'bic', 'ebic', 'mbic'."))
+  return(lambda)
 }

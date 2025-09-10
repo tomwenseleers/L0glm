@@ -20,8 +20,7 @@ simul(
 2: Single channel data with Poisson noise.
 3: Multichannel data with Gaussian noise.
 4: Multichannel data with Poisson noise.
-5: Orthogonal data.
-6: High dimensional data (p > 40000 suggested).}
+5: Data with standard normal design matrix and Gaussian noise.}
 
 \item{n}{A numeric value indicating the number of observations to generate.}
 
@@ -32,9 +31,8 @@ simul(
 \item{options}{A list of optional parameters to control the data generation process. This can include:
 For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
 \code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
-For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_sd} (standard deviation of the beta coefficients), 
+For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_range} (range of the beta model coefficients), 
 \code{error_sd} (standard deviation of the error term).
-For method 6: \code{sd_noise} (standard deviation of the noise).
 If options are \code{NULL}, default values will be used.}
 
 \item{seed}{Random seed.}
