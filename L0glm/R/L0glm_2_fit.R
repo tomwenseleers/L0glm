@@ -180,7 +180,8 @@
 #' @param ncores Optional integer specifying the number of cores to use when
 #'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the number
 #'   of available logical cores divided by 2, which usually corresponds to the
-#'   number of physical cores available.
+#'   number of physical cores available. The requested value is capped at the
+#'   detected number of physical cores when that can be determined.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform.
 #' @param grouped A logical value indicating whether a grouped fit should be
@@ -338,8 +339,8 @@
 #' \item P. McCullagh & J.A. Nelder, \emph{Generalized Linear Models}. London: Chapman and Hall (1989).
 #' }
 #'
-#' @importFrom parallel detectCores makeCluster clusterCall clusterEvalQ
-#'   clusterApply stopCluster
+#' @importFrom parallel detectCores makeCluster clusterCall clusterApply
+#'   stopCluster
 #'
 #' @export
 #' @author
@@ -496,27 +497,43 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     if (!grouped) group.maxit <- 1L
     ncores <- suppressWarnings(as.integer(ncores[1L]))
     if (is.na(ncores) || ncores < 1L) ncores <- 1L
+    physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
+    if ((is.na(physical_cores) || physical_cores < 1L) &&
+        requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+      physical_cores <- suppressWarnings(RhpcBLASctl::get_num_cores())
+    }
+    logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+    if (!is.na(physical_cores) && physical_cores >= 1L) {
+      max_ncores <- as.integer(physical_cores)
+      max_ncores_label <- "physical core count"
+    } else if (!is.na(logical_cores) && logical_cores >= 1L) {
+      max_ncores <- max(1L, as.integer(logical_cores) - 2L)
+      max_ncores_label <- "detectCores(logical = TRUE) - 2"
+    } else {
+      max_ncores <- NA_integer_
+      max_ncores_label <- NULL
+    }
+    if (!is.na(max_ncores)) {
+      if (ncores > max_ncores) {
+        warning("ncores capped at ", max_ncores_label, " = ",
+                max_ncores, call. = FALSE)
+        ncores <- max_ncores
+      }
+    }
     
     fit_multichannel <- function(do_parallel) {
       if (do_parallel) {
         nworkers <- min(ncores, m)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
-        cl <- parallel::makeCluster(nworkers, type = cluster_type)
+        cl <- if (cluster_type == "PSOCK") {
+          parallel::makeCluster(nworkers, type = cluster_type, useXDR = FALSE)
+        } else {
+          parallel::makeCluster(nworkers, type = cluster_type)
+        }
         on.exit(parallel::stopCluster(cl), add = TRUE)
         L0glm_dll <- getLoadedDLLs()[["L0glm"]]
         L0glm_dll_path <- if (!is.null(L0glm_dll)) L0glm_dll[["path"]] else NULL
-        parallel::clusterCall(cl, function(lib_paths, dll_path) {
-          .libPaths(lib_paths)
-          if (!is.null(dll_path) && nzchar(dll_path) &&
-              file.exists(dll_path) &&
-              !("L0glm" %in% names(getLoadedDLLs()))) {
-            dyn.load(dll_path)
-          }
-          if (!("L0glm" %in% loadedNamespaces())) {
-            requireNamespace("L0glm", quietly = TRUE)
-          }
-          NULL
-        }, .libPaths(), L0glm_dll_path)
+        parallel::clusterCall(cl, L0glm_worker_init, .libPaths(), L0glm_dll_path)
       }
       
       make_chunks <- function(vec, k) {
@@ -534,6 +551,22 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                start      = if (is.null(start.mat)) NULL else start.mat[vars, cols, drop = FALSE],
                offset     = offset[, cols, drop = FALSE])
         })
+      }
+      collect_fit <- function(fit, chunked) {
+        if (chunked) {
+          list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
+               weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
+               dispersion   = unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE),
+               lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+               z            = do.call(cbind, lapply(fit, `[[`, "z")))
+        } else {
+          list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
+               weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
+               dispersion   = as.numeric(Matrix(do.call(cbind, lapply(fit, `[[`, "dispersion")),
+                                                sparse = FALSE)[1, ]),
+               lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+               z            = do.call(cbind, lapply(fit, `[[`, "z")))
+        }
       }
       
       for (iter in seq_len(group.maxit)) {
@@ -575,7 +608,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         normalize     = normalize,
                                         control.solver = control.solver,
                                         verbose       = verbose)
-          fit <- unlist(fit, recursive = FALSE)
         } else {
           fit <- lapply(seq_len(m), function(col) {
             L0glm.fit.internal(X          = X[, vars, drop = FALSE],
@@ -603,12 +635,21 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           })
         }
         
-        coefficients[vars, ] <- Matrix(do.call(cbind, lapply(fit, `[[`, "coefficients")), sparse = TRUE)
-        weights.mat          <- Matrix(do.call(cbind, lapply(fit, `[[`, "weights")),      sparse = TRUE)
-        dispersion           <- as.numeric(Matrix(do.call(cbind, lapply(fit, `[[`, "dispersion")),   sparse = FALSE)[1, ])
+        fit <- collect_fit(fit, chunked = do_parallel)
+        if (length(vars) == p && identical(vars, seq_len(p))) {
+          coefficients <- Matrix(fit$coefficients, sparse = TRUE)
+        } else {
+          coefficients[vars, ] <- Matrix(fit$coefficients, sparse = TRUE)
+        }
+        weights.mat          <- Matrix(fit$weights,      sparse = TRUE)
+        dispersion           <- fit$dispersion
         disp_list            <- as_list(dispersion)
-        lambdas.mat[vars, ]  <- Matrix(do.call(cbind, lapply(fit, `[[`, "lambdas")),      sparse = TRUE)
-        z.mat                <- Matrix(do.call(cbind, lapply(fit, `[[`, "z")),            sparse = TRUE)
+        if (length(vars) == p && identical(vars, seq_len(p))) {
+          lambdas.mat <- Matrix(fit$lambdas, sparse = TRUE)
+        } else {
+          lambdas.mat[vars, ]  <- Matrix(fit$lambdas, sparse = TRUE)
+        }
+        z.mat                <- Matrix(fit$z,            sparse = TRUE)
 
       }
       
@@ -644,7 +685,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           normalize     = normalize,
                                           control.solver = control.solver,
                                           verbose       = verbose)
-            fit <- unlist(fit, recursive = FALSE)
           } else {
             fit <- lapply(seq_len(m), function(col) {
               L0glm.fit.internal(X          = X[, vars, drop = FALSE],
@@ -672,12 +712,21 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
             })
           }
           
-          coefficients[vars, ] <- Matrix(do.call(cbind, lapply(fit, `[[`, "coefficients")), sparse = TRUE)
-          weights.mat          <- Matrix(do.call(cbind, lapply(fit, `[[`, "weights")),      sparse = TRUE)
-          dispersion           <- as.numeric(Matrix(do.call(cbind, lapply(fit, `[[`, "dispersion")),   sparse = FALSE)[1, ])
+          fit <- collect_fit(fit, chunked = do_parallel)
+          if (length(vars) == p && identical(vars, seq_len(p))) {
+            coefficients <- Matrix(fit$coefficients, sparse = TRUE)
+          } else {
+            coefficients[vars, ] <- Matrix(fit$coefficients, sparse = TRUE)
+          }
+          weights.mat          <- Matrix(fit$weights,      sparse = TRUE)
+          dispersion           <- fit$dispersion
           disp_list            <- as_list(dispersion)      # keep the helper in sync
-          lambdas.mat[vars, ]  <- Matrix(do.call(cbind, lapply(fit, `[[`, "lambdas")),      sparse = TRUE)
-          z.mat                <- Matrix(do.call(cbind, lapply(fit, `[[`, "z")),            sparse = TRUE)
+          if (length(vars) == p && identical(vars, seq_len(p))) {
+            lambdas.mat <- Matrix(fit$lambdas, sparse = TRUE)
+          } else {
+            lambdas.mat[vars, ] <- Matrix(fit$lambdas, sparse = TRUE)
+          }
+          z.mat                <- Matrix(fit$z,            sparse = TRUE)
           
         } else if (verbose) warning("Relaxed fit skipped - all coeffs zero")
       }
@@ -801,15 +850,44 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 # ---------------------------------------------------------------------------
 #  PARALLEL HELPER (called on the cluster)
 # ---------------------------------------------------------------------------
+L0glm_worker_init <- function(lib_paths, dll_path) {
+  .libPaths(lib_paths)
+  Sys.setenv(
+    OMP_NUM_THREADS = "1",
+    OPENBLAS_NUM_THREADS = "1",
+    MKL_NUM_THREADS = "1",
+    VECLIB_MAXIMUM_THREADS = "1"
+  )
+  if (requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+    RhpcBLASctl::blas_set_num_threads(1L)
+    RhpcBLASctl::omp_set_num_threads(1L)
+  }
+  if (!is.null(dll_path) && nzchar(dll_path) &&
+      file.exists(dll_path) &&
+      !("L0glm" %in% names(getLoadedDLLs()))) {
+    dyn.load(dll_path)
+  }
+  if (!("L0glm" %in% loadedNamespaces())) {
+    requireNamespace("L0glm", quietly = TRUE)
+  }
+  NULL
+}
+
 L0glmfun_chunk <- function(job, ...) {
-  L0glmfun(cols       = seq_len(ncol(job$y)),
-           y          = job$y,
-           weights    = job$weights,
-           prior.mean = job$prior.mean,
-           dispersion = job$dispersion,
-           start      = job$start,
-           offset     = job$offset,
-           ...)
+  fit <- L0glmfun(cols       = seq_len(ncol(job$y)),
+                  y          = job$y,
+                  weights    = job$weights,
+                  prior.mean = job$prior.mean,
+                  dispersion = job$dispersion,
+                  start      = job$start,
+                  offset     = job$offset,
+                  ...)
+
+  list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
+       weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
+       dispersion   = vapply(fit, `[[`, numeric(1), "dispersion"),
+       lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+       z            = do.call(cbind, lapply(fit, `[[`, "z")))
 }
 
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,

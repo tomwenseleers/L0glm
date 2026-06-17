@@ -167,7 +167,8 @@ fitted sequentially.}
 \item{ncores}{Optional integer specifying the number of cores to use when
 \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the number
 of available logical cores divided by 2, which usually corresponds to the
-number of physical cores available.}
+number of physical cores available. The requested value is capped at the
+detected number of physical cores when that can be determined.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
 perform.}
