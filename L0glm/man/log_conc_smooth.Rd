@@ -61,7 +61,6 @@ matplot(cbind(y, f_true, g), type = "l", lty = 1,
 legend("topleft", legend = c("raw (Poisson)", "smoothed", "ground truth"),
        col = c(2, 4, 1), lty = 1, bty = "n")
 }
-
 }
 \seealso{
 \code{\link[cobs]{cobs}} for the underlying constrained B-spline

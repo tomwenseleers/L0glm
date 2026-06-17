@@ -48,9 +48,7 @@ This functions generates a list with all the required parameters for the lmridge
 solver (\code{control.solver.gen}) & allows fine control over its options.
 }
 \examples{
-
 control.solver.gen(solver="osqp")
-
 }
 \seealso{
 \code{\link{L0glm.fit}}

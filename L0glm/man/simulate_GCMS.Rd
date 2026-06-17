@@ -132,7 +132,6 @@ image(x = as.numeric(rownames(Dvis)),
       xlab   = "Time (min)",
       ylab   = "Mass (m/z)",
       main   = "Simulated GC/MS chromatogram")
-
 }
 \author{
 Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\

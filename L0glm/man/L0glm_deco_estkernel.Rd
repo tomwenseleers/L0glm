@@ -89,7 +89,6 @@ following improvements:
 }
 }
 \examples{
-
 ## ------------------------------------------------------------------------
 ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
 ## ------------------------------------------------------------------------
@@ -177,7 +176,6 @@ plot(g_true, col="red",
                   "after 1 Poisson L0glm deconvolution iteration",
                   sep = "\n"))
 lines(g_est, col="blue", lwd=3)
-
 }
 \references{
 de Rooi, J. J. & Eilers, P. H. C. (2011). \emph{Deconvolution of

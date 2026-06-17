@@ -144,7 +144,6 @@ print(tm_SIS)
 length(intersect(SIS_glm$indices, SIS_pkg$ix))
 }
 }
-
 }
 \references{
 \itemize{

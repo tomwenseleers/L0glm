@@ -38,10 +38,7 @@
 #'
 #' \code{\link{L0glm.fit}}
 #'
-#' @examples
-#'
-#' control.solver.gen(solver="osqp")
-#'
+#' @example examples/control.solver.gen.R
 #' @export
 control.solver.gen <- function(solver, 
                                method = NULL,

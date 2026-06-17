@@ -59,18 +59,7 @@
 #' @seealso \code{\link{simul}}, \code{\link[glmnet]{glmnet}},
 #' \pkg{L0Learn}, \code{\link[abess]{abess}}, \pkg{ordinis}
 #'
-#' @examples
-#' \dontrun{
-#' # Simulate data
-#' sim_data <- simulate(n = 100, p = 10, family = "gaussian")
-#'
-#' # Fit using method 2 (glmnet)
-#' fit <- fit.GLM(sim = sim_data, method = 2)
-#'
-#' # View coefficients
-#' print(fit)
-#' }
-#'
+#' @example examples/fit.GLM.R
 #' @export
 fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, 
                     IC = "gic", internal = FALSE){
@@ -489,22 +478,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 #' \code{\link[abess]{abess}},
 #' \code{\link[glmnet]{glmnet}}
 #'
-#' @examples
-#' \dontrun{
-#' # Simulate multichannel data
-#' sim_data <- simulate(n = 100, p = 10, m = 5, family = "gaussian")
-#' 
-#' # Fit using method 1 (abess Best Subset of Group Selection)
-#' fit <- fit.GLM.mc(sim = sim_data, method = 1)
-#' 
-#' # View coefficients
-#' print(fit)
-#' 
-#' # Fit using method 2 (glmnet Multivariate Group LASSO)
-#' fit <- fit.GLM.mc(sim = sim_data, method = 2)
-#' 
-#' }
-#'
+#' @example examples/fit.GLM.mc.R
 #' @export
 
 # TODO: method 1 should be a group L0glm fit, method 2 abess best subset of groups

@@ -20,10 +20,7 @@
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #'
-#' @examples
-#' \dontrun{
-#' data(simulated_spectra)
-#' }
+#' @example examples/simulated_spectra.R
 "simulated_spectra"
 
 
@@ -71,23 +68,7 @@
 #' Laboratory of Socioecology and Social Evolution, KU Leuven \\
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
-#' @examples
-#' data(GCMS_data1)
-#' plotmat(GCMS_data1, 
-#'       xlab = "Elution time (min)",
-#'       ylab = "Mass (m/z)",
-#'       main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
-#' matplot(x = as.numeric(rownames(GCMS_data1)), 
-#'         y = GCMS_data1^0.2, type = "l", lty = 1, col = rgb(0, 0, 0, 0.1),
-#'         xlab = "Elution time (min)",
-#'         ylab = "Intensity ^ 0.2",
-#'         main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
-#' plot(x=as.numeric(names(attr(GCMS_data1, "alkanes_TIC"))), 
-#'      y=attr(GCMS_data1, "alkanes_TIC"), 
-#'      xlab="Retention time (min)", 
-#'      ylab="Total ion intensity", 
-#'      main="C9 to C40 alkane ladder standard", 
-#'      type="l")
+#' @example examples/GCMS_data1.R
 "GCMS_data1"
 
 
@@ -126,21 +107,5 @@
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #'
-#' @examples
-#' data(GCMS_data2)
-#' plotmat(GCMS_data2, 
-#'       xlab = "Elution time (min)",
-#'       ylab = "Mass (m/z)",
-#'       main = "Section of beer headspace GC/MS profile")
-#' matplot(x = as.numeric(rownames(GCMS_data2)), 
-#'         y = GCMS_data2^0.2, type = "l", lty = 1, col = rgb(0, 0, 0, 0.1),
-#'         xlab = "Elution time (min)",
-#'         ylab = "Intensity ^ 0.2",
-#'         main = "Section of beer headspace GC/MS profile")
-#' plot(x=as.numeric(names(attr(GCMS_data2, "alkanes_TIC"))), 
-#'      y=attr(GCMS_data2, "alkanes_TIC"), 
-#'      xlab="Retention time (min)", 
-#'      ylab="Total ion intensity", 
-#'      main="C7 to C22 alkane ladder standard", 
-#'      type="l")
+#' @example examples/GCMS_data2.R
 "GCMS_data2"

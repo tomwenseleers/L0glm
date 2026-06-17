@@ -246,7 +246,6 @@ plot(a_est, a_true,
      xlab = "estimated value",
      ylab = "true value",
      main = main_expr)
-
 }
 \references{
 \itemize{

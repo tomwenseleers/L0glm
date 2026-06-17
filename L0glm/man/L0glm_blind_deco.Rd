@@ -283,7 +283,6 @@ plot(a_est, a_true,
      ylab = "true value",
      main = main_expr)
 }
-
 }
 \references{
 \itemize{

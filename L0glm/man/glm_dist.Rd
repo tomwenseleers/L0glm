@@ -119,7 +119,6 @@ dim(Y2) # 353 time bins x 518 m/z mass channels
 D1 <- glm_dist(Y = Y2, family  = poisson(identity), method="poissondist")
 # identical to D1b <- PoiClaClu::PoissonDistance(t(Y2), type = "mle", transform = FALSE)$dd
 # but faster
-
 }
 \references{
 Witten, D. M. (2011). 

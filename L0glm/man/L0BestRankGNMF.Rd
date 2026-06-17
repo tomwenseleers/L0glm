@@ -186,5 +186,4 @@ if (requireNamespace("ALS", quietly = TRUE)) {
   cat(" Rank recovered by MCR-ALS:", nrow(t(als_fit$S)), "\n")
 }
 }
-
 }

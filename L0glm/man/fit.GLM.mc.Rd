@@ -68,7 +68,6 @@ print(fit)
 fit <- fit.GLM.mc(sim = sim_data, method = 2)
 
 }
-
 }
 \seealso{
 \code{\link{simulate}},

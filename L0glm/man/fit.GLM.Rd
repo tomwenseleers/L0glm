@@ -89,7 +89,6 @@ fit <- fit.GLM(sim = sim_data, method = 2)
 # View coefficients
 print(fit)
 }
-
 }
 \seealso{
 \code{\link{simul}}, \code{\link[glmnet]{glmnet}},

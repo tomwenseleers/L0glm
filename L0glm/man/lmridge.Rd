@@ -137,7 +137,6 @@ plot(beta_true, beta_est, xlab = "True Coefficients", ylab = "Estimated Coeffici
      main = "Ridge Regression Coefficients")
 abline(0, 1, col = "red")
 }
-
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}},

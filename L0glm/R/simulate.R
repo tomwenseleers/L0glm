@@ -38,11 +38,7 @@
 #' @importFrom methods as is
 #' @importFrom utils flush.console
 #'
-#' @examples
-#' \dontrun{
-#' sim_data <- simul(method=1, n=500, p=500)
-#' }
-#' 
+#' @example examples/simul.R
 #' @export
 simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = NULL, seed = 1){
   if(method == 1){
