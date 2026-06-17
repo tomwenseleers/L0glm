@@ -4,16 +4,13 @@
 \alias{logLik.L0Learn}
 \title{Compute Log-Likelihood for L0Learn Objects}
 \usage{
-\method{logLik}{L0Learn}(object, weights, X, y)
+\method{logLik}{L0Learn}(object, ...)
 }
 \arguments{
 \item{object}{An `L0Learn` model object.}
 
-\item{weights}{Observation weights.}
-
-\item{X}{The design matrix.}
-
-\item{y}{The response vector.}
+\item{...}{Additional arguments. Named arguments \code{weights}, \code{X},
+and \code{y} are required.}
 }
 \value{
 The log-likelihood of the model.

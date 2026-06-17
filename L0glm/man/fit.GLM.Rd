@@ -15,7 +15,7 @@ fit.GLM(
 )
 }
 \arguments{
-\item{sim}{Simulated data generated using the \code{\link{simulate}}
+\item{sim}{Simulated data generated using the \code{\link{simul}}
 function.}
 
 \item{family}{An optional \code{family} object specifying the GLM family. Currently (nonnegative) identity link \code{gaussian()} and \code{poisson()} are supported.}
@@ -92,7 +92,6 @@ print(fit)
 
 }
 \seealso{
-\code{\link{simulate}}, \code{\link[glmnet]{glmnet}},
-\code{\link[L0Learn]{L0Learn}}, \code{\link[abess]{abess}},
-\code{\link[ordinis]{ordinis}}
+\code{\link{simul}}, \code{\link[glmnet]{glmnet}},
+\pkg{L0Learn}, \code{\link[abess]{abess}}, \pkg{ordinis}
 }

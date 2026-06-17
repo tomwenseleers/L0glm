@@ -22,7 +22,7 @@
 #' which means one can start with \code{k} larger than the true rank.
 #' The optimal best rank is then typically very well recovered.
 #'
-#' The objective minimised after each full W–H sweep is
+#' The objective minimised after each full W-H sweep is
 #' \deqn{
 #'   \underbrace{\frac{1}{\phi}\sum_{ij} D_{F}\!\bigl(D_{ij}\,\|\,\mu_{ij}\bigr)}
 #'   _{-2\,\mathrm{logLik}}
@@ -61,7 +61,7 @@
 #'               component on/off for all outcome channels, i.e. best subset of
 #'               group selection).
 #' @param IC     Information criterion used to set the penalty size
-#'               (\code{"bic"}, \code{"gic"}, \code{"ebic"}, …); passed to
+#'               (\code{"bic"}, \code{"gic"}, \code{"ebic"}, ...); passed to
 #'               \code{preset.lambda()}. Defaults to \code{"gic"}, which works
 #'               well for both low- and high-dimensional settings.
 #' @param max_iter Maximum number of outer iterations.
@@ -90,6 +90,7 @@
 #' }
 #'
 #' @examples
+#' \donttest{
 #' ## ---------- GC/MS deconvolution toy example with Poisson noise ------------
 #' if (requireNamespace("Matrix", quietly = TRUE)) {
 #'   library(Matrix)
@@ -111,24 +112,26 @@
 #'
 #' D <- sim$y                # observed GC/MS chromatogram
 #'
-#' ## build a design matrix consisting of time-shifted copies of the peak shape function (PSF)
-#' Wband <- sim$X            # n × n banded matrix with time-shifted copies of PSF
-#' ## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram (here fit using osqp solver)
+#' ## build a design matrix with time-shifted copies of the PSF
+#' Wband <- sim$X            # n x n banded matrix with time-shifted copies of PSF
+#' ## pre-select putative peaks using an unregularised nonnegative
+#' ## identity-link Poisson fit on the total ion chromatogram
 #' sel   <- L0glm.fit(Wband, rowSums(D),
 #'                    lambda = 0, nonnegative = TRUE,
 #'                    family = poisson(link=identity),
 #'                    solver = "osqp")$coefficients != 0
 #' Winit <- as.matrix(Wband[, which(sel), drop = FALSE])
 #'
-#' ## sparse Poisson Best-Rank NMF with grouped-L0 penalty to infer mass spectra, elution profiles and number of compounds present
+#' ## sparse Poisson Best-Rank NMF with grouped-L0 penalty
 #' nmf <- L0BestRankGNMF(D,
 #'                       Wstart          = Matrix(Winit, sparse = TRUE),
 #'                       grouped_Hupdate = TRUE,
-#'                       IC              = "bic", # we can use BIC as after variable pre-selection we are working in low-dimensional regime
+#'                       IC              = "bic",
 #'                       max_iter        = 5,
 #'                       family          = poisson("identity"))
 #'
-#' cat(" True rank (nr. of compounds present):", k0, "\n", "Rank recovered by Poisson L0BestRankGNMF:", nmf$k, "\n")
+#' cat("True rank:", k0, "\n",
+#'     "Rank recovered by Poisson L0BestRankGNMF:", nmf$k, "\n")
 #' matplot(nmf$W, type="l", xlab="Time", ylab="Signal", 
 #' main="Elution profiles inferred by Poisson L0BestRankGNMF")
 #'
@@ -141,8 +144,9 @@
 #'                  uniC    = TRUE,  # impose unimodality constraints
 #'                  maxiter = 8,
 #'                  normS   = 1)
-#'
+#' 
 #'   cat(" Rank recovered by MCR-ALS:", nrow(t(als_fit$S)), "\n")
+#' }
 #' }
 #'
 #' @import Matrix
@@ -182,7 +186,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                                   method = method)$coefficients) # k_init x p matrix
   } else {
     # NNDSVD initialisation
-    suppressWarnings(nndsvd <- NMF:::.nndsvd.internal(A=D, k=k))
+    nndsvd <- nndsvd_init(D, k)
     W <- Matrix(nndsvd$W, sparse=T) # n x k
     H <- Matrix(nndsvd$H, sparse=T) # k x p
   } 
@@ -291,7 +295,7 @@ penalised_nll <- function(W, H, D, fam, lambdaW, lambdaH, grouped_Hupdate) {
   
   penW <- lambdaW * sum(colSums(W) > 0)
   penH <- if (grouped_Hupdate)
-    lambdaH * sum(rowSums(H) > 0)      # L0,∞
+    lambdaH * sum(rowSums(H) > 0)      # L0,infinity
   else
     lambdaH * sum(H != 0)              # L0 element-wise=L0,0
   return(loss + penW + penH)
@@ -303,4 +307,56 @@ estimate_phi <- function(D, mu, fam, df) {
     dev <- fam$dev.resids(as.vector(D), as.vector(mu), wt = rep_len(1, length(D)))
     phi <- sum(dev) / (2 * (length(dev) - df))
     return(max(phi, 1e-12)) }             # avoid division by 0 later
+}
+
+nndsvd_init <- function(A, k) {
+  A <- as.matrix(A)
+  if (any(A < 0, na.rm = TRUE)) {
+    stop("NNDSVD initialisation requires non-negative data.", call. = FALSE)
+  }
+  nr <- nrow(A)
+  nc <- ncol(A)
+  rank <- min(k, nr, nc)
+  decomp <- svd(A, nu = rank, nv = rank)
+  W <- matrix(0, nr, k)
+  H <- matrix(0, k, nc)
+  if (rank == 0L || length(decomp$d) == 0L) {
+    return(list(W = W, H = H))
+  }
+
+  W[, 1L] <- sqrt(decomp$d[1L]) * abs(decomp$u[, 1L])
+  H[1L, ] <- sqrt(decomp$d[1L]) * abs(decomp$v[, 1L])
+  if (rank == 1L) {
+    return(list(W = W, H = H))
+  }
+
+  for (j in 2L:rank) {
+    u <- decomp$u[, j]
+    v <- decomp$v[, j]
+    u_pos <- pmax(u, 0)
+    u_neg <- pmax(-u, 0)
+    v_pos <- pmax(v, 0)
+    v_neg <- pmax(-v, 0)
+
+    u_pos_norm <- sqrt(sum(u_pos^2))
+    u_neg_norm <- sqrt(sum(u_neg^2))
+    v_pos_norm <- sqrt(sum(v_pos^2))
+    v_neg_norm <- sqrt(sum(v_neg^2))
+    pos_norm <- u_pos_norm * v_pos_norm
+    neg_norm <- u_neg_norm * v_neg_norm
+
+    if (pos_norm >= neg_norm) {
+      basis_u <- if (u_pos_norm > 0) u_pos / u_pos_norm else u_pos
+      basis_v <- if (v_pos_norm > 0) v_pos / v_pos_norm else v_pos
+      sigma <- pos_norm
+    } else {
+      basis_u <- if (u_neg_norm > 0) u_neg / u_neg_norm else u_neg
+      basis_v <- if (v_neg_norm > 0) v_neg / v_neg_norm else v_neg
+      sigma <- neg_norm
+    }
+    scale <- sqrt(decomp$d[j] * sigma)
+    W[, j] <- scale * basis_u
+    H[j, ] <- scale * basis_v
+  }
+  list(W = W, H = H)
 }

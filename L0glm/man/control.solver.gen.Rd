@@ -32,6 +32,8 @@ control.solver.gen(
 
 \item{abstol}{XXX}
 
+\item{block_size}{Optional block size used by solvers that support blocked updates.}
+
 \item{verbose}{XXX}
 
 \item{rowaug}{XXX}
@@ -51,5 +53,5 @@ control.solver.gen(solver="osqp")
 
 }
 \seealso{
-\code{\link{L0glm}}
+\code{\link{L0glm.fit}}
 }

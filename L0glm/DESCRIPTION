@@ -1,8 +1,8 @@
 Package: L0glm
 Type: Package
-Title: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
-Version: 0.2.0
-Date: 2023-08-05
+Title: L0-Norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
+Version: 0.2.1
+Date: 2026-06-16
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
     	     email = "tom.wenseleers@kuleuven.be"),
     	     person("Laura", "Lanzas", role = c("aut"),
@@ -20,22 +20,22 @@ Imports: Matrix,
          L0Learn,
          glmnet,
          nnls,
-         ordinis,
          osqp,
          qlcMatrix,
          RhpcBLASctl,
          methods,
          scales,
          statmod
-SystemRequirements: C++11
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
-Description: L0-norm Penalized or Group Penalized GLMs for Best Subset Selection 
-             and Best Subset of Group Selection.
+Description: Fits L0-norm penalized or group penalized generalized linear models
+             for best subset selection and best subset of group selection.
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Suggests: 
+    ALS,
+    SIS,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

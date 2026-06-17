@@ -23,7 +23,6 @@
 #' @importFrom glmnet glmnet cv.glmnet coef.glmnet
 #' @importFrom abess abess extract
 #' @importFrom L0Learn L0Learn.fit
-#' @importFrom ordinis ordinis
 #' @importFrom scales alpha
 #' 
 #' @export
@@ -81,7 +80,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                        lower.limits = 0)
     } else {
       args <- c(list(x = X, y = y, family = "gaussian"), options)
-      result <- do.call(glmnet::glmnet(args))
+      result <- do.call(glmnet::glmnet, args)
     }
     LLs <- logLik(result, weights = W, X = X, y = y)
     edfs = attr(LLs, "df")
@@ -341,8 +340,9 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
            xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 8) { # nonnegative weighted MCP penalized regression in ordinis 
+    require_ordinis()
     if(is.null(options)){
-      fit <- ordinis::ordinis(X, y, 
+      fit <- ordinis_fit(X, y, 
                      weights = W,
                      nlambda = 100L, 
                      penalty = "mcp", # using MCP penalty
@@ -352,7 +352,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                      alpha = 1) 
     } else {
       args <- c(list(X = X, y = y, weights = W), options)
-      fit <- do.call(ordinis::ordinis, args)
+      fit <- do.call(ordinis_fit, args)
     }
     
     LLs = logLik2(fit, weights= as.vector(W), X, as.vector(y))
@@ -370,8 +370,9 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
            xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 9) { # ordinis scad
+    require_ordinis()
     if(is.null(options)){
-      fit <- ordinis::ordinis(X, y, 
+      fit <- ordinis_fit(X, y, 
                      weights = W,
                      nlambda = 100L, 
                      penalty = "scad", # using scad penalty
@@ -381,7 +382,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                      alpha = 1) 
     } else {
       args <- c(list(X = X, y = y, weights = W), options)
-      fit <- do.call(ordinis::ordinis, args)
+      fit <- do.call(ordinis_fit, args)
     }
     
     LLs = logLik2(fit, weights=W, X, y)

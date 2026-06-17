@@ -27,13 +27,13 @@
 "simulated_spectra"
 
 
-#' GC/MS Chromatogram Section – Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen
+#' GC/MS Chromatogram Section - Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen
 #'
-#' A small 0.4 min section of a GC/MS chromatogram (RT 26.80–27.20 min) obtained from 
+#' A small 0.4 min section of a GC/MS chromatogram (RT 26.80-27.20 min) obtained from 
 #' the cuticular hydrocarbon extract of a *Cataglyphis iberica* queen. 
 #' Six compounds with near-Gaussian peak shapes co-elute in this segment. 
 #' Data were collected on a Shimadzu QP-2010 Ultra 
-#' equipped with a 30 m × 0.25 mm × 0.25 µm DB-5ms column after 
+#' equipped with a 30 m x 0.25 mm x 0.25 um DB-5ms column after 
 #' liquid injection of a hexane extract. For details  
 #' see Van Oystaeyen et al. Science 2014.
 #'
@@ -41,7 +41,7 @@
 #' \describe{
 #'   \item{Rows}{Individual full-scan acquisitions (time scans).
 #'               Row names give the scan mid-point in minutes
-#'               (26.80 ≤ RT ≤ 27.20).}
+#'               (26.80 <= RT <= 27.20).}
 #'   \item{Columns}{Unit-mass channels, m/z 30:700.
 #'                 Column names are the integer m/z values.}
 #' Additional attribute:
@@ -63,9 +63,9 @@
 #'           27.01 \tab 9-Methylnonacosane \tab 140, 308 \cr
 #'           27.11 \tab 7-Methylnonacosane \tab 112, 336
 #'         }
-#' @source Van Oystaeyen, A. et al. (2014) “Conserved class of queen pheromones
-#'        stops social insect workers from reproducing.” *Science* **343**,
-#'        287–290. \doi{10.1126/science.1244899}
+#' @source Van Oystaeyen, A. et al. (2014) "Conserved class of queen pheromones
+#'        stops social insect workers from reproducing." *Science* **343**,
+#'        287-290. \doi{10.1126/science.1244899}
 #' @author
 #' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
 #' Laboratory of Socioecology and Social Evolution, KU Leuven \\
@@ -91,21 +91,21 @@
 "GCMS_data1"
 
 
-#' GC/MS Chromatogram Section – Beer Headspace Volatiles
+#' GC/MS Chromatogram Section - Beer Headspace Volatiles
 #'
-#' A 6 min segment (RT 19.00–25.00 min) of a GC/MS chromatogram recorded from
+#' A 6 min segment (RT 19.00-25.00 min) of a GC/MS chromatogram recorded from
 #' the SPME-headspace of beer. Data were acquired on a Thermo ISQ single-quad
-#' coupled to a 30 m × 0.25 mm × 0.25 µm RXi-5Sil MS column using a
-#' DVB/Carboxen/PDMS (50/30 µm) fibre. Many volatiles
+#' coupled to a 30 m x 0.25 mm x 0.25 um RXi-5Sil MS column using a
+#' DVB/Carboxen/PDMS (50/30 um) fibre. Many volatiles
 #' co-elute in this interval, including by a prominent, triangular,
-#' “shark-fin” octanoic-acid peak whose apex lies at RT 21.50 min. For details 
+#' "shark-fin" octanoic-acid peak whose apex lies at RT 21.50 min. For details 
 #' see Schreurs et al. Nature Communications 2024.
 #'
 #' @format A numeric matrix with 764 rows (time slices) and 518 columns (m/z values).
 #' \describe{
 #'   \item{Rows}{Individual full-scan acquisitions (time scans).
 #'               Row names give the scan mid-point in minutes
-#'               (19.00 ≤ RT ≤ 25.00).}
+#'               (19.00 <= RT <= 25.00).}
 #'   \item{Columns}{Unit-mass channels, m/z 33:550.
 #'                 Column names are the integer m/z values.}
 #' Additional attribute:
@@ -117,8 +117,8 @@
 #'         6 mins is included.
 #' }
 #' }
-#' @source Schreurs, M. et al. (2024) “Predicting and improving complex beer
-#'        flavor through machine learning.” *Nature Communications* **15**, 2368.
+#' @source Schreurs, M. et al. (2024) "Predicting and improving complex beer
+#'        flavor through machine learning." *Nature Communications* **15**, 2368.
 #'        \doi{10.1038/s41467-024-46346-0}
 #' @author
 #' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\

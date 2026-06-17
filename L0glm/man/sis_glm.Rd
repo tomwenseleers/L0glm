@@ -11,7 +11,7 @@ sis_glm(
   weights = NULL,
   offset = NULL,
   nsis = NULL,
-  return_stats = FALSE
+  return_stats = TRUE
 )
 }
 \arguments{
@@ -41,15 +41,15 @@ for ultrahigh-dimensional use.}
 \value{
 A `list` with components:
 \itemize{
-  \item `indices` — integer vector of length `nsis` with the indices of the kept
+  \item `indices` - integer vector of length `nsis` with the indices of the kept
         predictors (highest \eqn{T_j}).
-  \item `ranking` — full ordering of all \eqn{p} features (only if
+  \item `ranking` - full ordering of all \eqn{p} features (only if
         `return_stats = TRUE`), decreasing in \eqn{T_j}.
-  \item `stats` — data frame with columns `feature`, `stat` (=\eqn{T_j}),
+  \item `stats` - data frame with columns `feature`, `stat` (=\eqn{T_j}),
         `sign` (=\eqn{sign(U_j)} as a plain sign), `rank`, and `keep`
         (only if `return_stats = TRUE`).
-  \item `nsis` — the number of variables retained.
-  \item `family`, `link` — the GLM family and link used.
+  \item `nsis` - the number of variables retained.
+  \item `family`, `link` - the GLM family and link used.
 }
 }
 \description{
@@ -62,7 +62,7 @@ Poisson, Gamma, inverse.gaussian), optional observation `weights`, an
 from **Matrix**) design matrices.
 
 In our benchmarks (see the Examples), this implementation is typically
-**>10× faster** than the vanilla SIS procedure in the \pkg{SIS}
+**>10x faster** than the vanilla SIS procedure in the \pkg{SIS}
 package for large, tall-and-wide problems, while producing essentially
 identical rankings. Speedups come from avoiding \(p\) univariate GLM
 fits and instead computing closed-form score statistics using only the
@@ -96,9 +96,21 @@ SIS choice, set `nsis = floor(n / log(n))`.
 Note that for quasi families, the score statistic uses the variance and link
 functions but there is no full likelihood; this is fine for ranking.
 
-**Computation.** The statistic is computed with two BLAS-level passes:
-`crossprod(X, Uvec)` and `colSums(X^2 * Wdiag)`. With \pkg{Matrix} inputs,
-method dispatch uses sparse linear algebra for the crossproduct.
+**Computation.** The statistic is computed in two linear-time passes without
+fitting \eqn{p} univariate GLMs:
+\itemize{
+  \item Score numerator: \eqn{U_j = \sum_i x_{ij}\,Uvec_i}, implemented as
+        \code{U <- as.numeric(crossprod(X, Uvec))}. This dispatches to
+        \pkg{Matrix} methods automatically when \code{X} is sparse.
+  \item Score denominator: \eqn{I_{jj} = \sum_i W_i\,x_{ij}^2}. For dense
+        \code{matrix} inputs we use row scaling by \code{sqrtW <- sqrt(W)} and
+        compute \code{I <- colSums((X * sqrtW)^2)}. For \pkg{Matrix} sparse
+        inputs we avoid densifying by scaling only the nonzeros and then
+        summing by column:
+        \code{Xw <- X; Xw@x <- (X@x * sqrtW[X@i + 1L])^2; I <- as.numeric(Matrix::colSums(Xw))}.
+}
+Both steps use BLAS/sparse kernels where available; the sparse branch never
+forms \code{Diagonal(W)} and never allocates an \eqn{n \times p} temporary.
 }
 \examples{
 \donttest{
@@ -138,16 +150,16 @@ length(intersect(SIS_glm$indices, SIS_pkg$ix))
 \itemize{
 \item Fan, J. and Lv, J. (2008).
      Sure independence screening for ultrahigh dimensional feature space.
-     \emph{Journal of the Royal Statistical Society: Series B}, 70(5), 849–911. \cr
+     \emph{Journal of the Royal Statistical Society: Series B}, 70(5), 849-911. \cr
 \item Fan, J. and Song, R. (2010).
       Sure independence screening in generalized linear models with NP-dimensionality.
-      \emph{Annals of Statistics}, 38(6), 3567–3604. \cr
+      \emph{Annals of Statistics}, 38(6), 3567-3604. \cr
 \item Saldana, D. F. and Feng, Y. (2018).
       SIS: An R Package for Sure Independence Screening in Ultrahigh-Dimensional Statistical Models.
-      \emph{Journal of Statistical Software}, 83(2), 1–25. \cr
+      \emph{Journal of Statistical Software}, 83(2), 1-25. \cr
 \item Zhao, S. D. and Li, Y. (2014).
       Score test variable screening.
-      \emph{Biometrics}, 70(4), 862–871.
+      \emph{Biometrics}, 70(4), 862-871.
 }
 }
 \seealso{

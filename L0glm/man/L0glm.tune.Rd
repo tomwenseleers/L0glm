@@ -53,7 +53,7 @@ Proportion of the log10 distance between \code{lambda_preset} and
 \code{lambda_max} (that would penalise all coefficients to zero
 or the chosen prior.mean) that is *retained on each side* of 
 \code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
-entire range, whilst smaller values "zoom‑in", yielding grids 
+entire range, whilst smaller values "zoom-in", yielding grids 
 that are denser around \code{lambda_preset}. For example, 
 \code{prop_range = 0.1} preserves only 10% of the original 
 log10 span above and below the preset lambda value that 

@@ -15,7 +15,7 @@ fit.GLM.mc(
 )
 }
 \arguments{
-\item{sim}{Simulated data generated using the \code{\link{simulate}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).}
+\item{sim}{Simulated data generated using the \code{\link{simul}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).}
 
 \item{family}{An optional \code{family} object specifying the GLM family. Currently supports (nonnegative) identity link \code{gaussian()} and \code{poisson()}. Default is \code{NULL}, which tries to infer from \code{sim}.}
 

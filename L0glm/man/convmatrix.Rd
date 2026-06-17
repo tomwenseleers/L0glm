@@ -7,11 +7,11 @@
 convmatrix(kernel, n, shape = c("same", "full"), n_cols = NULL, origin = NULL)
 }
 \arguments{
-\item{kernel}{Numeric vector (`length L`) – FIR filter / PSF
+\item{kernel}{Numeric vector (`length L`) - FIR filter / PSF
 **in forward-time order**.}
 
-\item{n}{Integer \eqn{>} 0 – length of the observed signal (the number
-of rows for a *“same”* design).}
+\item{n}{Integer \eqn{>} 0 - length of the observed signal (the number
+of rows for a *"same"* design).}
 
 \item{shape}{`"same"` (default, \eqn{n} rows) or
 `"full"` (\eqn{n+L-1} rows).}
@@ -20,7 +20,7 @@ of rows for a *“same”* design).}
 *If omitted* `n_cols <- n` and the result is the usual banded
 convolution matrix.}
 
-\item{origin}{Integer (1 … \eqn{L}) – element of `kernel` that is aligned
+\item{origin}{Integer (1 ... \eqn{L}) - element of `kernel` that is aligned
 with time 0.  Defaults to the centre for `"same"` and to 1
 for `"full"`.}
 }
@@ -28,7 +28,7 @@ for `"full"`.}
 A sparse matrix of class **`dgCMatrix`** with
 
 * `n_rows = n`            (shape "same")   or
-* `n_rows = n + L − 1`    (shape "full")
+* `n_rows = n + L - 1`    (shape "full")
 
 rows, and `n_cols` columns.
 }
@@ -44,9 +44,9 @@ rows, and `n_cols` columns.
         square when \code{shape = "same"} and tall
         when \code{shape = "full"}.
   \item If \code{n_cols} is supplied, only the first
-        \code{n_cols} time–shifts of \code{kernel} are kept, yielding an
+        \code{n_cols} time-shifts of \code{kernel} are kept, yielding an
         \code{n x n_cols} rectangular design.  Such matrices are useful
-        for point–spread-function (PSF) update steps in
+        for point-spread-function (PSF) update steps in
         blind-deconvolution algorithms.
 }
 

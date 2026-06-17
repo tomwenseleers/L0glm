@@ -23,19 +23,19 @@ simulate_GCMS(
 )
 }
 \arguments{
-\item{n}{Integer ≥ 1. Number of time points (rows).}
+\item{n}{Integer >= 1. Number of time points (rows).}
 
-\item{k}{Integer ≥ 1. Number of compounds/peaks.}
+\item{k}{Integer >= 1. Number of compounds/peaks.}
 
 \item{S}{Spectral library.  If `NULL` the example data
-`data(simulated_spectra)` (2000 spectra × 258 m/z values) is loaded.}
+`data(simulated_spectra)` (2000 spectra x 258 m/z values) is loaded.}
 
-\item{peak_width_range}{Length-2 numeric. Uniform base range for Gaussian peak width σ
+\item{peak_width_range}{Length-2 numeric. Uniform base range for Gaussian peak width sigma
 (*before* any height-coupling is applied and on time point scale).}
 
 \item{mean_beta, sd_logbeta}{Parameters of the log-normal height distribution.}
 
-\item{width_height_coef}{Numeric ≥ 0.  Multiplicative widening:
+\item{width_height_coef}{Numeric >= 0.  Multiplicative widening:
 \deqn{\sigma_j \leftarrow \sigma_j\bigl[1+\texttt{coef}\,h_j\bigr]}{} where
 \eqn{h_j=(\beta_j-\min\beta)/(\max\beta-\min\beta)}.}
 
@@ -43,13 +43,13 @@ simulate_GCMS(
 larger RTs: \deqn{c_j \leftarrow c_j
 \bigl[1+\texttt{rt\_height\_coef}\,h_j\bigr]}{}}
 
-\item{sample_nr}{Integer ≥ 1. Injection/order number.}
+\item{sample_nr}{Integer >= 1. Injection/order number.}
 
 \item{rt_drift_coef}{Numeric.  Additive drift in *time points* per injection:
 \eqn{c_j \leftarrow c_j + \texttt{rt\_drift\_coef}\,
 (\texttt{sample\_nr}-1)}.}
 
-\item{bg_scale}{Numeric ≥ 0. Multiplicative factor applied to the whole
+\item{bg_scale}{Numeric >= 0. Multiplicative factor applied to the whole
 B-spline background.}
 
 \item{family}{`"poisson"` (default) or `"gaussian"`.}
@@ -60,7 +60,7 @@ B-spline background.}
 drawn.}
 
 \item{seed_peaks}{Integer seed for all other random quantities (heights,
-widths, noise, …).}
+widths, noise, ...).}
 }
 \value{
 A list with matrices:
@@ -79,8 +79,8 @@ A list with matrices:
 }
 \description{
 `simulate_GCMS()` draws \eqn{k} compounds from an EI reference library `S`
-(rows = compounds, columns = m/z values, e.g. 41–298) and generates an \eqn{n \times m}{n
-× m} chromatogram `D` whose signal is the sum of
+(rows = compounds, columns = m/z values, e.g. 41-298) and generates an \eqn{n \times m}{n
+x m} chromatogram `D` whose signal is the sum of
 k Gaussian peaks (`W_true H_true`) and
 a smooth, monotonically increasing B-spline background
 (`W_background*bg_scale H_background`).

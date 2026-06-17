@@ -21,14 +21,14 @@ modified Gaussian), `"lorentzian"` (Cauchy), `"laplace"` (two-sided
 exponential), `"exponential"` (one-sided exponential), `"gamma"`,
 `"gammaexp"` (convolution of Gamma with exponential).}
 
-\item{L}{Integer (≥ 3).  Kernel length.}
+\item{L}{Integer (>= 3).  Kernel length.}
 
 \item{params}{Named list of shape parameters (see Details).}
 
 \item{perc}{Either `"mean"` (shift the centroid) or a
 numeric percentile in [0, 1].}
 
-\item{kernel}{Numeric vector – the PSF to be shifted.}
+\item{kernel}{Numeric vector - the PSF to be shifted.}
 
 \item{method}{`"linear"` (sub-sample interpolation) or
 `"integer"` (whole-sample shift).}
@@ -40,7 +40,7 @@ shifted vector of the same length as `kernel`
 }
 \description{
 Generates a numeric vector of length \emph{L} that represents a
-point–spread function (PSF) or impulse–response kernel.
+point-spread function (PSF) or impulse-response kernel.
 The kernel is \eqn{L^{1}}-normalised (area = 1).
 Optionally it is shifted with \code{\link{shift_kernel}} so that a
 user-chosen percentile \eqn{perc} of the cumulative distribution falls on
@@ -49,21 +49,21 @@ kernel unshifted.  Alternatively, using \code{perc = "mean"} will move the
 centroid to the middle of the kernel.
 
 The helper is useful for simulating blurred spike trains as observed in
-one-dimensional spectroscopy (GC–MS, NMR), calcium neuro-imaging, or
+one-dimensional spectroscopy (GC-MS, NMR), calcium neuro-imaging, or
 epidemic curves where diagnosed cases are obtained by convolving
 infections with a delay-distribution kernel.  Some of the available
 kernel families are:
 
 \itemize{
   \item \strong{Gaussian / Bigaussian / Exponentially Modified
-        Gaussian (Gaussian * Exp)} – common 
+        Gaussian (Gaussian * Exp)} - common 
         peak-shape models in gas-chromatography / mass-spectrometry.
-  \item \strong{Lorentzian} – arises in 1-D NMR as the Fourier transform
+  \item \strong{Lorentzian} - arises in 1-D NMR as the Fourier transform
         of an exponentially decaying free-induction decay
-        (Cauchy–Lorentz distribution).
-  \item \strong{Exponential} – standard calcium-indicator impulse
+        (Cauchy-Lorentz distribution).
+  \item \strong{Exponential} - standard calcium-indicator impulse
         response in neuro-imaging studies.
-  \item \strong{Gamma / Gamma * Exp} – typical
+  \item \strong{Gamma / Gamma * Exp} - typical
         infection-to-diagnosis delay distributions in epidemiology and
         also sometimes used for chromatographic peak shapes.
 }
@@ -78,7 +78,7 @@ Default parameters for the different distributions are as
   laplace: `tau=3`\cr exponential: `tau=3`\cr gamma: `k=9`, `tau=0.5`\cr
   gammaexp (gamma * exponential): `k=9` , ` tau_g=0.7` , `tau_e=0.7` \cr
 
-Returned vectors are **L¹-normalised**.  
+Returned vectors are **L^1-normalised**.  
 If `align_percentile > 0` the kernel is shifted (by sub-sample
 interpolation) so that the requested percentile lies at its
 theoretical position inside the length-*L* vector.
@@ -96,7 +96,7 @@ k7 <- convkernel("gamma",       51, list(k = 9, tau = 0.5))
 k8 <- convkernel("gammaexp",    51, list(k = 9, tau_g = 0.7, tau_e = 0.7))
 matplot(cbind(k1,k2,k3,k4,k5,k6,k7,k8), type = "l", lty = 1, col = cols,
         xlab = "kernel index", ylab = "density",
-        main = "Convolution kernels\n(point–spread functions)")
+        main = "Convolution kernels\n(point-spread functions)")
 legend("topright",
        legend = c("Gaussian", "Bigaussian", "EMG", "Lorentzian",
                   "Laplace", "Exponential", "Gamma", "Gammaexp"),
@@ -113,7 +113,10 @@ matplot(cbind(
   convkernel("bigaussian", 51,
              list(sigma1 = 2*3, sigma2 = 4*3), perc = 0.001)), 
   xlab = "kernel index", ylab = "density",
-  main = "Bigaussian point spread functions\n(with sigma1=2, 4 and 6 and sigma2=2*sigma1\nand perc = 0.001)",
+  main = paste("Bigaussian point spread functions",
+               "(sigma1 = 2, 4, 6; sigma2 = 2 * sigma1)",
+               "perc = 0.001",
+               sep = "\n"),
   col = cols, lty = 1,
   type="l") 
 }

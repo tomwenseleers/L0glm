@@ -40,7 +40,7 @@ component on/off for all outcome channels, i.e. best subset of
 group selection).}
 
 \item{IC}{Information criterion used to set the penalty size
-(\code{"bic"}, \code{"gic"}, \code{"ebic"}, …); passed to
+(\code{"bic"}, \code{"gic"}, \code{"ebic"}, ...); passed to
 \code{preset.lambda()}. Defaults to \code{"gic"}, which works
 well for both low- and high-dimensional settings.}
 
@@ -99,7 +99,7 @@ After each full sweep factors that are shrunk exactly to 0 are pruned,
 which means one can start with \code{k} larger than the true rank.
 The optimal best rank is then typically very well recovered.
 
-The objective minimised after each full W–H sweep is
+The objective minimised after each full W-H sweep is
 \deqn{
   \underbrace{\frac{1}{\phi}\sum_{ij} D_{F}\!\bigl(D_{ij}\,\|\,\mu_{ij}\bigr)}
   _{-2\,\mathrm{logLik}}
@@ -128,6 +128,7 @@ plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
 }
 
 \examples{
+\donttest{
 ## ---------- GC/MS deconvolution toy example with Poisson noise ------------
 if (requireNamespace("Matrix", quietly = TRUE)) {
   library(Matrix)
@@ -149,24 +150,26 @@ sim <- simulate_spike_train(n       = n,
 
 D <- sim$y                # observed GC/MS chromatogram
 
-## build a design matrix consisting of time-shifted copies of the peak shape function (PSF)
-Wband <- sim$X            # n × n banded matrix with time-shifted copies of PSF
-## pre-select putative peaks using unregularised nonnegative identity link Poisson fit on total ion chromatogram (here fit using osqp solver)
+## build a design matrix with time-shifted copies of the PSF
+Wband <- sim$X            # n x n banded matrix with time-shifted copies of PSF
+## pre-select putative peaks using an unregularised nonnegative
+## identity-link Poisson fit on the total ion chromatogram
 sel   <- L0glm.fit(Wband, rowSums(D),
                    lambda = 0, nonnegative = TRUE,
                    family = poisson(link=identity),
                    solver = "osqp")$coefficients != 0
 Winit <- as.matrix(Wband[, which(sel), drop = FALSE])
 
-## sparse Poisson Best-Rank NMF with grouped-L0 penalty to infer mass spectra, elution profiles and number of compounds present
+## sparse Poisson Best-Rank NMF with grouped-L0 penalty
 nmf <- L0BestRankGNMF(D,
                       Wstart          = Matrix(Winit, sparse = TRUE),
                       grouped_Hupdate = TRUE,
-                      IC              = "bic", # we can use BIC as after variable pre-selection we are working in low-dimensional regime
+                      IC              = "bic",
                       max_iter        = 5,
                       family          = poisson("identity"))
 
-cat(" True rank (nr. of compounds present):", k0, "\n", "Rank recovered by Poisson L0BestRankGNMF:", nmf$k, "\n")
+cat("True rank:", k0, "\n",
+    "Rank recovered by Poisson L0BestRankGNMF:", nmf$k, "\n")
 matplot(nmf$W, type="l", xlab="Time", ylab="Signal", 
 main="Elution profiles inferred by Poisson L0BestRankGNMF")
 
@@ -181,6 +184,7 @@ if (requireNamespace("ALS", quietly = TRUE)) {
                  normS   = 1)
 
   cat(" Rank recovered by MCR-ALS:", nrow(t(als_fit$S)), "\n")
+}
 }
 
 }

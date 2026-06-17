@@ -44,7 +44,7 @@
 #' \code{lambda_max} (that would penalise all coefficients to zero
 #' or the chosen prior.mean) that is *retained on each side* of 
 #' \code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
-#' entire range, whilst smaller values "zoom‑in", yielding grids 
+#' entire range, whilst smaller values "zoom-in", yielding grids 
 #' that are denser around \code{lambda_preset}. For example, 
 #' \code{prop_range = 0.1} preserves only 10% of the original 
 #' log10 span above and below the preset lambda value that 
@@ -106,12 +106,12 @@ L0glm.tune <- function(X, y,
                       dispersion = dispersion,
                       ...)
   
-  beta0   <- warmup$coefficients          # p × m (sparse)
+  beta0   <- warmup$coefficients          # p x m (sparse)
   Z    <- warmup$z
   W    <- warmup$weights
   
   if (all(beta0 == 0))
-    stop("warm-up produced only zero coefficients — cannot build lambda sequence.")
+    stop("warm-up produced only zero coefficients - cannot build lambda sequence.")
   
   ## ---- lambda grid (ceiling(nlambda/2) points between lambda_preset and lambda_max on log10 scale, remaining below lambda_preset with same log10 step size)
   lambda_max <- maxlambda(X, weights = W, z = Z,
@@ -122,7 +122,7 @@ L0glm.tune <- function(X, y,
   # ---- log10 limits, shrunk by prop_range 
   g_IC  <- log10(lambda_preset)
   g_max <- log10(lambda_max)
-  g_up_max <- g_IC + prop_range * (g_max - g_IC)   # new “effective” lambda_max
+  g_up_max <- g_IC + prop_range * (g_max - g_IC)   # new "effective" lambda_max
   log_step <- (g_up_max - g_IC) / (n_up - 1)
   log_up   <- g_IC + log_step * seq(0, n_up - 1)
   log_down <- g_IC - log_step * seq_len(n_down)
@@ -139,7 +139,7 @@ L0glm.tune <- function(X, y,
   
   ## containers ---------------------------------------------------------------
   coefmat  <- Matrix::Matrix(0, nrow = length(lambda_grid), ncol = p,
-                             sparse = TRUE)         # row-means of bet̂a(lambda)
+                             sparse = TRUE)         # row-means of beta(lambda)
   metric_rows <- vector("list", length(lambda_grid))     # each element numeric
   
   ## ------------------------------------------------------------------ loop --
@@ -155,7 +155,7 @@ L0glm.tune <- function(X, y,
                      offset     = offset,
                      ...)
     
-    beta_hat <- fit$coefficients                           # p × m (sparse)
+    beta_hat <- fit$coefficients                           # p x m (sparse)
     
     ## store coefficient path (row mean for multichannel)
     coefmat[i, ] <- if (m > 1) Matrix(Matrix::rowMeans(beta_hat), sparse=TRUE) else beta_hat
@@ -205,7 +205,7 @@ L0glm.tune <- function(X, y,
     plot(log10(metrics$lambda), metrics[[IC]],
          type = "b", pch = 19, log = "y",
          xlab = expression(log[10](lambda)), ylab = toupper(IC),
-         main = paste("Tuning –", toupper(IC)))
+         main = paste("Tuning -", toupper(IC)))
     abline(v = log10(lambda_best), col = "red", lty = 2)
     abline(v = log10(lambda_preset), col = "red", lty = 3)
   }

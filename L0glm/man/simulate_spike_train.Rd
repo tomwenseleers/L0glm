@@ -92,5 +92,5 @@ regressing the observed noisy signal onto a banded matrix consisting of
 shifted copies of the Gaussian kernel used to blur the true signal. The
 simulated error can be specified to be either Poisson or Gaussian.
 
-The function is used as a test case in the \code{\link{L0glm}} examples.
+The function is used as a test case in the \pkg{L0glm} examples.
 }

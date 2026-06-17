@@ -55,8 +55,8 @@ for (n in sizes) {
   coefs.true <- sim$beta_true
   method <- 1
   # Generate regularisation parameter
-  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
+  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = L0glm:::init_coefs(X=X, y=y, mu=y+0.1, family=family,
                      lambda=lambda_preset) # component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
@@ -79,7 +79,7 @@ for (n in sizes) {
     print(n)
     print(fit.time)
     # Calculate metrics
-    metrics <- get.metrics(
+    metrics <- L0glm:::get.metrics(
       beta = L0glm$coefficients, X = X, y = y, 
       weights = 1/(y+0.1), # approx 1/variance weights
       family = gaussian(identity), # treating poisson as gaussian here with adapted weights - TODO fix poisson(identity) so that deviance always comes out at sensible values 
@@ -176,8 +176,8 @@ for (n in sizes) {
   coefs.true <- sim$beta_true
   method <- 1
   # Generate regularisation parameter
-  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
+  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = L0glm:::init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
   # start = coef(glmnet::bigGlm(x=X, y=y, family="gaussian", lower=0, path=FALSE))[-1] # this worked less well: initialise with unregularised nonnegative bigGlm fit
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
@@ -202,7 +202,7 @@ for (n in sizes) {
     print(n)
     print(fit.time)
     # Calculate metrics
-    metrics <- get.metrics(
+    metrics <- L0glm:::get.metrics(
       beta = L0glm$coefficients, X = X, y = y, 
       family = family, beta_true = as.vector(coefs.true)
     )
@@ -335,8 +335,8 @@ for (n in sizes) {
   coefs.true <- sim$beta_true
   method <- 1
   # Generate regularisation parameter
-  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = init_coefs(X=X, y=y, mu=y+0.1, family=family,
+  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = L0glm:::init_coefs(X=X, y=y, mu=y+0.1, family=family,
                      lambda=lambda_preset) # component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
@@ -360,7 +360,7 @@ for (n in sizes) {
     print(n)
     print(fit.time)
     # Calculate metrics
-    metrics <- get.metrics(
+    metrics <- L0glm:::get.metrics(
       beta = L0glm$coefficients, X = X, y = y, 
       weights = 1/(y+0.1), # approx 1/variance weights
       family = gaussian(identity), # treating poisson as gaussian here with adapted weights - TODO fix poisson(identity) so that deviance always comes out at sensible values 
@@ -458,8 +458,8 @@ for (n in sizes) {
   coefs.true <- sim$beta_true
   method <- 1
   # Generate regularisation parameter
-  lambda_preset <- preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
+  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
+  start = L0glm:::init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
   for (i in 1:length(methods)) {
     solver = solvers[[i]]
     method = methods[[i]]
@@ -483,7 +483,7 @@ for (n in sizes) {
     print(n)
     print(fit.time)
     # Calculate metrics
-    metrics <- get.metrics(
+    metrics <- L0glm:::get.metrics(
       beta = L0glm$coefficients, X = X, y = y, 
       family = family, beta_true = as.vector(coefs.true)
     )

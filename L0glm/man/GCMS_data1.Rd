@@ -3,13 +3,13 @@
 \docType{data}
 \name{GCMS_data1}
 \alias{GCMS_data1}
-\title{GC/MS Chromatogram Section – Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen}
+\title{GC/MS Chromatogram Section - Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen}
 \format{
 A numeric matrix with 119 rows (time slices) and 671 columns (m/z values).
 \describe{
   \item{Rows}{Individual full-scan acquisitions (time scans).
               Row names give the scan mid-point in minutes
-              (26.80 ≤ RT ≤ 27.20).}
+              (26.80 <= RT <= 27.20).}
   \item{Columns}{Unit-mass channels, m/z 30:700.
                 Column names are the integer m/z values.}
 Additional attribute:
@@ -22,19 +22,19 @@ Additional attribute:
 }
 }
 \source{
-Van Oystaeyen, A. et al. (2014) “Conserved class of queen pheromones
-       stops social insect workers from reproducing.” *Science* **343**,
-       287–290. \doi{10.1126/science.1244899}
+Van Oystaeyen, A. et al. (2014) "Conserved class of queen pheromones
+       stops social insect workers from reproducing." *Science* **343**,
+       287-290. \doi{10.1126/science.1244899}
 }
 \usage{
 GCMS_data1
 }
 \description{
-A small 0.4 min section of a GC/MS chromatogram (RT 26.80–27.20 min) obtained from 
+A small 0.4 min section of a GC/MS chromatogram (RT 26.80-27.20 min) obtained from 
 the cuticular hydrocarbon extract of a *Cataglyphis iberica* queen. 
 Six compounds with near-Gaussian peak shapes co-elute in this segment. 
 Data were collected on a Shimadzu QP-2010 Ultra 
-equipped with a 30 m × 0.25 mm × 0.25 µm DB-5ms column after 
+equipped with a 30 m x 0.25 mm x 0.25 um DB-5ms column after 
 liquid injection of a hexane extract. For details  
 see Van Oystaeyen et al. Science 2014.
 }

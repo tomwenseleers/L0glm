@@ -3,7 +3,7 @@
 #' exponential-family distribution
 #'
 #' @description
-#' `glm_dist()` computes a column–by–column dissimilarity matrix for a
+#' `glm_dist()` computes a column-by-column dissimilarity matrix for a
 #' dense or sparse data matrix \eqn{Y} whose columns are variables
 #' and rows are observations and whose distribution conforms to
 #' any standard GLM (generalized linear model) exponential family (e.g.
@@ -12,8 +12,8 @@
 #' Two flavours are implemented:
 #' \itemize{
 #'   \item \strong{Symmetrised unit deviance}
-#'         (\code{method = "deviance"}, default) —
-#'         equal to \emph{two} times the Jensen–Shannon divergence for any
+#'         (\code{method = "deviance"}, default) -
+#'         equal to \emph{two} times the Jensen-Shannon divergence for any
 #'         exponential-family distributed data.  
 #'         For the Gaussian(identity) family this becomes
 #'         one half of the weighted squared Euclidean distance.
@@ -21,7 +21,7 @@
 #'         1/variance for Gaussian) can be taken into account.
 #'
 #'   \item \strong{Poisson size-factor distance}
-#'         (\code{method = "poissondist"}) —
+#'         (\code{method = "poissondist"}) -
 #'         Witten (2011) distance that divides each column by its
 #'         size factor before computing the symmetrised Poisson deviance,
 #'         treating global scale differences as nuisance.
@@ -38,7 +38,7 @@
 #'       \frac{w_{ti} y_{ti} + w_{tj} y_{tj}}
 #'            {w_{ti} + w_{tj}}}{
 #'       \mu = (w_i y_i + w_j y_j)/(w_i + w_j)}
-#' be the precision–weighted mean at row *t*.  With
+#' be the precision-weighted mean at row *t*.  With
 #' \eqn{d(y,\mu,w)} the unit deviance returned by
 #' \code{family\$dev.resids}, the distance is
 #' \deqn{D_{ij}^{(\mathrm{dev})}
@@ -55,7 +55,7 @@
 #'                   (\code{method = "poissondist"})\cr
 #' With column size factors
 #' \eqn{s_i = \mathrm{size\_fac}[i]}, row totals
-#' \eqn{c_t = y_{ti}+y_{tj}}, and a Gamma–Poisson smoothing constant
+#' \eqn{c_t = y_{ti}+y_{tj}}, and a Gamma-Poisson smoothing constant
 #' \eqn{\beta} (default 1), define
 #' \deqn{n_{ti} = \frac{s_i c_t}{s_i+s_j},\qquad
 #'       d_i = \frac{y_{ti}+\beta}{n_{ti}+\beta}}
@@ -69,14 +69,14 @@
 #' \code{PoiClaClu::PoissonDistance(x,\dots)} without transposing *x*.
 #' }
 #'
-#' Both distances are twice the Jensen–Shannon divergence of the
+#' Both distances are twice the Jensen-Shannon divergence of the
 #' corresponding exponential-family distributions; for Gaussian this
 #' again equals \eqn{\tfrac12\Vert\Delta\Vert_2^2}.
 #'
-#' @param Y  A numeric matrix (`nrow(Y)` observations × `ncol(Y)` variables).
+#' @param Y  A numeric matrix (`nrow(Y)` observations x `ncol(Y)` variables).
 #'           Sparse `Matrix::dgCMatrix` is accepted. Proportion data should
 #'           be provided in case of binomial data.
-#' @param weights  Optional `nrow(Y) × ncol(Y)` matrix of precision
+#' @param weights  Optional `nrow(Y) x ncol(Y)` matrix of precision
 #'   weights (e.g. total counts for Binomial, `1/var` for Gaussian).
 #'   Only used with `method = "deviance"`.
 #' @param family  A **stats** family object (default
@@ -92,7 +92,7 @@
 #' Witten, D. M. (2011). 
 #' \emph{Classification and Clustering of Sequencing Data 
 #' using a Poisson Model.} 
-#' Annals of Applied Statistics 5(4): 2493–2518.
+#' Annals of Applied Statistics 5(4): 2493-2518.
 #'
 #' @examples
 #' ## example: calculating distance among different m/z mass traces in GC/MS datasets
@@ -125,7 +125,7 @@ glm_dist <- function(Y,
   n <- nrow(Y); p <- ncol(Y)
   
   ## ----------------------------------------------------------------------------
-  ## 1.  Jensen–Shannon divergence calculated from the symmetrised unit deviance 
+  ## 1.  Jensen-Shannon divergence calculated from the symmetrised unit deviance 
   ## ----------------------------------------------------------------------------
   if (method == "deviance") {
     D <- matrix(0, p, p)

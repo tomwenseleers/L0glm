@@ -30,7 +30,7 @@
 #'    \item We allow the estimated convolution kernel \eqn{g} to be smoothed by
 #'          a custom function (e.g. log-concave splines) 
 #'   \item Any exponential-family noise model with an \emph{identity} link
-#'         can be used (Poisson, Gaussian, Gamma, …)
+#'         can be used (Poisson, Gaussian, Gamma, ...)
 #'   \item Estimates of the PSF are shrunk towards an optional prior guess or
 #'         the estimate from the previous iteration and warm starts are used, 
 #'         which alongside PSF centroid centering results in improved 
@@ -41,9 +41,9 @@
 #' 
 #' In the non-negative-matrix-factorisation (NMF) literature this model
 #' would be referred to as \emph{single-atom convolutional NMF} or \emph{sparse 
-#' convolutional dictionary learning}, whereby a one–dimensional signal (or
+#' convolutional dictionary learning}, whereby a one-dimensional signal (or
 #' multichannel matrix) \eqn{y} is approximated as \eqn{W(g)\,H}, where \eqn{W(g)}
-#' is a banded Toeplitz matrix that holds time–shifted copies of
+#' is a banded Toeplitz matrix that holds time-shifted copies of
 #' an estimated optimal dictionary atom/PSF \eqn{g}, and \eqn{H} is a
 #' (potentially multi-column) matrix of sparse, non-negative activations
 #' \eqn{a}.
@@ -75,9 +75,9 @@
 #' fit via adaptive ridge regularised IRLS.
 #'
 #' A classical baseline for Poisson deconvolution is the
-#' Richardson–Lucy algorithm (Richardson 1972; Lucy 1974). In modern
-#' terms, the blind deconvolution version of Richardson–Lucy 
-#' equals Kullback–Leibler NMF with
+#' Richardson-Lucy algorithm (Richardson 1972; Lucy 1974). In modern
+#' terms, the blind deconvolution version of Richardson-Lucy 
+#' equals Kullback-Leibler NMF with
 #' multiplicative updates (Lee & Seung 1999) and 
 #' factor matrix \eqn{W} constrained to be a convolution matrix.  
 #' Empirically, \code{L0glm_blind_deco()} has much better support recovery,
@@ -101,7 +101,7 @@
 #'                    iteration when \code{plot=TRUE}.
 #' @param plot Boolean specifying whether to plot the estimated PSF in each iteration
 #'             (alongside the true PSF if \code{kernel_true} is given).                                        
-#' @param maxiter  Integer ≥ 1.  Maximum alternating steps. Default 15.
+#' @param maxiter  Integer >= 1.  Maximum alternating steps. Default 15.
 #' @param tol      Relative L1 change in the PSF that triggers early stop (default 1e-3).
 #'
 #' @return A list with components
@@ -114,24 +114,24 @@
 #' @references
 #'   \itemize{
 #'     \item Richardson, W. H. (1972)\cr
-#'           Bayesian‐based iterative method of image restoration.\cr
-#'           \emph{J. Opt. Soc. Am.} 62 (1): 55–59.
+#'           Bayesian-based iterative method of image restoration.\cr
+#'           \emph{J. Opt. Soc. Am.} 62 (1): 55-59.
 #'     \item Lucy, L. B. (1974)\cr
 #'           An iterative technique for the rectification of observed
 #'           distributions.\cr
-#'           \emph{Astron. J.} 79: 745–754.
+#'           \emph{Astron. J.} 79: 745-754.
 #'     \item Smaragdis, P. (2004)\cr
-#'           Non‐negative matrix factor
+#'           Non-negative matrix factor
 #'           deconvolution; extraction of multiple sound sources from
 #'           monophonic inputs.\cr
 #'           \emph{Proceedings of ICA 2004}.
 #'     \item Lee, D. D., & Seung, H. S. (1999)\cr
-#'           Learning the parts of objects by non‐negative matrix
+#'           Learning the parts of objects by non-negative matrix
 #'           factorization.\cr
-#'           \emph{Nature} 401 (6755): 788–791.
+#'           \emph{Nature} 401 (6755): 788-791.
 #'     \item de Rooi, J., & Eilers, P. H. C. (2011)\cr
 #'           Deconvolution of pulse trains with the L0 penalty.\cr
-#'           \emph{Analytica Chimica Acta} 705 (1-2): 218–226.
+#'           \emph{Analytica Chimica Acta} 705 (1-2): 218-226.
 #'     \item Kidzinski, L., Stumpe, M. C., & Hastie, T. (2022)\cr
 #'           Generalized matrix factorization.\cr
 #'           arXiv:2208.05987.
@@ -147,6 +147,7 @@
 #' @seealso \code{\link{L0glm_sparse_deco}}, \code{\link{L0glm_deco_estkernel}}
 #'
 #'@examples
+#'\donttest{
 #'   
 #' ## ------------------------------------------------------------------------
 #' ## 1  Simulate a blurred spike-train with a BIGAUSSIAN PSF & Poisson noise
@@ -156,10 +157,10 @@
 #' set.seed(123)
 #' family <- poisson(identity)
 #' 
-#' ## --- true point–spread function (PSF) -----------------------------
+#' ## --- true point-spread function (PSF) -----------------------------
 #' L       <- 51                       # kernel length
-#' sigma1  <- 1.25                     # left-hand σ
-#' sigma2  <- 5                        # right-hand σ
+#' sigma1  <- 1.25                     # left-hand sigma
+#' sigma2  <- 5                        # right-hand sigma
 #' g_true  <- convkernel("bigaussian", L,
 #'                       params = list(sigma1 = sigma1,
 #'                                     sigma2 = sigma2),
@@ -198,7 +199,8 @@
 #' y      <- rpois(n, y_true)                # with Poisson noise
 #' 
 #' # quick sanity plot
-#' plot(y, type = "l", ylim = c(0,max(y)), main = "Simulated blurred spike train with baseline in red")
+#' plot(y, type = "l", ylim = c(0,max(y)),
+#'      main = "Simulated blurred spike train with baseline in red")
 #' lines(y_baseline, col="red")
 #' 
 #' ## ------------------------------------------------------------------------
@@ -212,7 +214,9 @@
 #'                         L = L,                 # PSF kernel length
 #'                         baseline = baseline,
 #'                         kernel_est = g0,
-#'                         kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
+#'                         kernel_smoothfun = function(y) {
+#'                           log_conc_smooth(y, nknots = round(L / 5))
+#'                         },
 #'                         perc = "mean",         # use centroid centering
 #'                         kernel_true = g_true,  # for plots
 #'                         IC = "gic",
@@ -248,6 +252,7 @@
 #'      xlab = "estimated value",
 #'      ylab = "true value",
 #'      main = main_expr)
+#'}
 #'
 #' @importFrom stats setNames
 #' @export

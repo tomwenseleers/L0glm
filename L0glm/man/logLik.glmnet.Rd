@@ -4,16 +4,13 @@
 \alias{logLik.glmnet}
 \title{Compute Log-Likelihood for glmnet Objects}
 \usage{
-\method{logLik}{glmnet}(object, weights, X, y)
+\method{logLik}{glmnet}(object, ...)
 }
 \arguments{
 \item{object}{A `glmnet` model object.}
 
-\item{weights}{Observation weights.}
-
-\item{X}{The design matrix.}
-
-\item{y}{The response vector.}
+\item{...}{Additional arguments. Named arguments \code{weights}, \code{X},
+and \code{y} are required.}
 }
 \value{
 The log-likelihood of the model.

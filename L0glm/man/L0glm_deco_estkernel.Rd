@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0glm_deco_estkernel.R
 \name{L0glm_deco_estkernel}
 \alias{L0glm_deco_estkernel}
-\title{Estimate the PSF given a spike train estimate via L0‐penalised GLMs}
+\title{Estimate the PSF given a spike train estimate via L0-penalised GLMs}
 \usage{
 L0glm_deco_estkernel(
   y,
@@ -39,7 +39,7 @@ or `Gamma(identity)`).}
 \item{kernel_smoothfun}{Optional function applied to the raw estimate
 (default: \code{\link{log_conc_smooth}}).}
 
-\item{perc}{Passed to \code{\link{shift_kernel}} – use `"mean"` to recenter
+\item{perc}{Passed to \code{\link{shift_kernel}} - use `"mean"` to recenter
 the centroid, or a value in \eqn{[0,1]} for a percentile.}
 
 \item{IC}{Information criterion that sets the penalty parameter in
@@ -80,7 +80,7 @@ following improvements:
    \item We allow the estimated convolution kernel \eqn{g} to be smoothed by
          a custom function (e.g. log-concave splines)
   \item Any exponential-family noise model with an \emph{identity} link
-        can be used (Poisson, Gaussian, Gamma, …)
+        can be used (Poisson, Gaussian, Gamma, ...)
   \item Shrinkage towards an optional prior guess for the PSF
         is allowed for, resulting in enhanced stability and improved convergence
         behaviour
@@ -98,10 +98,10 @@ library(splines)
 set.seed(123)
 family <- poisson(identity)
 
-## --- true point–spread function (PSF) -----------------------------
+## --- true point-spread function (PSF) -----------------------------
 L       <- 51                       # kernel length
-sigma1  <- 1.25                     # left-hand σ
-sigma2  <- 5                        # right-hand σ
+sigma1  <- 1.25                     # left-hand sigma
+sigma2  <- 5                        # right-hand sigma
 g_true  <- convkernel("bigaussian", L,
                       params = list(sigma1 = sigma1,
                                     sigma2 = sigma2),
@@ -173,7 +173,9 @@ g_est <- fit$kernel
 plot(g_true, col="red",
      lwd=7, type="l",
      ylab = "Density",
-     main = "True (red) vs. estimated (blue) bigaussian PSF\nafter 1 iteration of Poisson L0 glm blind deconvolution")
+     main = paste("True vs. estimated bigaussian PSF",
+                  "after 1 Poisson L0glm deconvolution iteration",
+                  sep = "\n"))
 lines(g_est, col="blue", lwd=3)
 
 }

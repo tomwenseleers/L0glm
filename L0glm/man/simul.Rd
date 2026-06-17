@@ -26,6 +26,8 @@ simul(
 
 \item{p}{A numeric value indicating the number of predictors (variables) to generate.}
 
+\item{s}{Sparsity of true solution (proportion of total coefficients p that are nonzero).}
+
 \item{sparse}{Boolean indicating if the returned design matrix should be sparse (of Matrix class dsCMatrix) or dense.}
 
 \item{options}{A list of optional parameters to control the data generation process. This can include:
@@ -36,8 +38,6 @@ For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_rang
 If options are \code{NULL}, default values will be used.}
 
 \item{seed}{Random seed.}
-
-\item{S}{Sparsity of true solution (proportion of total coefficients p that are nonzero).}
 }
 \value{
 A variable containing the simulated data.

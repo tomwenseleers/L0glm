@@ -28,7 +28,7 @@ A numeric vector of length \code{length(y)}:
 \description{
 Fits a concave quadratic B-spline (via \code{\link[cobs]{cobs}}) to
 \eqn{\log_{10}(y + \varepsilon)} and back-transforms and normalises the 
-fit so the result is a **log-concave, non–negative, unit L1 norm** smoothed
+fit so the result is a **log-concave, non-negative, unit L1 norm** smoothed
 version of the original convolution kernel estimate \eqn{y}.  
 A small offset is added internally to avoid taking the
 logarithm of zero; the final vector is renormalised to unit L1 norm.
@@ -43,7 +43,7 @@ if (requireNamespace("cobs", quietly = TRUE)) {
 set.seed(1)
 x      <- seq(-5, 5, length.out = 101)
 
-## underlying “true” density on the grid
+## underlying "true" density on the grid
 f_true <- dnorm(x)
 f_true <- f_true / sum(f_true)          # ensure it integrates to 1
 

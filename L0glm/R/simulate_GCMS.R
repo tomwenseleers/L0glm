@@ -1,8 +1,8 @@
 #' Simulate synthetic GC-MS chromatograms with ground-truth signal + background
 #'
 #' `simulate_GCMS()` draws \eqn{k} compounds from an EI reference library `S`
-#' (rows = compounds, columns = m/z values, e.g. 41–298) and generates an \eqn{n \times m}{n
-#' × m} chromatogram `D` whose signal is the sum of
+#' (rows = compounds, columns = m/z values, e.g. 41-298) and generates an \eqn{n \times m}{n
+#' x m} chromatogram `D` whose signal is the sum of
 #' k Gaussian peaks (`W_true H_true`) and
 #' a smooth, monotonically increasing B-spline background
 #' (`W_background*bg_scale H_background`).
@@ -28,31 +28,31 @@
 #' - column names (character) for the m/z channels (e.g. `"41":"298"`), and
 #' - attribute `attr(S, "RT")` for the retention times *(numeric, unit: mins)*.
 #'
-#' @param n  Integer ≥ 1. Number of time points (rows).
-#' @param k  Integer ≥ 1. Number of compounds/peaks.
+#' @param n  Integer >= 1. Number of time points (rows).
+#' @param k  Integer >= 1. Number of compounds/peaks.
 #' @param S  Spectral library.  If `NULL` the example data
-#'   `data(simulated_spectra)` (2000 spectra × 258 m/z values) is loaded.
-#' @param peak_width_range Length-2 numeric. Uniform base range for Gaussian peak width σ
+#'   `data(simulated_spectra)` (2000 spectra x 258 m/z values) is loaded.
+#' @param peak_width_range Length-2 numeric. Uniform base range for Gaussian peak width sigma
 #'   (*before* any height-coupling is applied and on time point scale).
 #' @param mean_beta,sd_logbeta Parameters of the log-normal height distribution.
-#' @param width_height_coef  Numeric ≥ 0.  Multiplicative widening:
+#' @param width_height_coef  Numeric >= 0.  Multiplicative widening:
 #'   \deqn{\sigma_j \leftarrow \sigma_j\bigl[1+\texttt{coef}\,h_j\bigr]}{} where
 #'   \eqn{h_j=(\beta_j-\min\beta)/(\max\beta-\min\beta)}.
 #' @param rt_height_coef Numeric.  Positive values push high peaks to slightly
 #'   larger RTs: \deqn{c_j \leftarrow c_j
 #'   \bigl[1+\texttt{rt\_height\_coef}\,h_j\bigr]}{}
-#' @param sample_nr Integer ≥ 1. Injection/order number.
+#' @param sample_nr Integer >= 1. Injection/order number.
 #' @param rt_drift_coef Numeric.  Additive drift in *time points* per injection:
 #'           \eqn{c_j \leftarrow c_j + \texttt{rt\_drift\_coef}\,
 #'           (\texttt{sample\_nr}-1)}.
-#' @param bg_scale  Numeric ≥ 0. Multiplicative factor applied to the whole
+#' @param bg_scale  Numeric >= 0. Multiplicative factor applied to the whole
 #'   B-spline background.
 #' @param family  `"poisson"` (default) or `"gaussian"`.
 #' @param sd_noise s.d. of additive Gaussian noise (`family="gaussian"`).
 #' @param seed_compounds Integer seed controlling which library spectra are
 #'   drawn.
 #' @param seed_peaks Integer seed for all other random quantities (heights,
-#'   widths, noise, …).
+#'   widths, noise, ...).
 #'
 #' @return A list with matrices:
 #' \describe{
@@ -153,7 +153,7 @@ simulate_GCMS <- function(
   rt_min   <- min(attr(S, "RT"))
   rt_max   <- max(attr(S, "RT"))
   
-  # map minutes → scan indices 1..n
+  # map minutes -> scan indices 1..n
   centres_base <- 1 + (rt_lib - rt_min) / (rt_max - rt_min) * (n - 1)
   
   # log-normal heights & normalised heights

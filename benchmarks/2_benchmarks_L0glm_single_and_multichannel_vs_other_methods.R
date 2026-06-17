@@ -78,7 +78,7 @@ system.time(tune.QR.sc.pois <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic"
 
 # Chosen lambda also matches expected lambda value that
 # was expected to optimise GIC, so tuning is in fact not needed
-preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
 tune.chol.sc.pois$lambda_preset # 20.44997 (lambda preset)
 tune.chol.sc.pois$lambda_best # 20.44997
 
@@ -168,27 +168,27 @@ system.time(L0glm.QR.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
 X = sim.pois$X
 y = sim.pois$y
 benchmarks_1_1 = rbind(
-  data.frame(method="L0glm_osqp", do.call(cbind, get.metrics(beta = L0glm.osqp.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_osqp", do.call(cbind, L0glm:::get.metrics(beta = L0glm.osqp.pois$coefficients,  # some metrics
                                                              X = X, y = y, 
                                                              family = poisson(identity), 
                                                              beta_true = sim.pois$beta_true))),
-  data.frame(method="L0glm_bigglm", do.call(cbind, get.metrics(beta = L0glm.glmnet.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.glmnet.pois$coefficients,  # some metrics
                                                                X = X, y = y, 
                                                                family = poisson(identity), 
                                                                beta_true = sim.pois$beta_true))),
-  data.frame(method="L0glm_qr", do.call(cbind, get.metrics(beta = L0glm.QR.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_qr", do.call(cbind, L0glm:::get.metrics(beta = L0glm.QR.pois$coefficients,  # some metrics
                                                            X = X, y = y, 
                                                            family = poisson(identity),
                                                            beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="L0glm_cholesky", do.call(cbind, get.metrics(beta = L0glm.chol.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_cholesky", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol.pois$coefficients,  # some metrics
                                                                  X = X, y = y, 
                                                                  family = poisson(identity),
                                                                  beta_true = sim.pois$beta_true) )),
-  data.frame(method="L0glm_LSCG", do.call(cbind, get.metrics(beta = L0glm.LSCG.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_LSCG", do.call(cbind, L0glm:::get.metrics(beta = L0glm.LSCG.pois$coefficients,  # some metrics
                                                              X = X, y = y, 
                                                              family = poisson(identity),
                                                              beta_true = sim.pois$beta_true) )),
-  data.frame(method="L0glm_CG", do.call(cbind, get.metrics(beta = L0glm.CG.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_CG", do.call(cbind, L0glm:::get.metrics(beta = L0glm.CG.pois$coefficients,  # some metrics
                                                            X = X, y = y, 
                                                            family = poisson(identity), 
                                                            beta_true = sim.pois$beta_true) ))
@@ -313,7 +313,7 @@ system.time(tune.QR.sc.gaus <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic"
 
 # Chosen lambda here matches expected lambda value that
 # was expected to optimise GIC, so tuning in fact not needed
-preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
 tune.chol.sc.gaus$lambda_preset # 20.44997 (lambda preset)
 tune.chol.sc.gaus$lambda_best # 20.44997 (best lambda tune)
 
@@ -407,27 +407,27 @@ system.time(L0glm.QR.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 X = sim.gaus$X
 y = sim.gaus$y
 benchmarks_1_2 = rbind(
-  data.frame(method="L0glm_osqp", do.call(cbind, get.metrics(beta = L0glm.osqp.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_osqp", do.call(cbind, L0glm:::get.metrics(beta = L0glm.osqp.gaus$coefficients,  # some metrics
                                                              X = X, y = y, 
                                                              family = gaussian(identity), 
                                                              beta_true = sim.gaus$beta_true))),
-  data.frame(method="L0glm_bigglm", do.call(cbind, get.metrics(beta = L0glm.glmnet.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.glmnet.gaus$coefficients,  # some metrics
                                                                X = X, y = y, 
                                                                family = gaussian(identity), 
                                                                beta_true = sim.gaus$beta_true))),
-  data.frame(method="L0glm_qr", do.call(cbind, get.metrics(beta = L0glm.QR.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_qr", do.call(cbind, L0glm:::get.metrics(beta = L0glm.QR.gaus$coefficients,  # some metrics
                                                            X = X, y = y, 
                                                            family = gaussian(identity),
                                                            beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="L0glm_cholesky", do.call(cbind, get.metrics(beta = L0glm.chol.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_cholesky", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol.gaus$coefficients,  # some metrics
                                                                  X = X, y = y, 
                                                                  family = gaussian(identity),
                                                                  beta_true = sim.gaus$beta_true) )),
-  data.frame(method="L0glm_LSCG", do.call(cbind, get.metrics(beta = L0glm.LSCG.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_LSCG", do.call(cbind, L0glm:::get.metrics(beta = L0glm.LSCG.gaus$coefficients,  # some metrics
                                                              X = X, y = y, 
                                                              family = gaussian(identity),
                                                              beta_true = sim.gaus$beta_true) )),
-  data.frame(method="L0glm_CG", do.call(cbind, get.metrics(beta = L0glm.CG.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_CG", do.call(cbind, L0glm:::get.metrics(beta = L0glm.CG.gaus$coefficients,  # some metrics
                                                            X = X, y = y, 
                                                            family = gaussian(identity), 
                                                            beta_true = sim.gaus$beta_true) )) 
@@ -523,7 +523,7 @@ tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
            solver = "eigen", method = 7L)
 tune_full$lambda_best # 0.9753673 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
@@ -540,7 +540,7 @@ tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
            solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 1.593531 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -603,7 +603,7 @@ tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 0.9753657 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
@@ -620,7 +620,7 @@ tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 2.60347 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 
@@ -668,7 +668,7 @@ tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 0.9753657 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 10x higher than best lambda
@@ -685,7 +685,7 @@ tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 0.9755287 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -751,7 +751,7 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 11.35348
 tune_full$lambda_preset # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
@@ -770,7 +770,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 11.35348
 tune_zoomed$lambda_preset # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky ####
 system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
@@ -833,7 +833,7 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 11.35348
 tune_full$lambda_preset # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
@@ -852,7 +852,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 11.35348
 tune_zoomed$lambda_preset # 11.35348 
-preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky ####
 system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
@@ -912,7 +912,7 @@ tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                         solver = "eigen", method = 7L)
 tune_full$lambda_best # 11.35348 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here best lambda is again very close to preset lambda
@@ -931,7 +931,7 @@ tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                           solver = "eigen", method = 7L)
 tune_zoomed$lambda_best # 4.82 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky ####
@@ -1071,39 +1071,39 @@ y <- sim.pois$y
 IC <- "gic"
 
 benchmarks_3_1 = rbind(
-  data.frame(method="L0glm", do.call(cbind, get.metrics(beta = L0glm.chol$coefficients,  # some metrics
+  data.frame(method="L0glm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol$coefficients,  # some metrics
                                                         X = X, y = y, 
                                                         family = poisson(identity), 
                                                         beta_true = sim.pois$beta_true))),
-  data.frame(method="nnalasso_glmnet", do.call(cbind, get.metrics(beta = glmnet.al.sc.pois,  # some metrics
+  data.frame(method="nnalasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.al.sc.pois,  # some metrics
                                                                   X = cbind(1, X), y = y, 
                                                                   family = poisson(identity), 
                                                                   beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = L0learn.after.lasso.sc.pois,  # some metrics
+  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.pois,  # some metrics
                                                                                  X = X, y = y, 
                                                                                  family = poisson(identity),
                                                                                  beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnabess", do.call(cbind, get.metrics(beta = abess.sc.pois,  # some metrics
+  data.frame(method="nnabess", do.call(cbind, L0glm:::get.metrics(beta = abess.sc.pois,  # some metrics
                                                           X = X, y = y, 
                                                           family = poisson(identity),
                                                           beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnabess_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = abess.after.lasso.sc.pois,  # some metrics
+  data.frame(method="nnabess_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.pois,  # some metrics
                                                                                X = X, y = y, 
                                                                                family = poisson(identity),
                                                                                beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnL0Learn", do.call(cbind, get.metrics(beta = L0learn.sc.pois,  # some metrics
+  data.frame(method="nnL0Learn", do.call(cbind, L0glm:::get.metrics(beta = L0learn.sc.pois,  # some metrics
                                                             X = X, y = y, 
                                                             family = poisson(identity), 
                                                             beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnlasso_glmnet", do.call(cbind, get.metrics(beta = glmnet.sc.pois,  # some metrics
+  data.frame(method="nnlasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.sc.pois,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = poisson(identity), 
                                                                  beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  data.frame(method="nnMCP_ordinis", do.call(cbind, get.metrics(beta = ordinis.mcp.sc.pois,  # some metrics
+  data.frame(method="nnMCP_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.mcp.sc.pois,  # some metrics
                                                                 X = cbind(1, X), y = y, 
                                                                 family = poisson(identity),
                                                                 beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  data.frame(method="nnSCAD_ordinis", do.call(cbind, get.metrics(beta = ordinis.scad.sc.pois,  # some metrics
+  data.frame(method="nnSCAD_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.scad.sc.pois,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = poisson(identity), 
                                                                  beta_true = c(0, as.vector(sim.pois$beta_true))) )))
@@ -1275,39 +1275,39 @@ y <- sim.gaus$y
 IC <- "gic"
 
 benchmarks_3_2 = rbind(
-  data.frame(method="L0glm", do.call(cbind, get.metrics(beta = L0glm.chol$coefficients,  # some metrics
+  data.frame(method="L0glm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol$coefficients,  # some metrics
                                                                      X = X, y = y, 
                                                                      family = gaussian(identity), 
                                                                      beta_true = sim.gaus$beta_true))),
-  data.frame(method="nnalasso_glmnet", do.call(cbind, get.metrics(beta = glmnet.al.sc.gaus,  # some metrics
+  data.frame(method="nnalasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.al.sc.gaus,  # some metrics
                                                                   X = cbind(1, X), y = y, 
                                                                   family = gaussian(identity), 
                                                                   beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = L0learn.after.lasso.sc.gaus,  # some metrics
+  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.gaus,  # some metrics
                                                                                  X = X, y = y, 
                                                                                  family = gaussian(identity),
                                                                                  beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="abess_after_glmnet_nnlasso", do.call(cbind, get.metrics(beta = abess.after.lasso.sc.gaus,  # some metrics
+  data.frame(method="abess_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.gaus,  # some metrics
                                                                              X = X, y = y, 
                                                                              family = gaussian(identity),
                                                                              beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="nnL0Learn", do.call(cbind, get.metrics(beta = L0learn.sc.gaus,  # some metrics
+  data.frame(method="nnL0Learn", do.call(cbind, L0glm:::get.metrics(beta = L0learn.sc.gaus,  # some metrics
                                                             X = X, y = y, 
                                                             family = gaussian(identity), 
                                                             beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="abess", do.call(cbind, get.metrics(beta = abess.sc.gaus,  # some metrics
+  data.frame(method="abess", do.call(cbind, L0glm:::get.metrics(beta = abess.sc.gaus,  # some metrics
                                                         X = X, y = y, 
                                                         family = gaussian(identity), 
                                                         beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="nnlasso_glmnet", do.call(cbind, get.metrics(beta = glmnet.sc.gaus,  # some metrics
+  data.frame(method="nnlasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.sc.gaus,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = gaussian(identity), 
                                                                  beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  data.frame(method="nnMCP_ordinis", do.call(cbind, get.metrics(beta = ordinis.mcp.sc.gaus,  # some metrics
+  data.frame(method="nnMCP_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.mcp.sc.gaus,  # some metrics
                                                                 X = cbind(1, X), y = y, 
                                                                 family = gaussian(identity),
                                                                 beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  data.frame(method="nnSCAD_ordinis", do.call(cbind, get.metrics(beta = ordinis.scad.sc.gaus,  # some metrics
+  data.frame(method="nnSCAD_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.scad.sc.gaus,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = gaussian(identity), 
                                                                  beta_true = c(0, as.vector(sim.gaus$beta_true))) )))
@@ -1436,9 +1436,9 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 plotmat(L0glm.chol.pois$coefficients,
       xlab="Time index", ylab="Channel", 
       main="nonnegative relaxed L0 group GLM\n(red = true peaks, cyan = estimated peaks)")
-abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(L0glm.chol.pois$coefficients)!=0)], col="cyan")
-
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(L0glm.chol.pois$coefficients)!=0)], col="cyan")
+# TODO Fix bug Error: unable to find an inherited method for function ‘rowQ’ for signature ‘imat = "dgCMatrix", which = "numeric"’
 
 
 ### 3.3.2 BEST SUBSET OF GROUP SELECTION (BSGS) USING ABESS ####
@@ -1464,8 +1464,8 @@ system.time(glmnet.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2,
 plotmat(glmnet.mc.pois, 
       xlab="Time index", ylab="Channel", 
       main="glmnet nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
-abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cyan")
 
 
 
@@ -1473,15 +1473,15 @@ abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cya
 ### 3.3.4 BENCHMARKS TABLE ####
 
 benchmarks_3_3 = rbind(
-  data.frame(method="relaxed_group_L0glm_poisson", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.pois$coefficients),  # TODO: make sure that metrics work with either dense or sparse coefs
+  data.frame(method="relaxed_group_L0glm_poisson", do.call(cbind, L0glm:::get.metrics(beta = as.matrix(L0glm.chol.pois$coefficients),  # TODO: make sure that metrics work with either dense or sparse coefs
                                                                         X = sim.pois.mc$X, y = sim.pois.mc$y,
                                                                         family = poisson(identity), 
                                                                         beta_true = sim.pois.mc$beta_true) ) ),
-  data.frame(method="BSGS_abess_poisson", do.call(cbind, get.metrics(beta = bsgs.abess.pois, 
+  data.frame(method="BSGS_abess_poisson", do.call(cbind, L0glm:::get.metrics(beta = bsgs.abess.pois, 
                                                                      X = sim.pois.mc$X, y = sim.pois.mc$y, 
                                                                      family = poisson(identity), 
                                                                      beta_true = sim.pois.mc$beta_true) ) ),
-  data.frame(method="multivariate_group_LASSO_poisson", do.call(cbind, get.metrics(beta = glmnet.mc.pois,  
+  data.frame(method="multivariate_group_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = glmnet.mc.pois,  
                                                                      X = sim.pois.mc$X, y = sim.pois.mc$y, 
                                                                      family = poisson(identity), 
                                                                      beta_true = sim.pois.mc$beta_true) ) ) 
@@ -1567,8 +1567,8 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 plotmat(L0glm.chol.gaus$coefficients,
       xlab="Time index", ylab="Channel", 
       main="relaxed nonnegative group L0glm\n(red = true peaks, cyan = estimated peaks)")
-abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(L0glm.chol.gaus$coefficients)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(L0glm.chol.gaus$coefficients)!=0)], col="cyan")
 
 
 
@@ -1591,8 +1591,8 @@ system.time(glmnet.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2,
 plotmat(glmnet.mc.gaus,
       xlab="Time index", ylab="Channel", 
       main="nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
-abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
-abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cyan")
 
 
 
@@ -1600,15 +1600,15 @@ abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cya
 ### 3.4.3 BENCHMARKS TABLE ####
 
 benchmarks_3_4 = rbind(
-  data.frame(method="relaxed_group_L0glm_gaussian", do.call(cbind, get.metrics(beta = as.matrix(L0glm.chol.gaus$coefficients),  # TODO: allow coefs to be either dense or sparse matrix in get.metrics
+  data.frame(method="relaxed_group_L0glm_gaussian", do.call(cbind, L0glm:::get.metrics(beta = as.matrix(L0glm.chol.gaus$coefficients),  # TODO: allow coefs to be either dense or sparse matrix in get.metrics
                                                                          X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                          family = gaussian(identity),
                                                                          beta_true = sim.gaus.mc$beta_true)) ),
-  data.frame(method="BSGS_abess_gaussian", do.call(cbind, get.metrics(beta = bsgs.abess.gaus,  # some metrics
+  data.frame(method="BSGS_abess_gaussian", do.call(cbind, L0glm:::get.metrics(beta = bsgs.abess.gaus,  # some metrics
                                                                       X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                       family = gaussian(identity),
                                                                       beta_true = sim.gaus.mc$beta_true)) ),
-  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, get.metrics(beta = glmnet.mc.gaus,  
+  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = glmnet.mc.gaus,  
                                                                                    X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                                    family = gaussian(identity), 
                                                                                    beta_true = sim.gaus.mc$beta_true)) ) )

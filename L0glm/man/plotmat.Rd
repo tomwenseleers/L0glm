@@ -52,8 +52,8 @@ and tick labels reflect those values.
     negative values truncated to zero.
   \item \strong{Axes:} The image is rendered on the index grid with
     \code{axes = FALSE} in the internal \code{\link[graphics]{image}} call.
-    When \code{axes = TRUE}, tick locations are computed by mapping “value
-    space” (from numeric row/column names, if available) to index positions
+    When \code{axes = TRUE}, tick locations are computed by mapping "value
+    space" (from numeric row/column names, if available) to index positions
     via linear interpolation; if names are missing or not all numeric,
     integer index ticks are used.
 }

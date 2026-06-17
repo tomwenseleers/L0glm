@@ -39,8 +39,8 @@
 #'     negative values truncated to zero.
 #'   \item \strong{Axes:} The image is rendered on the index grid with
 #'     \code{axes = FALSE} in the internal \code{\link[graphics]{image}} call.
-#'     When \code{axes = TRUE}, tick locations are computed by mapping “value
-#'     space” (from numeric row/column names, if available) to index positions
+#'     When \code{axes = TRUE}, tick locations are computed by mapping "value
+#'     space" (from numeric row/column names, if available) to index positions
 #'     via linear interpolation; if names are missing or not all numeric,
 #'     integer index ticks are used.
 #' }
@@ -133,8 +133,8 @@ plotmat <- function(M,
 
 
 # ---------------------------------------------------------------------------
-# Helper: down‑scale a matrix to ≤ maxresolution × maxresolution by
-# block‑averaging. Works for dense or sparse input.
+# Helper: down-scale a matrix to <= maxresolution x maxresolution by
+# block-averaging. Works for dense or sparse input.
 # ---------------------------------------------------------------------------
 downscale <- function(M, maxresolution = 2000) {
   rstride <- ceiling(nrow(M) / min(nrow(M), maxresolution))

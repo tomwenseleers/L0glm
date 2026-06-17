@@ -35,17 +35,11 @@ L0glm.fit.internal = function(X,
                               warm.start = 1,
                               prior.mean = NULL,
                               gamma = 2,
-                              thresh = 1e-6,
+                              thresh = 1e-5,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE) { 
 
-  # NOTE currently I haven't implemented any SCREENING RULES like
-  # http://proceedings.mlr.press/v119/atamturk20a/atamturk20a.pdf
-  # or sure independent screening prescreening, as implemented in abess
-  # https://cran.r-project.org/web/packages/abess/abess.pdf
-  # Implementing these might further speed up the algo.
-  
   ## 1. sanity checks ---------------------------------------------------------
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
   
@@ -82,12 +76,12 @@ L0glm.fit.internal = function(X,
   ## 5. family helpers --------------------------------------------------------
   if (!is(family, "family")) family = family()
 
-  variance  <- family$variance      # variance in function of the mean µ
-  linkinv   <- family$linkinv       # inverse link function, to get predictions on response scale µ from η
-  linkfun   <- family$linkfun       # link function g(µ), to get predictions on link scale η from µ
-  mu_eta    <- family$mu.eta        # function of derivative of the predicted values on response scale µ with respect to predicted values on link scale η = d(g-1)/dη=dμ/dη
+  variance  <- family$variance      # variance in function of the mean u
+  linkinv   <- family$linkinv       # inverse link function, to get predictions on response scale u from eta
+  linkfun   <- family$linkfun       # link function g(u), to get predictions on link scale eta from u
+  mu_eta    <- family$mu.eta        # function of derivative of the predicted values on response scale u with respect to predicted values on link scale eta = d(g-1)/deta=dmu/deta
   # dev_res   <- family$dev.resids  # deviance residuals in function of y, mu and prior weights wt 
-  initexpr  <- family$initialize    # initialisation expression to initialise mustart (predictions on response scale µ) and n (nr of observations) and m (total nr of trials) for binomial data
+  initexpr  <- family$initialize    # initialisation expression to initialise mustart (predictions on response scale u) and n (nr of observations) and m (total nr of trials) for binomial data
   
   ## set mustart (and possibly n & m), requires nobs and nvars to be preset
   etastart <- NULL
@@ -95,7 +89,7 @@ L0glm.fit.internal = function(X,
   eval(initexpr)                          # initialise mustart and n and m (total counts) for binomial
   # n <- nobs
   
-  eta <- linkfun(mustart)                 # g(μ)  on link scale
+  eta <- linkfun(mustart)                 # g(mu)  on link scale
   mu  <- mustart                          # on response scale
   
   # dev <- sum(dev_res(y, mu, weights))
@@ -103,13 +97,13 @@ L0glm.fit.internal = function(X,
   # z.ret     <- rep(0, n)                # working response
   
   ## 6. set starting coefficients ---------------------------------------------
-  if (!is.null(start) && all(start == 0)) start <- NULL
+  if (any(is.na(start))) start <- NULL
+  if (!is.null(start)) if (all(start == 0)) start <- NULL
   if (is.null(start)) {
     start <- init_coefs(X, y, mu, weights, offset,
                         prior.mean, family, lambda) # component-wise initialisation
     start <- clamp(start, lower, upper)
-    start <- warm.start * start +
-      (1 - warm.start) * rep(sd(start)^(1/gamma), p)
+    if (length(start)>1) start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
   }
   beta <- beta_old <- start
   # names(beta) = colnames(X)
@@ -122,17 +116,17 @@ L0glm.fit.internal = function(X,
   ## 7. main IRLS loop with adaptive ridge step -------------------------------
   for (iter in seq_len(maxit)) {
     ## ---------- working response & weights ---------------------------
-    var = variance(mu) # variance in function of the mean µ
+    var = variance(mu) # variance in function of the mean u
     
     if (family$link == "identity"){ # then use simplified formula
         W.ret <- as.numeric(weights / var) # updated 1/variance (* weights) weights with identity link, where variance = 1 with Gaussian noise, variance = mu, mu^2 and mu^3 with Poisson, Gamma & inverse Gaussian noise
         good <- which(W.ret > 0 & is.finite(W.ret))
         z.ret <- y - offset # working (adjusted) response
       } else {
-        gprime <- mu_eta(eta) # derivative of the expected values µ with respect to predictions on link scale η = d(g-1)/dη=dμ/dη
+        gprime <- mu_eta(eta) # derivative of the expected values u with respect to predictions on link scale eta = d(g-1)/deta=dmu/deta
         good <- which(weights != 0 & gprime != 0 & is.finite(weights))
-        grad <- y - mu # gradient of log-likelihood with respect to η = ∂ℓ/∂η
-        z.ret <- eta - offset + grad / gprime # working (adjusted) response = linearised quadratic approximation of log-likelihood function ℓ around η
+        grad <- y - mu # gradient of log-likelihood with respect to eta
+        z.ret <- eta - offset + grad / gprime # working response from the local quadratic approximation around eta
         W.ret <- weights * as.numeric(gprime^2 / var) # updated working weights
       }
     z <- z.ret[good] # subset used for fit
@@ -160,7 +154,7 @@ L0glm.fit.internal = function(X,
     if (verbose) { print(paste("IRLS iteration", iter))
                    print(paste(sum(nonzero), "coefficients nonzero; range:", min(beta), "-", max(beta))) }
     if (!any(nonzero)) {           
-      if (verbose) warning("All coefficients zero – nothing to fit")
+      if (verbose) warning("All coefficients zero - nothing to fit")
       break
     }
 
@@ -193,8 +187,8 @@ L0glm.fit.internal = function(X,
     if (!is.null(always.include)) prior.mean[always.include] <- as.vector(beta)[always.include] 
     
     ## ----- update mu and eta --------------------------------------
-    eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale η
-    mu  <- linkinv(eta)    # predictions on response scale µ
+    eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
+    mu  <- linkinv(eta)    # predictions on response scale u
     if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
     
     ## ----- dispersion update (once, if free) ----------------------

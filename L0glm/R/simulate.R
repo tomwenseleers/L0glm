@@ -17,7 +17,7 @@
 #' A numeric value indicating the number of observations to generate.
 #' @param p 
 #' A numeric value indicating the number of predictors (variables) to generate.
-#' @param S 
+#' @param s 
 #' Sparsity of true solution (proportion of total coefficients p that are nonzero).
 #' @param sparse
 #' Boolean indicating if the returned design matrix should be sparse (of Matrix class dsCMatrix) or dense.

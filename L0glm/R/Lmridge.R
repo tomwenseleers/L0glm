@@ -337,7 +337,7 @@ lmridge.eigen <- function(Xw, yw,
                           prior.mean = rep(0, ncol(Xw)),
                           verbose = FALSE,
                           iteration = 1){ 
-  rowaug <- control.solver$rowaug && any(lambdas != 0) # ----- 1. make ‘row augmentation if, and only if, some lambdas > 0’
+  rowaug <- control.solver$rowaug && any(lambdas != 0) # ----- 1. make 'row augmentation if, and only if, some lambdas > 0'
   
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 
@@ -387,7 +387,7 @@ lmridge.eigen <- function(Xw, yw,
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% solve_sparse_QR(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "generalMatrix"),
                                                                   b = y_star)$coefficients) 
         } else { # if it's dense
@@ -395,7 +395,7 @@ lmridge.eigen <- function(Xw, yw,
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% solve_dense_QR(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
                                                                  b = y_star,
                                                                  pivot = control.solver$pivot)$coefficients)
@@ -467,7 +467,7 @@ lmridge.eigen <- function(Xw, yw,
           # Precompute some values
           y_star <- as.vector(yw - Xw %*% prior.mean)
 
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
@@ -476,7 +476,7 @@ lmridge.eigen <- function(Xw, yw,
           # Precompute some values
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
@@ -551,7 +551,7 @@ lmridge.eigen <- function(Xw, yw,
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
@@ -561,7 +561,7 @@ lmridge.eigen <- function(Xw, yw,
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% Matrix::solve(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))),
                                                                 y_star,
                                                                 tol = control.solver$tol))
@@ -620,7 +620,7 @@ lmridge.eigen <- function(Xw, yw,
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% solve_sparse_chol(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "generalMatrix"),
                                                                     b = y_star,
                                                                     pivot = control.solver$pivot,
@@ -631,7 +631,7 @@ lmridge.eigen <- function(Xw, yw,
           DXw <- Matrix::tcrossprod(D, Xw)
           y_star <- as.vector(yw - Xw %*% prior.mean)
           
-          # Calculate β using Woodbury identity
+          # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% solve_dense_chol(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
                                                                    b = y_star,
                                                                    pivot = control.solver$pivot)$coefficients)
@@ -673,7 +673,7 @@ Xweights <- function (X, weights)
   if (is.matrix(weights) || inherits(weights, "Matrix"))
     weights <- as.numeric(weights[, 1L])
   
-  ## all weights equal to one   – avoid all.equal() for sparse objects -----
+  ## all weights equal to one   - avoid all.equal() for sparse objects -----
   if (length(weights) == 1L) {
     if (weights == 1)               return(X)
   } else {
@@ -685,7 +685,7 @@ Xweights <- function (X, weights)
   w_sqrt <- sqrt(weights)
   
   if (issparse(X) || inherits(X, "Matrix")) {
-    ## left-multiply by diagonal – keeps sparsity
+    ## left-multiply by diagonal - keeps sparsity
     return( Matrix::Diagonal(x = w_sqrt) %*% X )
   }
   

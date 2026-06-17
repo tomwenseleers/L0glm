@@ -21,6 +21,8 @@
 #' XXX
 #' @param abstol
 #' XXX
+#' @param block_size
+#' Optional block size used by solvers that support blocked updates.
 #' @param verbose
 #' XXX
 #' @param rowaug
@@ -34,7 +36,7 @@
 #'
 #' @seealso
 #'
-#' \code{\link{L0glm}}
+#' \code{\link{L0glm.fit}}
 #'
 #' @examples
 #'

@@ -8,7 +8,7 @@
 #' and packages to fit sparse nonnegative identity link GLMs, and various aspects of the fitting process can
 #' be controlled using the \code{options} parameter.
 #'
-#' @param sim Simulated data generated using the \code{\link{simulate}}
+#' @param sim Simulated data generated using the \code{\link{simul}}
 #'   function.
 #' @param family An optional \code{family} object specifying the GLM family. Currently (nonnegative) identity link \code{gaussian()} and \code{poisson()} are supported.
 #' @param method A numeric value indicating the method to use for fitting the
@@ -56,9 +56,8 @@
 #' - **Method 8 (Nonnegative MCP):** Fits a model using the MCP penalty with nonnegativity constraints via \code{ordinis}.
 #' - **Method 9 (Nonnegative SCAD):** Fits a model using the SCAD penalty with nonnegativity constraints via via \code{ordinis}.
 #'
-#' @seealso \code{\link{simulate}}, \code{\link[glmnet]{glmnet}},
-#' \code{\link[L0Learn]{L0Learn}}, \code{\link[abess]{abess}},
-#' \code{\link[ordinis]{ordinis}}
+#' @seealso \code{\link{simul}}, \code{\link[glmnet]{glmnet}},
+#' \pkg{L0Learn}, \code{\link[abess]{abess}}, \pkg{ordinis}
 #'
 #' @examples
 #' \dontrun{
@@ -75,9 +74,10 @@
 #' @export
 fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, 
                     IC = "gic", internal = FALSE){
-  require(scales)
   X <- sim$X
   y <- sim$y
+  p <- ncol(X)
+  n <- nrow(X)
   if(family$family == "gaussian"){
     W <- rep(1,ncol(X))
   } else if(family$family == "poisson"){
@@ -124,7 +124,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                        lower.limits = 0)
     } else {
       args <- c(list(x = X, y = y, family = "gaussian"), options)
-      result <- do.call(glmnet(args))
+      result <- do.call(glmnet, args)
     }
     LLs <- logLik(result, weights = W, X = X, y = y)
     edfs = attr(LLs, "df")
@@ -215,7 +215,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                             lows=0) # nonnegativity constraints
     } else {
       args = c(list(x = X, y = y), options)
-      result <- do.call(L0learn.fit, args)
+      result <- do.call(L0Learn.fit, args)
     }
     
     LLs = logLik(result, weights = W, X, y)
@@ -265,7 +265,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
       
     } else {
       args <- c(list(x = X[,selcoefs,drop=F], y = y, maxSuppSize = (p_selcoefs-1)), options)
-      fit <- do.call(L0learn.fit, args)
+      fit <- do.call(L0Learn.fit, args)
     }
     if(plot) plot(fit)
     
@@ -384,8 +384,9 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 8) { # nonnegative weighted MCP penalized regression in ordinis 
+    require_ordinis()
     if(is.null(options)){
-      fit <- ordinis(X, y, 
+      fit <- ordinis_fit(X, y, 
                      weights = W,
                      nlambda = 100L, 
                      penalty = "mcp", # using MCP penalty
@@ -395,7 +396,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                      alpha = 1) 
     } else {
       args <- c(list(X = X, y = y, weights = W), options)
-      fit <- do.call(ordinis, args)
+      fit <- do.call(ordinis_fit, args)
     }
     
     LLs = logLik2(fit, weights= as.vector(W), X, as.vector(y))
@@ -413,8 +414,9 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
            xlab="estimated coefficients", ylab="true coefficients")
     }
   } else if(method == 9) { # ordinis scad
+    require_ordinis()
     if(is.null(options)){
-      fit <- ordinis(X, y, 
+      fit <- ordinis_fit(X, y, 
                      weights = W,
                      nlambda = 100L, 
                      penalty = "scad", # using scad penalty
@@ -424,7 +426,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                      alpha = 1) 
     } else {
       args <- c(list(X = X, y = y, weights = W), options)
-      fit <- do.call(ordinis, args)
+      fit <- do.call(ordinis_fit, args)
     }
     
     LLs = logLik2(fit, weights=W, X, y)
@@ -455,7 +457,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 #' Fits a multichannel nonnegative identity link generalized linear model (GLM) to simulated data using different methods specified by the user. 
 #' This function supports fitting multivariate response models, utilizing various algorithms and packages. The fitting process can be customized using the \code{options} parameter.
 #'
-#' @param sim Simulated data generated using the \code{\link{simulate}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).
+#' @param sim Simulated data generated using the \code{\link{simul}} function. It should be a list containing at least \code{X} (design matrix) and \code{y} (response matrix).
 #' @param family An optional \code{family} object specifying the GLM family. Currently supports (nonnegative) identity link \code{gaussian()} and \code{poisson()}. Default is \code{NULL}, which tries to infer from \code{sim}.
 #' @param method A numeric value indicating the method to use for fitting the multichannel GLM. The possible values are:
 #' \describe{
@@ -511,7 +513,6 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 # refit the model unregularised for the selected variables only
 
 fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic", internal = FALSE){
-  require(scales)
   X <- sim$X
   y <- sim$y
   p <- ncol(X)
@@ -681,12 +682,15 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
 #' @title Compute Log-Likelihood for glmnet Objects
 #' @description Calculates the log-likelihood for models fitted using `glmnet`.
 #' @param object A `glmnet` model object.
-#' @param weights Observation weights.
-#' @param X The design matrix.
-#' @param y The response vector.
+#' @param ... Additional arguments. Named arguments \code{weights}, \code{X},
+#'   and \code{y} are required.
 #' @return The log-likelihood of the model.
 #' @export
-logLik.glmnet = function(object, weights, X, y) {
+logLik.glmnet = function(object, ...) {
+  args <- get_logLik_args(...)
+  weights <- args$weights
+  X <- args$X
+  y <- args$y
   n  = as.numeric(object$nobs)
   df = Matrix::colSums(object$beta!=0)
   # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
@@ -712,12 +716,15 @@ logLik.glmnet = function(object, weights, X, y) {
 #' @title Compute Log-Likelihood for L0Learn Objects
 #' @description Calculates the log-likelihood for models fitted using `L0Learn`.
 #' @param object An `L0Learn` model object.
-#' @param weights Observation weights.
-#' @param X The design matrix.
-#' @param y The response vector.
+#' @param ... Additional arguments. Named arguments \code{weights}, \code{X},
+#'   and \code{y} are required.
 #' @return The log-likelihood of the model.
 #' @export
-logLik.L0Learn = function(object, weights, X, y) {
+logLik.L0Learn = function(object, ...) {
+  args <- get_logLik_args(...)
+  weights <- args$weights
+  X <- args$X
+  y <- args$y
   n  = object$n
   p = object$p
   df = object$suppSize[[1]]
@@ -736,6 +743,47 @@ logLik.L0Learn = function(object, weights, X, y) {
   attr(logL, "nobs") = n
   attr(logL, "p") = object$dim[[2]]
   return(logL)
+}
+
+get_logLik_args <- function(...) {
+  args <- list(...)
+  weights <- args$weights
+  X <- args$X
+  y <- args$y
+  matched <- match(c("weights", "X", "y"), names(args), nomatch = 0L)
+  positional <- args[setdiff(seq_along(args), matched)]
+  next_pos <- 1L
+  if (is.null(weights) && length(positional) >= next_pos) {
+    weights <- positional[[next_pos]]
+    next_pos <- next_pos + 1L
+  }
+  if (is.null(X) && length(positional) >= next_pos) {
+    X <- positional[[next_pos]]
+    next_pos <- next_pos + 1L
+  }
+  if (is.null(y) && length(positional) >= next_pos) {
+    y <- positional[[next_pos]]
+  }
+  if (is.null(weights) || is.null(X) || is.null(y)) {
+    stop("logLik methods require weights, X, and y.", call. = FALSE)
+  }
+  list(weights = weights, X = X, y = y)
+}
+
+require_ordinis <- function() {
+  pkg <- paste0("ordi", "nis")
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    stop(
+      "Package 'ordinis' is required for this method. Install it to use MCP or SCAD benchmark fits.",
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
+ordinis_fit <- function(...) {
+  require_ordinis()
+  getExportedValue(paste0("ordi", "nis"), paste0("ordi", "nis"))(...)
 }
 
 

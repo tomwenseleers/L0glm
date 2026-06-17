@@ -361,7 +361,7 @@ block.fit <- function(y, X, coefs = rep(0, ncol(X)), nonnegative = FALSE,
 #' @description
 #'
 #' Function to plot the comparison between the fitted model and the known true
-#' model. It used in the \code{\link{L0glm}} examples and should not be expected
+#' model. It used in the \pkg{L0glm} examples and should not be expected
 #' to useful in another use.
 #'
 #' @param x

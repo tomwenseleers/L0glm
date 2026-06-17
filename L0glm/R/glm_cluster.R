@@ -4,7 +4,7 @@
 #'
 #' @description
 #' \code{glm_cluster()} performs Ward hierarchical clustering on a
-#' deviance (Jensen–Shannon divergence) dissimilarity matrix from
+#' deviance (Jensen-Shannon divergence) dissimilarity matrix from
 #' \code{\link{glm_dist}}, adaptively cuts the dendrogram using 
 #' (\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to 
 #' aggregate columns belonging to the same cluster.
@@ -25,10 +25,10 @@
 #' patterns in RNA-seq datasets. 
 #' 
 #' @details
-#' Clustering via \emph{Ward’s minimisation of within-cluster deviance},
+#' Clustering via \emph{Ward's minimisation of within-cluster deviance},
 #' using the \eqn{\sqrt{\mathrm{JS}}}{sqrt(JS)} divergence, is a special
 #' case of \strong{agglomerative Bregman clustering}
-#' (Telgarsky & Dasgupta 2012); the Jensen–Shannon divergence is itself a
+#' (Telgarsky & Dasgupta 2012); the Jensen-Shannon divergence is itself a
 #' Bregman divergence for exponential-family log-likelihoods
 #' (Banerjee et al. 2005).  Because \eqn{\sqrt{\mathrm{JS}}} is a true
 #' metric (Endres & Schindelin 2003), Ward linkage yields monotone
@@ -52,12 +52,12 @@
 #'   \bar\mu_t \;=\;
 #'   \frac{w_{ti}y_{ti}+w_{tj}y_{tj}}{w_{ti}+w_{tj}},
 #' }{
-#'   D = Σ_t [ d(y_i,μ̄,w_i)+d(y_j,μ̄,w_j) ],  μ̄ = (w_i y_i + w_j y_j)/(w_i+w_j)
+#'   D = Sigma_t [ d(y_i,mu_bar,w_i)+d(y_j,mu_bar,w_j) ],  mu_bar = (w_i y_i + w_j y_j)/(w_i+w_j)
 #' }
 #' where \eqn{d(y,\mu,w)} is the unit deviance returned by
 #' \code{family$dev.resids(y, mu, w)}. For the Gaussian(identity) family
 #' \eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
-#' \eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} —
+#' \eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} -
 #' exactly \emph{one-half} the (weighted) squared Euclidean distance, so
 #' \eqn{\sqrt{\mathrm{JS}}} is Euclidean up to the constant
 #' \eqn{\sqrt{1/2}}.
@@ -77,9 +77,9 @@
 #' }
 #' }
 #' 
-#' Both expressions equal \emph{twice} the Jensen–Shannon divergence
+#' Both expressions equal \emph{twice} the Jensen-Shannon divergence
 #' between the empirical distributions of columns \emph{i} and \emph{j};
-#' taking the square‐root gives a proper metric.  Ward’s linkage then minimises 
+#' taking the square-root gives a proper metric.  Ward's linkage then minimises 
 #' the increase in within-cluster Bregman information (see
 #' Telgarsky & Dasgupta 2012).
 #'
@@ -112,52 +112,58 @@
 #' @references
 #' Telgarsky, M. & Dasgupta, S. (2012).  
 #' \emph{Agglomerative Bregman Clustering}.  
-#' Proceedings of the 29th International Conference on Machine Learning, 59–66. \cr
+#' Proceedings of the 29th International Conference on Machine Learning, 59-66. \cr
 #' Banerjee, A., Merugu, S., Dhillon, I., & Ghosh, J. (2005).  
 #' \emph{Clustering with Bregman Divergences}.  
-#' Journal of Machine Learning Research, 6, 1705–1749. \cr
+#' Journal of Machine Learning Research, 6, 1705-1749. \cr
 #' Endres, D. M. & Schindelin, J. E. (2003).  
 #' \emph{A New Metric for Probability Distributions}.  
-#' IEEE Transactions on Information Theory, 49(7), 1858–1860. \cr
+#' IEEE Transactions on Information Theory, 49(7), 1858-1860. \cr
 #' \emph{Hierarchical Clustering}.
 #' In: Nielsen, F., Barbaresco, F. (eds.)
 #' \emph{Geometric Theory of Information},
 #' Lecture Notes in Computer Science 10589,
-#' pp. 369–395. Springer, Cham.
-#' \url{https://doi.org/10.1007/978-3-319-21903-5_8} \cr
+#' pp. 369-395. Springer, Cham.
+#' \doi{10.1007/978-3-319-21903-5_8} \cr
 #' Witten, D. M. (2011). 
 #' \emph{Classification and Clustering of Sequencing Data 
 #' using a Poisson Model.} 
-#' Annals of Applied Statistics 5(4): 2493–2518.
+#' Annals of Applied Statistics 5(4): 2493-2518.
 #' 
 #' @examples
+#' \donttest{
 #' data(GCMS_data2)                        # GC/MS beer-volatile window
-#' Y <- GCMS_data2                         # 1764 scans × 518 m/z traces
+#' Y <- GCMS_data2                         # 1764 scans x 518 m/z traces
 #' 
-#' ##––– 1. Ward–Bregman clustering with Poisson size-factor distance –––
+#' ##--- 1. Ward-Bregman clustering with Poisson size-factor distance ---
 #' ## We bin every 5 successive scans to speed up the distance calculation
 #' out_pois <- glm_cluster(Y,
 #'                         family   = poisson(identity),
 #'                         method   = "poissondist",
 #'                         rowbins  = 5)
 #' 
-#' dim(out_pois$Y_agg)                    # 1764 scans × 4 trace-clusters
+#' dim(out_pois$Y_agg)                    # 1764 scans x 4 trace-clusters
 #' matplot(out_pois$Y_agg ^ 0.2, type = "l", lty = 1,
 #'         xlab = "Scan index",
 #'         ylab = "Cluster intensity ^ 0.2",
-#'         main = "518 m/z traces collapsed into 4 clusters\nWitten Poisson distance, rowbins = 5")
+#'         main = paste("518 m/z traces collapsed into 4 clusters",
+#'                      "Witten Poisson distance, rowbins = 5",
+#'                      sep = "\n"))
 #' 
-#' ##––– 2. Same with symmetrised deviance (Jensen–Shannon) –––
+#' ##--- 2. Same with symmetrised deviance (Jensen-Shannon) ---
 #' out_js  <- glm_cluster(Y,
 #'                        family   = poisson(identity),
 #'                        method   = "deviance",
 #'                        rowbins  = 5)
 #' 
-#' dim(out_js$Y_agg)                      # 1764 scans × 5 trace-clusters
+#' dim(out_js$Y_agg)                      # 1764 scans x 5 trace-clusters
 #' matplot(out_js$Y_agg ^ 0.2, type = "l", lty = 1,
 #'         xlab = "Scan index",
 #'         ylab = "Cluster intensity ^ 0.2",
-#'         main = "518 m/z traces collapsed into 5 clusters\nJensen–Shannon deviance, rowbins = 5")
+#'         main = paste("518 m/z traces collapsed into 5 clusters",
+#'                      "Jensen-Shannon deviance, rowbins = 5",
+#'                      sep = "\n"))
+#' }
 #' @importFrom fastcluster hclust
 #' @importFrom dynamicTreeCut cutreeDynamic
 #' @export

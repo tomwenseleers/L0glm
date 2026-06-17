@@ -433,7 +433,7 @@ test_that("L0glm.fit.internal handles uninformative observations correctly", {
       y       = y,
       weights = w,
       verbose = TRUE),
-    "All coefficients zero – nothing to fit"
+    "All coefficients zero - nothing to fit"
   )
   
   ## --- structural checks --------------------------------------------------

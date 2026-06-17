@@ -32,7 +32,7 @@ L0glm.fit(
   warm.start = 0.9,
   prior.mean = NULL,
   gamma = 2,
-  thresh = 1e-06,
+  thresh = 1e-05,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE
@@ -71,8 +71,8 @@ IRLS loop; fixed at 1 for family binomial & Poisson.}
 \code{m}, with \code{p} corresponding to the number of predictors and
 \code{m} to the number of columns in \code{y}. These will determine the
 level of penalisation of the different coefficients during the first IRLS
-ridge regression update (the ridge penalty used equals
-\code{(lambda/4)*dispersion/abs(start)^gamma)}). Note that coefficients
+ridge regression update. The ridge penalty used equals
+\eqn{(\lambda/4) \phi / |\beta|^\gamma}. Note that coefficients
 with absolute value smaller than \code{thresh} will be clipped to zero and
 are removed from the model. Set to \code{NULL} by default, in which case it
 is auto-initialised.}
@@ -273,7 +273,7 @@ coefficient vector beta, i.e. the \eqn{L_0} norm of beta.
 in all 3 cases subject to optional box constraints on the model coefficient
 vector or matrix beta
 
-\deqn{lower ≤ beta ≤ upper}
+\deqn{lower <= beta <= upper}
 
 These objectives are approximated via an iterative adaptive ridge regression
 procedure, see Details. The \eqn{L_0} and \eqn{L_{0,0}} norm penalties can be
@@ -328,11 +328,14 @@ step. In our adapted algorithm, this step is replaced by a (zero or nonzero
 centered) adaptive ridge regularised regression with optional box or
 nonnegativity constraints on the coefficients. In each iteration, this uses
 the following ridge penalties for the penalized terms (excluding the
-intercept, if included): \[ Λ = (1/4).λ.σ^2.w \] with adaptive penalty
-weights \[ w = 1/{{| β |^γ}} \] where \( β \) are the coefficient estimates
+intercept, if included):
+\deqn{\Lambda = (1/4)\lambda\sigma^2 w}
+with adaptive penalty weights
+\deqn{w = 1 / |\beta|^\gamma}
+where \eqn{\beta} are the coefficient estimates
 in each iteration and coefficients smaller than \code{thresh} are set to zero
 and taken out of the model at the start of each iteration, and as in Frommlet
-& Nuel (2016), \( γ \) is set to a default value of 2. Box or nonnegativity
+& Nuel (2016), \eqn{\gamma} is set to a default value of 2. Box or nonnegativity
 constraints are natively supported if the \code{glmnet} (\code{bigGlm}) or
 the \code{osqp} solver is used, or are obtained via clipping if the
 \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
@@ -392,7 +395,7 @@ of Groups solution if lambda is adequately chosen.
 \item L. Dai, K. Chen, Z. Sun, Z. Liu & G. Li, \emph{Broken adaptive ridge regression and its asymptotic properties}. Journal of multivariate analysis 168, 334-351 (2018).
 \item L. Dai, K. Chen & G. Li, \emph{The broken adaptive ridge procedure and its applications}. Statistica Sinica 30, 1069-1094 (2020).
 \item N. Li, X. Peng, E. Kawaguchi, M.A. Suchard & G. Li, \emph{A scalable surrogate L0 sparse regression method for generalized linear models with applications to large scale data}. Journal of Statistical Planning and Inference 213, 262-281 (2021).
-\item W. Guo, S. Ma & Z. Liu, \emph{l0ara: Sparse Generalized Linear Model with L0 Approximation for Feature Selection}. R package version 0.1.6 (2022). Available at \url{https://cran.r-project.org/web/packages/l0ara/index.html}
+\item W. Guo, S. Ma & Z. Liu, \emph{l0ara: Sparse Generalized Linear Model with L0 Approximation for Feature Selection}. R package version 0.1.6 (2022). Available at \url{https://CRAN.R-project.org/package=l0ara}
 \item J.W. Hardin & J.M. Hilbe, \emph{Generalized linear models and extensions}. (Stata press, 2007).
 \item T.J. Hastie & D. Pregibon, \emph{Generalized linear models}. Chapter 6 of \emph{Statistical Models in S} eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole (1992).
 \item P. McCullagh & J.A. Nelder, \emph{Generalized Linear Models}. London: Chapman and Hall (1989).

@@ -1,5 +1,12 @@
 ^\.Rproj\.user$
 examples
 ^.Rhistory$
+^\.RData$
+^Rplots[.]pdf$
 ^.*\.Rproj$
 Paper
+^L0glm[.]Rcheck$
+^[.][.]Rcheck$
+^[^/]+[.]tar[.]gz$
+^src/.*[.](o|so|dll|rds)$
+^vignettes$

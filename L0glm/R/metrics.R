@@ -130,7 +130,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     # calculated true theoretical deviance compared to ground truth
     dev_res_true = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(weights))
     keep = which(as.vector(weights) != 0)
-    deviance_true = sum(dev_res_true[keep]) # deviance compared to ground truth = true deviance = how well the model fits the latent noise-free mean, cf McCullagh, P. & Nelder, J. (1989) Generalized Linear Models, §2.3, §12.2.
+    deviance_true = sum(dev_res_true[keep]) # deviance compared to ground truth = true deviance = how well the model fits the latent noise-free mean, cf McCullagh, P. & Nelder, J. (1989) Generalized Linear Models, section 2.3, section 12.2.
   }
   
   
@@ -150,7 +150,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                       mu = as.vector(mu)[keep],  
                       wt = as.vector(weights)[keep], # prior weights for families other than binomial
                       dev = deviance) 
-  loglik = -0.5 * min2LL # plain log‑likelihood
+  loglik = -0.5 * min2LL # plain log-likelihood
   IC = get.IC(loglik = loglik, n = n, p = p, edf = edf) 
   
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))
@@ -243,7 +243,7 @@ get.IC = function(loglik, n, p, edf,
    
   ebic = min2LL + (log(n) + 2 * gamma_ebic * log(p)) * edf # extended BIC, for high dimensional settings, cf. Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
   hbic = min2LL + Cn_hbic * log(p) * edf # HBIC, recommended for ultra-high dimensional settings, cf https://arxiv.org/pdf/1311.4981 & https://www.annualreviews.org/docserver/fulltext/statistics/7/1/annurev-statistics-030718-105038.pdf
-  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # for high dimensional settings with FDR control, see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627–641. doi: 10.1002/qre.936
+  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # for high dimensional settings with FDR control, see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627-641. doi: 10.1002/qre.936
   # TODO maybe still add mbic2, cf Frommlet paper
   return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mbic = mbic))
 }

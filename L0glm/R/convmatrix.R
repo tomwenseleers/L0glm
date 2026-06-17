@@ -13,32 +13,32 @@
 #'         square when \code{shape = "same"} and tall
 #'         when \code{shape = "full"}.
 #'   \item If \code{n_cols} is supplied, only the first
-#'         \code{n_cols} time–shifts of \code{kernel} are kept, yielding an
+#'         \code{n_cols} time-shifts of \code{kernel} are kept, yielding an
 #'         \code{n x n_cols} rectangular design.  Such matrices are useful
-#'         for point–spread-function (PSF) update steps in
+#'         for point-spread-function (PSF) update steps in
 #'         blind-deconvolution algorithms.
 #' }
 #'
 #' The matrix is produced in a single pass, so no intermediate (larger)
 #' object is ever allocated, keeping memory usage to a minimum.
 #'
-#' @param kernel Numeric vector (`length L`) – FIR filter / PSF
+#' @param kernel Numeric vector (`length L`) - FIR filter / PSF
 #'               **in forward-time order**.
-#' @param n      Integer \eqn{>} 0 – length of the observed signal (the number
-#'               of rows for a *“same”* design).
+#' @param n      Integer \eqn{>} 0 - length of the observed signal (the number
+#'               of rows for a *"same"* design).
 #' @param shape  `"same"` (default, \eqn{n} rows) or
 #'               `"full"` (\eqn{n+L-1} rows).
 #' @param n_cols Optional.  Number of columns to keep.
 #'               *If omitted* `n_cols <- n` and the result is the usual banded
 #'               convolution matrix.
-#' @param origin Integer (1 … \eqn{L}) – element of `kernel` that is aligned
+#' @param origin Integer (1 ... \eqn{L}) - element of `kernel` that is aligned
 #'               with time 0.  Defaults to the centre for `"same"` and to 1
 #'               for `"full"`.
 #'
 #' @return A sparse matrix of class **`dgCMatrix`** with
 #'
 #' * `n_rows = n`            (shape "same")   or
-#' * `n_rows = n + L − 1`    (shape "full")
+#' * `n_rows = n + L - 1`    (shape "full")
 #'
 #' rows, and `n_cols` columns.  
 #'
