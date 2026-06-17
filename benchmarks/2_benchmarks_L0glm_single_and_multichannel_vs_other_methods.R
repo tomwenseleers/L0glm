@@ -554,7 +554,8 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = FALSE,
                                     solver = "eigen",
                                     method = 7L)) 
-# 4.05s with parallelize=F, 12s with parallelize=T
+# 4.05s with parallelize=F, 4.3s with parallelize=T 
+# [too small a problem size here, with n=p=10000 and npeaks=1000 14.58s with parallelize=F and 6.5s with parallelize=T]
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
@@ -580,7 +581,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     parallelize = FALSE,
                                     grouped = FALSE,
                                     solver = "osqp")) 
-# time = 8.06s with parallelize=F, 6.3s with parallelize=T
+# time = 7.87s with parallelize=F, 5.2s with parallelize=T
 
 
 

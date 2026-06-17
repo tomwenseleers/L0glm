@@ -538,8 +538,13 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         on.exit(parallel::stopCluster(cl), add = TRUE)
         L0glm_dll <- getLoadedDLLs()[["L0glm"]]
         L0glm_dll_path <- if (!is.null(L0glm_dll)) L0glm_dll[["path"]] else NULL
-        parallel::clusterCall(cl, L0glm_worker_init, .libPaths(), L0glm_dll_path,
-                              worker_nthreads)
+        L0glm_pkg_path <- getNamespaceInfo("L0glm", "path")
+        L0glm_is_dev <- requireNamespace("pkgload", quietly = TRUE) &&
+          pkgload::is_dev_package("L0glm")
+        worker_init <- L0glm_worker_init
+        environment(worker_init) <- baseenv()
+        parallel::clusterCall(cl, worker_init, .libPaths(), L0glm_dll_path,
+                              worker_nthreads, L0glm_pkg_path, L0glm_is_dev)
       }
       
       make_chunks <- function(vec, k) {
@@ -945,7 +950,8 @@ L0glm_restore_thread_count <- function(state) {
   invisible(NULL)
 }
 
-L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L) {
+L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
+                              package_path = NULL, is_dev_package = FALSE) {
   .libPaths(lib_paths)
   nthreads <- suppressWarnings(as.integer(nthreads[1L]))
   if (is.na(nthreads) || nthreads < 1L) nthreads <- 1L
@@ -964,7 +970,11 @@ L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L) {
       !("L0glm" %in% names(getLoadedDLLs()))) {
     dyn.load(dll_path)
   }
-  if (!("L0glm" %in% loadedNamespaces())) {
+  if (isTRUE(is_dev_package) && !is.null(package_path) &&
+      nzchar(package_path) && file.exists(file.path(package_path, "DESCRIPTION")) &&
+      requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all(package_path, quiet = TRUE)
+  } else if (!("L0glm" %in% loadedNamespaces())) {
     requireNamespace("L0glm", quietly = TRUE)
   }
   NULL
@@ -1008,6 +1018,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       gamma        = gamma,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
       start        = as.vector(start[, col]),
+      warm.start   = warm.start,
       maxit        = maxit,
       tol          = tol,
       always.include       = always.include,

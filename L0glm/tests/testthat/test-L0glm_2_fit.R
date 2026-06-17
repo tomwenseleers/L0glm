@@ -24,7 +24,8 @@ test_that("multichannel parallel fit matches serial fit", {
     solver = "eigen",
     method = 7L,
     maxit = 10L,
-    group.maxit = 2L
+    group.maxit = 2L,
+    warm.start = 0.5
   )
 
   parallel <- L0glm.fit(
@@ -39,7 +40,8 @@ test_that("multichannel parallel fit matches serial fit", {
     solver = "eigen",
     method = 7L,
     maxit = 10L,
-    group.maxit = 2L
+    group.maxit = 2L,
+    warm.start = 0.5
   )
 
   expect_identical(parallel$coefficients, serial$coefficients)
