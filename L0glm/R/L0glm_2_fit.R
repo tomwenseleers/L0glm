@@ -178,10 +178,15 @@
 #'   potentially speeding up computation. If \code{FALSE}, the columns are
 #'   fitted sequentially.
 #' @param ncores Optional integer specifying the number of cores to use when
-#'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the number
-#'   of available logical cores divided by 2, which usually corresponds to the
-#'   number of physical cores available. The requested value is capped at the
+#'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the
+#'   detected number of physical cores when that can be determined, falling back
+#'   to half the number of logical cores. The requested value is capped at the
 #'   detected number of physical cores when that can be determined.
+#' @param nthreads Optional integer specifying the number of BLAS/OpenMP threads
+#'   to use per fit process. The default \code{NULL} leaves the main R session's
+#'   thread settings unchanged and uses one BLAS/OpenMP thread per parallel
+#'   worker. Setting \code{nthreads} can be useful to benchmark serial fits or
+#'   tune per-worker threading on systems with multithreaded BLAS/OpenMP.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform.
 #' @param grouped A logical value indicating whether a grouped fit should be
@@ -365,7 +370,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       lower         = NULL,
                       upper         = NULL,
                       parallelize   = TRUE,
-                      ncores        = if (parallelize) round(parallel::detectCores()/2) else 1,
+                      ncores        = L0glm_default_ncores(parallelize),
+                      nthreads      = NULL,
                       maxit         = 25,
                       grouped       = TRUE,
                       group.maxit   = 6,
@@ -382,6 +388,9 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   issparse  <- function(M) inherits(M, "sparseMatrix")
   as_list <- function(d)
     if (is.null(d)) rep(list(NULL), m) else as.list(d)
+  thread_state <- L0glm_set_thread_count(nthreads)
+  if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state), add = TRUE)
+  worker_nthreads <- if (is.null(nthreads)) 1L else L0glm_normalize_thread_count(nthreads)
   
   # Check dimensions ------------ -------------------------------------------
   y = as.matrix(y) # ensure y is a matrix (n x m) & coerce y to dense
@@ -497,11 +506,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     if (!grouped) group.maxit <- 1L
     ncores <- suppressWarnings(as.integer(ncores[1L]))
     if (is.na(ncores) || ncores < 1L) ncores <- 1L
-    physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
-    if ((is.na(physical_cores) || physical_cores < 1L) &&
-        requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-      physical_cores <- suppressWarnings(RhpcBLASctl::get_num_cores())
-    }
+    physical_cores <- L0glm_detect_physical_cores()
     logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
     if (!is.na(physical_cores) && physical_cores >= 1L) {
       max_ncores <- as.integer(physical_cores)
@@ -533,7 +538,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         on.exit(parallel::stopCluster(cl), add = TRUE)
         L0glm_dll <- getLoadedDLLs()[["L0glm"]]
         L0glm_dll_path <- if (!is.null(L0glm_dll)) L0glm_dll[["path"]] else NULL
-        parallel::clusterCall(cl, L0glm_worker_init, .libPaths(), L0glm_dll_path)
+        parallel::clusterCall(cl, L0glm_worker_init, .libPaths(), L0glm_dll_path,
+                              worker_nthreads)
       }
       
       make_chunks <- function(vec, k) {
@@ -850,17 +856,108 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 # ---------------------------------------------------------------------------
 #  PARALLEL HELPER (called on the cluster)
 # ---------------------------------------------------------------------------
-L0glm_worker_init <- function(lib_paths, dll_path) {
-  .libPaths(lib_paths)
+L0glm_detect_physical_cores <- function() {
+  physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
+  if ((is.na(physical_cores) || physical_cores < 1L) &&
+      requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+    physical_cores <- suppressWarnings(RhpcBLASctl::get_num_cores())
+  }
+  if (is.na(physical_cores) || physical_cores < 1L) {
+    NA_integer_
+  } else {
+    as.integer(physical_cores)
+  }
+}
+
+L0glm_default_ncores <- function(parallelize = TRUE) {
+  if (!isTRUE(parallelize)) return(1L)
+  physical_cores <- L0glm_detect_physical_cores()
+  if (!is.na(physical_cores)) return(max(1L, physical_cores))
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.na(logical_cores) && logical_cores >= 1L) {
+    return(max(1L, as.integer(round(logical_cores / 2))))
+  }
+  1L
+}
+
+L0glm_thread_env_vars <- function() {
+  c("OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS")
+}
+
+L0glm_normalize_thread_count <- function(nthreads) {
+  nthreads <- suppressWarnings(as.integer(nthreads[1L]))
+  if (is.na(nthreads) || nthreads < 1L) {
+    stop("nthreads must be NULL or a positive integer", call. = FALSE)
+  }
+  nthreads
+}
+
+L0glm_set_thread_count <- function(nthreads) {
+  if (is.null(nthreads)) return(NULL)
+  nthreads <- L0glm_normalize_thread_count(nthreads)
+  env_vars <- L0glm_thread_env_vars()
+  old_env <- Sys.getenv(env_vars, unset = NA_character_)
+  blas_threads <- omp_threads <- NA_integer_
+  has_blasctl <- requireNamespace("RhpcBLASctl", quietly = TRUE)
+  if (has_blasctl) {
+    blas_threads <- tryCatch(RhpcBLASctl::blas_get_num_procs(),
+                             error = function(e) NA_integer_)
+    omp_threads <- tryCatch(RhpcBLASctl::omp_get_max_threads(),
+                            error = function(e) NA_integer_)
+  }
   Sys.setenv(
-    OMP_NUM_THREADS = "1",
-    OPENBLAS_NUM_THREADS = "1",
-    MKL_NUM_THREADS = "1",
-    VECLIB_MAXIMUM_THREADS = "1"
+    OMP_NUM_THREADS = as.character(nthreads),
+    OPENBLAS_NUM_THREADS = as.character(nthreads),
+    MKL_NUM_THREADS = as.character(nthreads),
+    VECLIB_MAXIMUM_THREADS = as.character(nthreads)
+  )
+  if (has_blasctl) {
+    try(RhpcBLASctl::blas_set_num_threads(nthreads), silent = TRUE)
+    try(RhpcBLASctl::omp_set_num_threads(nthreads), silent = TRUE)
+  }
+  list(env = old_env,
+       blas_threads = blas_threads,
+       omp_threads = omp_threads,
+       has_blasctl = has_blasctl)
+}
+
+L0glm_restore_thread_count <- function(state) {
+  if (is.null(state)) return(invisible(NULL))
+  for (nm in names(state$env)) {
+    if (is.na(state$env[[nm]])) {
+      Sys.unsetenv(nm)
+    } else {
+      do.call(Sys.setenv, structure(list(state$env[[nm]]), names = nm))
+    }
+  }
+  if (isTRUE(state$has_blasctl) &&
+      requireNamespace("RhpcBLASctl", quietly = TRUE)) {
+    if (!is.na(state$blas_threads)) {
+      try(RhpcBLASctl::blas_set_num_threads(state$blas_threads), silent = TRUE)
+    }
+    if (!is.na(state$omp_threads)) {
+      try(RhpcBLASctl::omp_set_num_threads(state$omp_threads), silent = TRUE)
+    }
+  }
+  invisible(NULL)
+}
+
+L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L) {
+  .libPaths(lib_paths)
+  nthreads <- suppressWarnings(as.integer(nthreads[1L]))
+  if (is.na(nthreads) || nthreads < 1L) nthreads <- 1L
+  Sys.setenv(
+    OMP_NUM_THREADS = as.character(nthreads),
+    OPENBLAS_NUM_THREADS = as.character(nthreads),
+    MKL_NUM_THREADS = as.character(nthreads),
+    VECLIB_MAXIMUM_THREADS = as.character(nthreads)
   )
   if (requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-    RhpcBLASctl::blas_set_num_threads(1L)
-    RhpcBLASctl::omp_set_num_threads(1L)
+    try(RhpcBLASctl::blas_set_num_threads(nthreads), silent = TRUE)
+    try(RhpcBLASctl::omp_set_num_threads(nthreads), silent = TRUE)
   }
   if (!is.null(dll_path) && nzchar(dll_path) &&
       file.exists(dll_path) &&
