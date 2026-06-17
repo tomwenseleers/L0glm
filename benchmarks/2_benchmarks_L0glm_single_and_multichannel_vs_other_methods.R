@@ -558,7 +558,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 # [too small a problem size here, with n=p=10000 and npeaks=1000 14.58s with parallelize=F and 6.5s with parallelize=T]
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
-y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
+y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))          # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
