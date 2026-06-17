@@ -338,7 +338,7 @@
 #' \item P. McCullagh & J.A. Nelder, \emph{Generalized Linear Models}. London: Chapman and Hall (1989).
 #' }
 #'
-#' @importFrom parallel detectCores makeCluster clusterExport clusterEvalQ
+#' @importFrom parallel detectCores makeCluster clusterCall clusterEvalQ
 #'   clusterApply stopCluster
 #'
 #' @export
@@ -494,20 +494,46 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   if (m > 1) {
     
     if (!grouped) group.maxit <- 1L
+    ncores <- suppressWarnings(as.integer(ncores[1L]))
+    if (is.na(ncores) || ncores < 1L) ncores <- 1L
     
     fit_multichannel <- function(do_parallel) {
       if (do_parallel) {
+        nworkers <- min(ncores, m)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
-        cl <- parallel::makeCluster(ncores, type = cluster_type)
+        cl <- parallel::makeCluster(nworkers, type = cluster_type)
         on.exit(parallel::stopCluster(cl), add = TRUE)
-        parallel::clusterExport(cl, c("L0glmfun", "L0glm.fit.internal"))
-        parallel::clusterEvalQ(cl, { devtools::load_all(".") })
+        L0glm_dll <- getLoadedDLLs()[["L0glm"]]
+        L0glm_dll_path <- if (!is.null(L0glm_dll)) L0glm_dll[["path"]] else NULL
+        parallel::clusterCall(cl, function(lib_paths, dll_path) {
+          .libPaths(lib_paths)
+          if (!is.null(dll_path) && nzchar(dll_path) &&
+              file.exists(dll_path) &&
+              !("L0glm" %in% names(getLoadedDLLs()))) {
+            dyn.load(dll_path)
+          }
+          if (!("L0glm" %in% loadedNamespaces())) {
+            requireNamespace("L0glm", quietly = TRUE)
+          }
+          NULL
+        }, .libPaths(), L0glm_dll_path)
       }
       
       make_chunks <- function(vec, k) {
+        k <- min(as.integer(k), length(vec))
         cs  <- rep(length(vec) %/% k, k); extra <- length(vec) %% k
         if (extra) cs[1:extra] <- cs[1:extra] + 1
         split(vec, rep(seq_len(k), cs))
+      }
+      make_jobs <- function(chunks, vars, start.mat) {
+        lapply(chunks, function(cols) {
+          list(y          = y[, cols, drop = FALSE],
+               weights    = weights[, cols, drop = FALSE],
+               prior.mean = prior.mean[vars, cols, drop = FALSE],
+               dispersion = disp_list[cols],
+               start      = if (is.null(start.mat)) NULL else start.mat[vars, cols, drop = FALSE],
+               offset     = offset[, cols, drop = FALSE])
+        })
       }
       
       for (iter in seq_len(group.maxit)) {
@@ -529,11 +555,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         weights.mat  <- Matrix(0, n, m, sparse = TRUE)
         
         if (do_parallel) {
-          chunks <- make_chunks(seq_len(m), ncores)
-          fit <- parallel::clusterApply(cl, chunks, L0glmfun,
+          chunks <- make_chunks(seq_len(m), length(cl))
+          jobs <- make_jobs(chunks, vars, start)
+          fit <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
                                         X             = X[, vars, drop = FALSE],
-                                        y             = y,
-                                        weights       = weights,
                                         family        = family,
                                         lambda        = lambda,
                                         gamma         = gamma,
@@ -543,12 +568,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         thresh        = thresh,
                                         solver        = solver,
                                         warm.start    = warm.start,
-                                        prior.mean    = prior.mean[vars, , drop = FALSE],
-                                        dispersion    = disp_list,                      # vector
-                                        start         = start[vars, , drop = FALSE],
                                         lower         = lower[vars],
                                         upper         = upper[vars],
-                                        offset        = offset,
                                         method        = method,
                                         nonnegative   = nonnegative,
                                         normalize     = normalize,
@@ -603,11 +624,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           weights.mat  <- Matrix(0, n, m, sparse = TRUE)
           
           if (do_parallel) {
-            chunks <- make_chunks(seq_len(m), ncores)
-            fit <- parallel::clusterApply(cl, chunks, L0glmfun,
+            chunks <- make_chunks(seq_len(m), length(cl))
+            jobs <- make_jobs(chunks, vars, start)
+            fit <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
                                           X             = X[, vars, drop = FALSE],
-                                          y             = y,
-                                          weights       = weights,
                                           family        = family,
                                           lambda        = 1e-30, # using a very small lambda here
                                           gamma         = gamma,
@@ -617,12 +637,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           thresh        = thresh,
                                           solver        = solver,
                                           warm.start    = warm.start,
-                                          prior.mean    = prior.mean[vars, , drop = FALSE],
-                                          dispersion    = disp_list,    
-                                          start         = start[vars, , drop = FALSE],
                                           lower         = lower[vars],
                                           upper         = upper[vars],
-                                          offset        = offset,
                                           method        = method,
                                           nonnegative   = nonnegative,
                                           normalize     = normalize,
@@ -785,6 +801,17 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 # ---------------------------------------------------------------------------
 #  PARALLEL HELPER (called on the cluster)
 # ---------------------------------------------------------------------------
+L0glmfun_chunk <- function(job, ...) {
+  L0glmfun(cols       = seq_len(ncol(job$y)),
+           y          = job$y,
+           weights    = job$weights,
+           prior.mean = job$prior.mean,
+           dispersion = job$dispersion,
+           start      = job$start,
+           offset     = job$offset,
+           ...)
+}
+
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      nonnegative, normalize,
                      X, y, family,
