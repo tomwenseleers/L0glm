@@ -38,3 +38,6 @@ rsconnect/
 
 # R profiling files
 /*.Rprof
+
+# files to delete / not to put on github
+*delete*
