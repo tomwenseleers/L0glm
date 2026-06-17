@@ -16,6 +16,4 @@ LaTeX: pdfLaTeX
 BuildType: Package
 PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
-PackageBuildArgs: -std=c++11 -w
-PackageBuildBinaryArgs: -std=c++11 -w
 PackageRoxygenize: rd,collate,namespace

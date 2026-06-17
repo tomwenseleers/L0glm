@@ -183,7 +183,7 @@ lmridge.osqp <- function(Xw,
                          yw, 
                          lambdas = rep(0, ncol(Xw)), 
                          lower, upper, start, 
-                         control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7L)), 
+                         control.solver = do.call("control.solver.gen", list(solver = "osqp")), 
                          prior.mean = NULL,
                          iteration = 1){
   if (!inherits(Xw, "dgCMatrix")) {
@@ -214,21 +214,60 @@ lmridge.osqp <- function(Xw,
                                     prior.mean = prior.mean)))
   }
   
-  # Obtain settings  and create model
-  settings <- do.call(osqp::osqpSettings, control.solver[-7])
-  if (sum(start)!=0) settings <- c(settings, warm_start = TRUE) else 
-    settings <- c(settings, warm_start = FALSE)
+  # Obtain settings and create model
+  settings <- osqp_settings_from_control(control.solver, start)
   
   model <- osqp::osqp(P = XtX, q = -Xty, 
                 A = .sparseDiagonal(ncol(Xw)), # Diagonal(n = ncol(Xw)),
                 l = lower, u = upper, pars = settings)
   if(is.null(start)) start <- rep(0, ncol(Xw))
-  model$WarmStart(x=start)
+  if (inherits(model, "S7_object")) {
+    model@WarmStart(x = start)
+  } else {
+    model$WarmStart(x = start)
+  }
   
   # solve model
-  coefs <- model$Solve()$x
+  coefs <- if (inherits(model, "S7_object")) {
+    model@Solve()$x
+  } else {
+    model$Solve()$x
+  }
   coefs <- clamp(coefs, lower, upper) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
   return(coefs)
+}
+
+osqp_settings_from_control <- function(control.solver, start = NULL) {
+  args <- control.solver
+  args$rowaug <- NULL
+  osqp_args <- names(formals(osqp::osqpSettings))
+  
+  default_linsys_solver <- tryCatch(
+    eval(formals(osqp::osqpSettings)$linsys_solver,
+         envir = environment(osqp::osqpSettings)),
+    error = function(e) NULL
+  )
+  if ("linsys_solver" %in% names(args) &&
+      identical(unname(args$linsys_solver), 0L) &&
+      identical(unname(default_linsys_solver), 1L)) {
+    args$linsys_solver <- default_linsys_solver
+  }
+  
+  if ("polishing" %in% osqp_args && "polish" %in% names(args)) {
+    args$polishing <- args$polish
+    args$polish <- NULL
+  } else if ("polish" %in% osqp_args && "polishing" %in% names(args)) {
+    args$polish <- args$polishing
+    args$polishing <- NULL
+  }
+  
+  warm_start_name <- if ("warm_starting" %in% osqp_args) "warm_starting" else "warm_start"
+  args$warm_start <- NULL
+  args$warm_starting <- NULL
+  args[[warm_start_name]] <- !is.null(start) && any(start != 0)
+  
+  args <- args[names(args) %in% osqp_args]
+  do.call(osqp::osqpSettings, args)
 }
 
 

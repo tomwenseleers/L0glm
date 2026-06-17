@@ -72,7 +72,6 @@ control.solver.gen <- function(solver,
     
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,
               max_iter = maxit, 
-              linsys_solver = 0L, # 0=QDLDL, 1=MKL Pardiso
               polish = FALSE, # polish ADMM solution?
               rowaug = rowaug)
     

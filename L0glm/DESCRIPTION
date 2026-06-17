@@ -36,6 +36,7 @@ LazyData: true
 RoxygenNote: 7.3.3
 Suggests: 
     ALS,
+    pkgload,
     SIS,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

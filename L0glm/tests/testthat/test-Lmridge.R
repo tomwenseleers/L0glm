@@ -247,11 +247,11 @@ test_that("lmridge.osqp handles warm_start condition", {
   result_non_zero <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start_non_zero, lambdas = c(0.1, 0.2), control.solver = control.solver)
   
   # Check if warm_start is TRUE
-  settings_non_zero <- do.call(osqp::osqpSettings, control.solver[-7])
-  settings_non_zero <- c(settings_non_zero, warm_start = TRUE)  # Expected setting when start is non-zero
+  settings_non_zero <- osqp_settings_from_control(control.solver, start_non_zero)
+  warm_start_name <- if ("warm_starting" %in% names(settings_non_zero)) "warm_starting" else "warm_start"
   
-  expect_true("warm_start" %in% names(settings_non_zero))
-  expect_equal(settings_non_zero[["warm_start"]], TRUE)
+  expect_true(warm_start_name %in% names(settings_non_zero))
+  expect_equal(settings_non_zero[[warm_start_name]], TRUE)
   
   # Test case where start is zero (warm_start should be FALSE)
   start_zero <- c(0, 0)  # Zero start vector
@@ -259,11 +259,11 @@ test_that("lmridge.osqp handles warm_start condition", {
   result_zero <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start_zero, lambdas = c(0.1, 0.2), control.solver = control.solver)
   
   # Check if warm_start is FALSE
-  settings_zero <- do.call(osqp::osqpSettings, control.solver[-7])
-  settings_zero <- c(settings_zero, warm_start = FALSE)  # Expected setting when start is zero
+  settings_zero <- osqp_settings_from_control(control.solver, start_zero)
+  warm_start_name <- if ("warm_starting" %in% names(settings_zero)) "warm_starting" else "warm_start"
   
-  expect_true("warm_start" %in% names(settings_zero))
-  expect_equal(settings_zero[["warm_start"]], FALSE)
+  expect_true(warm_start_name %in% names(settings_zero))
+  expect_equal(settings_zero[[warm_start_name]], FALSE)
 })
 
 test_that("lmridge.osqp handles NULL lambdas", {
