@@ -29,7 +29,8 @@
 #'   \code{n}. A situation with \code{p > n} implies that superresolution
 #'   deconvolution will be used.
 #' @param k Number of non-zero coefficients. Smaller values imply greater
-#'   sparsity in the coefficients. This value should be smaller than \code{p}.
+#'   sparsity in the coefficients. Values larger than the number of possible
+#'   spike locations are capped at \code{min(n, p)}.
 #' @param mean_beta The non-zero coefficients are drawn from a log-normal
 #'   distribution with mean \code{mean_beta} and standard deviation (on a log
 #'   scale) of \code{sd_logbeta}.
@@ -90,15 +91,19 @@ simulate_spike_train <- function(n = 100, p = n, k = 10,
   family = match.arg(family)
   x = 1:n
   x_beta = seq(1, n, length.out = p)
+  k = min(max(0L, as.integer(round(k))), as.integer(n), as.integer(p))
   # simulated peak locations:
   u = sample(1:p, k, replace = FALSE) 
   
   if (multichannel) { 
-    data("simulated_spectra", package = "L0glm", envir = environment()) # data with 100 simulated example GC/MS mass spectra
+    data("simulated_spectra", package = "L0glm", envir = environment()) # example GC/MS mass spectra
     simulated_spectra = sweep(simulated_spectra, 1, STATS=rowSums(simulated_spectra), FUN="/") # L1 normalize
-    if (k>nrow(simulated_spectra)) stop("Maximum k is 100 when multichannel=TRUE")
     m = ncol(simulated_spectra) # 460 mass channels
-    S = simulated_spectra[sample(1:nrow(simulated_spectra), k),] # Randomly select k spectra
+    S = simulated_spectra[
+      sample(seq_len(nrow(simulated_spectra)), k,
+             replace = k > nrow(simulated_spectra)),
+      , drop = FALSE
+    ] # randomly select k spectra, reusing spectra when k exceeds the library size
   } else { m = 1
            S = matrix(1, nrow=k, ncol=m) }
   

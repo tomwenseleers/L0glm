@@ -41,29 +41,32 @@
 #' @example examples/simul.R
 #' @export
 simul <- function(method = 1, n = 500, p = 500, s = 0.1, sparse = T, options = NULL, seed = 1){
+  n_peaks <- function(s, n, p) {
+    max_peaks <- min(as.integer(n), as.integer(p))
+    min(max(0L, as.integer(round(s * n))), max_peaks)
+  }
+
   if(method == 1){
     family = "gaussian"
     multichannel = FALSE
-    k <- round(s*n)
+    k <- n_peaks(s, n, p)
     sd_noise <- ifelse(is.null(options), 5, options$sd_noise)
     mean_beta <- ifelse(is.null(options$mean_beta), 2000, options$mean_beta)
   } else if(method == 2){
     family = "poisson"
-    k <- round(s*n)
+    k <- n_peaks(s, n, p)
     multichannel =  FALSE
     mean_beta <- ifelse(is.null(options$mean_beta), 2000, options$mean_beta)
   } else if(method == 3){
     family = "gaussian"
     multichannel = TRUE
-    k <- round(s*n)
-    if(k > 100) k <- 100
+    k <- n_peaks(s, n, p)
     sd_noise = ifelse(is.null(options$sd_noise), 5, options$sd_noise)
     mean_beta <- ifelse(is.null(options$mean_beta), 10000, options$mean_beta)
   } else if(method == 4){
     family = "poisson"
     multichannel = TRUE
-    k <- round(s*n)
-    if(k > 100) k <- 100
+    k <- n_peaks(s, n, p)
     sd_noise = ifelse(is.null(options$sd_noise), 10, options$sd_noise)
     mean_beta <- ifelse(is.null(options$mean_beta), 10000, options$mean_beta)
   }

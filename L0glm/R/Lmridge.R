@@ -264,8 +264,11 @@ lmridge.glmnet <- function(Xw, yw,
     penalty.factor <- lambdas/lambda
     penalty.factor[is.na(penalty.factor)] <- 1
     standardize <- control.solver$standardize
-    thresh <- control.solver$thresh
-    maxit <- control.solver$maxit
+    glmnet_control <- list(
+      thresh = control.solver$thresh,
+      maxit = control.solver$maxit
+    )
+    glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
     lower.limits <- c(-Inf, lower)
     upper.limits <- c(Inf, upper)
     model <- do.call(glmnet,
@@ -279,8 +282,7 @@ lmridge.glmnet <- function(Xw, yw,
                                family = "gaussian", 
                                nlambda = 1,
                                intercept = F, 
-                               thresh = thresh,
-                               maxit = maxit))
+                               control = glmnet_control))
     coefs <- as.vector(coef(model, s = sd_y*lambda/n, # exact = TRUE, 
                             x = Xw, y = yw, 
                             lower.limits = lower.limits, 
@@ -307,6 +309,11 @@ lmridge.glmnet <- function(Xw, yw,
      Xwaug <- Xw
      ywaug <- yw
    }
+   glmnet_control <- list(
+     thresh = control.solver$thresh,
+     maxit = control.solver$maxit
+   )
+   glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
    model <- glmnet::bigGlm(x = Xwaug,
                    y = ywaug,
                    intercept = FALSE,
@@ -316,8 +323,7 @@ lmridge.glmnet <- function(Xw, yw,
                    upper.limits = c(Inf, upper),
                    family = "gaussian",
                    path = path,
-                   thresh = control.solver$thresh,
-                   maxit = control.solver$maxit)
+                   control = glmnet_control)
    coefs <- coef(model)[-1]
   }
 

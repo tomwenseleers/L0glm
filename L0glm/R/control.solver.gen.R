@@ -82,7 +82,7 @@ control.solver.gen <- function(solver,
     
     if(is.null(abstol)) abstol <- 1e-10 # largest value that gave half decent results
     if(is.null(rowaug)) rowaug <- TRUE
-    if(rowaug == FALSE) print("Row augmentation is required with chosen solver.")
+    if(rowaug == FALSE && verbose) print("Row augmentation is required with chosen solver.")
     
     if(is.null(standardize)) standardize <- TRUE
     

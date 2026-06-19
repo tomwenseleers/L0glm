@@ -26,7 +26,7 @@ Imports: Matrix,
          methods,
          scales,
          statmod
-LinkingTo: Rcpp, RcppArmadillo, RcppEigen
+LinkingTo: Rcpp, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
 Description: Fits L0-norm penalized or group penalized generalized linear models
              for best subset selection and best subset of group selection.

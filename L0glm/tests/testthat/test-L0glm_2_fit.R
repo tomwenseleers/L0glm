@@ -57,8 +57,8 @@ test_that("serial nthreads setting is restored after fit", {
   before_blas <- RhpcBLASctl::blas_get_num_procs()
   before_omp <- RhpcBLASctl::omp_get_max_threads()
   on.exit({
-    RhpcBLASctl::blas_set_num_threads(before_blas)
-    RhpcBLASctl::omp_set_num_threads(before_omp)
+    utils::capture.output(RhpcBLASctl::blas_set_num_threads(before_blas))
+    utils::capture.output(RhpcBLASctl::omp_set_num_threads(before_omp))
   }, add = TRUE)
 
   sim <- simul(method = 4, n = 40L, p = 40L, s = 0.1, seed = 2)

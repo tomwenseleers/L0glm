@@ -428,11 +428,13 @@ test_that("L0glm.fit.internal handles uninformative observations correctly", {
   
   ## --- run and catch the warning -----------------------------------------
   expect_warning(
-    res <- L0glm.fit.internal(
-      X       = X,
-      y       = y,
-      weights = w,
-      verbose = TRUE),
+    utils::capture.output(
+      res <- L0glm.fit.internal(
+        X       = X,
+        y       = y,
+        weights = w,
+        verbose = TRUE)
+    ),
     "All coefficients zero - nothing to fit"
   )
   

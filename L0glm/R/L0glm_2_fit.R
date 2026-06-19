@@ -178,7 +178,7 @@
 #'   potentially speeding up computation. If \code{FALSE}, the columns are
 #'   fitted sequentially.
 #' @param ncores Optional integer specifying the number of cores to use when
-#'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the
+#'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to half the
 #'   detected number of physical cores when that can be determined, falling back
 #'   to half the number of logical cores. The requested value is capped at the
 #'   detected number of physical cores when that can be determined.
@@ -877,7 +877,7 @@ L0glm_detect_physical_cores <- function() {
 L0glm_default_ncores <- function(parallelize = TRUE) {
   if (!isTRUE(parallelize)) return(1L)
   physical_cores <- L0glm_detect_physical_cores()
-  if (!is.na(physical_cores)) return(max(1L, physical_cores))
+  if (!is.na(physical_cores)) return(max(1L, round(physical_cores/2)))
   logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
   if (!is.na(logical_cores) && logical_cores >= 1L) {
     return(max(1L, as.integer(round(logical_cores / 2))))
@@ -900,6 +900,14 @@ L0glm_normalize_thread_count <- function(nthreads) {
   nthreads
 }
 
+L0glm_quiet_try <- function(expr) {
+  try(
+    suppressMessages(suppressWarnings(utils::capture.output(force(expr)))),
+    silent = TRUE
+  )
+  invisible(NULL)
+}
+
 L0glm_set_thread_count <- function(nthreads) {
   if (is.null(nthreads)) return(NULL)
   nthreads <- L0glm_normalize_thread_count(nthreads)
@@ -920,8 +928,8 @@ L0glm_set_thread_count <- function(nthreads) {
     VECLIB_MAXIMUM_THREADS = as.character(nthreads)
   )
   if (has_blasctl) {
-    try(RhpcBLASctl::blas_set_num_threads(nthreads), silent = TRUE)
-    try(RhpcBLASctl::omp_set_num_threads(nthreads), silent = TRUE)
+    L0glm_quiet_try(RhpcBLASctl::blas_set_num_threads(nthreads))
+    L0glm_quiet_try(RhpcBLASctl::omp_set_num_threads(nthreads))
   }
   list(env = old_env,
        blas_threads = blas_threads,
@@ -941,10 +949,10 @@ L0glm_restore_thread_count <- function(state) {
   if (isTRUE(state$has_blasctl) &&
       requireNamespace("RhpcBLASctl", quietly = TRUE)) {
     if (!is.na(state$blas_threads)) {
-      try(RhpcBLASctl::blas_set_num_threads(state$blas_threads), silent = TRUE)
+      L0glm_quiet_try(RhpcBLASctl::blas_set_num_threads(state$blas_threads))
     }
     if (!is.na(state$omp_threads)) {
-      try(RhpcBLASctl::omp_set_num_threads(state$omp_threads), silent = TRUE)
+      L0glm_quiet_try(RhpcBLASctl::omp_set_num_threads(state$omp_threads))
     }
   }
   invisible(NULL)
@@ -962,8 +970,18 @@ L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
     VECLIB_MAXIMUM_THREADS = as.character(nthreads)
   )
   if (requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-    try(RhpcBLASctl::blas_set_num_threads(nthreads), silent = TRUE)
-    try(RhpcBLASctl::omp_set_num_threads(nthreads), silent = TRUE)
+    try(
+      suppressMessages(suppressWarnings(
+        utils::capture.output(RhpcBLASctl::blas_set_num_threads(nthreads))
+      )),
+      silent = TRUE
+    )
+    try(
+      suppressMessages(suppressWarnings(
+        utils::capture.output(RhpcBLASctl::omp_set_num_threads(nthreads))
+      )),
+      silent = TRUE
+    )
   }
   if (!is.null(dll_path) && nzchar(dll_path) &&
       file.exists(dll_path) &&

@@ -166,7 +166,7 @@ potentially speeding up computation. If \code{FALSE}, the columns are
 fitted sequentially.}
 
 \item{ncores}{Optional integer specifying the number of cores to use when
-\code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to the
+\code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to half the
 detected number of physical cores when that can be determined, falling back
 to half the number of logical cores. The requested value is capped at the
 detected number of physical cores when that can be determined.}

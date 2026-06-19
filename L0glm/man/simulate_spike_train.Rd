@@ -28,7 +28,8 @@ simulate_spike_train(
 deconvolution will be used.}
 
 \item{k}{Number of non-zero coefficients. Smaller values imply greater
-sparsity in the coefficients. This value should be smaller than \code{p}.}
+sparsity in the coefficients. Values larger than the number of possible
+spike locations are capped at \code{min(n, p)}.}
 
 \item{mean_beta}{The non-zero coefficients are drawn from a log-normal
 distribution with mean \code{mean_beta} and standard deviation (on a log
