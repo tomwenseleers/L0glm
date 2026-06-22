@@ -314,16 +314,20 @@ lmridge.glmnet <- function(Xw, yw,
      maxit = control.solver$maxit
    )
    glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
-   model <- glmnet::bigGlm(x = Xwaug,
-                   y = ywaug,
-                   intercept = FALSE,
-                   standardize = control.solver$standardize,
-                   standardize.response = TRUE,
-                   lower.limits = c(-Inf, lower),
-                   upper.limits = c(Inf, upper),
-                   family = "gaussian",
-                   path = path,
-                   control = glmnet_control)
+   bigglm_args <- list(
+     x = Xwaug,
+     y = ywaug,
+     intercept = FALSE,
+     standardize = control.solver$standardize,
+     standardize.response = TRUE,
+     lower.limits = c(-Inf, lower),
+     upper.limits = c(Inf, upper),
+     family = "gaussian",
+     path = path,
+     control = glmnet_control
+   )
+   bigglm_args <- bigglm_args[!vapply(bigglm_args, is.null, logical(1))]
+   model <- do.call(glmnet::bigGlm, bigglm_args)
    coefs <- coef(model)[-1]
   }
 

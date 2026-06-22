@@ -13,6 +13,49 @@ using Eigen::DiagonalPreconditioner;
 using Eigen::LeastSquaresConjugateGradient;
 using Eigen::Success;
 
+template <typename SolverType, typename MatrixType, typename RhsType, typename GuessType>
+Rcpp::List run_iterative_solver(const MatrixType &A,
+                                const RhsType &b,
+                                const GuessType &x0,
+                                double tol,
+                                int maxit) {
+  SolverType solver;
+
+  if(tol > 0) {
+    solver.setTolerance(tol);
+  }
+  if(maxit > 0) {
+    solver.setMaxIterations(maxit);
+  }
+
+  solver.compute(A);
+  if(solver.info() != Eigen::Success) {
+    return Rcpp::List::create(
+      Rcpp::Named("status") = false,
+      Rcpp::Named("info") = static_cast<int>(solver.info()),
+      Rcpp::Named("iterations") = solver.iterations(),
+      Rcpp::Named("error") = solver.error());
+  }
+
+  Eigen::MatrixXd x = solver.solveWithGuess(b, x0);
+  bool converged = solver.info() == Eigen::Success;
+
+  if(!x.allFinite()) {
+    return Rcpp::List::create(
+      Rcpp::Named("status") = false,
+      Rcpp::Named("info") = static_cast<int>(solver.info()),
+      Rcpp::Named("iterations") = solver.iterations(),
+      Rcpp::Named("error") = solver.error());
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("status") = converged,
+    Rcpp::Named("info") = static_cast<int>(solver.info()),
+    Rcpp::Named("iterations") = solver.iterations(),
+    Rcpp::Named("error") = solver.error(),
+    Rcpp::Named("coefficients") = x);
+}
+
 // Solve Ax = b using sparse LeastSquaresConjugateGradient with given preconditioner with initial guess x0
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> &A,
@@ -23,37 +66,19 @@ Rcpp::List solve_sparse_LSCG(const Eigen::MappedSparseMatrix<double> &A,
                              unsigned int precond = 1
                              ) {
 
-  Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
-                                       Eigen::LeastSquareDiagonalPreconditioner<double> >
-                                         solver;
   if(precond == 0) {
-    Eigen::LeastSquaresConjugateGradient < Eigen::SparseMatrix<double>, Eigen::IdentityPreconditioner > solver;
-  } else if(precond > 1) {
+    typedef Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
+                                                 Eigen::IdentityPreconditioner> Solver;
+    return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
+  }
+
+  if(precond > 1) {
     Rcpp::warning("No valid preconditioner requested -- using default.");
   }
 
-  if(tol) {
-    solver.setTolerance(tol);
-  }
-  if(maxit) {
-    solver.setMaxIterations(maxit);
-  }
-
-  solver.compute(A);
-  if (solver.info() != Eigen::Success) {
-    // decomposition failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solveWithGuess(b, x0);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
+                                               Eigen::LeastSquareDiagonalPreconditioner<double> > Solver;
+  return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
 }
 
 // Solve Ax = b using dense LeastSquaresConjugateGradient with given preconditioner with initial guess x0
@@ -65,38 +90,19 @@ Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd &A,
                             int maxit = 0,
                             unsigned int precond = 1) {
 
-  Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
-                                       Eigen::LeastSquareDiagonalPreconditioner<double> >
-                                         solver;
-
   if(precond == 0) {
-    Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd, Eigen::IdentityPreconditioner > solver;
-  } else if(precond > 1) {
+    typedef Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
+                                                 Eigen::IdentityPreconditioner> Solver;
+    return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
+  }
+
+  if(precond > 1) {
     Rcpp::warning("No valid preconditioner requested -- using default.");
   }
 
-  if(tol) {
-    solver.setTolerance(tol);
-  }
-  if(maxit) {
-    solver.setMaxIterations(maxit);
-  }
-
-  solver.compute(A);
-  if (solver.info() != Eigen::Success) {
-    // decomposition failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solveWithGuess(b, x0);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
+                                               Eigen::LeastSquareDiagonalPreconditioner<double> > Solver;
+  return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
 }
 
 
@@ -110,38 +116,28 @@ Rcpp::List solve_sparse_CG(
     int maxit = 0,
     unsigned int precond = 1) {
 
-  // Set-up the Conjugate Gradient solver
-  Eigen::ConjugateGradient < Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double> > solver;
   if(precond == 0) {
-    Eigen::ConjugateGradient < Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner > solver;
-  } else if(precond == 2) {
-    Eigen::ConjugateGradient < Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper, Eigen::IncompleteCholesky<double> > solver;
-  } else if(precond > 2) {
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                                     Eigen::Lower|Eigen::Upper,
+                                     Eigen::IdentityPreconditioner> Solver;
+    return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
+  }
+
+  if(precond == 2) {
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                                     Eigen::Lower|Eigen::Upper,
+                                     Eigen::IncompleteCholesky<double> > Solver;
+    return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
+  }
+
+  if(precond > 2) {
     Rcpp::warning("No valid preconditioner requested -- using default.");
   }
 
-  if(tol) {
-    solver.setTolerance(tol);
-  }
-  if(maxit) {
-    solver.setMaxIterations(maxit);
-  }
-
-  solver.compute(A);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solveWithGuess(b, x0);
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
+                                   Eigen::Lower|Eigen::Upper,
+                                   Eigen::DiagonalPreconditioner<double> > Solver;
+  return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
 }
 
 // Solve Ax = b using dense Conjugate Gradient with given preconditioner with initial guess x0
@@ -154,36 +150,19 @@ Rcpp::List solve_dense_CG(
     int maxit = 0,
     unsigned int precond = 1) {
 
-  // Set-up the Conjugate Gradient solver
-  Eigen::ConjugateGradient < Eigen::MatrixXd, Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<double> > solver;
   if(precond == 0) {
-    Eigen::ConjugateGradient < Eigen::MatrixXd, Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner > solver;
-  } else if(precond == 2) {
-    Eigen::ConjugateGradient < Eigen::MatrixXd, Eigen::Lower|Eigen::Upper, Eigen::IncompleteCholesky<double> > solver;
-  } else if(precond > 2) {
-    Rcpp::warning("No valid preconditioner requested -- using default.");
+    typedef Eigen::ConjugateGradient<Eigen::MatrixXd,
+                                     Eigen::Lower|Eigen::Upper,
+                                     Eigen::IdentityPreconditioner> Solver;
+    return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
   }
 
-  if(tol) {
-    solver.setTolerance(tol);
-  }
-  if(maxit) {
-    solver.setMaxIterations(maxit);
+  if(precond > 1) {
+    Rcpp::warning("No valid preconditioner requested for dense CG -- using default.");
   }
 
-  solver.compute(A);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solveWithGuess(b, x0);
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::ConjugateGradient<Eigen::MatrixXd,
+                                   Eigen::Lower|Eigen::Upper,
+                                   Eigen::DiagonalPreconditioner<double> > Solver;
+  return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
 }

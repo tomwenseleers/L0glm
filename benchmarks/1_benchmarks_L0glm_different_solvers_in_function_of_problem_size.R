@@ -66,7 +66,7 @@ for (n in sizes) {
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y,
-        start=start, # NULL, # rep(1, ncol(X)), 
+        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
         warm.start = 1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
@@ -188,7 +188,7 @@ for (n in sizes) {
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, 
-        start=start, # NULL,
+        start=NULL, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
         warm.start=1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
@@ -229,9 +229,7 @@ for (n in sizes) {
 }
 
 warnings()
-# TODO CG & LSCG solvers sometimes fail in first 6 IRLS iterations
-# if tol is set too low - now falling back to 
-# Cholesky LLT if that happens - check if this can be fixed somehow?
+# NOTE: LSCG & CG quite slow for large problem sizes compared to Cholesky LLT
 
 # Reshape data for plotting
 results_melt2 <- results %>% 
@@ -347,7 +345,7 @@ for (n in sizes) {
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y,
-        start=start, # NULL, # rep(1, ncol(X)), # NULL, # start, 
+        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
         warm.start = 1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
@@ -389,9 +387,7 @@ for (n in sizes) {
 }
 
 warnings()
-# TODO CG or LSCG solvers sometimes fail in first 6 IRLS iterations
-# if tol is set too low - now falling back to 
-# Cholesky LLT if that happens - check if this can be fixed somehow?
+# no warnings
 
 # Reshape data for plotting
 results_melt <- results %>% 
@@ -469,7 +465,7 @@ for (n in sizes) {
     fit.time <- system.time(
       L0glm <- L0glm.fit(
         X=X, y=y, 
-        start=start, # NULL,
+        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
         warm.start=1,
         family = family, lambda = lambda_preset, 
         nonnegative = TRUE, relaxed = FALSE, 
@@ -510,6 +506,7 @@ for (n in sizes) {
 }
 
 warnings()
+# no warnings
 
 # Reshape data for plotting
 results_melt2 <- results %>% 

@@ -106,7 +106,11 @@ control.solver.gen <- function(solver,
       if (verbose) print("No method for Eigen solver was provided. Method is set to 7.")
       method <- 7L
     }
-    if(is.null(tol)) tol <- 1E-10
+    if(is.null(tol)) tol <- 1E-7
+    if(!is.null(maxit) && maxit < 0) {
+      maxit <- NULL
+      if(verbose) print("Control.solver$maxit needs to be a non-negative integer for the chosen solver. Value was set to solver default.")
+    }
     
     if (method == 1){
       if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
@@ -118,19 +122,23 @@ control.solver.gen <- function(solver,
       
     } else if (method == 3){
       if(is.null(rowaug)) rowaug <- TRUE
-      l <- list(method = "LSCG", tol = 1E-7, maxit = 0L, precond = 0L, rowaug = rowaug)
+      if(is.null(maxit)) maxit <- 5000L
+      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = 0L, rowaug = rowaug)
       
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- TRUE
-      l <- list(method = "LSCG", tol = 1E-7, maxit = 0L, precond = 1L, rowaug = rowaug)
+      if(is.null(maxit)) maxit <- 5000L
+      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = 1L, rowaug = rowaug)
       
     } else if (method == 5){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      l <- list(method = "CG", tol = 1E-7, maxit = 0L, precond = 0L, rowaug = rowaug)
+      if(is.null(maxit)) maxit <- 5000L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = 0L, rowaug = rowaug)
       
     } else if (method == 6){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      l <- list(method = "CG", tol = 1E-7, maxit = 0L, precond = 1L, rowaug = rowaug)
+      if(is.null(maxit)) maxit <- 5000L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = 1L, rowaug = rowaug)
       
     } else if (method == 7){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results

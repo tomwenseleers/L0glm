@@ -5,6 +5,32 @@
 // Solve Ax = b using Cholesky decomposition for sparse or dense covariate matrix A
 // adapted from https://github.com/nk027/sanic/blob/master/src/solve_Cholesky.cpp
 
+template <typename SolverType, typename MatrixType, typename RhsType>
+Rcpp::List run_chol_solver(const MatrixType &A, const RhsType &b) {
+  SolverType solver;
+  solver.compute(A);
+
+  if(solver.info() != Eigen::Success) {
+    return Rcpp::List::create(
+      Rcpp::Named("status") = false,
+      Rcpp::Named("info") = static_cast<int>(solver.info()));
+  }
+
+  Eigen::MatrixXd x = solver.solve(b);
+  bool success = solver.info() == Eigen::Success;
+
+  if(!x.allFinite()) {
+    return Rcpp::List::create(
+      Rcpp::Named("status") = false,
+      Rcpp::Named("info") = static_cast<int>(solver.info()));
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("status") = success,
+    Rcpp::Named("info") = static_cast<int>(solver.info()),
+    Rcpp::Named("coefficients") = x);
+}
+
 // Solve Ax = b using sparse LLT (pivot = 0) or LDLT (pivot = 1) Cholesky decomposition
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_chol(
@@ -12,39 +38,40 @@ Rcpp::List solve_sparse_chol(
     const Eigen::Map<Eigen::MatrixXd> b,
     unsigned int pivot = 1, unsigned int ordering = 0) {
 
-  Eigen::SimplicialLDLT < Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::AMDOrdering<int> > solver;
-  if(ordering == 1) { // use NaturalOrdering
-    Eigen::SimplicialLDLT < Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::NaturalOrdering<int> > solver;
-  } else if(ordering > 1) {
+  if(ordering > 1) {
     Rcpp::warning("No valid ordering requested -- using default.");
+    ordering = 0;
   }
 
   if(pivot == 0) {
-    Eigen::SimplicialLLT < Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::AMDOrdering<int> > solver;
     if(ordering == 1) { // use NaturalOrdering
-      Eigen::SimplicialLLT < Eigen::SparseMatrix<double>, Eigen::Lower, Eigen::NaturalOrdering<int> > solver;
-    } else if(ordering > 1) {
-      Rcpp::warning("No valid ordering requested -- using default.");
+      typedef Eigen::SimplicialLLT<Eigen::SparseMatrix<double>,
+                                   Eigen::Lower,
+                                   Eigen::NaturalOrdering<int> > Solver;
+      return run_chol_solver<Solver>(A, b);
     }
-  } else if(pivot > 1) {
+
+    typedef Eigen::SimplicialLLT<Eigen::SparseMatrix<double>,
+                                 Eigen::Lower,
+                                 Eigen::AMDOrdering<int> > Solver;
+    return run_chol_solver<Solver>(A, b);
+  }
+
+  if(pivot > 1) {
     Rcpp::warning("No valid pivoting scheme requested -- using default.");
   }
 
-  solver.compute(A);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
+  if(ordering == 1) {
+    typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>,
+                                  Eigen::Lower,
+                                  Eigen::NaturalOrdering<int> > Solver;
+    return run_chol_solver<Solver>(A, b);
   }
 
-  Eigen::MatrixXd x = solver.solve(b);
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>,
+                                Eigen::Lower,
+                                Eigen::AMDOrdering<int> > Solver;
+  return run_chol_solver<Solver>(A, b);
 }
 
 
@@ -55,26 +82,15 @@ Rcpp::List solve_dense_chol(
     const Eigen::Map <Eigen::MatrixXd> b,
     unsigned int pivot = 1) {
 
-  Eigen::LDLT <Eigen::MatrixXd> solver;
   if(pivot == 0) {
-    Eigen::LLT <Eigen::MatrixXd> solver;
-  } else if(pivot > 1) {
+    typedef Eigen::LLT<Eigen::MatrixXd> Solver;
+    return run_chol_solver<Solver>(A, b);
+  }
+
+  if(pivot > 1) {
     Rcpp::warning("No valid pivoting scheme requested -- using default.");
   }
 
-  solver.compute(A);
-
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solve(b);
-  if(solver.info() != Eigen::Success) {
-    // solving failed
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(Rcpp::Named("status") = true,
-                            Rcpp::Named("coefficients") = x);
+  typedef Eigen::LDLT<Eigen::MatrixXd> Solver;
+  return run_chol_solver<Solver>(A, b);
 }
