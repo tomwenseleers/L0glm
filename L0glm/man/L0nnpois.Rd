@@ -114,10 +114,11 @@ Defaults to \code{TRUE}}
 
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic
-programming solver), \code{"glmnet"} (\code{"bigGlm"}, using coordinate
-descent) or \code{"eigen"} (one of the \code{RcppEigen Eigen} solvers).
-\code{"osqp"} and \code{"glmnet"} support box or nonnegativity constraints
-and scale well to larger problems, with especially \code{"glmnet"} being
+programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
+coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
+of the \code{RcppEigen Eigen} solvers).
+\code{"osqp"} and \code{"bigGlm"} support box or nonnegativity constraints
+and scale well to larger problems, with especially \code{"bigGlm"} being
 suitable for very large problems. The \code{"eigen"} solvers achieve box or
 nonnegativity constraints via clipping, which in combination with the ridge
 penalties in practice work almost as well, and some of those solvers are
@@ -125,7 +126,7 @@ often among the fastest (e.g. \code{method} \code{3L}, \code{5L} or
 \code{7L}, i.e. LSCG, CG or Cholesky LLT).}
 
 \item{method}{When \code{solver="eigen"}, method used for the eigen solver
-  (see details). It should be an integer from 1 to 8 :
+  (see details). It should be an integer from 1 to 11 :
 
   \code{1L} = QR solver, Householder QR solver if \code{X} is dense
 
@@ -146,6 +147,13 @@ often among the fastest (e.g. \code{method} \code{3L}, \code{5L} or
   \code{7L} = Cholesky LLT solver
 
   \code{8L} = Cholesky LDLT solver
+
+  \code{9L} = Conjugate Gradient (CG) with incomplete Cholesky
+  preconditioner
+
+  \code{10L} = BDCSVD solver
+
+  \code{11L} = Jacobi SVD solver
 
   Defaults to \code{7L} (Cholesky LLT), which is often the fastest.}
 

@@ -97,6 +97,36 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// solve_dense_SVD
+Rcpp::List solve_dense_SVD(const Eigen::Map<Eigen::MatrixXd>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int svd, unsigned int precond, double threshold);
+RcppExport SEXP _L0glm_solve_dense_SVD(SEXP ASEXP, SEXP bSEXP, SEXP svdSEXP, SEXP precondSEXP, SEXP thresholdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type svd(svdSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type precond(precondSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_dense_SVD(A, b, svd, precond, threshold));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solve_sparse_SVD
+Rcpp::List solve_sparse_SVD(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int svd, unsigned int precond, double threshold);
+RcppExport SEXP _L0glm_solve_sparse_SVD(SEXP ASEXP, SEXP bSEXP, SEXP svdSEXP, SEXP precondSEXP, SEXP thresholdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double>& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type svd(svdSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type precond(precondSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_sparse_SVD(A, b, svd, precond, threshold));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solve_sparse_chol
 Rcpp::List solve_sparse_chol(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_chol(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP, SEXP orderingSEXP) {
@@ -194,6 +224,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 20},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
+    {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},
+    {"_L0glm_solve_sparse_SVD", (DL_FUNC) &_L0glm_solve_sparse_SVD, 5},
     {"_L0glm_solve_sparse_chol", (DL_FUNC) &_L0glm_solve_sparse_chol, 4},
     {"_L0glm_solve_dense_chol", (DL_FUNC) &_L0glm_solve_dense_chol, 3},
     {"_L0glm_solve_sparse_LSCG", (DL_FUNC) &_L0glm_solve_sparse_LSCG, 6},

@@ -13,6 +13,10 @@ control.solver.gen(
   tol = NULL,
   abstol = NULL,
   block_size = NULL,
+  precond = NULL,
+  pivot = NULL,
+  ordering = NULL,
+  threshold = NULL,
   verbose = FALSE,
   rowaug = NULL
 )
@@ -33,6 +37,18 @@ control.solver.gen(
 \item{abstol}{XXX}
 
 \item{block_size}{Optional block size used by solvers that support blocked updates.}
+
+\item{precond}{Optional integer preconditioner code for Eigen iterative and Jacobi SVD
+methods. Defaults are method-specific.}
+
+\item{pivot}{Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
+are method-specific.}
+
+\item{ordering}{Optional integer sparse ordering code for Eigen sparse QR and Cholesky
+methods. Defaults are method-specific.}
+
+\item{threshold}{Optional threshold for Eigen SVD rank decisions. If \code{NULL}, Eigen's
+default threshold is used.}
 
 \item{verbose}{XXX}
 

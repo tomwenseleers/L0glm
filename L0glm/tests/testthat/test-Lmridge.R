@@ -26,8 +26,8 @@ test_that("Eigen solver returns valid coefficients with vector lambdas", {
   expect_equal(length(result), ncol(X))
 })
 
-test_that("Glmnet solver returns valid coefficients with vector lambdas", {
-  result <- lmridge(X, y, lambdas = rep(1, p), solver = "glmnet")
+test_that("bigGlm solver returns valid coefficients with vector lambdas", {
+  result <- lmridge(X, y, lambdas = rep(1, p), solver = "bigGlm")
   expect_true(all(!is.na(result)))
   expect_equal(length(result), ncol(X))
 })
@@ -374,7 +374,7 @@ control_solver <- list(
   maxit = 1000
 )
 
-test_that("Initial glmnet path is triggered with large dimensions and iteration <= 5", {
+test_that("lmridge.glmnet handles large dimensions", {
   n <- 50
   p <- 1001  # Ensure this matches the length of lambdas to avoid mismatch
   
@@ -437,6 +437,35 @@ test_that("Handles lambdas with non-zero values and applies constraints correctl
   expect_length(result, p)
   expect_true(all(result >= lower_bounds))
   expect_true(all(result <= upper_bounds))
+})
+
+test_that("lmridge.glmnet solves targeted ridge via row augmentation", {
+  set.seed(320)
+  n <- 40
+  p <- 8
+  X <- matrix(rnorm(n * p), n, p)
+  y <- rnorm(n)
+  lambdas <- seq(0.2, 2.4, length.out = p)
+  prior_mean <- c(1, -1, 0.5, -0.5, 0.25, -0.25, 0.75, -0.75)
+  reference <- as.vector(solve(
+    crossprod(X) + diag(lambdas),
+    crossprod(X, y) + lambdas * prior_mean
+  ))
+  control_solver <- control.solver.gen(
+    solver = "glmnet", standardize = FALSE,
+    abstol = 1e-12, maxit = 1000000
+  )
+  
+  coefs <- lmridge.glmnet(
+    Xw = X, yw = y,
+    lambdas = lambdas,
+    lower = rep(-Inf, p),
+    upper = rep(Inf, p),
+    prior.mean = prior_mean,
+    control.solver = control_solver
+  )
+  
+  expect_equal(coefs, reference, tolerance = 1e-7)
 })
 
 # Testing the lmridge.nnls function
@@ -639,6 +668,100 @@ test_that("lmridge.eigen works with various starting values", {
     )
     expect_type(coefs_default, "double")
     expect_equal(length(coefs_default), p, info = paste("Method =", method, "default start"))
+  }
+})
+
+test_that("lmridge.eigen exposes incomplete Cholesky CG and SVD methods", {
+  methods <- 9L:11L
+  for (method in methods) {
+    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    
+    coefs_dense <- lmridge.eigen(
+      Xw = X_dense, yw = yw,
+      lambdas = lambdas,
+      start = rep(1, p),
+      lower = lower, upper = upper,
+      control.solver = control_solver
+    )
+    expect_type(coefs_dense, "double")
+    expect_equal(length(coefs_dense), p, info = paste("Dense method =", method))
+    expect_true(all(is.finite(coefs_dense)), info = paste("Dense method =", method))
+    
+    coefs_sparse <- lmridge.eigen(
+      Xw = X_sparse, yw = yw,
+      lambdas = lambdas,
+      start = rep(1, p),
+      lower = lower, upper = upper,
+      control.solver = control_solver
+    )
+    expect_type(coefs_sparse, "double")
+    expect_equal(length(coefs_sparse), p, info = paste("Sparse method =", method))
+    expect_true(all(is.finite(coefs_sparse)), info = paste("Sparse method =", method))
+  }
+})
+
+test_that("targeted ridge uses nonzero prior means even when they sum to zero", {
+  set.seed(321)
+  n <- 40
+  p <- 8
+  X <- matrix(rnorm(n * p), n, p)
+  y <- rnorm(n)
+  lambdas <- seq(0.2, 2.4, length.out = p)
+  prior_mean <- c(1, -1, 0.5, -0.5, 0.25, -0.25, 0.75, -0.75)
+  reference <- as.vector(solve(
+    crossprod(X) + diag(lambdas),
+    crossprod(X, y) + lambdas * prior_mean
+  ))
+  
+  control_solver <- control.solver.gen(solver = "eigen", method = 7L, rowaug = TRUE)
+  coefs <- lmridge.eigen(
+    Xw = X, yw = y,
+    lambdas = lambdas,
+    prior.mean = prior_mean,
+    control.solver = control_solver
+  )
+  
+  expect_equal(coefs, reference, tolerance = 1e-10)
+})
+
+test_that("non-row-augmented Eigen solvers use the symmetric targeted ridge system", {
+  set.seed(322)
+  n <- 40
+  p <- 8
+  X <- matrix(rnorm(n * p), n, p)
+  y <- rnorm(n)
+  lambdas <- seq(0.2, 2.4, length.out = p)
+  prior_mean <- c(1, -1, 0.5, -0.5, 0.25, -0.25, 0.75, -0.75)
+  reference <- as.vector(solve(
+    crossprod(X) + diag(lambdas),
+    crossprod(X, y) + lambdas * prior_mean
+  ))
+  
+  methods <- 1L:11L
+  for (method in methods) {
+    control_solver <- control.solver.gen(
+      solver = "eigen", method = method, rowaug = FALSE,
+      tol = 1e-12, maxit = 10000L
+    )
+    coefs_dense <- lmridge.eigen(
+      Xw = X, yw = y,
+      lambdas = lambdas,
+      prior.mean = prior_mean,
+      start = rep(0, p),
+      control.solver = control_solver
+    )
+    coefs_sparse <- lmridge.eigen(
+      Xw = Matrix::Matrix(X, sparse = TRUE), yw = y,
+      lambdas = lambdas,
+      prior.mean = prior_mean,
+      start = rep(0, p),
+      control.solver = control_solver
+    )
+    
+    expect_equal(coefs_dense, reference, tolerance = 1e-8,
+                 info = paste("dense method", method))
+    expect_equal(coefs_sparse, reference, tolerance = 1e-8,
+                 info = paste("sparse method", method))
   }
 })
 

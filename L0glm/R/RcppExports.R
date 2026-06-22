@@ -17,6 +17,14 @@ solve_dense_QR <- function(A, b, pivot = 1L) {
     .Call('_L0glm_solve_dense_QR', PACKAGE = 'L0glm', A, b, pivot)
 }
 
+solve_dense_SVD <- function(A, b, svd = 0L, precond = 0L, threshold = 0) {
+    .Call('_L0glm_solve_dense_SVD', PACKAGE = 'L0glm', A, b, svd, precond, threshold)
+}
+
+solve_sparse_SVD <- function(A, b, svd = 0L, precond = 0L, threshold = 0) {
+    .Call('_L0glm_solve_sparse_SVD', PACKAGE = 'L0glm', A, b, svd, precond, threshold)
+}
+
 solve_sparse_chol <- function(A, b, pivot = 1L, ordering = 0L) {
     .Call('_L0glm_solve_sparse_chol', PACKAGE = 'L0glm', A, b, pivot, ordering)
 }

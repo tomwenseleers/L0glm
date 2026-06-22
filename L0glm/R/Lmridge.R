@@ -28,8 +28,8 @@
 #'   centered means) to shrink to zero. Nonzero values will result in a targeted
 #'   nonzero-centered ridge regression being used instead.
 #' @param solver Character string specifying which solver to use. Options are
-#'   \code{"eigen"}, \code{"glmnet"}, \code{"osqp"}, \code{"nnls"}. Default is
-#'   \code{"eigen"}.
+#'   \code{"eigen"}, \code{"bigGlm"} (or legacy alias \code{"glmnet"}),
+#'   \code{"osqp"}, \code{"nnls"}. Default is \code{"eigen"}.
 #' @param method Integer code specifying the method to be used within the
 #'   solver. Default is \code{3L} if \code{ncol(X) >= 20000}, otherwise
 #'   \code{7L}.
@@ -62,7 +62,7 @@
 #' \describe{
 #'   \item{\code{"eigen"}}{Uses the \code{Eigen} package to solve the ridge
 #'   regression problem using one of several solvers (see \code{method} option).}
-#'   \item{\code{"glmnet"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem.}
+#'   \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is accepted as a legacy alias.}
 #'   \item{\code{"osqp"}}{Uses the \code{\link[osqp]{osqp}} package (Operator Splitting Quadratic Program solver) to solve the problem with constraints. Most appropriate when box or nonnegativity constraints are applied.}
 #'   \item{\code{"nnls"}}{Uses non-negative least squares algorithm. Only applicable when \code{nonnegative = TRUE} and no other bounds are specified.}
 #' }
@@ -71,7 +71,8 @@
 #'   the \code{"eigen"} solver is used (1=Householder QR, 2=Householder QR with
 #'   column pivoting, 3=LSCG with identity preconditioner, 4=LSCG with diagonal
 #'   preconditioner, 5=CG with identity preconditioner, 6=CG with diagonal
-#'   preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT).
+#'   preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT, 9=CG with incomplete
+#'   Cholesky preconditioner, 10=BDCSVD, 11=Jacobi SVD).
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}},
 #' \code{\link[nnls]{nnls}}, \code{\link{control.solver.gen}}
@@ -124,7 +125,7 @@ lmridge <- function(X, y,
                           control.solver = control.solver,
                           iteration = iteration)
     
-  } else if (solver == "glmnet") {
+  } else if (solver %in% c("bigGlm", "bigglm", "glmnet")) {
     coefs <- lmridge.glmnet(Xw = Xw, yw = yw, lambdas = lambdas, 
                             lower = lower, upper = upper, 
                             control.solver = control.solver,
@@ -253,83 +254,52 @@ osqp_settings_from_control <- function(control.solver, start = NULL) {
 lmridge.glmnet <- function(Xw, yw, 
                            lambdas = rep(0, ncol(Xw)), 
                            lower, upper, 
-                           control.solver = do.call("control.solver.gen", list(solver = "glmnet")), 
+                           control.solver = do.call("control.solver.gen", list(solver = "bigGlm")), 
                            prior.mean = NULL,
                            iteration = 1){
-  if (iteration<=5&(ncol(Xw)>1000|nrow(Xw)>1E6)) {
-    # for first 5 IRLS iterations & for larger problems (p>1000 or n>1E6) use glmnet to solve ridge regression
-    n <- nrow(Xw)
-    sd_y <- sqrt(var(yw)*(n-1)/n)
-    lambda <- mean(lambdas)
-    penalty.factor <- lambdas/lambda
-    penalty.factor[is.na(penalty.factor)] <- 1
-    standardize <- control.solver$standardize
-    glmnet_control <- list(
-      thresh = control.solver$thresh,
-      maxit = control.solver$maxit
-    )
-    glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
-    lower.limits <- c(-Inf, lower)
-    upper.limits <- c(Inf, upper)
-    model <- do.call(glmnet,
-                     args=list(x=Xw, y=yw, alpha=0, 
-                               standardize = standardize, 
-                               standardize.response = TRUE, 
-                               lambda = sd_y*lambda/n, 
-                               penalty.factor=penalty.factor,
-                               lower.limits = lower.limits, 
-                               upper.limits = upper.limits,
-                               family = "gaussian", 
-                               nlambda = 1,
-                               intercept = F, 
-                               control = glmnet_control))
-    coefs <- as.vector(coef(model, s = sd_y*lambda/n, # exact = TRUE, 
-                            x = Xw, y = yw, 
-                            lower.limits = lower.limits, 
-                            upper.limits = upper.limits,
-                            penalty.factor = penalty.factor))[-1]
+  if (is.null(prior.mean)) prior.mean <- rep(0, ncol(Xw))
+
+  # Use row augmentation plus unpenalized bigGlm so zero- and nonzero-centered
+  # ridge penalties share the same algebra as the Eigen and OSQP branches.
+  # Use a path to reach the unpenalized solution only when the augmented system
+  # may still be underdetermined. With positive ridge on every coefficient,
+  # row augmentation makes the system tall and full rank even if original p > n.
+  if ((is.null(lambdas) || any(lambdas <= 0)) && ncol(Xw) >= nrow(Xw)) {
+    path = TRUE
   } else {
-  
-  # for later IRLS iterations use more accurate bigGlm to solve ridge regression
-    
-  # Set path depending on dimensions of Xw
-   if(sum(lambdas) == 0 | ncol(Xw) > nrow(Xw)){ # avoid numerical instabilities if lambdas is 0 and p>=n
-     path = TRUE
-   } else {
-     path = FALSE
-   }
+    path = FALSE
+  }
 
    # Obtain Xwaug and ywaug
-   if((sum(lambdas)!=0)) {
-     Xwaug <- row_augX(Xw, lambdas)
-     ywaug <- augY(yw, ncol(Xwaug),
-                   lambdas = lambdas,
-                   prior.mean = prior.mean)
-   } else {
-     Xwaug <- Xw
-     ywaug <- yw
-   }
-   glmnet_control <- list(
-     thresh = control.solver$thresh,
-     maxit = control.solver$maxit
-   )
-   glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
-   bigglm_args <- list(
-     x = Xwaug,
-     y = ywaug,
-     intercept = FALSE,
-     standardize = control.solver$standardize,
-     standardize.response = TRUE,
-     lower.limits = c(-Inf, lower),
-     upper.limits = c(Inf, upper),
-     family = "gaussian",
-     path = path,
-     control = glmnet_control
-   )
-   bigglm_args <- bigglm_args[!vapply(bigglm_args, is.null, logical(1))]
-   model <- do.call(glmnet::bigGlm, bigglm_args)
-   coefs <- coef(model)[-1]
+  if ((sum(lambdas) != 0)) {
+    Xwaug <- row_augX(Xw, lambdas)
+    ywaug <- augY(yw, ncol(Xwaug),
+                  lambdas = lambdas,
+                  prior.mean = prior.mean)
+  } else {
+    Xwaug <- Xw
+    ywaug <- yw
   }
+  glmnet_control <- list(
+    thresh = control.solver$thresh,
+    maxit = control.solver$maxit
+  )
+  glmnet_control <- glmnet_control[!vapply(glmnet_control, is.null, logical(1))]
+  bigglm_args <- list(
+    x = Xwaug,
+    y = ywaug,
+    intercept = FALSE,
+    standardize = control.solver$standardize,
+    standardize.response = TRUE,
+    lower.limits = c(lower, -Inf),
+    upper.limits = c(upper, Inf),
+    family = "gaussian",
+    path = path,
+    control = glmnet_control
+  )
+  bigglm_args <- bigglm_args[!vapply(bigglm_args, is.null, logical(1))]
+  model <- do.call(glmnet::bigGlm, bigglm_args)
+  coefs <- coef(model)[-1]
 
   # apply box constraints in case coefs would slightly fall outside bounds
   coefs <- clamp(coefs, lower, upper) 
@@ -391,10 +361,11 @@ lmridge.eigen <- function(Xw, yw,
       
       if (issparse(Xwaug)){
         coefs <- solve_sparse_QR(A = Xwaug,
-                                 b = ywaug)$coefficients
+                                 b = as.matrix(ywaug),
+                                 ordering = control.solver$ordering)$coefficients
       } else {
         coefs <- solve_dense_QR(A = Xwaug,
-                                b = ywaug, 
+                                b = as.matrix(ywaug), 
                                 pivot = control.solver$pivot)$coefficients
       }
     } else {
@@ -402,11 +373,12 @@ lmridge.eigen <- function(Xw, yw,
       D <- Diagonal(x=1/pen.weights)
       if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_QR(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "generalMatrix"),
-                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)))$coefficients)
+          coefs <- as.vector(solve_sparse_QR(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+                                             b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
+                                             ordering = control.solver$ordering)$coefficients)
         } else { # if it's dense
-          coefs <- as.vector(solve_dense_QR(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
-                                            b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_dense_QR(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+                                            b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                             pivot = control.solver$pivot)$coefficients)
         }
       } else { # if p >> n
@@ -417,7 +389,8 @@ lmridge.eigen <- function(Xw, yw,
           
           # Calculate beta using Woodbury identity
           coefs <- as.vector(prior.mean + DXw %*% solve_sparse_QR(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "generalMatrix"),
-                                                                  b = y_star)$coefficients) 
+                                                                  b = as.matrix(y_star),
+                                                                  ordering = control.solver$ordering)$coefficients) 
         } else { # if it's dense
           # Precompute some values
           DXw <- Matrix::tcrossprod(D, Xw)
@@ -476,14 +449,15 @@ lmridge.eigen <- function(Xw, yw,
       
       if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_LSCG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "generalMatrix"),
-                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_sparse_LSCG(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+                                               b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                                x0 = as.matrix(start),
                                                tol = control.solver$tol,
+                                               maxit = control.solver$maxit,
                                                precond = control.solver$precond)$coefficients)
         } else { # if it's dense
-          coefs <- as.vector(solve_dense_LSCG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
-                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_dense_LSCG(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+                                              b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                               x0 = as.matrix(start),
                                               tol = control.solver$tol,
                                               maxit = control.solver$maxit,
@@ -559,15 +533,15 @@ lmridge.eigen <- function(Xw, yw,
       
       if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_CG(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "generalMatrix"),
-                                             b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_sparse_CG(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+                                             b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                              x0 = as.matrix(start),
                                              tol = control.solver$tol,
                                              maxit = control.solver$maxit,
                                              precond = control.solver$precond)$coefficients)
         } else { # if it's dense
-          coefs <- as.vector(solve_dense_CG(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
-                                            b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_dense_CG(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+                                            b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                             x0 = as.matrix(start),
                                             tol = control.solver$tol,
                                             maxit = control.solver$maxit,
@@ -631,14 +605,14 @@ lmridge.eigen <- function(Xw, yw,
         # n>=p case
         if (issparse(Xw)) {
           # if it's sparse
-          coefs <- as.vector(solve_sparse_chol(A = as(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw))), "generalMatrix"),
-                                               b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_sparse_chol(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+                                               b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                                pivot = control.solver$pivot,
                                                ordering = control.solver$ordering)$coefficients)
         } else { 
           # if it's dense
-          coefs <- as.vector(solve_dense_chol(A = as.matrix(D %*% Matrix::crossprod(Xw) + Diagonal(x=rep(lambda, ncol(Xw)))),
-                                              b = as.matrix(D %*% Matrix::crossprod(Xw,yw) + lambda*Matrix::crossprod(D, prior.mean)),
+          coefs <- as.vector(solve_dense_chol(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+                                              b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                               pivot = control.solver$pivot)$coefficients)
         }
       } else { 
@@ -663,6 +637,67 @@ lmridge.eigen <- function(Xw, yw,
           coefs <- as.vector(prior.mean + DXw %*% solve_dense_chol(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
                                                                    b = y_star,
                                                                    pivot = control.solver$pivot)$coefficients)
+        }
+      }
+    }
+  } else if (control.solver$method == "SVD") {
+    if (control.solver$rowaug) {
+      # solve the augmented least-squares problem directly
+      if (sum(lambdas)!=0) {
+        Xwaug <- row_augX(Xw, lambdas)
+        ywaug <- augY(yw, ncol(Xwaug), lambdas = lambdas, prior.mean = prior.mean)
+      } else {
+        Xwaug <- Xw
+        ywaug <- yw
+      }
+      
+      if (issparse(Xwaug)) {
+        coefs <- solve_sparse_SVD(A = Xwaug,
+                                  b = as.matrix(ywaug),
+                                  svd = control.solver$svd,
+                                  precond = control.solver$precond,
+                                  threshold = control.solver$threshold)$coefficients
+      } else {
+        coefs <- solve_dense_SVD(A = as.matrix(Xwaug),
+                                 b = as.matrix(ywaug),
+                                 svd = control.solver$svd,
+                                 precond = control.solver$precond,
+                                 threshold = control.solver$threshold)$coefficients
+      }
+    } else {
+      # solve from normal equations or Woodbury equations with the requested SVD
+      D <- Diagonal(x=1/pen.weights)
+      
+      if (nrow(Xw)*100 >= ncol(Xw)) {
+        if (issparse(Xw)) {
+          coefs <- as.vector(solve_sparse_SVD(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+                                               b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
+                                               svd = control.solver$svd,
+                                               precond = control.solver$precond,
+                                               threshold = control.solver$threshold)$coefficients)
+        } else {
+          coefs <- as.vector(solve_dense_SVD(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+                                             b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
+                                             svd = control.solver$svd,
+                                             precond = control.solver$precond,
+                                             threshold = control.solver$threshold)$coefficients)
+        }
+      } else {
+        DXw <- Matrix::tcrossprod(D, Xw)
+        y_star <- as.vector(yw - Xw %*% prior.mean)
+        
+        if (issparse(Xw)) {
+          coefs <- as.vector(prior.mean + DXw %*% solve_sparse_SVD(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "generalMatrix"),
+                                                                   b = as.matrix(y_star),
+                                                                   svd = control.solver$svd,
+                                                                   precond = control.solver$precond,
+                                                                   threshold = control.solver$threshold)$coefficients)
+        } else {
+          coefs <- as.vector(prior.mean + DXw %*% solve_dense_SVD(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
+                                                                  b = as.matrix(y_star),
+                                                                  svd = control.solver$svd,
+                                                                  precond = control.solver$precond,
+                                                                  threshold = control.solver$threshold)$coefficients)
         }
       }
     }
@@ -760,7 +795,7 @@ row_augX <- function(Xw, lambdas = NULL){
 augY <- function(yw, p, prior.mean = NULL, lambdas = NULL){
   if (length(lambdas)==0) lambdas=NULL
   if (should_augment(lambdas)) {
-    if(is.null(prior.mean) | is.null(lambdas) | sum(prior.mean)==0){
+    if(is.null(prior.mean) | is.null(lambdas) | !isTRUE(any(prior.mean != 0))){
       return(c(yw, rep(0, p))) # zero centered row augmentation
     } else {
       return(c(yw, as.numeric(prior.mean) * sqrt(lambdas)))  # nonzero centered row augmentation

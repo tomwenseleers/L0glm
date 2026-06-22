@@ -23,6 +23,18 @@
 #' XXX
 #' @param block_size
 #' Optional block size used by solvers that support blocked updates.
+#' @param precond
+#' Optional integer preconditioner code for Eigen iterative and Jacobi SVD
+#' methods. Defaults are method-specific.
+#' @param pivot
+#' Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
+#' are method-specific.
+#' @param ordering
+#' Optional integer sparse ordering code for Eigen sparse QR and Cholesky
+#' methods. Defaults are method-specific.
+#' @param threshold
+#' Optional threshold for Eigen SVD rank decisions. If \code{NULL}, Eigen's
+#' default threshold is used.
 #' @param verbose
 #' XXX
 #' @param rowaug
@@ -48,11 +60,15 @@ control.solver.gen <- function(solver,
                                tol = NULL,
                                abstol = NULL,
                                block_size = NULL,
+                               precond = NULL,
+                               pivot = NULL,
+                               ordering = NULL,
+                               threshold = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
   
-  if(solver != "glmnet" & !is.null(standardize) & verbose) {
-    print("Selected solver does not support standardization. To enable standardization, please set the solver to glmnet.")
+  if(!(solver %in% c("bigGlm", "bigglm", "glmnet")) & !is.null(standardize) & verbose) {
+    print("Selected solver does not support standardization. To enable standardization, please set the solver to bigGlm.")
   }
   
   if(solver == "osqp"){
@@ -72,7 +88,7 @@ control.solver.gen <- function(solver,
               polish = FALSE, # polish ADMM solution?
               rowaug = rowaug)
     
-  } else if (solver == "glmnet") {
+  } else if (solver %in% c("bigGlm", "bigglm", "glmnet")) {
     if(is.null(maxit)) {
       maxit <- 1e6
     } else if(maxit <= 0){
@@ -106,6 +122,7 @@ control.solver.gen <- function(solver,
       if (verbose) print("No method for Eigen solver was provided. Method is set to 7.")
       method <- 7L
     }
+    tol_was_null <- is.null(tol)
     if(is.null(tol)) tol <- 1E-7
     if(!is.null(maxit) && maxit < 0) {
       maxit <- NULL
@@ -114,41 +131,68 @@ control.solver.gen <- function(solver,
     
     if (method == 1){
       if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
-      l <- list(method = "QR", pivot = 0L, rowaug = rowaug)
+      if(is.null(pivot)) pivot <- 0L
+      if(is.null(ordering)) ordering <- 1L
+      l <- list(method = "QR", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
       
     } else if (method == 2){
       if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
-      l <- list(method = "QR", pivot = 1L, rowaug = rowaug)
+      if(is.null(pivot)) pivot <- 1L
+      if(is.null(ordering)) ordering <- 1L
+      l <- list(method = "QR", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
       
     } else if (method == 3){
       if(is.null(rowaug)) rowaug <- TRUE
       if(is.null(maxit)) maxit <- 5000L
-      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = 0L, rowaug = rowaug)
+      if(is.null(precond)) precond <- 0L
+      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
       
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- TRUE
       if(is.null(maxit)) maxit <- 5000L
-      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = 1L, rowaug = rowaug)
+      if(is.null(precond)) precond <- 1L
+      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
       
     } else if (method == 5){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(maxit)) maxit <- 5000L
-      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = 0L, rowaug = rowaug)
+      if(is.null(precond)) precond <- 0L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
       
     } else if (method == 6){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(maxit)) maxit <- 5000L
-      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = 1L, rowaug = rowaug)
+      if(is.null(precond)) precond <- 1L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
       
     } else if (method == 7){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      l <- list(method = "chol", pivot = 0L, ordering = 0L, rowaug = rowaug)
+      if(is.null(pivot)) pivot <- 0L
+      if(is.null(ordering)) ordering <- 0L
+      l <- list(method = "chol", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
       
     } else if (method == 8){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      l <- list(method = "chol", pivot = 1L, ordering = 0L, rowaug = rowaug)
+      if(is.null(pivot)) pivot <- 1L
+      if(is.null(ordering)) ordering <- 0L
+      l <- list(method = "chol", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
+    } else if (method == 9){
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      if(is.null(maxit)) maxit <- 5000L
+      if(is.null(precond)) precond <- 2L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
+    } else if (method == 10){
+      if(is.null(rowaug)) rowaug <- TRUE
+      if(is.null(precond)) precond <- 0L
+      if(is.null(threshold)) threshold <- if (tol_was_null) 0 else tol
+      l <- list(method = "SVD", svd = 0L, precond = as.integer(precond), threshold = threshold, rowaug = rowaug)
+    } else if (method == 11){
+      if(is.null(rowaug)) rowaug <- TRUE
+      if(is.null(precond)) precond <- 0L
+      if(is.null(threshold)) threshold <- if (tol_was_null) 0 else tol
+      l <- list(method = "SVD", svd = 1L, precond = as.integer(precond), threshold = threshold, rowaug = rowaug)
     } else {
-      stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-8).")
+      stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-11).")
     }
   } else {
     stop("Chosen solver is not available.")

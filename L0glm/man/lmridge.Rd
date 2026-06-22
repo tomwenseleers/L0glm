@@ -60,8 +60,8 @@ centered means) to shrink to zero. Nonzero values will result in a targeted
 nonzero-centered ridge regression being used instead.}
 
 \item{solver}{Character string specifying which solver to use. Options are
-\code{"eigen"}, \code{"glmnet"}, \code{"osqp"}, \code{"nnls"}. Default is
-\code{"eigen"}.}
+\code{"eigen"}, \code{"bigGlm"} (or legacy alias \code{"glmnet"}),
+\code{"osqp"}, \code{"nnls"}. Default is \code{"eigen"}.}
 
 \item{method}{Integer code specifying the method to be used within the
 solver. Default is \code{3L} if \code{ncol(X) >= 20000}, otherwise
@@ -105,7 +105,7 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| y - X \beta
 \describe{
   \item{\code{"eigen"}}{Uses the \code{Eigen} package to solve the ridge
   regression problem using one of several solvers (see \code{method} option).}
-  \item{\code{"glmnet"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem.}
+  \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is accepted as a legacy alias.}
   \item{\code{"osqp"}}{Uses the \code{\link[osqp]{osqp}} package (Operator Splitting Quadratic Program solver) to solve the problem with constraints. Most appropriate when box or nonnegativity constraints are applied.}
   \item{\code{"nnls"}}{Uses non-negative least squares algorithm. Only applicable when \code{nonnegative = TRUE} and no other bounds are specified.}
 }
@@ -114,7 +114,8 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| y - X \beta
   the \code{"eigen"} solver is used (1=Householder QR, 2=Householder QR with
   column pivoting, 3=LSCG with identity preconditioner, 4=LSCG with diagonal
   preconditioner, 5=CG with identity preconditioner, 6=CG with diagonal
-  preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT).
+  preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT, 9=CG with incomplete
+  Cholesky preconditioner, 10=BDCSVD, 11=Jacobi SVD).
 }
 \examples{
 \dontrun{

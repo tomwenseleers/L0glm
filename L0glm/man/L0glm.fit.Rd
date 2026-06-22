@@ -116,10 +116,11 @@ Defaults to \code{TRUE}}
 
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic
-programming solver), \code{"glmnet"} (\code{"bigGlm"}, using coordinate
-descent) or \code{"eigen"} (one of the \code{RcppEigen Eigen} solvers).
-\code{"osqp"} and \code{"glmnet"} support box or nonnegativity constraints
-and scale well to larger problems, with especially \code{"glmnet"} being
+programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
+coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
+of the \code{RcppEigen Eigen} solvers).
+\code{"osqp"} and \code{"bigGlm"} support box or nonnegativity constraints
+and scale well to larger problems, with especially \code{"bigGlm"} being
 suitable for very large problems. The \code{"eigen"} solvers achieve box or
 nonnegativity constraints via clipping, which in combination with the ridge
 penalties in practice work almost as well, and some of those solvers are
@@ -127,7 +128,7 @@ often among the fastest (e.g. \code{method} \code{3L}, \code{5L} or
 \code{7L}, i.e. LSCG, CG or Cholesky LLT).}
 
 \item{method}{When \code{solver="eigen"}, method used for the eigen solver
-  (see details). It should be an integer from 1 to 8 :
+  (see details). It should be an integer from 1 to 11 :
 
   \code{1L} = QR solver, Householder QR solver if \code{X} is dense
 
@@ -148,6 +149,13 @@ often among the fastest (e.g. \code{method} \code{3L}, \code{5L} or
   \code{7L} = Cholesky LLT solver
 
   \code{8L} = Cholesky LDLT solver
+
+  \code{9L} = Conjugate Gradient (CG) with incomplete Cholesky
+  preconditioner
+
+  \code{10L} = BDCSVD solver
+
+  \code{11L} = Jacobi SVD solver
 
   Defaults to \code{7L} (Cholesky LLT), which is often the fastest.}
 
@@ -314,7 +322,7 @@ means this function scales well to solve fairly large tall or wide problems
 with millions of observations or variables. As solvers, we currently
 implemented the \code{Eigen} sparse or dense Cholesky, QR, PCG & LSCG
 solvers, plus two solvers that natively support box constraints:
-\code{glmnet} (\code{bigGLM}), which uses coordinate descent, and
+\code{bigGlm} from \pkg{glmnet}, which uses coordinate descent, and
 \code{osqp}, a fast quadratic programming solver.
 }
 \details{
@@ -344,7 +352,7 @@ where \eqn{\beta} are the coefficient estimates
 in each iteration and coefficients smaller than \code{thresh} are set to zero
 and taken out of the model at the start of each iteration, and as in Frommlet
 & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Box or nonnegativity
-constraints are natively supported if the \code{glmnet} (\code{bigGlm}) or
+constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
 \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
 approximate the L0 penalty objective and has been proven for the Gaussian
