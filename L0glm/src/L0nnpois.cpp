@@ -275,7 +275,8 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                    const VectorXd& lower,
                                    const VectorXd& upper,
                                    const VectorXd& scaling,
-                                   const VectorXd& start) {
+                                   const VectorXd& start,
+                                   bool natural_ordering) {
   const int n = X.rows();
   const int k = static_cast<int>(active.size());
   VectorXd sqrtw(n);
@@ -311,11 +312,20 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   }
   A.makeCompressed();
 
-  Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
-  solver.compute(A);
-  if (solver.info() != Eigen::Success) return start;
-  VectorXd sol = solver.solve(b);
-  if (solver.info() != Eigen::Success) return start;
+  VectorXd sol;
+  if (natural_ordering) {
+    Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::NaturalOrdering<int> > solver;
+    solver.compute(A);
+    if (solver.info() != Eigen::Success) return start;
+    sol = solver.solve(b);
+    if (solver.info() != Eigen::Success) return start;
+  } else {
+    Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
+    solver.compute(A);
+    if (solver.info() != Eigen::Success) return start;
+    sol = solver.solve(b);
+    if (solver.info() != Eigen::Success) return start;
+  }
 
   VectorXd lower_a = subset_vec(lower, active);
   VectorXd upper_a = subset_vec(upper, active);
@@ -341,7 +351,8 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            double warm_start,
                            double gamma,
                            double thresh,
-                           double tol);
+                           double tol,
+                           bool natural_ordering);
 
 template <>
 FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
@@ -361,7 +372,9 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            double warm_start,
                                            double gamma,
                                            double thresh,
-                                           double tol) {
+                                           double tol,
+                                           bool natural_ordering) {
+  (void) natural_ordering;
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   const double eps = std::numeric_limits<double>::epsilon();
@@ -479,7 +492,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     double warm_start,
     double gamma,
     double thresh,
-    double tol) {
+    double tol,
+    bool natural_ordering) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   const double eps = std::numeric_limits<double>::epsilon();
@@ -547,7 +561,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
     VectorXd beta_sub = solve_ridge_sparse(X, z, weights, vars, active, lambdas,
                                            prior_mean, lower, upper, scaling,
-                                           start_active);
+                                           start_active, natural_ordering);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
     }
@@ -598,7 +612,8 @@ Rcpp::List fit_all_impl(const Design& X,
                         double gamma,
                         double thresh,
                         double tol,
-                        int nthreads) {
+                        int nthreads,
+                        bool natural_ordering) {
   const int n = X.rows();
   const int p = X.cols();
   const int m = Ymap.cols();
@@ -630,7 +645,8 @@ Rcpp::List fit_all_impl(const Design& X,
     1;
 #endif
 
-  const int effective_group_maxit = grouped ? std::max(1, group_maxit) : 1;
+  const int effective_group_maxit = (grouped && m > 1) ?
+    std::max(1, group_maxit) : 1;
   std::vector<int> vars(p);
   std::iota(vars.begin(), vars.end(), 0);
 
@@ -652,7 +668,7 @@ Rcpp::List fit_all_impl(const Design& X,
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lower, upper, lambda_fit, normalize, maxit, warm_start,
-        gamma, thresh, tol);
+        gamma, thresh, tol, natural_ordering);
     }
 
     coef.setZero();
@@ -741,11 +757,12 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               double gamma,
                               double thresh,
                               double tol,
-                              int nthreads) {
+                              int nthreads,
+                              bool natural_ordering) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include, lower, upper,
     lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
-    thresh, tol, nthreads);
+    thresh, tol, nthreads, natural_ordering);
 }
 
 // [[Rcpp::export]]
@@ -768,9 +785,10 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                double gamma,
                                double thresh,
                                double tol,
-                               int nthreads) {
+                               int nthreads,
+                               bool natural_ordering) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include, lower, upper,
     lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
-    thresh, tol, nthreads);
+    thresh, tol, nthreads, natural_ordering);
 }

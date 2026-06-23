@@ -58,7 +58,8 @@ for (n in sizes) {
         start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
         warm.start = 1,
         family = family, lambda = lambda_preset, 
-        nonnegative = TRUE, relaxed = FALSE, 
+        nonnegative = TRUE, 
+        relaxed = FALSE, 
         solver = solver, method = method, 
         control.solver = do.call(control.solver.gen, 
                                  list(solver = solver, 

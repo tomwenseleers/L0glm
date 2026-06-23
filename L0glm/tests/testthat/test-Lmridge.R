@@ -700,6 +700,38 @@ test_that("lmridge.eigen exposes incomplete Cholesky CG and SVD methods", {
   }
 })
 
+test_that("lmridge.eigen accepts NaturalOrdering for sparse Cholesky methods", {
+  set.seed(320)
+  n <- 80
+  p <- 30
+  X <- Matrix::rsparsematrix(n, p, density = 0.12)
+  y <- rnorm(n)
+  lambdas <- seq(0.2, 1.5, length.out = p)
+
+  for (pivot in 0L:1L) {
+    natural <- lmridge.eigen(
+      Xw = X, yw = y,
+      lambdas = lambdas,
+      start = rep(1, p),
+      control.solver = list(
+        method = "chol", pivot = pivot, rowaug = TRUE,
+        NaturalOrdering = TRUE
+      )
+    )
+    amd <- lmridge.eigen(
+      Xw = X, yw = y,
+      lambdas = lambdas,
+      start = rep(1, p),
+      control.solver = list(
+        method = "chol", pivot = pivot, rowaug = TRUE,
+        NaturalOrdering = FALSE
+      )
+    )
+    expect_equal(natural, amd, tolerance = 1e-10,
+                 info = paste("pivot", pivot))
+  }
+})
+
 test_that("targeted ridge uses nonzero prior means even when they sum to zero", {
   set.seed(321)
   n <- 40

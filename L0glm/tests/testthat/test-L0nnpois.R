@@ -81,6 +81,89 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
   expect_identical(fit_nn_s$dispersion, fit_l0_s$dispersion)
 })
 
+test_that("L0nnpois ignores grouped outer passes for single-channel fits", {
+  set.seed(4)
+  n <- 50L
+  p <- 25L
+  X <- Matrix::rsparsematrix(n, p, density = 0.12)
+  X@x <- abs(X@x)
+  beta <- rep(0, p)
+  beta[c(5L, 13L, 20L)] <- c(1.5, 2.0, 1.2)
+  y <- rpois(n, pmax(as.numeric(X %*% beta), 0.1))
+
+  grouped <- L0nnpois(
+    X, y,
+    lambda = "gic",
+    grouped = TRUE,
+    group.maxit = 4L,
+    relaxed = FALSE,
+    parallelize = FALSE,
+    warm.start = 1,
+    maxit = 10L
+  )
+  ungrouped <- L0nnpois(
+    X, y,
+    lambda = "gic",
+    grouped = FALSE,
+    group.maxit = 4L,
+    relaxed = FALSE,
+    parallelize = FALSE,
+    warm.start = 1,
+    maxit = 10L
+  )
+
+  expect_identical(grouped$coefficients, ungrouped$coefficients)
+  expect_identical(grouped$lambdas, ungrouped$lambdas)
+  expect_identical(grouped$weights, ungrouped$weights)
+  expect_identical(grouped$z, ungrouped$z)
+  expect_identical(grouped$dispersion, ungrouped$dispersion)
+})
+
+test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
+  set.seed(5)
+  n <- 70L
+  p <- 40L
+  m <- 4L
+  X <- Matrix::rsparsematrix(n, p, density = 0.1)
+  X@x <- abs(X@x)
+  beta <- matrix(0, p, m)
+  beta[c(6L, 15L, 31L), ] <- c(2.1, 1.4, 1.8)
+  y <- matrix(rpois(n * m, pmax(as.vector(X %*% beta), 0.1)), n, m)
+
+  natural <- L0nnpois(
+    X, y,
+    lambda = "gic",
+    grouped = TRUE,
+    relaxed = FALSE,
+    parallelize = FALSE,
+    warm.start = 1,
+    maxit = 10L,
+    group.maxit = 2L,
+    control.solver = list(NaturalOrdering = TRUE)
+  )
+  amd <- L0nnpois(
+    X, y,
+    lambda = "gic",
+    grouped = TRUE,
+    relaxed = FALSE,
+    parallelize = FALSE,
+    warm.start = 1,
+    maxit = 10L,
+    group.maxit = 2L,
+    control.solver = list(NaturalOrdering = FALSE)
+  )
+
+  expect_equal(as.matrix(natural$coefficients),
+               as.matrix(amd$coefficients), tolerance = 1e-10)
+  expect_equal(as.matrix(natural$lambdas),
+               as.matrix(amd$lambdas), tolerance = 1e-8)
+  expect_equal(as.matrix(natural$weights),
+               as.matrix(amd$weights), tolerance = 1e-8)
+  expect_equal(as.matrix(natural$z),
+               as.matrix(amd$z), tolerance = 1e-12)
+  expect_identical(natural$dispersion, amd$dispersion)
+})
+
 test_that("L0nnpois OpenMP multichannel fits match serial fits", {
   ncores <- parallel::detectCores()
   skip_if(is.na(ncores) || ncores < 2L, "parallel test requires at least two cores")

@@ -252,7 +252,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                    weight = W, 
                    family = "gaussian",
                    tune.path = "sequence",
-                   support.size = c(1:round(p*0.5)),
+                   support.size = c(1:round(p*0.2)), # TODO max support size should be controllable with an optional argument
                    fit.intercept = FALSE,
                    beta.low = 0, # nonnegativity constraints
                    lambda=0,

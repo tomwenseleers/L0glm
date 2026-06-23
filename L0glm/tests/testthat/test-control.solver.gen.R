@@ -92,6 +92,8 @@ test_that("control.solver.gen handles all methods for eigen solver", {
     } else if (method == 7 || method == 8) {
       expect_equal(params$method, "chol")
       expect_equal(params$pivot, ifelse(method == 7, 0L, 1L))  # Explicit pivot check
+      expect_equal(params$ordering, 1L)
+      expect_true(params$NaturalOrdering)
       expect_true(is.null(params$rowaug) || params$rowaug)
     } else if (method == 10 || method == 11) {
       expect_equal(params$method, "SVD")
@@ -101,6 +103,33 @@ test_that("control.solver.gen handles all methods for eigen solver", {
       expect_true(is.null(params$rowaug) || params$rowaug)
     }
   }
+})
+
+test_that("control.solver.gen exposes NaturalOrdering for Eigen Cholesky", {
+  llt_default <- control.solver.gen(solver = "eigen", method = 7L)
+  ldlt_default <- control.solver.gen(solver = "eigen", method = 8L)
+  expect_true(llt_default$NaturalOrdering)
+  expect_equal(llt_default$ordering, 1L)
+  expect_true(ldlt_default$NaturalOrdering)
+  expect_equal(ldlt_default$ordering, 1L)
+
+  llt_amd <- control.solver.gen(
+    solver = "eigen", method = 7L, NaturalOrdering = FALSE
+  )
+  ldlt_amd <- control.solver.gen(
+    solver = "eigen", method = 8L, NaturalOrdering = FALSE
+  )
+  expect_false(llt_amd$NaturalOrdering)
+  expect_equal(llt_amd$ordering, 0L)
+  expect_false(ldlt_amd$NaturalOrdering)
+  expect_equal(ldlt_amd$ordering, 0L)
+
+  legacy_ordering_wins <- control.solver.gen(
+    solver = "eigen", method = 7L, ordering = 0L,
+    NaturalOrdering = TRUE
+  )
+  expect_false(legacy_ordering_wins$NaturalOrdering)
+  expect_equal(legacy_ordering_wins$ordering, 0L)
 })
 
 

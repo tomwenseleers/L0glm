@@ -32,6 +32,12 @@
 #' @param ordering
 #' Optional integer sparse ordering code for Eigen sparse QR and Cholesky
 #' methods. Defaults are method-specific.
+#' @param NaturalOrdering
+#' Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
+#' sparse Cholesky LLT/LDLT use Eigen's \code{NaturalOrdering}; if
+#' \code{FALSE}, they use \code{AMDOrdering}. The default is \code{TRUE}.
+#' The legacy integer \code{ordering} argument is still accepted and takes
+#' precedence when supplied.
 #' @param threshold
 #' Optional threshold for Eigen SVD rank decisions. If \code{NULL}, Eigen's
 #' default threshold is used.
@@ -63,6 +69,7 @@ control.solver.gen <- function(solver,
                                precond = NULL,
                                pivot = NULL,
                                ordering = NULL,
+                               NaturalOrdering = NULL,
                                threshold = NULL,
                                verbose = FALSE,
                                rowaug = NULL){
@@ -122,6 +129,8 @@ control.solver.gen <- function(solver,
       if (verbose) print("No method for Eigen solver was provided. Method is set to 7.")
       method <- 7L
     }
+    if(is.null(NaturalOrdering)) NaturalOrdering <- TRUE
+    NaturalOrdering <- isTRUE(NaturalOrdering)
     tol_was_null <- is.null(tol)
     if(is.null(tol)) tol <- 1E-7
     if(!is.null(maxit) && maxit < 0) {
@@ -168,14 +177,22 @@ control.solver.gen <- function(solver,
     } else if (method == 7){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(pivot)) pivot <- 0L
-      if(is.null(ordering)) ordering <- 0L
-      l <- list(method = "chol", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
+      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
+      NaturalOrdering <- as.integer(ordering[1L]) == 1L
+      l <- list(method = "chol", pivot = as.integer(pivot),
+                ordering = as.integer(ordering),
+                NaturalOrdering = NaturalOrdering,
+                rowaug = rowaug)
       
     } else if (method == 8){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(pivot)) pivot <- 1L
-      if(is.null(ordering)) ordering <- 0L
-      l <- list(method = "chol", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
+      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
+      NaturalOrdering <- as.integer(ordering[1L]) == 1L
+      l <- list(method = "chol", pivot = as.integer(pivot),
+                ordering = as.integer(ordering),
+                NaturalOrdering = NaturalOrdering,
+                rowaug = rowaug)
     } else if (method == 9){
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(maxit)) maxit <- 5000L

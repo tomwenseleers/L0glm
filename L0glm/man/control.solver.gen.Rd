@@ -16,6 +16,7 @@ control.solver.gen(
   precond = NULL,
   pivot = NULL,
   ordering = NULL,
+  NaturalOrdering = NULL,
   threshold = NULL,
   verbose = FALSE,
   rowaug = NULL
@@ -46,6 +47,12 @@ are method-specific.}
 
 \item{ordering}{Optional integer sparse ordering code for Eigen sparse QR and Cholesky
 methods. Defaults are method-specific.}
+
+\item{NaturalOrdering}{Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
+sparse Cholesky LLT/LDLT use Eigen's \code{NaturalOrdering}; if
+\code{FALSE}, they use \code{AMDOrdering}. The default is \code{TRUE}.
+The legacy integer \code{ordering} argument is still accepted and takes
+precedence when supplied.}
 
 \item{threshold}{Optional threshold for Eigen SVD rank decisions. If \code{NULL}, Eigen's
 default threshold is used.}

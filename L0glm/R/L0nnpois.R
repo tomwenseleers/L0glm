@@ -13,6 +13,13 @@
 #'   across outcome channels when \code{parallelize=TRUE}. For \code{L0nnpois},
 #'   the requested value is capped only at the detected number of logical cores,
 #'   not at the number of physical cores.
+#' @param control.solver Optional list of solver controls. \code{L0nnpois}
+#'   always uses Eigen Cholesky LLT internally, but for sparse matrices
+#'   \code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
+#'   \code{FALSE} to choose Eigen \code{NaturalOrdering} or
+#'   \code{AMDOrdering}. The default is \code{TRUE}. The legacy integer
+#'   \code{control.solver$ordering} is also accepted, with \code{1L} meaning
+#'   natural ordering and \code{0L} meaning AMD ordering.
 #'
 #' @return A list with the same main components as [L0glm.fit()]:
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
@@ -68,6 +75,14 @@ L0nnpois <- function(X,
   }
   if (!is.null(nthreads) && verbose) {
     message("L0nnpois uses ncores for OpenMP outcome-level threading; nthreads is ignored.")
+  }
+  natural_ordering <- TRUE
+  if (!is.null(control.solver)) {
+    if (!is.null(control.solver$NaturalOrdering)) {
+      natural_ordering <- isTRUE(control.solver$NaturalOrdering)
+    } else if (!is.null(control.solver$ordering)) {
+      natural_ordering <- as.integer(control.solver$ordering[1L]) == 1L
+    }
   }
 
   y <- as.matrix(y)
@@ -222,12 +237,14 @@ L0nnpois <- function(X,
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include, lower, upper,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), warm.start, gamma, thresh, tol, ncores)
+      as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
+      natural_ordering)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include, lower, upper,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), warm.start, gamma, thresh, tol, ncores)
+      as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
+      natural_ordering)
   }
 
   coefficients <- fit$coefficients

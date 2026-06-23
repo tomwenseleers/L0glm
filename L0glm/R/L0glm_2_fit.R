@@ -242,7 +242,9 @@
 #' @param control.solver List of parameters controlling the optimization
 #'   solvers. Auto-initialised with \code{control.solver.gen} when \code{NULL}.
 #'   See \code{?control.solver.gen} for more details on the available parameters
-#'   for the different solvers.
+#'   for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
+#'   \code{control.solver$NaturalOrdering} selects Eigen natural ordering
+#'   (\code{TRUE}, default) or AMD ordering (\code{FALSE}).
 #' @param verbose Logical indicating if the algorithm progression should be
 #'   printed to the console.
 #'

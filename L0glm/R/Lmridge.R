@@ -336,6 +336,11 @@ lmridge.eigen <- function(Xw, yw,
                           verbose = FALSE,
                           iteration = 1){ 
   rowaug <- control.solver$rowaug && any(lambdas != 0) # ----- 1. make 'row augmentation if, and only if, some lambdas > 0'
+  if (identical(control.solver$method, "chol") &&
+      is.null(control.solver$ordering) &&
+      !is.null(control.solver$NaturalOrdering)) {
+    control.solver$ordering <- if (isTRUE(control.solver$NaturalOrdering)) 1L else 0L
+  }
   
   lambda = mean(lambdas)
   pen.weights = lambdas / lambda 

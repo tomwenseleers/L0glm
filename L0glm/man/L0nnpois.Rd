@@ -235,10 +235,13 @@ Defaults to \code{1E-5}.}
 change in the \eqn{L_2} norm of the coefficients drops below this
 threshold.}
 
-\item{control.solver}{List of parameters controlling the optimization
-solvers. Auto-initialised with \code{control.solver.gen} when \code{NULL}.
-See \code{?control.solver.gen} for more details on the available parameters
-for the different solvers.}
+\item{control.solver}{Optional list of solver controls. \code{L0nnpois}
+always uses Eigen Cholesky LLT internally, but for sparse matrices
+\code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
+\code{FALSE} to choose Eigen \code{NaturalOrdering} or
+\code{AMDOrdering}. The default is \code{TRUE}. The legacy integer
+\code{control.solver$ordering} is also accepted, with \code{1L} meaning
+natural ordering and \code{0L} meaning AMD ordering.}
 
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}
