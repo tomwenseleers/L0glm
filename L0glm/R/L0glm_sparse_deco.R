@@ -109,6 +109,11 @@
 #'                whether to perform grouped L0 feature selection, i.e. best subset
 #'                of group selection (BSGS), in case there are multiple outcome
 #'                channels. Defaults to TRUE.
+#' @param control.solver Optional solver-control list passed to \code{L0glm.fit}.
+#'                By default this uses Eigen sparse Cholesky LLT with AMD
+#'                ordering. For strictly banded PSF designs, users can pass
+#'                \code{control.solver.gen("eigen", method=1L, NaturalOrdering=TRUE)}
+#'                to request Eigen natural ordering.
 #'
 #' @return A list with
 #' \describe{
@@ -181,7 +186,9 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                            baseline    = NULL,
                            nknots      = max(4L, floor(nrow(as.matrix(y))/500)),
                            IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
-                           grouped = TRUE) {  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
+                           grouped = TRUE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
+                           control.solver = do.call("control.solver.gen",
+                                                    list(solver = "eigen", method = 1L))) {
   dev_res <- family$dev.resids # deviance residuals function
   if (is.vector(y)) y <- as.matrix(y)
   n <- nrow(y)
@@ -204,7 +211,6 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
   
   ## ---------- final model matrix ----------
   X_full <- if (is.null(X_base)) X else cbind(X_base, X)
-  
   ## ---------- L0glm fit -------------------
   fit <- L0glm.fit(y = y,   # nonnegative L0-norm penalised GLM
                    X = X_full, 
@@ -223,8 +229,9 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    always.include = if (!is.null(X_base)) 1:ncol(X_base) else NULL,
                    normalize = !is.null(X_base), # required
                    maxit = 100,
-                   method = 7L, # sparse Cholesky
+                   method = 1L, # sparse Cholesky LLT
                    solver = "eigen",
+                   control.solver = control.solver,
                    # verbose = TRUE,
                    gamma = 2,
                    thresh = 1e-10,

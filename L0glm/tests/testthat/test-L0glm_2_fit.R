@@ -22,7 +22,7 @@ test_that("multichannel parallel fit matches serial fit", {
     relaxed = TRUE,
     parallelize = FALSE,
     solver = "eigen",
-    method = 7L,
+    method = 1L,
     maxit = 10L,
     group.maxit = 2L,
     warm.start = 0.5
@@ -38,7 +38,7 @@ test_that("multichannel parallel fit matches serial fit", {
     parallelize = TRUE,
     ncores = 2L,
     solver = "eigen",
-    method = 7L,
+    method = 1L,
     maxit = 10L,
     group.maxit = 2L,
     warm.start = 0.5
@@ -72,7 +72,7 @@ test_that("serial nthreads setting is restored after fit", {
     parallelize = FALSE,
     nthreads = 1L,
     solver = "eigen",
-    method = 7L,
+    method = 1L,
     warm.start = 1
   )
 

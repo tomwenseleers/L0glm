@@ -17,7 +17,7 @@
 #'   always uses Eigen Cholesky LLT internally, but for sparse matrices
 #'   \code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
 #'   \code{FALSE} to choose Eigen \code{NaturalOrdering} or
-#'   \code{AMDOrdering}. The default is \code{TRUE}. The legacy integer
+#'   \code{AMDOrdering}. The default is \code{FALSE}. The legacy integer
 #'   \code{control.solver$ordering} is also accepted, with \code{1L} meaning
 #'   natural ordering and \code{0L} meaning AMD ordering.
 #'
@@ -43,7 +43,7 @@ L0nnpois <- function(X,
                      nonnegative   = TRUE,
                      normalize     = FALSE,
                      solver        = "eigen",
-                     method        = 7L,
+                     method        = 1L,
                      lower         = NULL,
                      upper         = NULL,
                      parallelize   = TRUE,
@@ -65,7 +65,7 @@ L0nnpois <- function(X,
     stop("L0nnpois is only defined for family = poisson(identity).",
          call. = FALSE)
   }
-  if (!identical(solver, "eigen") || as.integer(method[1L]) != 7L) {
+  if (!identical(solver, "eigen") || as.integer(method[1L]) != 1L) {
     warning("L0nnpois always uses the Eigen Cholesky LLT solver; ",
             "solver and method were ignored.", call. = FALSE)
   }
@@ -76,7 +76,7 @@ L0nnpois <- function(X,
   if (!is.null(nthreads) && verbose) {
     message("L0nnpois uses ncores for OpenMP outcome-level threading; nthreads is ignored.")
   }
-  natural_ordering <- TRUE
+  natural_ordering <- FALSE
   if (!is.null(control.solver)) {
     if (!is.null(control.solver$NaturalOrdering)) {
       natural_ordering <- isTRUE(control.solver$NaturalOrdering)

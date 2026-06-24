@@ -22,7 +22,7 @@ lmridge(
   scaling = rep(1, ncol(X)),
   prior.mean = NULL,
   solver = "eigen",
-  method = ifelse(ncol(X) >= 20000, 3L, 7L),
+  method = 1L,
   start = rep(0, ncol(X)),
   iteration = 1,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -64,8 +64,7 @@ nonzero-centered ridge regression being used instead.}
 \code{"osqp"}, \code{"nnls"}. Default is \code{"eigen"}.}
 
 \item{method}{Integer code specifying the method to be used within the
-solver. Default is \code{3L} if \code{ncol(X) >= 20000}, otherwise
-\code{7L}.}
+solver. Default is \code{1L}, i.e. Cholesky LLT.}
 
 \item{start}{Numeric vector of starting values for the coefficients. Default
 is a vector of zeros.}
@@ -111,11 +110,10 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| y - X \beta
 }
 
   The \code{method} parameter specifies the specific method to be used when
-  the \code{"eigen"} solver is used (1=Householder QR, 2=Householder QR with
-  column pivoting, 3=LSCG with identity preconditioner, 4=LSCG with diagonal
-  preconditioner, 5=CG with identity preconditioner, 6=CG with diagonal
-  preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT, 9=CG with incomplete
-  Cholesky preconditioner, 10=BDCSVD, 11=Jacobi SVD).
+  the \code{"eigen"} solver is used (1=Cholesky LLT, 2=Cholesky LDLT,
+  3=CG with incomplete Cholesky preconditioner, 4=LSCG with diagonal
+  least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
+  systems or Jacobi SVD for sparse systems).
 }
 \examples{
 \dontrun{

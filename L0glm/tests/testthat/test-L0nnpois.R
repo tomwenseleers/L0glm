@@ -20,7 +20,7 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     relaxed = FALSE,
     parallelize = FALSE,
     solver = "eigen",
-    method = 7L,
+    method = 1L,
     warm.start = 1,
     maxit = 15L
   )
@@ -58,7 +58,7 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     relaxed = FALSE,
     parallelize = FALSE,
     solver = "eigen",
-    method = 7L,
+    method = 1L,
     warm.start = 1,
     maxit = 15L
   )
@@ -130,6 +130,16 @@ test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
   beta[c(6L, 15L, 31L), ] <- c(2.1, 1.4, 1.8)
   y <- matrix(rpois(n * m, pmax(as.vector(X %*% beta), 0.1)), n, m)
 
+  default <- L0nnpois(
+    X, y,
+    lambda = "gic",
+    grouped = TRUE,
+    relaxed = FALSE,
+    parallelize = FALSE,
+    warm.start = 1,
+    maxit = 10L,
+    group.maxit = 2L
+  )
   natural <- L0nnpois(
     X, y,
     lambda = "gic",
@@ -154,6 +164,8 @@ test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
   )
 
   expect_equal(as.matrix(natural$coefficients),
+               as.matrix(amd$coefficients), tolerance = 1e-10)
+  expect_equal(as.matrix(default$coefficients),
                as.matrix(amd$coefficients), tolerance = 1e-10)
   expect_equal(as.matrix(natural$lambdas),
                as.matrix(amd$lambdas), tolerance = 1e-8)

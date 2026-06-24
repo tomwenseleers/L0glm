@@ -110,7 +110,7 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                                                          prior.mean = prior.mean, 
                                                          grouped = FALSE, 
                                                          lambda = IC,
-                                                         method = 7L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
+                                                        method = 1L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
                                                          solver = "eigen")$coefficients
                                      kernel <- pmax(kernel-quantile(kernel, 0.5), 0) # remove any kernel baseline
                                      # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)

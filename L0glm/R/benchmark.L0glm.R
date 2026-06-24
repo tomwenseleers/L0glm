@@ -86,7 +86,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                           prior.mean = NULL,
                           nonnegative = TRUE,
                           solver = "eigen", 
-                          method = 7L)
+                          method = 1L)
     } else {
       args <- c(list(X=X, y=y, family=family), options)
       result <- do.call(L0glm.fit, args)

@@ -17,7 +17,7 @@ test_that("control.solver.gen handles missing method for eigen solver", {
   output <- capture.output({
     params <- control.solver.gen(solver = "eigen", verbose = TRUE)
   })
-  expect_match(output, "No method for Eigen solver was provided. Method is set to 7.")
+  expect_match(output, "No method for Eigen solver was provided. Method is set to 1.")
   expect_equal(params$method, "chol")
 })
 
@@ -71,33 +71,34 @@ test_that("control.solver.gen sets default method for eigen solver", {
 })
 
 test_that("control.solver.gen handles all methods for eigen solver", {
-  for (method in 1:11) {
+  for (method in 1:6) {
     params <- control.solver.gen(solver = "eigen", method = method)
     
     if (method == 1 || method == 2) {
-      expect_equal(params$method, "QR")
-      expect_false(params$rowaug)
-      expect_equal(params$pivot, ifelse(method == 1, 0L, 1L))  # Explicit pivot check
-      expect_equal(params$ordering, 1L)
-    } else if (method == 3 || method == 4) {
-      expect_equal(params$method, "LSCG")
-      expect_equal(params$tol, 1E-7)
+      expect_equal(params$method, "chol")
+      expect_equal(params$pivot, ifelse(method == 1, 0L, 1L))
+      expect_equal(params$ordering, 0L)
+      expect_false(params$NaturalOrdering)
       expect_true(is.null(params$rowaug) || params$rowaug)
-      expect_equal(params$precond, ifelse(method == 3, 0L, 1L))  # Preconditioner check
-    } else if (method %in% 5:6 || method == 9) {
+    } else if (method == 3) {
       expect_equal(params$method, "CG")
       expect_equal(params$tol, 1E-7)
       expect_true(is.null(params$rowaug) || params$rowaug)
-      expect_equal(params$precond, ifelse(method == 5, 0L, ifelse(method == 6, 1L, 2L)))  # Preconditioner check
-    } else if (method == 7 || method == 8) {
-      expect_equal(params$method, "chol")
-      expect_equal(params$pivot, ifelse(method == 7, 0L, 1L))  # Explicit pivot check
-      expect_equal(params$ordering, 1L)
-      expect_true(params$NaturalOrdering)
+      expect_equal(params$precond, 2L)
+    } else if (method == 4) {
+      expect_equal(params$method, "LSCG")
+      expect_equal(params$tol, 1E-7)
       expect_true(is.null(params$rowaug) || params$rowaug)
-    } else if (method == 10 || method == 11) {
+      expect_equal(params$precond, 1L)
+    } else if (method == 5) {
+      expect_equal(params$method, "QR")
+      expect_false(params$rowaug)
+      expect_equal(params$pivot, 1L)
+      expect_equal(params$ordering, 1L)
+    } else if (method == 6) {
       expect_equal(params$method, "SVD")
-      expect_equal(params$svd, ifelse(method == 10, 0L, 1L))
+      expect_equal(params$svd, 0L)
+      expect_equal(params$sparse.svd, 1L)
       expect_equal(params$precond, 0L)
       expect_equal(params$threshold, 0)
       expect_true(is.null(params$rowaug) || params$rowaug)
@@ -106,36 +107,54 @@ test_that("control.solver.gen handles all methods for eigen solver", {
 })
 
 test_that("control.solver.gen exposes NaturalOrdering for Eigen Cholesky", {
-  llt_default <- control.solver.gen(solver = "eigen", method = 7L)
-  ldlt_default <- control.solver.gen(solver = "eigen", method = 8L)
-  expect_true(llt_default$NaturalOrdering)
-  expect_equal(llt_default$ordering, 1L)
-  expect_true(ldlt_default$NaturalOrdering)
-  expect_equal(ldlt_default$ordering, 1L)
+  llt_default <- control.solver.gen(solver = "eigen", method = 1L)
+  ldlt_default <- control.solver.gen(solver = "eigen", method = 2L)
+  expect_false(llt_default$NaturalOrdering)
+  expect_equal(llt_default$ordering, 0L)
+  expect_false(ldlt_default$NaturalOrdering)
+  expect_equal(ldlt_default$ordering, 0L)
 
-  llt_amd <- control.solver.gen(
-    solver = "eigen", method = 7L, NaturalOrdering = FALSE
+  llt_natural <- control.solver.gen(
+    solver = "eigen", method = 1L, NaturalOrdering = TRUE
   )
-  ldlt_amd <- control.solver.gen(
-    solver = "eigen", method = 8L, NaturalOrdering = FALSE
+  ldlt_natural <- control.solver.gen(
+    solver = "eigen", method = 2L, NaturalOrdering = TRUE
   )
-  expect_false(llt_amd$NaturalOrdering)
-  expect_equal(llt_amd$ordering, 0L)
-  expect_false(ldlt_amd$NaturalOrdering)
-  expect_equal(ldlt_amd$ordering, 0L)
+  expect_true(llt_natural$NaturalOrdering)
+  expect_equal(llt_natural$ordering, 1L)
+  expect_true(ldlt_natural$NaturalOrdering)
+  expect_equal(ldlt_natural$ordering, 1L)
 
   legacy_ordering_wins <- control.solver.gen(
-    solver = "eigen", method = 7L, ordering = 0L,
-    NaturalOrdering = TRUE
+    solver = "eigen", method = 1L, ordering = 1L,
+    NaturalOrdering = FALSE
   )
-  expect_false(legacy_ordering_wins$NaturalOrdering)
-  expect_equal(legacy_ordering_wins$ordering, 0L)
+  expect_true(legacy_ordering_wins$NaturalOrdering)
+  expect_equal(legacy_ordering_wins$ordering, 1L)
 })
 
+test_that("control.solver.gen exposes only column-pivoted QR", {
+  qr_default <- control.solver.gen(solver = "eigen", method = 5L)
+  expect_equal(qr_default$pivot, 1L)
+  expect_equal(qr_default$ordering, 1L)
+
+  qr_forced <- control.solver.gen(solver = "eigen", method = 5L, pivot = 0L)
+  expect_equal(qr_forced$pivot, 1L)
+})
+
+test_that("control.solver.gen exposes only selected iterative preconditioners", {
+  cg_forced <- control.solver.gen(solver = "eigen", method = 3L, precond = 1L)
+  expect_equal(cg_forced$method, "CG")
+  expect_equal(cg_forced$precond, 2L)
+
+  lscg_forced <- control.solver.gen(solver = "eigen", method = 4L, precond = 0L)
+  expect_equal(lscg_forced$method, "LSCG")
+  expect_equal(lscg_forced$precond, 1L)
+})
 
 test_that("control.solver.gen handles invalid methods for eigen solver", {
-  expect_error(control.solver.gen(solver = "eigen", method = 12L), 
-               "Chosen method for Eigen solvers is unavailable. Please choose a method \\(1-11\\).")
+  expect_error(control.solver.gen(solver = "eigen", method = 7L), 
+               "Chosen method for Eigen solvers is unavailable. Please choose a method \\(1-6\\).")
 })
 
 

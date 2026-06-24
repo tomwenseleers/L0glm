@@ -140,39 +140,28 @@
 #'   suitable for very large problems. The \code{"eigen"} solvers achieve box or
 #'   nonnegativity constraints via clipping, which in combination with the ridge
 #'   penalties in practice work almost as well, and some of those solvers are
-#'   often among the fastest (e.g. \code{method} \code{3L}, \code{5L} or
-#'   \code{7L}, i.e. LSCG, CG or Cholesky LLT).
+#'   often among the fastest (especially \code{method} \code{1L}, Cholesky
+#'   LLT, for PSF-like sparse deconvolution problems).
 #' @param method When \code{solver="eigen"}, method used for the eigen solver
-#'   (see details). It should be an integer from 1 to 11 :
+#'   (see details). It should be an integer from 1 to 6 :
 #'
-#'   \code{1L} = QR solver, Householder QR solver if \code{X} is dense
+#'   \code{1L} = Cholesky LLT solver, with sparse AMD ordering by default
 #'
-#'   \code{2L} = QR solver, QR solver with column pivoting if \code{X} is dense
+#'   \code{2L} = Cholesky LDLT solver, with sparse AMD ordering by default
 #'
-#'   \code{3L} = Least Squares Conjugate Gradient (LSCG) with identity
-#'   preconditioner (i.e. not preconditioned)
+#'   \code{3L} = Preconditioned Conjugate Gradient (PCG) with incomplete
+#'   Cholesky preconditioner
 #'
 #'   \code{4L} = Least Squares Conjugate Gradient (LSCG) with least squares
 #'   diagonal preconditioner
 #'
-#'   \code{5L} = Conjugate Gradient (CG) with identity preconditioner (i.e. not
-#'   preconditioned)
+#'   \code{5L} = Column-pivoted QR solver. Sparse QR uses numerical column
+#'   pivoting and COLAMD fill-reducing ordering by default.
 #'
-#'   \code{6L} = Preconditioned Conjugate Gradient (PCG) with diagonal
-#'   preconditioner
+#'   \code{6L} = BDCSVD solver for dense systems, or Jacobi SVD for sparse
+#'   systems.
 #'
-#'   \code{7L} = Cholesky LLT solver
-#'
-#'   \code{8L} = Cholesky LDLT solver
-#'
-#'   \code{9L} = Conjugate Gradient (CG) with incomplete Cholesky
-#'   preconditioner
-#'
-#'   \code{10L} = BDCSVD solver
-#'
-#'   \code{11L} = Jacobi SVD solver
-#'
-#'   Defaults to \code{7L} (Cholesky LLT), which is often the fastest.
+#'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
 #'
 #' @param lower Optional lower limit on model coefficients to specify box
 #'   constraints. It should either be a scalar, a vector of length \code{p} or a
@@ -244,7 +233,9 @@
 #'   See \code{?control.solver.gen} for more details on the available parameters
 #'   for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 #'   \code{control.solver$NaturalOrdering} selects Eigen natural ordering
-#'   (\code{TRUE}, default) or AMD ordering (\code{FALSE}).
+#'   (\code{TRUE}) or AMD ordering (\code{FALSE}, default). Sparse QR
+#'   defaults to Eigen \code{COLAMDOrdering} (\code{ordering=1L});
+#'   \code{ordering=0L} uses AMD and \code{ordering=2L} uses NaturalOrdering.
 #' @param verbose Logical indicating if the algorithm progression should be
 #'   printed to the console.
 #'
@@ -376,7 +367,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       nonnegative   = FALSE,
                       normalize     = FALSE,
                       solver        = "eigen",
-                      method        = 7L,
+                      method        = 1L,
                       lower         = NULL,
                       upper         = NULL,
                       parallelize   = TRUE,

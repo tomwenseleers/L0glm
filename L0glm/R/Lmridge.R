@@ -31,8 +31,7 @@
 #'   \code{"eigen"}, \code{"bigGlm"} (or legacy alias \code{"glmnet"}),
 #'   \code{"osqp"}, \code{"nnls"}. Default is \code{"eigen"}.
 #' @param method Integer code specifying the method to be used within the
-#'   solver. Default is \code{3L} if \code{ncol(X) >= 20000}, otherwise
-#'   \code{7L}.
+#'   solver. Default is \code{1L}, i.e. Cholesky LLT.
 #' @param start Numeric vector of starting values for the coefficients. Default
 #'   is a vector of zeros.
 #' @param iteration Integer specifying the iteration number, used internally for
@@ -68,11 +67,10 @@
 #' }
 #'
 #'   The \code{method} parameter specifies the specific method to be used when
-#'   the \code{"eigen"} solver is used (1=Householder QR, 2=Householder QR with
-#'   column pivoting, 3=LSCG with identity preconditioner, 4=LSCG with diagonal
-#'   preconditioner, 5=CG with identity preconditioner, 6=CG with diagonal
-#'   preconditioner, 7=Cholesky LLT, 8=Cholesky LDLT, 9=CG with incomplete
-#'   Cholesky preconditioner, 10=BDCSVD, 11=Jacobi SVD).
+#'   the \code{"eigen"} solver is used (1=Cholesky LLT, 2=Cholesky LDLT,
+#'   3=CG with incomplete Cholesky preconditioner, 4=LSCG with diagonal
+#'   least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
+#'   systems or Jacobi SVD for sparse systems).
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}},
 #' \code{\link[nnls]{nnls}}, \code{\link{control.solver.gen}}
@@ -92,7 +90,7 @@ lmridge <- function(X, y,
                     scaling = rep(1, ncol(X)), # to allow scaling of columns of X, eg by L2 norm
                     prior.mean = NULL,
                     solver = "eigen",
-                    method = ifelse(ncol(X)>=20000, 3L, 7L),
+                    method = 1L,
                     start = rep(0, ncol(X)),
                     iteration = 1, # IRLS iteration - passing this as extra info
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -331,7 +329,7 @@ lmridge.eigen <- function(Xw, yw,
                           upper = rep(.Machine$double.xmax,ncol(Xw)), 
                           start = rep(0, ncol(Xw)), 
                           control.solver = do.call("control.solver.gen", 
-                                                   list(solver = "eigen", method = 7L)), 
+                                                   list(solver = "eigen", method = 1L)), 
                           prior.mean = rep(0, ncol(Xw)),
                           verbose = FALSE,
                           iteration = 1){ 
@@ -646,6 +644,12 @@ lmridge.eigen <- function(Xw, yw,
       }
     }
   } else if (control.solver$method == "SVD") {
+    dense_svd <- control.solver$svd
+    sparse_svd <- if (!is.null(control.solver$sparse.svd)) {
+      control.solver$sparse.svd
+    } else {
+      control.solver$svd
+    }
     if (control.solver$rowaug) {
       # solve the augmented least-squares problem directly
       if (sum(lambdas)!=0) {
@@ -659,13 +663,13 @@ lmridge.eigen <- function(Xw, yw,
       if (issparse(Xwaug)) {
         coefs <- solve_sparse_SVD(A = Xwaug,
                                   b = as.matrix(ywaug),
-                                  svd = control.solver$svd,
+                                  svd = sparse_svd,
                                   precond = control.solver$precond,
                                   threshold = control.solver$threshold)$coefficients
       } else {
         coefs <- solve_dense_SVD(A = as.matrix(Xwaug),
                                  b = as.matrix(ywaug),
-                                 svd = control.solver$svd,
+                                 svd = dense_svd,
                                  precond = control.solver$precond,
                                  threshold = control.solver$threshold)$coefficients
       }
@@ -677,13 +681,13 @@ lmridge.eigen <- function(Xw, yw,
         if (issparse(Xw)) {
           coefs <- as.vector(solve_sparse_SVD(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
                                                b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
-                                               svd = control.solver$svd,
+                                               svd = sparse_svd,
                                                precond = control.solver$precond,
                                                threshold = control.solver$threshold)$coefficients)
         } else {
           coefs <- as.vector(solve_dense_SVD(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
                                              b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
-                                             svd = control.solver$svd,
+                                             svd = dense_svd,
                                              precond = control.solver$precond,
                                              threshold = control.solver$threshold)$coefficients)
         }
@@ -694,13 +698,13 @@ lmridge.eigen <- function(Xw, yw,
         if (issparse(Xw)) {
           coefs <- as.vector(prior.mean + DXw %*% solve_sparse_SVD(A = as(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw))), "generalMatrix"),
                                                                    b = as.matrix(y_star),
-                                                                   svd = control.solver$svd,
+                                                                   svd = sparse_svd,
                                                                    precond = control.solver$precond,
                                                                    threshold = control.solver$threshold)$coefficients)
         } else {
           coefs <- as.vector(prior.mean + DXw %*% solve_dense_SVD(A = as.matrix(Xw %*% DXw + Diagonal(x=rep(lambda, nrow(Xw)))),
                                                                   b = as.matrix(y_star),
-                                                                  svd = control.solver$svd,
+                                                                  svd = dense_svd,
                                                                   precond = control.solver$precond,
                                                                   threshold = control.solver$threshold)$coefficients)
         }
@@ -719,7 +723,7 @@ lmridge.eigen <- function(Xw, yw,
               upper = upper,
               start = start,
               control.solver = do.call("control.solver.gen",
-                                       list(solver = "eigen", method = 7L)),
+                                       list(solver = "eigen", method = 1L)),
               prior.mean = prior.mean,
               verbose = verbose)
   }

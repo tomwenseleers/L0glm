@@ -589,7 +589,7 @@ lower <- rep(-10, p)
 upper <- rep(10, p)
 
 test_that("lmridge.eigen works with all solver methods for dense and sparse matrices", {
-  methods <- 1L:8L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -616,7 +616,7 @@ test_that("lmridge.eigen works with all solver methods for dense and sparse matr
 })
 
 test_that("lmridge.eigen handles zero lambdas correctly", {
-  methods <- 1L:8L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -641,7 +641,7 @@ test_that("lmridge.eigen handles zero lambdas correctly", {
 })
 
 test_that("lmridge.eigen works with various starting values", {
-  methods <- 1L:8L
+  methods <- 1L:6L
   start_values <- rep(1, p) # Custom start
   
   for (method in methods) {
@@ -671,8 +671,8 @@ test_that("lmridge.eigen works with various starting values", {
   }
 })
 
-test_that("lmridge.eigen exposes incomplete Cholesky CG and SVD methods", {
-  methods <- 9L:11L
+test_that("lmridge.eigen exposes incomplete Cholesky CG and automatic SVD methods", {
+  methods <- c(3L, 6L)
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -745,7 +745,7 @@ test_that("targeted ridge uses nonzero prior means even when they sum to zero", 
     crossprod(X, y) + lambdas * prior_mean
   ))
   
-  control_solver <- control.solver.gen(solver = "eigen", method = 7L, rowaug = TRUE)
+  control_solver <- control.solver.gen(solver = "eigen", method = 1L, rowaug = TRUE)
   coefs <- lmridge.eigen(
     Xw = X, yw = y,
     lambdas = lambdas,
@@ -769,7 +769,7 @@ test_that("non-row-augmented Eigen solvers use the symmetric targeted ridge syst
     crossprod(X, y) + lambdas * prior_mean
   ))
   
-  methods <- 1L:11L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(
       solver = "eigen", method = method, rowaug = FALSE,
@@ -813,8 +813,8 @@ control_solver_base <- list(tol = 1e-6, maxit = 1000, pivot = TRUE, ordering = T
 lower <- rep(-10, p_high)
 upper <- rep(10, p_high)
 
-test_that("lmridge.eigen works with all solver methods for high-dimensional dense and sparse matrices", {
-  methods <- 1L:8L
+test_that("lmridge.eigen works with non-SVD solver methods for high-dimensional dense and sparse matrices", {
+  methods <- 1L:5L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -861,7 +861,7 @@ test_that("lmridge.eigen handles tall matrices (n * 100 >= p) for all methods", 
   lambdas <- rep(0.1, p)
   start <- rep(0, p)
   
-  methods <- 1L:8L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -906,7 +906,7 @@ test_that("lmridge.eigen handles wide matrices (p > n) for all methods", {
   prior_mean <- rep(0, p)
   start <- NULL
   
-  methods <- 1L:8L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -958,7 +958,7 @@ test_that("lmridge.eigen handles row augmentation for all methods", {
   X_sparse <- Matrix::rsparsematrix(n, p, density = 0.1)
   yw <- rnorm(n)
   
-  methods <- 1L:8L
+  methods <- 1L:6L
   for (method in methods) {
     control_solver <- control.solver.gen(solver = "eigen", method = method)
     
@@ -1248,5 +1248,7 @@ test_that("maxlambda respects family-specific dispersion for Gamma family", {
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })
+
+
 
 

@@ -25,7 +25,11 @@ control.solver.gen(
 \arguments{
 \item{solver}{XXX}
 
-\item{method}{XXX}
+\item{method}{Solver-specific method. For \code{solver="eigen"}, the exposed methods are
+\code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
+incomplete Cholesky preconditioner, \code{4L}=LSCG with least-squares
+diagonal preconditioner, \code{5L}=column-pivoted QR, and
+\code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.}
 
 \item{maxit}{The maximum number of iterations.}
 
@@ -39,18 +43,22 @@ control.solver.gen(
 
 \item{block_size}{Optional block size used by solvers that support blocked updates.}
 
-\item{precond}{Optional integer preconditioner code for Eigen iterative and Jacobi SVD
-methods. Defaults are method-specific.}
+\item{precond}{Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
+Eigen iterative methods this is fixed by the chosen method: method
+\code{3L} uses incomplete Cholesky CG and method \code{4L} uses LSCG with
+least-squares diagonal preconditioning.}
 
 \item{pivot}{Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
 are method-specific.}
 
 \item{ordering}{Optional integer sparse ordering code for Eigen sparse QR and Cholesky
-methods. Defaults are method-specific.}
+methods. For sparse QR, \code{0L}=AMD, \code{1L}=COLAMD and
+\code{2L}=NaturalOrdering, with \code{1L} the default. For sparse Cholesky,
+\code{0L}=AMD and \code{1L}=NaturalOrdering, with \code{0L} the default.}
 
 \item{NaturalOrdering}{Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
 sparse Cholesky LLT/LDLT use Eigen's \code{NaturalOrdering}; if
-\code{FALSE}, they use \code{AMDOrdering}. The default is \code{TRUE}.
+\code{FALSE}, they use \code{AMDOrdering}. The default is \code{FALSE}.
 The legacy integer \code{ordering} argument is still accepted and takes
 precedence when supplied.}
 

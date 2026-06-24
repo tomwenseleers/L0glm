@@ -66,8 +66,8 @@
 #'               well for both low- and high-dimensional settings.
 #' @param max_iter Maximum number of outer iterations.
 #' @param tol    Relative change in penalised objective to determine convergence.
-#' @param method  Eigen solver to use, as in `L0glm.fit()` (e.g. 4L=least squares
-#'               conjugate gradient, 7L=Cholesky LLT).
+#' @param method  Eigen solver to use, as in `L0glm.fit()` (e.g. 1L=Cholesky
+#'               LLT, 4L=least squares conjugate gradient).
 #' @param parallelize  Use parallelisation? May only be faster for larger problems.
 #' @param ncores  Number of cores to use when \code{"parallelize=TRUE"}.
 #' @param family A \link[stats]{family} object defining the exponential
@@ -96,7 +96,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
                            grouped_Hupdate = FALSE, # use plain L0 or grouped L0 penalty in H update?
                            IC = "gic", # information criterion to be optimised
                            max_iter = 5, tol = 1e-4, 
-                           method = 4L, parallelize = FALSE,
+                           method = 1L, parallelize = FALSE,
                            ncores = if (parallelize) { round(parallel::detectCores()/2) } else { 1 },
                            family = gaussian(link="identity")) {
   

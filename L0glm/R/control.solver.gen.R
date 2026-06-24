@@ -10,7 +10,11 @@
 #' @param solver
 #' XXX
 #' @param method
-#' XXX
+#' Solver-specific method. For \code{solver="eigen"}, the exposed methods are
+#' \code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
+#' incomplete Cholesky preconditioner, \code{4L}=LSCG with least-squares
+#' diagonal preconditioner, \code{5L}=column-pivoted QR, and
+#' \code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.
 #' @param maxit
 #' The maximum number of iterations.
 #' @param standardize
@@ -24,18 +28,22 @@
 #' @param block_size
 #' Optional block size used by solvers that support blocked updates.
 #' @param precond
-#' Optional integer preconditioner code for Eigen iterative and Jacobi SVD
-#' methods. Defaults are method-specific.
+#' Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
+#' Eigen iterative methods this is fixed by the chosen method: method
+#' \code{3L} uses incomplete Cholesky CG and method \code{4L} uses LSCG with
+#' least-squares diagonal preconditioning.
 #' @param pivot
 #' Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
 #' are method-specific.
 #' @param ordering
 #' Optional integer sparse ordering code for Eigen sparse QR and Cholesky
-#' methods. Defaults are method-specific.
+#' methods. For sparse QR, \code{0L}=AMD, \code{1L}=COLAMD and
+#' \code{2L}=NaturalOrdering, with \code{1L} the default. For sparse Cholesky,
+#' \code{0L}=AMD and \code{1L}=NaturalOrdering, with \code{0L} the default.
 #' @param NaturalOrdering
 #' Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
 #' sparse Cholesky LLT/LDLT use Eigen's \code{NaturalOrdering}; if
-#' \code{FALSE}, they use \code{AMDOrdering}. The default is \code{TRUE}.
+#' \code{FALSE}, they use \code{AMDOrdering}. The default is \code{FALSE}.
 #' The legacy integer \code{ordering} argument is still accepted and takes
 #' precedence when supplied.
 #' @param threshold
@@ -126,10 +134,10 @@ control.solver.gen <- function(solver,
     
   } else if (solver == "eigen"){
     if (is.null(method)){
-      if (verbose) print("No method for Eigen solver was provided. Method is set to 7.")
-      method <- 7L
+      if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")
+      method <- 1L
     }
-    if(is.null(NaturalOrdering)) NaturalOrdering <- TRUE
+    if(is.null(NaturalOrdering)) NaturalOrdering <- FALSE
     NaturalOrdering <- isTRUE(NaturalOrdering)
     tol_was_null <- is.null(tol)
     if(is.null(tol)) tol <- 1E-7
@@ -139,77 +147,55 @@ control.solver.gen <- function(solver,
     }
     
     if (method == 1){
-      if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(pivot)) pivot <- 0L
-      if(is.null(ordering)) ordering <- 1L
-      l <- list(method = "QR", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
+      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
+      NaturalOrdering <- as.integer(ordering[1L]) == 1L
+      l <- list(method = "chol", pivot = as.integer(pivot),
+                ordering = as.integer(ordering),
+                NaturalOrdering = NaturalOrdering,
+                rowaug = rowaug)
       
     } else if (method == 2){
-      if(is.null(rowaug)) rowaug <- FALSE # TODO: check why QR seems to be only solver that now works well with rowaug <- FALSE
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(pivot)) pivot <- 1L
-      if(is.null(ordering)) ordering <- 1L
-      l <- list(method = "QR", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
-      
+      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
+      NaturalOrdering <- as.integer(ordering[1L]) == 1L
+      l <- list(method = "chol", pivot = as.integer(pivot),
+                ordering = as.integer(ordering),
+                NaturalOrdering = NaturalOrdering,
+                rowaug = rowaug)
     } else if (method == 3){
-      if(is.null(rowaug)) rowaug <- TRUE
+      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(maxit)) maxit <- 5000L
-      if(is.null(precond)) precond <- 0L
-      l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
-      
+      if(!is.null(precond) && as.integer(precond[1L]) != 2L && verbose) {
+        print("Eigen CG method 3 uses incomplete Cholesky preconditioning; precond was set to 2.")
+      }
+      precond <- 2L
+      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- TRUE
       if(is.null(maxit)) maxit <- 5000L
-      if(is.null(precond)) precond <- 1L
+      if(!is.null(precond) && as.integer(precond[1L]) != 1L && verbose) {
+        print("Eigen LSCG method 4 uses least-squares diagonal preconditioning; precond was set to 1.")
+      }
+      precond <- 1L
       l <- list(method = "LSCG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
-      
     } else if (method == 5){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      if(is.null(maxit)) maxit <- 5000L
-      if(is.null(precond)) precond <- 0L
-      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
-      
+      if(is.null(rowaug)) rowaug <- FALSE
+      if(!is.null(pivot) && as.integer(pivot[1L]) != 1L && verbose) {
+        print("Eigen QR method 5 uses column-pivoted QR; pivot was set to 1.")
+      }
+      pivot <- 1L
+      if(is.null(ordering)) ordering <- 1L
+      l <- list(method = "QR", pivot = as.integer(pivot), ordering = as.integer(ordering), rowaug = rowaug)
     } else if (method == 6){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      if(is.null(maxit)) maxit <- 5000L
-      if(is.null(precond)) precond <- 1L
-      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
-      
-    } else if (method == 7){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      if(is.null(pivot)) pivot <- 0L
-      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
-      NaturalOrdering <- as.integer(ordering[1L]) == 1L
-      l <- list(method = "chol", pivot = as.integer(pivot),
-                ordering = as.integer(ordering),
-                NaturalOrdering = NaturalOrdering,
-                rowaug = rowaug)
-      
-    } else if (method == 8){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      if(is.null(pivot)) pivot <- 1L
-      if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
-      NaturalOrdering <- as.integer(ordering[1L]) == 1L
-      l <- list(method = "chol", pivot = as.integer(pivot),
-                ordering = as.integer(ordering),
-                NaturalOrdering = NaturalOrdering,
-                rowaug = rowaug)
-    } else if (method == 9){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
-      if(is.null(maxit)) maxit <- 5000L
-      if(is.null(precond)) precond <- 2L
-      l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
-    } else if (method == 10){
       if(is.null(rowaug)) rowaug <- TRUE
       if(is.null(precond)) precond <- 0L
       if(is.null(threshold)) threshold <- if (tol_was_null) 0 else tol
-      l <- list(method = "SVD", svd = 0L, precond = as.integer(precond), threshold = threshold, rowaug = rowaug)
-    } else if (method == 11){
-      if(is.null(rowaug)) rowaug <- TRUE
-      if(is.null(precond)) precond <- 0L
-      if(is.null(threshold)) threshold <- if (tol_was_null) 0 else tol
-      l <- list(method = "SVD", svd = 1L, precond = as.integer(precond), threshold = threshold, rowaug = rowaug)
+      l <- list(method = "SVD", svd = 0L, sparse.svd = 1L, precond = as.integer(precond), threshold = threshold, rowaug = rowaug)
     } else {
-      stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-11).")
+      stop("Chosen method for Eigen solvers is unavailable. Please choose a method (1-6).")
     }
   } else {
     stop("Chosen solver is not available.")

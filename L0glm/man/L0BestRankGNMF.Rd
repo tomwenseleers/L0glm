@@ -12,7 +12,7 @@ L0BestRankGNMF(
   IC = "gic",
   max_iter = 5,
   tol = 1e-04,
-  method = 4L,
+  method = 1L,
   parallelize = FALSE,
   ncores = if (parallelize) {
      round(parallel::detectCores()/2)
@@ -48,8 +48,8 @@ well for both low- and high-dimensional settings.}
 
 \item{tol}{Relative change in penalised objective to determine convergence.}
 
-\item{method}{Eigen solver to use, as in `L0glm.fit()` (e.g. 4L=least squares
-conjugate gradient, 7L=Cholesky LLT).}
+\item{method}{Eigen solver to use, as in `L0glm.fit()` (e.g. 1L=Cholesky
+LLT, 4L=least squares conjugate gradient).}
 
 \item{parallelize}{Use parallelisation? May only be faster for larger problems.}
 
@@ -128,8 +128,26 @@ plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
 }
 
 \examples{
-\donttest{
-## ---------- GC/MS deconvolution toy example with Poisson noise ------------
+## Small nonnegative Gaussian matrix factorization example
+if (requireNamespace("Matrix", quietly = TRUE)) {
+  library(Matrix)
+}
+set.seed(123)
+Wtrue <- matrix(rexp(30 * 3), 30, 3)
+Htrue <- matrix(rexp(3 * 20), 3, 20)
+D <- pmax(Wtrue \%*\% Htrue + matrix(rnorm(30 * 20, sd = 0.05), 30, 20), 0)
+Wstart <- Matrix(Wtrue + matrix(runif(30 * 3, 0, 0.1), 30, 3), sparse = TRUE)
+
+nmf <- L0BestRankGNMF(D,
+                      Wstart   = Wstart,
+                      IC       = "bic",
+                      max_iter = 1,
+                      family   = stats::gaussian("identity"))
+
+cat("Rank recovered by L0BestRankGNMF:", nmf$k, "\n")
+
+\dontrun{
+## ---------- Larger GC/MS deconvolution demo with Poisson noise ------------
 if (requireNamespace("Matrix", quietly = TRUE)) {
   library(Matrix)
 }
@@ -170,7 +188,7 @@ nmf <- L0BestRankGNMF(D,
 
 cat("True rank:", k0, "\n",
     "Rank recovered by Poisson L0BestRankGNMF:", nmf$k, "\n")
-matplot(nmf$W, type="l", xlab="Time", ylab="Signal", 
+matplot(nmf$W, type="l", xlab="Time", ylab="Signal",
 main="Elution profiles inferred by Poisson L0BestRankGNMF")
 
 ## ---------- Comparison with MCR-ALS (alternating non-negative least squares) -

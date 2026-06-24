@@ -15,7 +15,8 @@ L0glm_sparse_deco(
   baseline = NULL,
   nknots = max(4L, floor(nrow(as.matrix(y))/500)),
   IC = "gic",
-  grouped = TRUE
+  grouped = TRUE,
+  control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L))
 )
 }
 \arguments{
@@ -63,6 +64,12 @@ to \code{intercept}.}
 whether to perform grouped L0 feature selection, i.e. best subset
 of group selection (BSGS), in case there are multiple outcome
 channels. Defaults to TRUE.}
+
+\item{control.solver}{Optional solver-control list passed to \code{L0glm.fit}.
+By default this uses Eigen sparse Cholesky LLT with AMD
+ordering. For strictly banded PSF designs, users can pass
+\code{control.solver.gen("eigen", method=1L, NaturalOrdering=TRUE)}
+to request Eigen natural ordering.}
 }
 \value{
 A list with
