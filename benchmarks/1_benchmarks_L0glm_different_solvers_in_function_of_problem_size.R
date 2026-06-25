@@ -146,16 +146,13 @@ ggsave(file="../benchmarks/plots/timings/timings_sparse_poisson.pdf", width=7, h
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
 
 results_melt[results_melt$metric=="Time"&results_melt$Size==10000,]
-# Solver                                 Size metric  value method solver
-# 1 osqp                                  10000 Time    4.13  9      eigen 
-# 2 bigGlm                                10000 Time    1.56  9      eigen 
-# 3 eigen LSCG                            10000 Time    10    9      eigen 
-# 4 eigen PLSCG                           10000 Time    0.720 9      eigen 
-# 5 eigen CG                              10000 Time    4.07  9      eigen 
-# 6 eigen PCG diagonal precond            10000 Time    0.450 9      eigen 
-# 7 eigen Cholesky LLT                    10000 Time    0.200 9      eigen 
-# 8 eigen Cholesky LDLT                   10000 Time    0.210 9      eigen 
-# 9 eigen PCG incomplete Cholesky precond 10000 Time    0.280 9      eigen 
+# Solver                                 Size metric value method solver
+# 1 osqp                                  10000 Time   4.44  4      eigen 
+# 2 bigGlm                                10000 Time   1.71  4      eigen 
+# 3 eigen Cholesky LLT                    10000 Time   0.25  4      eigen 
+# 4 eigen Cholesky LDLT                   10000 Time   0.25  4      eigen 
+# 5 eigen PCG incomplete Cholesky precond 10000 Time   0.300 4      eigen 
+# 6 eigen PLSCG                           10000 Time   0.700 4      eigen 
 
 results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
 #   Solver                                 Size metric   value method solver
@@ -164,7 +161,7 @@ results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
 # 3 eigen Cholesky LLT                    10000 deviance 0.296 4      eigen 
 # 4 eigen Cholesky LDLT                   10000 deviance 0.296 4      eigen 
 # 5 eigen PCG incomplete Cholesky precond 10000 deviance 0.296 4      eigen 
-# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen 
+# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen  
 
 # -> eigen Cholesky LLT fastest & best solution
 
@@ -291,16 +288,13 @@ ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.pdf", width=7, 
 # save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
 
 results_melt2[results_melt2$metric=="Time"&results_melt2$Size==10000,]
-# Solver                                 Size metric  value method solver
-# 1 osqp                                  10000 Time   48.9   9      eigen 
-# 2 bigGlm                                10000 Time    6.07  9      eigen 
-# 3 eigen LSCG                            10000 Time    4.77  9      eigen 
-# 4 eigen PLSCG                           10000 Time    4.17  9      eigen 
-# 5 eigen CG                              10000 Time    2.34  9      eigen 
-# 6 eigen PCG diagonal precond            10000 Time    1.93  9      eigen 
-# 7 eigen Cholesky LLT                    10000 Time    0.120 9      eigen 
-# 8 eigen Cholesky LDLT                   10000 Time    0.160 9      eigen 
-# 9 eigen PCG incomplete Cholesky precond 10000 Time    0.25  9      eigen 
+#  Solver                                 Size metric  value method solver
+# 1 osqp                                  10000 Time   50.8   4      eigen 
+# 2 bigGlm                                10000 Time    7.81  4      eigen 
+# 3 eigen Cholesky LLT                    10000 Time    0.200 4      eigen 
+# 4 eigen Cholesky LDLT                   10000 Time    0.180 4      eigen 
+# 5 eigen PCG incomplete Cholesky precond 10000 Time    0.260 4      eigen 
+# 6 eigen PLSCG                           10000 Time    4.86  4      eigen  
 
 results_melt2[results_melt2$metric=="deviance"&results_melt2$Size==10000,]
 #  Solver                                 Size metric    value method solver
@@ -458,15 +452,12 @@ ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.pdf", width=7, he
 
 results_melt[results_melt$metric=="Time"&results_melt$Size==10000,]
 #   Solver                                Size metric value method solver
-# 1 osqp                                  10000 Time    9.37 9      eigen 
-# 2 bigGlm                                10000 Time    7.53 9      eigen 
-# 3 eigen LSCG                            10000 Time   16.8  9      eigen 
-# 4 eigen PLSCG                           10000 Time    6.69 9      eigen 
-# 5 eigen CG                              10000 Time   10.9  9      eigen 
-# 6 eigen PCG diagonal precond            10000 Time    6.18 9      eigen 
-# 7 eigen Cholesky LLT                    10000 Time    6.26 9      eigen 
-# 8 eigen Cholesky LDLT                   10000 Time    6.06 9      eigen 
-# 9 eigen PCG incomplete Cholesky precond 10000 Time    6.41 9      eigen 
+# 1 osqp                                  10000 Time   13.9  4      eigen 
+# 2 bigGlm                                10000 Time    6.64 4      eigen 
+# 3 eigen Cholesky LLT                    10000 Time    6.36 4      eigen 
+# 4 eigen Cholesky LDLT                   10000 Time    5.94 4      eigen 
+# 5 eigen PCG incomplete Cholesky precond 10000 Time    6.25 4      eigen 
+# 6 eigen PLSCG                           10000 Time    6.52 4      eigen 
 
 results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
 #  Solver                                 Size metric   value method solver
@@ -475,9 +466,9 @@ results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
 # 3 eigen Cholesky LLT                    10000 deviance 0.296 4      eigen 
 # 4 eigen Cholesky LDLT                   10000 deviance 0.296 4      eigen 
 # 5 eigen PCG incomplete Cholesky precond 10000 deviance 0.296 4      eigen 
-# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen 
+# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen  
 
-# -> Cholesky LDLT or LLT or PCG fastest & best solution
+# -> Cholesky LDLT fastest & best solution
 
 
 
@@ -603,20 +594,17 @@ ggsave(file="../benchmarks/plots/timings/timings_dense_gaussian.pdf", width=7, h
 
 results_melt2[results_melt2$metric=="Time"&results_melt2$Size==10000,]
 #  Solver                                 Size metric value method solver
-# 1 osqp                                  10000 Time   52.1  9      eigen 
-# 2 bigGlm                                10000 Time    9.20 9      eigen 
-# 3 eigen LSCG                            10000 Time    7.97 9      eigen 
-# 4 eigen PLSCG                           10000 Time    7    9      eigen 
-# 5 eigen CG                              10000 Time    5.34 9      eigen 
-# 6 eigen PCG diagonal precond            10000 Time    4.97 9      eigen 
-# 7 eigen Cholesky LLT                    10000 Time    3.25 9      eigen 
-# 8 eigen Cholesky LDLT                   10000 Time    3.28 9      eigen 
-# 9 eigen PCG incomplete Cholesky precond 10000 Time    2.65 9      eigen
+# 1 osqp                                  10000 Time   50.8  4      eigen 
+# 2 bigGlm                                10000 Time    9.01 4      eigen 
+# 3 eigen Cholesky LLT                    10000 Time    3.35 4      eigen 
+# 4 eigen Cholesky LDLT                   10000 Time    2.96 4      eigen 
+# 5 eigen PCG incomplete Cholesky precond 10000 Time    2.5  4      eigen 
+# 6 eigen PLSCG                           10000 Time    6.68 4      eigen 
 
 results_melt2[results_melt2$metric=="deviance"&results_melt2$Size==10000,]
 # Solver                                 Size metric    value method solver
 # 1 osqp                                  10000 deviance  0.238 4      eigen 
-# 2 bigGlm                                10000 deviance 50.3   4      eigen 
+# 2 bigGlm                                10000 deviance  50.3  4      eigen 
 # 3 eigen Cholesky LLT                    10000 deviance  1.72  4      eigen 
 # 4 eigen Cholesky LDLT                   10000 deviance  1.72  4      eigen 
 # 5 eigen PCG incomplete Cholesky precond 10000 deviance  1.72  4      eigen 

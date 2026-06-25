@@ -35,7 +35,7 @@ system.time(tune_full <- L0glm.tune(X=sim.pois$X,
                    family = poisson(identity), 
                    nonnegative = TRUE, 
                    solver = "eigen", 
-                   method = 1L)) # 3.69s
+                   method = 1L)) # 3.89s
 tune_full$lambda_best # 20.44997 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
 min(tune_full$metrics$gic) # 102766.8
@@ -54,7 +54,7 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois$X,
            family = poisson(identity), 
            nonnegative = TRUE, 
            solver = "eigen", 
-           method = 1L)) # 4.13s
+           method = 1L)) # 4.49s
 # here best lambda (dashed line) is very close to lambda preset expected 
 # to optimise GIC (dotted line) so tuning in practice unnecessary
 tune_zoomed$lambda_best # 11.49116 (best lambda tune)
@@ -77,7 +77,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                          # verbose = TRUE,
                                          solver = "eigen",
                                          method = 1L)) 
-# 0.20s with n=p=10000
+# 0.22s with n=p=10000
 
 #### 1.1.2 L0GLM FIT WITH CG SOLVER WITH Incomplete Cholesky LLT preconditioner ####
 system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
@@ -87,7 +87,7 @@ system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                        relaxed = FALSE,
                                        solver = "eigen",
                                        method = 3L)) 
-# 0.30s with n=p=10000
+# 0.28s with n=p=10000
 
 #### 1.1.3 L0GLM FIT WITH preconditioned LSCG SOLVER ####
 system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
@@ -97,7 +97,7 @@ system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                          relaxed = FALSE,
                                          solver = "eigen",
                                          method = 4L)) 
-# 0.77s with n=p=10000
+# 0.71s with n=p=10000
 
 #### 1.1.4 L0GLM FIT WITH OSQP SOLVER ####
 system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
@@ -106,7 +106,7 @@ system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     nonnegative = TRUE,
                                     relaxed = FALSE,
                                     solver = "osqp")) 
-# 4.31s with n=p=10000
+# 4.33s with n=p=10000
 
 #### 1.1.5 L0GLM FIT WITH glmnet::bigGlm SOLVER ####
 system.time(L0glm.glmnet.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
@@ -115,7 +115,7 @@ system.time(L0glm.glmnet.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
                                       solver = "glmnet")) 
-# 1.59s with n=p=10000
+# 1.67s with n=p=10000
 
 
 
@@ -196,10 +196,13 @@ system.time(tune_full <- L0glm.tune(X=sim.gaus$X,
                    family = gaussian(identity), 
                    nonnegative = TRUE, 
                    solver = "eigen", 
-                   method = 1L)) # 3.06s
+                   method = 1L)) # 2.95s
 tune_full$lambda_best # 20.44997 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
 min(tune_full$metrics$gic) # 82394.15
+
+# TODO: check why coefs are going to zero before calculated lambda_max
+
 
 ## tuning plot (zoomed in)
 # tuning plots - with lambda grid more zoomed in around lambda_preset preset
@@ -215,14 +218,13 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.gaus$X,
                    family = gaussian(identity), 
                    nonnegative = TRUE, 
                    solver = "eigen", 
-                   method = 1L)) # 3.36s
+                   method = 1L)) # 3.52s
 # here best lambda (dashed line) is very close to lambda preset expected 
 # to optimise GIC (dotted line) so tuning in fact not needed
 tune_zoomed$lambda_best # 60.73341 (best lambda tune)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
 min(tune_zoomed$metrics$gic) # 82200.08
 
-# TODO: check why coefs are going to zero before calculated lambda_max
 
 # Chosen lambda here closely matches expected lambda value that
 # was expected to optimise GIC, so tuning in fact not needed
@@ -373,7 +375,7 @@ system.time(system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y
            nonnegative = TRUE, 
            parallelize = FALSE, 
            grouped = FALSE,
-           solver = "eigen", method = 1L))) # 40.47s
+           solver = "eigen", method = 1L))) # 40.88s
 tune_full$lambda_best # 0.9753673 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
 L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -421,7 +423,7 @@ system.time(L0nnpois.chol <- L0nnpois(sim.pois.mc$X, sim.pois.mc$y,
                                     warm.start = 1,
                                     grouped = FALSE,
                                     solver = "eigen",
-                                    method = 1L)) # 0.11s
+                                    method = 1L)) # 0.14s
 
 x_vals <- as.vector(rowMeans(L0nnpois.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))          # true
@@ -883,7 +885,7 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic",
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
                                        solver = "eigen", method = 1L))
-# 2.55s
+# 3.53s
 
 system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                     family = poisson(identity), 
@@ -892,7 +894,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
-# 0.25s
+# 0.34s
 
 # Rcpp/OpenMP version
 system.time(L0glm.chol <- L0nnpois(sim.pois$X, sim.pois$y, 
@@ -902,7 +904,7 @@ system.time(L0glm.chol <- L0nnpois(sim.pois$X, sim.pois$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 1L))
-# 0.26s
+# 0.20s
 
 plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
      main="L0 glm identity link Poisson with lambda tuned to optimise GIC",
@@ -913,13 +915,13 @@ plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
 ### 3.1.2 LASSO USING GLMNET ####
 system.time(glmnet.sc.pois <- fit.GLM(sim = sim.pois, method = 2, 
                                       family = poisson(identity), plot = TRUE)) 
-# 1.79s
+# 2.66s
 
 
 ### 3.1.3 ADAPTIVE LASSO USING GLMNET ####
 system.time(glmnet.al.sc.pois <- fit.GLM(sim = sim.pois, method = 3, 
                                          family = poisson(identity), plot = T)) 
-# 1.80s
+# 2.48s
 # TODO check what ridge penalty is used to calculate adaptive penalties
 # maybe use the same one as used in 1st iteration of L0glm with lambda preset to optimise GIC?
 
@@ -929,7 +931,7 @@ system.time(glmnet.al.sc.pois <- fit.GLM(sim = sim.pois, method = 3,
 ### 3.1.4 L0LEARN ####
 system.time(L0learn.sc.pois <- fit.GLM(sim = sim.pois, method = 4, 
                                        family = poisson(identity), plot = T))  
-# 4.86s
+# 10.58s
 # TODO fix warning below
 # Warning message:
 # `aes_string()` was deprecated in ggplot2 3.0.0.
@@ -945,7 +947,7 @@ system.time(L0learn.sc.pois <- fit.GLM(sim = sim.pois, method = 4,
 ### 3.1.5 L0LEARN AFTER LASSO ####
 # better solution than regular L0Learn
 system.time(L0learn.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 5, family = poisson(identity), plot = T)) 
-# 2.84s
+# 3.72s
 
 
 ### 3.1.6 ABESS ####
@@ -1077,7 +1079,7 @@ system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic",
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
                                        solver = "eigen", method = 1L))
-# 2.00s
+# 1.76s
 
 system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                     family = gaussian(identity), 
@@ -1086,7 +1088,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                     relaxed = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
-# 0.16s for n=p=10000
+# 0.18s for n=p=10000
 
 plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
      main="L0 glm identity link gaussian with lambda tuned to optimise GIC",
@@ -1096,20 +1098,20 @@ plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
 ### 3.2.2 LASSO USING GLMNET ####
 system.time(glmnet.sc.gaus <- fit.GLM(sim = sim.gaus, method = 2, 
                                       family = gaussian(identity), plot = TRUE)) 
-# 2.21s 
+# 1.81s 
 
 
 ### 3.2.3 ADAPTIVE LASSO USING GLMNET ####
 system.time(glmnet.al.sc.gaus <- fit.GLM(sim = sim.gaus, method = 3, 
                                          family = gaussian(identity), plot = T)) 
-# 2.08s 
+# 1.70s 
 
 
 ### 3.2.4 L0LEARN ####
 
 system.time(L0learn.sc.gaus <- fit.GLM(sim = sim.gaus, method = 4, 
                                        family = gaussian(identity), plot = T))  
-# 6.42s
+# 7.56s
 
 
 ### 3.2.5 L0LEARN AFTER LASSO ####
@@ -1244,7 +1246,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
-# 99s with parallelize = FALSE, 37s with parallelize = TRUE and ncores = 4
+# 99s with parallelize = FALSE, 38s with parallelize = TRUE and ncores = 4
 
 # Rcpp/OpenMP version:
 system.time(L0glm.chol.pois <- L0nnpois(sim.pois.mc$X, sim.pois.mc$y, 
@@ -1254,7 +1256,7 @@ system.time(L0glm.chol.pois <- L0nnpois(sim.pois.mc$X, sim.pois.mc$y,
                                          relaxed = TRUE,
                                          parallelize = TRUE,
                                          ncores = 4)) 
-# 19s with parallelize = FALSE, 6s with parallelize = TRUE and ncores = 4, 4s with ncores = 8 to 12
+# 19s with parallelize = FALSE, 8s with parallelize = TRUE and ncores = 4, 5.5s with ncores = 8 to 12
 
 x_vals <- as.vector(rowMeans(L0glm.chol.pois$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
@@ -1300,7 +1302,7 @@ plotmat(L0glm.chol.pois$coefficients,
 system.time(glmnet.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2, 
                                     family = poisson(identity), plot = T, 
                                     IC = "gic"))
-# 622s
+# 643s
 
 x_vals <- as.vector(rowMeans(glmnet.mc.pois))                      # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
@@ -1375,7 +1377,7 @@ system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     ncores = 4,
                                     solver = "eigen",
                                     method = 1L)) 
-# 142s with parallelize = FALSE, 40s with parallelize = TRUE & ncores = 4
+# 142s with parallelize = FALSE, 35s with parallelize = TRUE & ncores = 4
        
 x_vals <- as.vector(rowMeans(L0glm.chol.gaus$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
