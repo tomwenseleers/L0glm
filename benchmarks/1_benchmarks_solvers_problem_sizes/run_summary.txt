@@ -1,4 +1,4 @@
 Output directory: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes
 Wide metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions.csv
 Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions_long.csv
-Run completed: 2026-06-30 11:56:08 CEST
+Run completed: 2026-06-30 20:59:49 CEST

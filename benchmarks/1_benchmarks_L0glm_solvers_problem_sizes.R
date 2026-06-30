@@ -5,7 +5,7 @@ library(ggplot2)
 library(tidyr)
 library(tidyselect)
 
-output_dir <- normalize_path("..\\benchmarks\\1_benchmarks_solvers_problem_sizes")
+output_dir <- "..\\benchmarks\\1_benchmarks_solvers_problem_sizes"
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
                              
 # Simulation sizes (with n = p)
@@ -39,12 +39,12 @@ solver_grid <- data.frame(
 )
 
 solver_colours <- c(
-  "osqp" = "#0072B2",
-  "bigGlm" = "#D55E00",
-  "eigen Cholesky LLT" = "#009E73",
-  "eigen Cholesky LDLT" = "#CC79A7",
-  "eigen PCG incomplete Cholesky precond" = "#E69F00",
-  "eigen PLSCG" = "#56B4E9"
+  "osqp" = "blue",
+  "bigGlm" = "red2",
+  "eigen Cholesky LLT" = "green2",
+  "eigen Cholesky LDLT" = "orange",
+  "eigen PCG incomplete Cholesky precond" = "purple",
+  "eigen PLSCG" = "cyan2"
 )
 
 family_grid <- list(
@@ -176,14 +176,14 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
 
 save_plot <- function(plot, filename_stem, width = 7, height = 5, dpi = 600) {
   ggplot2::ggsave(
-    filename = path_join(output_dir, paste0(filename_stem, ".png")),
+    filename = normalizePath(file.path(output_dir, paste0(filename_stem, ".png"))),
     plot = plot,
     width = width,
     height = height,
     dpi = dpi
   )
   ggplot2::ggsave(
-    filename = path_join(output_dir, paste0(filename_stem, ".pdf")),
+    filename = normalizePath(file.path(output_dir, paste0(filename_stem, ".pdf"))),
     plot = plot,
     width = width,
     height = height,
@@ -287,9 +287,9 @@ results <- results[order(
   results$Solver
 ), ]
 
-metrics_file <- path_join(output_dir, "metrics_all_conditions.csv")
+metrics_file <- normalizePath(file.path(output_dir, "metrics_all_conditions.csv"))
 write.csv(results, metrics_file, row.names = FALSE)
-saveRDS(results, path_join(output_dir, "metrics_all_conditions.rds"))
+saveRDS(results, normalizePath(file.path(output_dir, "metrics_all_conditions.rds")))
 
 results_long <- tidyr::pivot_longer(
   results,
@@ -299,7 +299,7 @@ results_long <- tidyr::pivot_longer(
 )
 results_long$Solver <- factor(results_long$Solver, levels = solver_grid$Solver)
 
-metrics_long_file <- path_join(output_dir, "metrics_all_conditions_long.csv")
+metrics_long_file <- normalizePath(file.path(output_dir, "metrics_all_conditions_long.csv"))
 write.csv(results_long, metrics_long_file, row.names = FALSE)
 
 write.csv(
@@ -308,7 +308,7 @@ write.csv(
     Colour = unname(solver_colours),
     stringsAsFactors = FALSE
   ),
-  path_join(output_dir, "solver_colours.csv"),
+  normalizePath(file.path(output_dir, "solver_colours.csv")),
   row.names = FALSE
 )
 
@@ -423,12 +423,12 @@ combined_timing_plot <- ggplot2::ggplot(
 save_plot(combined_timing_plot, "timings_all_conditions", width = 8, height = 6)
 
 run_summary <- c(
-  paste("Output directory:", normalize_path(output_dir)),
-  paste("Wide metrics table:", normalize_path(metrics_file)),
-  paste("Long metrics table:", normalize_path(metrics_long_file)),
+  paste("Output directory:", normalizePath(output_dir)),
+  paste("Wide metrics table:", normalizePath(metrics_file)),
+  paste("Long metrics table:", normalizePath(metrics_long_file)),
   paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 )
-writeLines(run_summary, path_join(output_dir, "run_summary.txt"))
+writeLines(run_summary, normalizePath(file.path(output_dir, "run_summary.txt")))
 message(paste(run_summary, collapse = "\n"))
 
 
