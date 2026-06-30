@@ -1,617 +1,447 @@
-# BENCHMARKS & TIMINGS OF L0GLM FITS IN FUNCTION OF PROBLEM SIZE & SOLVER USED ####
+# BENCHMARKS & TIMINGS OF L0GLM FITS BY PROBLEM SIZE AND SOLVER ####
 
-# devtools::load_all(".")
 library(L0glm)
-library(dplyr)
 library(ggplot2)
+library(tidyr)
+library(tidyselect)
 
-# 1. SPARSE CASE ####
-
-## 1.1 SINGLE CHANNEL ####
-
-# Simulation sizes (with n=p)
+output_dir <- normalize_path("..\\benchmarks\\1_benchmarks_solvers_problem_sizes")
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+                             
+# Simulation sizes (with n = p)
 sizes <- c(100, 500, 1000, 10000)
 
-# Solvers and methods
-solvers <- c("osqp", 
-             "bigGlm", 
-             rep("eigen", 4)
-             )
-methods <- c(1, 1, 
-             1, 2, 3, 4
-             )
-solver_names <- c("osqp", 
-                  "bigGlm", 
-                  "eigen Cholesky LLT", "eigen Cholesky LDLT",
-                  "eigen PCG incomplete Cholesky precond", "eigen PLSCG") # QR ColPiv = 5 & SVD = 6 not benchmarked here, since too slow for the large dense/sparse runs
-crit = "gic"
-
-
-### 1.1.1 SINGLE CHANNEL - POISSON NOISE ####
-
-family = poisson(identity)
-
-# Initialize an empty data frame to store results
-results <- data.frame()
-
-# Loop over sizes, solvers and methods
-for (n in sizes) {
-  # Simulate data
-  sim <- simul(method = 2, n = n, p = n, sparse = T, options=list(sd_noise=1))
-  X <- sim$X
-  y <- sim$y
-  coefs.true <- sim$beta_true
-  method <- 1
-  # Generate regularisation parameter
-  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = L0glm:::init_coefs(X=X, y=y, mu=y+0.1, family=family,
-                     lambda=lambda_preset) # component-wise initialisation
-  for (i in 1:length(methods)) {
-    solver = solvers[[i]]
-    method = methods[[i]]
-    solver_name = solver_names[[i]]
-    # Fit model and measure time
-    fit.time <- system.time(
-      L0glm <- L0glm.fit(
-        X=X, y=y,
-        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
-        warm.start = 1,
-        family = family, lambda = lambda_preset, 
-        nonnegative = TRUE, 
-        relaxed = FALSE, 
-        solver = solver, method = method, 
-        control.solver = do.call(control.solver.gen, 
-                                 list(solver = solver, 
-                                      method = method)))
-    )[3]
-    print(solver_name)
-    print(n)
-    print(fit.time)
-    # Calculate metrics
-    metrics <- L0glm:::get.metrics(
-      beta = L0glm$coefficients, X = X, y = y, 
-      weights = 1/(y+0.1), # approx 1/variance weights
-      family = gaussian(identity), # treating poisson as gaussian here with adapted weights - TODO fix poisson(identity) so that deviance always comes out at sensible values 
-      beta_true = as.vector(coefs.true)
-    )
-    
-    # Save results to the data frame
-    results <- rbind(
-      results, 
-      data.frame(
-        Solver = solver_name, 
-        Size = n, 
-        Time = fit.time,
-        Precision = metrics$precision, 
-        Recall = metrics$recall, 
-        Specificity = metrics$specificity, 
-        Accuracy = metrics$accuracy, 
-        # BIC = metrics$bic, 
-        F1 = metrics$F1_score,
-        R2 = metrics$R2_coefs,
-        Estimated_over_true_support_size = metrics$estimated_over_true_support_size,
-        deviance = metrics$deviance_true/n # mean per obs deviance relative to ground truth
-      )
-    )
-  }
-}
-
-warnings() # no warnings here
-
-# Reshape data for plotting
-results_melt <- results %>% 
-  tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, 
-                        F1, Estimated_over_true_support_size, R2, deviance), 
-                      names_to = "metric", values_to = "value") %>% 
-  mutate(method = factor(method), solver = factor(solver))
-# results_melt$Solver = factor(results_melt$Solver, 
-#                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
-#                                           # "nnls", "nnls_noreg", 
-#                                           "bigGlm" 
-#                                           )),
-#                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
-#                                           # "L0glm_nnls", "nnls_noreg", 
-#                                           "L0glm_bigGlm" 
-#                                           )))
-
-# Plot
-ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line(aes(linewidth=I(1))) +
-  facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Benchmarks different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Poisson noise, sparse case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  xlab("Problem size (n=p)") +
-  scale_x_continuous(trans="log10") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) 
-ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_poisson.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_poisson.pdf", width=7, height=5, dpi=600)
-
-ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line(aes(linewidth=I(1))) +
-  # facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Timings different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Poisson noise, sparse case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) +
-  ylab("Time (s)") + xlab("Problem size (n=p)") +
-  scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="../benchmarks/plots/timings/timings_sparse_poisson.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_sparse_poisson.pdf", width=7, height=5, dpi=600)
-
-# save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-results_melt[results_melt$metric=="Time"&results_melt$Size==10000,]
-# Solver                                 Size metric value method solver
-# 1 osqp                                  10000 Time   4.44  4      eigen 
-# 2 bigGlm                                10000 Time   1.71  4      eigen 
-# 3 eigen Cholesky LLT                    10000 Time   0.25  4      eigen 
-# 4 eigen Cholesky LDLT                   10000 Time   0.25  4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 Time   0.300 4      eigen 
-# 6 eigen PLSCG                           10000 Time   0.700 4      eigen 
-
-results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
-#   Solver                                 Size metric   value method solver
-# 1 osqp                                  10000 deviance 0.306 4      eigen 
-# 2 bigGlm                                10000 deviance 0.301 4      eigen 
-# 3 eigen Cholesky LLT                    10000 deviance 0.296 4      eigen 
-# 4 eigen Cholesky LDLT                   10000 deviance 0.296 4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 deviance 0.296 4      eigen 
-# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen  
-
-# -> eigen Cholesky LLT fastest & best solution
-
-
-
-### 1.1.2 SINGLE CHANNEL - GAUSSIAN NOISE ####
-
-family = gaussian(identity)
-
-# Initialize an empty data frame to store results
-results <- data.frame()
-
-# Loop over sizes, solvers and methods
-for (n in sizes) {
-  # Simulate data
-  sim <- simul(method = 1, n = n, p = n, sparse = T, options=list(sd_noise=1))
-  X <- sim$X
-  y <- sim$y
-  coefs.true <- sim$beta_true
-  method <- 1
-  # Generate regularisation parameter
-  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = L0glm:::init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
-  # start = coef(bigGlm::bigGlm(x=X, y=y, family="gaussian", lower=0, path=FALSE))[-1] # this worked less well: initialise with unregularised nonnegative bigGlm fit
-  for (i in 1:length(methods)) {
-    solver = solvers[[i]]
-    method = methods[[i]]
-    solver_name = solver_names[[i]]
-    
-    # Fit model and measure time
-    fit.time <- system.time(
-      L0glm <- L0glm.fit(
-        X=X, y=y, 
-        start=NULL, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
-        warm.start=1,
-        family = family, lambda = lambda_preset, 
-        nonnegative = TRUE, relaxed = FALSE, 
-        solver = solver, method = method, 
-        # dispersion = 1,
-        control.solver = do.call(control.solver.gen, 
-                                 list(solver = solver, 
-                                      method = method)))
-    )[3]
-    print(solver_name)
-    print(n)
-    print(fit.time)
-    # Calculate metrics
-    metrics <- L0glm:::get.metrics(
-      beta = L0glm$coefficients, X = X, y = y, 
-      family = family, beta_true = as.vector(coefs.true)
-    )
-    
-    # Save results to the data frame
-    results <- rbind(
-      results, 
-      data.frame(
-        Solver = solver_name, 
-        Size = n, 
-        Time = fit.time,
-        Precision = metrics$precision, 
-        Recall = metrics$recall, 
-        Specificity = metrics$specificity, 
-        Accuracy = metrics$accuracy, 
-        # BIC = metrics$bic, 
-        F1 = metrics$F1_score,
-        R2 = metrics$R2_coefs,
-        Estimated_over_true_support_size = metrics$estimated_over_true_support_size,
-        deviance = metrics$deviance_true/n # mean per obs deviance relative to ground truth
-      )
-    )
-  }
-}
-
-warnings()
-
-# Reshape data for plotting
-results_melt2 <- results %>% 
-  tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, F1,
-                        Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
-  mutate(method = factor(method), solver = factor(solver))
-# results_melt2$Solver = factor(results_melt2$Solver, 
-#                               levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
-#                                            #"nnls", "nnls_noreg",
-#                                            "bigGlm"
-#                                            )),
-#                               labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
-#                                            #"L0glm_nnls", "nnls_noreg", 
-#                                            "L0glm_bigGlm"
-#                                            )))
-
-# Plot
-ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line() +
-  facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Benchmarks different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Gaussian noise, sparse case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  xlab("Problem size (n=p)") +
-  scale_x_continuous(trans="log10") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) 
-ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics_sparse_gaussian.pdf", width=7, height=5, dpi=600)
-
-# here bigGlm solver is markedly worse than the rest
-# TODO check if this can be improved
-
-ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
-                                                         colour=interaction(Solver))) +
-  geom_line() +
-  # facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Timings different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Gaussian noise, sparse case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) +  
-  ylab("Time (s)") + xlab("Problem size (n=p)") +
-  scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_sparse_gaussian.pdf", width=7, height=5, dpi=600)
-
-# save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-results_melt2[results_melt2$metric=="Time"&results_melt2$Size==10000,]
-#  Solver                                 Size metric  value method solver
-# 1 osqp                                  10000 Time   50.8   4      eigen 
-# 2 bigGlm                                10000 Time    7.81  4      eigen 
-# 3 eigen Cholesky LLT                    10000 Time    0.200 4      eigen 
-# 4 eigen Cholesky LDLT                   10000 Time    0.180 4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 Time    0.260 4      eigen 
-# 6 eigen PLSCG                           10000 Time    4.86  4      eigen  
-
-results_melt2[results_melt2$metric=="deviance"&results_melt2$Size==10000,]
-#  Solver                                 Size metric    value method solver
-# 1 osqp                                  10000 deviance  0.238 4      eigen 
-# 2 bigGlm                                10000 deviance 50.3   4      eigen 
-# 3 eigen Cholesky LLT                    10000 deviance  1.72  4      eigen 
-# 4 eigen Cholesky LDLT                   10000 deviance  1.72  4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 deviance  1.72  4      eigen 
-# 6 eigen PLSCG                           10000 deviance  5.90  4      eigen 
-
-# -> eigen Cholesky LLT fastest & best solution
-
-
-
-# 2. DENSE CASE ####
-
-## 2.1 SINGLE CHANNEL ####
-
-# Simulation sizes (with n=p)
-sizes <- c(100, 500, 1000, 10000)
-
-# Solvers and methods
-solvers <- c("osqp", 
-             "bigGlm", 
-             rep("eigen", 4)
+criterion <- "gic"
+metric_columns <- c(
+  "Time",
+  "Precision",
+  "Recall",
+  "Specificity",
+  "Accuracy",
+  "F1",
+  "R2",
+  "Estimated_over_true_support_size",
+  "deviance"
 )
-methods <- c(1, 1, 
-             1, 2, 3, 4
-             )
-solver_names <- c("osqp", 
-                  "bigGlm", 
-                  "eigen Cholesky LLT", "eigen Cholesky LDLT",
-                  "eigen PCG incomplete Cholesky precond", "eigen PLSCG") # QR ColPiv = 5 & SVD = 6 not benchmarked here, since too slow for the large dense/sparse runs
-crit = "gic"
 
+solver_grid <- data.frame(
+  Solver = c(
+    "osqp",
+    "bigGlm",
+    "eigen Cholesky LLT",
+    "eigen Cholesky LDLT",
+    "eigen PCG incomplete Cholesky precond",
+    "eigen PLSCG"
+  ),
+  Solver_backend = c("osqp", "bigGlm", rep("eigen", 4)),
+  Solver_method = c(1L, 1L, 1L, 2L, 3L, 4L),
+  stringsAsFactors = FALSE
+)
 
-### 2.1.1 SINGLE CHANNEL - POISSON NOISE ####
+solver_colours <- c(
+  "osqp" = "#0072B2",
+  "bigGlm" = "#D55E00",
+  "eigen Cholesky LLT" = "#009E73",
+  "eigen Cholesky LDLT" = "#CC79A7",
+  "eigen PCG incomplete Cholesky precond" = "#E69F00",
+  "eigen PLSCG" = "#56B4E9"
+)
 
-family = poisson(identity)
+family_grid <- list(
+  poisson = list(
+    label = "Poisson",
+    family = poisson(identity),
+    simulation_method = 2L,
+    start_mu_offset = 0.1
+  ),
+  gaussian = list(
+    label = "Gaussian",
+    family = gaussian(identity),
+    simulation_method = 1L,
+    start_mu_offset = 0
+  )
+)
 
-# Initialize an empty data frame to store results
-results <- data.frame()
+matrix_grid <- list(
+  sparse = list(label = "sparse", sparse = TRUE),
+  dense = list(label = "dense", sparse = FALSE)
+)
 
-# Loop over sizes, solvers and methods
-for (n in sizes) {
-  # Simulate data
-  sim <- simul(method = 2, n = n, p = n, sparse = F, options=list(sd_noise=1))
-  X <- sim$X
-  y <- sim$y
-  coefs.true <- sim$beta_true
-  method <- 1
-  # Generate regularisation parameter
-  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = L0glm:::init_coefs(X=X, y=y, mu=y+0.1, family=family,
-                     lambda=lambda_preset) # component-wise initialisation
-  for (i in 1:length(methods)) {
-    solver = solvers[[i]]
-    method = methods[[i]]
-    solver_name = solver_names[[i]]
-    
-    # Fit model and measure time
-    fit.time <- system.time(
-      L0glm <- L0glm.fit(
-        X=X, y=y,
-        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
-        warm.start = 1,
-        family = family, lambda = lambda_preset, 
-        nonnegative = TRUE, relaxed = FALSE, 
-        solver = solver, method = method, 
-        control.solver = do.call(control.solver.gen, 
-                                 list(solver = solver, 
-                                      method = method)))
-    )[3]
-    print(solver_name)
-    print(n)
-    print(fit.time)
-    # Calculate metrics
-    metrics <- L0glm:::get.metrics(
-      beta = L0glm$coefficients, X = X, y = y, 
-      weights = 1/(y+0.1), # approx 1/variance weights
-      family = gaussian(identity), # treating poisson as gaussian here with adapted weights - TODO fix poisson(identity) so that deviance always comes out at sensible values 
-      beta_true = as.vector(coefs.true)
+empty_metrics <- function() {
+  as.list(stats::setNames(rep(NA_real_, length(metric_columns)), metric_columns))
+}
+
+fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
+                           solver_method, solver_name, start_values) {
+  fit <- NULL
+  fit_time <- NA_real_
+  fit_error <- NA_character_
+  fit_warnings <- character()
+  metric_values <- empty_metrics()
+
+  timed_fit <- withCallingHandlers(
+    tryCatch(
+      system.time({
+        fit <- L0glm::L0glm.fit(
+          X = X,
+          y = y,
+          start = start_values,
+          warm.start = 1,
+          family = family,
+          lambda = lambda,
+          nonnegative = TRUE,
+          relaxed = FALSE,
+          solver = solver_backend,
+          method = solver_method,
+          control.solver = do.call(
+            L0glm::control.solver.gen,
+            list(solver = solver_backend, method = solver_method)
+          )
+        )
+      }),
+      error = function(e) {
+        fit_error <<- conditionMessage(e)
+        NULL
+      }
+    ),
+    warning = function(w) {
+      fit_warnings <<- c(fit_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  if (!is.null(timed_fit)) {
+    fit_time <- unname(timed_fit[["elapsed"]])
+    metric_values$Time <- fit_time
+  }
+
+  if (!is.null(fit)) {
+    metric_error <- NA_character_
+    metrics <- tryCatch(
+      L0glm:::get.metrics(
+        beta = fit$coefficients,
+        X = X,
+        y = y,
+        family = family,
+        beta_true = as.vector(beta_true)
+      ),
+      error = function(e) {
+        metric_error <<- conditionMessage(e)
+        NULL
+      }
     )
-    
-    # Save results to the data frame
-    results <- rbind(
-      results, 
-      data.frame(
-        Solver = solver_name, 
-        Size = n, 
-        Time = fit.time,
-        Precision = metrics$precision, 
-        Recall = metrics$recall, 
-        Specificity = metrics$specificity, 
-        Accuracy = metrics$accuracy, 
-        # BIC = metrics$bic, 
-        F1 = metrics$F1_score,
-        R2 = metrics$R2_coefs,
-        Estimated_over_true_support_size = metrics$estimated_over_true_support_size,
-        deviance = metrics$deviance_true/n # mean per obs deviance relative to ground truth
+
+    if (!is.null(metrics)) {
+      metric_values$Precision <- metrics$precision
+      metric_values$Recall <- metrics$recall
+      metric_values$Specificity <- metrics$specificity
+      metric_values$Accuracy <- metrics$accuracy
+      metric_values$F1 <- metrics$F1_score
+      metric_values$R2 <- metrics$R2_coefs
+      metric_values$Estimated_over_true_support_size <-
+        metrics$estimated_over_true_support_size
+      metric_values$deviance <- metrics$deviance_true / nrow(X)
+    } else {
+      fit_error <- paste(
+        na.omit(c(fit_error, paste("Metric error:", metric_error))),
+        collapse = " | "
       )
+    }
+  }
+
+  status <- if (is.null(fit)) {
+    "fit_error"
+  } else if (!is.na(fit_error) && nzchar(fit_error)) {
+    "metric_error"
+  } else {
+    "ok"
+  }
+
+  c(
+    list(
+      Solver = solver_name,
+      Solver_backend = solver_backend,
+      Solver_method = solver_method,
+      Status = status,
+      Warnings = if (length(fit_warnings) > 0) {
+        paste(unique(fit_warnings), collapse = " | ")
+      } else {
+        NA_character_
+      },
+      Error = fit_error
+    ),
+    metric_values
+  )
+}
+
+save_plot <- function(plot, filename_stem, width = 7, height = 5, dpi = 600) {
+  ggplot2::ggsave(
+    filename = path_join(output_dir, paste0(filename_stem, ".png")),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = dpi
+  )
+  ggplot2::ggsave(
+    filename = path_join(output_dir, paste0(filename_stem, ".pdf")),
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = dpi
+  )
+}
+
+result_rows <- list()
+
+for (family_name in names(family_grid)) {
+  family_config <- family_grid[[family_name]]
+  family <- family_config$family
+
+  for (matrix_name in names(matrix_grid)) {
+    matrix_config <- matrix_grid[[matrix_name]]
+
+    for (n in sizes) {
+      message(
+        sprintf(
+          "Simulating %s noise, %s matrix, n = p = %s",
+          family_config$label,
+          matrix_config$label,
+          n
+        )
+      )
+
+      sim <- L0glm::simul(
+        method = family_config$simulation_method,
+        n = n,
+        p = n,
+        sparse = matrix_config$sparse,
+        options = list(sd_noise = 1)
+      )
+
+      X <- sim$X
+      y <- sim$y
+      beta_true <- sim$beta_true
+
+      lambda_preset <- L0glm:::preset.lambda(
+        IC = criterion,
+        p = ncol(X),
+        n = nrow(X)
+      )
+      start_values <- L0glm:::init_coefs(
+        X = X,
+        y = y,
+        mu = y + family_config$start_mu_offset,
+        family = family,
+        lambda = lambda_preset
+      )
+
+      for (solver_idx in seq_len(nrow(solver_grid))) {
+        solver_spec <- solver_grid[solver_idx, ]
+
+        message(
+          sprintf(
+            "  Fitting %s, %s matrix, n = %s, solver = %s",
+            family_name,
+            matrix_name,
+            n,
+            solver_spec$Solver
+          )
+        )
+
+        fit_result <- fit_one_solver(
+          X = X,
+          y = y,
+          beta_true = beta_true,
+          family = family,
+          lambda = lambda_preset,
+          solver_backend = solver_spec$Solver_backend,
+          solver_method = solver_spec$Solver_method,
+          solver_name = solver_spec$Solver,
+          start_values = start_values
+        )
+
+        result_rows[[length(result_rows) + 1L]] <- data.frame(
+          Noise_family = family_name,
+          Link = family$link,
+          Matrix_density = matrix_name,
+          Sparse = matrix_config$sparse,
+          Size = n,
+          Lambda = lambda_preset,
+          fit_result,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
+        )
+      }
+    }
+  }
+}
+
+results <- do.call(rbind, result_rows)
+results$Noise_family <- factor(results$Noise_family, levels = names(family_grid))
+results$Matrix_density <- factor(results$Matrix_density, levels = names(matrix_grid))
+results$Solver <- factor(results$Solver, levels = solver_grid$Solver)
+results <- results[order(
+  results$Noise_family,
+  results$Matrix_density,
+  results$Size,
+  results$Solver
+), ]
+
+metrics_file <- path_join(output_dir, "metrics_all_conditions.csv")
+write.csv(results, metrics_file, row.names = FALSE)
+saveRDS(results, path_join(output_dir, "metrics_all_conditions.rds"))
+
+results_long <- tidyr::pivot_longer(
+  results,
+  cols = tidyselect::all_of(metric_columns),
+  names_to = "metric",
+  values_to = "value"
+)
+results_long$Solver <- factor(results_long$Solver, levels = solver_grid$Solver)
+
+metrics_long_file <- path_join(output_dir, "metrics_all_conditions_long.csv")
+write.csv(results_long, metrics_long_file, row.names = FALSE)
+
+write.csv(
+  data.frame(
+    Solver = names(solver_colours),
+    Colour = unname(solver_colours),
+    stringsAsFactors = FALSE
+  ),
+  path_join(output_dir, "solver_colours.csv"),
+  row.names = FALSE
+)
+
+for (family_name in names(family_grid)) {
+  family_label <- family_grid[[family_name]]$label
+
+  for (matrix_name in names(matrix_grid)) {
+    matrix_label <- matrix_grid[[matrix_name]]$label
+    condition_long <- subset(
+      results_long,
+      Noise_family == family_name & Matrix_density == matrix_name
+    )
+
+    metrics_plot <- ggplot2::ggplot(
+      condition_long,
+      ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+    ) +
+      ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
+      ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+      ggplot2::facet_wrap(~metric, scales = "free_y") +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        title = paste0(
+          "Benchmarks different L0glm solvers for varying problem sizes\n",
+          "(deconvolution of blurred spike train with ",
+          family_label,
+          " noise, ",
+          matrix_label,
+          " covariate matrix)"
+        ),
+        colour = "solver",
+        x = "Problem size (n = p)",
+        y = NULL
+      ) +
+      ggplot2::theme(legend.position = "right") +
+      ggplot2::scale_x_continuous(trans = "log10") +
+      ggplot2::scale_color_manual(
+        values = solver_colours,
+        limits = names(solver_colours),
+        drop = FALSE
+      )
+
+    save_plot(
+      metrics_plot,
+      sprintf("timings_metrics_%s_%s", matrix_name, family_name)
+    )
+
+    time_data <- subset(condition_long, metric == "Time")
+    time_data$value[time_data$value <= 0] <- NA_real_
+
+    timing_plot <- ggplot2::ggplot(
+      time_data,
+      ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+    ) +
+      ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
+      ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        title = paste0(
+          "Timings different L0glm solvers for varying problem sizes\n",
+          "(deconvolution of blurred spike train with ",
+          family_label,
+          " noise, ",
+          matrix_label,
+          " covariate matrix)"
+        ),
+        colour = "solver",
+        x = "Problem size (n = p)",
+        y = "Time (s)"
+      ) +
+      ggplot2::theme(legend.position = "right") +
+      ggplot2::scale_x_continuous(trans = "log10") +
+      ggplot2::scale_y_continuous(trans = "log10") +
+      ggplot2::scale_color_manual(
+        values = solver_colours,
+        limits = names(solver_colours),
+        drop = FALSE
+      )
+
+    save_plot(
+      timing_plot,
+      sprintf("timings_%s_%s", matrix_name, family_name)
     )
   }
 }
 
-warnings()
-# no warnings
+combined_timing_data <- subset(results_long, metric == "Time")
+combined_timing_data$value[combined_timing_data$value <= 0] <- NA_real_
+combined_timing_plot <- ggplot2::ggplot(
+  combined_timing_data,
+  ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+) +
+  ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
+  ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+  ggplot2::facet_grid(Matrix_density ~ Noise_family) +
+  ggplot2::theme_minimal() +
+  ggplot2::labs(
+    title = "Timings different L0glm solvers for varying problem sizes",
+    colour = "solver",
+    x = "Problem size (n = p)",
+    y = "Time (s)"
+  ) +
+  ggplot2::theme(legend.position = "right") +
+  ggplot2::scale_x_continuous(trans = "log10") +
+  ggplot2::scale_y_continuous(trans = "log10") +
+  ggplot2::scale_color_manual(
+    values = solver_colours,
+    limits = names(solver_colours),
+    drop = FALSE
+  )
 
-# Reshape data for plotting
-results_melt <- results %>% 
-  tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, 
-                        F1, Estimated_over_true_support_size, R2, deviance), 
-                      names_to = "metric", values_to = "value") %>% 
-  mutate(method = factor(method), solver = factor(solver))
-# results_melt$Solver = factor(results_melt$Solver, 
-#                              levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
-#                                           # "nnls", "nnls_noreg", 
-#                                           "bigGlm"
-#                                           )),
-#                              labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
-#                                           # "L0glm_nnls", "nnls_noreg", 
-#                                           "L0glm_bigGlm"
-#                                           )))
+save_plot(combined_timing_plot, "timings_all_conditions", width = 8, height = 6)
 
-# Plot
-ggplot(results_melt, aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line(aes(linewidth=I(1))) +
-  facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Benchmarks different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Poisson noise, dense case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  xlab("Problem size (n=p)") +
-  scale_x_continuous(trans="log10") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) 
-ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_poisson.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_poisson.pdf", width=7, height=5, dpi=600)
-
-ggplot(results_melt[results_melt$metric=="Time",], aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line(aes(linewidth=I(1))) +
-  # facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Timings different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Poisson noise, dense case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) +  
-  ylab("Time (s)") + xlab("Problem size (n=p)") +
-  scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_dense_poisson.pdf", width=7, height=5, dpi=600)
-
-# save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-results_melt[results_melt$metric=="Time"&results_melt$Size==10000,]
-#   Solver                                Size metric value method solver
-# 1 osqp                                  10000 Time   13.9  4      eigen 
-# 2 bigGlm                                10000 Time    6.64 4      eigen 
-# 3 eigen Cholesky LLT                    10000 Time    6.36 4      eigen 
-# 4 eigen Cholesky LDLT                   10000 Time    5.94 4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 Time    6.25 4      eigen 
-# 6 eigen PLSCG                           10000 Time    6.52 4      eigen 
-
-results_melt[results_melt$metric=="deviance"&results_melt$Size==10000,]
-#  Solver                                 Size metric   value method solver
-# 1 osqp                                  10000 deviance 0.306 4      eigen 
-# 2 bigGlm                                10000 deviance 0.301 4      eigen 
-# 3 eigen Cholesky LLT                    10000 deviance 0.296 4      eigen 
-# 4 eigen Cholesky LDLT                   10000 deviance 0.296 4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 deviance 0.296 4      eigen 
-# 6 eigen PLSCG                           10000 deviance 0.296 4      eigen  
-
-# -> Cholesky LDLT fastest & best solution
+run_summary <- c(
+  paste("Output directory:", normalize_path(output_dir)),
+  paste("Wide metrics table:", normalize_path(metrics_file)),
+  paste("Long metrics table:", normalize_path(metrics_long_file)),
+  paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
+)
+writeLines(run_summary, path_join(output_dir, "run_summary.txt"))
+message(paste(run_summary, collapse = "\n"))
 
 
-
-### 2.1.2 SINGLE CHANNEL - GAUSSIAN NOISE ####
-
-family = gaussian(identity)
-
-# Initialize an empty data frame to store results
-results <- data.frame()
-
-# Loop over sizes, solvers and methods
-for (n in sizes) {
-  # Simulate data
-  sim <- simul(method = 1, n = n, p = n, sparse = F, options=list(sd_noise=1))
-  X <- sim$X
-  y <- sim$y
-  coefs.true <- sim$beta_true
-  method <- 1
-  # Generate regularisation parameter
-  lambda_preset <- L0glm:::preset.lambda(IC = crit, p=ncol(X), n=nrow(X))
-  start = L0glm:::init_coefs(X=X, y=y, mu=y, family=family, lambda=lambda_preset) # rescaled component-wise initialisation
-  for (i in 1:length(methods)) {
-    solver = solvers[[i]]
-    method = methods[[i]]
-    solver_name = solver_names[[i]]
-    
-    # Fit model and measure time
-    fit.time <- system.time(
-      L0glm <- L0glm.fit(
-        X=X, y=y, 
-        start=start, # NULL uses component-wise initialisation above, alt option: rep(1, ncol(X)) 
-        warm.start=1,
-        family = family, lambda = lambda_preset, 
-        nonnegative = TRUE, relaxed = FALSE, 
-        solver = solver, method = method, 
-        # dispersion = 1,
-        control.solver = do.call(control.solver.gen, 
-                                 list(solver = solver, 
-                                      method = method)))
-    )[3]
-    print(solver_name)
-    print(n)
-    print(fit.time)
-    # Calculate metrics
-    metrics <- L0glm:::get.metrics(
-      beta = L0glm$coefficients, X = X, y = y, 
-      family = family, beta_true = as.vector(coefs.true)
-    )
-    
-    # Save results to the data frame
-    results <- rbind(
-      results, 
-      data.frame(
-        Solver = solver_name, 
-        Size = n, 
-        Time = fit.time,
-        Precision = metrics$precision, 
-        Recall = metrics$recall, 
-        Specificity = metrics$specificity, 
-        Accuracy = metrics$accuracy, 
-        # BIC = metrics$bic, 
-        F1 = metrics$F1_score,
-        R2 = metrics$R2_coefs,
-        Estimated_over_true_support_size = metrics$estimated_over_true_support_size,
-        deviance = metrics$deviance_true/n # mean per obs deviance relative to ground truth
-      )
-    )
-  }
-}
-
-warnings()
-# no warnings
-
-# Reshape data for plotting
-results_melt2 <- results %>% 
-  tidyr::pivot_longer(c(Time, Precision, Recall, Accuracy, Specificity, F1,
-                        Estimated_over_true_support_size, R2, deviance), names_to = "metric", values_to = "value") %>% 
-  mutate(method = factor(method), solver = factor(solver))
-# results_melt2$Solver = factor(results_melt2$Solver, 
-#                               levels=rev(c("eigen Cholesky LLT", "eigen CG", "eigen LSCG", "eigen QR", "osqp", 
-#                                            #"nnls", "nnls_noreg", 
-#                                            "bigGlm"
-#                                            )),
-#                               labels=rev(c("L0glm_eigen Cholesky LLT", "L0glm_eigen CG", "L0glm_eigen LSCG", "L0glm_eigen QR", "L0glm_osqp", 
-#                                            #"L0glm_nnls", "nnls_noreg", 
-#                                            "L0glm_bigGlm"
-#                                            )))
-
-# Plot
-ggplot(results_melt2, aes(x = Size, y = value, colour=interaction(Solver))) +
-  geom_line() +
-  facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Benchmarks different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Gaussian noise, dense case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  xlab("Problem size (n=p)") +
-  scale_x_continuous(trans="log10") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) 
-ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_gaussian.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_metrics_dense_gaussian.pdf", width=7, height=5, dpi=600)
-
-# here bigGlm solver is markedly worse than the rest
-# TODO check if this can be improved
-
-ggplot(results_melt2[results_melt2$metric=="Time",], aes(x = Size, y = value, 
-                                                         colour=interaction(Solver))) +
-  geom_line() +
-  # facet_wrap(~metric, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Timings different L0glm solvers for varying problem sizes\n(deconvolution of blurred spike train with Gaussian noise, dense case)", color = "method / solver") +
-  theme(legend.position = "right") +
-  scale_color_manual(values=rev(c("green4", "magenta", "red", "orange", "cyan2", 
-                                  "blue", "yellow2", 
-                                  "green", "purple"))) +
-  ylab("Time (s)") + xlab("Problem size (n=p)") +
-  scale_y_continuous(trans="log10") + scale_x_continuous(trans="log10")
-ggsave(file="../benchmarks/plots/timings/timings_dense_gaussian.png", width=7, height=5, dpi=600)
-ggsave(file="../benchmarks/plots/timings/timings_dense_gaussian.pdf", width=7, height=5, dpi=600)
-
-# save.image("~/GitHub/L0glm/benchmarks/environment_benchmarks timings in function of problem size.RData")
-
-results_melt2[results_melt2$metric=="Time"&results_melt2$Size==10000,]
-#  Solver                                 Size metric value method solver
-# 1 osqp                                  10000 Time   50.8  4      eigen 
-# 2 bigGlm                                10000 Time    9.01 4      eigen 
-# 3 eigen Cholesky LLT                    10000 Time    3.35 4      eigen 
-# 4 eigen Cholesky LDLT                   10000 Time    2.96 4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 Time    2.5  4      eigen 
-# 6 eigen PLSCG                           10000 Time    6.68 4      eigen 
-
-results_melt2[results_melt2$metric=="deviance"&results_melt2$Size==10000,]
-# Solver                                 Size metric    value method solver
-# 1 osqp                                  10000 deviance  0.238 4      eigen 
-# 2 bigGlm                                10000 deviance  50.3  4      eigen 
-# 3 eigen Cholesky LLT                    10000 deviance  1.72  4      eigen 
-# 4 eigen Cholesky LDLT                   10000 deviance  1.72  4      eigen 
-# 5 eigen PCG incomplete Cholesky precond 10000 deviance  1.72  4      eigen 
-# 6 eigen PLSCG                           10000 deviance  5.86  4      eigen 
-
-# -> here osqp technically gives the best solution but very slow
-# -> PCG fastest & 2nd best solution
-# TODO check if eigen solver settings can be tuned to give a solution quality closer to osqp
-
-
+# TODOS ####
+#
+# - For Gaussian noise, check whether the bigGlm solution quality can be
+#   improved; in the original benchmark notes it was markedly worse than the
+#   eigen and osqp solutions.
+# - Check whether the PLSCG solution quality can be made to match the PCG
+#   solver with incomplete Cholesky preconditioning, possibly by tuning solver
+#   settings or adding an incomplete Cholesky preconditioner in the Rcpp solver.
+# - Check whether all eigen solvers can be tuned to match osqp solution quality
+#   more closely, especially in the Gaussian cases where osqp had lower
+#   deviance but was much slower.
+# - Check whether dense Gaussian eigen solver settings can be tuned to get
+#   closer to the osqp solution while retaining the eigen solvers' speed.

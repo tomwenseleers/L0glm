@@ -1,0 +1,7 @@
+"Solver","Colour"
+"osqp","#0072B2"
+"bigGlm","#D55E00"
+"eigen Cholesky LLT","#009E73"
+"eigen Cholesky LDLT","#CC79A7"
+"eigen PCG incomplete Cholesky precond","#E69F00"
+"eigen PLSCG","#56B4E9"

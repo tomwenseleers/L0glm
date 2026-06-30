@@ -1248,7 +1248,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                          method = 1L)) 
 # 99s with parallelize = FALSE, 38s with parallelize = TRUE and ncores = 4
 
-# Rcpp/OpenMP version:
+# Rcpp/OpenMP version: 5 to 18x faster!
 system.time(L0glm.chol.pois <- L0nnpois(sim.pois.mc$X, sim.pois.mc$y, 
                                          lambda = "gic",
                                          nonnegative = TRUE,
