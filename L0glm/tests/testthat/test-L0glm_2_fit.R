@@ -51,6 +51,32 @@ test_that("multichannel parallel fit matches serial fit", {
   expect_identical(parallel$dispersion, serial$dispersion)
 })
 
+test_that("grouped relaxed fit keeps rows with cancelling channel coefficients", {
+  X <- diag(3)
+  y <- cbind(c(1, 0, 0), c(-1, 0, 0))
+
+  fit <- L0glm.fit(
+    X, y,
+    family = gaussian(identity),
+    lambda = 0.01,
+    nonnegative = FALSE,
+    grouped = TRUE,
+    relaxed = TRUE,
+    parallelize = FALSE,
+    intercept = FALSE,
+    normalize = FALSE,
+    maxit = 10L,
+    group.maxit = 2L,
+    warm.start = 1
+  )
+
+  coefs <- as.matrix(fit$coefficients)
+  lambdas <- as.matrix(fit$lambdas)
+  expect_equal(coefs[1L, ], c(1, -1), tolerance = 1e-8)
+  expect_true(all(coefs[-1L, ] == 0))
+  expect_lt(max(abs(lambdas[1L, ])), 1e-25)
+})
+
 test_that("serial nthreads setting is restored after fit", {
   skip_if_not_installed("RhpcBLASctl")
 

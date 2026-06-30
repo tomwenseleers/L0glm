@@ -37,9 +37,10 @@
 #'   \end{cases}
 #' }
 #'
-#' The two penalty terms correspond exactly to the
-#' \eqn{L_{0,\infty}} \emph{group} norm (whole component on/off) and the
-#' plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
+#' The grouped penalty is a group-\eqn{L_0}/row-\eqn{L_0} penalty, equivalently
+#' an \eqn{L_{2,0}} penalty, counting whole latent components as on/off. The
+#' ungrouped penalty is the plain elementwise \eqn{L_0} penalty used by
+#' \code{L0glm.fit}.
 #'
 #' @section Implementation notes:
 #' * Dispersion \eqn{\phi} is re-estimated after every sweep for
@@ -80,7 +81,8 @@
 #'   \item{\code{W}}{Estimated \eqn{n\times \hat k} W matrix.}
 #'   \item{\code{H}}{Estimated \eqn{\hat k\times p} H matrix.}
 #'   \item{\code{dev}}{Final penalised objective value, i.e. scaled Bregman (deviance) 
-#'   loss (=-2*log-likelihood), with added L0 or grouped L0,infinity mixed norm penalties).}
+#'   loss (=-2*log-likelihood), with added elementwise \eqn{L_0} or grouped
+#'   row-\eqn{L_0}/\eqn{L_{2,0}} penalties).}
 #'   \item{\code{k}}{Discovered rank \eqn{\hat k}.}
 #'   \item{\code{iter}}{Number of outer iterations run.}
 #'   \item{\code{dev_trace}}{Vector of penalised objective values over iterations.}
@@ -133,7 +135,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
   } 
   
   # prune empty factors
-  keep = which(rowSums(H)!=0 & colSums(W)!=0)
+  keep = which(active_rows(H) & active_cols(W))
   H_old <- H <- H[keep, , drop=F] 
   W_old <- W <- W[, keep, drop=F] 
   k <- nrow(H)
@@ -183,7 +185,7 @@ L0BestRankGNMF <- function(D, k, Wstart = NULL,
       method = method)$coefficients) # k x p matrix
     
     ## --- prune dead factors --------------------------------------------
-    keep <- which(rowSums(H)!=0 & colSums(W)!=0) # only keep factors with nonzero row sums in H & nonzero column sums in W
+    keep <- which(active_rows(H) & active_cols(W)) # keep factors with nonzero rows in H and nonzero columns in W
     H <- H[keep, , drop=FALSE] 
     W <- W[, keep, drop=FALSE] 
     k <- nrow(H)
@@ -229,17 +231,25 @@ neg_loglik <- function(D, mu, fam, disp = 1) {
 penalised_nll <- function(W, H, D, fam, lambdaW, lambdaH, grouped_Hupdate) {
   mu  <- W %*% H
   disp <- estimate_phi(D, mu, fam,
-                       df = sum(colSums(W)!=0) +
+                       df = sum(active_cols(W)) +
                          if (grouped_Hupdate)
-                           sum(rowSums(H)!=0) else sum(H!=0))
+                           sum(active_rows(H)) else sum(H!=0))
   loss <- neg_loglik(D, mu, fam, disp)
   
-  penW <- lambdaW * sum(colSums(W) > 0)
+  penW <- lambdaW * sum(active_cols(W))
   penH <- if (grouped_Hupdate)
-    lambdaH * sum(rowSums(H) > 0)      # L0,infinity
+    lambdaH * sum(active_rows(H))      # row-L0 / L2,0
   else
-    lambdaH * sum(H != 0)              # L0 element-wise=L0,0
+    lambdaH * sum(H != 0)              # elementwise L0
   return(loss + penW + penH)
+}
+
+active_rows <- function(M) {
+  as.vector(Matrix::rowSums(abs(M) > 0) > 0)
+}
+
+active_cols <- function(M) {
+  as.vector(Matrix::colSums(abs(M) > 0) > 0)
 }
 
 # helper function to estimate dispersion coefficient phi

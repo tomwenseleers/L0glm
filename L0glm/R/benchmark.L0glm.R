@@ -547,7 +547,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
             useRaster=TRUE,
             xlab="Time", ylab="Channel", main="abess multitask weighted mgaussian\n(red = true peaks, cyan = estimated peaks)")
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
-      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
+      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(abs(coefs))!=0)], col="cyan")
       
       R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2) # Calculate R2
       title = paste("True vs estimated coefficients\nabess multitask mgaussian\nR2=", R2)
@@ -628,7 +628,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
       #      useRaster=TRUE,
       #      xlab="Time", ylab="Channel", main="nonnegative group Lasso glmnet\n(red = true peaks, cyan = estimated peaks)")
       # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
-      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
+      # abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(abs(coefs))!=0)], col="cyan")
       
       R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2) # Calculate R2
       title = paste("True vs estimated coefficients\nnonnegative group Lasso glmnet\nR2=", R2)

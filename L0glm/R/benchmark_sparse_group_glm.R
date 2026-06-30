@@ -82,7 +82,7 @@ benchmark_sparse_group_glm <- function(sim,
             ylab="Channel", 
             main="abess multitask weighted mgaussian\n(red = true peaks, cyan = estimated peaks)")
       abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(sim$beta_true)!=0)], col="red")
-      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMin(coefs)!=0)], col="cyan")
+      abline(v=(1:nrow(sim$X))[as.vector(qlcMatrix::rowMax(abs(coefs))!=0)], col="cyan")
       
       R2 = round(100*summary(lm(as.vector(rowMeans(sim$beta_true) ~ 0+as.vector(rowMeans(coefs)))))$r.squared,2)
       title = paste("True vs estimated coefficients\nabess multitask weighted mgaussian\nR2=", R2)

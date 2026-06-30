@@ -1,47 +1,55 @@
 #' @name L0glm.fit
 #' @aliases L0glm.fit
-#' @title Fit generalized linear model with \eqn{L_0} or grouped
-#'   \eqn{L_{0,\infty}} regularization subject to optional nonnegativity or box
-#'   constraints
+#' @title Fit generalized linear model with \eqn{L_0} or grouped row-\eqn{L_0}
+#'   regularization subject to optional nonnegativity or box constraints
 #'
-#' @description Fits a generalized linear model with \eqn{L_0} norm or grouped
-#' \eqn{L_{0,\infty}} mixed norm regularization to approximate Best Subset
-#' Selection (for univariate data) or Best Subset of Group Selection (for
-#' multivariate data) subject to optional nonnegativity or box constraints on
-#' model coefficients. The objective functions that can be approximated are :
+#' @description Fits a generalized linear model with an \eqn{L_0} penalty or,
+#' for multichannel responses, a grouped row-\eqn{L_0} penalty, equivalent
+#' to an \eqn{L_{2,0}} penalty, to approximate Best Subset Selection (for
+#' univariate data) or Best Subset of Groups Selection (for multivariate data)
+#' subject to optional nonnegativity or box constraints on model coefficients.
+#' The objective functions that can be approximated are :
 #' \itemize{
 #'
 #' \item for univariate data, using an \eqn{L_0} norm penalty to achieve Best Subset Selection:
 #'
-#' \deqn{-2.LL + lambda.||beta||_0}
+#' \deqn{-2\,LL(\beta) + \lambda \|\beta\|_0}
 #'
 #' where \eqn{LL} is the log-likelihood of the GLM model and
-#' \eqn{|beta||_0} is the number of non-zero elements in
+#' \eqn{\|\beta\|_0} is the number of non-zero elements in
 #' coefficient vector beta, i.e. the \eqn{L_0} norm of beta.
 #'
-#' \item for multivariate data, using an \eqn{L_{0,0}} norm penalty, i.e. using independent \eqn{L_0}  penalized fits on each outcome:
+#' \item for multivariate data, using independent elementwise \eqn{L_0}
+#' penalized fits on each outcome:
 #'
-#' \deqn{-2.LL + lambda.||beta||_{0,0}}
+#' \deqn{-2\,LL(B) + \lambda \sum_{j=1}^{p}\sum_{k=1}^{m} I(B_{jk} \neq 0)}
 #'
-#' \item for multivariate data, using an \eqn{L_{0,\infty}} norm penalty, i.e. using grouped variable selection in multitask learning settings to achieve Best Subset of Groups Selection:
+#' \item for multivariate data, using grouped variable selection in multitask
+#' learning settings to achieve Best Subset of Groups Selection:
 #'
-#' \deqn{-2.LL + lambda.||beta||_{0,\infty}}
+#' \deqn{-2\,LL(B) + \lambda \sum_{j=1}^{p} I(\|B_{j\cdot}\|_2 > 0)}
 #'
 #' }
 #'
-#' in all 3 cases subject to optional box constraints on the model coefficient
+#' Here \eqn{B} is the \eqn{p \times m} multichannel coefficient matrix and the
+#' grouped penalty counts active rows, i.e. predictors with a non-zero
+#' coefficient in at least one channel. Any positive within-row norm gives the
+#' same row support, so this is equivalently group-\eqn{L_0}, row-\eqn{L_0}, or
+#' \eqn{L_{2,0}} regularization.
+#'
+#' In all 3 cases the objective is subject to optional box constraints on the model coefficient
 #' vector or matrix beta
 #'
 #' \deqn{lower <= beta <= upper}
 #'
 #' These objectives are approximated via an iterative adaptive ridge regression
-#' procedure, see Details. The \eqn{L_0} and \eqn{L_{0,0}} norm penalties can be
-#' used to approximate Best Subset Selection, while for multivariate
-#' (multitask/multichannel) data, the \eqn{L_{0,\infty}} mixed norm penalty can be
-#' used to approximate Best Subset of Group Selection (via option
-#' \code{grouped=TRUE}). Fits on multichannel data can be parallelized. Option
-#' \code{relaxed} allows one to finish with a (nearly) unpenalized fit on the
-#' \code{L0glm} selected features.
+#' procedure, see Details. The univariate and independent multichannel
+#' elementwise \eqn{L_0} penalties can be used to approximate Best Subset
+#' Selection, while for multivariate (multitask/multichannel) data, the
+#' group-\eqn{L_0}/row-\eqn{L_0}/\eqn{L_{2,0}} penalty can be used to approximate
+#' Best Subset of Groups Selection (via option \code{grouped=TRUE}). Fits on
+#' multichannel data can be parallelized. Option \code{relaxed} allows one to
+#' finish with a (nearly) unpenalized fit on the \code{L0glm} selected features.
 #'
 #' The level of regularisation can be manually chosen (if a numeric value is
 #' passed to \code{lambda}) or preset to optimise given information criteria (if
@@ -58,15 +66,15 @@
 #' offsets, starting coefficient values or dispersion (if prior estimate is
 #' available, otherwise optimised), nonnegativity or box constraints,
 #' unpenalized terms (e.g. intercept) and shrinkage towards given prior means
-#' (via nonzero centered ridge regression updates).
+#' (via targeted nonzero-centered ridge regression updates).
 #'
 #' A choice of several fast C++ coded least squares solvers can be used, which
 #' means this function scales well to solve fairly large tall or wide problems
 #' with millions of observations or variables. As solvers, we currently
-#' implemented the \code{Eigen} sparse or dense Cholesky, QR, PCG & LSCG
-#' solvers, plus two solvers that natively support box constraints:
-#' \code{bigGlm} from \pkg{glmnet}, which uses coordinate descent, and
-#' \code{osqp}, a fast quadratic programming solver.
+#' implemented the \code{Eigen} sparse or dense Cholesky, QR, PCG & LSCG plus 
+#' BDCSVD and Jacobi SVD solvers, as well as two solvers that natively support 
+#' box constraints: \code{bigGlm} from \pkg{glmnet}, and \code{osqp}, a fast 
+#' quadratic programming solver.
 #'
 #' @param X Design matrix with predictor variables of dimension \code{n} x
 #'   \code{p}, with \code{n} corresponding to the number of observations and
@@ -103,13 +111,14 @@
 #' @param offset Optional vector of offset values of length \code{p}, or a
 #'   matrix of offset values with dimensions \code{c(p, m)}. The offset is a
 #'   known quantity that is added to the linear predictor of the model.
-#' @param lambda Either a scalar with the \eqn{L_0} or \eqn{L_{0,0}} penalty
-#'   (when \code{grouped=FALSE}) or \eqn{L_{0,\infty}} penalty (when
-#'   \code{grouped=TRUE}), or a character with the name of an information
-#'   criterion (\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"ebic"} or
-#'   \code{"mbic"}), in which case \code{lambda} will be preset with a value
-#'   that would be expected to optimise that particular information criterion.
-#'   Set \code{lambda = 0} to disable penalization.
+#' @param lambda Either a scalar with the \eqn{L_0} penalty for univariate or
+#'   independent multichannel fits (when \code{grouped=FALSE}) or the grouped
+#'   row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
+#'   character with the name of an information criterion (\code{"aic"},
+#'   \code{"bic"}, \code{"gic"}, \code{"ebic"} or \code{"mbic"}), in which case
+#'   \code{lambda} will be preset with a value that would be expected to
+#'   optimise that particular information criterion. Set \code{lambda = 0} to
+#'   disable penalization.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
@@ -189,14 +198,16 @@
 #' @param grouped A logical value indicating whether a grouped fit should be
 #'   performed in the multivariate case or not. If \code{TRUE}, the algorithm
 #'   will return a group penalized fit, otherwise independent L0glm fits will be
-#'   performed on each response. These procedures approximate the \eqn{L_{0,\infty}}
-#'   and \eqn{L_{0,0}} mixed norm penalties, and can be used to do Best Subset
-#'   of Group Selection or plain Best Subset Selection.
+#'   performed on each response. These procedures approximate grouped
+#'   row-\eqn{L_0}/\eqn{L_{2,0}} and independent elementwise \eqn{L_0} penalties,
+#'   and can be used to do Best Subset of Groups Selection or plain Best Subset
+#'   Selection.
 #' @param group.maxit Integer  specifying the maximum number of iterations to
 #'   perform for the group penalized fitting procedure when \code{grouped =
 #'   TRUE}. In each iteration, the columns of the response matrix \code{y} will
-#'   be refitted using the average of all columns of \code{y} as the starting
-#'   value, which then imposes a group penalty.
+#'   be refitted on the active row support using shared row-level starting
+#'   values derived from the current coefficients, which then imposes a group
+#'   penalty.
 #' @param relaxed Logical indicating if the algorithm should conduct a nearly
 #'   unpenalized fit on the L0glm selected variables (using
 #'   \code{lambda=1E-10}). This can eliminate any remaining bias on the
@@ -239,9 +250,9 @@
 #' @param verbose Logical indicating if the algorithm progression should be
 #'   printed to the console.
 #'
-#' @details L0glm approximates the \eqn{L_0} or \eqn{L_{0,\infty}} mixed norm
-#' penalized GLM objectives via an iterative adaptive ridge regression
-#' procedure.
+#' @details L0glm approximates the \eqn{L_0}, independent multichannel
+#' elementwise \eqn{L_0}, or grouped row-\eqn{L_0}/\eqn{L_{2,0}} penalized GLM
+#' objectives via an iterative adaptive ridge regression procedure.
 #'
 #' \strong{Algorithm for univariate, single-channel data}
 #'
@@ -300,21 +311,25 @@
 #'
 #' For the multivariate ("multitask learning") case there are two options. First,
 #' if \code{grouped=FALSE}, an independent \code{L0glm} model is fit on each of
-#' the responses, which comes down to using an \eqn{L_{0,0}} mixed norm penalty.
+#' the responses, which corresponds to an elementwise \eqn{L_0} penalty on the
+#' coefficient matrix.
 #' Second, if \code{grouped=TRUE}, grouped variable selection will be performed
-#' via an \eqn{L_{0,\infty}} mixed norm penalty. This is achieved by taking the
-#' \eqn{L_{0,0}} mixed norm penalized solution, and then, for all variables that
-#' have nonzero coefficients in at least on of the channels, repeating the
-#' \(L_0) penalized fits but using the average of the coefficients across all
-#' channels (response variables) as starting values so as to achieve a group
-#' penalty and perform grouped feature selection. This is then further iterated
-#' until convergence. Finally, as for single channel data, if
-#' \code{relaxed=TRUE}, the algorithm can finish with a final step whereby the
-#' selected variables are refit using a nearly unpenalized model (with
-#' \code{lambda=1E-10}). Compared to other group penalized regression methods,
-#' such as the group LASSO, which uses an \(L_0/L_2) mixed norm penalty, this
-#' approach produces a sparser solution that better approximates the Best Subset
-#' of Groups solution if lambda is adequately chosen.
+#' via a row-\eqn{L_0} penalty, conventionally denoted \eqn{L_{2,0}} in the
+#' multitask/MMV literature. This is achieved by taking the independent
+#' elementwise \eqn{L_0} solution, and then, for all variables that have nonzero
+#' coefficients in at least one of the channels, repeating the \eqn{L_0}
+#' penalized fits but using a shared row-level start derived from the
+#' coefficients across all channels (response variables) so as to achieve a
+#' group penalty and perform grouped feature selection. Active rows are detected
+#' by a row-wise nonzero count, equivalently by any positive within-row norm.
+#' This is then further iterated until convergence. Finally, as for single
+#' channel data, if \code{relaxed=TRUE}, the algorithm can finish with a final
+#' step whereby the selected variables are refit using a nearly unpenalized model
+#' (with \code{lambda=1E-10}). Compared to other group penalized regression
+#' methods, such as the group LASSO or multitask lasso, which use an
+#' \eqn{L_{2,1}} penalty, this approach produces a sparser solution that better
+#' approximates the Best Subset of Groups solution if lambda is adequately
+#' chosen.
 #'
 #' @return Returns a list with the following elements:
 #' \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
@@ -580,13 +595,22 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                z            = do.call(cbind, lapply(fit, `[[`, "z")))
         }
       }
+      group_support_start <- function(coefs) {
+        active <- as.vector(Matrix::rowSums(abs(coefs) > thresh) > 0)
+        avgc <- as.numeric(Matrix::rowMeans(coefs))
+        magc <- as.numeric(Matrix::rowMeans(abs(coefs)))
+        cancelled <- active & abs(avgc) <= thresh
+        avgc[cancelled] <- magc[cancelled]
+        list(vars = which(active),
+             start = matrix(rep(avgc, m), nrow = length(avgc), ncol = m))
+      }
       
       for (iter in seq_len(group.maxit)) {
         if (iter > 1) {
-          avgc   <- Matrix::rowMeans(coefficients)
-          vars   <- which(avgc != 0)
+          support <- group_support_start(coefficients)
+          vars   <- support$vars
           always.include <- match(always.include.start[always.include.start %in% vars], vars)
-          start  <- matrix(rep(avgc, m), length(avgc), m)
+          start  <- support$start
         } else {
           vars <- seq_len(p)
         }
@@ -668,11 +692,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       # ----- relaxed - refit selected variables nearly unpenalised -----------
       if (relaxed) {
         disp_list <- as_list(dispersion)   # refresh helper
-        avgc   <- Matrix::rowMeans(coefficients)
-        vars   <- which(avgc != 0)
+        support <- group_support_start(coefficients)
+        vars   <- support$vars
         if (length(vars)) {
           always.include <- match(always.include.start[always.include.start %in% vars], vars)
-          start  <- matrix(rep(avgc, m), length(avgc), m)
+          start  <- support$start
           coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
           weights.mat  <- Matrix(0, n, m, sparse = TRUE)
           

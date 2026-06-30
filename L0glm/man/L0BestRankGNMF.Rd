@@ -66,7 +66,8 @@ A list with components
   \item{\code{W}}{Estimated \eqn{n\times \hat k} W matrix.}
   \item{\code{H}}{Estimated \eqn{\hat k\times p} H matrix.}
   \item{\code{dev}}{Final penalised objective value, i.e. scaled Bregman (deviance) 
-  loss (=-2*log-likelihood), with added L0 or grouped L0,infinity mixed norm penalties).}
+  loss (=-2*log-likelihood), with added elementwise \eqn{L_0} or grouped
+  row-\eqn{L_0}/\eqn{L_{2,0}} penalties).}
   \item{\code{k}}{Discovered rank \eqn{\hat k}.}
   \item{\code{iter}}{Number of outer iterations run.}
   \item{\code{dev_trace}}{Vector of penalised objective values over iterations.}
@@ -114,9 +115,10 @@ The objective minimised after each full W-H sweep is
   \end{cases}
 }
 
-The two penalty terms correspond exactly to the
-\eqn{L_{0,\infty}} \emph{group} norm (whole component on/off) and the
-plain \eqn{L_0} norm penalties used by \code{L0glm.fit}.
+The grouped penalty is a group-\eqn{L_0}/row-\eqn{L_0} penalty, equivalently
+an \eqn{L_{2,0}} penalty, counting whole latent components as on/off. The
+ungrouped penalty is the plain elementwise \eqn{L_0} penalty used by
+\code{L0glm.fit}.
 }
 \section{Implementation notes}{
 

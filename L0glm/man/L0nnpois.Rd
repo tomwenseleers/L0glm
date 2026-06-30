@@ -80,13 +80,14 @@ is auto-initialised.}
 matrix of offset values with dimensions \code{c(p, m)}. The offset is a
 known quantity that is added to the linear predictor of the model.}
 
-\item{lambda}{Either a scalar with the \eqn{L_0} or \eqn{L_{0,0}} penalty
-(when \code{grouped=FALSE}) or \eqn{L_{0,\infty}} penalty (when
-\code{grouped=TRUE}), or a character with the name of an information
-criterion (\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"ebic"} or
-\code{"mbic"}), in which case \code{lambda} will be preset with a value
-that would be expected to optimise that particular information criterion.
-Set \code{lambda = 0} to disable penalization.}
+\item{lambda}{Either a scalar with the \eqn{L_0} penalty for univariate or
+independent multichannel fits (when \code{grouped=FALSE}) or the grouped
+row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
+character with the name of an information criterion (\code{"aic"},
+\code{"bic"}, \code{"gic"}, \code{"ebic"} or \code{"mbic"}), in which case
+\code{lambda} will be preset with a value that would be expected to
+optimise that particular information criterion. Set \code{lambda = 0} to
+disable penalization.}
 
 \item{intercept}{Logical: Whether to include an intercept term in the model.
 If `TRUE`, a column of ones will be added to the design matrix `X`, and
@@ -177,15 +178,17 @@ perform.}
 \item{grouped}{A logical value indicating whether a grouped fit should be
 performed in the multivariate case or not. If \code{TRUE}, the algorithm
 will return a group penalized fit, otherwise independent L0glm fits will be
-performed on each response. These procedures approximate the \eqn{L_{0,\infty}}
-and \eqn{L_{0,0}} mixed norm penalties, and can be used to do Best Subset
-of Group Selection or plain Best Subset Selection.}
+performed on each response. These procedures approximate grouped
+row-\eqn{L_0}/\eqn{L_{2,0}} and independent elementwise \eqn{L_0} penalties,
+and can be used to do Best Subset of Groups Selection or plain Best Subset
+Selection.}
 
 \item{group.maxit}{Integer  specifying the maximum number of iterations to
 perform for the group penalized fitting procedure when \code{grouped =
 TRUE}. In each iteration, the columns of the response matrix \code{y} will
-be refitted using the average of all columns of \code{y} as the starting
-value, which then imposes a group penalty.}
+be refitted on the active row support using shared row-level starting
+values derived from the current coefficients, which then imposes a group
+penalty.}
 
 \item{relaxed}{Logical indicating if the algorithm should conduct a nearly
 unpenalized fit on the L0glm selected variables (using

@@ -62,6 +62,41 @@ inline std::vector<int> active_positions(const VectorXd& beta) {
   return active;
 }
 
+inline void group_support_start(const MatrixXd& coef, double thresh,
+                                std::vector<int>& vars,
+                                MatrixXd& start_current) {
+  const int p = coef.rows();
+  const int m = coef.cols();
+  vars.clear();
+  std::vector<double> starts;
+  starts.reserve(p);
+
+  for (int j = 0; j < p; ++j) {
+    bool active = false;
+    double signed_sum = 0.0;
+    double abs_sum = 0.0;
+    for (int col = 0; col < m; ++col) {
+      const double value = coef(j, col);
+      signed_sum += value;
+      abs_sum += std::abs(value);
+      active = active || std::abs(value) > thresh;
+    }
+    if (active) {
+      const double avg = signed_sum / static_cast<double>(m);
+      const double mean_abs = abs_sum / static_cast<double>(m);
+      vars.push_back(j);
+      starts.push_back(std::abs(avg) <= thresh ? mean_abs : avg);
+    }
+  }
+
+  start_current.resize(static_cast<int>(vars.size()), m);
+  for (int col = 0; col < m; ++col) {
+    for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
+      start_current(a, col) = starts[a];
+    }
+  }
+}
+
 inline VectorXd subset_vec(const VectorXd& x, const std::vector<int>& idx) {
   VectorXd out(idx.size());
   for (int i = 0; i < static_cast<int>(idx.size()); ++i) out[i] = x[idx[i]];
@@ -685,36 +720,16 @@ Rcpp::List fit_all_impl(const Design& X,
 
   for (int iter = 0; iter < effective_group_maxit; ++iter) {
     if (iter > 0) {
-      VectorXd avgc = coef.rowwise().mean();
-      vars.clear();
-      for (int j = 0; j < p; ++j) {
-        if (avgc[j] != 0.0) vars.push_back(j);
-      }
+      group_support_start(coef, thresh, vars, start_current);
       if (vars.empty()) break;
-      start_current.resize(vars.size(), m);
-      for (int col = 0; col < m; ++col) {
-        for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
-          start_current(a, col) = avgc[vars[a]];
-        }
-      }
       start_ptr = &start_current;
     }
     fit_for_vars(lambda, start_ptr);
   }
 
   if (relaxed) {
-    VectorXd avgc = coef.rowwise().mean();
-    vars.clear();
-    for (int j = 0; j < p; ++j) {
-      if (avgc[j] != 0.0) vars.push_back(j);
-    }
+    group_support_start(coef, thresh, vars, start_current);
     if (!vars.empty()) {
-      start_current.resize(vars.size(), m);
-      for (int col = 0; col < m; ++col) {
-        for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
-          start_current(a, col) = avgc[vars[a]];
-        }
-      }
       fit_for_vars(1e-30, &start_current);
     }
   }

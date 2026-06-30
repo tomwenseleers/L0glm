@@ -1,6 +1,6 @@
 Package: L0glm
 Type: Package
-Title: L0-Norm Penalized or Group Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
+Title: L0-Norm or Group-L0 Norm Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
 Version: 0.2.1
 Date: 2026-06-16
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
@@ -28,7 +28,7 @@ Imports: Matrix,
          statmod
 LinkingTo: Rcpp, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
-Description: Fits L0-norm penalized or group penalized generalized linear models
+Description: Fits L0-norm penalized or group-L0 penalized generalized linear models
              for best subset selection and best subset of group selection.
 License: GPL (>= 2)
 Encoding: UTF-8

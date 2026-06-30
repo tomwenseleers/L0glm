@@ -1,19 +1,26 @@
-# L0glm
+---
 
-`L0glm` is an R package for fitting L0-norm penalized generalized linear models (GLMs) and grouped L0-penalized multichannel GLMs. It is aimed at best subset selection and best subset of group selection in low- and high-dimensional settings, including sparse signal deconvolution problems such as overlapping peak recovery in GC/MS chromatography.
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# L0glm: Fast and Scalable Best Subset and Best Subset of Groups Selection for Generalized Linear Models (GLMs)
+
+`L0glm` is an R package for fitting L0-Norm or Group-L0 Norm penalized generalized linear models (GLMs). It is aimed at best subset selection and best subset of group selection in low- and high-dimensional settings, including sparse signal deconvolution problems such as overlapping peak recovery in GC/MS chromatography.
 
 The package approximates L0-penalized GLM objectives with an iterative adaptive ridge procedure. In each IRLS step, the usual weighted least-squares update is replaced by an adaptive ridge-regularized solve, optionally with nonnegativity or box constraints. This gives a practical route to sparse, low-bias coefficient estimates in cases where LASSO-type L1 penalties tend to select too many variables and shrink peak areas or effect sizes.
 
 The package supports:
 
 - single-output L0 best subset selection;
-- multichannel or multitask L0,0 and grouped L0,inf best subset of group selection;
+- multichannel or multitask independent elementwise L0 and grouped row-L0 (L2,0) best subset of groups selection;
 - Gaussian, Poisson, binomial, Gamma and inverse Gaussian GLM families and links;
 - sparse and dense design matrices, including high-dimensional `p >= n` problems with millions of variables;
 - nonnegative or box-constrained coefficients;
 - unpenalized terms, offsets, observation weights, starting values and prior means;
 - automatically setting the level of regularisation to approximate information-criteria such as `"aic"`, `"bic"`, `"gic"`, `"ebic"` or `"mbic"`, without requiring computationally expensive cross-validation;
-- several fast least-squares backends, including Eigen Cholesky, QR, CG and LSCG solvers, plus `bigGlm/glmnet` and `osqp`-based constrained solvers.
+- several fast least-squares backends, including Eigen Cholesky, QR, CG and LSCG solvers, plus `glmnet::bigGlm` and `osqp`-based constrained solvers.
 
 The source package is in the `L0glm/` subdirectory of this repository.
 
@@ -42,12 +49,14 @@ For one response, `L0glm.fit()` approximates
 -2 * logLik + lambda * ||beta||_0
 ```
 
-For multichannel responses, it can either fit independent L0 models or use a grouped mixed-norm penalty to select the same active predictors across the different outcomes (tasks/channels):
+For multichannel responses, it can either fit independent elementwise L0 models or use a grouped row-L0 penalty, equivalent to an L2,0 penalty, to select the same active predictors across the different outcomes (tasks/channels). For a `p x m` coefficient matrix `B`, the grouped penalty counts rows with at least one nonzero channel coefficient:
 
 ``` text
--2 * logLik + lambda * ||beta||_0,0      # independent channel fits
--2 * logLik + lambda * ||beta||_0,inf    # grouped feature selection
+-2 * logLik(B) + lambda * sum_j sum_k I(B[j,k] != 0)        # independent channel fits
+-2 * logLik(B) + lambda * sum_j I(||B[j, ]||_2 > 0)         # grouped feature selection
 ```
+
+Any positive within-row norm gives the same row support, so the grouped penalty can also be described as group-L0 or row-L0 regularisation.
 
 The penalty parameter can be supplied directly or can be pre-set to approximate a given information criterion (without requiring expensive cross-validation):
 
@@ -121,7 +130,7 @@ For L0glm, the reported timing is the direct call to `L0glm.fit(lambda = "gic")`
 The single-channel example uses the package's `simul(method = 2)` spike-train deconvolution setup with Poisson noise.
 
 | Method | Seconds | Selected | TP | FP | FN | F1 | R2 coeff. | No-noise deviance | GIC |
-|----|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+|--------|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|
 | L0glm | 0.41 | 999 | 845 | 154 | 155 | 0.845 | 0.920 | 2.67e3 | 1.03e5 |
 | glmnet LASSO | 0.19 | 2559 | 954 | 1605 | 46 | 0.536 | 0.836 | 1.31e4 | 1.44e5 |
 | abess | 35.56 | 74 | 34 | 40 | 966 | 0.063 | 0.000 | 3.29e10 | 3.29e10 |
@@ -137,7 +146,7 @@ The single-channel example uses the package's `simul(method = 2)` spike-train de
 For GC/MS-like data, each chromatographic peak has a spectrum across mass channels. Passing an `n x m` response matrix to `L0glm.fit()` with `grouped = TRUE` performs grouped feature selection: a peak is selected as a shared event across channels while the peak areas can differ by channel.
 
 | Method | Seconds | Selected | TP | FP | FN | F1 | R2 coeff. | No-noise deviance | GIC |
-|----|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+|--------|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|
 | grouped L0glm | 8.83 | 979 | 918 | 61 | 82 | 0.928 | 0.992 | 3.37e4 | 1.43e6 |
 | glmnet group LASSO | 6.75 | 3424 | 970 | 2454 | 30 | 0.439 | 0.970 | 1.16e5 | 2.22e6 |
 | abess BSGS | 40.82 | 91 | 29 | 62 | 971 | 0.053 | 0.000 | 5.08e9 | 5.08e9 |

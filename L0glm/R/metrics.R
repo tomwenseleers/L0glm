@@ -1,6 +1,6 @@
 #' @importFrom stats coef cor is.empty.model lm lm.fit logLik model.matrix model.response rnorm sd
 #' @importFrom utils data
-#' @importFrom qlcMatrix rowMin rowMax
+#' @importFrom qlcMatrix rowMax
 
 # function to calculate fit metrics to tune lambda ####
 get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = ncol(y)), 
@@ -8,7 +8,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         family = gaussian(identity), 
                         beta_true = NULL, 
                         p = NULL # to pass in case model concerns one fitted on a pre-selected subset (p=nr of original variables)
-                        # edf=sum(beta!=0) # , # alt option: sum(rowMin(abs(beta))!=0)*ncol(beta); sum(rowMin(abs(beta))!=0) didn't work
+                        # edf=sum(beta!=0)
                         # lower=rep(0, ncol(X)),
                         # upper=rep(Inf,ncol(X)) 
 ) {
@@ -47,8 +47,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   
   # metrics related to support recovery ####
   # true support & estimated support & all variable sets
-  if (!is.null(beta_true)) vars_true = which(rowMin(abs(beta_true))!=0) else vars_true = NA
-  vars_estimated = which(rowMin(abs(beta))!=0)
+  if (!is.null(beta_true)) vars_true = which(rowMax(abs(beta_true))!=0) else vars_true = NA
+  vars_estimated = which(rowMax(abs(beta))!=0)
   
   # support size & ratio of estimated support size over true support size
   if (!is.null(beta_true)) support_size_true = length(vars_true) else support_size_true = NA
