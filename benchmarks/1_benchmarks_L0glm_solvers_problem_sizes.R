@@ -5,7 +5,7 @@ library(ggplot2)
 library(tidyr)
 library(tidyselect)
 
-output_dir <- "..\\benchmarks\\1_benchmarks_solvers_problem_sizes"
+output_dir <- normalizePath("..\\benchmarks\\1_benchmarks_solvers_problem_sizes")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
                              
 # Simulation sizes (with n = p)
@@ -423,9 +423,9 @@ combined_timing_plot <- ggplot2::ggplot(
 save_plot(combined_timing_plot, "timings_all_conditions", width = 8, height = 6)
 
 run_summary <- c(
-  paste("Output directory:", normalizePath(output_dir)),
-  paste("Wide metrics table:", normalizePath(metrics_file)),
-  paste("Long metrics table:", normalizePath(metrics_long_file)),
+  paste("Output directory:", output_dir),
+  paste("Wide metrics table:", metrics_file),
+  paste("Long metrics table:", metrics_long_file),
   paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 )
 writeLines(run_summary, normalizePath(file.path(output_dir, "run_summary.txt")))
