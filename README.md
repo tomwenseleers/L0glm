@@ -1,9 +1,4 @@
----
-
-editor_options: 
-  markdown: 
-    wrap: 72
----
+------------------------------------------------------------------------
 
 # L0glm: Fast and Scalable Best Subset and Best Subset of Groups Selection for Generalized Linear Models (GLMs)
 
@@ -33,13 +28,7 @@ install.packages("remotes")
 remotes::install_github("tomwenseleers/L0glm", subdir = "L0glm")
 ```
 
-From a local checkout of this repository:
-
-``` r
-remotes::install_local("L0glm")
-```
-
-On Windows, source installation may require Rtools because the package contains C++ code.
+On Windows, source installation may require [Rtools](https://cran.r-project.org/bin/windows/Rtools/) because the package contains C++ code.
 
 ## What does `L0glm.fit()` optimize?
 
@@ -58,7 +47,7 @@ For multichannel responses, it can either fit independent elementwise L0 models 
 
 Any positive within-row norm gives the same row support, so the grouped penalty can also be described as group-L0 or row-L0 regularisation.
 
-The penalty parameter can be supplied directly or can be pre-set to approximate a given information criterion (without requiring expensive cross-validation):
+The penalty parameter can be supplied directly or can be pre-set to approximate a given information criterion, without requiring expensive cross-validation. For example, to approximate the Generalized Information Criterion (gic), which aims to achieve consistent variable selection under both low or high dimensional settings, we can use syntax
 
 ``` r
 fit <- L0glm.fit(
@@ -70,7 +59,7 @@ fit <- L0glm.fit(
 )
 ```
 
-For identity-link Poisson models, `nonnegative = TRUE` is often important because it keeps fitted means nonnegative, which is necessary when coefficients represent concentrations or peak intensities.
+For identity-link Poisson models, `nonnegative = TRUE` is important because it keeps fitted means nonnegative. This is needed e.g. when we are fitting additive mixtures of different peaks in GC/MS chromatography and when the signal is measured using electron multiplier counts.
 
 ## Basic sparse GLM example
 
@@ -200,11 +189,12 @@ The deconvolution functions are motivated by GC/MS chromatogram peak deconvoluti
 
 The method builds on adaptive-ridge approximations to L0 regularization and sparse deconvolution work, including:
 
-- de Rooi and Eilers (2011), *Deconvolution of pulse trains with the L0 penalty*.
-- Frommlet and Nuel (2016), *An adaptive ridge procedure for L0 regularization*.
-- Liu, Sun and McGovern (2017), *Sparse generalized linear model with L0 approximation for feature selection and prediction with big omics data*.
-- Dai et al. (2018, 2020), broken adaptive ridge regression.
-- Li et al. (2021), scalable surrogate L0 sparse regression for GLMs.
+- J. de Rooi & P. Eilers, *Deconvolution of pulse trains with the L0 penalty*. Analytica chimica acta 705, 218-226 (2011).
+- F. Frommlet & G. Nuel, *An adaptive ridge procedure for L0 regularization*. PloS one 11, e0148620 (2016).
+- Z. Liu, F. Sun & D.P. McGovern, *Sparse generalized linear model with L0 approximation for feature selection and prediction with big omics data*. BioData mining 10, 1-12 (2017).
+- L. Dai, K. Chen, Z. Sun, Z. Liu & G. Li, *Broken adaptive ridge regression and its asymptotic properties*. Journal of multivariate analysis 168, 334-351 (2018).
+- L. Dai, K. Chen & G. Li, *The broken adaptive ridge procedure and its applications*. Statistica Sinica 30, 1069-1094 (2020).
+- N. Li, X. Peng, E. Kawaguchi, M.A. Suchard & G. Li, *A scalable surrogate L0 sparse regression method for generalized linear models with applications to large scale data*. Journal of Statistical Planning and Inference 213, 262-281 (2021).
 
 See the package help pages for the full reference list:
 
