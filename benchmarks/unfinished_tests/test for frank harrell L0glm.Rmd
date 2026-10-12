@@ -184,8 +184,6 @@ for(i in 1:simu){
                                no.pen = 1, # do not penalize intercept
                                normalize = F,
                                start = rep(0.1, ncol(X)+1), # reg.coef, # rep(0.1, ncol(X)+1), # rep(1, ncol(X)+1), # coefficient starting values
-                               lower = c(-Inf, rep(-10, ncol(X))),
-                               upper = c(Inf, rep(10, ncol(X))),
                                solver = "eigen", # solver to use
                                method = 7L, # Cholesky
                                thresh = 1E-20,

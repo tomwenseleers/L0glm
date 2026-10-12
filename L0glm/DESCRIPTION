@@ -33,10 +33,10 @@ Description: Fits L0-norm penalized or group-L0 penalized generalized linear mod
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.3
 Suggests: 
     ALS,
     pkgload,
     SIS,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0

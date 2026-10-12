@@ -4,18 +4,19 @@
 # algorithm is replaced with a weighted least square regression with adaptive
 # ridge penalty (as in Frommlet & Nuel 2016), but also accounting for the
 # estimated dispersion in the ridge penalty, plus adding provisions for
-# nonnegativity or box constraints, and allowing for any exponential family
+# optional nonnegativity constraints, and allowing for any exponential family
 # error destribution plus associated link functions (canonical or non-canonical).
 #
 # Fits a generalized linear model with L0 regularization and option for
-# nonnegativity and box constraints. It takes as input parameters the design
+# nonnegativity constraints. It takes as input parameters the design
 # matrix X (here including any intercept), the response variable y, regularization
 # parameters, solver options, and control parameters. The result is a fitted
 # model with coefficients estimated using the specified regularization method
 # and solver. The function is called by the higher level \code{L0glm.fit}.
 #
 # An optional intercept term is already added by the L0glm.fit function. The
-# intercept term is always left unpenalized & fit unconstrained.
+# intercept follows the same nonnegativity constraint as the other coefficients,
+# except for binomial and quasibinomial intercepts. Bounds are derived by L0glm.fit.
 # 
 L0glm.fit.internal = function(X, 
                               y, 
@@ -105,6 +106,7 @@ L0glm.fit.internal = function(X,
     start <- clamp(start, lower, upper)
     if (length(start)>1) start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
   }
+  start <- clamp(start, lower, upper)
   beta <- beta_old <- start
   # names(beta) = colnames(X)
   

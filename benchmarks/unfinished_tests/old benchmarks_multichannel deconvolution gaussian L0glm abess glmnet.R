@@ -82,8 +82,6 @@ library(qlcMatrix)
 system.time(warmup <- L0glm.fit(X = X, y = Y,
                                family = gaussian(identity), # poisson(identity),
                                lambda = min(lambdas), #  # or 0.1 or 1
-                               lower = rep(0, ncol(X)),
-                               upper = rep(Inf, ncol(X)),
                                start = rep(1, ncol(X)),
                                nonnegative = TRUE,
                                thresh = 1,
@@ -105,8 +103,6 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                                                             family = gaussian(identity), # poisson(identity),
                                                                             start = w*warm_start+(1-w)*no_warm_start*1, # use warm starts
                                                                             lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
-                                                                            lower = rep(0, ncol(sim$X)),
-                                                                            upper = rep(Inf, ncol(sim$X)),
                                                                             nonnegative = TRUE,
                                                                             thresh = 1, # coefficients below this threshold are set to zero
                                                                             grouped = T, # use group L0 penalty
@@ -298,8 +294,6 @@ system.time({
                                   family = gaussian(identity), # poisson(identity),
                                   # start = w*warm_start+(1-w)*no_warm_start, # to use warm starts
                                   lambda = bestlambda, 
-                                  lower = rep(0, ncol(sim$X)),
-                                  upper = rep(Inf, ncol(sim$X)),
                                   nonnegative = TRUE,
                                   thresh = 1, # coefficients below this threshold are set to zero
                                   delta = 0, # TODO: if we have the thresh argument we can get rid of delta & set delta to zero, no need to have both

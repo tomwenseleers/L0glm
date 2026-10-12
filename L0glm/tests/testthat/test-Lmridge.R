@@ -470,6 +470,9 @@ test_that("lmridge.glmnet solves targeted ridge via row augmentation", {
 
 # Testing the lmridge.nnls function
 #----------------------------------
+# NNLS supports zero lower bounds or unrestricted coefficients, not finite boxes.
+lower_bounds <- rep(0, ncol(X))
+upper_bounds <- rep(Inf, ncol(X))
 lambdas_nonzero <- rep(1, ncol(X))
 
 # Test with non-zero lambdas (augmented case)
@@ -518,10 +521,10 @@ test_that("lmridge.nnls handles single lambda value", {
   expect_true(all(result >= lower_bounds))
 })
 
-# Test with boundary constraints
-test_that("lmridge.nnls respects boundary constraints", {
-  lower_bounds <- rep(-0.5, ncol(X))
-  upper_bounds <- rep(0.5, ncol(X))
+# Test with nonnegativity constraints
+test_that("lmridge.nnls respects nonnegativity constraints", {
+  lower_bounds <- rep(0, ncol(X))
+  upper_bounds <- rep(Inf, ncol(X))
   
   result <- lmridge.nnls(X, y, lambdas = lambdas_nonzero, lower = lower_bounds, upper = upper_bounds, 
                          control.solver = control.solver, iteration = 1)
@@ -544,9 +547,16 @@ test_that("lmridge.nnls handles small matrix dimensions", {
   y_small <- rnorm(2)
   
   result <- lmridge.nnls(X_small, y_small, lambdas = c(0.1, 0.1), 
-                         lower = c(0, 0), upper = c(1, 1), 
+                         lower = c(0, 0), upper = c(Inf, Inf),
                          control.solver = control.solver, iteration = 1)
   expect_length(result, ncol(X_small))
+})
+
+test_that("lmridge.nnls rejects finite box constraints instead of ignoring them", {
+  expect_error(lmridge.nnls(diag(2), c(2, 3), lambdas = NULL,
+                            lower = c(0, 0), upper = c(1, 1),
+                            control.solver = list()),
+               "only nonnegative or unrestricted")
 })
 
 # Consistency check on repeated runs

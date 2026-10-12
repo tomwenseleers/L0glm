@@ -4,7 +4,7 @@
 
 `L0glm` is an R package for fitting L0-Norm or Group-L0 Norm penalized generalized linear models (GLMs). It is aimed at best subset selection and best subset of group selection in low- and high-dimensional settings, including sparse signal deconvolution problems such as overlapping peak recovery in GC/MS chromatography.
 
-The package approximates L0-penalized GLM objectives with an iterative adaptive ridge procedure. In each IRLS step, the usual weighted least-squares update is replaced by an adaptive ridge-regularized solve, optionally with nonnegativity or box constraints. This gives a practical route to sparse, low-bias coefficient estimates in cases where LASSO-type L1 penalties tend to select too many variables and shrink peak areas or effect sizes.
+The package approximates L0-penalized GLM objectives with an iterative adaptive ridge procedure. In each IRLS step, the usual weighted least-squares update is replaced by an adaptive ridge-regularized solve, optionally with nonnegativity constraints. This gives a practical route to sparse, low-bias coefficient estimates in cases where LASSO-type L1 penalties tend to select too many variables and shrink peak areas or effect sizes.
 
 The package supports:
 
@@ -12,7 +12,7 @@ The package supports:
 - multichannel or multitask independent elementwise L0 and grouped row-L0 (L2,0) best subset of groups selection;
 - Gaussian, Poisson, binomial, Gamma and inverse Gaussian GLM families and links;
 - sparse and dense design matrices, including high-dimensional `p >= n` problems with millions of variables;
-- nonnegative or box-constrained coefficients;
+- optional nonnegativity constraints on coefficients;
 - unpenalized terms, offsets, observation weights, starting values and prior means;
 - automatically setting the level of regularisation to approximate information-criteria such as `"aic"`, `"bic"`, `"gic"`, `"ebic"` or `"mbic"`, without requiring computationally expensive cross-validation;
 - several fast least-squares backends, including Eigen Cholesky, QR, CG and LSCG solvers, plus `glmnet::bigGlm` and `osqp`-based constrained solvers.
@@ -45,7 +45,7 @@ For multichannel responses, it can either fit independent elementwise L0 models 
 -2 * logLik(B) + lambda * sum_j I(||B[j, ]||_2 > 0)         # grouped feature selection
 ```
 
-Any positive within-row norm gives the same row support, so the grouped penalty can also be described as group-L0 or row-L0 regularisation.
+Any positive within-row norm gives the same row support, so the grouped penalty can also be described as group-L0 or row-L0 regularisation or "best subset of group selection" (BSGS).
 
 The penalty parameter can be supplied directly or can be pre-set to approximate a given information criterion, without requiring expensive cross-validation. For example, to approximate the Generalized Information Criterion (gic), which aims to achieve consistent variable selection under both low or high dimensional settings, we can use syntax
 
@@ -59,7 +59,19 @@ fit <- L0glm.fit(
 )
 ```
 
-For identity-link Poisson models, `nonnegative = TRUE` is important because it keeps fitted means nonnegative. This is needed e.g. when we are fitting additive mixtures of different peaks in GC/MS chromatography and when the signal is measured using electron multiplier counts.
+For identity-link Poisson models with a nonnegative design matrix and offset, `nonnegative = TRUE` keeps fitted means nonnegative. This can be used e.g. to estimate additive mixtures of peaks in GC/MS chromatography with electron multiplier counts.
+
+## Coefficient constraints
+
+`L0glm.fit(nonnegative = FALSE)` allows coefficients of either sign and is the default. With `nonnegative = TRUE`, all coefficients are constrained to be nonnegative, including intercepts and `always.include` terms. Binomial and quasibinomial intercepts are the exception: they remain free to take either sign. This applies both to an intercept added with `intercept = TRUE` and to a column of ones supplied in `X`.
+
+`L0nnpois()` is a specialized Rcpp OpenMP optimized nonnegative identity-link Poisson fitter, which is highly efficient for multichannel data. It always constrains every coefficient, including any intercept, to be nonnegative :
+
+``` r
+fit <- L0nnpois(X, y, lambda = "gic", intercept = TRUE)
+```
+
+The same constraints apply during initialization, grouped selection, and relaxed refitting, with dense or sparse designs and serial or parallel execution.
 
 ## Basic sparse GLM example
 
@@ -132,7 +144,7 @@ The single-channel example uses the package's `simul(method = 2)` spike-train de
 
 #### Multichannel grouped deconvolution
 
-For GC/MS-like data, each chromatographic peak has a spectrum across mass channels. Passing an `n x m` response matrix to `L0glm.fit()` with `grouped = TRUE` performs grouped feature selection: a peak is selected as a shared event across channels while the peak areas can differ by channel.
+For GC/MS-like data, each chromatographic peak has a spectrum across mass channels. Passing an `n x m` response matrix to `L0glm.fit()` with `grouped = TRUE` performs grouped feature selection: a peak is selected as a shared event across channels while the peak areas can differ by channel in accordance with the m/z ion intensity.
 
 | Method | Seconds | Selected | TP | FP | FN | F1 | R2 coeff. | No-noise deviance | GIC |
 |--------|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|-------:|

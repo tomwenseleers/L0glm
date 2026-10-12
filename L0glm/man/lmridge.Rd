@@ -106,7 +106,10 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| y - X \beta
   regression problem using one of several solvers (see \code{method} option).}
   \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is accepted as a legacy alias.}
   \item{\code{"osqp"}}{Uses the \code{\link[osqp]{osqp}} package (Operator Splitting Quadratic Program solver) to solve the problem with constraints. Most appropriate when box or nonnegativity constraints are applied.}
-  \item{\code{"nnls"}}{Uses non-negative least squares algorithm. Only applicable when \code{nonnegative = TRUE} and no other bounds are specified.}
+  \item{\code{"nnls"}}{Uses a non-negative least squares algorithm. Supports
+  nonnegative and unrestricted coefficients, representing each unrestricted
+  coefficient as the difference of two nonnegative coefficients. Finite
+  nonzero bounds are not supported.}
 }
 
   The \code{method} parameter specifies the specific method to be used when

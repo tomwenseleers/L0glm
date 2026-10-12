@@ -1446,8 +1446,6 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   family = family, 
   lambda = "aic", 
   nonnegative = TRUE,
-  lower = rep(0, ncol(X)),
-  upper = rep(Inf, ncol(X)),
   start = NULL, 
   gamma = 1.1,
   # gamma = 1.1, # NOTE: gamma of 1.1 here works better than 2
@@ -1485,7 +1483,6 @@ L0glm.out_2nditeration <- L0glm.fit(X = X,
                                     # no.pen = 1,
                                     gamma = 1.1,
                                     nonnegative = TRUE,
-                                    lower = rep(0, ncol(X)),
                                     start = L0glm_gaus_presetlambda$coefficients, #, start, # 
                                     warm.start = 0.1,
                                     dispersion = L0glm_gaus_presetlambda$dispersion,
@@ -1560,7 +1557,6 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           lambda = 1E-10, # *lambda_preset, 
                                           # prior.mean = start[selected], # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
-                                          lower = rep(0, ncol(Xscaled[,selected,drop=F])),
                                           start = start[selected], # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                           warm.start = 0.1,
                                           gamma = 2,
@@ -1618,7 +1614,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          # prior.mean = FALSE, # use nonzero centered ridge regression?
                          # ridge.center = NULL,
                          nonnegative = TRUE,
-                         lower = rep(0, ncol(Xscaled[,selected,drop=F])),
                          no.pen = NULL,
                          start = start[selected], # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))

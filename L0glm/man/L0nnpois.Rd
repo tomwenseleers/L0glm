@@ -15,12 +15,9 @@ L0nnpois(
   lambda = 1,
   intercept = FALSE,
   always.include = NULL,
-  nonnegative = TRUE,
   normalize = FALSE,
   solver = "eigen",
   method = 1L,
-  lower = NULL,
-  upper = NULL,
   parallelize = TRUE,
   ncores = L0glm_default_ncores(parallelize),
   nthreads = NULL,
@@ -40,9 +37,9 @@ L0nnpois(
 \arguments{
 \item{X}{Design matrix with predictor variables of dimension \code{n} x
 \code{p}, with \code{n} corresponding to the number of observations and
-\code{p} being the number of columns in \code{y} (variables plus
-intercept). It should include a column of ones for an intercept term is
-desired.}
+\code{p} being the number of predictor columns. Use \code{intercept = TRUE}
+to add an intercept, or include a column of ones in \code{X} and set
+\code{intercept = FALSE}.}
 
 \item{y}{Response variable(s). Can be either a vector of length \code{n} or a
 matrix of dimension \code{n} x \code{m}, where \code{n} is the number of
@@ -89,11 +86,9 @@ character with the name of an information criterion (\code{"aic"},
 optimise that particular information criterion. Set \code{lambda = 0} to
 disable penalization.}
 
-\item{intercept}{Logical: Whether to include an intercept term in the model.
-If `TRUE`, a column of ones will be added to the design matrix `X`, and
-this term will **not** be penalized. If `FALSE`, no intercept column will
-be added, and the user must ensure that `X` already contains an intercept
-if needed. Defaults to `FALSE`.}
+\item{intercept}{Logical; if \code{TRUE}, add an intercept column to \code{X}.
+The intercept is constrained to be nonnegative, just like every other
+coefficient. Defaults to \code{FALSE}.}
 
 \item{always.include}{A vector of coefficient indices that should always be
 estimated & included in the model. This is done by updating \code{prior.mean}
@@ -103,10 +98,6 @@ a name that includes \code{"Intercept"} in their name are always included.
 Specify 0 if all terms should be allowed to be
 shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
 always be estimated and included in the model.}
-
-\item{nonnegative}{A logical indicating whether nonnegativity constraints
-should be applied. If \code{TRUE}, \code{lower} will be set to \code{rep(0,
-ncol(X))}.}
 
 \item{normalize}{Logical indicating whether the columns of the design matrix
 \strong{X} should be scaled to have unit \eqn{L_2} norm. It is advised to
@@ -118,9 +109,9 @@ Defaults to \code{TRUE}}
 programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
 coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
 of the \code{RcppEigen Eigen} solvers).
-\code{"osqp"} and \code{"bigGlm"} support box or nonnegativity constraints
+\code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 and scale well to larger problems, with especially \code{"bigGlm"} being
-suitable for very large problems. The \code{"eigen"} solvers achieve box or
+suitable for very large problems. The \code{"eigen"} solvers apply
 nonnegativity constraints via clipping, which in combination with the ridge
 penalties in practice work almost as well, and some of those solvers are
 often among the fastest (especially \code{method} \code{1L}, Cholesky
@@ -146,14 +137,6 @@ LLT, for PSF-like sparse deconvolution problems).}
   systems.
 
   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.}
-
-\item{lower}{Optional lower limit on model coefficients to specify box
-constraints. It should either be a scalar, a vector of length \code{p} or a
-matrix with dimensions \code{c(p, m)}.}
-
-\item{upper}{Optional upper limit on model coefficients to specify box
-constraints. It should either be a scalar, a vector of length \code{p} or a
-matrix with dimensions \code{c(p, m)}.}
 
 \item{parallelize}{A logical value indicating whether in the multivariate
 case, the columns of the response matrix \code{y} should be fitted in
@@ -245,15 +228,20 @@ A list with the same main components as [L0glm.fit()]:
 }
 \description{
 `L0nnpois()` is a fast RcppEigen/OpenMP implementation of
-[L0glm.fit()] for the nonnegative Poisson model with identity link. It keeps
-the same argument surface as `L0glm.fit()` for drop-in use in e.g. deconvolution
+[L0glm.fit()] for the nonnegative Poisson model with identity link. It shares
+the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 For problems with many outcomes, it is much faster than `L0glm.fit()`,
 and also much more memory efficient, as the design matrix  `X` is kept in
 shared memory.
+Every coefficient, including any intercept, is constrained to be nonnegative.
+This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
+if coefficients of either sign are required.
 }
 \examples{
 ## Fast nonnegative identity-link Poisson L0 or grouped L0 penalized fit
+## All coefficients, including an optional intercept, are always nonnegative.
+## No nonnegative, lower or upper argument is needed or accepted.
 n <- p <- 1000
 npeaks <- 100
 
@@ -265,7 +253,6 @@ system.time(fit.mc <- L0nnpois(
   sim.pois.mc$X,
   sim.pois.mc$y,
   lambda = "gic",
-  nonnegative = TRUE,
   grouped = TRUE,
   relaxed = TRUE,
   parallelize = TRUE,
@@ -297,12 +284,11 @@ dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
 }
 
-## Single-channel fit uses the same argument surface.
+## Single-channel fit uses the same nonnegative model.
 system.time(fit.sc <- L0nnpois(
   sim.pois.mc$X,
   sim.pois.mc$y[, 1L],
   lambda = "gic",
-  nonnegative = TRUE,
   grouped = FALSE,
   relaxed = FALSE,
   parallelize = FALSE

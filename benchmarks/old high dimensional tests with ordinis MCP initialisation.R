@@ -179,7 +179,6 @@ system.time(res_nonzero <- L0glm.fit(x[,nonzero,drop=F], y,
                                      nonnegative=TRUE,
                                      # always.include=1:p,
                                      # normalize=TRUE,
-                                     # lower=rep(0,p),
                                      # dispersion=disp_est,
                                      gamma=2, # using 2.15 works to eliminate false pos, but a bit ad hoc
                                      solver="eigen", 

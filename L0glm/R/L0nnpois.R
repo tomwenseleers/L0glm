@@ -1,14 +1,20 @@
 #' Fast nonnegative identity-link Poisson L0 or grouped L0 penalized fit
 #'
 #' `L0nnpois()` is a fast RcppEigen/OpenMP implementation of
-#' [L0glm.fit()] for the nonnegative Poisson model with identity link. It keeps
-#' the same argument surface as `L0glm.fit()` for drop-in use in e.g. deconvolution
+#' [L0glm.fit()] for the nonnegative Poisson model with identity link. It shares
+#' the main fitting arguments with `L0glm.fit()` for use in deconvolution
 #' workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 #' For problems with many outcomes, it is much faster than `L0glm.fit()`,
 #' and also much more memory efficient, as the design matrix  `X` is kept in
 #' shared memory.
+#' Every coefficient, including any intercept, is constrained to be nonnegative.
+#' This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
+#' if coefficients of either sign are required.
 #'
 #' @inheritParams L0glm.fit
+#' @param intercept Logical; if \code{TRUE}, add an intercept column to \code{X}.
+#'   The intercept is constrained to be nonnegative, just like every other
+#'   coefficient. Defaults to \code{FALSE}.
 #' @param ncores Optional integer specifying the number of OpenMP threads to use
 #'   across outcome channels when \code{parallelize=TRUE}. For \code{L0nnpois},
 #'   the requested value is capped only at the detected number of logical cores,
@@ -40,12 +46,9 @@ L0nnpois <- function(X,
                      lambda        = 1,
                      intercept     = FALSE,
                      always.include        = NULL,
-                     nonnegative   = TRUE,
                      normalize     = FALSE,
                      solver        = "eigen",
                      method        = 1L,
-                     lower         = NULL,
-                     upper         = NULL,
                      parallelize   = TRUE,
                      ncores        = L0glm_default_ncores(parallelize),
                      nthreads      = NULL,
@@ -102,25 +105,6 @@ L0nnpois <- function(X,
     storage.mode(X) <- "double"
   }
 
-  make_bound <- function(x, default, name) {
-    if (is.null(x)) return(rep(default, p0))
-    x <- as.numeric(x)
-    if (length(x) == 1L) return(rep(x, p0))
-    if (length(x) != p0) {
-      stop(name, " must have length 1 or ncol(X).", call. = FALSE)
-    }
-    x
-  }
-  lower <- make_bound(lower,
-                      if (isTRUE(nonnegative)) 0 else -.Machine$double.xmax,
-                      "lower")
-  upper <- make_bound(upper, .Machine$double.xmax, "upper")
-  if (isTRUE(nonnegative)) lower[lower < 0] <- 0
-  if (any(lower < 0)) {
-    stop("L0nnpois requires nonnegative lower bounds; use nonnegative = TRUE ",
-         "or lower = 0.", call. = FALSE)
-  }
-
   if (intercept) {
     X <- if (issparse) {
       methods::as(cbind(Intercept = Matrix::Matrix(1, n, 1, sparse = TRUE), X),
@@ -129,8 +113,6 @@ L0nnpois <- function(X,
       cbind(Intercept = 1, X)
     }
     always.include <- c(1L, always.include + 1L)
-    lower <- c(-.Machine$double.xmax, lower)
-    upper <- c(.Machine$double.xmax, upper)
   }
   p <- ncol(X)
 
@@ -190,8 +172,10 @@ L0nnpois <- function(X,
       stop("start must have dimension p x m (or length p for univariate y).",
            call. = FALSE)
     }
-    start <- warm.start * start +
-      (1 - warm.start) * rep(stats::sd(start)^(1 / gamma), p)
+    if (length(start) > 1L) {
+      start <- warm.start * start +
+        (1 - warm.start) * rep(stats::sd(start)^(1 / gamma), p)
+    }
   }
 
   if (is.null(prior.mean)) {
@@ -235,13 +219,13 @@ L0nnpois <- function(X,
 
   if (issparse) {
     fit <- L0nnpois_sparse_cpp(
-      X, y, weights, offset, prior.mean, start, always.include, lower, upper,
+      X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
       natural_ordering)
   } else {
     fit <- L0nnpois_dense_cpp(
-      X, y, weights, offset, prior.mean, start, always.include, lower, upper,
+      X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
       natural_ordering)

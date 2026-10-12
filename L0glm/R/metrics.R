@@ -9,8 +9,6 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         beta_true = NULL, 
                         p = NULL # to pass in case model concerns one fitted on a pre-selected subset (p=nr of original variables)
                         # edf=sum(beta!=0)
-                        # lower=rep(0, ncol(X)),
-                        # upper=rep(Inf,ncol(X)) 
 ) {
   
   if (!is(family, "family")) family = family()

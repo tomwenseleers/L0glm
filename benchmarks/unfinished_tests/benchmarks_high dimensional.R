@@ -101,7 +101,6 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           lambda = lambda_preset, 
                                           # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
-                                          lower = rep(0, ncol(X)),
                                           warmupiters = 1,
                                           no.pen = NULL,
                                           # start = rep(sqrt(0.05), ncol(X)),
@@ -166,7 +165,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          # nonzero.centered = FALSE, # use nonzero centered ridge regression?
                          # ridge.center = NULL,
                          nonnegative = TRUE,
-                         lower = rep(0, ncol(X)),
                          warmupiters = 1,
                          no.pen = NULL,
                          start = start, # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver

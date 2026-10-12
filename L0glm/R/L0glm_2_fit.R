@@ -1,13 +1,13 @@
 #' @name L0glm.fit
 #' @aliases L0glm.fit
 #' @title Fit generalized linear model with \eqn{L_0} or grouped row-\eqn{L_0}
-#'   regularization subject to optional nonnegativity or box constraints
+#'   regularization subject to optional nonnegativity constraints
 #'
 #' @description Fits a generalized linear model with an \eqn{L_0} penalty or,
 #' for multichannel responses, a grouped row-\eqn{L_0} penalty, equivalent
 #' to an \eqn{L_{2,0}} penalty, to approximate Best Subset Selection (for
 #' univariate data) or Best Subset of Groups Selection (for multivariate data)
-#' subject to optional nonnegativity or box constraints on model coefficients.
+#' subject to optional nonnegativity constraints on model coefficients.
 #' The objective functions that can be approximated are :
 #' \itemize{
 #'
@@ -37,10 +37,12 @@
 #' same row support, so this is equivalently group-\eqn{L_0}, row-\eqn{L_0}, or
 #' \eqn{L_{2,0}} regularization.
 #'
-#' In all 3 cases the objective is subject to optional box constraints on the model coefficient
-#' vector or matrix beta
+#' In all three cases, \code{nonnegative = TRUE} restricts the coefficients to
+#' be nonnegative, including any intercept, except that binomial and
+#' quasibinomial intercepts remain unrestricted:
 #'
-#' \deqn{lower <= beta <= upper}
+#' \deqn{\beta_j \geq 0 \quad\hbox{or}\quad B_{jk} \geq 0.}
+#' With \code{nonnegative = FALSE}, coefficients may have either sign.
 #'
 #' These objectives are approximated via an iterative adaptive ridge regression
 #' procedure, see Details. The univariate and independent multichannel
@@ -64,7 +66,7 @@
 #' selection), support for any of the standard R GLM families & link functions,
 #' prior weights (e.g. total nr. of trials for binomial proportions), model
 #' offsets, starting coefficient values or dispersion (if prior estimate is
-#' available, otherwise optimised), nonnegativity or box constraints,
+#' available, otherwise optimised), optional nonnegativity constraints,
 #' unpenalized terms (e.g. intercept) and shrinkage towards given prior means
 #' (via targeted nonzero-centered ridge regression updates).
 #'
@@ -73,14 +75,14 @@
 #' with millions of observations or variables. As solvers, we currently
 #' implemented the \code{Eigen} sparse or dense Cholesky, QR, PCG & LSCG plus 
 #' BDCSVD and Jacobi SVD solvers, as well as two solvers that natively support 
-#' box constraints: \code{bigGlm} from \pkg{glmnet}, and \code{osqp}, a fast 
+#' nonnegativity constraints: \code{bigGlm} from \pkg{glmnet}, and \code{osqp}, a fast
 #' quadratic programming solver.
 #'
 #' @param X Design matrix with predictor variables of dimension \code{n} x
 #'   \code{p}, with \code{n} corresponding to the number of observations and
-#'   \code{p} being the number of columns in \code{y} (variables plus
-#'   intercept). It should include a column of ones for an intercept term is
-#'   desired.
+#'   \code{p} being the number of predictor columns. Use \code{intercept = TRUE}
+#'   to add an intercept, or include a column of ones in \code{X} and set
+#'   \code{intercept = FALSE}.
 #' @param y Response variable(s). Can be either a vector of length \code{n} or a
 #'   matrix of dimension \code{n} x \code{m}, where \code{n} is the number of
 #'   observations and \code{m} the number of response variables
@@ -123,7 +125,10 @@
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
 #'   be added, and the user must ensure that `X` already contains an intercept
-#'   if needed. Defaults to `FALSE`.
+#'   if needed. Defaults to `TRUE` for binomial models and `FALSE` otherwise
+#'   in `L0glm.fit()`, and to `FALSE` in `L0nnpois()`. With
+#'   `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
+#'   except for binomial and quasibinomial models, where it may have either sign.
 #' @param always.include A vector of coefficient indices that should always be
 #'   estimated & included in the model. This is done by updating \code{prior.mean}
 #'   in each IRLS iteration for these coefficients, instead of using sceptical
@@ -132,9 +137,14 @@
 #'   Specify 0 if all terms should be allowed to be
 #'   shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
 #'   always be estimated and included in the model.
-#' @param nonnegative A logical indicating whether nonnegativity constraints
-#'   should be applied. If \code{TRUE}, \code{lower} will be set to \code{rep(0,
-#'   ncol(X))}.
+#' @param nonnegative A single logical value. If \code{TRUE}, all coefficients,
+#'   including any intercept and \code{always.include} terms, must be
+#'   nonnegative. For binomial and quasibinomial models only, intercept columns
+#'   (columns of ones, whether supplied in \code{X} or added by
+#'   \code{intercept = TRUE}) remain unrestricted. If \code{FALSE}, all
+#'   coefficients may have either sign. Defaults to \code{FALSE} in
+#'   \code{L0glm.fit()}. The specialized \code{L0nnpois()} function always
+#'   enforces nonnegativity and has no \code{nonnegative} argument.
 #' @param normalize Logical indicating whether the columns of the design matrix
 #'   \strong{X} should be scaled to have unit \eqn{L_2} norm. It is advised to
 #'   use normalization unless the covariates were measured on a similar scale.
@@ -144,9 +154,9 @@
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
 #'   coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
 #'   of the \code{RcppEigen Eigen} solvers).
-#'   \code{"osqp"} and \code{"bigGlm"} support box or nonnegativity constraints
+#'   \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 #'   and scale well to larger problems, with especially \code{"bigGlm"} being
-#'   suitable for very large problems. The \code{"eigen"} solvers achieve box or
+#'   suitable for very large problems. The \code{"eigen"} solvers apply
 #'   nonnegativity constraints via clipping, which in combination with the ridge
 #'   penalties in practice work almost as well, and some of those solvers are
 #'   often among the fastest (especially \code{method} \code{1L}, Cholesky
@@ -172,12 +182,6 @@
 #'
 #'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
 #'
-#' @param lower Optional lower limit on model coefficients to specify box
-#'   constraints. It should either be a scalar, a vector of length \code{p} or a
-#'   matrix with dimensions \code{c(p, m)}.
-#' @param upper Optional upper limit on model coefficients to specify box
-#'   constraints. It should either be a scalar, a vector of length \code{p} or a
-#'   matrix with dimensions \code{c(p, m)}.
 #' @param parallelize A logical value indicating whether in the multivariate
 #'   case, the columns of the response matrix \code{y} should be fitted in
 #'   parallel. If \code{TRUE}, each column of \code{y} is fitted concurrently,
@@ -344,6 +348,23 @@
 #' \item{\code{X}}{design matrix X, including the intercept column if added}
 #' \item{\code{y}}{response vector or matrix y.}
 #'
+#' @examples
+#' x <- seq(-1, 1, length.out = 30)
+#' X <- matrix(x, ncol = 1)
+#'
+#' # Nonnegativity includes the Gaussian intercept.
+#' constrained <- L0glm.fit(X, -2 + 3 * x, family = gaussian(),
+#'   intercept = TRUE, nonnegative = TRUE, lambda = 1e-8,
+#'   dispersion = 1, parallelize = FALSE)
+#' as.numeric(constrained$coefficients)
+#'
+#' # A binomial intercept may remain negative with a nonnegative slope.
+#' y <- round(1000 * plogis(-2 + x)) / 1000
+#' logistic <- L0glm.fit(X, y, family = binomial(),
+#'   weights = rep(1000, length(y)), nonnegative = TRUE,
+#'   lambda = 1e-8, parallelize = FALSE)
+#' as.numeric(logistic$coefficients)
+#'
 #' @author Tom Wenseleers, Laura Lanzas & Christophe Vanderaa
 #'
 #' @references
@@ -383,8 +404,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       normalize     = FALSE,
                       solver        = "eigen",
                       method        = 1L,
-                      lower         = NULL,
-                      upper         = NULL,
                       parallelize   = TRUE,
                       ncores        = L0glm_default_ncores(parallelize),
                       nthreads      = NULL,
@@ -400,6 +419,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE) {
   
+  if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
+    stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!inherits(family, "family")) family <- family()
+
   # Helpers ----------------------------------------------------------------
   issparse  <- function(M) inherits(M, "sparseMatrix")
   as_list <- function(d)
@@ -421,20 +445,22 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     X <- Matrix(X, sparse = FALSE)
   }
   
-  # Intercept handling & set lower and upper ---------------------------------
-  lower <- if (nonnegative) { rep(0, ncol(X)) } else { rep(-.Machine$double.xmax, ncol(X)) }
-  upper <- rep(.Machine$double.xmax, ncol(X))
-    
+  # Add the intercept before deriving the solver's coefficient bounds --------
   if (intercept) {
     X <- cbind(Intercept = 1, X)
     intercept.col <- 1  # remember its position
     always.include <- c(1, always.include+1)   # always include intercept (indexing for always.include is for non-intercept coefs)
-    lower <- c(-.Machine$double.xmax, lower) # fit intercept unconstrained (important e.g. for binomial)
-    upper <- c(.Machine$double.xmax, upper)
     p <- ncol(X)               # update p after intercept addition
     # TODO also check dimensions of prior.mean, weights, start & offset
     # later in L0glm_1_fit_internal.R when colnames(X)[[1]]=="Intercept"
   } else { intercept.col <- NULL }
+
+  lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
+  upper <- rep(.Machine$double.xmax, p)
+  if (nonnegative && family$family %in% c("binomial", "quasibinomial")) {
+    # Recognize intercepts supplied explicitly in X as well as the added column.
+    lower[which(Matrix::colSums(X == 1) == n)] <- -.Machine$double.xmax
+  }
   
   # ----- preset lambda ------------------------------------------------------
   if (lambda %in% c("aic","bic","gic","ebic","mbic")) {
@@ -475,7 +501,9 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     #   scaling <- attr(Xscaled, "scaling")
     #   # start   <- start * scaling
     # }
-    start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
+    if (length(start) > 1L) {
+      start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
+    }
   } else {
     start <- NULL # leave initialisation to internal function
   }
@@ -509,7 +537,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   disp_list <- as_list(dispersion)   # <- list(NULL) or list(dispersion vector)
   
   # 6 misc --------------------------------------------------
-  if (nonnegative) lower[lower < 0] <- 0
   always.include.start <- always.include
   init.lambda <- lambda
   
@@ -640,7 +667,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         lower         = lower[vars],
                                         upper         = upper[vars],
                                         method        = method,
-                                        nonnegative   = nonnegative,
                                         normalize     = normalize,
                                         control.solver = control.solver,
                                         verbose       = verbose)
@@ -717,7 +743,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           lower         = lower[vars],
                                           upper         = upper[vars],
                                           method        = method,
-                                          nonnegative   = nonnegative,
                                           normalize     = normalize,
                                           control.solver = control.solver,
                                           verbose       = verbose)
@@ -1041,7 +1066,7 @@ L0glmfun_chunk <- function(job, ...) {
 }
 
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
-                     nonnegative, normalize,
+                     normalize,
                      X, y, family,
                      warm.start = 0.9,
                      prior.mean = NULL, weights = NULL, dispersion = NULL,

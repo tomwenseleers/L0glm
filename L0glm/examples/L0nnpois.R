@@ -1,4 +1,6 @@
 ## Fast nonnegative identity-link Poisson L0 or grouped L0 penalized fit
+## All coefficients, including an optional intercept, are always nonnegative.
+## No nonnegative, lower or upper argument is needed or accepted.
 n <- p <- 1000
 npeaks <- 100
 
@@ -10,7 +12,6 @@ system.time(fit.mc <- L0nnpois(
   sim.pois.mc$X,
   sim.pois.mc$y,
   lambda = "gic",
-  nonnegative = TRUE,
   grouped = TRUE,
   relaxed = TRUE,
   parallelize = TRUE,
@@ -42,12 +43,11 @@ dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
 }
 
-## Single-channel fit uses the same argument surface.
+## Single-channel fit uses the same nonnegative model.
 system.time(fit.sc <- L0nnpois(
   sim.pois.mc$X,
   sim.pois.mc$y[, 1L],
   lambda = "gic",
-  nonnegative = TRUE,
   grouped = FALSE,
   relaxed = FALSE,
   parallelize = FALSE

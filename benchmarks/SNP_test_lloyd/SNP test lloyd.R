@@ -648,8 +648,7 @@ colnames(X_train_subs2)
 L0glmfit = L0glm.fit(X=Matrix(cbind(1,X_train_subs2), sparse=T), 
                      y=logY_train,
                      no.pen=c(1, which(penalty.factor[preselected_vars]==0)+1), # do not penalize intercept & PCA factors & ROR1 SNPs
-                     # lower = c(rep(-Inf,num_pcs+1), rep(0,ncol(X_train_subs2)-num_pcs)), # for nonnegativity constraints on coefs (would be best to use strain with lowest lag time as reference though & code all SNPs relative to that)
-                     # upper = c(rep(Inf,num_pcs+1), rep(Inf,ncol(X_train_subs2)-num_pcs)),
+                     nonnegative = FALSE, # PCA coefficients require unrestricted signs
                      # start = relaxedlassocoefs[c(1,preselected_vars+1)], # using SCAD coefficient estimates as starting estimates
                      # warm.start = 0.9,
                      lambda=preset.lambda("aic", 

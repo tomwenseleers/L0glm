@@ -218,8 +218,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    intercept = FALSE,
                    start = rep(1, ncol(X_full)), # WORKED WHILE start=NULL DID NOT
                    warm.start = 1,
-                   # lower = rep(0, ncol(X_full)), # nonneg constraints on all coefs - gives different result than with nonnegative=TRUE though - CHECK WHY - LIKELY BUG
-                   nonnegative = TRUE, # nonneg constraints on all coefs - works, but not if I pass lower = rep(0, ncol(X_full)) CHECK BUG
+                   nonnegative = TRUE, # nonnegative coefficients, including any intercept
                    lambda = IC, 
                    grouped = grouped,
                    prior.mean = if (!is.null(X_base)) c(rep(min(y), ncol(X_base)), rep(0,ncol(X))) else NULL, # NEEDED FOR STABLE CONVERGENCE WHEN THERE IS A BASELINE

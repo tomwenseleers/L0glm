@@ -50,7 +50,6 @@ system.time(fit.mc <- L0nnpois(
   X,
   GCMS_data1,
   lambda = "gic",
-  nonnegative = TRUE,
   grouped = TRUE,
   relaxed = TRUE,
   parallelize = TRUE,
@@ -61,23 +60,22 @@ plotmat(GCMS_data1,
         xlab = "Elution time (min)",
         ylab = "Mass (m/z)",
         main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
-sum(rowSums(fit.mc$coefficients)!=0) # 63
-rows = rowSums(fit.mc$coefficients)[which(rowSums(fit.mc$coefficients)!=0)]
+sum(Matrix::rowSums(fit.mc$coefficients)!=0) # 63
+rows = Matrix::rowSums(fit.mc$coefficients)[which(Matrix::rowSums(fit.mc$coefficients)!=0)]
 nrows = rows/max(rows)
-abline(v = which(rowSums(fit.mc$coefficients)!=0), 
+abline(v = which(Matrix::rowSums(fit.mc$coefficients)!=0),
        col = sapply(nrows, function (alpha) adjustcolor("cyan", alpha = alpha)))
 # TODO: cluster together compounds with similar mass spectra when joined elution profiles
 # are log concave
 
-hist(rowSums(fit.mc$coefficients)[which(rowSums(fit.mc$coefficients)!=0)])
+hist(Matrix::rowSums(fit.mc$coefficients)[which(Matrix::rowSums(fit.mc$coefficients)!=0)])
 
-for (i in 1:length(which(rowSums(fit.mc$coefficients)!=0)) ) {  
+for (i in 1:length(which(Matrix::rowSums(fit.mc$coefficients)!=0)) ) {
   plot(x = as.numeric(colnames(GCMS_data1)),
-       y = fit.mc$coefficients[which(rowSums(fit.mc$coefficients)!=0)[i],], 
+       y = fit.mc$coefficients[which(Matrix::rowSums(fit.mc$coefficients)!=0)[i],],
        main = paste0("Spectrum deconvoluted compound ", as.character(i),
-                     "\nRT ", rownames(GCMS_data1)[which(rowSums(fit.mc$coefficients)!=0)[1]], " min"),
+                     "\nRT ", rownames(GCMS_data1)[which(Matrix::rowSums(fit.mc$coefficients)!=0)[1]], " min"),
        ylab = "Intensity", xlab = "Mass",
        col = "blue", type = "h")
 }
 
-  

@@ -44,13 +44,8 @@ inline double sample_sd(const VectorXd& x) {
   return std::sqrt(ss / static_cast<double>(n - 1));
 }
 
-inline VectorXd clamp_vec(const VectorXd& x, const VectorXd& lower,
-                          const VectorXd& upper) {
-  VectorXd out(x.size());
-  for (int i = 0; i < x.size(); ++i) {
-    out[i] = std::max(lower[i], std::min(x[i], upper[i]));
-  }
-  return out;
+inline VectorXd constrain_vec(const VectorXd& x) {
+  return x.cwiseMax(0.0);
 }
 
 inline std::vector<int> active_positions(const VectorXd& beta) {
@@ -95,12 +90,6 @@ inline void group_support_start(const MatrixXd& coef, double thresh,
       start_current(a, col) = starts[a];
     }
   }
-}
-
-inline VectorXd subset_vec(const VectorXd& x, const std::vector<int>& idx) {
-  VectorXd out(idx.size());
-  for (int i = 0; i < static_cast<int>(idx.size()); ++i) out[i] = x[idx[i]];
-  return out;
 }
 
 inline VectorXd compute_scaling_dense(const Map<MatrixXd>& X,
@@ -167,8 +156,6 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
                                  const VectorXd& offset,
                                  const VectorXd& prior_mean,
                                  const std::vector<int>& vars,
-                                 const VectorXd& lower,
-                                 const VectorXd& upper,
                                  double lambda, double warm_start,
                                  double gamma) {
   const int n = X.rows();
@@ -194,7 +181,7 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
     beta[j] = (denom[j] != 0.0 && std::isfinite(denom[j])) ?
       numer[j] / denom[j] : 0.0;
   }
-  beta = clamp_vec(beta, lower, upper);
+  beta = constrain_vec(beta);
   if (q > 1) {
     const double s = std::pow(sample_sd(beta), 1.0 / gamma);
     beta = warm_start * beta.array() + (1.0 - warm_start) * s;
@@ -208,8 +195,6 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                   const VectorXd& offset,
                                   const VectorXd& prior_mean,
                                   const std::vector<int>& vars,
-                                  const VectorXd& lower,
-                                  const VectorXd& upper,
                                   double lambda, double warm_start,
                                   double gamma) {
   const int n = X.rows();
@@ -243,7 +228,7 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
     beta[j] = (denom[j] != 0.0 && std::isfinite(denom[j])) ?
       numer[j] / denom[j] : 0.0;
   }
-  beta = clamp_vec(beta, lower, upper);
+  beta = constrain_vec(beta);
   if (q > 1) {
     const double s = std::pow(sample_sd(beta), 1.0 / gamma);
     beta = warm_start * beta.array() + (1.0 - warm_start) * s;
@@ -257,8 +242,6 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
                                   const std::vector<int>& active,
                                   const VectorXd& lambdas,
                                   const VectorXd& prior_mean,
-                                  const VectorXd& lower,
-                                  const VectorXd& upper,
                                   const VectorXd& scaling,
                                   const VectorXd& start) {
   const int n = X.rows();
@@ -293,9 +276,7 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
   VectorXd sol = solver.solve(b);
   if (solver.info() != Eigen::Success) return start;
 
-  VectorXd lower_a = subset_vec(lower, active);
-  VectorXd upper_a = subset_vec(upper, active);
-  sol = clamp_vec(sol, lower_a, upper_a);
+  sol = constrain_vec(sol);
   for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
   return sol;
 }
@@ -307,8 +288,6 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                    const std::vector<int>& active,
                                    const VectorXd& lambdas,
                                    const VectorXd& prior_mean,
-                                   const VectorXd& lower,
-                                   const VectorXd& upper,
                                    const VectorXd& scaling,
                                    const VectorXd& start,
                                    bool natural_ordering) {
@@ -362,9 +341,7 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
     if (solver.info() != Eigen::Success) return start;
   }
 
-  VectorXd lower_a = subset_vec(lower, active);
-  VectorXd upper_a = subset_vec(upper, active);
-  sol = clamp_vec(sol, lower_a, upper_a);
+  sol = constrain_vec(sol);
   for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
   return sol;
 }
@@ -378,8 +355,6 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            int channel,
                            const std::vector<int>& vars,
                            const std::vector<char>& always_include,
-                           const VectorXd& lower_full,
-                           const VectorXd& upper_full,
                            double lambda,
                            bool normalize,
                            int maxit,
@@ -399,8 +374,6 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            int channel,
                                            const std::vector<int>& vars,
                                            const std::vector<char>& always_include,
-                                           const VectorXd& lower_full,
-                                           const VectorXd& upper_full,
                                            double lambda,
                                            bool normalize,
                                            int maxit,
@@ -417,12 +390,10 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   VectorXd y = Y.col(channel);
   VectorXd prior_w = prior_weights.col(channel);
   VectorXd offset = Offset.col(channel);
-  VectorXd prior_mean(q), lower(q), upper(q);
+  VectorXd prior_mean(q);
   for (int j = 0; j < q; ++j) {
     const int col = vars[j];
     prior_mean[j] = prior_mean_full(col, channel);
-    lower[j] = lower_full[col];
-    upper[j] = upper_full[col];
   }
 
   VectorXd scaling = normalize ? compute_scaling_dense(X, vars) :
@@ -441,9 +412,9 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     have_start = !any_bad && any_nonzero;
   }
   if (!have_start) {
-    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lower,
-                            upper, lambda, warm_start, gamma);
+    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lambda, warm_start, gamma);
   }
+  beta = constrain_vec(beta);
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
@@ -476,7 +447,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     }
 
     VectorXd beta_sub = solve_ridge_dense(X, z, weights, vars, active, lambdas,
-                                          prior_mean, lower, upper, scaling,
+                                          prior_mean, scaling,
                                           start_active);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
@@ -519,8 +490,6 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     int channel,
     const std::vector<int>& vars,
     const std::vector<char>& always_include,
-    const VectorXd& lower_full,
-    const VectorXd& upper_full,
     double lambda,
     bool normalize,
     int maxit,
@@ -536,12 +505,10 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   VectorXd y = Y.col(channel);
   VectorXd prior_w = prior_weights.col(channel);
   VectorXd offset = Offset.col(channel);
-  VectorXd prior_mean(q), lower(q), upper(q);
+  VectorXd prior_mean(q);
   for (int j = 0; j < q; ++j) {
     const int col = vars[j];
     prior_mean[j] = prior_mean_full(col, channel);
-    lower[j] = lower_full[col];
-    upper[j] = upper_full[col];
   }
 
   VectorXd scaling = normalize ? compute_scaling_sparse(X, vars) :
@@ -560,9 +527,9 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     have_start = !any_bad && any_nonzero;
   }
   if (!have_start) {
-    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lower,
-                             upper, lambda, warm_start, gamma);
+    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lambda, warm_start, gamma);
   }
+  beta = constrain_vec(beta);
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
@@ -595,7 +562,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     }
 
     VectorXd beta_sub = solve_ridge_sparse(X, z, weights, vars, active, lambdas,
-                                           prior_mean, lower, upper, scaling,
+                                           prior_mean, scaling,
                                            start_active, natural_ordering);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
@@ -635,8 +602,6 @@ Rcpp::List fit_all_impl(const Design& X,
                         const Map<MatrixXd>& Priormap,
                         Rcpp::Nullable<Rcpp::NumericMatrix> start_nullable,
                         Rcpp::IntegerVector always_include_r,
-                        const Rcpp::NumericVector& lower_r,
-                        const Rcpp::NumericVector& upper_r,
                         double lambda,
                         bool normalize,
                         bool grouped,
@@ -657,8 +622,6 @@ Rcpp::List fit_all_impl(const Design& X,
   MatrixXd prior_weights = Wmap;
   MatrixXd Offset = Offsetmap;
   MatrixXd prior_mean_full = Priormap;
-  VectorXd lower = Rcpp::as<VectorXd>(lower_r);
-  VectorXd upper = Rcpp::as<VectorXd>(upper_r);
 
   MatrixXd start_full;
   bool has_start = start_nullable.isNotNull();
@@ -702,7 +665,7 @@ Rcpp::List fit_all_impl(const Design& X,
     for (int col = 0; col < m; ++col) {
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
-        always_include, lower, upper, lambda_fit, normalize, maxit, warm_start,
+        always_include, lambda_fit, normalize, maxit, warm_start,
         gamma, thresh, tol, natural_ordering);
     }
 
@@ -760,8 +723,6 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               const Eigen::Map<Eigen::MatrixXd>& prior_mean,
                               Rcpp::Nullable<Rcpp::NumericMatrix> start,
                               Rcpp::IntegerVector always_include,
-                              Rcpp::NumericVector lower,
-                              Rcpp::NumericVector upper,
                               double lambda,
                               bool normalize,
                               bool grouped,
@@ -775,7 +736,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               int nthreads,
                               bool natural_ordering) {
   return fit_all_impl<Map<MatrixXd> >(
-    X, y, weights, offset, prior_mean, start, always_include, lower, upper,
+    X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
     thresh, tol, nthreads, natural_ordering);
 }
@@ -788,8 +749,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                const Eigen::Map<Eigen::MatrixXd>& prior_mean,
                                Rcpp::Nullable<Rcpp::NumericMatrix> start,
                                Rcpp::IntegerVector always_include,
-                               Rcpp::NumericVector lower,
-                               Rcpp::NumericVector upper,
                                double lambda,
                                bool normalize,
                                bool grouped,
@@ -803,7 +762,7 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                int nthreads,
                                bool natural_ordering) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
-    X, y, weights, offset, prior_mean, start, always_include, lower, upper,
+    X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
     thresh, tol, nthreads, natural_ordering);
 }
