@@ -41,7 +41,7 @@ system.time(L0glm.chol_originaldata <- L0glm.fit(X_true,
                                          warm.start = 1,
                                          parallelize = FALSE,
                                          solver = "eigen",
-                                         method = 7L)) # 105s
+                                         method = 1L)) # 105s
 selected_features = which(rowSums(L0glm.chol_originaldata$coefficients!=0)!=0)
 length(selected_features) # 951
 length(intersect(selected_features, true_features)) # 929 true positives
@@ -96,7 +96,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg1,
                                     warm.start = 1,
                                     parallelize = F,
                                     solver = "eigen",
-                                    method = 7L)) # 10s
+                                    method = 1L)) # 10s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
 length(selected_features) # 1020
 length(intersect(selected_features, true_features)) # 925 true positives
@@ -115,7 +115,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F],
                                                warm.start = 1,
                                                parallelize = FALSE,
                                                solver = "eigen",
-                                               method = 7L)) # 12s with parallelize=F
+                                               method = 1L)) # 12s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # 1019
 length(intersect(selected_features_full, true_features)) # 925 true positives
@@ -153,7 +153,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg2,
                                                warm.start = 1,
                                                parallelize = FALSE,
                                                solver = "eigen",
-                                               method = 7L)) # 2.5s
+                                               method = 1L)) # 2.5s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
 length(selected_features) # 1033
 length(intersect(selected_features, true_features)) # 903 true positives
@@ -170,7 +170,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F],
                                          warm.start = 1,
                                          parallelize = FALSE,
                                          solver = "eigen",
-                                         method = 7L)) # 10s with parallelize=F
+                                         method = 1L)) # 10s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # 1033
 length(intersect(selected_features_full, true_features)) # 903 true positives
@@ -277,7 +277,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X_est, Yagg1,
                                                warm.start = 1,
                                                parallelize = FALSE,
                                                solver = "eigen",
-                                               method = 7L)) # 0.31s
+                                               method = 1L)) # 0.31s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
 length(selected_features) # 7
 # plotmat(L0glm.chol_aggregated$coefficients, subsamp=1, xlab="row", ylab="col")
@@ -300,7 +300,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X_est[,selected_features,drop=F],
                                          warm.start = 1,
                                          parallelize = FALSE,
                                          solver = "eigen",
-                                         method = 7L)) # 5s with parallelize=F
+                                         method = 1L)) # 5s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # intercept+7 with grouped=F or T
 dim(L0glm.chol_full$coefficients) # (intercept+7) x 671
@@ -363,7 +363,7 @@ system.time(L0glm.chol_aggregated <- L0glm.fit(X, Yagg2,
                                                warm.start = 1,
                                                parallelize = FALSE,
                                                solver = "eigen",
-                                               method = 7L)) # 0.19s
+                                               method = 1L)) # 0.19s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
 length(selected_features) # 7
 # plotmat(L0glm.chol_aggregated$coefficients, subsamp=1, xlab="row", ylab="col")
@@ -384,7 +384,7 @@ system.time(L0glm.chol_full <- L0glm.fit(X[,selected_features,drop=F],
                                          warm.start = 1,
                                          parallelize = FALSE,
                                          solver = "eigen",
-                                         method = 7L)) # 6.8s with parallelize=F
+                                         method = 1L)) # 6.8s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
 length(selected_features_full) # intercept+7, with grouped=F or T
 dim(L0glm.chol_full$coefficients) # (intercept+7) x 671

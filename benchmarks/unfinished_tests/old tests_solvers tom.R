@@ -223,12 +223,12 @@ microbenchmark(coefs_cholsolve_sparse_lmridge <- lmridge(X=Xsp, y=y, lambdas=lam
                                                          # scaling = rep(1, ncol(X)),
                                                          prior.mean = NULL,
                                                          solver = "eigen",
-                                                         method = 7L,
+                                                         method = 1L,
                                                          start = rep(0, ncol(X)),
                                                          control.solver = 
                                                            modifyList(do.call("control.solver.gen", 
                                                                               list(solver = "eigen", 
-                                                                                   method = 7L)),
+                                                                                   method = 1L)),
                                                                       list(rowaug=TRUE)) )
 )
 # with n=p=10000 for sparse case: 0.058s with rowaug=Fv, 0.042s with rowaug=T
@@ -250,12 +250,12 @@ system.time(coefs_cholsolve_dense_lmridge <- lmridge(X=X, y=y, lambdas=lambdas,
                                                      # scaling = rep(1, ncol(X)),
                                                      prior.mean = NULL,
                                                      solver = "eigen",
-                                                     method = 7L,
+                                                     method = 1L,
                                                      start = rep(0, ncol(X)),
                                                      control.solver = 
                                                        modifyList(do.call("control.solver.gen", 
                                                                           list(solver = "eigen", 
-                                                                               method = 7L)),
+                                                                               method = 1L)),
                                                                   list(rowaug=FALSE)) )
 )
 # with n=p=10000 for dense case: 4.08s with rowaug=TRUE, 4.03s with rowaug=FALSE
@@ -419,12 +419,12 @@ system.time(coefs_CG <- lmridge(X=Xsp[,nonzero,drop=F],
         # scaling = rep(1, ncol(X)),
         prior.mean = NULL,
         solver = "eigen",
-        method = 5L,
+        method = 3L,
         start = rep(0, ncol(X))[nonzero],
         control.solver = 
           modifyList(do.call("control.solver.gen", 
                              list(solver = "eigen", 
-                                  method = 5L)),
+                                  method = 3L)),
                      list(rowaug=FALSE)) )) # best with rowaug=FALSE here for sparse case?
 # 0.05s for n=p=10000
 cor(coefs_CG, coefs_solve_sparse) # 0.9965962
@@ -453,12 +453,12 @@ system.time(coefs_LSCG <- lmridge(X=Xsp[,nonzero,drop=F],
                                 # scaling = rep(1, ncol(X)),
                                 prior.mean = NULL,
                                 solver = "eigen",
-                                method = 3L,
+                                method = 4L,
                                 start = rep(0, ncol(X))[nonzero],
                                 control.solver = 
                                   modifyList(do.call("control.solver.gen", 
                                                      list(solver = "eigen", 
-                                                          method = 3L)),
+                                                          method = 4L)),
                                              list(rowaug=TRUE)) )) # fastest with rowaug=TRUE - TODO set rowaug always to TRUE with this solver
 # 0.01s for n=p=10000
 cor(coefs_LSCG, coefs_solve_sparse) # 0.9965962
@@ -478,12 +478,12 @@ system.time(coefs_chol <- lmridge(X=Xsp[,nonzero,drop=F],
                                   # scaling = rep(1, ncol(X)),
                                   prior.mean = NULL,
                                   solver = "eigen",
-                                  method = 7L,
+                                  method = 1L,
                                   start = rep(0, ncol(X))[nonzero],
                                   control.solver = 
                                     modifyList(do.call("control.solver.gen", 
                                                        list(solver = "eigen", 
-                                                            method = 7L)),
+                                                            method = 1L)),
                                                list(rowaug=TRUE)) )) # fastest with rowaug=TRUE here
 # 0.05s for n=p=10000
 cor(coefs_chol, coefs_solve_sparse) # 0.9965996
@@ -506,12 +506,12 @@ system.time(coefs_qr <- lmridge(X=Xsp[,nonzero,drop=F],
                                   # scaling = rep(1, ncol(X)),
                                   prior.mean = NULL,
                                   solver = "eigen",
-                                  method = 1L,
+                                  method = 5L,
                                   start = rep(0, ncol(X))[nonzero],
                                   control.solver = 
                                     modifyList(do.call("control.solver.gen", 
                                                        list(solver = "eigen", 
-                                                            method = 1L)),
+                                                            method = 5L)),
                                                list(rowaug=FALSE)) )) # fastest with rowaug=FALSE for sparse case
 # 0.1s for n=p=10000
 cor(coefs_qr, coefs_solve_sparse) # 0.9965996

@@ -1,6 +1,6 @@
 test_that("L0nnpois shares fitting arguments but always enforces nonnegativity", {
   expect_identical(names(formals(L0nnpois)),
-                   setdiff(names(formals(L0glm.fit)), "nonnegative"))
+                   setdiff(names(formals(L0glm.fit)), c("nonnegative", "openmp")))
 })
 
 test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits", {
@@ -14,6 +14,7 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
 
   fit_l0 <- L0glm.fit(
     X, y,
+    openmp = FALSE,
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
@@ -52,6 +53,7 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
 
   fit_l0_s <- L0glm.fit(
     Xs, ys,
+    openmp = FALSE,
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,

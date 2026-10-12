@@ -476,7 +476,7 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-  method = 3L, # faster than 7 here
+  method = 4L, # historically faster than Cholesky LLT here
   relaxed = FALSE)) # 0.18s
 
 L0glm_gaus_presetlambda$dispersion # 1.14359
@@ -565,7 +565,7 @@ system.time(L0glm_gaus_presetlambda_full <- L0glm.fit(
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # maxit = 1, 
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-  method = 3L, # faster than 7 here
+  method = 4L, # historically faster than Cholesky LLT here
   relaxed = FALSE)) # 202s
 
 L0glm_gaus_presetlambda_full$dispersion # 1.14359
@@ -663,7 +663,7 @@ system.time(L0glm.out_updated <- L0glm.fit(X = X[,sel,drop=F],
                                     warm.start = 1, # note 0.5-0.8 also work well
                                     # dispersion = L0glm_gaus_presetlambda$dispersion, # L0glm.out_2nditeration$dispersion,
                                     solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                    method = 3L, # for dense case 3L 2x as fast than 7L
+                                    method = 4L, # historically LSCG was twice as fast as Cholesky LLT for this dense case
                                     gamma = 2, #
                                     thresh = 1E-5,
                                     relaxed = FALSE
@@ -1284,7 +1284,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          warm.start = warmstart,
                          # dispersion = dispersion,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 7L, # 3L here 2x as fast than 7L
+                         method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -1452,7 +1452,7 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-  method = 7L,
+  method = 1L,
   relaxed = FALSE,
   thresh = 1E-5))
 
@@ -1487,7 +1487,7 @@ L0glm.out_2nditeration <- L0glm.fit(X = X,
                                     warm.start = 0.1,
                                     dispersion = L0glm_gaus_presetlambda$dispersion,
                                     solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                    method = 7L, # 3L here 2x as fast than 7L
+                                    method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
                                     # gamma = 2, 
                                     thresh = 1E-5,
                                     relaxed = FALSE 
@@ -1561,7 +1561,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           warm.start = 0.1,
                                           gamma = 2,
                                           solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
-                                          method = 7L,
+                                          method = 1L,
                                           verbose = T,
                                           thresh = 1E-30, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 100,
@@ -1617,7 +1617,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          no.pen = NULL,
                          start = start[selected], # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                         method = 5L,
+                         method = 3L,
                          relaxed = FALSE,
                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                          maxit = 20,
@@ -1801,7 +1801,7 @@ L0glm.out_preset <- L0glm.fit(X, y,
                               nonnegative = TRUE,
                               start = NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                               solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                              method = 7L # Cholesky
+                              method = 1L # Cholesky
 )
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
 points((1:length(L0glm.out_preset_coefs))*(length(sim$x)/length(L0glm.out_preset_coefs)), 
@@ -1833,7 +1833,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                          nonnegative = TRUE,
                          start = NULL, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                         method = 7L,
+                         method = 1L,
                          relaxed = FALSE,
                          thresh = 1E-5,
   )$coefficients

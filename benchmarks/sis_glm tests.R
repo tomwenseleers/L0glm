@@ -84,7 +84,7 @@ y <- y_true + rnorm(n)
 family <- gaussian(identity)
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, hbic, ebic, mbic 
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 nonnegative <- FALSE
@@ -179,7 +179,7 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
                                   # prior.mean = priormean[S],
                                   # dispersion = disp,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                  method = 7L, # Cholesky
+                                  method = 1L, # Cholesky
                                   thresh = 1E-5,
                                   gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
     )  # 
@@ -209,7 +209,7 @@ timing_SISL0glm
 #                                         warm.start = 1,
 #                                         # prior.mean = beta_start, # [S],
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-#                                         method = 7L, # Cholesky
+#                                         method = 1L, # Cholesky
 #                                         thresh = 1E-5,
 #                                         gamma = 2.1
 # ))  # 0.09s
@@ -336,7 +336,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                   # prior.mean = priormean[S],
                                   # dispersion = disp,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                  method = 7L, # Cholesky
+                                  method = 1L, # Cholesky
                                   thresh = 1E-5,
                                   gamma = 2 # .1 # taking gamma slightly higher than 2 for p>>n case
     )  # 
@@ -366,7 +366,7 @@ timing_SISL0glm
 #                                         warm.start = 1,
 #                                         # prior.mean = beta_start, # [S],
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-#                                         method = 7L, # Cholesky
+#                                         method = 1L, # Cholesky
 #                                         thresh = 1E-5,
 #                                         gamma = 2.1
 # ))  # 0.09s
@@ -392,7 +392,7 @@ L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                              thresh = 1E-5,
                              # verbose = TRUE,
                              solver = "eigen",
-                             method = 7L)
+                             method = 1L)
 table(as.numeric(L0glm.chol.pois$coefficients)!=0, beta_true!=0, 
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 

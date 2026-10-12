@@ -59,7 +59,7 @@ keep <- (L0glm.fit(X = Wstart,
                         lambda = "gic",  
                         nonnegative = TRUE,
                         solver = "eigen",
-                        method = 7L # using unregularised nonnegative identity link Poisson fit using osqp solver and with lambda=0
+                        method = 1L # using unregularised nonnegative identity link Poisson fit using osqp solver and with lambda=0
            )$coefficients != 0)
 sum(keep) # 101
 Wstart = as.matrix(Wstart[, which(keep), drop=F])
@@ -80,7 +80,7 @@ system.time(nmfDagg <- L0BestRankGNMF(Dagg,
                                   grouped_Hupdate = TRUE, # here in the H=t(S) with S=mass spectra we use a grouped L0 penalty 
                                   IC = IC, # information criterion to be optimised
                                   max_iter = 10, tol = 1e-4,
-                                  method = 7L, parallelize = FALSE, 
+                                  method = 1L, parallelize = FALSE,
                                   family = poisson(link="identity"))) # nonnegative identity link Poisson here
 # 27s unparallelized
 dim(nmfDagg$W) # 500 x 100

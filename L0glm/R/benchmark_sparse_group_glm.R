@@ -15,7 +15,7 @@
 #' @param options Here specify the options that each method accepts the options that the package
 #' that method calls accepts (and to refer to the respective packages and functions)
 #' @param plot XXX
-#' @param IC XXX
+#' @inheritParams L0glm.tune
 #' @param internal For internal calls (like method = 3) where we need a starting fit, the function self calls
 #' and requires the whole resulting fit (not only the coefficients, which is what is returned)
 #' @return A vector or matrix of coefficients.
@@ -28,6 +28,7 @@ benchmark_sparse_group_glm <- function(sim,
                                        family = NULL, method = 1, 
                                        options = NULL, plot = TRUE, IC = "gic", 
                                        internal = FALSE){
+  IC <- L0glm_ic_name(IC)
 
   X <- sim$X
   y <- sim$y
@@ -49,7 +50,7 @@ benchmark_sparse_group_glm <- function(sim,
                    lambda=0, 
                    warm.start = TRUE,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
@@ -64,7 +65,7 @@ benchmark_sparse_group_glm <- function(sim,
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     }

@@ -26,14 +26,15 @@ L0glm.fit(
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,
-  relaxed = grouped & ncol(y) > 1,
+  relaxed = grouped & NCOL(y) > 1,
   warm.start = 0.9,
   prior.mean = NULL,
   gamma = 2,
   thresh = 1e-05,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-  verbose = FALSE
+  verbose = FALSE,
+  openmp = TRUE
 )
 }
 \arguments{
@@ -82,11 +83,15 @@ known quantity that is added to the linear predictor of the model.}
 \item{lambda}{Either a scalar with the \eqn{L_0} penalty for univariate or
 independent multichannel fits (when \code{grouped=FALSE}) or the grouped
 row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
-character with the name of an information criterion (\code{"aic"},
-\code{"bic"}, \code{"gic"}, \code{"ebic"} or \code{"mbic"}), in which case
-\code{lambda} will be preset with a value that would be expected to
-optimise that particular information criterion. Set \code{lambda = 0} to
-disable penalization.}
+case-insensitive criterion name: \code{"aic"}, \code{"bic"},
+\code{"gic"}, \code{"mebic"}, \code{"ebic"}, or
+\code{"mbic"}. For example, \code{"GIC"} and \code{"gic"} are equivalent.
+The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
+AIC uses 2, BIC uses \eqn{\log n}, GIC uses \eqn{\log p\,\log\log n},
+and MEBIC uses twice the GIC value. See \link{information_criteria} for
+all formulas, intended uses and references. Set \code{lambda = 0} to
+disable penalization. Presets approximate the chosen criterion; they do
+not guarantee its global minimizer.}
 
 \item{intercept}{Logical: Whether to include an intercept term in the model.
 If `TRUE`, a column of ones will be added to the design matrix `X`, and
@@ -164,13 +169,16 @@ fitted sequentially.}
 \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to half the
 detected number of physical cores when that can be determined, falling back
 to half the number of logical cores. The requested value is capped at the
-detected number of physical cores when that can be determined.}
+detected number of physical cores when that can be determined.
+With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
+threads sharing the design matrix and is capped at the logical core count.}
 
 \item{nthreads}{Optional integer specifying the number of BLAS/OpenMP threads
 to use per fit process. The default \code{NULL} leaves the main R session's
 thread settings unchanged and uses one BLAS/OpenMP thread per parallel
 worker. Setting \code{nthreads} can be useful to benchmark serial fits or
-tune per-worker threading on systems with multithreaded BLAS/OpenMP.}
+tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
 perform.}
@@ -238,6 +246,15 @@ defaults to Eigen \code{COLAMDOrdering} (\code{ordering=1L});
 
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}
+
+\item{openmp}{Logical; defaults to \code{TRUE}. For nonnegative
+identity-link Poisson fits with \code{solver="eigen"} and
+\code{method=1L}, use the compiled \code{\link{L0nnpois}} backend.
+Other families, links and solvers use the general R fitting path.
+Set \code{FALSE} to use that path explicitly. Solver controls requesting
+another factorization or \code{rowaug=FALSE} also retain the R path.
+This option selects the backend; \code{parallelize} controls whether
+its outcome channels run concurrently.}
 }
 \value{
 Returns a list with the following elements:
@@ -305,10 +322,9 @@ multichannel data can be parallelized. Option \code{relaxed} allows one to
 finish with a (nearly) unpenalized fit on the \code{L0glm} selected features.
 
 The level of regularisation can be manually chosen (if a numeric value is
-passed to \code{lambda}) or preset to optimise given information criteria (if
-set to \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"ebic"} or
-\code{"mbic"}). For example, a lambda of 2 is expected to optimise AIC, a
-lambda of log(\emph{n}) BIC, etc.
+passed to \code{lambda}) or preset to approximate an information criterion.
+Criterion names are case-insensitive. See \link{information_criteria} for
+the penalty formulas, guidance on choosing a criterion and original references.
 
 The \code{L0glm.fit} function has various advanced features, including
 support for both dense and sparse design matrices \emph{\bold{X}}, high
@@ -345,7 +361,7 @@ Hilbe 2007). In this algorithm, each iteration of the IRLS algorithm updates
 the coefficient estimates using a quadratic approximation of the log
 likelihood of the GLM objective. This is done using a weighted least squares
 step. In our adapted algorithm, this step is replaced by a (zero or nonzero
-centered) adaptive ridge regularised regression with optional box or
+centered) adaptive ridge regularised regression with optional
 nonnegativity constraints on the coefficients. In each iteration, this uses
 the following ridge penalties for the penalized terms (excluding the
 intercept, if included):
@@ -355,7 +371,7 @@ with adaptive penalty weights
 where \eqn{\beta} are the coefficient estimates
 in each iteration and coefficients smaller than \code{thresh} are set to zero
 and taken out of the model at the start of each iteration, and as in Frommlet
-& Nuel (2016), \eqn{\gamma} is set to a default value of 2. Box or nonnegativity
+& Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
 constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
 \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
@@ -381,8 +397,10 @@ model (with \code{lambda=1E-10}). This can reduce any remaining bias and
 increase sensitivity. If an appropriate level of regularisation lambda is chosen,
 the L0 norm penalized solution approximates Best Subset selection. To achieve
 variable selection consistency, the \code{"bic"} \code{lambda} preset is
-recommended for low dimensional settings, whilst \code{"gic"}, \code{"ebic"}
-or \code{"mbic"} may work better for high dimensional settings. Setting it to
+recommended for low dimensional settings, whilst \code{"gic"},
+\code{"mebic"}, \code{"ebic"} or \code{"mbic"} may work better for high
+dimensional settings, subject to the conditions discussed in
+\link{information_criteria}. Setting it to
 \code{"aic"} is recommended if predictive performance is of key interest, as
 the AIC criterion asymptotically approximates the leave-one-out
 cross-validation error.

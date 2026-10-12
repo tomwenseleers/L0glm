@@ -86,7 +86,7 @@ system.time(m6 <- L0glm.fit(X, y,
                             family=Gamma(log),
                             normalize=F,
                             solver="parglm",
-                            method=3L)$coefficients)  
+                            method=4L)$coefficients)
 # 11s with parglm, 15s with eigen LSCG for n<-1000000
 # 104s with parglm for n<-10000000
 # NOTE: for dense n>>p problems parglm:::parallelglm solution could be used

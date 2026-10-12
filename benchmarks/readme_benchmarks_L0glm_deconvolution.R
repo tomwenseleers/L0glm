@@ -1,57 +1,75 @@
 # Reproduce the README benchmark examples for L0glm deconvolution.
 #
-# The examples use n = p = 10000 and npeaks = 1000 by default. Timings include
-# regularisation selection for glmnet and abess. L0glm uses lambda = "gic",
+# The examples use n = p = 10000, 200 m/z mass channels and npeaks = 1000 by default. Timings include
+# regularisation selection for glmnet. All paths
+# are scored with observed-data Poisson GIC. L0glm uses lambda = "gic",
 # which applies the GIC preset directly inside L0glm.fit and therefore avoids a
-# separate tuning pass.
+# separate tuning pass. Eligible fits use the compiled L0nnpois backend through
+# L0glm.fit(openmp = TRUE). Set cfg$openmp to FALSE to compare the R backend.
 #
 # Outputs are written to benchmarks/readme_benchmarks/.
+# Run interactively with source(), or execute sections after editing cfg below.
+# In RStudio, with the working directory set to the package directory L0glm/:
+# source("../benchmarks/readme_benchmarks_L0glm_deconvolution.R")
+# From the repository root, use source("benchmarks/readme_benchmarks_L0glm_deconvolution.R").
+# For a smaller run, edit cfg below: n = p = 600L, npeaks = 40L,
+# m = 4L, nlambda = 30L, and choose a separate cfg$out_dir.
 
-`%||%` <- function(x, y) if (is.null(x)) y else x
-
-script_file <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])
-script_dir <- if (!is.na(script_file) && nzchar(script_file)) dirname(normalizePath(script_file)) else getwd()
-root_dir <- normalizePath(file.path(script_dir, ".."), mustWork = FALSE)
-if (!file.exists(file.path(root_dir, "L0glm", "DESCRIPTION"))) {
-  root_dir <- normalizePath(getwd(), mustWork = FALSE)
-}
-
+# Paths are relative to the working directory: package directory or repository root.
+root_dir <- if (file.exists("L0glm/DESCRIPTION")) "." else ".."
+root_dir <- normalizePath(root_dir, winslash = "/", mustWork = TRUE)
 pkg_dir <- file.path(root_dir, "L0glm")
-out_dir <- file.path(root_dir, "benchmarks", "readme_benchmarks")
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+if (!file.exists(file.path(pkg_dir, "DESCRIPTION"))) {
+  stop("Set the working directory to the L0glm package directory or repository root.")
+}
 
 if (file.exists(file.path(pkg_dir, "DESCRIPTION")) &&
     requireNamespace("pkgload", quietly = TRUE)) {
-  pkgload::load_all(pkg_dir, quiet = TRUE)
+  pkgload::load_all(pkg_dir, quiet = TRUE, export_all = FALSE)
 } else {
   library(L0glm)
 }
 
 library(Matrix)
 
-cfg <- list(
-  n = as.integer(Sys.getenv("L0GLM_README_N", "10000")),
-  p = as.integer(Sys.getenv("L0GLM_README_P", "10000")),
-  npeaks = as.integer(Sys.getenv("L0GLM_README_NPEAKS", "1000")),
-  m = as.integer(Sys.getenv("L0GLM_README_CHANNELS", "20")),
-  seed_single = as.integer(Sys.getenv("L0GLM_README_SEED_SINGLE", "2")),
-  seed_multi = as.integer(Sys.getenv("L0GLM_README_SEED_MULTI", "3")),
-  nlambda = as.integer(Sys.getenv("L0GLM_README_NLAMBDA", "100")),
-  nfolds = as.integer(Sys.getenv("L0GLM_README_NFOLDS", "5")),
-  ncores = as.integer(Sys.getenv(
-    "L0GLM_README_NCORES",
-    as.character(max(1L, min(8L, parallel::detectCores(logical = FALSE) %||% 1L)))
-  )),
-  run_abess = tolower(Sys.getenv("L0GLM_README_RUN_ABESS", "true")) %in% c("1", "true", "yes"),
-  run_glmnet = tolower(Sys.getenv("L0GLM_README_RUN_GLMNET", "true")) %in% c("1", "true", "yes")
-)
+readme_flag <- function(x, name) {
+  if (is.logical(x) && length(x) == 1L && !is.na(x)) return(x)
+  if (is.character(x) && length(x) == 1L && !is.na(x)) {
+    value <- tolower(trimws(x))
+    if (value %in% c("true", "false")) return(value == "true")
+  }
+  stop(name, " must be TRUE or FALSE (or the string 'true' or 'false').")
+}
 
-support_grid <- sort(unique(as.integer(c(
-  seq(100L, min(2500L, cfg$p), by = 100L),
-  cfg$npeaks,
-  round(cfg$npeaks * c(0.5, 0.75, 1.25, 1.5, 2))
-))))
-support_grid <- support_grid[support_grid >= 1L & support_grid < cfg$p]
+cfg <- list(
+  n = 10000L,
+  p = 10000L,
+  npeaks = 1000L,
+  m = 200L,
+  seed_single = 2L,
+  seed_multi = 3L,
+  nlambda = 100L,
+  ncores = 8L,
+  openmp = TRUE,
+  run_glmnet = TRUE,
+  mu_floor = 1e-8, # numerical floor for observed likelihood/GIC and path selection
+  deviance_floor = 1e-4, # prediction floor for comparison against noise-free truth
+  plot_from = 1L,
+  plot_n = 500L,
+  out_dir = file.path(root_dir, "benchmarks", "readme_benchmarks")
+)
+for (flag in c("run_glmnet", "openmp")) cfg[[flag]] <- readme_flag(cfg[[flag]], flag)
+for (field in c("n", "p", "npeaks", "m", "nlambda", "ncores", "plot_from", "plot_n")) {
+  value <- cfg[[field]]
+  if (!is.numeric(value) || length(value) != 1L || !is.finite(value) ||
+      value < 1 || value != floor(value)) stop("cfg$", field, " must be a positive integer.")
+}
+if (cfg$n < 3L || cfg$p < 2L || cfg$npeaks > min(cfg$n, cfg$p)) {
+  stop("Use n >= 3, p >= 2 and npeaks <= min(n, p).")
+}
+stopifnot(length(cfg$mu_floor) == 1L, is.finite(cfg$mu_floor), cfg$mu_floor > 0)
+stopifnot(length(cfg$deviance_floor) == 1L, is.finite(cfg$deviance_floor), cfg$deviance_floor > 0)
+out_dir <- cfg$out_dir
 
 gic_penalty <- function(n, p) log(p) * log(log(n))
 
@@ -90,7 +108,9 @@ make_kernel_design <- function(n, p) {
 }
 
 simulate_single <- function(n, p, npeaks, seed) {
-  sim <- simul(method = 2, n = n, p = p, s = npeaks / p, sparse = TRUE, seed = seed)
+  sim <- simulate_spike_train(n = n, p = p, k = npeaks, family = "poisson",
+                              multichannel = FALSE, mean_beta = 2000,
+                              sparse = TRUE, seed = seed)
   sim$y <- as.vector(sim$y)
   sim$y_true <- as.vector(sim$y_true)
   dimnames(sim$X) <- list(paste0("t", seq_len(nrow(sim$X))), paste0("x", seq_len(ncol(sim$X))))
@@ -126,6 +146,63 @@ simulate_multi <- function(n, p, npeaks, m, seed) {
   sim
 }
 
+support_statistics <- function(beta_hat, beta_true, tol = 1e-5) {
+  selected <- Matrix::rowSums(abs(as_sparse_matrix(beta_hat)) > tol) > 0
+  truth <- Matrix::rowSums(abs(as_sparse_matrix(beta_true)) > tol) > 0
+  if (length(selected) != length(truth)) stop("Coefficient row counts differ.")
+  tp <- as.double(sum(selected & truth))
+  fp <- as.double(sum(selected & !truth))
+  fn <- as.double(sum(!selected & truth))
+  tn <- as.double(sum(!selected & !truth))
+  margins <- c(tp + fp, tp + fn, tn + fp, tn + fn)
+  list(selected = selected, truth = truth, TP = tp, FP = fp, FN = fn, TN = tn,
+       precision = if (tp + fp > 0) tp / (tp + fp) else NA_real_,
+       recall = if (tp + fn > 0) tp / (tp + fn) else NA_real_,
+       F1 = if (2 * tp + fp + fn > 0) 2 * tp / (2 * tp + fp + fn) else NA_real_,
+       # MCC = Pearson's phi for binary support; undefined for constant support.
+       MCC = if (all(margins > 0)) (tp * tn - fp * fn) / prod(sqrt(margins)) else NA_real_)
+}
+
+# R-squared from regression through the origin, as used by get.metrics().
+# Compute from all coefficient entries, including all channels (not row means).
+coefficient_r2 <- function(beta_hat, beta_true) {
+  est <- as_sparse_matrix(beta_hat)
+  truth <- as_sparse_matrix(beta_true)
+  ss_est <- sum(est^2)
+  ss_true <- sum(truth^2)
+  if (ss_true == 0) return(NA_real_)
+  if (ss_est == 0) return(0)
+  min(1, (sum(est * truth) / sqrt(ss_est) / sqrt(ss_true))^2)
+}
+
+# The floor is applied to predictions only; the reference response is unchanged.
+# For noise-free y, this is 2 * KL(Poisson(y) || Poisson(pmax(mu, mu_floor))).
+poisson_deviance <- function(y, mu, mu_floor = cfg$mu_floor) {
+  if (length(y) != length(mu)) stop("Response and prediction sizes differ.")
+  if (any(!is.finite(y)) || any(y < 0) || any(!is.finite(mu)) || any(mu < 0)) {
+    stop("Poisson responses and predictions must be finite and nonnegative.")
+  }
+  sum(poisson()$dev.resids(as.vector(y), pmax(as.vector(mu), mu_floor), 1))
+}
+
+# Counts and lambda use the same n (rows of X) as L0glm's GIC preset.
+# The entry criterion is used to select comparator paths; row GIC is also
+# reported, but the current grouped L0 fitter is a support-sharing heuristic,
+# not an exact optimizer of the row-count criterion.
+poisson_gic <- function(X, y, beta, tol = 1e-5) {
+  beta <- as_sparse_matrix(beta)
+  mu <- as.matrix(X %*% beta)
+  deviance <- poisson_deviance(y, mu)
+  nonzero <- sum(abs(beta) > tol)
+  selected <- sum(Matrix::rowSums(abs(beta) > tol) > 0)
+  lambda <- gic_penalty(nrow(X), ncol(X))
+  list(deviance = deviance, nonzero_coefficients = nonzero,
+       selected = selected, lambda_L0 = lambda,
+       # These omit the saturated-likelihood constant, which is common to a path.
+       criterion = deviance + lambda * nonzero,
+       criterion_rows = deviance + lambda * selected, mu = mu)
+}
+
 score_fit <- function(case, method, seconds, beta_hat, sim, note = NA_character_, tol = 1e-5) {
   beta_hat <- as_sparse_matrix(beta_hat)
   beta_true <- as_sparse_matrix(sim$beta_true)
@@ -134,32 +211,13 @@ score_fit <- function(case, method, seconds, beta_hat, sim, note = NA_character_
   y_true <- as_matrix(sim$y_true)
   m <- ncol(y)
 
-  selected <- Matrix::rowSums(abs(beta_hat) > tol) > 0
-  truth <- Matrix::rowSums(abs(beta_true) > tol) > 0
-  tp <- sum(selected & truth)
-  fp <- sum(selected & !truth)
-  fn <- sum(!selected & truth)
-  tn <- sum(!selected & !truth)
+  support <- support_statistics(beta_hat, beta_true, tol)
 
-  nz <- which(Matrix::rowSums(abs(beta_hat)) > tol)
-  mu_hat <- matrix(0, nrow(X), m)
-  if (length(nz)) {
-    mu_hat <- as.matrix(X[, nz, drop = FALSE] %*% beta_hat[nz, , drop = FALSE])
-  }
-  mu_hat <- pmax(mu_hat, 1e-8)
+  scores <- poisson_gic(X, y, beta_hat, tol)
+  dev_true <- poisson_deviance(y_true, scores$mu, mu_floor = cfg$deviance_floor)
+  min2ll <- -2 * sum(dpois(as.vector(y), pmax(as.vector(scores$mu), cfg$mu_floor), log = TRUE))
 
-  fam <- poisson(identity)
-  dev_obs <- sum(fam$dev.resids(y = as.vector(y), mu = as.vector(mu_hat), wt = 1))
-  dev_true <- sum(fam$dev.resids(y = as.vector(y_true), mu = as.vector(mu_hat), wt = 1))
-  min2ll <- fam$aic(y = round(as.vector(y)), n = rep(1, length(y)),
-                    mu = as.vector(mu_hat), wt = rep(1, length(y)),
-                    dev = dev_obs)
-  edf <- sum(abs(beta_hat) > tol)
-  gic <- min2ll + gic_penalty(nrow(X) * m, ncol(X)) * edf
-
-  r2 <- suppressWarnings(summary(lm(as.vector(beta_true) ~ 0 + as.vector(beta_hat)))$r.squared)
-  precision <- if ((tp + fp) > 0) tp / (tp + fp) else NA_real_
-  recall <- if ((tp + fn) > 0) tp / (tp + fn) else NA_real_
+  r2 <- coefficient_r2(beta_hat, beta_true)
 
   data.frame(
     case = case,
@@ -168,22 +226,44 @@ score_fit <- function(case, method, seconds, beta_hat, sim, note = NA_character_
     n = nrow(X),
     p = ncol(X),
     m = m,
-    npeaks = sum(truth),
-    selected = sum(selected),
-    TP = tp,
-    FP = fp,
-    FN = fn,
-    TN = tn,
-    precision = precision,
-    recall = recall,
-    F1 = if ((2 * tp + fp + fn) > 0) 2 * tp / (2 * tp + fp + fn) else NA_real_,
+    npeaks = sum(support$truth),
+    selected = sum(support$selected),
+    TP = support$TP,
+    FP = support$FP,
+    FN = support$FN,
+    TN = support$TN,
+    precision = support$precision,
+    recall = support$recall,
+    F1 = support$F1,
+    MCC = support$MCC,
     R2_coefficients = r2,
-    deviance = dev_obs,
+    deviance = scores$deviance,
     deviance_true = dev_true,
-    GIC = gic,
+    neg2loglik = min2ll,
+    nonzero_coefficients = scores$nonzero_coefficients,
+    lambda_L0 = scores$lambda_L0,
+    GIC = min2ll + scores$lambda_L0 * scores$nonzero_coefficients,
+    GIC_rows = min2ll + scores$lambda_L0 * scores$selected,
     note = note,
     check.names = FALSE
   )
+}
+
+# beta_true is an oracle reference, not the minimum of a noisy penalized fit.
+# The unpenalized saturated likelihood is a rigorous lower bound for BOTH
+# objectives (nonnegative penalties); it need not be attainable by X %*% beta.
+score_reference <- function(case, sim) {
+  oracle <- score_fit(case, "beta_true", NA_real_, sim$beta_true, sim)
+  y <- as.vector(sim$y)
+  data.frame(case = case, lambda_L0 = oracle$lambda_L0,
+             true_rows = oracle$selected,
+             true_nonzero_coefficients = oracle$nonzero_coefficients,
+             neg2loglik_beta_true = oracle$neg2loglik,
+             GIC_beta_true = oracle$GIC,
+             GIC_rows_beta_true = oracle$GIC_rows,
+             objective_lower_bound = -2 * sum(dpois(y, y, log = TRUE)),
+             deviance_true_beta_true = oracle$deviance_true,
+             deviance_true_lower_bound = 0)
 }
 
 glmnet_single_gic <- function(X, y, weights, nlambda) {
@@ -192,147 +272,188 @@ glmnet_single_gic <- function(X, y, weights, nlambda) {
     alpha = 1, nlambda = nlambda, intercept = FALSE,
     standardize = FALSE, lower.limits = 0
   )
-  pred <- X %*% fit$beta
-  rss <- Matrix::colSums(weights * (matrix(y, nrow = length(y), ncol = ncol(pred)) - pred)^2)
-  df <- Matrix::colSums(fit$beta != 0)
-  rdf <- pmax(length(y) - df, 1)
-  ll <- -0.5 * length(y) * (log(2 * pi) - log(rdf) + log(rss)) - 0.5 * rdf
-  gic <- -2 * ll + gic_penalty(length(y), ncol(X)) * df
+  gic <- vapply(seq_along(fit$lambda), function(j) {
+    poisson_gic(X, y, fit$beta[, j, drop = FALSE])$criterion
+  }, numeric(1))
+  gic <- gic - 2 * sum(dpois(y, y, log = TRUE))
   j <- which.min(gic)
-  list(beta = fit$beta[, j, drop = FALSE], lambda = fit$lambda[j], GIC_path = gic)
+  list(beta = fit$beta[, j, drop = FALSE], lambda = fit$lambda[j], GIC_path = gic, lambda_path = fit$lambda)
 }
 
 glmnet_multi_gic <- function(X, Y, row_weights, nlambda) {
+  # glmnet's mgaussian family requires length-n weights, shared by all channels.
+  # These are a one-step Gaussian approximation to Poisson precision weights.
   fit <- glmnet::glmnet(
     x = X, y = Y, weights = row_weights, family = "mgaussian",
     alpha = 1, nlambda = nlambda, intercept = FALSE,
     standardize = FALSE, standardize.response = FALSE, lower.limits = 0
   )
   nlambda_fit <- length(fit$lambda)
-  rss <- df <- numeric(nlambda_fit)
+  gic <- numeric(nlambda_fit)
   for (j in seq_len(nlambda_fit)) {
     beta_j <- do.call(cbind, lapply(fit$beta, function(B) B[, j]))
-    pred <- as.matrix(X %*% beta_j)
-    rss[j] <- sum(row_weights * rowSums((Y - pred)^2))
-    df[j] <- sum(abs(beta_j) > 0)
+    gic[j] <- poisson_gic(X, Y, beta_j)$criterion
   }
-  nobs <- length(Y)
-  rdf <- pmax(nobs - df, 1)
-  ll <- -0.5 * nobs * (log(2 * pi) - log(rdf) + log(rss)) - 0.5 * rdf
-  gic <- -2 * ll + gic_penalty(nobs, ncol(X)) * df
+  gic <- gic - 2 * sum(dpois(as.vector(Y), as.vector(Y), log = TRUE))
   j <- which.min(gic)
   beta <- do.call(cbind, lapply(fit$beta, function(B) B[, j]))
-  list(beta = beta, lambda = fit$lambda[j], GIC_path = gic)
+  list(beta = beta, lambda = fit$lambda[j], GIC_path = gic, lambda_path = fit$lambda)
 }
 
-abess_single_gic <- function(X, y, weights, support_grid) {
-  fit <- abess::abess(
-    x = X, y = y, weight = weights, family = "gaussian",
-    tune.path = "sequence", support.size = support_grid,
-    fit.intercept = FALSE, beta.low = 0, lambda = 0,
-    warm.start = TRUE, tune.type = "bic",
-    ic.scale = gic_penalty(length(y), ncol(X)) / log(length(y))
-  )
-  best_size <- fit[["best.size"]][1]
-  beta <- coef(fit, support.size = best_size, sparse = FALSE)[-1, , drop = FALSE]
-  list(beta = beta, support.size = best_size)
+method_label <- function(method) {
+  labels <- c(L0glm = "Nonnegative L0 Poisson",
+              L0glm_grouped = "Nonnegative relaxed group L0 Poisson",
+              glmnet_lasso = "Nonnegative LASSO (glmnet)",
+              glmnet_group_lasso = "Nonnegative group LASSO (glmnet)")
+  if (method %in% names(labels)) labels[[method]] else method
 }
 
-abess_multi_gic <- function(X, Y, support_grid) {
-  fit <- abess::abess(
-    x = X, y = Y, family = "mgaussian",
-    tune.path = "sequence", support.size = support_grid,
-    fit.intercept = FALSE, beta.low = 0, lambda = 0,
-    warm.start = TRUE, tune.type = "bic",
-    ic.scale = gic_penalty(length(Y), ncol(X)) / log(length(Y))
-  )
-  best_size <- fit[["best.size"]][1]
-  beta_raw <- coef(fit, support.size = best_size, sparse = FALSE)
-  beta <- if (is.list(beta_raw)) beta_raw[[1]][-1, , drop = FALSE] else beta_raw[-1, , drop = FALSE]
-  list(beta = beta, support.size = best_size)
-}
-
-plot_single_signal <- function(sim, fits, file) {
-  png(file, width = 1400, height = 820, res = 150)
-  on.exit(dev.off(), add = TRUE)
-  idx <- seq_len(min(1200L, length(sim$y)))
-  ymax <- as.numeric(stats::quantile(c(sim$y[idx], sim$y_true[idx]), 0.995, na.rm = TRUE)) * 1.15
-  par(mar = c(4.2, 4.6, 3.5, 1.2), bty = "l")
-  plot(idx, sim$y[idx], type = "l", col = "grey45", lwd = 1,
-       xlab = "Time index", ylab = "Signal", ylim = c(0, ymax * 1.08),
-       main = "Single-channel Poisson deconvolution (zoom; extreme fits capped)")
-  lines(idx, pmin(sim$y_true[idx], ymax), col = "#1B9E77", lwd = 2)
-  cols <- c(L0glm = "#0072B2", glmnet_lasso = "#D55E00", abess = "#CC79A7")
-  for (nm in intersect(names(fits), names(cols))) {
-    beta <- as_sparse_matrix(fits[[nm]])
-    mu <- as.vector(sim$X %*% beta)
-    lines(idx, pmin(mu[idx], ymax), col = cols[[nm]], lwd = 1.6)
+method_heading <- function(method, timings = NULL) {
+  label <- method_label(method)
+  if (method %in% names(timings) && is.finite(timings[[method]])) {
+    label <- paste0(label, sprintf("\nTime = %.2f s", timings[[method]]))
   }
+  label
+}
+
+plot_indices <- function(n, from = 1L, size = n) {
+  from <- min(max(1L, as.integer(from)), n)
+  seq.int(from, min(n, from + size - 1L))
+}
+
+plot_single_signal <- function(sim, fits, file, from = 1L, size = 500L, timings = NULL) {
+  if (!length(fits)) return(invisible(NULL))
+  png(file, width = 1800, height = 450 * length(fits) + 150, res = 150)
+  on.exit(dev.off(), add = TRUE)
+  idx <- plot_indices(length(sim$y), from, size)
   true_beta <- as.vector(sim$beta_true)
-  spike_idx <- which(true_beta > 0 & seq_along(true_beta) %in% idx)
-  segments(spike_idx, 0, spike_idx, pmin(true_beta[spike_idx], ymax), col = "#E69F00")
-  legend("topright", bty = "n", lwd = c(1, 2, 1.6, 1.6, 1.6, 1),
-         col = c("grey45", "#1B9E77", cols), legend = c("observed", "no-noise truth", names(cols)))
-}
-
-plot_coefficients <- function(case, sim, fits, file) {
-  png(file, width = 1400, height = 920, res = 150)
-  on.exit(dev.off(), add = TRUE)
-  methods <- names(fits)
-  par(mfrow = c(1, length(methods)), mar = c(4.3, 4.3, 4.0, 1.0), oma = c(0, 0, 1, 0), bty = "l")
-  truth <- as_matrix(sim$beta_true)
-  xtruth <- if (ncol(truth) == 1L) truth[, 1] else rowMeans(truth)
-  cap <- as.numeric(stats::quantile(xtruth[xtruth > 0], 0.995, na.rm = TRUE))
-  for (nm in methods) {
-    est <- as_matrix(fits[[nm]])
-    xest <- if (ncol(est) == 1L) est[, 1] else rowMeans(est)
-    keep <- xtruth != 0 | abs(xest) > 1e-5
-    r2 <- suppressWarnings(summary(lm(xtruth ~ 0 + xest))$r.squared)
-    plot(pmin(xest[keep], cap), pmin(xtruth[keep], cap), pch = 16, cex = 0.35, col = "#0072B280",
-         xlim = c(0, cap), ylim = c(0, cap),
-         xlab = "Estimated coefficient", ylab = "True coefficient",
-         main = sprintf("%s\nR2 = %.3f", nm, r2))
-    abline(0, 1, col = "#D55E00", lwd = 2)
+  spike_idx <- intersect(idx, seq_along(true_beta))
+  # Peak areas and the convolved signal have different units. Scale BOTH sets
+  # of coefficient stems by the same PSF maximum, and state that factor.
+  spike_scale <- max(sim$X)
+  par(mfrow = c(length(fits), 1L), mar = c(3.1, 6.2, 4.0, 1.2),
+      oma = c(1.7, 0, 3.1, 0), bty = "l", las = 1)
+  for (nm in names(fits)) {
+    beta <- as_sparse_matrix(fits[[nm]])
+    est <- as.vector(beta)
+    mu <- as.vector(sim$X[idx, , drop = FALSE] %*% beta)
+    yrange <- range(0, sim$y[idx], true_beta[spike_idx] * spike_scale,
+                    -sim$y_true[idx], -mu, -est[spike_idx] * spike_scale, finite = TRUE)
+    if (diff(yrange) == 0) yrange <- c(-1, 1)
+    plot(idx, sim$y[idx], type = "l", col = "grey40", lwd = 1,
+         xlab = "Time index", ylab = "", ylim = yrange * 1.08,
+         main = method_heading(nm, timings))
+    mtext("Signal (fit mirrored)", side = 2, line = 4.5, las = 0)
+    abline(h = 0, col = "grey70", lty = 3)
+    segments(spike_idx, 0, spike_idx, true_beta[spike_idx] * spike_scale, col = "red", lwd = 1)
+    segments(spike_idx, 0, spike_idx, -est[spike_idx] * spike_scale, col = "darkblue", lwd = 1)
+    lines(idx, -sim$y_true[idx], col = "grey60", lwd = 1.1, lty = 2)
+    lines(idx, -mu, col = "#E69F00", lwd = 1.5)
   }
-  mtext(sprintf("%s coefficient recovery (axes capped at 99th pct.)", case), outer = TRUE, cex = 1.1)
+  mtext("Single-channel Poisson deconvolution", outer = TRUE, line = 1.8, font = 2)
+  mtext(sprintf("Spikes are peak areas multiplied by the PSF maximum (%.4g); negative values indicate mirroring only.",
+                spike_scale), side = 1, outer = TRUE, line = 0.3, cex = 0.8)
+  # Draw a shared legend in figure coordinates, above the first panel.
+  par(fig = c(0, 1, 0, 1), mar = rep(0, 4), oma = rep(0, 4), new = TRUE)
+  plot.new()
+  legend("top", inset = c(0, 0.035), xpd = NA, bty = "n", horiz = TRUE,
+         legend = c("Observed (+)", "True spikes (+)", "Estimated spikes (-)",
+                    "No-noise signal (-)", "Fitted signal (-)"),
+         col = c("grey40", "red", "darkblue", "grey60", "#E69F00"),
+         lty = c(1, 1, 1, 2, 1), lwd = c(1, 1, 1, 1, 1.5), cex = 0.8)
 }
 
-plot_multi_heatmap <- function(sim, fits, file) {
-  png(file, width = 1400, height = 980, res = 150)
+plot_coefficients <- function(case, sim, fits, file, tol = 1e-5, timings = NULL) {
+  if (!length(fits)) return(invisible(NULL))
+  png(file, width = 650 * length(fits), height = 750, res = 150)
   on.exit(dev.off(), add = TRUE)
+  par(mfrow = c(1, length(fits)), mar = c(4.5, 4.5, 6.8, 1.0),
+      oma = c(2, 0, 2, 0), bty = "l")
+  truth <- as.vector(sim$beta_true)
+  for (nm in names(fits)) {
+    est <- as.vector(fits[[nm]])
+    keep <- abs(truth) > tol | abs(est) > tol
+    r2 <- coefficient_r2(fits[[nm]], sim$beta_true)
+    stats <- support_statistics(fits[[nm]], sim$beta_true, tol)
+    xmax <- max(1, est, na.rm = TRUE)
+    ymax <- max(1, truth, na.rm = TRUE)
+    plot(est[keep], truth[keep], pch = 16, cex = 0.85, col = "#4682B4B0",
+         xlim = c(0, xmax * 1.03), ylim = c(0, ymax * 1.03),
+         xlab = "Estimated coefficients", ylab = "True coefficients",
+         main = sprintf("%s\nR2 = %.4f\nF1 = %.3f; MCC = %.3f",
+                        method_heading(nm, timings), r2, stats$F1, stats$MCC), cex.main = 0.95)
+    abline(0, 1, col = "grey50", lty = 2)
+    mtext(sprintf("TP = %d; FP = %d; FN = %d", stats$TP, stats$FP, stats$FN),
+          side = 3, line = 0.2, cex = 0.75)
+  }
+  mtext(paste(case, "coefficient recovery"), outer = TRUE, font = 2, line = 0.5)
+  mtext("All coefficient entries; axes are not capped. R2: regression through zero. F1, MCC and counts: row support.",
+        side = 1, outer = TRUE, line = 0.6, cex = 0.75)
+}
+
+plot_multi_support <- function(sim, fits, file, from = 1L, size = nrow(sim$beta_true), tol = 1e-5, timings = NULL) {
   methods <- c("truth", names(fits))
-  panels <- length(methods)
-  par(mfrow = c(panels, 1), mar = c(2.4, 4.2, 2.6, 1.0), oma = c(2, 0, 1, 0))
-  cols <- colorRampPalette(c("white", "#56B4E9", "#0072B2", "#D55E00"))(256)
-  truth_support <- which(Matrix::rowSums(abs(sim$beta_true) > 1e-5) > 0)
+  png(file, width = 1800, height = 300 * length(methods) + 160, res = 150)
+  on.exit(dev.off(), add = TRUE)
+  idx <- plot_indices(nrow(sim$beta_true), from, size)
+  truth <- Matrix::rowSums(abs(sim$beta_true) > tol) > 0
+  par(mfrow = c(length(methods), 1), mar = c(2.8, 4.4, 4.3, 1.2),
+      oma = c(2, 0, 2.7, 0), bty = "l")
   for (nm in methods) {
-    mat <- if (nm == "truth") as_matrix(sim$beta_true) else as_matrix(fits[[nm]])
-    z <- log1p(mat)
-    image(seq_len(nrow(mat)), seq_len(ncol(mat)), z,
-          col = cols, useRaster = TRUE, axes = FALSE,
-          xlab = "", ylab = "Channel", main = nm)
-    axis(2, las = 1)
-    if (nm != "truth") abline(v = truth_support, col = "#E69F0040", lwd = 0.4)
+    title <- if (nm == "truth") "True support" else method_heading(nm, timings)
+    if (nm != "truth") {
+      stats <- support_statistics(fits[[nm]], sim$beta_true, tol)
+      title <- sprintf("%s\nTP %d; FP %d; FN %d  |  F1 %.3f; MCC %.3f",
+                       title, stats$TP, stats$FP, stats$FN, stats$F1, stats$MCC)
+    }
+    plot(range(idx), c(0, 1), type = "n", xlim = range(idx) + c(-0.5, 0.5),
+         ylim = c(0, 1), xlab = "Time index", ylab = "Support", yaxt = "n",
+         main = title, cex.main = 0.95)
+    abline(h = 0, col = "grey85")
+    if (nm == "truth") {
+      at <- idx[truth[idx]]
+      segments(at, 0, at, 1, col = "darkblue", lwd = 1.3)
+    } else {
+      colours <- ifelse(truth & stats$selected, "darkblue",
+                        ifelse(stats$selected, "red", "magenta"))
+      at <- idx[(truth | stats$selected)[idx]]
+      segments(at, 0, at, 1, col = colours[at], lwd = 1.3)
+    }
   }
-  axis(1)
-  mtext("Time index", side = 1, outer = TRUE)
-  mtext("Multichannel grouped deconvolution coefficient maps", outer = TRUE, cex = 1.1)
+  mtext("Multichannel support recovery", outer = TRUE, line = 1.4, font = 2)
+  mtext("Dark blue: true support / true positives     Red: false positives     Magenta: false negatives",
+        outer = TRUE, line = 0.1, cex = 0.85)
+  mtext("Counts and scores refer to the full support, including indices outside the displayed window.",
+        side = 1, outer = TRUE, line = 0.4, cex = 0.75)
 }
 
 plot_summary <- function(results, file) {
-  png(file, width = 1400, height = 850, res = 150)
+  png(file, width = 1800, height = 850, res = 150)
   on.exit(dev.off(), add = TRUE)
-  ok <- results[!is.na(results$seconds), , drop = FALSE]
-  par(mfrow = c(1, 3), mar = c(8, 4.5, 3, 1), bty = "l")
-  cols <- c("#0072B2", "#D55E00", "#CC79A7", "#009E73", "#E69F00", "#999999")
-  for (metric in c("seconds", "F1", "log10_deviance_true")) {
-    vals <- if (metric == "log10_deviance_true") log10(ok$deviance_true) else ok[[metric]]
+  ok <- results[is.finite(results$seconds), , drop = FALSE]
+  if (!nrow(ok)) {
+    plot.new()
+    text(0.5, 0.5, "No successful fits; see the result table for errors.")
+    return(invisible(NULL))
+  }
+  par(mfrow = c(1, 4), mar = c(9, 4.3, 3, 1), bty = "l")
+  cols <- rep(c("#0072B2", "#D55E00", "#CC79A7", "#009E73", "#E69F00", "#999999"), length.out = nrow(ok))
+  for (metric in c("seconds", "F1", "MCC", "log10_deviance_true")) {
+    vals <- if (metric == "log10_deviance_true") log10(pmax(ok$deviance_true, .Machine$double.eps)) else ok[[metric]]
     names(vals) <- paste(ok$case, ok$method, sep = "\n")
-    bp <- barplot(vals, las = 2, col = cols[seq_along(vals)], ylab = metric,
-                  main = metric, cex.names = 0.72)
+    limits <- if (metric == "MCC") c(-1, 1) else if (metric == "F1") c(0, 1) else range(0, vals, finite = TRUE)
+    if (diff(limits) == 0) limits <- c(0, 1)
+    if (metric == "seconds") limits[2] <- limits[2] * 1.12
+    bp <- barplot(replace(vals, !is.finite(vals), 0), las = 2, col = cols,
+                  ylab = metric, main = metric, cex.names = 0.72, ylim = limits)
+    if (any(!is.finite(vals))) text(bp[!is.finite(vals)], 0, "NA", pos = 3, cex = 0.7)
     if (metric == "seconds") text(bp, vals, labels = sprintf("%.1fs", vals), pos = 3, cex = 0.7)
   }
 }
+
+# Set options(L0glm.readme.run = FALSE) to load helpers without running fits.
+if (isTRUE(getOption("L0glm.readme.run", TRUE))) {
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 message("Simulating single-channel data")
 single <- simulate_single(cfg$n, cfg$p, cfg$npeaks, cfg$seed_single)
@@ -342,13 +463,14 @@ multi <- simulate_multi(cfg$n, cfg$p, cfg$npeaks, cfg$m, cfg$seed_multi)
 results <- list()
 single_fits <- list()
 multi_fits <- list()
+tuning_paths <- list()
 
 l0_single <- safe_time("single L0glm", L0glm.fit(
   single$X, single$y,
   family = poisson(identity), lambda = "gic",
   nonnegative = TRUE, relaxed = FALSE,
-  intercept = FALSE, solver = "eigen", method = 7L,
-  parallelize = FALSE, nthreads = 1L
+  intercept = FALSE, solver = "eigen", method = 1L,
+  openmp = cfg$openmp, parallelize = FALSE, nthreads = 1L
 ))
 if (!is.null(l0_single$value)) {
   single_fits$L0glm <- l0_single$value$coefficients
@@ -363,36 +485,24 @@ if (cfg$run_glmnet && requireNamespace("glmnet", quietly = TRUE)) {
   w <- 1 / (single$y + 0.1)
   gl_single <- safe_time("single glmnet LASSO", glmnet_single_gic(single$X, single$y, w, cfg$nlambda))
   if (!is.null(gl_single$value)) {
+    tuning_paths$glmnet_single <- gl_single$value[c("GIC_path", "lambda_path")]
     single_fits$glmnet_lasso <- gl_single$value$beta
     results[[length(results) + 1L]] <- score_fit("single", "glmnet_lasso", gl_single$seconds,
                                                  gl_single$value$beta, single,
-                                                 note = sprintf("GIC-selected lambda %.4g", gl_single$value$lambda))
+                                                 note = sprintf("Poisson GIC-selected lambda %.4g", gl_single$value$lambda))
   } else {
     results[[length(results) + 1L]] <- data.frame(case = "single", method = "glmnet_lasso",
                                                   seconds = NA_real_, note = gl_single$error)
   }
 }
 
-if (cfg$run_abess && requireNamespace("abess", quietly = TRUE)) {
-  w <- 1 / (single$y + 0.1)
-  ab_single <- safe_time("single abess", abess_single_gic(single$X, single$y, w, support_grid))
-  if (!is.null(ab_single$value)) {
-    single_fits$abess <- ab_single$value$beta
-    results[[length(results) + 1L]] <- score_fit("single", "abess", ab_single$seconds,
-                                                 ab_single$value$beta, single,
-                                                 note = sprintf("GIC-scaled BIC over %d support sizes; selected %d",
-                                                                length(support_grid), ab_single$value$support.size))
-  } else {
-    results[[length(results) + 1L]] <- data.frame(case = "single", method = "abess",
-                                                  seconds = NA_real_, note = ab_single$error)
-  }
-}
-
-l0_multi <- safe_time("multichannel grouped L0glm", L0glm.fit(
+l0_multi <- safe_time("multichannel grouped L0glm",
+                      L0glm.fit(
   multi$X, multi$y,
   family = poisson(identity), lambda = "gic",
   nonnegative = TRUE, grouped = TRUE, relaxed = TRUE,
-  intercept = FALSE, solver = "eigen", method = 7L,
+  intercept = FALSE, solver = "eigen", method = 1L,
+  openmp = cfg$openmp,
   parallelize = cfg$ncores > 1L, ncores = cfg$ncores, nthreads = 1L,
   group.maxit = 6L
 ))
@@ -400,8 +510,8 @@ if (!is.null(l0_multi$value)) {
   multi_fits$L0glm_grouped <- l0_multi$value$coefficients
   results[[length(results) + 1L]] <- score_fit("multichannel", "L0glm_grouped", l0_multi$seconds,
                                                l0_multi$value$coefficients, multi,
-                                               note = sprintf("parallelize=%s, ncores=%d",
-                                                              cfg$ncores > 1L, cfg$ncores))
+                                               note = sprintf("openmp=%s, parallelize=%s, ncores=%d",
+                                                              cfg$openmp, cfg$ncores > 1L, cfg$ncores))
 } else {
   results[[length(results) + 1L]] <- data.frame(case = "multichannel", method = "L0glm_grouped",
                                                 seconds = NA_real_, note = l0_multi$error)
@@ -411,33 +521,21 @@ if (cfg$run_glmnet && requireNamespace("glmnet", quietly = TRUE)) {
   row_w <- 1 / (rowMeans(multi$y) + 0.1)
   gl_multi <- safe_time("multichannel glmnet group LASSO", glmnet_multi_gic(multi$X, multi$y, row_w, cfg$nlambda))
   if (!is.null(gl_multi$value)) {
+    tuning_paths$glmnet_multi <- gl_multi$value[c("GIC_path", "lambda_path")]
     multi_fits$glmnet_group_lasso <- gl_multi$value$beta
     results[[length(results) + 1L]] <- score_fit("multichannel", "glmnet_group_lasso", gl_multi$seconds,
                                                  gl_multi$value$beta, multi,
-                                                 note = sprintf("GIC-selected lambda %.4g", gl_multi$value$lambda))
+                                                 note = sprintf("Poisson GIC-selected lambda %.4g; shared row weights", gl_multi$value$lambda))
   } else {
     results[[length(results) + 1L]] <- data.frame(case = "multichannel", method = "glmnet_group_lasso",
                                                   seconds = NA_real_, note = gl_multi$error)
   }
 }
 
-if (cfg$run_abess && requireNamespace("abess", quietly = TRUE)) {
-  ab_multi <- safe_time("multichannel abess BSGS", abess_multi_gic(multi$X, multi$y, support_grid))
-  if (!is.null(ab_multi$value)) {
-    multi_fits$abess_BSGS <- ab_multi$value$beta
-    results[[length(results) + 1L]] <- score_fit("multichannel", "abess_BSGS", ab_multi$seconds,
-                                                 ab_multi$value$beta, multi,
-                                                 note = sprintf("GIC-scaled BIC over %d support sizes; selected %d",
-                                                                length(support_grid), ab_multi$value$support.size))
-  } else {
-    results[[length(results) + 1L]] <- data.frame(case = "multichannel", method = "abess_BSGS",
-                                                  seconds = NA_real_, note = ab_multi$error)
-  }
-}
-
 common_cols <- c("case", "method", "seconds", "n", "p", "m", "npeaks", "selected",
-                 "TP", "FP", "FN", "TN", "precision", "recall", "F1",
-                 "R2_coefficients", "deviance", "deviance_true", "GIC", "note")
+                 "TP", "FP", "FN", "TN", "precision", "recall", "F1", "MCC",
+                 "R2_coefficients", "deviance", "deviance_true", "neg2loglik",
+                 "nonzero_coefficients", "lambda_L0", "GIC", "GIC_rows", "note")
 results_df <- do.call(rbind, lapply(results, function(x) {
   missing <- setdiff(common_cols, names(x))
   for (nm in missing) x[[nm]] <- NA
@@ -445,21 +543,34 @@ results_df <- do.call(rbind, lapply(results, function(x) {
 }))
 
 results_df <- results_df[order(results_df$case, is.na(results_df$seconds), results_df$deviance_true), ]
+references <- rbind(score_reference("single", single), score_reference("multichannel", multi))
+for (nm in c("GIC_beta_true", "GIC_rows_beta_true", "objective_lower_bound")) {
+  results_df[[nm]] <- references[[nm]][match(results_df$case, references$case)]
+}
+timings <- setNames(results_df$seconds, results_df$method)
 write.csv(results_df, file.path(out_dir, "readme_benchmark_results.csv"), row.names = FALSE)
-saveRDS(list(config = cfg, support_grid = support_grid, results = results_df,
+write.csv(references, file.path(out_dir, "readme_benchmark_references.csv"), row.names = FALSE)
+saveRDS(list(config = cfg, session_info = sessionInfo(),
+             results = results_df, references = references,
+             tuning_paths = tuning_paths,
              single = single, multi = multi,
              single_fits = single_fits, multi_fits = multi_fits),
         file.path(out_dir, "readme_benchmark_results.rds"))
 
 if (length(single_fits)) {
-  plot_single_signal(single, single_fits, file.path(out_dir, "single_channel_signal_zoom.png"))
-  plot_coefficients("Single-channel", single, single_fits, file.path(out_dir, "single_channel_coefficients.png"))
+  plot_single_signal(single, single_fits, file.path(out_dir, "single_channel_signal_zoom.png"),
+                     from = cfg$plot_from, size = cfg$plot_n, timings = timings)
+  plot_coefficients("Single-channel", single, single_fits, file.path(out_dir, "single_channel_coefficients.png"), timings = timings)
 }
 if (length(multi_fits)) {
-  plot_coefficients("Multichannel", multi, multi_fits, file.path(out_dir, "multichannel_coefficients.png"))
-  plot_multi_heatmap(multi, multi_fits, file.path(out_dir, "multichannel_coefficient_maps.png"))
+  plot_coefficients("Multichannel", multi, multi_fits, file.path(out_dir, "multichannel_coefficients.png"), timings = timings)
+  plot_multi_support(multi, multi_fits, file.path(out_dir, "multichannel_support.png"), timings = timings)
+  plot_multi_support(multi, multi_fits, file.path(out_dir, "multichannel_support_zoom.png"),
+                    from = cfg$plot_from, size = cfg$plot_n, timings = timings)
 }
 plot_summary(results_df, file.path(out_dir, "benchmark_summary.png"))
 
 print(results_df)
+print(references)
 message("Wrote outputs to: ", normalizePath(out_dir, winslash = "/"))
+}

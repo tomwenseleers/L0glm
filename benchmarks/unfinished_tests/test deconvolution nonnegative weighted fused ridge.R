@@ -128,7 +128,7 @@ system.time(L0glmfit <- L0glm.fit(X=Matrix(X_augm_fusedridge12, sparse=T),
                                   # dispersion = 1,
                                   gamma = 2,
                                   # tol = 0.1,
-                                  method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
+                                  method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                   thresh = 1E-5
 )) # 0.05s
 L0glm_coefs <- head(L0glmfit$coefficients, -length(K))

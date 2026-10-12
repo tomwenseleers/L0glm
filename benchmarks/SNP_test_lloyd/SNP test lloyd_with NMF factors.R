@@ -674,7 +674,7 @@ L0glmfit = L0glm.fit(X=Matrix(cbind(1,X_train_subs2), sparse=T),
                                           p=p, 
                                           n=n_train),
                      solver="eigen", # eigen or glmnet or osqp all work OK after variable preselection, without preselection use glmnet
-                     method=7L)
+                     method=1L)
 # L0glmcoefs = rep(0, ncol(X)+1) 
 # L0glmcoefs[c(1,preselected_vars+1)] = as.vector(L0glmfit$coefficients)
 L0glmcoefs = as.vector(L0glmfit$coefficients)

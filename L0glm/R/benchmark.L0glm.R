@@ -30,8 +30,7 @@
 #'   details.
 #' @param plot Logical; if \code{TRUE}, plots related to the fitting process are
 #'   displayed.
-#' @param IC Character string specifying the information criterion to use for
-#'   model selection. Possible values are \code{"gic"}, \code{"aic"}, \code{"bic"}, \code{"mbic"} or \code{"ebic"}.
+#' @inheritParams L0glm.tune
 #' @param internal Logical; for internal calls (e.g., when \code{method = 3})
 #'   where a starting fit is needed. If \code{TRUE}, the function returns the
 #'   full fitted model object instead of just the coefficients.
@@ -63,6 +62,7 @@
 #' @export
 fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, 
                     IC = "gic", internal = FALSE){
+  IC <- L0glm_ic_name(IC)
   X <- sim$X
   y <- sim$y
   p <- ncol(X)
@@ -289,14 +289,14 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    lambda = 0,
                    warm.start = TRUE,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       args <- c(list(x = X, y = y, weight = W, 
                      family = "gaussian", # identity link poisson not supported
                      tune.type = "bic", # trick to support any IC that L0glm supports
-                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                               p = p, 
                                               n = n)/log(n) ), 
                 options)
@@ -342,7 +342,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
@@ -350,7 +350,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                      weight = W,
                      family = "gaussian",
                      tune.type = "bic", # trick to support any IC that L0glm supports
-                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                               p = p, 
                                               n = n)/log(n),
                      support.size = c(1:(p_selcoefs-1))), options)
@@ -455,7 +455,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 #' }
 #' @param options A list of additional options specific to the method being used. These options are passed to the underlying functions from the respective packages. Refer to the documentation of those packages for details.
 #' @param plot Logical; if \code{TRUE}, plots related to the fitting process are displayed. Default is \code{TRUE}.
-#' @param IC Character string specifying the information criterion to use for model selection. Possible values are \code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"} and \code{"mbic"}.
+#' @inheritParams L0glm.tune
 #' @param internal Logical; for internal calls where a starting fit is needed. If \code{TRUE}, the function returns the full fitted model object instead of just the coefficients. Default is \code{FALSE}.
 #'
 #' @return A matrix of coefficients from the fitted model. Each column corresponds to a response variable (channel).
@@ -487,6 +487,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 # refit the model unregularised for the selected variables only
 
 fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE, IC = "gic", internal = FALSE){
+  IC <- L0glm_ic_name(IC)
   X <- sim$X
   y <- sim$y
   p <- ncol(X)
@@ -514,7 +515,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    lambda=0, 
                    warm.start = TRUE,
                    tune.type = "aic" #, # trick to support any IC that L0glm supports
-                   # ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   # ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                    #                         p = p, 
                    #                         n = n)/log(n)
                    ) 
@@ -530,7 +531,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                                              p = p, 
                                              n = n)/log(n)
                    ) 

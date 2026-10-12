@@ -1,0 +1,5 @@
+"abess_version","sparse","multichannel","first_coefficient","second_coefficient","residual_sum_squares","exact_NNLS_residual_sum_squares"
+"0.4.11",FALSE,FALSE,1,0,3,0.75
+"0.4.11",FALSE,TRUE,1,0,15,3.75
+"0.4.11",TRUE,FALSE,1,0,3,0.75
+"0.4.11",TRUE,TRUE,1,0,15,3.75

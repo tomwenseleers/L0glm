@@ -146,10 +146,10 @@ L0glm.fit.internal = function(X,
     # lambda_tilde ridge penalties on individual coefficients, we scale these penalties 
     # by (1/4)*dispersion (cf Frommlet & Nuel 2016) so that we 
     # can directly use the lambda penalty values implied by the AIC & BIC criteria 
-    # (e.g. 2 & log(n) for AIC & BIC) (stricly speaking this was derived for 
-    # the Gaussian case with dispersion=sigma^1=1 only, but this is the more
-    # generic relation that is correct for all families & any estimated dispersion
-    # (for binomial & poisson & negative binomial dispersion is fixed at 1)
+    # (e.g. 2 & log(n) for AIC & BIC). This matches the orthogonal Gaussian
+    # selection threshold for known dispersion; its use for general GLMs is
+    # an approximation, not a guarantee of global IC minimization.
+    # For binomial, Poisson and negative binomial, dispersion is fixed at 1.
     
     ## ----- update coefs using adaptive ridge regression  (zero or nonzero centered) ---
     nonzero <- beta != 0L          # logical mask

@@ -54,7 +54,7 @@ system.time(beta_eigen_chol_dense <- lmridge.eigen(Xw=X,
                                                    start=rep(0,p),
                                                    control.solver = 
                                                      modifyList(do.call("control.solver.gen", 
-                                                             list(solver = "eigen", method = 7L)),
+                                                             list(solver = "eigen", method = 1L)),
                                                              list(rowaug = FALSE)),
                                                    prior.mean=rep(0,p)
 )) 
@@ -64,7 +64,7 @@ system.time(beta_eigen_chol_sparse <- lmridge.eigen(Xw=X_sparse,
               lambdas=rep(lambda,p),
               start=rep(0,p),
               control.solver = modifyList(do.call("control.solver.gen", 
-                                                  list(solver = "eigen", method = 7L)),
+                                                  list(solver = "eigen", method = 1L)),
                                           list(rowaug = FALSE)),
               prior.mean=rep(0,p)
               )) 
@@ -77,7 +77,7 @@ system.time(beta_eigen_cg_dense <- lmridge.eigen(Xw=X,
                                                    lambdas=rep(lambda,p),
                                                    start=rep(0,p),
                                                    control.solver = modifyList(do.call("control.solver.gen", 
-                                                                                       list(solver = "eigen", method = 5L)),
+                                                                                       list(solver = "eigen", method = 3L)),
                                                                                list(rowaug=T)),
                                                    prior.mean=rep(0,p)
 )) 
@@ -88,7 +88,7 @@ system.time(beta_eigen_cg_sparse <- lmridge.eigen(Xw=X_sparse,
                                                     start=rep(0,p),
                                                     control.solver = 
                                                     modifyList(do.call("control.solver.gen", 
-                                                                  list(solver = "eigen", method = 5L)),
+                                                                  list(solver = "eigen", method = 3L)),
                                                                list(rowaug=T)),
                                                     prior.mean=rep(0,p)
 )) 
@@ -100,7 +100,7 @@ system.time(beta_eigen_lscg_dense <- lmridge.eigen(Xw=X,
                                                  lambdas=rep(lambda,p),
                                                  start=rep(0,p),
                                                  control.solver = modifyList(do.call("control.solver.gen", 
-                                                                                     list(solver = "eigen", method = 3L)),
+                                                                                     list(solver = "eigen", method = 4L)),
                                                                              list(rowaug=T)),
                                                  prior.mean=rep(0,p)
 )) 
@@ -110,7 +110,7 @@ system.time(beta_eigen_lscg_sparse <- lmridge.eigen(Xw=X_sparse,
                                                   lambdas=rep(lambda,p),
                                                   start=rep(0,p),
                                                   control.solver = modifyList(do.call("control.solver.gen", 
-                                                                                      list(solver = "eigen", method = 3L)),
+                                                                                      list(solver = "eigen", method = 4L)),
                                                                               list(rowaug=T)),
                                                   prior.mean=rep(0,p)
 )) 

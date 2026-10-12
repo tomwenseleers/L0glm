@@ -75,7 +75,7 @@ L0BestRankGNMF <- function(D,
                                          grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
                                          relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
                                          solver = "eigen", # use Cholesky solver
-                                         method=7L)$coefficients) # k_init x p matrix
+                                         method=1L)$coefficients) # k_init x p matrix
   } else {
      # NNDSVD initialisation
      require(NMF)
@@ -107,7 +107,7 @@ L0BestRankGNMF <- function(D,
                      maxit = 10,
                      grouped = FALSE,
                      solver = "eigen", # use Cholesky solver
-                     method = 7L)$coefficients)) # n x k matrix
+                     method = 1L)$coefficients)) # n x k matrix
     if (sum(range(W) == 0)==2) { 
       message("All factors were penalized to zero in the NMF")
       return(list(W = NULL, H = NULL, dev = obj, k = 0, iter = iter, obj = obj_vect)) }
@@ -126,7 +126,7 @@ L0BestRankGNMF <- function(D,
                    grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
                    relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
                    solver = "eigen", # use Cholesky solver
-                   method = 7L)$coefficients) # k x p matrix
+                   method = 1L)$coefficients) # k x p matrix
     
     ## --- drop factors that were fully penalized to zero ------------------------
     keep <- which(rowSums(H)!=0 & colSums(W)!=0) # only keep factors with nonzero row sums in H & nonzero column sums in W

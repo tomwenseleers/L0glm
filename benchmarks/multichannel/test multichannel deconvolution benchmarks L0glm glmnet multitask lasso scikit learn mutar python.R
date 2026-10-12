@@ -67,7 +67,7 @@ system.time(beta_relaxedgroupL0 <- L0glm.fit_new(X = sim$X, y = sim$y,
                                      thresh = 0.01,
                                      warmupiters = 5,
                                      solver = "eigen",
-                                     method = 7L, # using Eigen's sparse Cholesky solver
+                                     method = 1L, # using Eigen's sparse Cholesky solver
                                      parallellize = T, 
                                      relaxedGroupL0 = T)) # 10.4s
 # TODO: osqp still gives errors if I set parallellize to T - then gives

@@ -17,7 +17,7 @@ length(SIS_glm$indices) # 1086
 length(intersect(SIS_glm$indices, which(beta_true!=0))) # 265
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 # iterating SIS & L0glm:
@@ -42,7 +42,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                   start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
                                   warm.start = 1,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                  method = 7L, # Cholesky
+                                  method = 1L, # Cholesky
                                   gamma = 2 # taking gamma slightly higher than 2 for p>>n case
     )  # 
     beta_start = rep(0, ncol(X))
@@ -64,7 +64,7 @@ system.time(L0glmfit_final <- L0glm.fit(X = X[,S,drop=F],
                                         start = beta_start[S],  
                                         warm.start = 0.99,
                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                        method = 7L, # Cholesky
+                                        method = 1L, # Cholesky
                                         gamma = 2
 ))  # 0.09s
 beta_final = rep(0, ncol(X))

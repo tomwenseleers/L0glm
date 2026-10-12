@@ -42,9 +42,10 @@ or `Gamma(identity)`).}
 \item{perc}{Passed to \code{\link{shift_kernel}} - use `"mean"` to recenter
 the centroid, or a value in \eqn{[0,1]} for a percentile.}
 
-\item{IC}{Information criterion that sets the penalty parameter in
-\pkg{L0glm}. One of `"gic"` (default), `"aic"`, `"bic"`,
-`"mbic"` or `"ebic"`.}
+\item{IC}{A case-insensitive information-criterion name for model selection:
+\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+See \link{information_criteria} for formulas, guidance and references.}
 }
 \value{
 A list with
@@ -74,7 +75,7 @@ leverages the general machinery of \pkg{L0glm}.  This results in the
 following improvements:
 \itemize{
   \item No manual tuning of the regularisation parameter is required; instead
-        it can be preset to optimise information criteria such as GIC, AIC,
+        it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
         BIC, EBIC or MBIC
   \item Both single channel or multichannel data are allowed for
    \item We allow the estimated convolution kernel \eqn{g} to be smoothed by

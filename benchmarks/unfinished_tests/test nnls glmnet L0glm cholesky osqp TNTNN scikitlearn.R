@@ -151,7 +151,7 @@ t <- system.time( fit_L0glm_LSCG <- L0glm.fit(
   family = gaussian(link="identity"), 
   lambda = "gic", 
   nonnegative = TRUE,
-  solver = "eigen", method = 3L)$coefficients )
+  solver = "eigen", method = 4L)$coefficients )
 
 print(paste0("L0glm LSCG execution time: ", t[[3]]))
 predicted_L0glm_LSCG <- as.vector(X_test %*% fit_L0glm_LSCG)
@@ -175,7 +175,7 @@ print(paste0("Nonzero coefs L0glm LSCG: ", nonzero_L0glm_LSCG))
 #   family = gaussian(link="identity"),
 #   lambda = "bic",
 #   nonnegative = TRUE,
-#   solver = "eigen", method = 7L)$coefficients )
+#   solver = "eigen", method = 1L)$coefficients )
 # 
 # print(paste0("L0glm chol execution time: ", t[[3]]))
 # predicted_L0glm_chol <- as.vector(X_test %*% fit_L0glm_chol)
@@ -326,7 +326,7 @@ system.time(reconstruction_L0glm_osqp <- L0glm.fit(
   lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,
   solver = "osqp", # 0.22s with LSCG, 3.41s with osqp, 12s with glmnet
-  method = 3L)$coefficients) 
+  method = 4L)$coefficients)
 image(matrix(reconstruction_L0glm_osqp^3, 
              ncol=sqrt(length(reconstruction_L0glm_osqp)),
              nrow=sqrt(length(reconstruction_L0glm_osqp)), byrow=T), 
@@ -342,7 +342,7 @@ system.time(reconstruction_L0glm_LSCG <- L0glm.fit(
   lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,
   solver = "eigen", # 0.22s with LSCG, 3.41s with osqp, 12s with glmnet
-  method = 3L)$coefficients)  # = LSCG
+  method = 4L)$coefficients)  # = LSCG
 image(matrix(reconstruction_L0glm_LSCG^3, 
              ncol=sqrt(length(reconstruction_L0glm_LSCG)),
              nrow=sqrt(length(reconstruction_L0glm_LSCG)), byrow=T), 

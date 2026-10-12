@@ -24,13 +24,14 @@ dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
 
 \dontrun{
-## Multichannel fit is much faster when parallelized than L0glm.fit:
+## Compare with the general R fitting path (process-based parallelism):
 system.time(fit.mc <- L0glm.fit(
   X = sim.pois.mc$X,
   y = sim.pois.mc$y,
   family = poisson(identity),
   lambda = "gic",
   nonnegative = TRUE,
+  openmp = FALSE,
   grouped = TRUE,
   relaxed = TRUE,
   parallelize = TRUE,
@@ -57,13 +58,14 @@ system.time(fit.sc <- L0nnpois(
 
 sum(fit.sc$coefficients != 0)
 
-## But then it is only faster than L0glm.fit for large problem sizes:
+## Compare with the general R path for a single channel:
 system.time(fit.sc <- L0glm.fit(
   X = sim.pois.mc$X,
   y = sim.pois.mc$y[, 1L],
   family = poisson(identity),
   lambda = "gic",
   nonnegative = TRUE,
+  openmp = FALSE,
   grouped = FALSE,
   relaxed = FALSE,
   parallelize = FALSE

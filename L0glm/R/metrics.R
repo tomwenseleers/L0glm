@@ -16,7 +16,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # alwayse coerce beta & beta_true to a sparse dgCMatrix if either is a dense vector
   if (is.vector(beta_true)) beta_true <- Matrix(beta_true, ncol=1, sparse=T)
   if (is.vector(beta)) beta <- Matrix(beta, ncol=1, sparse=T)
-  if (!issparse(beta_true)) beta_true <- Matrix(beta_true, sparse=T)
+  if (!is.null(beta_true) && !issparse(beta_true)) beta_true <- Matrix(beta_true, sparse=T)
   if (!issparse(beta)) beta <- Matrix(beta, sparse=T)
   
   y <- as.matrix(y)
@@ -65,7 +65,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     recall = TP / (TP+FN) # = sensitivity = TPR
     specificity = TN / (TN+FP) # = TNR
     accuracy = (TP+TN) / (TP+TN+FP+FN)
-    F1_score = 2*precision*recall / (precision + recall) # = harmonic mean of precision and recall
+    F1_score = if (2 * TP + FP + FN > 0) 2 * TP / (2 * TP + FP + FN) else NA_real_
+    MCC = support_mcc(TP, FP, TN, FN)
     
     # metrics related to accuracy of coefficients (among all coefficients) ####
     MD_coefs = mean(beta-beta_true) # mean deviation
@@ -83,7 +84,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     R2_selcoefs = ifelse(sum(sel)!=0, summary(lm(as.vector(beta_true[sel]) ~ 0+as.vector(beta[sel])))$r.squared, 0) # I use R2 from zero intercept regression of beta_true on beta
     
   } else {
-    TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
+    TP <- FP <- FN <- TN <- precision <- recall <- sensitivity <- accuracy <- specificity <- F1_score <- MCC <- bias_coefs <- MD_coefs <- MAD_coefs <- sMAPE_coefs <- R2_coefs <- NA
+    MD_selcoefs <- MAD_selcoefs <- sMAPE_selcoefs <- bias_selcoefs <- R2_selcoefs <- NA_real_
   }
   
   # metrics related to prediction accuracy ####
@@ -220,8 +222,20 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
               estimated_over_true_support_size=estimated_over_true_support_size,
               TP=TP, FP=FP, TN=TN, FN=FN, 
               precision=precision, recall=recall, specificity=specificity, 
-              accuracy=accuracy, F1_score=F1_score,
-              gic=IC$gic, ebic=IC$ebic, bic=IC$bic, aic=IC$aic, mbic=IC$mbic) )
+              accuracy=accuracy, F1_score=F1_score, MCC=MCC,
+              gic=IC$gic, mebic=IC$mebic, ebic=IC$ebic,
+              bic=IC$bic, aic=IC$aic, mbic=IC$mbic) )
+}
+
+# Matthews correlation coefficient (Pearson's phi) of binary row support.
+# Cast before multiplication to avoid integer overflow on large designs.
+# A constant truth or prediction has undefined correlation: return NA.
+support_mcc <- function(TP, FP, TN, FN) {
+  counts <- as.double(c(TP, FP, TN, FN))
+  TP <- counts[1L]; FP <- counts[2L]; TN <- counts[3L]; FN <- counts[4L]
+  margins <- c(TP + FP, TP + FN, TN + FP, TN + FN)
+  if (any(!is.finite(margins)) || any(margins <= 0)) return(NA_real_)
+  (TP * TN - FP * FN) / prod(sqrt(margins))
 }
 
 
@@ -229,7 +243,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
 # for a good discussion on information criteria see
 # https://www.sciencedirect.com/science/article/pii/S016794731100171X
 get.IC = function(loglik, n, p, edf, 
-                  gamma_ebic = max(0, 1 - log(n)/(2*log(p))), # abess uses conservative gamma_ebic=1, we use recommended max(0, 1 - log(n)/(2*log(p))) so that it becomes BIC for n>p
+                  gamma_ebic = max(0, 1 - log(n)/(2*log(p))), # reduces to BIC when p <= sqrt(n)
                   Cn_hbic = log(log(n))) {
   min2LL = -2 * loglik
   
@@ -238,27 +252,49 @@ get.IC = function(loglik, n, p, edf,
   # aicc = ifelse(n > edf, min2LL + 2*edf*n/(n-edf), NA) # small sample AIC
   bic = min2LL + log(n) * edf # Bayesian information criterion
   gic = min2LL + log(p) * log(log(n)) * edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117
+  mebic = min2LL + 2 * log(p) * log(log(n)) * edf # Zhang (2024), doi:10.1016/j.csda.2023.107860
    
-  ebic = min2LL + (log(n) + 2 * gamma_ebic * log(p)) * edf # extended BIC, for high dimensional settings, cf. Chen, J. and Chen, Z. (2008). Extended Bayesian information criterion for model selection with large model space. Biometrika, 94, 759-771., https://arxiv.org/abs/1107.2502
+  ebic = min2LL + (log(n) + 2 * gamma_ebic * log(p)) * edf # linearized EBIC; Chen and Chen (2008), Biometrika 95, 759-771
   hbic = min2LL + Cn_hbic * log(p) * edf # HBIC, recommended for ultra-high dimensional settings, cf https://arxiv.org/pdf/1311.4981 & https://www.annualreviews.org/docserver/fulltext/statistics/7/1/annurev-statistics-030718-105038.pdf
-  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # for high dimensional settings with FDR control, see Frommlet & Nuel 2016 & Bogdan M, Ghosh JK, Zak-Szatkowska M (2008) Selecting explanatory variables with the modified version of bayesian information criterion. Quality and Reliability Engineering International 24: 627-641. doi: 10.1002/qre.936
+  mbic = min2LL + log(n * (p ^ 2) / 16) * edf # multiplicity-adjusted mBIC; Bogdan et al. (2008), doi:10.1002/qre.936; distinct from mBIC2
   # TODO maybe still add mbic2, cf Frommlet paper
-  return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mbic = mbic))
+  return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mebic = mebic, mbic = mbic))
+}
+
+
+# Shared, case-insensitive names for fitting, scoring and tuning interfaces.
+L0glm_ic_name <- function(IC) {
+  choices <- c("aic", "bic", "gic", "mebic", "ebic", "mbic")
+  if (!is.character(IC) || length(IC) != 1L || is.na(IC) ||
+      !tolower(IC) %in% choices) {
+    stop("Information criterion must be one of ",
+         paste(shQuote(choices), collapse = ", "),
+         " (case-insensitive).", call. = FALSE)
+  }
+  tolower(IC)
+}
+
+L0glm_resolve_lambda <- function(lambda, p, n) {
+  if (is.character(lambda)) lambda <- preset.lambda(lambda, p = p, n = n)
+  if (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda)) {
+    stop("lambda must be a finite numeric scalar or an information-criterion name; ",
+         "see help('information_criteria', package = 'L0glm').", call. = FALSE)
+  }
+  lambda
 }
 
 
 # preset.lambda ####
-# Function to compute the best lambda implied by a particular IC given p=ncol(X) and n=nrow(X). 
-preset.lambda <- function(IC="gic", p, n, 
-                          gamma_ebic = max(0, 1 - log(n)/(2*log(p))), # abess uses conservative gamma_ebic=1, we use recommended formula so that it becomes BIC for n>p
-                          Cn_hbic = log(log(n))) { # given recommendation
+# Per-coefficient penalty on the -2*logLik scale; see information_criteria.
+preset.lambda <- function(IC="gic", p, n,
+                          gamma_ebic = max(0, 1 - log(n)/(2*log(p)))) { # reduces to BIC when p <= sqrt(n)
+  IC <- L0glm_ic_name(IC)
   lambda <- switch(IC,
                    gic = log(p)*log(log(n)),
+                   mebic = 2*log(p)*log(log(n)),
                    aic = 2,
                    bic = log(n),
                    ebic = log(n) + 2*gamma_ebic*log(p),
-                   hbic = Cn_hbic * log(p),
-                   mbic = log(n*(p^2)/16),
-                   stop("invalid information criterion for initializing lambda. It must be one of 'gic', 'aic', 'bic', 'ebic', 'mbic'."))
+                   mbic = log(n*(p^2)/16))
   return(lambda)
 }

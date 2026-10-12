@@ -30,9 +30,10 @@
 #' @param dispersion 
 #' A dispersion parameter for the family function. If not NULL, it is used to 
 #' set the lambda sequence.
-#' @param IC A character string specifying the information criterion to use for
-#' model selection. It should be one of \code{"aic"}, 
-#' \code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"}.
+#' @param IC A case-insensitive information-criterion name for model selection:
+#' \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+#' \code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+#' See \link{information_criteria} for formulas, guidance and references.
 #' @param nlambda Number of lambda values to use for tuning (default 10). 
 #' If \code{nlambda} is even, half of the values lie above 
 #' the lambda value that would be expected to optimise
@@ -79,7 +80,7 @@ L0glm.tune <- function(X, y,
                                                      ncol = ncol(as.matrix(y)),
                                                      sparse = TRUE),
                        dispersion   = NULL,
-                       IC           = c("gic", "aic", "bic", "ebic", "mbic"),
+                       IC           = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
                        nlambda      = 10,
                        prop_range   = 1,
                        warm.start   = 0.01,
@@ -89,8 +90,7 @@ L0glm.tune <- function(X, y,
                        ...)
 {
   ## ------------------------------------------------------------------ set-up
-  IC <- match.arg(tolower(IC),
-                  choices = c("gic", "aic", "bic", "ebic", "mbic"))
+  IC <- L0glm_ic_name(if (missing(IC)) IC[1L] else IC)
   
   y <- as.matrix(y)
   n <- nrow(X); p <- ncol(X); m <- ncol(y)
@@ -231,10 +231,7 @@ L0glm.tune <- function(X, y,
 
 
 tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = NULL){
-  IC = tolower(IC)
-  if(!(IC %in% c("aic", "bic", "ebic", "gic", "mbic"))){
-    stop("Invalid information criteria.")
-  }
+  IC <- L0glm_ic_name(IC)
   bestlambda = lambdas[which.min(metrics[,IC])]
   bestlambda = lambdas[which.min(abs(lambdas-bestlambda))] 
   beta_relaxedgroupL0 = as.matrix(coefficients[which(metrics$lambda==bestlambda),]) 

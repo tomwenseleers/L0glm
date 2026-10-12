@@ -1,0 +1,3 @@
+"case","lambda_L0","true_rows","true_nonzero_coefficients","neg2loglik_beta_true","GIC_beta_true","GIC_rows_beta_true","objective_lower_bound","deviance_true_beta_true","deviance_true_lower_bound"
+"single",20.4499656236707,1000,1000,82107.1965053933,102557.162129064,102557.162129064,72727.8114591307,0.1662,0
+"multichannel",20.4499656236707,1000,74020,4057036.49660443,5570742.95206853,4077486.4622281,3245603.01627942,206.389325211164,0

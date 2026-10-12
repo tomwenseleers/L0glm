@@ -29,7 +29,10 @@ fit.GLM.mc(
 
 \item{plot}{Logical; if \code{TRUE}, plots related to the fitting process are displayed. Default is \code{TRUE}.}
 
-\item{IC}{Character string specifying the information criterion to use for model selection. Possible values are \code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"} and \code{"mbic"}.}
+\item{IC}{A case-insensitive information-criterion name for model selection:
+\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+See \link{information_criteria} for formulas, guidance and references.}
 
 \item{internal}{Logical; for internal calls where a starting fit is needed. If \code{TRUE}, the function returns the full fitted model object instead of just the coefficients. Default is \code{FALSE}.}
 }

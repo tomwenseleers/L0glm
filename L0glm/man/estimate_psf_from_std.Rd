@@ -215,7 +215,6 @@ for (i in 1:length(which(Matrix::rowSums(fit.mc$coefficients)!=0)) ) {
        col = "blue", type = "h")
 }
 
-  
 }
 \seealso{
 \code{\link{L0glm_sparse_deco}}, \code{\link{log_conc_smooth}},

@@ -90,7 +90,7 @@ system.time(warmup <- L0glm.fit(X = X, y = Y,
                                relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                warmupiters = 5,
                                solver = "eigen",
-                               method = 7L # using Eigen's sparse Cholesky solver
+                               method = 1L # using Eigen's sparse Cholesky solver
                                )) # 5s
 sum(rowMin(abs(warmup$coefficients))!=0) # 151, nr of selected variables at lowest lambda used
 
@@ -110,7 +110,7 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                                                             relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                                                             warmupiters = 5,
                                                                             solver = "eigen",
-                                                                            method = 7L, # using Eigen's sparse Cholesky solver
+                                                                            method = 1L, # using Eigen's sparse Cholesky solver
                                                                             parallellize = T 
                                                                             )$coefficients
                                 warm_startt <<- new_coefs
@@ -302,7 +302,7 @@ system.time({
                                   relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                   warmupiters = 5,
                                   solver = "eigen",
-                                  method = 7L, # using Eigen's sparse Cholesky solver
+                                  method = 1L, # using Eigen's sparse Cholesky solver
                                   parallellize = T 
   )
 }}

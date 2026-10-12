@@ -4,9 +4,10 @@
 #' [L0glm.fit()] for the nonnegative Poisson model with identity link. It shares
 #' the main fitting arguments with `L0glm.fit()` for use in deconvolution
 #' workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
-#' For problems with many outcomes, it is much faster than `L0glm.fit()`,
-#' and also much more memory efficient, as the design matrix  `X` is kept in
-#' shared memory.
+#' `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
+#' fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
+#' the design matrix `X` in shared memory across outcome channels.
+#' The default penalty is `lambda = "gic"`.
 #' Every coefficient, including any intercept, is constrained to be nonnegative.
 #' This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 #' if coefficients of either sign are required.
@@ -31,7 +32,8 @@
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
 #'   `family`, `z`, `X`, and `y`.
 #'
-#' @seealso [L0glm.fit()]
+#' @seealso [L0glm.fit()], \link{information_criteria} for case-insensitive
+#'   criterion presets, penalty formulas, guidance and original references.
 #'
 #' @example examples/L0nnpois.R
 #'
@@ -43,7 +45,7 @@ L0nnpois <- function(X,
                      dispersion    = NULL,
                      start         = NULL,
                      offset        = NULL,
-                     lambda        = 1,
+                     lambda        = "gic",
                      intercept     = FALSE,
                      always.include        = NULL,
                      normalize     = FALSE,
@@ -90,6 +92,9 @@ L0nnpois <- function(X,
 
   y <- as.matrix(y)
   storage.mode(y) <- "double"
+  if (any(!is.finite(y)) || any(y < 0)) {
+    stop("Poisson responses must be finite and nonnegative.", call. = FALSE)
+  }
   n <- nrow(X)
   p0 <- ncol(X)
   m <- ncol(y)
@@ -116,15 +121,7 @@ L0nnpois <- function(X,
   }
   p <- ncol(X)
 
-  if (is.character(lambda)) {
-    lambda <- match.arg(tolower(lambda),
-                        choices = c("aic", "bic", "gic", "ebic", "mbic"))
-    lambda <- preset.lambda(IC = lambda, p = p, n = n)
-  }
-  if (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda)) {
-    stop("lambda must be a finite scalar or one of 'aic', 'bic', 'gic', ",
-         "'ebic', or 'mbic'.", call. = FALSE)
-  }
+  lambda <- L0glm_resolve_lambda(lambda, p = p, n = n)
   init.lambda <- lambda
 
   if (is.null(weights)) {

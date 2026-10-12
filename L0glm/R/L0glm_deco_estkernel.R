@@ -20,7 +20,7 @@
 #' following improvements:
 #' \itemize{
 #'   \item No manual tuning of the regularisation parameter is required; instead
-#'         it can be preset to optimise information criteria such as GIC, AIC,
+#'         it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
 #'         BIC, EBIC or MBIC
 #'   \item Both single channel or multichannel data are allowed for
 #'    \item We allow the estimated convolution kernel \eqn{g} to be smoothed by
@@ -71,7 +71,7 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                               family = poisson(identity),   # noise model, we only support identity link families here
                               kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
                               perc = "mean", # shift PSF to centroid
-                              IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic)  
+                              IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mebic, ebic or mbic)
   if (is.vector(y)) y <- as.matrix(y)
   if (!is.null(offset)) { if (is.vector(offset)) offset <- as.matrix(offset) } else { offset <- 0 }
   if (is.vector(y_deconv)) y_deconv <- Matrix(y_deconv, sparse=TRUE)

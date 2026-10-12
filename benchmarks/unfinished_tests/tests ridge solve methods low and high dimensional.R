@@ -178,11 +178,11 @@ system.time(coefs_eigen1 <- lmridge(X=Xsp, y=y,
                                     nonnegative = TRUE,
                                     prior.mean = NULL,
                                     solver = "eigen",
-                                    method = 1L,
+                                    method = 5L,
                                     verbose = T,
                                     start = rep(1, ncol(X)),
                                     control.solver = do.call("control.solver.gen", 
-                                                             list(solver = "eigen", method = 1L)))) 
+                                                             list(solver = "eigen", method = 5L))))
 # 2.63s for n=p=10000, 0.08s for n=500 and p=50000
 
 system.time(coefs_eigen3 <- lmridge(X=Xsp, y=y, 
@@ -193,12 +193,12 @@ system.time(coefs_eigen3 <- lmridge(X=Xsp, y=y,
                     nonnegative = TRUE,
                     prior.mean = NULL,
                     solver = "eigen",
-                    method = 3L,
+                    method = 4L,
                     start = rep(1, ncol(X)),
                     verbose = T,
                     control.solver = modifyList(do.call("control.solver.gen", 
                                                         list(solver = "eigen", 
-                                                             method = 3L)), 
+                                                             method = 4L)),
                                                 list(rowaug=TRUE)) ))  
 # this one sets rowaug=TRUE
 # 0.04s for n=p=10000, 0.06s for n=500 and p=50000
@@ -232,12 +232,12 @@ system.time(coefs_eigen5 <- lmridge(X=Xsp, y=y,
                                     nonnegative = TRUE,
                                     prior.mean = NULL,
                                     solver = "eigen",
-                                    method = 5L,
+                                    method = 3L,
                                     verbose = T,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 5L)), 
+                                                                             method = 3L)),
                                                                 list(rowaug=FALSE)) )) 
 # 0.03s for n=p=10000, 0.06s for n=500 and p=50000
 
@@ -250,11 +250,11 @@ system.time(coefs_eigen7 <- lmridge(X=Xsp, y=y,
                                     prior.mean = NULL,
                                     solver = "eigen",
                                     verbose =T,
-                                    method = 7L,
+                                    method = 1L,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 7L)), 
+                                                                             method = 1L)),
                                                                 list(rowaug=TRUE)) )) 
 # 0.05s for n=p=10000, 0.07s for n=500 and p=50000
 
@@ -297,11 +297,11 @@ system.time(coefs_eigen1 <- lmridge(X=X, y=y,
                                     prior.mean = NULL,
                                     solver = "eigen",
                                     verbose = T,
-                                    method = 1L,
+                                    method = 5L,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 1L)), 
+                                                                             method = 5L)),
                                                                 list(rowaug=FALSE)) )) 
 # 6.1s for n=p=10000, 0.32s for n=500 and p=50000
 
@@ -314,11 +314,11 @@ system.time(coefs_eigen3 <- lmridge(X=X, y=y,
                                     prior.mean = NULL,
                                     solver = "eigen",
                                     verbose = T,
-                                    method = 3L,
+                                    method = 4L,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 3L)), 
+                                                                             method = 4L)),
                                                                 list(rowaug=FALSE)) )) # this one sets rowaug=TRUE
 # 3.6s for n=p=10000, 0.2s for n=500 and p=50000
 
@@ -349,11 +349,11 @@ system.time(coefs_eigen5 <- lmridge(X=X, y=y,
                                     prior.mean = NULL,
                                     solver = "eigen",
                                     verbose = T,
-                                    method = 5L,
+                                    method = 3L,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 5L)), 
+                                                                             method = 3L)),
                                                                 list(rowaug=FALSE)) )) 
 # 3.5s for n=p=10000, 0.27s for n=500 and p=50000
 
@@ -366,11 +366,11 @@ system.time(coefs_eigen7 <- lmridge(X=X, y=y,
                                     prior.mean = NULL,
                                     verbose = T,
                                     solver = "eigen",
-                                    method = 7L,
+                                    method = 1L,
                                     start = rep(1, ncol(X)),
                                     control.solver = modifyList(do.call("control.solver.gen", 
                                                                         list(solver = "eigen", 
-                                                                             method = 7L)), 
+                                                                             method = 1L)),
                                                                 list(rowaug=FALSE)) )) 
 # XXs for n=p=10000, 0.24s for n=500 and p=50000
 
@@ -684,7 +684,7 @@ system.time(coefs_eigen1 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 1L))))
+                                        list(solver = "eigen", method = 5L))))
 # 0.07s for n=500 and p=50000
 system.time(coefs_eigen2 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -693,7 +693,7 @@ system.time(coefs_eigen2 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 2L))))
+                                        list(solver = "eigen", method = 5L))))
 # 0.06s for n=500 and p=50000
 system.time(coefs_eigen3 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -702,7 +702,7 @@ system.time(coefs_eigen3 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 3L)))) 
+                                        list(solver = "eigen", method = 4L))))
 # 0.14s for n=500 and p=50000
 system.time(coefs_eigen4 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -720,7 +720,7 @@ system.time(coefs_eigen5 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 5L))))
+                                        list(solver = "eigen", method = 3L))))
 # 7.79s for n=500 and p=50000
 system.time(coefs_eigen6 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -729,7 +729,7 @@ system.time(coefs_eigen6 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 6L))))
+                                        list(solver = "eigen", method = 3L))))
 # 8.0s for n=500 and p=50000
 system.time(coefs_eigen7 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -738,7 +738,7 @@ system.time(coefs_eigen7 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 7L))))
+                                        list(solver = "eigen", method = 1L))))
 # 120s for n=500 and p=50000
 system.time(coefs_eigen8 <- lmridge.eigen(Xw=Xwsp, yw=yw, 
                               lambdas=lambdas, 
@@ -747,7 +747,7 @@ system.time(coefs_eigen8 <- lmridge.eigen(Xw=Xwsp, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 8L))))
+                                        list(solver = "eigen", method = 2L))))
 # 116s for n=500 and p=50000
 system.time(coefs_eigend1 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -756,7 +756,7 @@ system.time(coefs_eigend1 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 1L))))
+                                        list(solver = "eigen", method = 5L))))
 # 7s for n=500 and p=50000
 system.time(coefs_eigend2 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -765,7 +765,7 @@ system.time(coefs_eigend2 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 2L))))
+                                        list(solver = "eigen", method = 5L))))
 # 7s for n=500 and p=50000
 system.time(coefs_eigend3 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -774,7 +774,7 @@ system.time(coefs_eigend3 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 3L))))
+                                        list(solver = "eigen", method = 4L))))
 # 0.06s for n=500 and p=50000 - very good for dense case and p > n
 system.time(coefs_eigend4 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -792,7 +792,7 @@ system.time(coefs_eigend5 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 5L))))
+                                        list(solver = "eigen", method = 3L))))
 # 8s for n=500 and p=50000
 system.time(coefs_eigend6 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -801,7 +801,7 @@ system.time(coefs_eigend6 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 6L))))
+                                        list(solver = "eigen", method = 3L))))
 # 8s for n=500 and p=50000
 system.time(coefs_eigend7 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -810,7 +810,7 @@ system.time(coefs_eigend7 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 7L))))
+                                        list(solver = "eigen", method = 1L))))
 # 115s for n=500 and p=50000
 system.time(coefs_eigend8 <- lmridge.eigen(Xw=Xw, yw=yw, 
                               lambdas=lambdas, 
@@ -819,7 +819,7 @@ system.time(coefs_eigend8 <- lmridge.eigen(Xw=Xw, yw=yw,
                               start=rep(1, ncol(Xwsp)),
                               control.solver=
                                 do.call("control.solver.gen", 
-                                        list(solver = "eigen", method = 8L))))
+                                        list(solver = "eigen", method = 2L))))
 # 116s for n=500 and p=50000
 
 
@@ -836,7 +836,7 @@ system.time(coefs_eigend8 <- lmridge.eigen(Xw=Xw, yw=yw,
 
 # CG
 system.time(coefs_QR <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative,
-                                solver="eigen", method = 5)) # CG, 3.0s for n=p=10000
+                                solver="eigen", method = 3L)) # CG, 3.0s for n=p=10000
 lines(coefs_QR, col="blue", type="h")
 cor(coefs_QR, coefs_solve_dense) # 0.9990464
 plot(coefs_QR, coefs_solve_sparse)
@@ -847,7 +847,7 @@ system.time(coefs_LSCG <- lmridge_eigen(X=Xsp, y=y, weights=weights, lambdas=rep
                           lower=lower, upper=upper, control.solver=control.solver.gen("eigen", 3))) # 0.18s for n=p=10000
 
 system.time(coefs_LSCG <- lmridge(X=Xsp, y, lambda, weights, lower, upper, nonnegative,
-                                  solver="eigen", method=3)) # 0.17s TODO make sure that start values can be passed OK via arg start (x0 in Rcpp function)
+                                  solver="eigen", method=4L)) # 0.17s TODO make sure that start values can be passed OK via arg start (x0 in Rcpp function)
 lines(coefs_LSCG, col="blue", type="h")
 cor(coefs_LSCG, coefs_solve_sparse) # 0.9990464
 plot(coefs_LSCG, coefs_solve_sparse)
@@ -963,7 +963,7 @@ block.ids <- ceiling((1:p)/block.size)
 control.fit <- do.call("control.fit.gen2", list(block.size = block.size, maxit = 1000))
 #OSQP
 system.time(coefs_osqp <- lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                  nonnegative = nonnegative, solver = "osqp", method = 1)) 
+                                  nonnegative = nonnegative, solver = "osqp", method = 5L))
 
   #sparse
 system.time(coefs_block_osqp <- block_lmridge(Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
@@ -978,10 +978,10 @@ cor(coefs_osqp, coefs_block_osqp)
 
 #EIGEN
 system.time(coefs_eigen1 <- lmridge(X = Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                  nonnegative = nonnegative, solver = "eigen", method = 7))
+                                  nonnegative = nonnegative, solver = "eigen", method = 1L))
 
 system.time(coefs_block_eigen1 <- block_lmridge(Xsp, y = y, lambda = lambda, weights = weights, lower = lower, upper = upper,
-                                              nonnegative = nonnegative, solver = "eigen", method = 7, verbose = verbose,
+                                              nonnegative = nonnegative, solver = "eigen", method = 1L, verbose = verbose,
                                               control.fit = control.fit, block.ids = block.ids))
 
 cor(coefs_eigen1, coefs_block_eigen1)

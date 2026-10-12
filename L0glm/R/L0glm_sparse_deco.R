@@ -20,7 +20,7 @@
 #' improvements:
 #' \itemize{
 #'   \item No manual tuning of the regularisation parameter is required; instead
-#'         it can be preset to optimise information criteria such as GIC, AIC, 
+#'         it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
 #'         BIC, EBIC or MBIC
 #'   \item Both single channel data with L0 best subset selection or 
 #'         multichannel data with grouped L0 best subset of group selection 
@@ -102,9 +102,7 @@
 #'                  to use when \code{baseline = "bspline"}. With \code{nknots < 4}
 #'                  and \code{baseline="bspline"} \code{baseline} is changed
 #'                  to \code{intercept}. 
-#' @param IC      Information criterion that sets the penalty parameter in
-#'                \pkg{L0glm}. One of `"gic"` (default), `"aic"`, `"bic"`,
-#'                `"mbic"` or `"ebic"`.
+#' @inheritParams L0glm.tune
 #' @param grouped Logical, passed unchanged to \code{L0glm.fit}, specifying
 #'                whether to perform grouped L0 feature selection, i.e. best subset
 #'                of group selection (BSGS), in case there are multiple outcome
@@ -185,7 +183,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                            X = NULL, # (sparse) deconvolution kernel - can be used to specify matrix with time-varying PSFs & which would then override kernel
                            baseline    = NULL,
                            nknots      = max(4L, floor(nrow(as.matrix(y))/500)),
-                           IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
+                           IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mebic, ebic or mbic
                            grouped = TRUE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
                            control.solver = do.call("control.solver.gen",
                                                     list(solver = "eigen", method = 1L))) {

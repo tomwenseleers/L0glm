@@ -29,7 +29,7 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol, index) {
           upper = rep(Inf, ncol(sim$X)),
           nonnegative = TRUE,
           solver = "eigen", # note: nnls or osqp solution much better than glmnet
-          method = 7,
+          method = 1L,
           start = rep(0, ncol(sim$X)),
           control.solver = NULL,
           verbose = TRUE) })) 
@@ -54,7 +54,7 @@ system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
              family = poisson(identity),
              nonnegative = TRUE,
              solver = "eigen",
-             method = 7,
+             method = 1L,
              #start = rep(1, ncol(sim$X)),
              control.iwls = do.call("control.iwls.gen", list(maxit = 100)),
              control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)))$coefficients })) 
@@ -137,17 +137,17 @@ verbose <- TRUE
 X.n <- apply(Xblock, 2, norm, type = "2")
 
 system.time(coefs_multi <- lmridge(X = Xwblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
-                                   nonnegative = nonnegative, solver = "osqp", method = 7)) 
+                                   nonnegative = nonnegative, solver = "osqp", method = 1L))
 #0.09s glmnet, 0.61s osqp, 82s nnls, 0.83 eigen.1, 0.15 eigen.4, (n=p=150, m=131) 
 cor(coefs_multi, as.numeric(true_coefs))
 
 
 system.time(fit_multi <- L0glm.fit(X=Xwblock, y=yvect, family = poisson(identity),
-                                    solver = "eigen", method = 7, block = FALSE,
+                                    solver = "eigen", method = 1L, block = FALSE,
                                     lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen", list(maxit = 100)),
                                     control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 7, rowaug = TRUE))))
+                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L, rowaug = TRUE))))
 #767.3s osqp,  14.3s glmnet, 767.4s eigen.1 (bad result), 17.8s eigen.56, TOO LONG nnls, (n=p=150, m=131, 100 maxit)
 
 # Turn coefficient vector into matrix
@@ -332,7 +332,7 @@ system.time(for (channel in 1:m) {
                      family = poisson(identity),
                      nonnegative = TRUE,
                      solver = "glmnet",
-                     method = 1,
+                     method = 5L,
                      control.iwls = do.call("control.iwls.gen", list(maxit = 1)),
                      control.l0 = do.call("control.l0.gen", list(warn = FALSE, maxit = 100, delta = 1E-10, gamma = 2)))
   beta.matrix[, channel] <- current.fit$coefficients
@@ -377,7 +377,7 @@ sum(rowMax(beta.matrix)!=0)
 
 # 5. Implemented multichannel
 system.time(L0glm_osqp1 <- L0glm.fit(X=sim$X, y=sim$y, family = poisson(identity),
-                                      solver = "eigen", method = 5, lambda = 1, nonnegative = TRUE,
+                                      solver = "eigen", method = 3L, lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen", list(maxit = 200,reltol = 3)),
                                       control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       verbose = TRUE))
@@ -401,7 +401,7 @@ system.time(group.cpglm.fit <- group.cpglm.fit(X = sim$X, Y = sim$y,
                              family = poisson(identity),
                              lambda = 95,
                              solver = "osqp",
-                             method = 8,
+                             method = 2L,
                              nonnegative = TRUE))
 
 # For p=n=10000 and m = 168
@@ -423,7 +423,7 @@ system.time(group.cpglm <- group.cpglm(X = sim$X, Y = sim$y,
                              family = poisson(identity),
                              lambda = 1, # TODO fix error OSQP lambda = 0
                              solver = "eigen",
-                             method = 5,
+                             method = 3L,
                              nonnegative = TRUE,
                              verbose = FALSE))
 # For p=n=10000 and m = 168

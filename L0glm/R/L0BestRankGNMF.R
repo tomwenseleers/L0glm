@@ -61,10 +61,7 @@
 #'               penalty is used in the \eqn{H} update (one latent
 #'               component on/off for all outcome channels, i.e. best subset of
 #'               group selection).
-#' @param IC     Information criterion used to set the penalty size
-#'               (\code{"bic"}, \code{"gic"}, \code{"ebic"}, ...); passed to
-#'               \code{preset.lambda()}. Defaults to \code{"gic"}, which works
-#'               well for both low- and high-dimensional settings.
+#' @inheritParams L0glm.tune
 #' @param max_iter Maximum number of outer iterations.
 #' @param tol    Relative change in penalised objective to determine convergence.
 #' @param method  Eigen solver to use, as in `L0glm.fit()` (e.g. 1L=Cholesky

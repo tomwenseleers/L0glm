@@ -42,8 +42,10 @@ details.}
 \item{plot}{Logical; if \code{TRUE}, plots related to the fitting process are
 displayed.}
 
-\item{IC}{Character string specifying the information criterion to use for
-model selection. Possible values are \code{"gic"}, \code{"aic"}, \code{"bic"}, \code{"mbic"} or \code{"ebic"}.}
+\item{IC}{A case-insensitive information-criterion name for model selection:
+\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+See \link{information_criteria} for formulas, guidance and references.}
 
 \item{internal}{Logical; for internal calls (e.g., when \code{method = 3})
 where a starting fit is needed. If \code{TRUE}, the function returns the

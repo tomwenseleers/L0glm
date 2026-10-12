@@ -11,7 +11,7 @@ L0glm.tune(
   weights = matrix(1, nrow = nrow(as.matrix(y)), ncol = ncol(as.matrix(y))),
   offset = Matrix::Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse = TRUE),
   dispersion = NULL,
-  IC = c("gic", "aic", "bic", "ebic", "mbic"),
+  IC = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
   nlambda = 10,
   prop_range = 1,
   warm.start = 0.01,
@@ -37,9 +37,10 @@ used in the model. This should be a call to a family function. (See
 \item{dispersion}{A dispersion parameter for the family function. If not NULL, it is used to 
 set the lambda sequence.}
 
-\item{IC}{A character string specifying the information criterion to use for
-model selection. It should be one of \code{"aic"}, 
-\code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"}.}
+\item{IC}{A case-insensitive information-criterion name for model selection:
+\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+See \link{information_criteria} for formulas, guidance and references.}
 
 \item{nlambda}{Number of lambda values to use for tuning (default 10). 
 If \code{nlambda} is even, half of the values lie above 

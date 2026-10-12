@@ -54,7 +54,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                maxit = 200,
                                gamma = 2,
-                               method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
+                               method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
 )) # 0.02s for n=p=100, 0.04s for n=p=500, 0.25s for n=p=10000
 L0glm.out_preset_coefs <- L0glm.out_preset$coefficients
@@ -110,7 +110,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              # prior.mean = L0glm.out_preset_coefs*warmstart*0.2,
                              warm.start = warmstart,
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                             method = 7L, 
+                             method = 1L,
                              # maxit = 200,
                              # gamma = 2, 
                              thresh = 1E-5,
@@ -124,7 +124,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                                        beta_true = sim$beta_true) ))
 
           )
-  } )))) # 0.81s for n=p=500, 11s for n=p=10000 & 20 lambda values with eigen solver methods 7 (Cholesky)
+  } )))) # 0.81s for n=p=500, 11s for n=p=10000 & 20 lambda values with Eigen Cholesky LLT (historical timing)
 matplot(x=log10(metrics$lambda), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", 
         main="Regularisation path L0 Poisson GLM")
@@ -698,7 +698,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                nonnegative = TRUE,
                                start = NULL, # rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                               method = 7L # Cholesky
+                               method = 1L # Cholesky
                               )) 
 # 0.03s
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients
@@ -751,7 +751,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              start = start, # L0glm.out_preset_coefs, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              # warm.start = warmstart, 
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                             method = 7L,
+                             method = 1L,
                              relaxed = FALSE,
                              thresh = 1E-5,
 )
@@ -760,7 +760,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               X = X, y = y, 
                                               family = gaussian(identity), 
                                               beta_true = sim$beta_true))) )
-} )))) # 0.87s for n=p=500 and using Eigen Cholesky solver nr 7
+} )))) # 0.87s for n=p=500 and using Eigen Cholesky LLT (historical timing)
 matplot(x=log10(lambdas), y=as.matrix(coefmat), type="l", lty=1,
         xlab="Log10(lambda)", ylab="Coefficient estimates", 
         main="Regularisation path L0 Gaussian GLM", col=1:6)
@@ -1327,7 +1327,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                dispersion = 1,
                                start = rep(1, ncol(X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                               method = 7L,
+                               method = 1L,
                                thresh = 1E-5
 )) # 10.46s for n=p=100, 10s for n=p=500, 30s for n=p=10000
 
@@ -1375,7 +1375,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              dispersion = L0glm.out_preset$dispersion,
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                             method = 7L,
+                             method = 1L,
                              parallelize = TRUE,
                              maxit = 10, # default 25
                              group.maxit = 4, # default 6
@@ -1527,7 +1527,7 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                dispersion = NULL,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
-                               method = 7L,
+                               method = 1L,
                                parallelize = TRUE, 
                                maxit = 20, # default 25
                                group.maxit = 4, # default 6
@@ -1575,7 +1575,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              maxit = 10, # default 25
                              group.maxit = 4, # default 6
-                             method = 7L,
+                             method = 1L,
                              parallelize = TRUE, 
                              thresh = 1E-5
   )$coefficients

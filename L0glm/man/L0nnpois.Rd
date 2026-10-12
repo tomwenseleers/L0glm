@@ -12,7 +12,7 @@ L0nnpois(
   dispersion = NULL,
   start = NULL,
   offset = NULL,
-  lambda = 1,
+  lambda = "gic",
   intercept = FALSE,
   always.include = NULL,
   normalize = FALSE,
@@ -80,11 +80,15 @@ known quantity that is added to the linear predictor of the model.}
 \item{lambda}{Either a scalar with the \eqn{L_0} penalty for univariate or
 independent multichannel fits (when \code{grouped=FALSE}) or the grouped
 row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
-character with the name of an information criterion (\code{"aic"},
-\code{"bic"}, \code{"gic"}, \code{"ebic"} or \code{"mbic"}), in which case
-\code{lambda} will be preset with a value that would be expected to
-optimise that particular information criterion. Set \code{lambda = 0} to
-disable penalization.}
+case-insensitive criterion name: \code{"aic"}, \code{"bic"},
+\code{"gic"}, \code{"mebic"}, \code{"ebic"}, or
+\code{"mbic"}. For example, \code{"GIC"} and \code{"gic"} are equivalent.
+The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
+AIC uses 2, BIC uses \eqn{\log n}, GIC uses \eqn{\log p\,\log\log n},
+and MEBIC uses twice the GIC value. See \link{information_criteria} for
+all formulas, intended uses and references. Set \code{lambda = 0} to
+disable penalization. Presets approximate the chosen criterion; they do
+not guarantee its global minimizer.}
 
 \item{intercept}{Logical; if \code{TRUE}, add an intercept column to \code{X}.
 The intercept is constrained to be nonnegative, just like every other
@@ -153,7 +157,8 @@ not at the number of physical cores.}
 to use per fit process. The default \code{NULL} leaves the main R session's
 thread settings unchanged and uses one BLAS/OpenMP thread per parallel
 worker. Setting \code{nthreads} can be useful to benchmark serial fits or
-tune per-worker threading on systems with multithreaded BLAS/OpenMP.}
+tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
 perform.}
@@ -231,9 +236,10 @@ A list with the same main components as [L0glm.fit()]:
 [L0glm.fit()] for the nonnegative Poisson model with identity link. It shares
 the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
-For problems with many outcomes, it is much faster than `L0glm.fit()`,
-and also much more memory efficient, as the design matrix  `X` is kept in
-shared memory.
+`L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
+fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
+the design matrix `X` in shared memory across outcome channels.
+The default penalty is `lambda = "gic"`.
 Every coefficient, including any intercept, is constrained to be nonnegative.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required.
@@ -265,13 +271,14 @@ dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
 
 \dontrun{
-## Multichannel fit is much faster when parallelized than L0glm.fit:
+## Compare with the general R fitting path (process-based parallelism):
 system.time(fit.mc <- L0glm.fit(
   X = sim.pois.mc$X,
   y = sim.pois.mc$y,
   family = poisson(identity),
   lambda = "gic",
   nonnegative = TRUE,
+  openmp = FALSE,
   grouped = TRUE,
   relaxed = TRUE,
   parallelize = TRUE,
@@ -298,13 +305,14 @@ system.time(fit.sc <- L0nnpois(
 
 sum(fit.sc$coefficients != 0)
 
-## But then it is only faster than L0glm.fit for large problem sizes:
+## Compare with the general R path for a single channel:
 system.time(fit.sc <- L0glm.fit(
   X = sim.pois.mc$X,
   y = sim.pois.mc$y[, 1L],
   family = poisson(identity),
   lambda = "gic",
   nonnegative = TRUE,
+  openmp = FALSE,
   grouped = FALSE,
   relaxed = FALSE,
   parallelize = FALSE
@@ -315,5 +323,6 @@ system.time(fit.sc <- L0glm.fit(
 sum(fit.sc$coefficients != 0)
 }
 \seealso{
-[L0glm.fit()]
+[L0glm.fit()], \link{information_criteria} for case-insensitive
+  criterion presets, penalty formulas, guidance and original references.
 }

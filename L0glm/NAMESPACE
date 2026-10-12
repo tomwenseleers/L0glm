@@ -30,78 +30,100 @@ export(simulate_spike_train)
 export(sis_glm)
 import(Matrix)
 importFrom(L0Learn,L0Learn.fit)
-importFrom(Matrix,Diagonal)
-importFrom(Matrix,Matrix)
-importFrom(Matrix,bandSparse)
-importFrom(Matrix,colSums)
-importFrom(Matrix,sparseMatrix)
+importFrom(Matrix,
+  Diagonal,
+  Matrix,
+  bandSparse,
+  colSums,
+  sparseMatrix
+)
 importFrom(Rcpp,evalCpp)
-importFrom(RhpcBLASctl,get_num_cores)
-importFrom(RhpcBLASctl,get_num_procs)
-importFrom(abess,abess)
-importFrom(abess,extract)
+importFrom(RhpcBLASctl,
+  get_num_cores,
+  get_num_procs
+)
+importFrom(abess,
+  abess,
+  extract
+)
 importFrom(cobs,cobs)
 importFrom(dynamicTreeCut,cutreeDynamic)
 importFrom(fastcluster,hclust)
-importFrom(glmnet,coef.glmnet)
-importFrom(glmnet,cv.glmnet)
-importFrom(glmnet,glmnet)
-importFrom(grDevices,colorRampPalette)
-importFrom(grDevices,topo.colors)
-importFrom(graphics,abline)
-importFrom(graphics,layout)
-importFrom(graphics,legend)
-importFrom(graphics,lines)
-importFrom(graphics,matplot)
-importFrom(graphics,par)
-importFrom(graphics,plot)
-importFrom(graphics,points)
-importFrom(graphics,segments)
+importFrom(glmnet,
+  coef.glmnet,
+  cv.glmnet,
+  glmnet
+)
+importFrom(grDevices,
+  colorRampPalette,
+  topo.colors
+)
+importFrom(graphics,
+  abline,
+  layout,
+  legend,
+  lines,
+  matplot,
+  par,
+  plot,
+  points,
+  segments
+)
 importFrom(gsignal,conv)
-importFrom(methods,as)
-importFrom(methods,is)
+importFrom(methods,
+  as,
+  is
+)
 importFrom(nnls,nnls)
-importFrom(parallel,clusterApply)
-importFrom(parallel,clusterCall)
-importFrom(parallel,detectCores)
-importFrom(parallel,makeCluster)
-importFrom(parallel,stopCluster)
-importFrom(qlcMatrix,colMax)
-importFrom(qlcMatrix,colMin)
-importFrom(qlcMatrix,rowMax)
+importFrom(parallel,
+  clusterApply,
+  clusterCall,
+  detectCores,
+  makeCluster,
+  stopCluster
+)
+importFrom(qlcMatrix,
+  colMax,
+  colMin,
+  rowMax
+)
 importFrom(scales,alpha)
 importFrom(splines,bs)
 importFrom(statmod,rinvgauss)
-importFrom(stats,approx)
-importFrom(stats,as.dist)
-importFrom(stats,coef)
-importFrom(stats,cor)
-importFrom(stats,gaussian)
-importFrom(stats,glm.fit)
-importFrom(stats,is.empty.model)
-importFrom(stats,lm)
-importFrom(stats,lm.fit)
-importFrom(stats,logLik)
-importFrom(stats,mad)
-importFrom(stats,median)
-importFrom(stats,model.matrix)
-importFrom(stats,model.response)
-importFrom(stats,na.pass)
-importFrom(stats,plogis)
-importFrom(stats,pnorm)
-importFrom(stats,poisson)
-importFrom(stats,predict)
-importFrom(stats,qlogis)
-importFrom(stats,quantile)
-importFrom(stats,rbinom)
-importFrom(stats,rgamma)
-importFrom(stats,rlnorm)
-importFrom(stats,rnorm)
-importFrom(stats,rpois)
-importFrom(stats,runif)
-importFrom(stats,sd)
-importFrom(stats,setNames)
-importFrom(stats,var)
-importFrom(utils,data)
-importFrom(utils,flush.console)
+importFrom(stats,
+  approx,
+  as.dist,
+  coef,
+  cor,
+  gaussian,
+  glm.fit,
+  is.empty.model,
+  lm,
+  lm.fit,
+  logLik,
+  mad,
+  median,
+  model.matrix,
+  model.response,
+  na.pass,
+  plogis,
+  pnorm,
+  poisson,
+  predict,
+  qlogis,
+  quantile,
+  rbinom,
+  rgamma,
+  rlnorm,
+  rnorm,
+  rpois,
+  runif,
+  sd,
+  setNames,
+  var
+)
+importFrom(utils,
+  data,
+  flush.console
+)
 useDynLib(L0glm)

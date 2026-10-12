@@ -56,9 +56,10 @@ to use when \code{baseline = "bspline"}. With \code{nknots < 4}
 and \code{baseline="bspline"} \code{baseline} is changed
 to \code{intercept}.}
 
-\item{IC}{Information criterion that sets the penalty parameter in
-\pkg{L0glm}. One of `"gic"` (default), `"aic"`, `"bic"`,
-`"mbic"` or `"ebic"`.}
+\item{IC}{A case-insensitive information-criterion name for model selection:
+\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+See \link{information_criteria} for formulas, guidance and references.}
 
 \item{grouped}{Logical, passed unchanged to \code{L0glm.fit}, specifying
 whether to perform grouped L0 feature selection, i.e. best subset
@@ -104,7 +105,7 @@ leverages the general machinery of \pkg{L0glm}.  This results in the following
 improvements:
 \itemize{
   \item No manual tuning of the regularisation parameter is required; instead
-        it can be preset to optimise information criteria such as GIC, AIC, 
+        it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
         BIC, EBIC or MBIC
   \item Both single channel data with L0 best subset selection or 
         multichannel data with grouped L0 best subset of group selection 

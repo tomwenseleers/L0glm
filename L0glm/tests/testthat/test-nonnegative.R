@@ -128,7 +128,8 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
             parallelize = multichannel, ncores = 2L
           )
           fast <- do.call(L0nnpois, args)
-          general <- do.call(L0glm.fit, c(args, list(family = poisson(identity), nonnegative = TRUE)))
+          general <- do.call(L0glm.fit, c(args, list(family = poisson(identity),
+                                                   nonnegative = TRUE, openmp = FALSE)))
           expect_true(all(is.finite(fast$coefficients)))
           expect_true(all(fast$coefficients >= 0))
           expect_true(all(as.matrix(fast$coefficients)[1, ] == 0))

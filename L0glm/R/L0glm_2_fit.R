@@ -54,10 +54,9 @@
 #' finish with a (nearly) unpenalized fit on the \code{L0glm} selected features.
 #'
 #' The level of regularisation can be manually chosen (if a numeric value is
-#' passed to \code{lambda}) or preset to optimise given information criteria (if
-#' set to \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"ebic"} or
-#' \code{"mbic"}). For example, a lambda of 2 is expected to optimise AIC, a
-#' lambda of log(\emph{n}) BIC, etc.
+#' passed to \code{lambda}) or preset to approximate an information criterion.
+#' Criterion names are case-insensitive. See \link{information_criteria} for
+#' the penalty formulas, guidance on choosing a criterion and original references.
 #'
 #' The \code{L0glm.fit} function has various advanced features, including
 #' support for both dense and sparse design matrices \emph{\bold{X}}, high
@@ -116,11 +115,15 @@
 #' @param lambda Either a scalar with the \eqn{L_0} penalty for univariate or
 #'   independent multichannel fits (when \code{grouped=FALSE}) or the grouped
 #'   row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
-#'   character with the name of an information criterion (\code{"aic"},
-#'   \code{"bic"}, \code{"gic"}, \code{"ebic"} or \code{"mbic"}), in which case
-#'   \code{lambda} will be preset with a value that would be expected to
-#'   optimise that particular information criterion. Set \code{lambda = 0} to
-#'   disable penalization.
+#'   case-insensitive criterion name: \code{"aic"}, \code{"bic"},
+#'   \code{"gic"}, \code{"mebic"}, \code{"ebic"}, or
+#'   \code{"mbic"}. For example, \code{"GIC"} and \code{"gic"} are equivalent.
+#'   The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
+#'   AIC uses 2, BIC uses \eqn{\log n}, GIC uses \eqn{\log p\,\log\log n},
+#'   and MEBIC uses twice the GIC value. See \link{information_criteria} for
+#'   all formulas, intended uses and references. Set \code{lambda = 0} to
+#'   disable penalization. Presets approximate the chosen criterion; they do
+#'   not guarantee its global minimizer.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
@@ -182,6 +185,14 @@
 #'
 #'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
 #'
+#' @param openmp Logical; defaults to \code{TRUE}. For nonnegative
+#'   identity-link Poisson fits with \code{solver="eigen"} and
+#'   \code{method=1L}, use the compiled \code{\link{L0nnpois}} backend.
+#'   Other families, links and solvers use the general R fitting path.
+#'   Set \code{FALSE} to use that path explicitly. Solver controls requesting
+#'   another factorization or \code{rowaug=FALSE} also retain the R path.
+#'   This option selects the backend; \code{parallelize} controls whether
+#'   its outcome channels run concurrently.
 #' @param parallelize A logical value indicating whether in the multivariate
 #'   case, the columns of the response matrix \code{y} should be fitted in
 #'   parallel. If \code{TRUE}, each column of \code{y} is fitted concurrently,
@@ -192,11 +203,14 @@
 #'   detected number of physical cores when that can be determined, falling back
 #'   to half the number of logical cores. The requested value is capped at the
 #'   detected number of physical cores when that can be determined.
+#'   With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
+#'   threads sharing the design matrix and is capped at the logical core count.
 #' @param nthreads Optional integer specifying the number of BLAS/OpenMP threads
 #'   to use per fit process. The default \code{NULL} leaves the main R session's
 #'   thread settings unchanged and uses one BLAS/OpenMP thread per parallel
 #'   worker. Setting \code{nthreads} can be useful to benchmark serial fits or
 #'   tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+#'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform.
 #' @param grouped A logical value indicating whether a grouped fit should be
@@ -269,7 +283,7 @@
 #' the coefficient estimates using a quadratic approximation of the log
 #' likelihood of the GLM objective. This is done using a weighted least squares
 #' step. In our adapted algorithm, this step is replaced by a (zero or nonzero
-#' centered) adaptive ridge regularised regression with optional box or
+#' centered) adaptive ridge regularised regression with optional
 #' nonnegativity constraints on the coefficients. In each iteration, this uses
 #' the following ridge penalties for the penalized terms (excluding the
 #' intercept, if included):
@@ -279,7 +293,7 @@
 #' where \eqn{\beta} are the coefficient estimates
 #' in each iteration and coefficients smaller than \code{thresh} are set to zero
 #' and taken out of the model at the start of each iteration, and as in Frommlet
-#' & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Box or nonnegativity
+#' & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
 #' constraints are natively supported if the \code{bigGlm} or
 #' the \code{osqp} solver is used, or are obtained via clipping if the
 #' \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
@@ -305,8 +319,10 @@
 #' increase sensitivity. If an appropriate level of regularisation lambda is chosen,
 #' the L0 norm penalized solution approximates Best Subset selection. To achieve
 #' variable selection consistency, the \code{"bic"} \code{lambda} preset is
-#' recommended for low dimensional settings, whilst \code{"gic"}, \code{"ebic"}
-#' or \code{"mbic"} may work better for high dimensional settings. Setting it to
+#' recommended for low dimensional settings, whilst \code{"gic"},
+#' \code{"mebic"}, \code{"ebic"} or \code{"mbic"} may work better for high
+#' dimensional settings, subject to the conditions discussed in
+#' \link{information_criteria}. Setting it to
 #' \code{"aic"} is recommended if predictive performance is of key interest, as
 #' the AIC criterion asymptotically approximates the leave-one-out
 #' cross-validation error.
@@ -410,19 +426,45 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       maxit         = 25,
                       grouped       = TRUE,
                       group.maxit   = 6,
-                      relaxed       = grouped & ncol(y)>1,
+                      relaxed       = grouped & NCOL(y)>1,
                       warm.start    = 0.9,
                       prior.mean    = NULL,
                       gamma         = 2,
                       thresh        = 1e-5,
                       tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                      verbose       = FALSE) {
+                      verbose       = FALSE,
+                      openmp        = TRUE) {
   
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
   }
+  if (!is.logical(openmp) || length(openmp) != 1L || is.na(openmp)) {
+    stop("openmp must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!inherits(family, "family")) family <- family()
+
+  # Dispatch before R-specific coercion, initialization or worker creation.
+  # Forward the public arguments unchanged so defaults and warm starts are
+  # applied exactly once by L0nnpois.
+  if (openmp && nonnegative && identical(family$family, "poisson") &&
+      identical(family$link, "identity") && identical(solver, "eigen") &&
+      isTRUE(method == 1L) &&
+      (is.null(control.solver$method) || identical(control.solver$method, "chol")) &&
+      (is.null(control.solver$pivot) || isTRUE(control.solver$pivot == 0L)) &&
+      (is.null(control.solver$rowaug) || isTRUE(control.solver$rowaug))) {
+    return(L0nnpois(
+      X = X, y = y, weights = weights, family = family,
+      dispersion = dispersion, start = start, offset = offset,
+      lambda = lambda, intercept = intercept, always.include = always.include,
+      normalize = normalize, solver = solver, method = method,
+      parallelize = parallelize, ncores = ncores, nthreads = nthreads,
+      maxit = maxit, grouped = grouped, group.maxit = group.maxit,
+      relaxed = relaxed, warm.start = warm.start, prior.mean = prior.mean,
+      gamma = gamma, thresh = thresh, tol = tol,
+      control.solver = control.solver, verbose = verbose
+    ))
+  }
 
   # Helpers ----------------------------------------------------------------
   issparse  <- function(M) inherits(M, "sparseMatrix")
@@ -463,9 +505,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   }
   
   # ----- preset lambda ------------------------------------------------------
-  if (lambda %in% c("aic","bic","gic","ebic","mbic")) {
-    lambda = preset.lambda(IC = lambda, p = ncol(X), n = nrow(X))
-  }  
+  lambda <- L0glm_resolve_lambda(lambda, p = ncol(X), n = nrow(X))
   
   # - Some argument checking & conversion to matrices -----------------------
   # 1  Observation weights --------------------------------------------------
@@ -574,7 +614,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         nworkers <- min(ncores, m)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
         cl <- if (cluster_type == "PSOCK") {
-          parallel::makeCluster(nworkers, type = cluster_type, useXDR = FALSE)
+          parallel::makeCluster(nworkers, type = cluster_type, useXDR = FALSE,
+                                master = "localhost")
         } else {
           parallel::makeCluster(nworkers, type = cluster_type)
         }

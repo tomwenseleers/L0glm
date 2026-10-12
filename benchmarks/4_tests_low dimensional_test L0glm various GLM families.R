@@ -54,10 +54,10 @@ system.time(L0glm_gaus_lambda0 <- L0glm.fit(X = X,
                                             no.pen = 1,
                                             start = NULL, # rep(sqrt(5), ncol(data_gaus$X)), # NULL, # 
                                             solver = "eigen", # 
-                                            method = 3L, 
+                                            method = 4L,
                                             relaxed = FALSE,
                                             thresh = 1E-5
-))  # 0.06s with method=3L, 0.14s with method=7L
+))  # historical timings: 0.06s with LSCG, 0.14s with Cholesky LLT
 
 # NOTE: note that L0glm can fit GLMs with perfectly collinear variables, e.g.
 # with X = cbind(data_gaus$X, data_gaus$X)
@@ -83,7 +83,7 @@ BIC(glm_gaus)-metrics_gaus$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                               y = y,
                               X = X, 
                               family = gaussian(identity),
@@ -100,7 +100,7 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = X,
                                             normalize = FALSE,
                                             start = NULL, # =rep(sqrt(5), ncol(data_gaus$X))/scaling, # NULL, # rep(sqrt(5), ncol(data_gaus$X))*scaling, # NULL, # start_coefs(X, family=gaussian(identity)), # = rep(sqrt(5), ncol(data_gaus$X)) / scaling, 
                                             solver = "eigen", # 
-                                            method = 7L, #
+                                            method = 1L, #
                                             relaxed = FALSE,
                                             thresh = 1E-5
 )) # 0.41s with method 3L, 0.72s with method 7L
@@ -162,7 +162,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          nonnegative = FALSE,
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, # 3L here 2x as fast than 7L
+                         method = 4L, # historically LSCG was twice as fast as Cholesky LLT here
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -225,27 +225,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # note: as expected using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
@@ -283,7 +283,7 @@ system.time(L0glm_pois_lambda0 <- L0glm.fit(X = X,
                                             normalize = FALSE,
                                             start = NULL, # = start_coefs(X=X, family=family) = rep(sqrt(5), ncol(X))/scaling,
                                             solver = "eigen", # 
-                                            method = 7L, #
+                                            method = 1L, #
                                             thresh = 1E-5
 ))   # 0.99s # note 3L is 2x faster but a bit more inaccurate
 L0glm_pois_lambda0_coefs = L0glm_pois_lambda0$coefficients
@@ -308,7 +308,7 @@ BIC(glm_pois)-metrics_pois$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_pois = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_pois = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = poisson(log),
@@ -324,7 +324,7 @@ system.time(L0glm_pois_presetlambda <- L0glm.fit(X = X,
                                                  normalize = FALSE,
                                                  start = NULL, # =start_coefs(X=X, family=family) = rep(sqrt(5), ncol(X))/scaling
                                                  solver = "eigen", # 
-                                                 method = 3L, #
+                                                 method = 4L, #
                                                  thresh = 1E-5
 )) # 0.48s
 mean(abs(L0glm_pois_presetlambda$coefficients-beta_true)) # 0.3255121
@@ -379,7 +379,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          normalize = FALSE,
                          start = start, 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, 
+                         method = 4L,
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -390,7 +390,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               family = poisson(log), 
                                               beta_true = beta_true))) )
 } )))) # 56s
-# TODO with method = 7L and dense X = X returns Error in h(simpleError(msg, call)) : 
+# TODO with method = 1L and dense X = X returns Error in h(simpleError(msg, call)) :
 # error in evaluating the argument 'x' in selecting a method for function 'as.matrix': non-conformable arguments
 # error in solve_dense_chol
 # Add some error catching in solvers?
@@ -445,27 +445,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.258925
 # note: as expected using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
@@ -504,7 +504,7 @@ system.time(L0glm_binom_lambda0 <- L0glm.fit(X = X,
                                             start = NULL, # = rep(sqrt(5), ncol(data_binom$X))/scaling,
                                             no.pen = 1,
                                             solver = "eigen", # 
-                                            method = 3L, #
+                                            method = 4L, #
                                             thresh = 1E-5))
 # 0.61s
 mean(abs(coef(glm_binom)-L0glm_binom_lambda0$coefficients)) # 1.271946e-09
@@ -527,7 +527,7 @@ BIC(glm_binom)-metrics_binom$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_binom = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_binom = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = binomial(logit),
@@ -544,7 +544,7 @@ system.time(L0glm_binom_presetlambda <- L0glm.fit(X = X,
                                                       start = NULL, # = rep(sqrt(5), ncol(X))/scaling
                                                       no.pen = 1,
                                                       solver = "eigen", # 
-                                                      method = 7L, #
+                                                      method = 1L, #
                                                       thresh = 1E-5)) 
 # 0.89s
 mean(abs(L0glm_binom_presetlambda$coefficients-coef(glm_binom))) # 0.9392265
@@ -599,7 +599,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          no.pen = 1,
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, 
+                         method = 4L,
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -611,7 +611,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               beta_true = beta_true))) )
 } )))) # 19s
 # TODO debug warnings In eval(init) : non-integer #successes in a binomial glm!
-# TODO with method=7 and dense X=X returns error Error in h(simpleError(msg, call)) : 
+# TODO with method=1L and dense X=X returns error Error in h(simpleError(msg, call)) :
 # error in evaluating the argument 'x' in selecting a method for function 'as.matrix': non-conformable arguments
 # In Cholesky dense solver. Add some error catching in solvers?
 matplot(x=log10(metrics$lambda), 
@@ -661,27 +661,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 0.6309573
 # note: as expected using warm starts in the L0glm.fit function shifts the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
@@ -721,7 +721,7 @@ system.time(L0glm_gamma_lambda0 <- L0glm.fit(X = X,
                                             no.pen = 1,
                                             start = NULL, # rep(sqrt(5), ncol(data_gamma$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                             solver = "eigen", # 
-                                            method = 7L, #
+                                            method = 1L, #
                                             thresh = 1E-5
 ))  # 2.19s
 
@@ -741,7 +741,7 @@ BIC(glm_gamma)-metrics_gamma$bic # 9.806899e-08
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_gamma = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_gamma = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = Gamma(log),
@@ -757,7 +757,7 @@ system.time(L0glm_gamma_presetlambda <- L0glm.fit(X = X,
                                                  no.pen = 1,
                                                  start = NULL, # start_coefs(X,family)/scaleX(X), # rep(sqrt(50), ncol(X)), # rep(sqrt(6), ncol(data_gamma$X)), # rep(sqrt(6), ncol(data_gamma$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                  solver = "eigen", # 
-                                                 method = 7L, #
+                                                 method = 1L, #
                                                  thresh = 1E-5
 )) # 1.33s
 mean(abs(L0glm_gamma_presetlambda$coefficients-coef(glm_gamma))) # 0.9436883
@@ -810,7 +810,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          no.pen = 1,
                          start = start,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, 
+                         method = 4L,
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -821,7 +821,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                                               family = Gamma(log), 
                                               beta_true = beta_true))) )
 } )))) # 25s
-# TODO: with solver method=7L returns error Error in h(simpleError(msg, call)) : 
+# TODO: with solver method=1L returns error Error in h(simpleError(msg, call)) :
 # error in evaluating the argument 'x' in selecting a method for function 'as.matrix': non-conformable arguments
 # in Cholesky dense solver. Add some error catching in solvers or lmridge?
 matplot(x=log10(metrics$lambda), 
@@ -874,27 +874,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # note: using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
@@ -932,7 +932,7 @@ system.time(L0glm_invgaus_lambda0 <- L0glm.fit(X = X,
                                              no.pen = 1,
                                              start = NULL, # rep(sqrt(10), ncol(data_invgaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                              solver = "eigen", # 
-                                             method = 7L, #
+                                             method = 1L, #
                                              thresh = 1E-5
 ))  # 2.56s
 
@@ -951,7 +951,7 @@ BIC(glm_invgaus)-metrics_invgaus$bic # 1.487871e-06
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_invgaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_invgaus = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                                     y = y, 
                                     X = X, 
                                     family = inverse.gaussian(log),
@@ -967,7 +967,7 @@ system.time(L0glm_invgaus_presetlambda <- L0glm.fit(X = X,
                                                   no.pen = 1,
                                                   start = NULL, # (abs(coef(glm_invgaus)))^(1/3), # rep(sqrt(3)/4, ncol(data_invgaus$X)), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                   solver = "eigen", # 
-                                                  method = 3L, #
+                                                  method = 4L, #
                                                   thresh = 1E-5)) 
 # 0.92s
 
@@ -1022,7 +1022,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          no.pen = 1,
                          start = start, # coef(glm_invgaus), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)),
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                         method = 3L, 
+                         method = 4L,
                          # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
@@ -1087,27 +1087,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 3.981072
 # note: using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),

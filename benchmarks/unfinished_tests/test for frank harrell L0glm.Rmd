@@ -185,11 +185,11 @@ for(i in 1:simu){
                                normalize = F,
                                start = rep(0.1, ncol(X)+1), # reg.coef, # rep(0.1, ncol(X)+1), # rep(1, ncol(X)+1), # coefficient starting values
                                solver = "eigen", # solver to use
-                               method = 7L, # Cholesky
+                               method = 1L, # Cholesky
                                thresh = 1E-20,
                                control.solver = modifyList(do.call("control.solver.gen", 
                                                         list(solver = "eigen", 
-                                                             method = 7L)), 
+                                                             method = 1L)),
                                                 list(rowaug=TRUE)) 
                        )$coefficients
   

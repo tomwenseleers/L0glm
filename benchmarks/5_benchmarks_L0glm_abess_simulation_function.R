@@ -50,7 +50,7 @@ system.time(abess_fit_mc <- abess(
   fit.intercept=FALSE,
   tune.path="sequence",
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 20s with support.size=1:(n-1), 0.31s with support.size=1:round(n*0.2) 
@@ -102,7 +102,7 @@ table(rowMeans(coef_real_mc)!=0,
 #                                        family = gaussian(identity), 
 #                                        nonnegative = TRUE, 
 #                                        parallelize = TRUE, 
-#                                        solver = "eigen", method = 7L)) 
+#                                        solver = "eigen", method = 1L))
 # # XXs
 # # TODO fix bug
 # # Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
@@ -119,7 +119,7 @@ system.time(L0glm.chol.mgaus <- L0glm.fit(data.mc.gaus$x, data.mc.gaus$y,
                                          relaxed = TRUE, # gives best result for multichannel
                                          parallelize = TRUE,
                                          solver = "eigen", # osqp gives very similar solution
-                                         method = 7L))  # use eigen Cholesky LLT solver
+                                         method = 1L))  # use eigen Cholesky LLT solver
 # 12s
 
 coef_L0glm.chol.mgaus = L0glm.chol.mgaus$coefficients
@@ -201,7 +201,7 @@ system.time(abess_fit_sc <- abess(
   tune.path = "sequence",
   # tune.type = "cv", num.threads = 5 # slower this tuning based on IC
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 21s with support.size=1:(n-1), 0.2s with support.size=1:round(n*0.2)
@@ -239,7 +239,7 @@ table(coef_abess_sc!=0,
 #                                        family = gaussian(identity), 
 #                                        nonnegative = TRUE, 
 #                                        parallelize = TRUE, 
-#                                        solver = "eigen", method = 7L)) 
+#                                        solver = "eigen", method = 1L))
 # # XXs
 # # TODO fix bug
 # # Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
@@ -256,7 +256,7 @@ system.time(L0glm.chol.gaus <- L0glm.fit(data.sc.gaus$x, data.sc.gaus$y,
                                           relaxed = FALSE, # gives best result for multichannel
                                           parallelize = FALSE,
                                           solver = "eigen", # osqp gives very similar solution
-                                          method = 7L))  # use Cholesky LLT solver
+                                          method = 1L))  # use Cholesky LLT solver
 # 0.26s
 
 coef_L0glm.chol.gaus = L0glm.chol.gaus$coefficients

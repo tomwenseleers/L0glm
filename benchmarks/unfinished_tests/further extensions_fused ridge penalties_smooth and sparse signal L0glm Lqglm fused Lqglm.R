@@ -187,7 +187,7 @@ system.time(L0glmfit <- L0glm.fit( X=as(Matrix(X, sparse=T), "generalMatrix"), y
   dispersion = 1, # use dispersion=1 if poisson weights are provided
   gamma = 2,
   # tol = 0.1,
-  method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
+  method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
   thresh = 1
 )) # 0.03s
 beta_L0glm <- L0glmfit$coefficients
@@ -334,7 +334,7 @@ system.time(L0glmfit_fused <- L0glm.fit(# X=X, y=y,
                                           dispersion = 1, # use dispersion=1 if poisson weights are provided
                                           gamma = 2,
                                           # tol = 0.1,
-                                          method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
+                                          method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                           thresh = 1
 )) # 0.04s
 beta_L0glm_fused <- as.vector(L0glmfit_fused$coefficients)
@@ -426,7 +426,7 @@ system.time(L0glmfit_fused_ad <- L0glm.fit(# X=X, y=y,
   dispersion = 1, # use dispersion=1 if poisson weights are provided
   gamma = 2,
   # tol = 0.1,
-  method = 7L, # 0.27s for n=p=10000 with eigen solver methods 7 & 8 (Cholesky), 0.61s with methods 5 & 6 (CG), 1.27s with methods 3, 4 (LSCG), 219s with methods 1 & 2 (QR), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
+  method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
   thresh = 1
 )) # 0.05s
 beta_L0glm_fused_ad <- L0glmfit_fused_ad$coefficients

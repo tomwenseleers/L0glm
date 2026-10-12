@@ -15,6 +15,7 @@ test_that("multichannel parallel fit matches serial fit", {
 
   serial <- L0glm.fit(
     X, y,
+    openmp = FALSE,
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
@@ -30,6 +31,7 @@ test_that("multichannel parallel fit matches serial fit", {
 
   parallel <- L0glm.fit(
     X, y,
+    openmp = FALSE,
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
@@ -90,6 +92,7 @@ test_that("serial nthreads setting is restored after fit", {
   sim <- simul(method = 4, n = 40L, p = 40L, s = 0.1, seed = 2)
   fit <- L0glm.fit(
     sim$X, sim$y[, 1L, drop = FALSE],
+    openmp = FALSE,
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,

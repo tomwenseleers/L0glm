@@ -53,7 +53,7 @@ L0overL1norm_betatrue = L0norm_betatrue/L1norm_betatrue
 L0overL1norm_betatrue # 2.388402
 
 # NOTE: best possible "oracle" model that would be achievable with L0glm & the gic criterion is
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic 
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                               p = ncol(X), # using original problem size
                               n = nrow(X))
 system.time(L0glm_bestfit <- L0glm.fit(X = X, # X[,beta_true_set,drop=F], # X
@@ -66,7 +66,7 @@ system.time(L0glm_bestfit <- L0glm.fit(X = X, # X[,beta_true_set,drop=F], # X
                           warm.start = 0.99, # 0.99 works as well as 1
                           # dispersion = dispersion, 
                           solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                          method = 7L, #
+                          method = 1L, #
                           gamma = 2, # .1, # set it slightly above 2 for p>>n case
                           thresh = 1E-5,
                           relaxed = FALSE
@@ -111,7 +111,7 @@ method="oracle_L0glm"
 # WORKS & RECOVERS BETTER SOLUTION THAN ABESS & MCP BUT FASTER!
 
 IC = "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, hbic, ebic, mbic 
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 # iterating SIS & L0glm:
@@ -137,7 +137,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                  start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
                                  warm.start = 1,
                                  solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                 method = 7L, # Cholesky
+                                 method = 1L, # Cholesky
                                  gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
   )  # 
   beta_start = rep(0, ncol(X))
@@ -159,7 +159,7 @@ system.time(L0glmfit_final <- L0glm.fit(X = X[,S,drop=F],
                               start = beta_start[S],  
                               warm.start = 0.99,
                               solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                              method = 7L, # Cholesky
+                              method = 1L, # Cholesky
                               gamma = 2
 ))  # 0.09s
 beta_final = rep(0, ncol(X))
@@ -585,7 +585,7 @@ metrics_ncvreg_SCAD
 # (returns an empty set)
 
 # # we use mbic because original problem is high dimensional
-# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
 #                               p = ncol(X),
 #                               n = nrow(X))
 # timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- L0glm.fit(
@@ -599,7 +599,7 @@ metrics_ncvreg_SCAD
 #   normalize = FALSE,
 #   # dispersion = dispersion,
 #   solver = "eigen",
-#   method = 7L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmridge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmridge.R#722
+#   method = 1L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmridge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmridge.R#722
 #   relaxed = FALSE))[[3]]
 # timing_fullL0glm
 # # 34s

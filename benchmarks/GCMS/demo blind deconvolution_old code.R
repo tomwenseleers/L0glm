@@ -53,7 +53,7 @@ L0_sparse_deco <- function(y,                            # response to be deconv
                      nonnegative = TRUE, # imposing nonnegativity constraints on coefficients
                      lambda = IC, 
                      grouped = grouped,
-                     method = 7L, # using sparse Cholesky LLT solver
+                     method = 1L, # using sparse Cholesky LLT solver
                      solver = "eigen")$coefficients
   y_hat <- X %*% y_deconv # fitted values # cbind(1, )
   deviance <- sum(dev_res(y = as.numeric(y), 
@@ -110,7 +110,7 @@ L0_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) 
                        # prior.mean = kernel_est*y_deconv_scalings[col], # shrink towards prior kernel estimate (more stable)
                        grouped = FALSE, 
                        lambda = IC,
-                       method = 7L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
+                       method = 1L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
                        solver = "eigen")$coefficients
     # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)
     if (!is.null(kernel_smoothfun)) { kernel <- kernel_smoothfun(y = kernel) }
