@@ -1726,7 +1726,7 @@ plot(fit_glmnet, xvar="lambda")
 coefs <- coef(fit_glmnet, s = best_lambda)
 beta_mgaussian_glmnet <- do.call(cbind, lapply(seq_len(m), function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
 colnames(beta_mgaussian_glmnet) = 1:ncol(beta_mgaussian_glmnet)
-beta_mgaussian_glmnet[abs(beta_mgaussian_glmnet)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
+beta_mgaussian_glmnet[abs(beta_mgaussian_glmnet)<1E-5] = 0 # slight amount of thresholding of small coefficients using same delta as used in L0glm
 
 image(x=1:nrow(sim$y), y=1:ncol(sim$y), z=beta_mgaussian_glmnet^0.1, col = topo.colors(255),
       useRaster=TRUE,

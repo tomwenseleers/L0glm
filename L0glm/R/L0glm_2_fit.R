@@ -105,9 +105,10 @@
 #'   \code{m} to the number of columns in \code{y}. These will determine the
 #'   level of penalisation of the different coefficients during the first IRLS
 #'   ridge regression update. The ridge penalty used equals
-#'   \eqn{(\lambda/4) \phi / |\beta|^\gamma}. Note that coefficients
-#'   with absolute value smaller than \code{thresh} will be clipped to zero and
-#'   are removed from the model. Set to \code{NULL} by default, in which case it
+#'   \eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
+#'   selection update, coefficients below the relative cutoff or the absolute
+#'   numerical floor described in \code{thresh} are excluded from later solves.
+#'   Set to \code{NULL} by default, in which case it
 #'   is auto-initialised.
 #' @param offset Optional vector of offset values of length \code{p}, or a
 #'   matrix of offset values with dimensions \code{c(p, m)}. The offset is a
@@ -187,7 +188,7 @@
 #'
 #' @param openmp Logical; defaults to \code{TRUE}. For nonnegative
 #'   identity-link Poisson fits with \code{solver="eigen"} and
-#'   \code{method=1L}, use the compiled \code{\link{L0nnpois}} backend.
+#'   \code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
 #'   Other families, links and solvers use the general R fitting path.
 #'   Set \code{FALSE} to use that path explicitly. Solver controls requesting
 #'   another factorization or \code{rowaug=FALSE} also retain the R path.
@@ -205,11 +206,11 @@
 #'   detected number of physical cores when that can be determined.
 #'   With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
 #'   threads sharing the design matrix and is capped at the logical core count.
-#' @param nthreads Optional integer specifying the number of BLAS/OpenMP threads
+#' @param nthreads Optional integer specifying the number of BLAS threads
 #'   to use per fit process. The default \code{NULL} leaves the main R session's
-#'   thread settings unchanged and uses one BLAS/OpenMP thread per parallel
+#'   thread settings unchanged and uses one BLAS thread per parallel
 #'   worker. Setting \code{nthreads} can be useful to benchmark serial fits or
-#'   tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+#'   tune per-worker threading on systems with a multithreaded BLAS.
 #'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform.
@@ -228,8 +229,9 @@
 #'   penalty.
 #' @param relaxed Logical indicating if the algorithm should conduct a nearly
 #'   unpenalized fit on the L0glm selected variables (using
-#'   \code{lambda=1E-10}). This can eliminate any remaining bias on the
-#'   coefficients and increase sensitivity, especially for the multivariate case
+#'   \code{lambda=1E-30}). Hard thresholding is disabled in this final refit,
+#'   while adaptive ridge weights remain unsmoothed. This can
+#'   reduce coefficient bias and increase sensitivity, especially for the multivariate case
 #'   with grouped variable selection. Defaults to \code{TRUE} when
 #'   \code{grouped=TRUE} & multichannel data are passed in \code{y}.
 #' @param warm.start A numeric value in the range of [0, 1] that represents the
@@ -249,11 +251,18 @@
 #'   \code{prior.mean = NULL} will shrink to zero using a default zero centered
 #'   ridge regression.
 #' @param gamma Scalar with the exponent to use when calculating the ridge
-#'   penalty \code{(lambda/4)*dispersion/abs(beta)^gamma)} in each iteration.
+#'   penalty \code{(lambda/4)*dispersion/abs(beta)^gamma}.
 #'   Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.
-#' @param thresh Coefficients below this scalar threshold are clipped to 0 in
-#'   each of the IRLS ridge regression iterations and removed from the model.
-#'   Defaults to \code{1E-5}.
+#' @param thresh Finite nonnegative scalar, default \code{1e-5}, controlling
+#'   hard thresholding during selection. After each update, coefficients with
+#'   \code{abs(beta) < max(abs(beta))*thresh} or \code{abs(beta) < 1e-20}
+#'   are set to zero. The maximum is computed separately for each response
+#'   channel, on the coefficient scale returned by the ridge solver.
+#'   Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
+#'   disables only the relative cutoff; the absolute numerical floor remains.
+#'   The final relaxed refit applies neither cutoff; nonnegativity clipping
+#'   still applies when requested. Adaptive ridge weights are unsmoothed,
+#'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
 #' @param tol Convergence tolerance. Iterations are stopped when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
 #'   threshold.
@@ -291,8 +300,9 @@
 #' with adaptive penalty weights
 #' \deqn{w = 1 / |\beta|^\gamma}
 #' where \eqn{\beta} are the coefficient estimates
-#' in each iteration and coefficients smaller than \code{thresh} are set to zero
-#' and taken out of the model at the start of each iteration, and as in Frommlet
+#' in each iteration. During selection, the relative cutoff and absolute
+#' numerical floor specified by \code{thresh} remove coefficients from later solves.
+#' The final relaxed refit does not apply this hard cutoff. As in Frommlet
 #' & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
 #' constraints are natively supported if the \code{bigGlm} or
 #' the \code{osqp} solver is used, or are obtained via clipping if the
@@ -315,7 +325,7 @@
 #' Newton-Raphson iterations (i.e. using the expected Hessian instead of the
 #' observed one). If option \code{relaxed} is set to \code{TRUE} the algorithm
 #' will refit the \code{L0glm} selected variables using a nearly unpenalized
-#' model (with \code{lambda=1E-10}). This can reduce any remaining bias and
+#' model (with \code{lambda=1E-30}) without hard thresholding. This can reduce bias and
 #' increase sensitivity. If an appropriate level of regularisation lambda is chosen,
 #' the L0 norm penalized solution approximates Best Subset selection. To achieve
 #' variable selection consistency, the \code{"bic"} \code{lambda} preset is
@@ -430,11 +440,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       warm.start    = 0.9,
                       prior.mean    = NULL,
                       gamma         = 2,
-                      thresh        = 1e-5,
+                      thresh         = 1e-5,
                       tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE,
                       openmp        = TRUE) {
+  validate_thresh(thresh)
   
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
@@ -664,10 +675,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         }
       }
       group_support_start <- function(coefs) {
-        active <- as.vector(Matrix::rowSums(abs(coefs) > thresh) > 0)
+        # Selection updates already applied the per-channel cutoff.
+        active <- as.vector(Matrix::rowSums(coefs != 0) > 0)
         avgc <- as.numeric(Matrix::rowMeans(coefs))
         magc <- as.numeric(Matrix::rowMeans(abs(coefs)))
-        cancelled <- active & abs(avgc) <= thresh
+        cancelled <- active & avgc == 0
         avgc[cancelled] <- magc[cancelled]
         list(vars = which(active),
              start = matrix(rep(avgc, m), nrow = length(avgc), ncol = m))
@@ -702,7 +714,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         maxit         = maxit,
                                         tol           = tol,
                                         always.include        = always.include,
-                                        thresh        = thresh,
+                                        thresh         = thresh,
                                         solver        = solver,
                                         warm.start    = warm.start,
                                         lower         = lower[vars],
@@ -728,7 +740,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                lower       = lower[vars],
                                upper       = upper[vars],
                                maxit       = maxit,
-                               thresh      = thresh,
+                               thresh       = thresh,
                                solver      = solver,
                                method      = method,
                                tol         = tol,
@@ -774,11 +786,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           X             = X[, vars, drop = FALSE],
                                           family        = family,
                                           lambda        = 1e-30, # using a very small lambda here
+                                          hard_threshold = FALSE,
                                           gamma         = gamma,
                                           maxit         = maxit,
                                           tol           = tol,
                                           always.include        = always.include,
-                                          thresh        = thresh,
+                                          thresh         = thresh,
                                           solver        = solver,
                                           warm.start    = warm.start,
                                           lower         = lower[vars],
@@ -794,6 +807,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  weights     = weights[, col], 
                                  family     = family,
                                  lambda     = 1e-30,
+                                 hard_threshold = FALSE,
                                  gamma      = gamma,
                                  normalize   = normalize,
                                  offset      = offset[, col], 
@@ -804,7 +818,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  lower       = lower[vars],
                                  upper       = upper[vars],
                                  maxit       = maxit,
-                                 thresh      = thresh,
+                                 thresh       = thresh,
                                  solver      = solver,
                                  method      = method,
                                  tol         = tol,
@@ -867,7 +881,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               warm.start  = warm.start,
                               prior.mean  = prior.mean,
                               gamma       = gamma,
-                              thresh      = thresh,
+                              thresh       = thresh,
                               solver      = solver,
                               method      = method,
                               maxit       = maxit,
@@ -898,10 +912,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       lower       = lower[vars],
                                       upper       = upper[vars],
                                       lambda      = 1e-30,
+                                      hard_threshold = FALSE,
                                       warm.start  = warm.start,
                                       prior.mean  = prior.mean[vars],
                                       gamma       = gamma,
-                                      thresh      = thresh,
+                                      thresh       = thresh,
                                       solver      = solver,
                                       method      = method,
                                       maxit       = maxit,
@@ -924,8 +939,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   # ------------------------------------------------------------------------
   #  Final clean-up  &  return
   # ------------------------------------------------------------------------
-  weights.ret[is.infinite(weights.ret)] <- 1e11
-  lambdas    [is.infinite(lambdas)]     <- 1e11
+  if (any(is.infinite(weights.ret))) {
+    weights.ret[is.infinite(weights.ret)] <- 1e11
+  }
+  if (any(is.infinite(lambdas))) {
+    lambdas[is.infinite(lambdas)] <- 1e11
+  }
   
   ## ensure coefficients are returned as sparse coeff-matrix also for univariate case
   if (m == 1L) {
@@ -1114,7 +1133,8 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      start = NULL, lower, upper,
                      verbose = FALSE, maxit, tol, offset, always.include = 0,
                      control.solver = do.call("control.solver.gen",
-                                              list(solver = solver, method = method))) {
+                                              list(solver = solver, method = method)),
+                     hard_threshold = TRUE) {
   
   lapply(cols, function(col) {
     disp_col <- if (is.list(dispersion)) dispersion[[col]] else dispersion
@@ -1135,7 +1155,8 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       offset       = as.vector(offset[, col]),
       upper        = upper,
       prior.mean   = prior.mean[, col],
-      thresh       = thresh,
+      thresh        = thresh,
+      hard_threshold = hard_threshold,
       solver       = solver,
       normalize    = normalize,
       method       = method,

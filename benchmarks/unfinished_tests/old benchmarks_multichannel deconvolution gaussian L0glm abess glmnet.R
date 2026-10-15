@@ -296,7 +296,6 @@ system.time({
                                   lambda = bestlambda, 
                                   nonnegative = TRUE,
                                   thresh = 1, # coefficients below this threshold are set to zero
-                                  delta = 0, # TODO: if we have the thresh argument we can get rid of delta & set delta to zero, no need to have both
                                   group = T, # use group L0 penalty
                                   group.maxit = 6,
                                   relaxedGroupL0 = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO

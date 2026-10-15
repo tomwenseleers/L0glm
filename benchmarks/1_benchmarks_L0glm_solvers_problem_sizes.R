@@ -1,15 +1,25 @@
 # BENCHMARKS & TIMINGS OF L0GLM FITS BY PROBLEM SIZE AND SOLVER ####
+# Uses high-resolution timing and the general R fitting path for each solver.
+# "Dense" and "sparse" describe input storage: solvers may compress exact zeros.
 
 library(L0glm)
 library(ggplot2)
 library(tidyr)
 library(tidyselect)
+library(microbenchmark)
 
 output_dir <- normalizePath("..\\benchmarks\\1_benchmarks_solvers_problem_sizes")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
                              
 # Simulation sizes (with n = p)
 sizes <- c(100, 500, 1000, 10000)
+
+# Compare the general R fitting path for every solver. Native/OpenMP LLT
+# uses a different outer loop and can compress dense inputs automatically.
+use_openmp <- FALSE
+blas_threads <- 1L
+timing_repetitions <- 1L # increase for repeated fits; Time is the median
+RhpcBLASctl::blas_set_num_threads(blas_threads)
 
 criterion <- "gic"
 metric_columns <- c(
@@ -46,6 +56,7 @@ solver_colours <- c(
   "eigen PCG incomplete Cholesky precond" = "purple",
   "eigen PLSCG" = "cyan2"
 )
+solver_shapes <- stats::setNames(c(16, 17, 0, 15, 18, 4), names(solver_colours))
 
 family_grid <- list(
   poisson = list(
@@ -81,7 +92,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
 
   timed_fit <- withCallingHandlers(
     tryCatch(
-      system.time({
+      microbenchmark::microbenchmark({
         fit <- L0glm::L0glm.fit(
           X = X,
           y = y,
@@ -91,6 +102,10 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
           lambda = lambda,
           nonnegative = TRUE,
           relaxed = FALSE,
+          thresh = 1e-5,
+          openmp = use_openmp,
+          parallelize = FALSE,
+          nthreads = blas_threads,
           solver = solver_backend,
           method = solver_method,
           control.solver = do.call(
@@ -98,7 +113,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
             list(solver = solver_backend, method = solver_method)
           )
         )
-      }),
+      }, times = timing_repetitions),
       error = function(e) {
         fit_error <<- conditionMessage(e)
         NULL
@@ -111,7 +126,9 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   )
 
   if (!is.null(timed_fit)) {
-    fit_time <- unname(timed_fit[["elapsed"]])
+    # microbenchmark uses a high-resolution timer; system.time() rounded some
+    # successful fast fits to exactly zero, which cannot appear on a log axis.
+    fit_time <- median(timed_fit$time) / 1e9
     metric_values$Time <- fit_time
   }
 
@@ -162,6 +179,10 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       Solver = solver_name,
       Solver_backend = solver_backend,
       Solver_method = solver_method,
+      OpenMP = use_openmp,
+      BLAS_threads = blas_threads,
+      Timing_repetitions = timing_repetitions,
+      Timing_clock = "microbenchmark",
       Status = status,
       Warnings = if (length(fit_warnings) > 0) {
         paste(unique(fit_warnings), collapse = " | ")
@@ -174,21 +195,46 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   )
 }
 
+solver_layers <- function(data, point_size = 1.5, point_stroke = 0.5) {
+  llt <- data$Solver == "eigen Cholesky LLT"
+  # Draw LLT after every other solver's lines AND points, irrespective of
+  # factor levels or row order. Keep the legend order unchanged.
+  list(
+    ggplot2::geom_line(data = data[!llt, ], linewidth = 1, na.rm = TRUE),
+    ggplot2::geom_point(data = data[!llt, ], size = point_size,
+                       stroke = point_stroke, na.rm = TRUE),
+    ggplot2::geom_line(data = data[llt, ], linewidth = 1, na.rm = TRUE),
+    ggplot2::geom_point(data = data[llt, ], size = point_size,
+                       stroke = point_stroke, na.rm = TRUE)
+  )
+}
+
 save_plot <- function(plot, filename_stem, width = 7, height = 5, dpi = 600) {
-  ggplot2::ggsave(
-    filename = normalizePath(file.path(output_dir, paste0(filename_stem, ".png"))),
-    plot = plot,
-    width = width,
-    height = height,
-    dpi = dpi
-  )
-  ggplot2::ggsave(
-    filename = normalizePath(file.path(output_dir, paste0(filename_stem, ".pdf"))),
-    plot = plot,
-    width = width,
-    height = height,
-    dpi = dpi
-  )
+  write_plot <- function(filename) {
+    withCallingHandlers(
+      ggplot2::ggsave(filename, plot, width = width, height = height, dpi = dpi),
+      warning = function(w) {
+        # Some PNG devices signal a failed write as a warning, not an error.
+        if (grepl("could not write|cannot open file", conditionMessage(w), ignore.case = TRUE))
+          stop(conditionMessage(w), call. = FALSE)
+      }
+    )
+  }
+  for (extension in c("png", "pdf")) {
+    filename <- file.path(output_dir, paste0(filename_stem, ".", extension))
+    tryCatch(
+      write_plot(filename),
+      error = function(e) {
+        # A PDF open in a Windows viewer may be locked against replacement.
+        alternate <- file.path(output_dir, paste0(filename_stem, "_",
+          format(Sys.time(), "%Y%m%d_%H%M%S"), ".", extension))
+        warning(sprintf("Could not save %s (%s); saving %s instead.",
+                        basename(filename), conditionMessage(e), basename(alternate)),
+                call. = FALSE)
+        write_plot(alternate)
+      }
+    )
+  }
 }
 
 result_rows <- list()
@@ -215,6 +261,7 @@ for (family_name in names(family_grid)) {
         n = n,
         p = n,
         sparse = matrix_config$sparse,
+        seed = 1L,
         options = list(sd_noise = 1)
       )
 
@@ -326,8 +373,7 @@ for (family_name in names(family_grid)) {
       condition_long,
       ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
     ) +
-      ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
-      ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+      solver_layers(condition_long) +
       ggplot2::facet_wrap(~metric, scales = "free_y") +
       ggplot2::theme_minimal() +
       ggplot2::labs(
@@ -363,8 +409,7 @@ for (family_name in names(family_grid)) {
       time_data,
       ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
     ) +
-      ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
-      ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+      solver_layers(time_data) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = paste0(
@@ -399,33 +444,43 @@ combined_timing_data <- subset(results_long, metric == "Time")
 combined_timing_data$value[combined_timing_data$value <= 0] <- NA_real_
 combined_timing_plot <- ggplot2::ggplot(
   combined_timing_data,
-  ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+  ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver, group = Solver)
 ) +
-  ggplot2::geom_line(linewidth = 1, na.rm = TRUE) +
-  ggplot2::geom_point(size = 1.5, na.rm = TRUE) +
+  solver_layers(combined_timing_data, point_size = 2, point_stroke = 0.7) +
   ggplot2::facet_grid(Matrix_density ~ Noise_family) +
   ggplot2::theme_minimal() +
   ggplot2::labs(
-    title = "Timings different L0glm solvers for varying problem sizes",
+    title = "L0glm solver timings by problem size",
+    subtitle = sprintf("openmp = %s; BLAS threads = %d; timed fits per condition = %d",
+                       use_openmp, blas_threads, timing_repetitions),
     colour = "solver",
+    shape = "solver",
     x = "Problem size (n = p)",
     y = "Time (s)"
   ) +
-  ggplot2::theme(legend.position = "right") +
-  ggplot2::scale_x_continuous(trans = "log10") +
+  ggplot2::theme(legend.position = "bottom", panel.spacing = grid::unit(1, "lines")) +
+  ggplot2::guides(colour = ggplot2::guide_legend(ncol = 2),
+                  shape = ggplot2::guide_legend(ncol = 2)) +
+  ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
+                            labels = scales::label_number(big.mark = ",")) +
   ggplot2::scale_y_continuous(trans = "log10") +
+  ggplot2::scale_shape_manual(values = solver_shapes,
+                             limits = names(solver_shapes), drop = FALSE) +
   ggplot2::scale_color_manual(
     values = solver_colours,
     limits = names(solver_colours),
     drop = FALSE
   )
 
-save_plot(combined_timing_plot, "timings_all_conditions", width = 8, height = 6)
+save_plot(combined_timing_plot, "timings_all_conditions", width = 10, height = 7)
 
 run_summary <- c(
   paste("Output directory:", output_dir),
   paste("Wide metrics table:", metrics_file),
   paste("Long metrics table:", metrics_long_file),
+  paste("OpenMP/native dispatch:", use_openmp),
+  paste("BLAS threads:", blas_threads),
+  paste("High-resolution timing repetitions:", timing_repetitions),
   paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 )
 writeLines(run_summary, normalizePath(file.path(output_dir, "run_summary.txt")))

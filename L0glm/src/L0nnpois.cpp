@@ -1,6 +1,7 @@
 // [[Rcpp::depends(RcppEigen)]]
 #define EIGEN_DONT_PARALLELIZE
 #include <RcppEigen.h>
+#include <R_ext/BLAS.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -57,7 +58,7 @@ inline std::vector<int> active_positions(const VectorXd& beta) {
   return active;
 }
 
-inline void group_support_start(const MatrixXd& coef, double thresh,
+inline void group_support_start(const MatrixXd& coef,
                                 std::vector<int>& vars,
                                 MatrixXd& start_current) {
   const int p = coef.rows();
@@ -74,13 +75,13 @@ inline void group_support_start(const MatrixXd& coef, double thresh,
       const double value = coef(j, col);
       signed_sum += value;
       abs_sum += std::abs(value);
-      active = active || std::abs(value) > thresh;
+      active = active || value != 0.0;
     }
     if (active) {
       const double avg = signed_sum / static_cast<double>(m);
       const double mean_abs = abs_sum / static_cast<double>(m);
       vars.push_back(j);
-      starts.push_back(std::abs(avg) <= thresh ? mean_abs : avg);
+      starts.push_back((avg == 0.0) ? mean_abs : avg);
     }
   }
 
@@ -246,29 +247,28 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
                                   const VectorXd& start) {
   const int n = X.rows();
   const int k = static_cast<int>(active.size());
-  MatrixXd A = MatrixXd::Zero(k, k);
-  VectorXd b = VectorXd::Zero(k);
-
+  // Assemble weighted columns once, then use R's BLAS symmetric crossproduct.
+  // The former a/i/b loop traversed X across columns in its innermost loop,
+  // producing O(n*k^2) scalar operations with poor cache locality.
+  const VectorXd sqrtw = w.array().max(0.0).sqrt();
+  const VectorXd zw = z.array() * sqrtw.array();
+  MatrixXd Xw(n, k);
   for (int a = 0; a < k; ++a) {
-    const int posa = active[a];
-    const int cola = vars[posa];
-    const double sa = scaling[posa];
-    b[a] = lambdas[posa] * prior_mean[posa];
-    A(a, a) = lambdas[posa];
-    for (int i = 0; i < n; ++i) {
-      const double wi = w[i];
-      if (wi == 0.0) continue;
-      const double xa = X(i, cola) / sa;
-      b[a] += wi * xa * z[i];
-      for (int bb = a; bb < k; ++bb) {
-        const int posb = active[bb];
-        const double xb = X(i, vars[posb]) / scaling[posb];
-        A(a, bb) += wi * xa * xb;
-      }
-    }
+    const int pos = active[a];
+    Xw.col(a) = X.col(vars[pos]).array() * sqrtw.array() / scaling[pos];
   }
+  MatrixXd A = MatrixXd::Zero(k, k);
+  const double one = 1.0;
+  const double zero = 0.0;
+  // LLT reads the lower triangle only. BLAS computes it without the redundant
+  // upper triangle, and uses the optimized BLAS selected by the R installation.
+  F77_CALL(dsyrk)("L", "T", &k, &n, &one, Xw.data(), &n, &zero,
+                  A.data(), &k FCONE FCONE);
+  VectorXd b = Xw.transpose() * zw;
   for (int a = 0; a < k; ++a) {
-    for (int bb = a + 1; bb < k; ++bb) A(bb, a) = A(a, bb);
+    const int pos = active[a];
+    A(a, a) += lambdas[pos];
+    b[a] += lambdas[pos] * prior_mean[pos];
   }
 
   Eigen::LLT<MatrixXd> solver(A);
@@ -362,7 +362,8 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            double gamma,
                            double thresh,
                            double tol,
-                           bool natural_ordering);
+                           bool natural_ordering,
+                           bool hard_threshold);
 
 template <>
 FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
@@ -381,7 +382,8 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            double gamma,
                                            double thresh,
                                            double tol,
-                                           bool natural_ordering) {
+                                           bool natural_ordering,
+                                           bool hard_threshold) {
   (void) natural_ordering;
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
@@ -453,10 +455,9 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
       beta[active[a]] = beta_sub[a];
     }
 
-    double max_abs = 0.0;
-    for (int j = 0; j < q; ++j) max_abs = std::max(max_abs, std::abs(beta[j]));
+    const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
     for (int j = 0; j < q; ++j) {
-      if (std::abs(beta[j]) < max_abs * thresh || std::abs(beta[j]) < 1e-20) {
+      if (hard_threshold && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
         beta[j] = 0.0;
       }
       if (always_include[vars[j]]) prior_mean[j] = beta[j];
@@ -497,7 +498,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     double gamma,
     double thresh,
     double tol,
-    bool natural_ordering) {
+    bool natural_ordering,
+    bool hard_threshold) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   const double eps = std::numeric_limits<double>::epsilon();
@@ -568,10 +570,9 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
       beta[active[a]] = beta_sub[a];
     }
 
-    double max_abs = 0.0;
-    for (int j = 0; j < q; ++j) max_abs = std::max(max_abs, std::abs(beta[j]));
+    const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
     for (int j = 0; j < q; ++j) {
-      if (std::abs(beta[j]) < max_abs * thresh || std::abs(beta[j]) < 1e-20) {
+      if (hard_threshold && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
         beta[j] = 0.0;
       }
       if (always_include[vars[j]]) prior_mean[j] = beta[j];
@@ -655,7 +656,8 @@ Rcpp::List fit_all_impl(const Design& X,
   MatrixXd start_current;
   MatrixXd* start_ptr = has_start ? &start_full : NULL;
 
-  auto fit_for_vars = [&](double lambda_fit, MatrixXd* start_for_fit) {
+  auto fit_for_vars = [&](double lambda_fit, MatrixXd* start_for_fit,
+                          bool hard_threshold) {
     const int q = static_cast<int>(vars.size());
     std::vector<FitResult> fits(m);
 
@@ -666,7 +668,7 @@ Rcpp::List fit_all_impl(const Design& X,
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, maxit, warm_start,
-        gamma, thresh, tol, natural_ordering);
+        gamma, thresh, tol, natural_ordering, hard_threshold);
     }
 
     coef.setZero();
@@ -683,17 +685,17 @@ Rcpp::List fit_all_impl(const Design& X,
 
   for (int iter = 0; iter < effective_group_maxit; ++iter) {
     if (iter > 0) {
-      group_support_start(coef, thresh, vars, start_current);
+      group_support_start(coef, vars, start_current);
       if (vars.empty()) break;
       start_ptr = &start_current;
     }
-    fit_for_vars(lambda, start_ptr);
+    fit_for_vars(lambda, start_ptr, true);
   }
 
   if (relaxed) {
-    group_support_start(coef, thresh, vars, start_current);
+    group_support_start(coef, vars, start_current);
     if (!vars.empty()) {
-      fit_for_vars(1e-30, &start_current);
+      fit_for_vars(1e-30, &start_current, false);
     }
   }
 

@@ -44,9 +44,10 @@
 #' @return A numeric vector of estimated coefficients.
 #'
 #' @details The \code{lmridge} function fits a ridge regression model of the
-#' form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| y - X \beta
-#' \|_2^2 + \lambda \| \beta - \mu \|_2^2 \right\}} where \eqn{\lambda} is the
-#'   ridge penalty parameter and \eqn{\mu} is the prior mean of the coefficients
+#' form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta)
+#' \|_2^2 + \frac{1}{2}\sum_j \lambda_j (\beta_j - \mu_j)^2 \right\}} where
+#'   \eqn{W} contains the observation weights, \eqn{\lambda_j} are the ridge
+#'   penalty parameters, and \eqn{\mu} is the prior mean of the coefficients
 #'   (specified by \code{prior.mean}).
 #'
 #'   The function supports optional bounds on the coefficients via the
@@ -74,6 +75,18 @@
 #'   3=CG with incomplete Cholesky preconditioner, 4=LSCG with diagonal
 #'   least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
 #'   systems or Jacobi SVD for sparse systems).
+#'
+#'   LSCG uses Eigen's diagonal least-squares preconditioner without additional
+#'   external column equilibration. A finite approximate LSCG solution is
+#'   retained with a warning if the requested tolerance is not reached; a
+#'   missing or nonfinite solution triggers the Cholesky fallback. OSQP uses
+#'   the original coefficient coordinates and reports a warning when its
+#'   requested accuracy is not reached. On a failed OSQP setup or solve,
+#'   an infeasible/nonconvex status, or an invalid returned coefficient vector,
+#'   a warning is issued and the previous IRLS coefficients (clipped to the
+#'   bounds) are retained. Such a warning does not establish convergence.
+#'   Finite-tolerance solutions can change the subsequent adaptive ridge
+#'   selection path.
 #'
 #' @seealso \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}},
 #' \code{\link[nnls]{nnls}}, \code{\link{control.solver.gen}}
@@ -180,42 +193,57 @@ lmridge.osqp <- function(Xw,
     ywaug <- yw
   }
   
-  if(control.solver$rowaug == TRUE){
-    XtX <- crossprod(Xwaug)
-    Xty <- crossprod(Xwaug, ywaug)
-  } else {
-    if (issparse(Xw)){
-      XtX <- as(Matrix(crossprod(Xwaug), sparse=T), "generalMatrix")
-    } else {
-      XtX <- crossprod(Xwaug)
-    }
-    Xty <- as.matrix(crossprod(Xwaug, 
-                               augY(yw, ncol(Xw), 
-                                    lambdas = lambdas, 
-                                    prior.mean = prior.mean)))
-  }
-  
+  # Keep the historical coefficient coordinates. Additional external
+  # equilibration changes the finite-tolerance OSQP path and L0 selection.
+  XtX <- crossprod(Xwaug)
+  Xty <- as.numeric(crossprod(Xwaug, ywaug))
+
   # Obtain settings and create model
   settings <- osqp_settings_from_control(control.solver, start)
   
-  model <- osqp::osqp(P = XtX, q = -Xty, 
-                A = .sparseDiagonal(ncol(Xw)), # Diagonal(n = ncol(Xw)),
-                l = lower, u = upper, pars = settings)
   if(is.null(start)) start <- rep(0, ncol(Xw))
-  if (inherits(model, "S7_object")) {
-    model@WarmStart(x = start)
-  } else {
-    model$WarmStart(x = start)
+  solution <- tryCatch({
+    model <- osqp::osqp(P = XtX, q = -Xty,
+                       A = .sparseDiagonal(ncol(Xw)),
+                       l = lower, u = upper, pars = settings)
+    if (inherits(model, "S7_object")) {
+      model@WarmStart(x = start)
+      model@Solve()
+    } else {
+      model$WarmStart(x = start)
+      model$Solve()
+    }
+  }, error = function(e) e)
+  if (inherits(solution, "error")) {
+    return(osqp_previous_coefficients(conditionMessage(solution), start,
+                                       lower, upper, iteration))
   }
-  
-  # solve model
-  coefs <- if (inherits(model, "S7_object")) {
-    model@Solve()$x
-  } else {
-    model$Solve()$x
+  osqp_coefficients(solution, start, lower, upper, iteration)
+}
+
+osqp_previous_coefficients <- function(reason, start, lower, upper, iteration) {
+  warning(sprintf(paste0("OSQP failed in IRLS iteration %s: %s; ",
+                         "retaining previous coefficients within bounds."),
+                  iteration, reason), call. = FALSE)
+  clamp(as.numeric(start), lower, upper)
+}
+
+osqp_coefficients <- function(solution, start, lower, upper, iteration) {
+  status <- solution$info$status
+  if (is.null(status) || length(status) != 1L || is.na(status)) status <- "unknown status"
+  status <- tolower(status)
+  invalid <- !is.numeric(solution$x) || length(solution$x) != length(start) ||
+    any(!is.finite(solution$x))
+  # Failed solves can return finite placeholder values; these are not iterates.
+  if (grepl("infeasible|non[ -]?convex|unsolved|unknown status", status) || invalid) {
+    reason <- if (invalid) paste0(status, " (invalid coefficient vector)") else status
+    return(osqp_previous_coefficients(reason, start, lower, upper, iteration))
   }
-  coefs <- clamp(coefs, lower, upper) # fitted coefficients sometimes go very slightly outside constraint zone due to numerical inaccuracies in solver - this is fixed here via clipping
-  return(coefs)
+  if (!identical(status, "solved")) {
+    warning(sprintf("OSQP did not converge to the requested accuracy in IRLS iteration %s: %s",
+                    iteration, status), call. = FALSE)
+  }
+  clamp(solution$x, lower, upper)
 }
 
 osqp_settings_from_control <- function(control.solver, start = NULL) {
@@ -336,6 +364,16 @@ lmridge.nnls <- function(Xw, yw, lambdas = rep(0, ncol(Xw)), lower, upper,
 }
 
 
+lscg_coefficients <- function(solution, iteration) {
+  coefs <- solution$coefficients
+  if (is.null(coefs) || any(!is.finite(coefs))) return(NULL)
+  if (!isTRUE(solution$status)) {
+    warning(sprintf(paste0("LSCG did not converge to the requested accuracy in IRLS iteration %s; ",
+                           "using its finite approximate solution."), iteration), call. = FALSE)
+  }
+  as.vector(coefs)
+}
+
 lmridge.eigen <- function(Xw, yw, 
                           lambdas = rep(0, ncol(Xw)), 
                           lower = rep(-.Machine$double.xmax,ncol(Xw)), 
@@ -435,20 +473,21 @@ lmridge.eigen <- function(Xw, yw,
       
       # X.n <- sqrt(colSums(Xw^2)) 
       if(issparse(Xwaug)){
-        coefs <- solve_sparse_LSCG(A = Xwaug,
+        solution <- solve_sparse_LSCG(A = Xwaug,
                                    b = as.matrix(ywaug),
                                    x0 = as.matrix(start),
                                    tol = control.solver$tol,
                                    maxit = control.solver$maxit,
-                                   precond = control.solver$precond)$coefficients 
+                                   precond = control.solver$precond)
       } else {
-        coefs <- solve_dense_LSCG(A = Xwaug,
+        solution <- solve_dense_LSCG(A = Xwaug,
                                   b = as.matrix(ywaug),
                                   x0 = as.matrix(start),
                                   tol = control.solver$tol,
                                   maxit = control.solver$maxit,
-                                  precond = control.solver$precond)$coefficients
+                                  precond = control.solver$precond)
       }
+      coefs <- lscg_coefficients(solution, iteration)
     } else { # Use normal equations
       D <- Diagonal(x=1/pen.weights)
 
@@ -465,20 +504,21 @@ lmridge.eigen <- function(Xw, yw,
       
       if(nrow(Xw)*100 >= ncol(Xw)){
         if(issparse(Xw)){
-          coefs <- as.vector(solve_sparse_LSCG(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
+          solution <- solve_sparse_LSCG(A = as(Matrix::crossprod(Xw) + Diagonal(x=lambdas), "generalMatrix"),
                                                b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                                x0 = as.matrix(start),
                                                tol = control.solver$tol,
                                                maxit = control.solver$maxit,
-                                               precond = control.solver$precond)$coefficients)
+                                               precond = control.solver$precond)
         } else { # if it's dense
-          coefs <- as.vector(solve_dense_LSCG(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
+          solution <- solve_dense_LSCG(A = as.matrix(Matrix::crossprod(Xw) + Diagonal(x=lambdas)),
                                               b = as.matrix(Matrix::crossprod(Xw,yw) + as.matrix(lambdas * prior.mean)),
                                               x0 = as.matrix(start),
                                               tol = control.solver$tol,
                                               maxit = control.solver$maxit,
-                                              precond = control.solver$precond)$coefficients)
+                                              precond = control.solver$precond)
         }
+        coefs <- lscg_coefficients(solution, iteration)
       } else { # if p > n
         DXw <- Matrix::tcrossprod(D, Xw)
         if(issparse(Xw)){

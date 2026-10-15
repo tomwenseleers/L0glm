@@ -79,7 +79,7 @@ A great advantage of `L0glm.fit()` (and `L0nnpois()`) is that the level of regul
 For a single response, the objective that is minimised is `-2 * logLik + lambda * k`, where `k` counts selected coefficients. Given the similarity of this objective function to traditional information criteria of model fit, we can see that we can preset `lambda` to apply the following per-coefficient penalties on the minus 2 log-likelihood scale and approximately optimise given information criteria (`n` is the number of observations and `p` the number of design columns, including an intercept added by the fitter) :
 
 | Preset | `lambda` | Intended use |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | `aic` | `2` | Prediction-oriented model selection approximating leave-one-out-cross-validations; typically does not lead to consistent variable selection. |
 | `bic` | `log(n)` | Consistent variable selection in low-dimensional settings. |
 | `gic` | `log(p) * log(log(n))` | Consistent variable selection in low or high-dimensional settings, under the conditions listed by Fan & Tang (2013). |
@@ -90,6 +90,8 @@ For a single response, the objective that is minimised is `-2 * logLik + lambda 
 The implemented linear EBIC penalty approximates Chen & Chen's combinatorial model-space term `2 * gamma_ebic * log(choose(p, k))` by `2 * gamma_ebic * k * log(p)`. Note that the ABESS paper (Zhu et al., 2020) referred to the GIC penalty as SIC, the special information criterion, and introduced it as a special case of HBIC (Wang, Kim & Li, 2013). The HBIC family uses `Cn * log(p)` with a slowly diverging `Cn`; choosing `Cn = log(log(n))` gives the GIC penalty.
 
 These presets specify the statistical target. Adaptive ridge approximates it, and therefore does not guarantee returning the global best-subset solution, even though in practice it frequently does. The internal `lambda * dispersion / 4` scaling follows the orthogonal Gaussian threshold calibration derived by Frommlet & Nuel (2016); its use for general GLMs is also approximate but works well in practise. No criterion is uniformly best across different signal strengths and sample sizes. As in the `abess` package, for multichannel fits, reported IC scores simply count nonzero coefficient entries across all outcomes.
+
+`L0glm.fit()` and `L0nnpois()` use `thresh = 1e-5` by default and unsmoothed adaptive ridge weights `1 / abs(beta)^gamma`. During each selection update, coefficients satisfying `abs(beta) < max(abs(beta)) * thresh` or `abs(beta) < 1e-20` are set to zero and remain excluded within that IRLS run. The maximum is calculated per response channel. Setting `thresh = 0` disables only the relative cutoff. The final relaxed refit applies neither cutoff. Grouped passes and the relaxed refit can restart channel coefficients on retained rows.
 
 See `help("information_criteria", package = "L0glm")` for further details, scoring conventions and executable examples. Original references:
 
@@ -160,7 +162,7 @@ source("../benchmarks/readme_benchmarks_L0glm_deconvolution.R")
 
 You can also execute the script's sections directly. Paths are resolved from the working directory.
 
-Outputs are written to [`benchmarks/readme_benchmarks/`](benchmarks/readme_benchmarks/), including a CSV table, an RDS object with the fitted coefficients, and PNG figures. The default multichannel example uses the 200 strongest simulated mass channels.
+Local outputs are written to `codex_sandbox/readme_benchmarks/`, which is ignored by Git, including a CSV table, an RDS object with the fitted coefficients, and PNG figures. Only the six figures displayed below are kept in [`benchmarks/plots/readme/`](benchmarks/plots/readme/); copy updated versions there when refreshing the published README. The default multichannel example uses the 200 strongest simulated mass channels.
 
 For L0glm, the reported timing is the direct call to `L0glm.fit(lambda = "gic", openmp = TRUE)`, dispatching to the OpenMP optimised version `L0nnpois`. For glmnet, time includes fitting the regularisation path and selecting its smallest observed-data Poisson GIC. Timings also appear in each method's plot heading.
 
@@ -168,35 +170,37 @@ The Gaussian glmnet fits are approximations to the Poisson model. Single-channel
 
 Both F1 and MCC (Matthews correlation coefficient, or Pearson's phi) measure **row support**: a time index is selected if any channel has a coefficient larger than `1e-5` in absolute value. MCC is calculated as `(TP * TN - FP * FN) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))`. It is `NA` when either binary support vector is constant. Coefficient scatter plots use every coefficient entry across all channels, without clipping or averaging across rows; their R2 is from regression through the origin, matching the results table. Single-channel panels mirror fitted signals and estimated spikes below zero. Multichannel support panels use dark blue for true support and true positives, red for false positives, and magenta for false negatives. Use `cfg$plot_from` and `cfg$plot_n` to select the displayed zoom window.
 
+The multichannel table also reports `spectra_TP_rows_F1` and `spectra_TP_rows_MCC`: binary recovery of individual channel coefficients, pooled over correctly selected true rows. Their confusion counts are included. `spectra_all_true_rows_F1` and `spectra_all_true_rows_MCC` use all true rows, so that missed peaks also count against spectral recovery. These columns are `NA` for single-channel data.
+
 `deviance_true` compares `X %*% beta_hat` against the exact noise-free mean `y_true = X %*% beta_true`, without rounding that mean. For this comparison, predicted means use the fixed floor `cfg$deviance_floor = 1e-4`; all observations are retained. Observed likelihood/GIC and path selection retain their numerical floor `cfg$mu_floor = 1e-8`. Poisson deviance is sensitive to weak positive signals predicted close to zero, so its ranking can differ from coefficient or support recovery.
 
-The results CSV includes `neg2loglik`, `lambda_L0`, `nonzero_coefficients`, and two objectives: `GIC = -2*loglik + lambda_L0*nonzero_coefficients` and `GIC_rows = -2*loglik + lambda_L0*selected`. Both use `lambda_L0 = log(p)*log(log(n))`, with `n = nrow(X)`, matching the fitter. They coincide for a single channel. The grouped L0 fitter is an adaptive-ridge support-sharing heuristic, not an exact minimizer of the row-count objective. The [reference table](benchmarks/readme_benchmarks/readme_benchmark_references.csv) reports each objective at `beta_true`, evaluated against the observed data, and the saturated-likelihood lower bound. The true coefficients are an oracle reference, not necessarily the minimum of a noisy penalized objective.
+The results CSV includes `neg2loglik`, `lambda_L0`, `nonzero_coefficients`, and two objectives: `GIC = -2*loglik + lambda_L0*nonzero_coefficients` and `GIC_rows = -2*loglik + lambda_L0*selected`. Both use `lambda_L0 = log(p)*log(log(n))`, with `n = nrow(X)`, matching the fitter. They coincide for a single channel. The grouped L0 fitter is an adaptive-ridge support-sharing heuristic, not an exact minimizer of the row-count objective. The generated `readme_benchmark_references.csv` table reports each objective at `beta_true`, evaluated against the observed data, and the saturated-likelihood lower bound. The true coefficients are an oracle reference, not necessarily the minimum of a noisy penalized objective.
 
 The tables and figures use `n = p = 10000`, 1,000 true peaks and 200 mass channels. The grouped L0 fit uses eight OpenMP threads. Timings are local elapsed seconds and depend on hardware and system load.
 
-![Benchmark summary](benchmarks/readme_benchmarks/benchmark_summary.png)
+![Benchmark summary](benchmarks/plots/readme/benchmark_summary.png)
 
 #### Single-channel Poisson deconvolution
 
 The single-channel example uses `simulate_spike_train()` with Poisson noise and an explicit peak count, equivalent to `simul(method = 2)` when `n = p`.
 
 | Method | Seconds | Selected | TP | FP | FN | F1 | MCC / Phi | R2 coeff. | No-noise deviance | GIC |
-|-------|------:|------:|------:|------:|------:|------:|------:|------:|------:|------:|
+|----|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | L0glm (L0nnpois) | 0.11 | 999 | 845 | 154 | 155 | 0.845 | 0.828 | 0.9195 | 2.66e+03 | 1.03e+05 |
 | glmnet LASSO | 0.23 | 2559 | 954 | 1605 | 46 | 0.536 | 0.533 | 0.8363 | 1.31e+04 | 1.44e+05 |
 
 glmnet recovers more true peaks in this run, but includes 1,605 false positives versus just 154 for L0glm. L0glm has lower GIC and noise-free deviance, together with much higher F1, MCC and coefficient R2.
 
-![Single-channel signal zoom](benchmarks/readme_benchmarks/single_channel_signal_zoom.png)
+![Single-channel signal zoom](benchmarks/plots/readme/single_channel_signal_zoom.png)
 
-![Single-channel coefficient recovery](benchmarks/readme_benchmarks/single_channel_coefficients.png)
+![Single-channel coefficient recovery](benchmarks/plots/readme/single_channel_coefficients.png)
 
 #### Multichannel grouped deconvolution
 
 For GC/MS-like data, each chromatographic peak has a spectrum across different m/z mass channels. Passing an `n x m` response matrix to `L0glm.fit()` with `grouped = TRUE` shares support information across channelwise fits. Peak areas can differ by channel, and the nonnegative fits can set individual spectral coefficients to zero. The benchmark also uses `relaxed = TRUE` for the grouped fit.
 
 | Method | Seconds | Selected | TP | FP | FN | F1 | MCC / Phi | R2 coeff. | No-noise deviance | GIC (entries) | GIC (rows) |
-|------|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|
+|----|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | grouped L0glm (L0nnpois) | 4.64 | 959 | 937 | 22 | 63 | 0.957 | 0.952 | 0.9968 | 1.84e+05 | 5.57e+06 | 4.13e+06 |
 | glmnet group LASSO | 278.61 | 2847 | 964 | 1883 | 36 | 0.501 | 0.502 | 0.9777 | 5.69e+05 | 8.52e+06 | 4.49e+06 |
 
@@ -205,17 +209,17 @@ The grouped L0glm fit recovers a cleaner support (22 false positives versus 1,88
 For comparison, the objective values at the true coefficients and the saturated-likelihood lower bounds are:
 
 | Case | GIC at `beta_true` | Row GIC at `beta_true` | Objective lower bound |
-|:-----------------|-----------------:|-----------------:|-----------------:|
+|:---|---:|---:|---:|
 | Single channel | 102,557.2 | 102,557.2 | 72,727.8 |
 | Multichannel | 5,570,743.0 | 4,077,486.5 | 3,245,603.0 |
 
 This lower bound need not be attainable by a sparse nonnegative fit and knowing `beta_true` does not identify the minimum of the observed-data penalized objective.
 
-![Multichannel coefficient recovery](benchmarks/readme_benchmarks/multichannel_coefficients.png)
+![Multichannel coefficient recovery](benchmarks/plots/readme/multichannel_coefficients.png)
 
-![Multichannel support recovery](benchmarks/readme_benchmarks/multichannel_support.png)
+![Multichannel support recovery](benchmarks/plots/readme/multichannel_support.png)
 
-![Multichannel support recovery zoom](benchmarks/readme_benchmarks/multichannel_support_zoom.png)
+![Multichannel support recovery zoom](benchmarks/plots/readme/multichannel_support_zoom.png)
 
 ## Blind deconvolution for GC/MS chromatography
 

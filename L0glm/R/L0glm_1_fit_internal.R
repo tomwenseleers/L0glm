@@ -39,7 +39,8 @@ L0glm.fit.internal = function(X,
                               thresh = 1e-5,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                              verbose = FALSE) { 
+                              verbose = FALSE,
+                              hard_threshold = TRUE) {
 
   ## 1. sanity checks ---------------------------------------------------------
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
@@ -112,8 +113,8 @@ L0glm.fit.internal = function(X,
   
   # dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
 
-  # TODO: if warm.start=1 & start!=NULL we should kick out variables with 
-  # start=0 from the very beginning, as they would get infinite penalties
+  # Exact-zero starts are excluded by the active-set mask below;
+  # their unsmoothed adaptive penalty weights are infinite.
 
   ## 7. main IRLS loop with adaptive ridge step -------------------------------
   for (iter in seq_len(maxit)) {
@@ -137,10 +138,11 @@ L0glm.fit.internal = function(X,
     ## ---------- adaptive ridge penalties ----------------------------
 
     # penalty weights & penalties for the L0 norm penalty ####
-    pen.w <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0) # adaptive ridge pentalty weights, cf. Frommlet & Nuel (2016)
+    pen.w <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0)
 
     lambda_tilde <- lambda*dispersion/4
     lambdas <- lambda_tilde * pen.w
+    lambdas[beta == 0] <- Inf # excluded coefficients, including when lambda=0
     # if (!is.null(always.include)) lambdas[always.include] <- 0 # terms that should be left unpenalized (e.g. intercept)
 
     # lambda_tilde ridge penalties on individual coefficients, we scale these penalties 
@@ -181,8 +183,10 @@ L0glm.fit.internal = function(X,
                         method         = method)
     
     beta[nonzero]            <- beta_sub
-    beta[(abs(beta) < max(abs(beta))*thresh)|abs(beta) < 1E-20] <- 0
-    # beta[abs(beta) < thresh] <- 0
+    # Relative selection cutoff plus an absolute numerical floor.
+    # The final relaxed refit applies neither cutoff.
+    if (hard_threshold)
+      beta[(abs(beta) < max(abs(beta)) * thresh) | abs(beta) < 1E-20] <- 0
     nonzero <- beta != 0L
     
     # use informative prior updates for terms that should always be kept (e.g. for intercept)

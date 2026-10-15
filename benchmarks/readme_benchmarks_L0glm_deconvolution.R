@@ -7,7 +7,7 @@
 # separate tuning pass. Eligible fits use the compiled L0nnpois backend through
 # L0glm.fit(openmp = TRUE). Set cfg$openmp to FALSE to compare the R backend.
 #
-# Outputs are written to benchmarks/readme_benchmarks/.
+# Local outputs are written to codex_sandbox/readme_benchmarks/ (Git-ignored).
 # Run interactively with source(), or execute sections after editing cfg below.
 # In RStudio, with the working directory set to the package directory L0glm/:
 # source("../benchmarks/readme_benchmarks_L0glm_deconvolution.R")
@@ -51,12 +51,13 @@ cfg <- list(
   nlambda = 100L,
   ncores = 8L,
   openmp = TRUE,
+  thresh = 1e-5, # relative selection cutoff; absolute floor is 1e-20
   run_glmnet = TRUE,
   mu_floor = 1e-8, # numerical floor for observed likelihood/GIC and path selection
   deviance_floor = 1e-4, # prediction floor for comparison against noise-free truth
   plot_from = 1L,
   plot_n = 500L,
-  out_dir = file.path(root_dir, "benchmarks", "readme_benchmarks")
+  out_dir = file.path(root_dir, "codex_sandbox", "readme_benchmarks")
 )
 for (flag in c("run_glmnet", "openmp")) cfg[[flag]] <- readme_flag(cfg[[flag]], flag)
 for (field in c("n", "p", "npeaks", "m", "nlambda", "ncores", "plot_from", "plot_n")) {
@@ -163,6 +164,23 @@ support_statistics <- function(beta_hat, beta_true, tol = 1e-5) {
        MCC = if (all(margins > 0)) (tp * tn - fp * fn) / prod(sqrt(margins)) else NA_real_)
 }
 
+# Pool individual channel entries within the specified rows (micro-averaging).
+# TP-row conditioning measures spectral recovery after successful peak detection;
+# all-true-row conditioning additionally counts spectra from missed peaks as FNs.
+spectral_support_statistics <- function(beta_hat, beta_true, rows, tol = 1e-5) {
+  selected <- as.matrix(beta_hat)[rows, , drop = FALSE]
+  truth <- as.matrix(beta_true)[rows, , drop = FALSE]
+  if (!identical(dim(selected), dim(truth))) stop("Coefficient dimensions differ.")
+  selected <- abs(selected) > tol
+  truth <- abs(truth) > tol
+  tp <- as.double(sum(selected & truth)); fp <- as.double(sum(selected & !truth))
+  fn <- as.double(sum(!selected & truth)); tn <- as.double(sum(!selected & !truth))
+  margins <- c(tp + fp, tp + fn, tn + fp, tn + fn)
+  list(TP = tp, FP = fp, FN = fn, TN = tn,
+       F1 = if (2*tp + fp + fn > 0) 2*tp/(2*tp + fp + fn) else NA_real_,
+       MCC = if (all(margins > 0)) (tp*tn-fp*fn)/prod(sqrt(margins)) else NA_real_)
+}
+
 # R-squared from regression through the origin, as used by get.metrics().
 # Compute from all coefficient entries, including all channels (not row means).
 coefficient_r2 <- function(beta_hat, beta_true) {
@@ -212,6 +230,11 @@ score_fit <- function(case, method, seconds, beta_hat, sim, note = NA_character_
   m <- ncol(y)
 
   support <- support_statistics(beta_hat, beta_true, tol)
+  spectra <- spectral_support_statistics(beta_hat, beta_true,
+                                          support$selected & support$truth, tol)
+  spectra_all <- spectral_support_statistics(beta_hat, beta_true, support$truth, tol)
+  # A one-channel TP row has no within-row sparsity question to evaluate.
+  if (m == 1L) spectra[] <- spectra_all[] <- NA_real_
 
   scores <- poisson_gic(X, y, beta_hat, tol)
   dev_true <- poisson_deviance(y_true, scores$mu, mu_floor = cfg$deviance_floor)
@@ -236,6 +259,14 @@ score_fit <- function(case, method, seconds, beta_hat, sim, note = NA_character_
     recall = support$recall,
     F1 = support$F1,
     MCC = support$MCC,
+    spectra_TP_rows_TP = spectra$TP,
+    spectra_TP_rows_FP = spectra$FP,
+    spectra_TP_rows_FN = spectra$FN,
+    spectra_TP_rows_TN = spectra$TN,
+    spectra_TP_rows_F1 = spectra$F1,
+    spectra_TP_rows_MCC = spectra$MCC,
+    spectra_all_true_rows_F1 = spectra_all$F1,
+    spectra_all_true_rows_MCC = spectra_all$MCC,
     R2_coefficients = r2,
     deviance = scores$deviance,
     deviance_true = dev_true,
@@ -467,7 +498,7 @@ tuning_paths <- list()
 
 l0_single <- safe_time("single L0glm", L0glm.fit(
   single$X, single$y,
-  family = poisson(identity), lambda = "gic",
+  family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE, relaxed = FALSE,
   intercept = FALSE, solver = "eigen", method = 1L,
   openmp = cfg$openmp, parallelize = FALSE, nthreads = 1L
@@ -499,7 +530,7 @@ if (cfg$run_glmnet && requireNamespace("glmnet", quietly = TRUE)) {
 l0_multi <- safe_time("multichannel grouped L0glm",
                       L0glm.fit(
   multi$X, multi$y,
-  family = poisson(identity), lambda = "gic",
+  family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE, grouped = TRUE, relaxed = TRUE,
   intercept = FALSE, solver = "eigen", method = 1L,
   openmp = cfg$openmp,

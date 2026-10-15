@@ -68,7 +68,7 @@ system.time(L0glm.out <- L0glm.fit(X, y,
                            nonnegative = TRUE,
                            start = rep(1, ncol(X)),
                            relaxed = FALSE, 
-                           thresh = 1E-10,                           
+                           thresh = 1E-10,
                            warmupiters = 1,
                            warmupiters.nzc = 10)) 
 # 0.34s

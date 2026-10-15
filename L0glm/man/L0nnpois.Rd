@@ -68,9 +68,10 @@ IRLS loop; fixed at 1 for family binomial & Poisson.}
 \code{m} to the number of columns in \code{y}. These will determine the
 level of penalisation of the different coefficients during the first IRLS
 ridge regression update. The ridge penalty used equals
-\eqn{(\lambda/4) \phi / |\beta|^\gamma}. Note that coefficients
-with absolute value smaller than \code{thresh} will be clipped to zero and
-are removed from the model. Set to \code{NULL} by default, in which case it
+\eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
+selection update, coefficients below the relative cutoff or the absolute
+numerical floor described in \code{thresh} are excluded from later solves.
+Set to \code{NULL} by default, in which case it
 is auto-initialised.}
 
 \item{offset}{Optional vector of offset values of length \code{p}, or a
@@ -153,11 +154,11 @@ across outcome channels when \code{parallelize=TRUE}. For \code{L0nnpois},
 the requested value is capped only at the detected number of logical cores,
 not at the number of physical cores.}
 
-\item{nthreads}{Optional integer specifying the number of BLAS/OpenMP threads
+\item{nthreads}{Optional integer specifying the number of BLAS threads
 to use per fit process. The default \code{NULL} leaves the main R session's
-thread settings unchanged and uses one BLAS/OpenMP thread per parallel
+thread settings unchanged and uses one BLAS thread per parallel
 worker. Setting \code{nthreads} can be useful to benchmark serial fits or
-tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
@@ -180,8 +181,9 @@ penalty.}
 
 \item{relaxed}{Logical indicating if the algorithm should conduct a nearly
 unpenalized fit on the L0glm selected variables (using
-\code{lambda=1E-10}). This can eliminate any remaining bias on the
-coefficients and increase sensitivity, especially for the multivariate case
+\code{lambda=1E-30}). Hard thresholding is disabled in this final refit,
+while adaptive ridge weights remain unsmoothed. This can
+reduce coefficient bias and increase sensitivity, especially for the multivariate case
 with grouped variable selection. Defaults to \code{TRUE} when
 \code{grouped=TRUE} & multichannel data are passed in \code{y}.}
 
@@ -204,12 +206,19 @@ coefficients should have a particular nonnegative value. The default
 ridge regression.}
 
 \item{gamma}{Scalar with the exponent to use when calculating the ridge
-penalty \code{(lambda/4)*dispersion/abs(beta)^gamma)} in each iteration.
+penalty \code{(lambda/4)*dispersion/abs(beta)^gamma}.
 Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.}
 
-\item{thresh}{Coefficients below this scalar threshold are clipped to 0 in
-each of the IRLS ridge regression iterations and removed from the model.
-Defaults to \code{1E-5}.}
+\item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
+hard thresholding during selection. After each update, coefficients with
+\code{abs(beta) < max(abs(beta))*thresh} or \code{abs(beta) < 1e-20}
+are set to zero. The maximum is computed separately for each response
+channel, on the coefficient scale returned by the ridge solver.
+Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
+disables only the relative cutoff; the absolute numerical floor remains.
+The final relaxed refit applies neither cutoff; nonnegativity clipping
+still applies when requested. Adaptive ridge weights are unsmoothed,
+\code{1/abs(beta)^gamma}, independently of \code{thresh}.}
 
 \item{tol}{Convergence tolerance. Iterations are stopped when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
@@ -239,6 +248,9 @@ workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solv
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
 fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
 the design matrix `X` in shared memory across outcome channels.
+Dense inputs with at least 90% exact zeros are compressed once and use the
+sparse solver; every nonzero entry is retained. Otherwise, the dense solver
+forms weighted crossproducts using the BLAS library linked to R.
 The default penalty is `lambda = "gic"`.
 Every coefficient, including any intercept, is constrained to be nonnegative.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`

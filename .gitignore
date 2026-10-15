@@ -5,3 +5,6 @@
 L0glm.Rcheck
 /*.Rprof
 *delete*
+
+# Local Codex diagnostics, experiments, and build artifacts.
+/codex_sandbox/

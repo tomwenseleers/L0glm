@@ -150,7 +150,7 @@ benchmark_sparse_group_glm <- function(sim,
                                   function (channel) as.matrix(coefs[[channel]][-1,,drop=F])))
     
     colnames(beta) = 1:ncol(beta)
-    # beta[abs(beta)<1E-5] = 0 # slight amount of thresholding of small coefficients using same thresh as used in L0glm
+    # beta[abs(beta)<1E-5] = 0 # optional reporting cutoff, independent of fitting thresh
     
     coefs <- beta
     if(plot){

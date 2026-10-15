@@ -71,9 +71,10 @@ IRLS loop; fixed at 1 for family binomial & Poisson.}
 \code{m} to the number of columns in \code{y}. These will determine the
 level of penalisation of the different coefficients during the first IRLS
 ridge regression update. The ridge penalty used equals
-\eqn{(\lambda/4) \phi / |\beta|^\gamma}. Note that coefficients
-with absolute value smaller than \code{thresh} will be clipped to zero and
-are removed from the model. Set to \code{NULL} by default, in which case it
+\eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
+selection update, coefficients below the relative cutoff or the absolute
+numerical floor described in \code{thresh} are excluded from later solves.
+Set to \code{NULL} by default, in which case it
 is auto-initialised.}
 
 \item{offset}{Optional vector of offset values of length \code{p}, or a
@@ -173,11 +174,11 @@ detected number of physical cores when that can be determined.
 With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
 threads sharing the design matrix and is capped at the logical core count.}
 
-\item{nthreads}{Optional integer specifying the number of BLAS/OpenMP threads
+\item{nthreads}{Optional integer specifying the number of BLAS threads
 to use per fit process. The default \code{NULL} leaves the main R session's
-thread settings unchanged and uses one BLAS/OpenMP thread per parallel
+thread settings unchanged and uses one BLAS thread per parallel
 worker. Setting \code{nthreads} can be useful to benchmark serial fits or
-tune per-worker threading on systems with multithreaded BLAS/OpenMP.
+tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
@@ -200,8 +201,9 @@ penalty.}
 
 \item{relaxed}{Logical indicating if the algorithm should conduct a nearly
 unpenalized fit on the L0glm selected variables (using
-\code{lambda=1E-10}). This can eliminate any remaining bias on the
-coefficients and increase sensitivity, especially for the multivariate case
+\code{lambda=1E-30}). Hard thresholding is disabled in this final refit,
+while adaptive ridge weights remain unsmoothed. This can
+reduce coefficient bias and increase sensitivity, especially for the multivariate case
 with grouped variable selection. Defaults to \code{TRUE} when
 \code{grouped=TRUE} & multichannel data are passed in \code{y}.}
 
@@ -224,12 +226,19 @@ coefficients should have a particular nonnegative value. The default
 ridge regression.}
 
 \item{gamma}{Scalar with the exponent to use when calculating the ridge
-penalty \code{(lambda/4)*dispersion/abs(beta)^gamma)} in each iteration.
+penalty \code{(lambda/4)*dispersion/abs(beta)^gamma}.
 Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.}
 
-\item{thresh}{Coefficients below this scalar threshold are clipped to 0 in
-each of the IRLS ridge regression iterations and removed from the model.
-Defaults to \code{1E-5}.}
+\item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
+hard thresholding during selection. After each update, coefficients with
+\code{abs(beta) < max(abs(beta))*thresh} or \code{abs(beta) < 1e-20}
+are set to zero. The maximum is computed separately for each response
+channel, on the coefficient scale returned by the ridge solver.
+Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
+disables only the relative cutoff; the absolute numerical floor remains.
+The final relaxed refit applies neither cutoff; nonnegativity clipping
+still applies when requested. Adaptive ridge weights are unsmoothed,
+\code{1/abs(beta)^gamma}, independently of \code{thresh}.}
 
 \item{tol}{Convergence tolerance. Iterations are stopped when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
@@ -249,7 +258,7 @@ printed to the console.}
 
 \item{openmp}{Logical; defaults to \code{TRUE}. For nonnegative
 identity-link Poisson fits with \code{solver="eigen"} and
-\code{method=1L}, use the compiled \code{\link{L0nnpois}} backend.
+\code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
 Other families, links and solvers use the general R fitting path.
 Set \code{FALSE} to use that path explicitly. Solver controls requesting
 another factorization or \code{rowaug=FALSE} also retain the R path.
@@ -369,8 +378,9 @@ intercept, if included):
 with adaptive penalty weights
 \deqn{w = 1 / |\beta|^\gamma}
 where \eqn{\beta} are the coefficient estimates
-in each iteration and coefficients smaller than \code{thresh} are set to zero
-and taken out of the model at the start of each iteration, and as in Frommlet
+in each iteration. During selection, the relative cutoff and absolute
+numerical floor specified by \code{thresh} remove coefficients from later solves.
+The final relaxed refit does not apply this hard cutoff. As in Frommlet
 & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
 constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
@@ -393,7 +403,7 @@ In contrast to Frommlet & Nuel (2016) we use Fisher scoring instead of
 Newton-Raphson iterations (i.e. using the expected Hessian instead of the
 observed one). If option \code{relaxed} is set to \code{TRUE} the algorithm
 will refit the \code{L0glm} selected variables using a nearly unpenalized
-model (with \code{lambda=1E-10}). This can reduce any remaining bias and
+model (with \code{lambda=1E-30}) without hard thresholding. This can reduce bias and
 increase sensitivity. If an appropriate level of regularisation lambda is chosen,
 the L0 norm penalized solution approximates Best Subset selection. To achieve
 variable selection consistency, the \code{"bic"} \code{lambda} preset is

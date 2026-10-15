@@ -1,5 +1,0 @@
-"case","method","reported_deviance_true","independently_calculated_deviance_true","coefficient_relative_squared_error","signal_relative_squared_error","zero_predictions_with_positive_truth","floored_predictions_with_positive_truth"
-"single","L0glm",2661.1285354817,2661.1285354817,0.0811735035385272,5.13702399988593e-05,6,6
-"single","glmnet_lasso",13062.8278680917,13062.8278680917,0.177216937703324,0.000583589124048102,1,1
-"multichannel","L0glm_grouped",184170.401461538,184170.401461538,0.00324156386065876,6.39523004686845e-05,28698,32997
-"multichannel","glmnet_group_lasso",568788.354073888,568788.354073888,0.0244153838081971,0.001231783542283,4517,10619

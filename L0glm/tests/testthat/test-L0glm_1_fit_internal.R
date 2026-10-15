@@ -307,6 +307,7 @@ test_that("L0glm.fit.internal computes lambdas correctly with zero lambda", {
   
   dispersion <- 1  # Adjust if necessary based on your model
   expected_lambdas <- rep(0, length(pen.weights))
+  expected_lambdas[is.infinite(pen.weights)] <- Inf
   expect_equal(result$lambdas, expected_lambdas, tolerance = 1e-6)
 })
 
@@ -463,7 +464,7 @@ test_that("L0glm.fit.internal returns zero coefficients under huge penalty", {
   ## every coefficient driven to 0
   expect_equal(res$coefficients, rep(0, p))
   
-  ## lambdas now infinity
-  expect_true(all(is.infinite(res$lambdas)))
+  ## Unsmoothed weights diverge at zero; these coefficients are excluded.
+  expect_equal(res$lambdas, rep(Inf, p))
 })
 

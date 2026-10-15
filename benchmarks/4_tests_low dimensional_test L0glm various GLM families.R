@@ -545,7 +545,7 @@ system.time(L0glm_binom_presetlambda <- L0glm.fit(X = X,
                                                       no.pen = 1,
                                                       solver = "eigen", # 
                                                       method = 1L, #
-                                                      thresh = 1E-5)) 
+                                                      thresh = 1E-5))
 # 0.89s
 mean(abs(L0glm_binom_presetlambda$coefficients-coef(glm_binom))) # 0.9392265
 plot(L0glm_binom_presetlambda$coefficients, coef(glm_binom), pch=16, col="blue")
@@ -968,7 +968,7 @@ system.time(L0glm_invgaus_presetlambda <- L0glm.fit(X = X,
                                                   start = NULL, # (abs(coef(glm_invgaus)))^(1/3), # rep(sqrt(3)/4, ncol(data_invgaus$X)), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                                   solver = "eigen", # 
                                                   method = 4L, #
-                                                  thresh = 1E-5)) 
+                                                  thresh = 1E-5))
 # 0.92s
 
 mean(abs(L0glm_invgaus_presetlambda$coefficients-coef(glm_invgaus))) # 0.3814394

@@ -120,7 +120,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
 # eigen solver 3 & 4 seems to give back the initial values
 # eigen solver 1 & 2 slightly lower quality solution
 # fails for osqp 
-# TODO: check in code that with warmstart=1 the coefficients with abs(start)<thresh
+# TODO: check in code that with warmstart=1 the coefficients with abs(start)<delta
 # are kicked out from the very beginning
 L0glm.out_preset_coefs = L0glm.out_preset$coefficients/scaling # TODO do this scaling automatically if normalize=T
 sum(L0glm.out_preset_coefs!=0) # 47

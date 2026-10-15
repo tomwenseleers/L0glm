@@ -22,7 +22,9 @@
 #' @param reltol
 #' XXX
 #' @param tol
-#' XXX
+#' Relative convergence tolerance for Eigen iterative solvers. For
+#' LSCG, Eigen tests the normal-equation residual in the original coefficient
+#' coordinates; no additional external column equilibration is performed.
 #' @param abstol
 #' XXX
 #' @param block_size

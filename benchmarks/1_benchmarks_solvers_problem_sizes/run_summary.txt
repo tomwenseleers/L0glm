@@ -1,4 +1,7 @@
 Output directory: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes
 Wide metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions.csv
 Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions_long.csv
-Run completed: 2026-06-30 20:59:49 CEST
+OpenMP/native dispatch: FALSE
+BLAS threads: 1
+High-resolution timing repetitions: 1
+Run completed: 2026-10-16 00:08:54 CEST

@@ -220,26 +220,17 @@ compute.ss <- function(mu, y, w, fam){
 # REF
 #   Zou, 2006; Candes et al., 2008 & Nuel talk
 #   de Rooi & Eilers 2011, Osborne et al. 2000 & Frommlet & Nuel 2016 (eqn 5)
-AR.weights <- function(beta, 
-                       gamma = 2, 
-                       delta = 0,  # left out, since coefs pre-thresholded
-                       q = 0){  # norm of the penalty to be approximated - TODO should I then scale lambda used by ratio of the L0 to Lq norm (calculated at L0 solution) to get lambda always on L0 penalty-like scale?
-  # note that q should lie between 0 and 2 - for 2 the penalty would become non-adaptive & our algo would reduce to plain ridge regression
-  # I think the (1/4) factor of Frommlet & Nuel in the adaptive ridge penalty
-  # should be (1/2^(2-q)) as this factor should be 1 if we use ridge regression (q=2) and should be 1/4 when q=0
+AR.weights <- function(beta, gamma = 2, delta = 0, q = 0) {
+  # The fitting algorithms explicitly use delta=0 (unsmoothed weights).
+  # Positive delta remains available to callers of this internal helper.
+  # Exact-zero coefficients are excluded by the fitting algorithm.
+  if (delta == 0) 1 / abs(beta)^gamma else 1 / (abs(beta)^gamma + delta^gamma)
+}
 
-  # penweights = (abs(beta)^gamma+delta^gamma)^((q - 2)/gamma)
-  penweights = 1/(abs(beta)^gamma) # for q=0
-  
-  # NOTE since we pre-threshold beta<thresh to 0 and take those vars out of the model
-  # we could also leave out delta, except if we use it to get fused penalties
-  # so I left it in for now
-  # TODO maybe also allow other q, e.g. 0.5 or 1? Though for sparse problems L0 solution is always best
-  # not for non-sparse problems though, e.g. problems where true solution is smooth
-    
-  # renormalize so that penalty weights sum to length(penweights)
-  # penweights = length(penweights)*penweights/sum(penweights) 
-  return(penweights)
+validate_thresh <- function(thresh) {
+  if (!is.numeric(thresh) || length(thresh) != 1L || !is.finite(thresh) || thresh < 0)
+    stop("thresh must be a single finite nonnegative number.", call. = FALSE)
+  invisible(NULL)
 }
 
 # AL.weights ####
