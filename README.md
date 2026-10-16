@@ -105,6 +105,28 @@ fit <- L0glm.fit(X, y, family = gaussian(), lambda = "gic",
 
 The automatic pilot uses one factorization and preserves the random-number state; subsequent scale updates need only linear-time arithmetic in the number of observations. Positive known values remain fixed during grouped and relaxed fits. For estimated channels, a relaxed refit reports its final Pearson residual scale. These are moment estimates with approximate model degrees of freedom, not exact maximum-likelihood dispersion estimates for every family or a guarantee of optimal subset selection. Poisson, binomial and negative binomial with known `theta` retain dispersion 1. See `?L0glm.fit` for details.
 
+`L0glm.tune()` selects lambda with `tune = "gic"` (the default), another supported information criterion, or `tune = "cv"` for cross-validation. The former `IC` argument is now named `tune`. Cross-validation uses `nfolds = 5` by default and shows mean held-out deviance with plus/minus one standard error in the right-hand panel. Both panels mark `lambda_best` with a dashed red line, `lambda_1se` with a blue dot-dash line, and the full-data GIC preset with a dotted red line. The one-SE choice is the largest evaluated lambda whose finite mean deviance is within one SE of the minimum, using the SE at that minimum. `fit_best` and `fit_1se` return the full-data models at those two lambdas, retained from the path without extra fits. `fit_1se` is `NULL` for IC tuning.
+
+Both tuning panels use `log10(lambda)` with a reversed axis, so larger penalties appear on the left and weaker regularization on the right. Coefficient paths have different colors and a mathematical beta-hat axis label; multichannel paths show coefficient row means. The top axes show support sizes at 16 equally spaced positions on the log scale, using the nearest evaluated lambda. Multichannel support counts rows with any nonzero coefficient, even when channel means cancel. Counts include nonzero intercepts and always-included terms, and the annotations require no extra fits.
+
+The full lambda range starts at `lambda_min = 2` (the AIC preset) and ends at the verified numerical `lambda_max`. Smaller positive lower bounds can be supplied explicitly. This is a practical default for avoiding very weakly penalized fits, particularly with Eigen's nonnegativity clipping; AIC does not establish a universal lower bound for CV-optimal penalties or guarantee solver stability. `prop_range < 1` moves both endpoints toward the reference on the log scale. The reference is at least `lambda_min`, while `lambda_preset` retains its original value. CV fold penalties still use their training-weight fraction of the full-data lambda.
+
+```r
+set.seed(1)
+cv_fit <- L0glm.tune(X, y, family = poisson(identity),
+                    tune = "cv", nfolds = 5, nlambda = 10,
+                    prop_range = 1, lambda_min = 2, nonnegative = TRUE,
+                    relaxed = FALSE, plot = TRUE)
+cv_fit$lambda_best
+cv_fit$lambda_1se     # Largest lambda within one SE of the CV minimum
+cv_fit$lambda_preset  # GIC reference
+fit_best <- cv_fit$fit_best
+fit_1se <- cv_fit$fit_1se
+cv_fit$metrics[, c("lambda", "cv_deviance", "cv_se")]
+```
+
+Each fold holds out whole observation rows across all channels. Coefficients, grouped selection and estimated dispersion are fitted from training rows. Observation weights and offsets are included in validation, and all observations with positive weight are retained. Fold deviances are normalized by validation prior weight; their weighted mean and standard error are returned in `cv_fit$cv`, along with the individual fold scores and assignments. Since the fitter uses total log likelihood, each fold's training penalty is scaled by its fraction of total prior weight; the reported lambda remains on the full-data scale. `fit_best` is the corresponding model fitted on all data. Supply the returned `foldid` in another call to reuse the same split, or provide custom folds when random row splits do not match the intended prediction setting.
+
 `L0glm.tune()` initializes each lambda fit independently. Its GIC preset is an approximate adaptive-ridge calibration; a finer grid can select a different value, especially for correlated predictors or unrelaxed fits. The automatic dispersion start uses a fixed GIC reference rather than the fitted lambda, so increasing lambda cannot cancel itself through the starting dispersion. The returned `lambda_max` is verified by fitting the upper endpoint and refined between nonzero and zero fits to within 5%; `endpoint_zero` records whether all penalized coefficients are zero. This is a numerical path endpoint, not a certificate for the exact L0 objective. For scoring, `mu_floor = 1e-8` keeps Poisson comparisons finite when some fitted means are zero, while retaining all observations. This floor affects scoring only. Setting `mu_floor = 0` requests exact likelihood scoring, which can be infinite for a zero mean and positive count. The returned `coefficients` and `fit_best` allow inspection of the fitted models.
 
 See `help("information_criteria", package = "L0glm")` for further details, scoring conventions and executable examples. Original references:

@@ -6,7 +6,8 @@
 #' case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"mebic"}, \code{"ebic"}, or \code{"mbic"}.
 #' For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
-#' [L0glm.tune()] accepts the same names through its \code{IC} argument.
+#' [L0glm.tune()] accepts the same names through its \code{tune} argument,
+#' or \code{tune = "cv"} for cross-validation by held-out deviance.
 #'
 #' @details
 #' For a single response, the target information criterion has the form

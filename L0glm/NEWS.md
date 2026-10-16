@@ -2,6 +2,29 @@
 
 ## Development changes
 
+* CV tuning returns the full-data `fit_1se` alongside `fit_best`, retaining
+  both from the existing path without any additional fits.
+* The full tuning range starts at `lambda_min = 2` by default; a smaller
+  positive bound can be supplied explicitly. Zooming moves each endpoint
+  toward the reference on the log scale. Grids retain unique endpoints and,
+  when there are at least three points, the reference.
+* CV tuning returns `lambda_1se`, the largest evaluated lambda with mean
+  deviance within one SE of the minimum (using the SE at that minimum).
+  Both panels mark it in blue alongside `lambda_best` and `lambda_preset`.
+  Criterion tuning returns `NULL` for this field; `fit_best` is unchanged.
+* Tuning plots now use `log10(lambda)` with a reversed axis in both panels, colored coefficient
+  paths and a mathematical beta-hat label. Top axes show support sizes (row
+  support for multichannel responses) at 16 equally spaced log-scale positions,
+  using the nearest fitted models without adding any fits.
+* Renamed `L0glm.tune(IC = ...)` to `L0glm.tune(tune = ...)`; the returned
+  selection method is also named `tune`. Package and benchmark calls are updated.
+* Added `tune = "cv"`, `nfolds = 5`, and optional `foldid` assignments. CV holds
+  out rows jointly across channels, initializes every training fit independently,
+  and scores weighted held-out deviance. Training penalties are scaled by their
+  fraction of total prior weight to retain the full-data lambda scale. The plot
+  shows mean deviance +/- one SE, the minimum and the GIC reference preset.
+  Fold scores, assignments and training penalties are returned in `cv`.
+
 * `L0glm.tune()` now initializes every lambda independently. A preset fit no
   longer excludes features from all other fits. The upper endpoint is checked
   by fitting it, expanded if necessary, then refined between verified nonzero

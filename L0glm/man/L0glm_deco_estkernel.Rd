@@ -42,10 +42,7 @@ or `Gamma(identity)`).}
 \item{perc}{Passed to \code{\link{shift_kernel}} - use `"mean"` to recenter
 the centroid, or a value in \eqn{[0,1]} for a percentile.}
 
-\item{IC}{A case-insensitive information-criterion name for model selection:
-\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
-See \link{information_criteria} for formulas, guidance and references.}
+\item{IC}{Information criterion for the penalty preset; see \link{information_criteria}.}
 }
 \value{
 A list with

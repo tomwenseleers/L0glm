@@ -11,13 +11,16 @@ L0glm.tune(
   weights = matrix(1, nrow = nrow(as.matrix(y)), ncol = ncol(as.matrix(y))),
   offset = Matrix::Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse = TRUE),
   dispersion = NULL,
-  IC = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
+  tune = c("gic", "mebic", "aic", "bic", "ebic", "mbic", "cv"),
   nlambda = 10,
   prop_range = 1,
   coefs.true = NULL,
   printbest = TRUE,
   plot = TRUE,
   mu_floor = 1e-08,
+  nfolds = 5,
+  foldid = NULL,
+  lambda_min = 2,
   ...
 )
 }
@@ -40,54 +43,81 @@ value supplies its absolute value as an initial estimate. A vector can specify
 separate values for the response channels. Fixed-scale families retain their
 family dispersion.}
 
-\item{IC}{A case-insensitive information-criterion name for model selection:
+\item{tune}{A case-insensitive method for model selection:
 \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+\code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
+Cross-validation minimizes mean held-out deviance. This replaces the former
+\code{IC} argument.
 See \link{information_criteria} for formulas, guidance and references.}
 
 \item{nlambda}{Number of lambda values to use for tuning (at least 2; default 10).
-If \code{nlambda} is even, half of the values lie above 
-the lambda value that would be expected to optimise
-the chosen IC (\code{lambda_preset}) and half below;  
-if odd, the upper branch receives the extra point so that
-\code{lambda_preset} is included exactly once.}
+With at least three points and an interior reference, approximately half
+lie on either side of \code{lambda_reference}, which is included exactly.
+A two-point grid contains only the displayed endpoints. If the reference
+equals the lower bound, all points lie at or above it.}
 
 \item{prop_range}{Numeric in \((0,\,1]\).
-Proportion of the log10 distance between \code{lambda_preset} and
-\code{lambda_max} (the verified numerical endpoint) that is retained on each side of
-\code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
-entire range, whilst smaller values "zoom-in", yielding grids 
-that are denser around \code{lambda_preset}. For example, 
-\code{prop_range = 0.1} preserves only 10% of the original 
-log10 span above and below the preset lambda value that 
-a priori would be expected to optimise the chosen IC.}
+Fraction of each log10 distance from \code{lambda_reference} to the full
+endpoints \code{lambda_min} and \code{lambda_max} retained in the grid.
+\code{prop_range = 1} keeps the full range; smaller values zoom toward
+the reference, with each endpoint moving inward on the log scale.}
 
 \item{coefs.true}{A vector or matrix of true coefficient values, for comparison 
 with the estimated coefficients.}
 
 \item{printbest}{A logical value indicating whether to print the best lambda 
-value according to the selected IC (default is TRUE).}
+value according to the selected criterion or CV (default is TRUE).}
 
 \item{plot}{A logical value indicating whether to produce the plots mentioned
-in the description, all in function of regularization (lambda).}
+in the description. Both panels use \eqn{\log_{10}(\lambda)} on a reversed
+horizontal axis, with weaker regularization to the right. Coefficient paths
+have a separate color per predictor and are labeled \eqn{\hat\beta}.
+Multichannel paths show coefficient row means. The top axes show support
+sizes at 16 equally spaced log-scale positions, using the nearest fitted
+lambda at each position. For multichannel fits these count rows with any
+nonzero coefficient, independently of the plotted row means. Counts include
+nonzero intercepts and always-included terms; no additional models are fitted.}
 
 \item{mu_floor}{Nonnegative prediction floor used only when scoring
 positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 observations and makes scores finite when a fitted mean is zero. Set to zero
 for exact likelihood scoring, which can give infinite criteria.}
 
+\item{nfolds}{Number of cross-validation folds (default 5), used when
+\code{tune = "cv"}. Must be at least 2 and no larger than the number of
+positive-weight observation rows.}
+
+\item{foldid}{Optional integer fold assignment for each row of \code{X}.
+Labels must run from 1 to the number of folds. When supplied without
+\code{nfolds}, the number of folds is inferred. All response channels of a
+row are held out together. Otherwise balanced random folds are generated;
+use \code{set.seed()} for reproducibility.}
+
+\item{lambda_min}{Finite positive lower endpoint of the full-data lambda
+grid (default 2, the AIC preset). Set a smaller positive value to explore
+weaker regularization. This is a practical search bound, not a theoretical
+minimum for predictive optimality or a guarantee of numerical stability.
+CV training penalties retain their training-weight scaling, so they can
+be smaller than this full-data bound. A zoomed grid can start above it.}
+
 \item{...}{Other arguments to pass to the `L0glm.fit` function except for \code{start}.}
 }
 \value{
 \code{L0glm.tune} returns a list containing the following elements:
-\item{\code{IC}}{chosen \code{IC}.}
+\item{\code{tune}}{chosen selection method.}
 \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
-with different regularization parameters.}
-\item{\code{lambda_best}}{best lambda according to the \code{IC} 
-criterion specified.}
+with different regularization parameters; CV adds \code{cv_deviance} and
+\code{cv_se}.}
+\item{\code{lambda_best}}{best lambda by the chosen selection method.}
+\item{\code{lambda_1se}}{largest evaluated lambda within one SE of the
+minimum CV mean deviance, using the SE at that minimum; \code{NULL} for
+information-criterion tuning.}
 \item{\code{lambda_preset}}{preset lambda value that a priori would be expected 
-to approximately optimise the chosen \code{IC}.}
+to approximately optimise the chosen criterion, or GIC when tuning by CV.}
+\item{\code{lambda_reference}}{positive grid reference; normally identical
+to \code{lambda_preset}, but at least \code{lambda_min}.}
 \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
+\item{\code{lambda_min}}{lower endpoint of the full numerical path.}
 \item{\code{lambda_max}}{upper endpoint of the full numerical path.}
 \item{\code{lambda_nonzero}}{nonzero lower bracket for the refined endpoint,
 or \code{NA} when the preset is already zero or refinement is unavailable.}
@@ -96,12 +126,19 @@ penalized coefficients.}
 \item{\code{mu_floor}}{prediction floor used for scoring.}
 \item{\code{coefficients}}{list of coefficient matrices in lambda order.}
 \item{\code{fit_best}}{the fitted model at \code{lambda_best}.}
+\item{\code{fit_1se}}{the full-data fitted model at \code{lambda_1se}, or
+\code{NULL} for information-criterion tuning.}
+\item{\code{cv}}{CV results, or \code{NULL} for criterion tuning. Contains
+\code{lambda}, \code{mean}, \code{se}, the lambda-by-fold \code{deviance}
+matrix, \code{foldid}, \code{nfolds}, \code{fold_weights}, and the training
+penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
+full-data fits, not individual fold models.}
 }
 \description{
 Tunes the lambda parameter for the \code{\link{L0glm.fit}} 
 function. It uses a sequence of penalty parameter values (\code{lambda}) to fit 
-L0-penalized GLMs, and selects the best  lambda value according to a specified 
-information criterion. It can handle multiple output variables (channels), 
+L0-penalized GLMs, and selects the best lambda by an information criterion
+or held-out deviance from cross-validation. It can handle multiple output variables (channels),
 and can produce a plots of the regularization path, true vs. estimated coefficients (if true coefficients are passed, e.g. from a simulation),
 estimated support size, deviance, log likelihood, mean absolute deviation, 
 accuracy, precision, recall and the IC of interest, all in function of the level of
@@ -130,4 +167,30 @@ issued and \code{endpoint_zero} is false. A zoomed grid need not reach the
 full endpoint. Supplied observation weights, offsets and known dispersions
 are included in scoring; unknown Gaussian scales are profiled separately
 for each response channel.
+
+With \code{tune = "cv"}, the full-data GIC preset defines the reference
+grid point. If that preset is nonpositive, the grid uses AIC's positive
+reference value 2 while \code{lambda_preset} still reports GIC. The reference
+is raised to \code{lambda_min} if necessary; the reported preset is unchanged.
+The common
+grid is constructed from full-data fits; all coefficient initialization,
+dispersion estimation and grouped selection in each fold use training rows
+only. Folds are fitted sequentially; \code{parallelize} still controls
+response-channel parallelism within each fit.
+
+The fitter's penalty is on a total-likelihood scale. In each fold lambda
+is multiplied by the fraction of total prior weight in the training rows,
+so the returned lambda refers to the full-data penalty. Validation deviance
+is divided by validation prior weight, then averaged across folds with those
+weights. Its standard error is the square root of the weighted mean squared
+deviation of fold scores divided by \code{nfolds - 1}; for equal weights this
+is \code{sd(fold_scores) / sqrt(nfolds)}. Error bars are plus/minus one SE.
+Quasi-families can be tuned by CV even when likelihood-based ICs are unavailable.
+The one-standard-error choice \code{lambda_1se} is the largest evaluated
+lambda with finite mean deviance no greater than the minimum mean deviance
+plus the SE at that minimum. Both panels mark this value in blue alongside
+the minimum-deviance choice and the GIC preset. \code{fit_best} continues to
+correspond to \code{lambda_best}.
+\code{fit_1se} contains the full-data fit at \code{lambda_1se}, retained
+from the same path without any additional fits.
 }

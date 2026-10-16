@@ -577,7 +577,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     offset <- Matrix::Matrix(0, n, m, sparse = TRUE)
   } else {
     if (!inherits(offset, "Matrix"))
-      offset <- Matrix::Matrix(offset, n, 1, sparse = TRUE)
+      offset <- if (is.null(dim(offset))) Matrix::Matrix(offset, n, 1, sparse = TRUE) else
+        Matrix::Matrix(offset, sparse = TRUE)
     
     if (m > 1 && ncol(offset) == 1L)
       offset <- Matrix::Matrix(rep(offset, m), n, m, sparse = TRUE)

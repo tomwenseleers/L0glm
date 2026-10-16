@@ -7,8 +7,8 @@
 #' @description
 #' Tunes the lambda parameter for the \code{\link{L0glm.fit}} 
 #' function. It uses a sequence of penalty parameter values (\code{lambda}) to fit 
-#' L0-penalized GLMs, and selects the best  lambda value according to a specified 
-#' information criterion. It can handle multiple output variables (channels), 
+#' L0-penalized GLMs, and selects the best lambda by an information criterion
+#' or held-out deviance from cross-validation. It can handle multiple output variables (channels),
 #' and can produce a plots of the regularization path, true vs. estimated coefficients (if true coefficients are passed, e.g. from a simulation),
 #' estimated support size, deviance, log likelihood, mean absolute deviation, 
 #' accuracy, precision, recall and the IC of interest, all in function of the level of
@@ -38,31 +38,49 @@
 #' value supplies its absolute value as an initial estimate. A vector can specify
 #' separate values for the response channels. Fixed-scale families retain their
 #' family dispersion.
-#' @param IC A case-insensitive information-criterion name for model selection:
+#' @param tune A case-insensitive method for model selection:
 #' \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-#' \code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
+#' \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
+#' Cross-validation minimizes mean held-out deviance. This replaces the former
+#' \code{IC} argument.
 #' See \link{information_criteria} for formulas, guidance and references.
+#' @param nfolds Number of cross-validation folds (default 5), used when
+#' \code{tune = "cv"}. Must be at least 2 and no larger than the number of
+#' positive-weight observation rows.
+#' @param foldid Optional integer fold assignment for each row of \code{X}.
+#' Labels must run from 1 to the number of folds. When supplied without
+#' \code{nfolds}, the number of folds is inferred. All response channels of a
+#' row are held out together. Otherwise balanced random folds are generated;
+#' use \code{set.seed()} for reproducibility.
 #' @param nlambda Number of lambda values to use for tuning (at least 2; default 10).
-#' If \code{nlambda} is even, half of the values lie above 
-#' the lambda value that would be expected to optimise
-#' the chosen IC (\code{lambda_preset}) and half below;  
-#' if odd, the upper branch receives the extra point so that
-#' \code{lambda_preset} is included exactly once.
+#' With at least three points and an interior reference, approximately half
+#' lie on either side of \code{lambda_reference}, which is included exactly.
+#' A two-point grid contains only the displayed endpoints. If the reference
+#' equals the lower bound, all points lie at or above it.
 #' @param prop_range Numeric in \((0,\,1]\).  
-#' Proportion of the log10 distance between \code{lambda_preset} and
-#' \code{lambda_max} (the verified numerical endpoint) that is retained on each side of
-#' \code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
-#' entire range, whilst smaller values "zoom-in", yielding grids 
-#' that are denser around \code{lambda_preset}. For example, 
-#' \code{prop_range = 0.1} preserves only 10% of the original 
-#' log10 span above and below the preset lambda value that 
-#' a priori would be expected to optimise the chosen IC.
+#' Fraction of each log10 distance from \code{lambda_reference} to the full
+#' endpoints \code{lambda_min} and \code{lambda_max} retained in the grid.
+#' \code{prop_range = 1} keeps the full range; smaller values zoom toward
+#' the reference, with each endpoint moving inward on the log scale.
+#' @param lambda_min Finite positive lower endpoint of the full-data lambda
+#' grid (default 2, the AIC preset). Set a smaller positive value to explore
+#' weaker regularization. This is a practical search bound, not a theoretical
+#' minimum for predictive optimality or a guarantee of numerical stability.
+#' CV training penalties retain their training-weight scaling, so they can
+#' be smaller than this full-data bound. A zoomed grid can start above it.
 #' @param coefs.true A vector or matrix of true coefficient values, for comparison 
 #' with the estimated coefficients.
 #' @param printbest A logical value indicating whether to print the best lambda 
-#' value according to the selected IC (default is TRUE).
+#' value according to the selected criterion or CV (default is TRUE).
 #' @param plot A logical value indicating whether to produce the plots mentioned
-#' in the description, all in function of regularization (lambda).
+#' in the description. Both panels use \eqn{\log_{10}(\lambda)} on a reversed
+#' horizontal axis, with weaker regularization to the right. Coefficient paths
+#' have a separate color per predictor and are labeled \eqn{\hat\beta}.
+#' Multichannel paths show coefficient row means. The top axes show support
+#' sizes at 16 equally spaced log-scale positions, using the nearest fitted
+#' lambda at each position. For multichannel fits these count rows with any
+#' nonzero coefficient, independently of the plotted row means. Counts include
+#' nonzero intercepts and always-included terms; no additional models are fitted.
 #' @param mu_floor Nonnegative prediction floor used only when scoring
 #' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 #' observations and makes scores finite when a fitted mean is zero. Set to zero
@@ -84,17 +102,49 @@
 #' full endpoint. Supplied observation weights, offsets and known dispersions
 #' are included in scoring; unknown Gaussian scales are profiled separately
 #' for each response channel.
+#'
+#' With \code{tune = "cv"}, the full-data GIC preset defines the reference
+#' grid point. If that preset is nonpositive, the grid uses AIC's positive
+#' reference value 2 while \code{lambda_preset} still reports GIC. The reference
+#' is raised to \code{lambda_min} if necessary; the reported preset is unchanged.
+#' The common
+#' grid is constructed from full-data fits; all coefficient initialization,
+#' dispersion estimation and grouped selection in each fold use training rows
+#' only. Folds are fitted sequentially; \code{parallelize} still controls
+#' response-channel parallelism within each fit.
+#'
+#' The fitter's penalty is on a total-likelihood scale. In each fold lambda
+#' is multiplied by the fraction of total prior weight in the training rows,
+#' so the returned lambda refers to the full-data penalty. Validation deviance
+#' is divided by validation prior weight, then averaged across folds with those
+#' weights. Its standard error is the square root of the weighted mean squared
+#' deviation of fold scores divided by \code{nfolds - 1}; for equal weights this
+#' is \code{sd(fold_scores) / sqrt(nfolds)}. Error bars are plus/minus one SE.
+#' Quasi-families can be tuned by CV even when likelihood-based ICs are unavailable.
+#' The one-standard-error choice \code{lambda_1se} is the largest evaluated
+#' lambda with finite mean deviance no greater than the minimum mean deviance
+#' plus the SE at that minimum. Both panels mark this value in blue alongside
+#' the minimum-deviance choice and the GIC preset. \code{fit_best} continues to
+#' correspond to \code{lambda_best}.
+#' \code{fit_1se} contains the full-data fit at \code{lambda_1se}, retained
+#' from the same path without any additional fits.
 #' 
 #' @return
 #' \code{L0glm.tune} returns a list containing the following elements:
-#' \item{\code{IC}}{chosen \code{IC}.}
+#' \item{\code{tune}}{chosen selection method.}
 #' \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
-#' with different regularization parameters.}
-#' \item{\code{lambda_best}}{best lambda according to the \code{IC} 
-#' criterion specified.}
+#' with different regularization parameters; CV adds \code{cv_deviance} and
+#' \code{cv_se}.}
+#' \item{\code{lambda_best}}{best lambda by the chosen selection method.}
+#' \item{\code{lambda_1se}}{largest evaluated lambda within one SE of the
+#' minimum CV mean deviance, using the SE at that minimum; \code{NULL} for
+#' information-criterion tuning.}
 #' \item{\code{lambda_preset}}{preset lambda value that a priori would be expected 
-#' to approximately optimise the chosen \code{IC}.}
+#' to approximately optimise the chosen criterion, or GIC when tuning by CV.}
+#' \item{\code{lambda_reference}}{positive grid reference; normally identical
+#' to \code{lambda_preset}, but at least \code{lambda_min}.}
 #' \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
+#' \item{\code{lambda_min}}{lower endpoint of the full numerical path.}
 #' \item{\code{lambda_max}}{upper endpoint of the full numerical path.}
 #' \item{\code{lambda_nonzero}}{nonzero lower bracket for the refined endpoint,
 #' or \code{NA} when the preset is already zero or refinement is unavailable.}
@@ -103,6 +153,13 @@
 #' \item{\code{mu_floor}}{prediction floor used for scoring.}
 #' \item{\code{coefficients}}{list of coefficient matrices in lambda order.}
 #' \item{\code{fit_best}}{the fitted model at \code{lambda_best}.}
+#' \item{\code{fit_1se}}{the full-data fitted model at \code{lambda_1se}, or
+#' \code{NULL} for information-criterion tuning.}
+#' \item{\code{cv}}{CV results, or \code{NULL} for criterion tuning. Contains
+#' \code{lambda}, \code{mean}, \code{se}, the lambda-by-fold \code{deviance}
+#' matrix, \code{foldid}, \code{nfolds}, \code{fold_weights}, and the training
+#' penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
+#' full-data fits, not individual fold models.}
 #' 
 #' @export
 L0glm.tune <- function(X, y,
@@ -113,16 +170,20 @@ L0glm.tune <- function(X, y,
                                                      ncol = ncol(as.matrix(y)),
                                                      sparse = TRUE),
                        dispersion   = NULL,
-                       IC           = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
+                       tune         = c("gic", "mebic", "aic", "bic", "ebic", "mbic", "cv"),
                        nlambda      = 10,
                        prop_range   = 1,
                        coefs.true   = NULL,
                        printbest    = TRUE,
                        plot         = TRUE,
                        mu_floor     = 1e-8,
+                       nfolds       = 5,
+                       foldid       = NULL,
+                       lambda_min   = 2,
                        ...)
 {
-  IC <- L0glm_ic_name(if (missing(IC)) IC[1L] else IC)
+  tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
+  do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
       nlambda < 2 || nlambda != as.integer(nlambda))
@@ -130,24 +191,41 @@ L0glm.tune <- function(X, y,
   if (!is.numeric(prop_range) || length(prop_range) != 1L ||
       !is.finite(prop_range) || prop_range <= 0 || prop_range > 1)
     stop("prop_range must be in (0, 1].", call. = FALSE)
+  if (!is.numeric(lambda_min) || length(lambda_min) != 1L ||
+      !is.finite(lambda_min) || lambda_min <= 0)
+    stop("lambda_min must be a finite positive number.", call. = FALSE)
   if (!is.numeric(mu_floor) || length(mu_floor) != 1L ||
       !is.finite(mu_floor) || mu_floor < 0)
     stop("mu_floor must be a finite nonnegative number.", call. = FALSE)
   dots <- list(...)
+  if ("IC" %in% names(dots))
+    stop("IC was renamed to tune in L0glm.tune; use tune = \"gic\" or tune = \"cv\".",
+         call. = FALSE)
   if ("start" %in% names(dots))
     stop("L0glm.tune initializes each fit independently; do not supply start.", call. = FALSE)
   y <- as.matrix(y)
   n <- nrow(X); m <- ncol(y)
+  if (do_cv) {
+    weights <- L0glm_tune_matrix(weights, n, m, 1, "weights")
+    offset <- L0glm_tune_matrix(offset, n, m, 0, "offset")
+    if (any(!is.finite(weights) | weights < 0))
+      stop("CV weights must be finite and nonnegative.", call. = FALSE)
+    foldid <- L0glm_cv_folds(weights,
+      if (missing(nfolds) && !is.null(foldid)) NULL else nfolds, foldid)
+  } else if (!is.null(foldid)) stop("foldid is only used with tune = \"cv\".", call. = FALSE)
   intercept <- if (is.null(dots$intercept)) family$family == "binomial" else dots$intercept
   p <- ncol(X) + as.integer(intercept)
-  lambda_preset <- preset.lambda(IC = IC, p = p, n = n)
-  if (!is.finite(lambda_preset) || lambda_preset <= 0)
+  lambda_preset <- preset.lambda(IC = if (do_cv) "gic" else tune, p = p, n = n)
+  lambda_reference <- if (do_cv && (!is.finite(lambda_preset) || lambda_preset <= 0))
+    2 else lambda_preset
+  if (!is.finite(lambda_reference) || lambda_reference <= 0)
     stop("The chosen criterion gives a nonpositive preset for these dimensions; choose another criterion.",
          call. = FALSE)
+  lambda_reference <- max(lambda_reference, lambda_min)
   args <- c(list(X = X, y = y, family = family, weights = weights,
                  offset = offset, dispersion = dispersion), dots)
   fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
-  preset_fit <- fit_lambda(lambda_preset)
+  preset_fit <- fit_lambda(lambda_reference)
   included <- dots$always.include
   if (intercept) included <- c(1L, included + 1L)
   penalized <- setdiff(seq_len(p), included)
@@ -155,7 +233,7 @@ L0glm.tune <- function(X, y,
 
   # A working-model threshold only seeds the search. Verify the endpoint by
   # fitting it, using exactly the same initialization and controls as the path.
-  lambda_max <- max(2 * lambda_preset, maxlambda(preset_fit$X,
+  lambda_max <- max(2 * lambda_reference, maxlambda(preset_fit$X,
     weights = preset_fit$weights, z = preset_fit$z, dispersion = preset_fit$dispersion,
     always.include = included, coefs = preset_fit$coefficients, family = family,
     nonnegative = isTRUE(dots$nonnegative)))
@@ -170,7 +248,7 @@ L0glm.tune <- function(X, y,
   # across fits. Keep both ends verified under the caller's iteration controls.
   lambda_nonzero <- NA_real_
   if (zero_prior && !is_zero(preset_fit) && is_zero(endpoint_fit)) {
-    lambda_nonzero <- lambda_preset
+    lambda_nonzero <- lambda_reference
     for (attempt in seq_len(16L)) {
       if (log(lambda_max) - log(lambda_nonzero) <= log(1.05)) break
       midpoint <- exp((log(lambda_max) + log(lambda_nonzero)) / 2)
@@ -187,39 +265,54 @@ L0glm.tune <- function(X, y,
             if (!zero_prior) " (the prior mean is nonzero)" else " within the endpoint search",
             ". lambda_max is not a verified zero endpoint.", call. = FALSE)
 
-  n_up   <- max(2L, ceiling(nlambda / 2)) # includes lambda_preset
-  n_down <- nlambda - n_up              # below lambda_preset
-  # ---- log10 limits, shrunk by prop_range 
-  g_IC  <- log10(lambda_preset)
-  g_max <- log10(lambda_max)
-  g_up_max <- g_IC + prop_range * (g_max - g_IC)   # new "effective" lambda_max
-  log_step <- (g_up_max - g_IC) / (n_up - 1)
-  log_up   <- g_IC + log_step * seq(0, n_up - 1)
-  log_down <- g_IC - log_step * seq_len(n_down)
-  lambda_grid <- sort(10^c(log_up, log_down))
-  
-  # Avoid rounding the preset or endpoint before deciding which fits to reuse.
-  lambda_grid[which.min(abs(log10(lambda_grid) - g_IC))] <- lambda_preset
-  if (prop_range == 1) lambda_grid[length(lambda_grid)] <- lambda_max
-  coefmat  <- Matrix::Matrix(0, nrow = length(lambda_grid), ncol = p,
-                             sparse = TRUE)         # row-means of beta(lambda)
+  # Zoom each full endpoint toward the reference on the log scale.
+  g_IC  <- log10(lambda_reference)
+  g_min <- g_IC + prop_range * (log10(lambda_min) - g_IC)
+  g_max <- g_IC + prop_range * (log10(lambda_max) - g_IC)
+  if (nlambda == 2L || g_min == g_IC) {
+    lambda_grid <- 10^seq(g_min, g_max, length.out = nlambda)
+  } else {
+    n_up <- max(2L, ceiling(nlambda / 2))
+    n_down <- nlambda - n_up
+    lambda_grid <- 10^c(seq(g_min, g_IC, length.out = n_down + 1L)[seq_len(n_down)],
+                        seq(g_IC, g_max, length.out = n_up))
+  }
+  # Keep exact anchors when reusing fits and preserve both full-range endpoints.
+  if (nlambda > 2L || g_min == g_IC)
+    lambda_grid[which.min(abs(log10(lambda_grid) - g_IC))] <- lambda_reference
+  if (prop_range == 1) {
+    lambda_grid[1L] <- lambda_min
+    lambda_grid[length(lambda_grid)] <- lambda_max
+  }
+  if (anyDuplicated(lambda_grid))
+    stop("prop_range is too small to produce distinct lambda values.", call. = FALSE)
+  cv <- if (do_cv) L0glm_cross_validate(args, preset_fit$X, lambda_grid,
+                                       foldid, family, mu_floor) else NULL
+  if (do_cv && !any(is.finite(cv$mean)))
+    stop("No lambda has finite cross-validated deviance; check predictions or use a positive mu_floor.",
+         call. = FALSE)
+  lambda_1se <- NULL
+  if (do_cv) {
+    cv_best <- which.min(cv$mean)
+    within_1se <- is.finite(cv$mean) & cv$mean <= cv$mean[cv_best] + cv$se[cv_best]
+    lambda_1se <- max(lambda_grid[within_1se])
+  }
   metric_rows <- vector("list", length(lambda_grid))     # each element numeric
   coefficients <- vector("list", length(lambda_grid))
   fit_best <- NULL
+  fit_1se <- NULL
   best_score <- Inf
   
   ## ------------------------------------------------------------------ loop --
   for (i in seq_along(lambda_grid)) {
     lambda <- lambda_grid[i]
     
-    fit <- if (lambda == lambda_preset) preset_fit else
+    fit <- if (lambda == lambda_reference) preset_fit else
       if (lambda == lambda_max) endpoint_fit else fit_lambda(lambda)
+    if (do_cv && lambda == lambda_1se) fit_1se <- fit
     
     beta_hat <- fit$coefficients                           # p x m (sparse)
     coefficients[[i]] <- beta_hat
-    
-    ## store coefficient path (row mean for multichannel)
-    coefmat[i, ] <- if (m > 1) Matrix(Matrix::rowMeans(beta_hat), sparse=TRUE) else beta_hat
     
     ## quality metrics --------------------------------------------------------
     met <- get.metrics(beta = beta_hat,
@@ -228,8 +321,9 @@ L0glm.tune <- function(X, y,
                        offset = if (is.null(offset)) matrix(0, n, m) else offset,
                        dispersion = dispersion, mu_floor = mu_floor,
                        beta_true = coefs.true)
-    if (!is.na(met[[IC]]) && met[[IC]] < best_score) {
-      best_score <- met[[IC]]
+    score <- if (do_cv) cv$mean[i] else met[[tune]]
+    if (!is.na(score) && score < best_score) {
+      best_score <- score
       fit_best <- fit
     }
 
@@ -241,9 +335,14 @@ L0glm.tune <- function(X, y,
   metrics <- as.data.frame(do.call(rbind, metric_rows),
                            check.names = FALSE,
                            stringsAsFactors = FALSE)
+  if (do_cv) {
+    metrics$cv_deviance <- cv$mean
+    metrics$cv_se <- cv$se
+  }
 
   ## ------------------------------------------------------------- best lambda -----
-  best.index  <- which.min(metrics[[IC]])
+  selection <- if (do_cv) metrics$cv_deviance else metrics[[tune]]
+  best.index <- which.min(selection)
   if (!length(best.index) || is.null(fit_best))
     stop("No model has an available information criterion; check the family and predictions",
          if (mu_floor == 0) "; a positive mu_floor allows scoring zero predicted means" else "",
@@ -255,53 +354,28 @@ L0glm.tune <- function(X, y,
   lambda_best <- metrics$lambda[best.index]
   
   if (printbest)
-    message(sprintf("Best lambda by %s = %.3g", toupper(IC), lambda_best))
-  
-  ## ---------------------------------------------------------------- plotting
-  if (plot) {
-    old_par <- par(no.readonly = TRUE); on.exit(par(old_par))
-    layout(matrix(1:2, nrow = 1))          # side-by-side
-    ## 1. coefficient paths
-    matplot(x  = log10(metrics$lambda),
-            y  = as.matrix(coefmat),
-            type = "l", lty = 1, col = "grey40",
-            xlab = expression(log[10](lambda)),
-            ylab = "Coefficient estimate",
-            main = "Regularisation path")
-    abline(v = log10(lambda_max), col = "black", lty = 3)
-    abline(v = log10(lambda_best), col = "red", lty = 2)
-    abline(v = log10(lambda_preset), col = "red", lty = 3)
-    if (!is.null(coefs.true)) {
-      if (m > 1) coefs.true <- Matrix::rowMeans(coefs.true)
-      abline(h = as.vector(coefs.true[coefs.true!=0]),
-             col = scales::alpha("blue", 0.1)) 
-    }
-    
-    ## 2. chosen information criterion
-    finite <- is.finite(metrics[[IC]])
-    plot(log10(metrics$lambda), replace(metrics[[IC]], !finite, NA_real_),
-         type = "b", pch = 19,
-         log = if (any(finite) && all(metrics[[IC]][finite] > 0)) "y" else "",
-         ylim = if (any(finite)) NULL else c(0, 1),
-         xlab = expression(log[10](lambda)), ylab = toupper(IC),
-         main = paste("Tuning -", toupper(IC)))
-    abline(v = log10(lambda_best), col = "red", lty = 2)
-    abline(v = log10(lambda_preset), col = "red", lty = 3)
-    if (any(!finite)) mtext("Non-finite criterion values omitted", side = 3, cex = 0.75)
-  }
+    message(sprintf("Best lambda by %s = %.3g",
+                    if (do_cv) paste0(cv$nfolds, "-fold CV") else toupper(tune), lambda_best))
   
   ## ----------------------------------------------------------------- return
-  list(IC           = IC, # chosen IC
+  result <- list(tune         = tune,
        metrics      = metrics,
        lambda_best  = lambda_best, # 
+       lambda_1se   = lambda_1se,
        lambda_preset    = lambda_preset, # lambda preset expected to optimise chosen IC
+       lambda_reference = lambda_reference,
        lambdas      = lambda_grid,
+       lambda_min   = lambda_min,
        lambda_max   = lambda_max,
        lambda_nonzero = lambda_nonzero,
        endpoint_zero = endpoint_zero,
        mu_floor     = mu_floor,
        coefficients = coefficients,
-       fit_best     = fit_best)
+       fit_best     = fit_best,
+       fit_1se      = fit_1se,
+       cv           = cv)
+  if (plot) L0glm_plot_tuning(result, coefs.true)
+  result
 }
 
 tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = NULL){

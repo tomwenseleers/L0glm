@@ -30,10 +30,7 @@ that method calls accepts (and to refer to the respective packages and functions
 
 \item{plot}{XXX}
 
-\item{IC}{A case-insensitive information-criterion name for model selection:
-\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
-See \link{information_criteria} for formulas, guidance and references.}
+\item{IC}{Information criterion for the penalty preset; see \link{information_criteria}.}
 
 \item{internal}{For internal calls (like method = 3) where we need a starting fit, the function self calls
 and requires the whole resulting fit (not only the coefficients, which is what is returned)}

@@ -74,7 +74,7 @@ L0glm_initial_dispersion <- function(X, y, mu, weights, offset, family) {
   }
   # Keep the permissive start independent of the fitted penalty. Dividing by
   # that penalty would cancel increasing lambda in lambda * dispersion / 4.
-  reference <- max(1, preset.lambda("gic", p = ncol(X), n = nrow(X)))
+  reference <- max(1, preset.lambda("gic", p = ncol(X), n = nrow(X)), na.rm = TRUE)
   if (!is.finite(phi) || phi <= 0) phi <- .Machine$double.eps
   max(.Machine$double.xmin, phi / reference)
 }

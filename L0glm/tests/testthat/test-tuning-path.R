@@ -3,7 +3,7 @@ test_that("independent tuning can recover features excluded at the preset", {
   y <- c(4, 1, .2, -.1, .1, .2)
   args <- list(X=X, y=y, family=gaussian(), dispersion=1,
                parallelize=FALSE, grouped=FALSE, relaxed=FALSE, maxit=100)
-  tuned <- do.call(L0glm.tune, c(args, list(IC="aic", nlambda=5, plot=FALSE,
+  tuned <- do.call(L0glm.tune, c(args, list(tune="aic", lambda_min=.01, nlambda=5, plot=FALSE,
                                          printbest=FALSE)))
   preset <- do.call(L0glm.fit, c(args, list(lambda=tuned$lambda_preset)))
   expect_equal(as.numeric(preset$coefficients)[2], 0)
@@ -17,6 +17,39 @@ test_that("independent tuning can recover features excluded at the preset", {
   expect_equal(tail(tuned$lambdas,1), tuned$lambda_max)
   expect_equal(tuned$fit_best$coefficients,
                tuned$coefficients[[which.min(tuned$metrics$aic)]])
+})
+
+test_that("tuning bounds the full grid and preserves unique endpoints and anchors", {
+  args <- list(X = diag(6), y = c(4, 1, .2, -.1, .1, .2),
+    family = gaussian(), dispersion = 1, tune = "aic", parallelize = FALSE,
+    plot = FALSE, printbest = FALSE)
+  for (count in c(2L, 3L, 10L)) {
+    fit <- do.call(L0glm.tune, c(args, list(nlambda = count)))
+    expect_length(unique(fit$lambdas), count)
+    expect_identical(fit$lambda_min, 2)
+    expect_identical(fit$lambdas[1], 2)
+    expect_identical(tail(fit$lambdas, 1), fit$lambda_max)
+    expect_true(all(diff(fit$lambdas) > 0))
+  }
+  weak <- do.call(L0glm.tune, c(args, list(lambda_min = .01, nlambda = 5)))
+  expect_identical(weak$lambdas[1], .01)
+  expect_equal(sum(weak$lambdas == weak$lambda_preset), 1)
+  zoom <- do.call(L0glm.tune, c(args, list(lambda_min = .01, nlambda = 5, prop_range = .25)))
+  expect_gt(min(zoom$lambdas), .01)
+  expect_lt(max(zoom$lambdas), zoom$lambda_max)
+  expect_equal(sum(zoom$lambdas == zoom$lambda_reference), 1)
+
+  args$tune <- "gic"
+  below <- do.call(L0glm.tune, c(args, list(nlambda = 5)))
+  expect_lt(below$lambda_preset, 2)
+  expect_identical(below$lambda_reference, 2)
+  expect_length(unique(below$lambdas), 5)
+  above <- do.call(L0glm.tune, c(args, list(lambda_min = 20, nlambda = 5)))
+  expect_identical(above$lambdas[1], 20)
+  expect_identical(above$lambda_reference, 20)
+  expect_identical(above$lambda_preset, below$lambda_preset)
+  for (bad in list(0, -1, NA_real_, Inf, "x", numeric(), c(1, 2)))
+    expect_error(do.call(L0glm.tune, c(args, list(lambda_min = bad))), "lambda_min")
 })
 
 test_that("automatic scale does not cancel a large fitted penalty", {
@@ -58,7 +91,7 @@ test_that("default Poisson tuning scores zero predictions in every channel", {
 test_that("endpoint refinement removes a conservative working-model bound", {
   testthat::local_mocked_bindings(maxlambda=function(...) 1e12)
   tuned <- L0glm.tune(diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
-    dispersion=1,IC="aic",nlambda=3,maxit=100,parallelize=FALSE,
+    dispersion=1,tune="aic",nlambda=3,maxit=100,parallelize=FALSE,
     plot=FALSE,printbest=FALSE)
   expect_lt(tuned$lambda_max,100)
   expect_true(tuned$endpoint_zero)
@@ -130,7 +163,7 @@ test_that("the working-model threshold checks every channel at its own scale", {
 test_that("tuning handles an empty preset, intercepts, and invalid controls", {
   args <- list(X=matrix(seq(-1,1,length.out=30),ncol=1), y=rep(1,30),
                family=gaussian(), dispersion=1, parallelize=FALSE,
-               plot=FALSE,printbest=FALSE,IC="aic",nlambda=2)
+               plot=FALSE,printbest=FALSE,tune="aic",nlambda=2)
   a <- do.call(L0glm.tune,args)
   expect_true(a$endpoint_zero)
   b <- do.call(L0glm.tune,c(args,list(intercept=TRUE)))

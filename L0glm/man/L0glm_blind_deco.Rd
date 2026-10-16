@@ -61,10 +61,7 @@ updated. Either '"mean"' (shift the centroid, default) or a
 numeric percentile in [0, 1] to shift a given percentile in
 the CDF of the estimated kernel.}
 
-\item{IC}{A case-insensitive information-criterion name for model selection:
-\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
-See \link{information_criteria} for formulas, guidance and references.}
+\item{IC}{Information criterion for the penalty preset; see \link{information_criteria}.}
 
 \item{grouped}{Logical, passed unchanged to \code{L0glm.fit}, specifying
 whether to perform grouped L0 feature selection, i.e. best subset

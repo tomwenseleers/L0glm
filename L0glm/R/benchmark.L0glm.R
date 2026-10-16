@@ -30,7 +30,7 @@
 #'   details.
 #' @param plot Logical; if \code{TRUE}, plots related to the fitting process are
 #'   displayed.
-#' @inheritParams L0glm.tune
+#' @param IC Information criterion for the penalty preset; see \link{information_criteria}.
 #' @param internal Logical; for internal calls (e.g., when \code{method = 3})
 #'   where a starting fit is needed. If \code{TRUE}, the function returns the
 #'   full fitted model object instead of just the coefficients.
@@ -455,7 +455,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
 #' }
 #' @param options A list of additional options specific to the method being used. These options are passed to the underlying functions from the respective packages. Refer to the documentation of those packages for details.
 #' @param plot Logical; if \code{TRUE}, plots related to the fitting process are displayed. Default is \code{TRUE}.
-#' @inheritParams L0glm.tune
+#' @param IC Information criterion for the penalty preset; see \link{information_criteria}.
 #' @param internal Logical; for internal calls where a starting fit is needed. If \code{TRUE}, the function returns the full fitted model object instead of just the coefficients. Default is \code{FALSE}.
 #'
 #' @return A matrix of coefficients from the fitted model. Each column corresponds to a response variable (channel).

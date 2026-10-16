@@ -288,11 +288,12 @@ get.IC = function(loglik, n, p, edf,
 
 
 # Shared, case-insensitive names for fitting, scoring and tuning interfaces.
-L0glm_ic_name <- function(IC) {
+L0glm_ic_name <- function(IC, allow_cv = FALSE) {
   choices <- c("aic", "bic", "gic", "mebic", "ebic", "mbic")
+  if (allow_cv) choices <- c(choices, "cv")
   if (!is.character(IC) || length(IC) != 1L || is.na(IC) ||
       !tolower(IC) %in% choices) {
-    stop("Information criterion must be one of ",
+    stop(if (allow_cv) "tune must be one of " else "Information criterion must be one of ",
          paste(shQuote(choices), collapse = ", "),
          " (case-insensitive).", call. = FALSE)
   }

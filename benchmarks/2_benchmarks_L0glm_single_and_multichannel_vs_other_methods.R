@@ -6,6 +6,8 @@
 # Current L0glm.tune fits each lambda independently and verifies its numerical
 # zero endpoint. That endpoint is not a global L0 likelihood bound: a zero-mean
 # Poisson model has infinite deviance if any count is positive.
+# Select an IC with tune = "gic" (formerly IC = "gic"). For cross-validation,
+# use tune = "cv", nfolds = 5; the right panel then shows held-out deviance +/- SE.
 
 library(remotes)
 # remotes::install_github("jaredhuling/ordinis")
@@ -17,7 +19,7 @@ library(Matrix)
 library(ordinis)
 library(L0Learn) # use at least version 2
 library(abess)
-library(glmnet)
+library(bigGlm)
 
 # 1. SINGLE CHANNEL, SPARSE  ####
 n <- p <- 10000 
@@ -31,7 +33,7 @@ sim.pois <- simul(method = 2, n = n, p = p, s = npeaks/p, sparse = T)
 # here preset lambda coincides with best lambda
 system.time(tune_full <- L0glm.tune(X=sim.pois$X, 
                    y=sim.pois$y, 
-                   IC = "gic", 
+                   tune = "gic",
                    nlambda = 10,
                    prop_range = 1, # full range up to lambda_max
                    plot = TRUE, 
@@ -40,16 +42,16 @@ system.time(tune_full <- L0glm.tune(X=sim.pois$X,
                    family = poisson(identity), 
                    nonnegative = TRUE, 
                    solver = "eigen", 
-                   method = 1L)) # 4.49s
-tune_full$lambda_best # 20.44997 (best lambda tune)
+                   method = 1L)) # 4.19s
+tune_full$lambda_best # 12.84577 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
-min(tune_full$metrics$gic) # 102747
+min(tune_full$metrics$gic) # 102185
 
 ## tuning plot (zoomed in)
 # with lambda grid more zoomed in around lambda_preset preset
 system.time(tune_zoomed <- L0glm.tune(X=sim.pois$X, 
            y=sim.pois$y, 
-           IC = "gic", 
+           tune = "gic",
            nlambda = 10,
            prop_range = 0.2, # to zoom in around lambda_preset preset
            plot = TRUE, 
@@ -61,15 +63,62 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois$X,
            method = 1L)) # 3.44s
 # The dashed line marks the best grid value; the dotted line is the preset.
 # They need not coincide, especially for unrelaxed fits.
-tune_zoomed$lambda_best # 12.07393 (best lambda tune)
+tune_zoomed$lambda_best # 12.84577 (best lambda tune)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
-min(tune_zoomed$metrics$gic) # 102101.5
+min(tune_zoomed$metrics$gic) # 102185
 
 # The preset is an approximate calibration. A finer grid can improve GIC;
 # neither the heuristic fitting algorithm nor the coarse grid certifies an optimum.
 L0glm:::preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
-tune_zoomed$lambda_best # 12.07393 (best lambda tune)
+tune_zoomed$lambda_best # 12.84577 (best lambda tune)
+
+# note that with the tuning plot above that uses the eigen solver and
+# enforced nonnegativity constraints merely by clipping, the support size
+# size shrinks again if the level of regularisation (lambda) is chosen too small
+# Around the lambda "gic" preset, however, the solution is excellent at a much
+# smaller computational cost.
+system.time(tune_full_bigglm <- L0glm.tune(X=sim.pois$X, 
+                                    y=sim.pois$y, 
+                                    tune = "gic",
+                                    nlambda = 10,
+                                    prop_range = 1, # full range up to lambda_max
+                                    plot = TRUE, 
+                                    coefs.true = sim.pois$beta_true, 
+                                    relaxed = FALSE, 
+                                    family = poisson(identity), 
+                                    nonnegative = TRUE, 
+                                    solver = "bigGlm"))
+# 19.50s
+
+system.time(tune_full_osqp <- L0glm.tune(X=sim.pois$X, 
+                                           y=sim.pois$y, 
+                                           tune = "gic",
+                                           nlambda = 10,
+                                           prop_range = 1, # full range up to lambda_max
+                                           plot = TRUE, 
+                                           coefs.true = sim.pois$beta_true, 
+                                           relaxed = FALSE, 
+                                           family = poisson(identity), 
+                                           nonnegative = TRUE, 
+                                           solver = "osqp"))
+# 30.94s
+
+# 5-fold cross validation is also supported:
+system.time(tune_zoomed_cv <- L0glm.tune(X=sim.pois$X, 
+                                      y=sim.pois$y, 
+                                      tune = "cv",
+                                      nfolds = 5,
+                                      prop_range = 1, # to zoom in around lambda_preset preset
+                                      lambda_min = 2,
+                                      plot = TRUE, 
+                                      coefs.true = sim.pois$beta_true, 
+                                      relaxed = FALSE, 
+                                      family = poisson(identity), 
+                                      nonnegative = TRUE, 
+                                      solver = "eigen", 
+                                      method = 1L)) # 9.76s
+tune_zoomed_cv$lambda_best # 1.467145
 
 
 #### 1.1.1 L0GLM FIT WITH CHOLESKY LLT SOLVER ####
@@ -112,13 +161,13 @@ system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
                                     solver = "osqp")) 
 # 4.61s
 
-#### 1.1.5 L0GLM FIT WITH glmnet::bigGlm SOLVER ####
-system.time(L0glm.glmnet.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+#### 1.1.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
+system.time(L0glm.bigGlm.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
                                       family = poisson(identity), 
                                       lambda = "gic", # or tune_zoomed$lambda_best
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
-                                      solver = "glmnet")) 
+                                      solver = "bigGlm")) 
 # 1.74s with n=p=10000
 
 
@@ -133,7 +182,7 @@ benchmarks_1_1 = rbind(
                                                              X = X, y = y, 
                                                              family = poisson(identity), 
                                                              beta_true = sim.pois$beta_true))),
-  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.glmnet.pois$coefficients,  # some metrics
+  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.bigGlm.pois$coefficients,  # some metrics
                                                                X = X, y = y, 
                                                                family = poisson(identity), 
                                                                beta_true = sim.pois$beta_true))),
@@ -189,7 +238,7 @@ benchmarks_1_1
 # here preset lambda coincides with best lambda
 system.time(tune_full <- L0glm.tune(X=sim.gaus$X, 
                    y=sim.gaus$y, 
-                   IC = "gic", 
+                   tune = "gic",
                    nlambda = 10,
                    prop_range = 1, # full range up to lambda_max
                    plot = TRUE, 
@@ -210,7 +259,7 @@ min(tune_full$metrics$gic) # 82342.78
 # tuning plots - with lambda grid more zoomed in around lambda_preset preset
 system.time(tune_zoomed <- L0glm.tune(X=sim.gaus$X, 
                                       y=sim.gaus$y, 
-                                      IC = "gic", 
+                                      tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
@@ -276,13 +325,13 @@ system.time(L0glm.osqp.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 # 52.24s
 
 
-#### 1.2.5 L0GLM FIT WITH glmnet::bigGlm SOLVER ####
-system.time(L0glm.glmnet.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+#### 1.2.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
+system.time(L0glm.bigGlm.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
                                       family = gaussian(identity), 
                                       lambda = "gic", # or tune_zoomed$lambda_best
                                       nonnegative = TRUE,
                                       relaxed = FALSE,
-                                      solver = "glmnet")) 
+                                      solver = "bigGlm")) 
 # 6.84s
 
 
@@ -296,7 +345,7 @@ benchmarks_1_2 = rbind(
                                                              X = X, y = y, 
                                                              family = gaussian(identity), 
                                                              beta_true = sim.gaus$beta_true))),
-  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.glmnet.gaus$coefficients,  # some metrics
+  data.frame(method="L0glm_bigglm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.bigGlm.gaus$coefficients,  # some metrics
                                                                X = X, y = y, 
                                                                family = gaussian(identity), 
                                                                beta_true = sim.gaus$beta_true))),
@@ -341,7 +390,7 @@ benchmarks_1_2
 # 4 104993.6 81255.46 71529.35 63915.23  88053.73
 # 2 121929.0 93672.60 82095.21 73031.81 101764.86
 
-# -> here osqp solver gave best solution & glmnet's bigGlm the worst
+# -> here osqp solver gave best solution & bigGlm's bigGlm the worst
 # Cholesky comes in at 2nd place though & was by far the fastest
 # -> Cholesky performs best for different noise families & is fastest
 
@@ -367,7 +416,7 @@ m <- ncol(sim.pois.mc$y)
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
 system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
-           IC = "gic", 
+           tune = "gic",
            nlambda = 10,
            prop_range = 1, # to zoom in around lambda_preset preset
            plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -384,7 +433,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
-           IC = "gic", 
+           tune = "gic",
            nlambda = 10,
            prop_range = 0.2, # to zoom in around lambda_preset preset
            plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -446,7 +495,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
 system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
-                        IC = "gic", 
+                        tune = "gic",
                         nlambda = 10,
                         prop_range = 1, # to zoom in around lambda_preset preset
                         plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -463,7 +512,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
-                          IC = "gic", 
+                          tune = "gic",
                           nlambda = 10,
                           prop_range = 0.2, # to zoom in around lambda_preset preset
                           plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -513,7 +562,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
 system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
-                        IC = "gic", 
+                        tune = "gic",
                         nlambda = 10,
                         prop_range = 1, # to zoom in around lambda_preset preset
                         plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -530,7 +579,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 10x higher than best lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
-                          IC = "gic", 
+                          tune = "gic",
                           nlambda = 10,
                           prop_range = 0.2, # to zoom in around lambda_preset preset
                           plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
@@ -593,7 +642,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
 system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                        IC = "gic", 
+                        tune = "gic",
                         nlambda = 10,
                         prop_range = 1, # to zoom in around lambda_preset preset
                         plot = TRUE, 
@@ -611,7 +660,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                          IC = "gic", 
+                          tune = "gic",
                           nlambda = 10,
                           prop_range = 0.2, # to zoom in around lambda_preset preset
                           plot = TRUE, 
@@ -673,7 +722,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
 system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                        IC = "gic", 
+                        tune = "gic",
                         nlambda = 10,
                         prop_range = 1, # to zoom in around lambda_preset preset
                         plot = TRUE, 
@@ -691,7 +740,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                          IC = "gic", 
+                          tune = "gic",
                           nlambda = 10,
                           prop_range = 0.2, # to zoom in around lambda_preset preset
                           plot = TRUE, 
@@ -749,7 +798,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
 system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                        IC = "gic", 
+                        tune = "gic",
                         nlambda = 10,
                         prop_range = 1, # to zoom in around lambda_preset preset
                         plot = TRUE, 
@@ -767,7 +816,7 @@ L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 ## tuning plot (zoomed in)
 # here best lambda is again very close to preset lambda
 system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
-                          IC = "gic", 
+                          tune = "gic",
                           nlambda = 10,
                           prop_range = 0.2, # to zoom in around lambda_preset preset
                           plot = TRUE, 
@@ -828,7 +877,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 # 3. BENCHMARKS AGAINST OTHER METHODS ####
 # Take our best working solver & method and compare it against others: 
-# glmnet (LASSO), ordinis (MCP & SCAD), L0Learn & abess
+# bigGlm (LASSO), ordinis (MCP & SCAD), L0Learn & abess
 
 ## 3.1 SINGLE CHANNEL POISSON ####
 n <- p <- 10000
@@ -836,7 +885,7 @@ npeaks <- 1000
 sim.pois <- simul(method = 2, n = n, p = p, s = npeaks/p, seed = 2)
 
 ### 3.1.1 L0GLM VIA CHOLESKY LLT ####
-system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, IC = "gic", 
+system.time(tune.chol.sc <- L0glm.tune(X=sim.pois$X, y=sim.pois$y, tune = "gic",
                                        plot = FALSE, coefs.true = sim.pois$beta_true, 
                                        relaxed = FALSE, family = poisson(identity), 
                                        nonnegative = TRUE, 
@@ -858,14 +907,14 @@ plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
 
 
 
-### 3.1.2 LASSO USING GLMNET ####
-system.time(glmnet.sc.pois <- fit.GLM(sim = sim.pois, method = 2, 
+### 3.1.2 LASSO USING bigGlm ####
+system.time(bigGlm.sc.pois <- fit.GLM(sim = sim.pois, method = 2, 
                                       family = poisson(identity), plot = TRUE)) 
 # 3.02s
 
 
-### 3.1.3 ADAPTIVE LASSO USING GLMNET ####
-system.time(glmnet.al.sc.pois <- fit.GLM(sim = sim.pois, method = 3, 
+### 3.1.3 ADAPTIVE LASSO USING bigGlm ####
+system.time(bigGlm.al.sc.pois <- fit.GLM(sim = sim.pois, method = 3, 
                                          family = poisson(identity), plot = T)) 
 # 2.88s
 # TODO check what ridge penalty is used to calculate adaptive penalties
@@ -946,11 +995,11 @@ benchmarks_3_1 = rbind(
                                                         X = X, y = y, 
                                                         family = poisson(identity), 
                                                         beta_true = sim.pois$beta_true))),
-  data.frame(method="nnalasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.al.sc.pois,  # some metrics
+  data.frame(method="nnalasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.al.sc.pois,  # some metrics
                                                                   X = cbind(1, X), y = y, 
                                                                   family = poisson(identity), 
                                                                   beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.pois,  # some metrics
+  data.frame(method="nnL0Learn_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.pois,  # some metrics
                                                                                  X = X, y = y, 
                                                                                  family = poisson(identity),
                                                                                  beta_true = as.vector(sim.pois$beta_true)) )),
@@ -958,7 +1007,7 @@ benchmarks_3_1 = rbind(
   #                                                         X = X, y = y, 
   #                                                         family = poisson(identity),
   #                                                         beta_true = as.vector(sim.pois$beta_true)) )),
-  # data.frame(method="nnabess_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.pois,  # some metrics
+  # data.frame(method="nnabess_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.pois,  # some metrics
   #                                                                              X = X, y = y, 
   #                                                                              family = poisson(identity),
   #                                                                              beta_true = as.vector(sim.pois$beta_true)) )),
@@ -966,7 +1015,7 @@ benchmarks_3_1 = rbind(
                                                             X = X, y = y, 
                                                             family = poisson(identity), 
                                                             beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnlasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.sc.pois,  # some metrics
+  data.frame(method="nnlasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.sc.pois,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = poisson(identity), 
                                                                  beta_true = c(0, as.vector(sim.pois$beta_true))) )) # ,
@@ -984,9 +1033,9 @@ benchmarks_3_1 = benchmarks_3_1[order(benchmarks_3_1[,"deviance_true"]),] # sort
 benchmarks_3_1
 #                           method     p     n m     deviance deviance_true        loglik     MD_coefs MAD_coefs sMAPE_coefs
 # 1                          L0glm 10000 10000 1 9.607885e+03  2.673237e+03     -41167.85   -0.1240172  66.33935  0.06768539
-# 5                 nnlasso_glmnet 10001 10000 1 1.519571e+04  9.481692e+03     -43961.76   -4.4119940 227.28999  0.41171841
-# 2                nnalasso_glmnet 10001 10000 1 1.823586e+04  1.164163e+04     -45481.84   -1.1983929 115.70266  0.12522431
-# 3 nnL0Learn_after_glmnet_nnlasso 10000 10000 1 1.643789e+09  1.643964e+09 -821930748.36 -302.9962940 310.93014  0.19920985
+# 5                 nnlasso_bigGlm 10001 10000 1 1.519571e+04  9.481692e+03     -43961.76   -4.4119940 227.28999  0.41171841
+# 2                nnalasso_bigGlm 10001 10000 1 1.823586e+04  1.164163e+04     -45481.84   -1.1983929 115.70266  0.12522431
+# 3 nnL0Learn_after_bigGlm_nnlasso 10000 10000 1 1.643789e+09  1.643964e+09 -821930748.36 -302.9962940 310.93014  0.19920985
 # 4                      nnL0Learn 10000 10000 1 1.721955e+09  1.722136e+09 -861013922.83 -315.9794884 316.36254  0.19980247
 #   bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true
 # 1  0.9729390 0.9195383  212.127126     450.6890     0.36722110     0.9729390   0.9394337              1000
@@ -1020,7 +1069,7 @@ sim.gaus <- simul(method = 1, n = n, p = p, s = npeaks/p, seed = 2)
 
 ### 3.2.1 L0GLM VIA CHOLESKY LLT ####
 
-system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, IC = "gic", 
+system.time(tune.chol.sc <- L0glm.tune(X=sim.gaus$X, y=sim.gaus$y, tune = "gic",
                                        plot = FALSE, coefs.true = sim.gaus$beta_true, 
                                        relaxed = FALSE, family = gaussian(identity), 
                                        nonnegative = TRUE, 
@@ -1041,14 +1090,14 @@ plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
      xlab="estimated coefficients", ylab="true coefficients")
 
 
-### 3.2.2 LASSO USING GLMNET ####
-system.time(glmnet.sc.gaus <- fit.GLM(sim = sim.gaus, method = 2, 
+### 3.2.2 LASSO USING bigGlm ####
+system.time(bigGlm.sc.gaus <- fit.GLM(sim = sim.gaus, method = 2, 
                                       family = gaussian(identity), plot = TRUE)) 
 # 3.00s 
 
 
-### 3.2.3 ADAPTIVE LASSO USING GLMNET ####
-system.time(glmnet.al.sc.gaus <- fit.GLM(sim = sim.gaus, method = 3, 
+### 3.2.3 ADAPTIVE LASSO USING bigGlm ####
+system.time(bigGlm.al.sc.gaus <- fit.GLM(sim = sim.gaus, method = 3, 
                                          family = gaussian(identity), plot = T)) 
 # 2.90s 
 
@@ -1110,15 +1159,15 @@ benchmarks_3_2 = rbind(
                                                                      X = X, y = y, 
                                                                      family = gaussian(identity), 
                                                                      beta_true = sim.gaus$beta_true))),
-  data.frame(method="nnalasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.al.sc.gaus,  # some metrics
+  data.frame(method="nnalasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.al.sc.gaus,  # some metrics
                                                                   X = cbind(1, X), y = y, 
                                                                   family = gaussian(identity), 
                                                                   beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  data.frame(method="nnL0Learn_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.gaus,  # some metrics
+  data.frame(method="nnL0Learn_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.gaus,  # some metrics
                                                                                  X = X, y = y, 
                                                                                  family = gaussian(identity),
                                                                                  beta_true = as.vector(sim.gaus$beta_true)) )),
-  # data.frame(method="abess_after_glmnet_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.gaus,  # some metrics
+  # data.frame(method="abess_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.gaus,  # some metrics
   #                                                                            X = X, y = y, 
   #                                                                            family = gaussian(identity),
   #                                                                            beta_true = as.vector(sim.gaus$beta_true)) )),
@@ -1130,7 +1179,7 @@ benchmarks_3_2 = rbind(
   #                                                       X = X, y = y, 
   #                                                       family = gaussian(identity), 
   #                                                       beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="nnlasso_glmnet", do.call(cbind, L0glm:::get.metrics(beta = glmnet.sc.gaus,  # some metrics
+  data.frame(method="nnlasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.sc.gaus,  # some metrics
                                                                  X = cbind(1, X), y = y, 
                                                                  family = gaussian(identity), 
                                                                  beta_true = c(0, as.vector(sim.gaus$beta_true))) )) # ,
@@ -1148,9 +1197,9 @@ benchmarks_3_2 = benchmarks_3_2[order(benchmarks_3_2[,"deviance_true"]),] # sort
 benchmarks_3_2
 #                           method     p     n m     deviance deviance_true    loglik      MD_coefs MAD_coefs sMAPE_coefs
 # 1                          L0glm 10000 10000 1 2.308267e+05  5.598291e+04 -29884.80  6.277559e-03  19.06869  0.03084378
-# 5                 nnlasso_glmnet 10001 10000 1 8.484388e+07  8.463086e+07 -59419.30 -9.890032e+00 211.32557  0.47852465
-# 2                nnalasso_glmnet 10001 10000 1 1.003780e+09  1.003973e+09 -71772.88 -2.884356e+01 193.22146  0.16273545
-# 3 nnL0Learn_after_glmnet_nnlasso 10000 10000 1 2.208901e+10  2.208724e+10 -87229.41 -1.328707e+02 285.10776  0.18966557
+# 5                 nnlasso_bigGlm 10001 10000 1 8.484388e+07  8.463086e+07 -59419.30 -9.890032e+00 211.32557  0.47852465
+# 2                nnalasso_bigGlm 10001 10000 1 1.003780e+09  1.003973e+09 -71772.88 -2.884356e+01 193.22146  0.16273545
+# 3 nnL0Learn_after_bigGlm_nnlasso 10000 10000 1 2.208901e+10  2.208724e+10 -87229.41 -1.328707e+02 285.10776  0.18966557
 # 4                      nnL0Learn 10000 10000 1 2.215037e+10  2.214849e+10 -87243.28 -1.334420e+02 291.30557  0.19120841
 #   bias_coefs  R2_coefs MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true
 # 1  1.0033387 0.9839711    52.47761     130.5835      0.1981169     1.0033387   0.9875623              1000
@@ -1234,13 +1283,13 @@ plotmat(L0glm.chol.pois$coefficients,
 
 
 
-### 3.3.3 MULTIVARIATE GROUP LASSO USING GLMNET ####
-system.time(glmnet.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2, 
+### 3.3.3 MULTIVARIATE GROUP LASSO USING bigGlm ####
+system.time(bigGlm.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2, 
                                     family = poisson(identity), plot = T, 
                                     IC = "gic"))
 # 527.18s
 
-x_vals <- as.vector(rowMeans(glmnet.mc.pois))                      # estimated
+x_vals <- as.vector(rowMeans(bigGlm.mc.pois))                      # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
@@ -1253,11 +1302,11 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
      ylab = "true coefficients",
      main = main_expr)
 
-plotmat(glmnet.mc.pois, 
+plotmat(bigGlm.mc.pois, 
       xlab="Time index", ylab="Channel", 
-      main="glmnet nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
+      main="bigGlm nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 # abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
-# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(glmnet.mc.pois)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(bigGlm.mc.pois)!=0)], col="cyan")
 
 
 
@@ -1273,7 +1322,7 @@ benchmarks_3_3 = rbind(
   #                                                                    X = sim.pois.mc$X, y = sim.pois.mc$y, 
   #                                                                    family = poisson(identity), 
   #                                                                    beta_true = sim.pois.mc$beta_true) ) ),
-  data.frame(method="multivariate_group_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = glmnet.mc.pois,  
+  data.frame(method="multivariate_group_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.mc.pois,  
                                                                      X = sim.pois.mc$X, y = sim.pois.mc$y, 
                                                                      family = poisson(identity), 
                                                                      beta_true = sim.pois.mc$beta_true) ) ) 
@@ -1293,7 +1342,7 @@ benchmarks_3_3
 # 1 0.9623313   5626184   7136291   5476334   4796205   4263765   5951723
 # 2 0.6550590 130635920 132729833 130428138 129485073 128746791 131087312
 
-# -> L0glm clearly the best - both timing-wise (ca. 100x faster than glmnet) & in terms of performance
+# -> L0glm clearly the best - both timing-wise (ca. 100x faster than bigGlm) & in terms of performance
 
 
 ## 3.4 MULTICHANNEL GAUSSIAN ####
@@ -1347,13 +1396,13 @@ plotmat(L0glm.chol.gaus$coefficients,
 
 
 
-# glmnet nonnegative mgaussian multivariate group LASSO fit
-system.time(glmnet.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2, 
+# bigGlm nonnegative mgaussian multivariate group LASSO fit
+system.time(bigGlm.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2, 
                                     family = gaussian(identity), plot = T, 
                                     IC = "gic"))
 # 592.73s
 
-x_vals <- as.vector(rowMeans(glmnet.mc.gaus))                      # estimated
+x_vals <- as.vector(rowMeans(bigGlm.mc.gaus))                      # estimated
 y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
@@ -1369,11 +1418,11 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 sum(sim.gaus.mc$beta_true!=0)        # 73070
 sum(L0glm.chol.gaus$coefficients!=0) # 187365 - TODO: check how overall sparsity can be made to match better
 
-plotmat(glmnet.mc.gaus,
+plotmat(bigGlm.mc.gaus,
       xlab="Time index", ylab="Channel", 
       main="nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 # abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
-# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(glmnet.mc.gaus)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(bigGlm.mc.gaus)!=0)], col="cyan")
 
 
 
@@ -1389,7 +1438,7 @@ benchmarks_3_4 = rbind(
   #                                                                     X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
   #                                                                     family = gaussian(identity),
   #                                                                     beta_true = sim.gaus.mc$beta_true)) ),
-  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = glmnet.mc.gaus,  
+  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.mc.gaus,  
                                                                                    X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                                    family = gaussian(identity), 
                                                                                    beta_true = sim.gaus.mc$beta_true)) ) )

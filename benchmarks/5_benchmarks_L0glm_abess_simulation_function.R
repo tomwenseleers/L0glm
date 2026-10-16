@@ -95,7 +95,7 @@ table(rowMeans(coef_real_mc)!=0,
 ## 1.2 Multichannel Gaussian L0glm fit ####
 
 # system.time(tune.chol.mgaus <- L0glm.tune(X=data.mc.gaus$x, y=data.mc.gaus$y, 
-#                                        IC = crit, 
+#                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_mc, 
 #                                        grouped = TRUE,
 #                                        relaxed = TRUE, 
@@ -232,7 +232,7 @@ table(coef_abess_sc!=0,
 ## 2.2 Single channel L0glm fit ####
 
 # system.time(tune.chol.gaus <- L0glm.tune(X=data.sc.gaus$x, y=data.sc.gaus$y, 
-#                                        IC = crit, 
+#                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_sc, 
 #                                        grouped = FALSE,
 #                                        relaxed = FALSE, 

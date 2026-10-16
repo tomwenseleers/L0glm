@@ -94,17 +94,17 @@ test_that("tuning selects MEBIC scores with case-insensitive names", {
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                nlambda = 3, prop_range = 0.2, printbest = FALSE, plot = FALSE,
                grouped = FALSE, parallelize = FALSE, maxit = 20)
-  lower <- do.call(L0glm.tune, c(args, list(IC = "mebic")))
-  upper <- do.call(L0glm.tune, c(args, list(IC = "MEBIC")))
+  lower <- do.call(L0glm.tune, c(args, list(tune = "mebic")))
+  upper <- do.call(L0glm.tune, c(args, list(tune = "MEBIC")))
   expect_identical(upper, lower)
-  expect_identical(upper$IC, "mebic")
+  expect_identical(upper$tune, "mebic")
   expect_equal(upper$lambda_preset, 2 * log(4) * log(log(60)))
   expect_equal(upper$lambda_best,
                upper$metrics$lambda[which.min(upper$metrics$mebic)])
   default <- do.call(L0glm.tune, args)
-  expect_identical(default$IC, "gic")
-  expect_error(do.call(L0glm.tune, c(args, list(IC = "HBIC"))),
-               "Information criterion must be one of")
+  expect_identical(default$tune, "gic")
+  expect_error(do.call(L0glm.tune, c(args, list(tune = "HBIC"))),
+               "tune must be one of")
 })
 
 test_that("invalid criteria and lambda values fail clearly in both fitters", {

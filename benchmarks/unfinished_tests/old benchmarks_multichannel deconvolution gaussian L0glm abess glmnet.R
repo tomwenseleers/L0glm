@@ -127,7 +127,7 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        beta_true=sim$beta_true)))) 
 
 
-system.time(metrics2 <- L0glm.tune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, IC = "aic", group.maxit = 6, plot = T, grouped = T, relaxed = T, parallellize=T))
+system.time(metrics2 <- L0glm.tune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, tune = "aic", group.maxit = 6, plot = T, grouped = T, relaxed = T, parallellize=T))
 
 
 # best empirical lambda based on calculated GIC over lambda sequence:

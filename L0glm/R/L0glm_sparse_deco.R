@@ -102,7 +102,7 @@
 #'                  to use when \code{baseline = "bspline"}. With \code{nknots < 4}
 #'                  and \code{baseline="bspline"} \code{baseline} is changed
 #'                  to \code{intercept}. 
-#' @inheritParams L0glm.tune
+#' @param IC Information criterion for the penalty preset; see \link{information_criteria}.
 #' @param grouped Logical, passed unchanged to \code{L0glm.fit}, specifying
 #'                whether to perform grouped L0 feature selection, i.e. best subset
 #'                of group selection (BSGS), in case there are multiple outcome

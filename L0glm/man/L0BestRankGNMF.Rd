@@ -39,10 +39,7 @@ penalty is used in the \eqn{H} update (one latent
 component on/off for all outcome channels, i.e. best subset of
 group selection).}
 
-\item{IC}{A case-insensitive information-criterion name for model selection:
-\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
-\code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
-See \link{information_criteria} for formulas, guidance and references.}
+\item{IC}{Information criterion for the penalty preset; see \link{information_criteria}.}
 
 \item{max_iter}{Maximum number of outer iterations.}
 
