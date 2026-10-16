@@ -93,6 +93,20 @@ These presets specify the statistical target. Adaptive ridge approximates it, an
 
 `L0glm.fit()` and `L0nnpois()` use `thresh = 1e-5` by default and unsmoothed adaptive ridge weights `1 / abs(beta)^gamma`. During each selection update, coefficients satisfying `abs(beta) < max(abs(beta)) * thresh` or `abs(beta) < 1e-20` are set to zero and remain excluded within that IRLS run. The maximum is calculated per response channel. Setting `thresh = 0` disables only the relative cutoff. The final relaxed refit applies neither cutoff. Grouped passes and the relaxed refit can restart channel coefficients on retained rows.
 
+For families with unknown dispersion, `L0glm.fit(dispersion = NULL)` initializes it from a weak ridge pilot, starts permissively, and updates it within the existing IRLS loop. Updates use current Pearson residuals and require adequate residual degrees of freedom; each change is bounded to a factor of two. After three changes below 1% with unchanged support, dispersion is kept fixed for the remaining coefficient iterations. A positive value fixes dispersion throughout the fit; a negative value supplies an initial value that is subsequently estimated:
+
+```r
+# Gaussian dispersion is variance, not standard deviation.
+fit <- L0glm.fit(X, y, family = gaussian(), lambda = "gic",
+                dispersion = NULL, maxit = 100)  # automatic start and estimation
+# Use dispersion = 25 for a fixed variance of 25, or dispersion = -25
+# to start at 25 and estimate it. A vector supplies one value per channel.
+```
+
+The automatic pilot uses one factorization and preserves the random-number state; subsequent scale updates need only linear-time arithmetic in the number of observations. Positive known values remain fixed during grouped and relaxed fits. For estimated channels, a relaxed refit reports its final Pearson residual scale. These are moment estimates with approximate model degrees of freedom, not exact maximum-likelihood dispersion estimates for every family or a guarantee of optimal subset selection. Poisson, binomial and negative binomial with known `theta` retain dispersion 1. See `?L0glm.fit` for details.
+
+`L0glm.tune()` initializes each lambda fit independently. Its GIC preset is an approximate adaptive-ridge calibration; a finer grid can select a different value, especially for correlated predictors or unrelaxed fits. The automatic dispersion start uses a fixed GIC reference rather than the fitted lambda, so increasing lambda cannot cancel itself through the starting dispersion. The returned `lambda_max` is verified by fitting the upper endpoint and refined between nonzero and zero fits to within 5%; `endpoint_zero` records whether all penalized coefficients are zero. This is a numerical path endpoint, not a certificate for the exact L0 objective. For scoring, `mu_floor = 1e-8` keeps Poisson comparisons finite when some fitted means are zero, while retaining all observations. This floor affects scoring only. Setting `mu_floor = 0` requests exact likelihood scoring, which can be infinite for a zero mean and positive count. The returned `coefficients` and `fit_best` allow inspection of the fitted models.
+
 See `help("information_criteria", package = "L0glm")` for further details, scoring conventions and executable examples. Original references:
 
 - Akaike, H. (1974). *A new look at the statistical model identification.* IEEE Transactions on Automatic Control 19, 716–723. [DOI](https://doi.org/10.1109/TAC.1974.1100705).

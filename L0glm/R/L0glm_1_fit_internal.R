@@ -54,16 +54,12 @@ L0glm.fit.internal = function(X,
   if (length(upper) != p) stop("length(upper) must equal ncol(X)")
     
   ##  2. dispersion initialisation --------------------------------------------
-  #  * binomial / poisson : fixed at 1
-  #  * user supplied      : keep unchanged
-  #  * otherwise          : start at 1 and iteratively update
-  if (is.list(dispersion)) dispersion <- unlist(dispersion)[1L]
-  dispersion_init = dispersion 
-  # if NULL dispersion will be estimated (=variance for gaussian), 
-  # except for binomial & poisson where it is 1
-  if (family$family %in% c("binomial", "poisson")) { dispersion_init <- 1 }
-  if (is.null(dispersion)) { dispersion <- 1 }
-  residuals = rep(0, n)                   # unweighted working residuals, here initialised at 0 for 1st iteration
+  if (!inherits(family, "family")) family <- family()
+  dispersion <- L0glm_dispersion(dispersion, family)
+  estimate_dispersion <- is.null(dispersion) || dispersion < 0
+  if (!is.null(dispersion)) dispersion <- abs(dispersion)
+  scale_stable <- 0L
+  scale_frozen <- !estimate_dispersion
 
   ##  3. prior mean (vector of length p) --------------------------------------  
   if (is.null(prior.mean)) { prior.mean <- rep(0, p) } else 
@@ -88,6 +84,7 @@ L0glm.fit.internal = function(X,
   etastart <- NULL
   mustart <- NULL
   eval(initexpr)                          # initialise mustart and n and m (total counts) for binomial
+  n_positive <- sum(is.finite(weights) & weights > 0)
   # n <- nobs
   
   eta <- linkfun(mustart)                 # g(mu)  on link scale
@@ -107,6 +104,8 @@ L0glm.fit.internal = function(X,
   }
   start <- clamp(start, lower, upper)
   beta <- beta_old <- start
+  if (is.null(dispersion))
+    dispersion <- L0glm_initial_dispersion(X, y, mu, weights, offset, family)
   # names(beta) = colnames(X)
   
   # dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
@@ -157,6 +156,7 @@ L0glm.fit.internal = function(X,
                    print(paste(sum(nonzero), "coefficients nonzero; range:", min(beta), "-", max(beta))) }
     if (!any(nonzero)) {           
       if (verbose) warning("All coefficients zero - nothing to fit")
+      mu <- linkinv(as.numeric(offset))
       break
     }
 
@@ -195,47 +195,16 @@ L0glm.fit.internal = function(X,
     mu  <- linkinv(eta)    # predictions on response scale u
     if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
     
-    ## ----- dispersion update (once, if free) ----------------------
-    if (is.null(dispersion_init)) {
-      residuals_old <- if (family$link == "identity") y - mu else (y - mu) / gprime
-      res2          <- residuals_old^2
-      n.ok          <- length(good)
-      rank          <- sum(nonzero) # cheap approximation of the trace of the hat matrix
-      df.res        <- n.ok - min(rank, n.ok)
-      disp_new      <- sum(W.ret[good] * res2[good]) / df.res
-      
-      if (abs(disp_new - dispersion) / dispersion < 0.1) {
-        dispersion       <- disp_new
-        dispersion_init  <- 1        # lock further updates
-      }
-    }
-    
-    # update estimated dispersion for all distributions except binomial & poisson
-    # and if relative change in estimated dispersion drops below threshold
-    # update dispersion to use it in calculated ridge penalty
-    # we only do this update once
-    # if a dispersion different than 1 is passed to L0glm.fit we keep it at that value
-    if (is.null(dispersion_init)) {
-      
-      residuals_old = residuals # old unweighted working residuals (on adjusted z scale)
-      
-      if (family$link == "identity"){ 
-        residuals <- y-mu # updated unweighted residuals
-      } else {
-        residuals <- (y-mu)/gprime # updated unweighted residuals
-      }
-      
-      n.ok <- length(good) # good observations
-      rank <- sum(nonzero) # estimated rank - cheap approx of trace of the hat matrix
-      df.residual <- n.ok - min(rank, n.ok) + 1 # residual degrees of freedom
-      dispersion_old <- sum((W.ret[good] * residuals_old[good]^2))/df.residual # previous iteration's estimated dispersion
-      dispersion_new <- sum((W.ret[good] * residuals[good]^2))/df.residual # updated estimate of dispersion (variance for Gaussian case)
-      disp_rel_change <- abs(dispersion_new - dispersion_old) / (dispersion_old+1E-10)
-      # start updating dispersion used in calculation of lambda when estimated dispersion 
-      # converged (relative change in dispersion between iterations < 10%)
-      if (disp_rel_change < 0.1) {
-        dispersion <- dispersion_new 
-        # dispersion_init <- 1 # if we would like to stop updating dispersion in subsequent iterations, unmark if you would like to keep on updating dispersion
+    ## ----- bounded Pearson scale update, without another fit ------
+    scale_estimable <- sum(nonzero) < 0.7 * n_positive
+    if (!scale_frozen && hard_threshold && iter >= 3L && scale_estimable) {
+      target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero))
+      if (is.finite(target) && target > 0) {
+        stable <- sum(nonzero) == sum(beta_old != 0) &&
+          abs(target / dispersion - 1) < 0.01
+        scale_stable <- if (stable) scale_stable + 1L else 0L
+        dispersion <- min(2 * dispersion, max(dispersion / 2, target))
+        scale_frozen <- scale_stable >= 3L
       }
     }
       
@@ -245,7 +214,9 @@ L0glm.fit.internal = function(X,
     
     ## ----- convergence test ---------------------------------------
     if ( sqrt(sum((beta - beta_old)^2)) /
-         max(1e-12, sqrt(sum(beta^2))) < tol ) break
+         max(1e-12, sqrt(sum(beta^2))) < tol &&
+         (scale_frozen || !hard_threshold || lambda == 0 ||
+          (iter >= 3L && !scale_estimable)) ) break
     beta_old <- beta
     
     # dev_rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in L2 norm of coefficient vector
@@ -256,6 +227,12 @@ L0glm.fit.internal = function(X,
   # browser()
   
   ## 8. return output ------------------------------------------------
+  # A relaxed fit holds scale fixed during the solves, then reports its own
+  # residual scale. Supplied positive dispersions remain unchanged throughout.
+  if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
+    target <- L0glm_pearson_scale(y, mu, weights, family, sum(beta != 0))
+    if (is.finite(target) && target > 0) dispersion <- target
+  }
   list(coefficients = as.numeric(beta),
        weights      = as.numeric(W.ret),
        dispersion   = dispersion,

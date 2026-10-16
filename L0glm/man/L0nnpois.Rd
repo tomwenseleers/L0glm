@@ -57,9 +57,9 @@ binomial, Gamma, inverse.gaussian) and link function (identity, log, sqrt,
 logit, cloglog, probit, cauchit, inverse, 1/mu^2) to be to be used for the
 GLM model. See \code{?stats::family} for details of family functions.}
 
-\item{dispersion}{Optional dispersion estimate; set to \code{NULL} by
-default, in which case it is initialised at 1 and then estimated during the
-IRLS loop; fixed at 1 for family binomial & Poisson.}
+\item{dispersion}{Poisson dispersion is fixed at 1. Accepts \code{NULL}
+or 1; other finite nonzero numeric values are ignored with a warning.
+Negative values cannot request dispersion estimation for this family.}
 
 \item{start}{Optional vector of coefficient starting values of length
 \code{p}, or a matrix of starting values with dimension \code{p} x
@@ -217,7 +217,8 @@ still applies when requested. Adaptive ridge weights are unsmoothed,
 
 \item{tol}{Convergence tolerance. Iterations are stopped when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
-threshold.}
+threshold. When dispersion is estimated, selection also waits until its
+update has stabilized as described in Details, subject to \code{maxit}.}
 
 \item{control.solver}{Optional list of solver controls. \code{L0nnpois}
 always uses Eigen Cholesky LLT internally, but for sparse matrices

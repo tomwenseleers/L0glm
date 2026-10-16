@@ -2,6 +2,34 @@
 
 ## Development changes
 
+* `L0glm.tune()` now initializes every lambda independently. A preset fit no
+  longer excludes features from all other fits. The upper endpoint is checked
+  by fitting it, expanded if necessary, then refined between verified nonzero
+  and zero fits to within 5%; it is not a global-optimality bound.
+  The fitted path coefficients, numerical endpoint and best model are returned.
+* Automatic dispersion initialization is independent of the fitted lambda,
+  using the GIC reference penalty for its permissive scale. This prevents a
+  large lambda from cancelling itself through an inversely scaled dispersion.
+* Tuning scores now include observation weights, offsets and known dispersion.
+  Gaussian scales are profiled per channel when unknown. Corrected the extra
+  scale charge in log likelihood and kept the predictor count separate from
+  estimated scale parameters. Tuning uses a scoring-only prediction floor
+  `mu_floor = 1e-8` so that sparse multichannel Poisson fits with zero predictions
+  can be compared. `mu_floor = 0` requests exact likelihoods and can give infinite
+  criteria; non-finite values are identified in the plot.
+
+* `L0glm.fit(dispersion = NULL)` now uses a permissive weak-ridge pilot and
+  bounded Pearson dispersion updates in the existing IRLS loop. The updates
+  require adequate residual degrees of freedom and freeze after three changes
+  below 1% on unchanged support. No nested fitting is required.
+* Positive `dispersion` values remain fixed; negative values initialize at their
+  absolute value and are subsequently estimated. Channel-specific mixtures are
+  supported through grouped and parallel fits. Relaxed refits report a fresh
+  residual scale for estimated channels. Poisson, binomial and known-theta
+  negative-binomial dispersion is fixed at 1 on the general path too.
+* Fixed Gaussian coefficient initialization with zero observation weights and
+  its weighted rescaling; the automatic scale pilot preserves the caller's RNG.
+
 * `L0glm.fit(openmp = TRUE)` now dispatches nonnegative identity-link Poisson
   fits using Eigen Cholesky LLT (`method = 1L`) to `L0nnpois`. Use
   `openmp = FALSE` to select the general R fitting path. Incompatible solver

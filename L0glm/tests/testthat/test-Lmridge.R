@@ -1201,7 +1201,7 @@ test_that("maxlambda calculates correctly for Gaussian family without unpenalize
   # Calculations for expected values
   Xw <- Diagonal(x = sqrt(weights)) %*% X
   zw <- Diagonal(x = sqrt(weights)) %*% z
-  maxlambda_expected <- (4 / 1) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE) * 0.5
+  maxlambda_expected <- max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })
@@ -1222,7 +1222,7 @@ test_that("maxlambda calculates correctly for Poisson family with terms that are
   X_penalized <- X[, -always.include, drop = FALSE]
   Xw <- Diagonal(x = sqrt(weights)) %*% X_penalized
   zw <- Diagonal(x = sqrt(weights)) %*% z_adjusted
-  maxlambda_expected <- (4 / 1) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
+  maxlambda_expected <- max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })
@@ -1238,7 +1238,7 @@ test_that("maxlambda handles binomial family with default dispersion", {
   
   Xw <- Diagonal(x = sqrt(weights)) %*% X
   zw <- Diagonal(x = sqrt(weights)) %*% z
-  maxlambda_expected <- (4 / 1) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
+  maxlambda_expected <- max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })
@@ -1254,7 +1254,7 @@ test_that("maxlambda respects family-specific dispersion for Gamma family", {
   
   Xw <- Diagonal(x = sqrt(weights)) %*% X
   zw <- Diagonal(x = sqrt(weights)) %*% z
-  maxlambda_expected <- (4 / 1.5) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
+  maxlambda_expected <- (1 / 1.5) * max((1 / colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm = TRUE)
   
   expect_equal(result, maxlambda_expected, tolerance = 1e-6)
 })

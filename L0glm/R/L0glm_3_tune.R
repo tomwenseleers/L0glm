@@ -14,10 +14,12 @@
 #' accuracy, precision, recall and the IC of interest, all in function of the level of
 #' regularization (L0 penalty lambda). Some plots are only produced if the user 
 #' passes the true coefficients \code{coefs.true} (e.g. from a simulation).
-#' Each lambda fit starts from the warm-up coefficients without mixing.
-#' Features excluded by that warm-up cannot enter the tuning fits. For a path
-#' that initializes each model independently, call \code{L0glm.fit} separately
-#' for each lambda.
+#' Each lambda fit is initialized independently. The preset fit is used only
+#' to construct the grid; its selected support is not imposed on other fits.
+#' The preset is an approximate adaptive-ridge calibration, not a guarantee
+#' that the chosen criterion is minimized there. In particular, unrelaxed
+#' estimates retain shrinkage and correlated designs need not follow the
+#' orthogonal Gaussian calibration.
 #' 
 #' @param X 
 #' A matrix of predictor variables.
@@ -31,14 +33,16 @@
 #' A matrix of observation weights.
 #' @param offset 
 #' A matrix to be added to the linear predictor.
-#' @param dispersion 
-#' A dispersion parameter for the family function. If not NULL, it is used to 
-#' set the lambda sequence.
+#' @param dispersion Passed to \code{L0glm.fit}: \code{NULL} automatically
+#' initializes and estimates dispersion, a positive value fixes it, and a negative
+#' value supplies its absolute value as an initial estimate. A vector can specify
+#' separate values for the response channels. Fixed-scale families retain their
+#' family dispersion.
 #' @param IC A case-insensitive information-criterion name for model selection:
 #' \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
 #' \code{"ebic"}, or \code{"mbic"}. Defaults to \code{"gic"}.
 #' See \link{information_criteria} for formulas, guidance and references.
-#' @param nlambda Number of lambda values to use for tuning (default 10). 
+#' @param nlambda Number of lambda values to use for tuning (at least 2; default 10).
 #' If \code{nlambda} is even, half of the values lie above 
 #' the lambda value that would be expected to optimise
 #' the chosen IC (\code{lambda_preset}) and half below;  
@@ -46,8 +50,7 @@
 #' \code{lambda_preset} is included exactly once.
 #' @param prop_range Numeric in \((0,\,1]\).  
 #' Proportion of the log10 distance between \code{lambda_preset} and
-#' \code{lambda_max} (that would penalise all coefficients to zero
-#' or the chosen prior.mean) that is *retained on each side* of 
+#' \code{lambda_max} (the verified numerical endpoint) that is retained on each side of
 #' \code{lambda_preset}. \code{prop_range = 1} (default) keeps the 
 #' entire range, whilst smaller values "zoom-in", yielding grids 
 #' that are denser around \code{lambda_preset}. For example, 
@@ -60,7 +63,27 @@
 #' value according to the selected IC (default is TRUE).
 #' @param plot A logical value indicating whether to produce the plots mentioned
 #' in the description, all in function of regularization (lambda).
+#' @param mu_floor Nonnegative prediction floor used only when scoring
+#' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
+#' observations and makes scores finite when a fitted mean is zero. Set to zero
+#' for exact likelihood scoring, which can give infinite criteria.
 #' @param ... Other arguments to pass to the `L0glm.fit` function except for \code{start}.
+#'
+#' @details For a zero prior mean, the upper endpoint is expanded until an
+#' actual fit has no nonzero penalized coefficients, excluding an intercept
+#' and \code{always.include} terms. When the preset fit is nonzero, logarithmic
+#' bisection refines the nonzero/zero bracket to within 5\%, so a conservative
+#' working-model estimate does not leave a long flat tail in the plot.
+#' This is an algorithmic endpoint, not a
+#' certified bound for the exact L0 likelihood objective. For example, an
+#' all-zero Poisson identity-link model with zero offset has infinite deviance
+#' when any observed count is positive. The default scoring floor provides
+#' numerical comparisons along the path; it does not change the fitted model.
+#' With a nonzero prior mean or an unsuccessful endpoint search, a warning is
+#' issued and \code{endpoint_zero} is false. A zoomed grid need not reach the
+#' full endpoint. Supplied observation weights, offsets and known dispersions
+#' are included in scoring; unknown Gaussian scales are profiled separately
+#' for each response channel.
 #' 
 #' @return
 #' \code{L0glm.tune} returns a list containing the following elements:
@@ -72,6 +95,14 @@
 #' \item{\code{lambda_preset}}{preset lambda value that a priori would be expected 
 #' to approximately optimise the chosen \code{IC}.}
 #' \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
+#' \item{\code{lambda_max}}{upper endpoint of the full numerical path.}
+#' \item{\code{lambda_nonzero}}{nonzero lower bracket for the refined endpoint,
+#' or \code{NA} when the preset is already zero or refinement is unavailable.}
+#' \item{\code{endpoint_zero}}{whether the fitted upper endpoint has zero
+#' penalized coefficients.}
+#' \item{\code{mu_floor}}{prediction floor used for scoring.}
+#' \item{\code{coefficients}}{list of coefficient matrices in lambda order.}
+#' \item{\code{fit_best}}{the fitted model at \code{lambda_best}.}
 #' 
 #' @export
 L0glm.tune <- function(X, y,
@@ -88,37 +119,75 @@ L0glm.tune <- function(X, y,
                        coefs.true   = NULL,
                        printbest    = TRUE,
                        plot         = TRUE,
+                       mu_floor     = 1e-8,
                        ...)
 {
-  ## ------------------------------------------------------------------ set-up
   IC <- L0glm_ic_name(if (missing(IC)) IC[1L] else IC)
-  
+  if (!inherits(family, "family")) family <- family()
+  if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
+      nlambda < 2 || nlambda != as.integer(nlambda))
+    stop("nlambda must be an integer of at least 2.", call. = FALSE)
+  if (!is.numeric(prop_range) || length(prop_range) != 1L ||
+      !is.finite(prop_range) || prop_range <= 0 || prop_range > 1)
+    stop("prop_range must be in (0, 1].", call. = FALSE)
+  if (!is.numeric(mu_floor) || length(mu_floor) != 1L ||
+      !is.finite(mu_floor) || mu_floor < 0)
+    stop("mu_floor must be a finite nonnegative number.", call. = FALSE)
+  dots <- list(...)
+  if ("start" %in% names(dots))
+    stop("L0glm.tune initializes each fit independently; do not supply start.", call. = FALSE)
   y <- as.matrix(y)
-  n <- nrow(X); p <- ncol(X); m <- ncol(y)
-  
-  ## ---- warm-up fit (used to build lambda-grid and starting coefficients) -----
-  lambda_preset  <- preset.lambda(IC = IC, p = p, n = n)
-  
-  warmup <- L0glm.fit(X = X, y = y,
-                      lambda     = lambda_preset,
-                      family     = family,
-                      weights    = weights,
-                      offset     = offset,
-                      dispersion = dispersion,
-                      ...)
-  
-  beta0   <- warmup$coefficients          # p x m (sparse)
-  Z    <- warmup$z
-  W    <- warmup$weights
-  
-  if (all(beta0 == 0))
-    stop("warm-up produced only zero coefficients - cannot build lambda sequence.")
-  
-  ## ---- lambda grid (ceiling(nlambda/2) points between lambda_preset and lambda_max on log10 scale, remaining below lambda_preset with same log10 step size)
-  lambda_max <- maxlambda(X, weights = W, z = Z,
-                     coefs = beta0, family = family) # max lambda where all coefs would be penalised to zero
-  lambda_preset <- preset.lambda(IC=IC, p, n) # lambda that would be expected to approx optimise the chosen IC
-  n_up   <- ceiling(nlambda / 2)        # includes lambda_preset
+  n <- nrow(X); m <- ncol(y)
+  intercept <- if (is.null(dots$intercept)) family$family == "binomial" else dots$intercept
+  p <- ncol(X) + as.integer(intercept)
+  lambda_preset <- preset.lambda(IC = IC, p = p, n = n)
+  if (!is.finite(lambda_preset) || lambda_preset <= 0)
+    stop("The chosen criterion gives a nonpositive preset for these dimensions; choose another criterion.",
+         call. = FALSE)
+  args <- c(list(X = X, y = y, family = family, weights = weights,
+                 offset = offset, dispersion = dispersion), dots)
+  fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
+  preset_fit <- fit_lambda(lambda_preset)
+  included <- dots$always.include
+  if (intercept) included <- c(1L, included + 1L)
+  penalized <- setdiff(seq_len(p), included)
+  is_zero <- function(fit) all(fit$coefficients[penalized, , drop = FALSE] == 0)
+
+  # A working-model threshold only seeds the search. Verify the endpoint by
+  # fitting it, using exactly the same initialization and controls as the path.
+  lambda_max <- max(2 * lambda_preset, maxlambda(preset_fit$X,
+    weights = preset_fit$weights, z = preset_fit$z, dispersion = preset_fit$dispersion,
+    always.include = included, coefs = preset_fit$coefficients, family = family,
+    nonnegative = isTRUE(dots$nonnegative)))
+  endpoint_fit <- fit_lambda(lambda_max)
+  zero_prior <- is.null(dots$prior.mean) || all(dots$prior.mean == 0)
+  if (zero_prior) for (attempt in seq_len(30L)) {
+    if (is_zero(endpoint_fit) || lambda_max > .Machine$double.xmax / 2) break
+    lambda_max <- 2 * lambda_max
+    endpoint_fit <- fit_lambda(lambda_max)
+  }
+  # Refine an overly conservative upper estimate without sharing coefficients
+  # across fits. Keep both ends verified under the caller's iteration controls.
+  lambda_nonzero <- NA_real_
+  if (zero_prior && !is_zero(preset_fit) && is_zero(endpoint_fit)) {
+    lambda_nonzero <- lambda_preset
+    for (attempt in seq_len(16L)) {
+      if (log(lambda_max) - log(lambda_nonzero) <= log(1.05)) break
+      midpoint <- exp((log(lambda_max) + log(lambda_nonzero)) / 2)
+      candidate <- fit_lambda(midpoint)
+      if (is_zero(candidate)) {
+        lambda_max <- midpoint
+        endpoint_fit <- candidate
+      } else lambda_nonzero <- midpoint
+    }
+  }
+  endpoint_zero <- is_zero(endpoint_fit)
+  if (!endpoint_zero)
+    warning("The upper endpoint did not eliminate all penalized coefficients",
+            if (!zero_prior) " (the prior mean is nonzero)" else " within the endpoint search",
+            ". lambda_max is not a verified zero endpoint.", call. = FALSE)
+
+  n_up   <- max(2L, ceiling(nlambda / 2)) # includes lambda_preset
   n_down <- nlambda - n_up              # below lambda_preset
   # ---- log10 limits, shrunk by prop_range 
   g_IC  <- log10(lambda_preset)
@@ -129,36 +198,40 @@ L0glm.tune <- function(X, y,
   log_down <- g_IC - log_step * seq_len(n_down)
   lambda_grid <- sort(10^c(log_up, log_down))
   
-  ## ---- reuse the warm-up coefficients without mixing -----------------------
-  beta_start <- beta0
-  
-  ## containers ---------------------------------------------------------------
+  # Avoid rounding the preset or endpoint before deciding which fits to reuse.
+  lambda_grid[which.min(abs(log10(lambda_grid) - g_IC))] <- lambda_preset
+  if (prop_range == 1) lambda_grid[length(lambda_grid)] <- lambda_max
   coefmat  <- Matrix::Matrix(0, nrow = length(lambda_grid), ncol = p,
                              sparse = TRUE)         # row-means of beta(lambda)
   metric_rows <- vector("list", length(lambda_grid))     # each element numeric
+  coefficients <- vector("list", length(lambda_grid))
+  fit_best <- NULL
+  best_score <- Inf
   
   ## ------------------------------------------------------------------ loop --
   for (i in seq_along(lambda_grid)) {
     lambda <- lambda_grid[i]
     
-    fit <- L0glm.fit(X, y,
-                     family     = family,
-                     weights    = weights,
-                     lambda     = lambda,
-                     dispersion = dispersion,
-                     start      = beta_start,
-                     offset     = offset,
-                     ...)
+    fit <- if (lambda == lambda_preset) preset_fit else
+      if (lambda == lambda_max) endpoint_fit else fit_lambda(lambda)
     
     beta_hat <- fit$coefficients                           # p x m (sparse)
+    coefficients[[i]] <- beta_hat
     
     ## store coefficient path (row mean for multichannel)
     coefmat[i, ] <- if (m > 1) Matrix(Matrix::rowMeans(beta_hat), sparse=TRUE) else beta_hat
     
     ## quality metrics --------------------------------------------------------
     met <- get.metrics(beta = beta_hat,
-                       X = X, y = y, family = family,
+                       X = fit$X, y = y, family = family,
+                       weights = if (is.null(weights)) matrix(1, n, m) else weights,
+                       offset = if (is.null(offset)) matrix(0, n, m) else offset,
+                       dispersion = dispersion, mu_floor = mu_floor,
                        beta_true = coefs.true)
+    if (!is.na(met[[IC]]) && met[[IC]] < best_score) {
+      best_score <- met[[IC]]
+      fit_best <- fit
+    }
 
     ## numeric row *not* data.frame
     metric_rows[[i]] <- c(lambda = unname(lambda), unlist(met))
@@ -171,6 +244,14 @@ L0glm.tune <- function(X, y,
 
   ## ------------------------------------------------------------- best lambda -----
   best.index  <- which.min(metrics[[IC]])
+  if (!length(best.index) || is.null(fit_best))
+    stop("No model has an available information criterion; check the family and predictions",
+         if (mu_floor == 0) "; a positive mu_floor allows scoring zero predicted means" else "",
+         ".",
+         call. = FALSE)
+  if (is.infinite(best_score) && best_score < 0)
+    warning("The likelihood is unbounded at zero residual scale; supply a positive dispersion for meaningful tuning.",
+            call. = FALSE)
   lambda_best <- metrics$lambda[best.index]
   
   if (printbest)
@@ -197,12 +278,16 @@ L0glm.tune <- function(X, y,
     }
     
     ## 2. chosen information criterion
-    plot(log10(metrics$lambda), metrics[[IC]],
-         type = "b", pch = 19, log = "y",
+    finite <- is.finite(metrics[[IC]])
+    plot(log10(metrics$lambda), replace(metrics[[IC]], !finite, NA_real_),
+         type = "b", pch = 19,
+         log = if (any(finite) && all(metrics[[IC]][finite] > 0)) "y" else "",
+         ylim = if (any(finite)) NULL else c(0, 1),
          xlab = expression(log[10](lambda)), ylab = toupper(IC),
          main = paste("Tuning -", toupper(IC)))
     abline(v = log10(lambda_best), col = "red", lty = 2)
     abline(v = log10(lambda_preset), col = "red", lty = 3)
+    if (any(!finite)) mtext("Non-finite criterion values omitted", side = 3, cex = 0.75)
   }
   
   ## ----------------------------------------------------------------- return
@@ -210,20 +295,14 @@ L0glm.tune <- function(X, y,
        metrics      = metrics,
        lambda_best  = lambda_best, # 
        lambda_preset    = lambda_preset, # lambda preset expected to optimise chosen IC
-       lambdas      = lambda_grid)
+       lambdas      = lambda_grid,
+       lambda_max   = lambda_max,
+       lambda_nonzero = lambda_nonzero,
+       endpoint_zero = endpoint_zero,
+       mu_floor     = mu_floor,
+       coefficients = coefficients,
+       fit_best     = fit_best)
 }
-
-  # TODO; maybe take the lambda sequence from 100x lower to 100x higher than the preset
-  # instead of up to maxlambda which is unrealistically high probably
-  # TODO: add more returns
-  # - the optimal values of lambda & the index in lambdas of that optimal value based on given metrics - so this could also 
-  # be a dataframe with columns lambda, lambda_index, metric (e.g. different information criteria plus accuracy & F1 score for 
-  # support recovery & metrics for bias in coefficients  if beta_true was given
-  # - a sparse matrix with the coefficient estimates for those lambda values (rowMeans of the coefficients for multichannel) (with the right optimal threshold applied for each)
-  # - a list with the originally estimated sparse coefficient matrices for the different lambda values (but with the right optimal threshold applied for each)
-
-
-
 
 tune.plots <- function(metrics, coefficients, lambdas, IC = "aic", coefs.true = NULL){
   IC <- L0glm_ic_name(IC)

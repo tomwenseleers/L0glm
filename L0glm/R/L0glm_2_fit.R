@@ -96,9 +96,15 @@
 #'   \code{m} the number of response variables (columns in \code{y}). For
 #'   binomial proportion data this would be the total number of trials per
 #'   observed proportion (passed in \code{y}).
-#' @param dispersion Optional dispersion estimate; set to \code{NULL} by
-#'   default, in which case it is initialised at 1 and then estimated during the
-#'   IRLS loop; fixed at 1 for family binomial & Poisson.
+#' @param dispersion \code{NULL} (default) automatically initializes and
+#'   estimates dispersion. A positive number fixes it at that value. A negative
+#'   number initializes it at its absolute value, then estimates it; the supplied
+#'   magnitude is used directly, without the automatic permissive scaling.
+#'   For multichannel data, supply one number or a vector with one number per
+#'   channel; fixed and estimated channels may be mixed. Zero and non-finite
+#'   values are invalid. Poisson, binomial and negative binomial with known
+#'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
+#'   \code{family$dispersion}. See Details for initialization and updating.
 #' @param start Optional vector of coefficient starting values of length
 #'   \code{p}, or a matrix of starting values with dimension \code{p} x
 #'   \code{m}, with \code{p} the number of predictors and \code{m} the number
@@ -262,7 +268,8 @@
 #'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
 #' @param tol Convergence tolerance. Iterations are stopped when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
-#'   threshold.
+#'   threshold. When dispersion is estimated, selection also waits until its
+#'   update has stabilized as described in Details, subject to \code{maxit}.
 #' @param control.solver List of parameters controlling the optimization
 #'   solvers. Auto-initialised with \code{control.solver.gen} when \code{NULL}.
 #'   See \code{?control.solver.gen} for more details on the available parameters
@@ -312,12 +319,43 @@
 #' however, we do not require the dispersion (variance in case of Gaussian
 #' linear models) to be known and standardized to 1, but instead allow it to be
 #' estimated and updated during the IRLS algorithm (when
-#' \code{dispersion=NULL}). We do this by first setting it to 1 and then after a
-#' few iterations, after the estimated dispersion has converged to a stable
-#' value (when the relative change between iterations is < 0.1), updating the
-#' dispersion multiplier that controls the ridge penalties. If the dispersion is
-#' known from prior data or has been estimated before, it can be also be passed
-#' as a fixed value. For binomial & Poisson models the dispersion is fixed at 1.
+#' \code{dispersion = NULL} or a negative initial value is supplied).
+#'
+#' Automatic initialization uses one weak ridge fit to the initial working
+#' response, with columns scaled to unit weighted norm and ridge constant
+#' \code{1e-6}. Four reproducible random-sign probes share this factorization
+#' to estimate the residual noise degrees of freedom,
+#' \eqn{\operatorname{tr}\{(I-H)^T(I-H)\}}, where \eqn{H} is the pilot hat matrix.
+#' The caller's random-number state is preserved. The pilot residual scale is
+#' divided by \code{max(1, preset.lambda("gic", p, n))} for a permissive start
+#' independent of the fitted lambda; its support is never
+#' imposed on the main fit. A supplied negative value bypasses this pilot.
+#'
+#' Starting at iteration 3, when the number \eqn{k} of active coefficients is
+#' below \eqn{0.7N}, dispersion is updated toward
+#' \deqn{\widetilde\phi =
+#'   \frac{\sum_{i:w_i>0}w_i(y_i-\mu_i)^2/V(\mu_i)}{N-k}.}
+#' Here \eqn{N} counts positive-weight observations, \eqn{k} includes the
+#' intercept, and \eqn{V} is \code{family$variance}, evaluated at the newly
+#' fitted mean. Each update is bounded to \eqn{[\phi/2,2\phi]}. After three
+#' consecutive updates with unchanged support and a target within 1\% of the
+#' current dispersion, it is held fixed for the remaining coefficient iterations.
+#' Each subsequent grouped selection pass may update it again on the new support.
+#' A relaxed refit holds dispersion fixed during its coefficient solves and
+#' reports the final Pearson residual scale for estimated channels; user-supplied
+#' positive dispersions remain fixed throughout.
+#'
+#' These are inexpensive moment updates, not exact dispersion maximum likelihood
+#' for every family. The active coefficient count approximates model degrees of
+#' freedom and does not correct for selection. The pilot, permissive start and
+#' freezing safeguards are heuristics; they do not guarantee a global optimum or
+#' an unbiased noise estimate, especially in nearly interpolating models. If the
+#' active model remains too large for the update, the starting scale is retained.
+#' The pilot requires one factorization; subsequent scale updates require only
+#' \eqn{O(N)} arithmetic, without nested fitting or further factorizations.
+#' Supplying a dispersion value avoids the pilot factorization, which can be
+#' appreciable for very large dense designs even when the main solver is iterative.
+#'
 #' In contrast to Frommlet & Nuel (2016) we use Fisher scoring instead of
 #' Newton-Raphson iterations (i.e. using the expected Hessian instead of the
 #' observed one). If option \code{relaxed} is set to \code{TRUE} the algorithm
@@ -380,6 +418,15 @@
 #'   intercept = TRUE, nonnegative = TRUE, lambda = 1e-8,
 #'   dispersion = 1, parallelize = FALSE)
 #' as.numeric(constrained$coefficients)
+#'
+#' # Estimate Gaussian variance from an automatic or user-supplied start.
+#' set.seed(1)
+#' y_gaussian <- 2 * x + rnorm(length(x), sd = 0.5)
+#' automatic <- L0glm.fit(X, y_gaussian, family = gaussian(),
+#'   lambda = "gic", dispersion = NULL, maxit = 100, parallelize = FALSE)
+#' initialized <- L0glm.fit(X, y_gaussian, family = gaussian(),
+#'   lambda = "gic", dispersion = -0.25, maxit = 100, parallelize = FALSE)
+#' # dispersion = 0.25 instead keeps the variance fixed at 0.25.
 #'
 #' # A binomial intercept may remain negative with a nonnegative slope.
 #' y <- round(1000 * plogis(-2 + x)) / 1000
@@ -571,14 +618,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     prior.mean <- Matrix(prior.mean, sparse = TRUE)
   }
   
-  # 5 dispersion (vector per per-channel or NULL -------------
-  if (!is.null(dispersion)) {
-    dispersion <- as.numeric(dispersion)
-    if (length(dispersion) == 1) dispersion <- rep(dispersion, m)
-    if (length(dispersion) != m)
-      stop("dispersion must have length 1 or length m")
-  }
-  disp_list <- as_list(dispersion)   # <- list(NULL) or list(dispersion vector)
+  # 5 dispersion: positive values are fixed, negative values are free starts.
+  dispersion <- L0glm_dispersion(dispersion, family, m)
+  estimate_dispersion <- if (is.null(dispersion)) rep(TRUE, m) else dispersion < 0
+  disp_list <- as_list(dispersion)
+  next_dispersion <- function(d) ifelse(estimate_dispersion, -d, d)
   
   # 6 misc --------------------------------------------------
   always.include.start <- always.include
@@ -749,7 +793,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         }
         weights.mat          <- Matrix(fit$weights,      sparse = TRUE)
         dispersion           <- fit$dispersion
-        disp_list            <- as_list(dispersion)
+        disp_list            <- as_list(next_dispersion(dispersion))
         if (length(vars) == p && identical(vars, seq_len(p))) {
           lambdas.mat <- Matrix(fit$lambdas, sparse = TRUE)
         } else {
@@ -761,7 +805,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       
       # ----- relaxed - refit selected variables nearly unpenalised -----------
       if (relaxed) {
-        disp_list <- as_list(dispersion)   # refresh helper
+        disp_list <- as_list(next_dispersion(dispersion))
         support <- group_support_start(coefficients)
         vars   <- support$vars
         if (length(vars)) {
@@ -895,7 +939,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       family     = family,
                                       normalize   = normalize,
                                       offset      = offset,
-                                      dispersion  = dispersion,
+                                      dispersion  = next_dispersion(dispersion),
                                       start       = coefficients[vars],
                                       lower       = lower[vars],
                                       upper       = upper[vars],

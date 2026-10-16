@@ -35,6 +35,7 @@ Encoding: UTF-8
 LazyData: true
 Suggests: 
     ALS,
+    MASS,
     pkgload,
     SIS,
     testthat (>= 3.0.0)

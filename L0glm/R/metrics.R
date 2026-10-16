@@ -7,7 +7,9 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
                         family = gaussian(identity), 
                         beta_true = NULL, 
-                        p = NULL # to pass in case model concerns one fitted on a pre-selected subset (p=nr of original variables)
+                        p = NULL, # original design dimension if a subset was fitted
+                        dispersion = NULL,
+                        mu_floor = .Machine$double.eps
                         # edf=sum(beta!=0)
 ) {
   
@@ -20,14 +22,19 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   if (!issparse(beta)) beta <- Matrix(beta, sparse=T)
   
   y <- as.matrix(y)
+  weights <- matrix(as.numeric(weights), nrow(y), ncol(y))
+  offset <- matrix(as.numeric(offset), nrow(y), ncol(y))
   
   # nr of tasks/outcomes, variables & observations
   m = ncol(y) # nr of tasks/outcomes
   # nr of variables, cases & tasks & effective degrees of freedom ####
   if (is.null(p)) p = ncol(X) # nr of variables
   
-  # allow for estimated dispersion,cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-  if(family$family %in% c("gaussian", "Gamma", "inverse.gaussian")) p <- p + 1
+  # A scale parameter adds to model dimension, not to the predictor pool p.
+  dispersion <- L0glm_dispersion(dispersion, family, m)
+  free_scale <- if (is.null(dispersion)) rep(TRUE, m) else dispersion < 0
+  scale_parameters <- if (family$family %in% c("gaussian", "Gamma", "inverse.gaussian",
+                                               "quasibinomial", "quasipoisson")) sum(free_scale) else 0L
   
   n = nrow(X) # nr of cases
   nobs = sum(weights != 0)
@@ -38,7 +45,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # effective degrees of freedom
   edf = sum(beta!=0) # as in abess package, note we assume beta includes intercept if present
   # allow for estimated dispersion, cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-  if (family$family %in% c("gaussian", "Gamma", "inverse.gaussian", "quasibinomial", "quasipoisson")) edf <- edf + 1
+  edf <- edf + scale_parameters
   
   # beta[beta<lower] = lower
   # beta[beta>upper] = upper
@@ -96,7 +103,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     nonzero = which(rowMax(abs(beta))!=0) # nonzero coefficients
     eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
     mu = family$linkinv(eta=eta) # fitted values on response scale
-    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) 
+    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, mu_floor)
     # Compute the weights at the fitted values
     gprime = family$mu.eta(eta=eta) # derivative of the expected values
     varg = family$variance(mu=mu) # variance
@@ -125,7 +132,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     nonzero = which(rowMax(abs(beta))!=0) # nonzero coefficients
     eta = as.matrix(X[,nonzero,drop=F] %*% beta[nonzero,,drop=F] + offset) # fitted eta = fitted values on link scale
     mu = family$linkinv(eta=eta) # fitted values on response scale
-    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
+    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, mu_floor)
 
     # calculated true theoretical deviance compared to ground truth
     dev_res_true = family$dev.resids(y=as.vector(mu_true), mu=as.vector(mu), wt=as.vector(weights))
@@ -134,6 +141,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   }
   
   
+  # Some inverse links (notably logit) return a vector even for matrix input.
+  dim(mu) <- c(n, m)
   # calculated observed residual deviance
   dev_res = family$dev.resids(y=as.vector(y), mu=as.vector(mu), wt=as.vector(weights))
   keep = which(as.vector(weights) != 0)
@@ -142,14 +151,30 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # calculate some information criteria, cf. Zhang & Chen 2010 ####
   # see also https://github.com/abess-team/abess/blob/master/R-package/R/deviance.abess.R
   # get -2 * log-likelihood & log likelihood from family$aic slot & observed deviance
-  y = as.vector(y)
-  if (family$family=="poisson") { y = round(y) } 
-  # aic slot of family is -2.log-likelihood
-  min2LL = family$aic(y = as.vector(y)[keep], # = proportions for binomial
-                      n = as.vector(weights)[keep], # = total counts for binomial 
-                      mu = as.vector(mu)[keep],  
-                      wt = as.vector(weights)[keep], # prior weights for families other than binomial
-                      dev = deviance) 
+  # Score each response channel at its own scale. Positive supplied dispersions
+  # are known; otherwise Gaussian likelihood profiles phi = weighted RSS / N.
+  # family$aic includes an extra 2 for estimated scale in the continuous families.
+  min2LL <- sum(vapply(seq_len(m), function(j) {
+    keep_j <- weights[, j] > 0 & is.finite(weights[, j])
+    yy <- y[keep_j, j]; mm <- mu[keep_j, j]; ww <- weights[keep_j, j]
+    if (!length(yy)) return(0)
+    phi <- if (is.null(dispersion) || free_scale[j]) NULL else dispersion[j]
+    if (family$family == "gaussian") {
+      rss <- sum(ww * (yy - mm)^2)
+      if (is.null(phi)) phi <- rss / length(yy)
+      if (phi == 0) return(-Inf) # unbounded likelihood at an exact interpolant
+      return(length(yy) * log(2 * pi * phi) - sum(log(ww)) + rss / phi)
+    }
+    if (family$family == "poisson") yy <- round(yy)
+    if (family$family == "Gamma" && !is.null(phi))
+      return(-2 * sum(ww * stats::dgamma(yy, shape = 1 / phi, scale = mm * phi, log = TRUE)))
+    if (family$family == "inverse.gaussian" && !is.null(phi))
+      return(sum(ww * (log(2 * pi * phi * yy^3) + (yy - mm)^2 / (phi * yy * mm^2))))
+    dev <- sum(family$dev.resids(yy, mm, ww))
+    value <- family$aic(y = yy, n = ww, mu = mm, wt = ww, dev = dev)
+    if (family$family %in% c("Gamma", "inverse.gaussian")) value <- value - 2
+    value
+  }, numeric(1)))
   loglik = -0.5 * min2LL # plain log-likelihood
   IC = get.IC(loglik = loglik, n = n, p = p, edf = edf) 
   

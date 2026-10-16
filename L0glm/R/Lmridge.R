@@ -953,6 +953,7 @@ init_coefs = function( X,
     # simplified formula and faster than formula in else statement
     W <- W.ret <- as.vector(weights / varg) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
     good = which(!is.na(W) & !(W == 0) & !is.infinite(W)) # valid rows # (gprime != 0)
+    W <- W.ret[good]
     z.ret <- (y - offset) # working (adjusted) response (returned non-subsetted version)
     z <- z.ret[good] # subset used for fit
   } else {
@@ -1007,8 +1008,11 @@ init_coefs = function( X,
   # rescale initial coefficients to optimally match scale of z
   # for poisson it was not necessary to do this (performance was worse)
   if (family$family=="gaussian") {
-  z_init = as.vector(X %*% beta_init)
-  scale_factor = (crossprod(z, z_init)/crossprod(z_init))[1,1]
+  beta_init[!is.finite(beta_init)] <- 0
+  z_init = as.vector(X[good, , drop = FALSE] %*% beta_init)
+  denominator <- sum(W * z_init^2)
+  scale_factor <- if (is.finite(denominator) && denominator > 0)
+    sum(W * z * z_init) / denominator else 0
   beta_init = beta_init*scale_factor 
   # The intuition behind this scale factor is that it represents the 
   # cosine of the angle between the vectors z and z_init,
@@ -1045,35 +1049,29 @@ start_coefs = function (X, family=gaussian(identity)) {
 }
 
 
-# maximum lambda that would be expected to penalize all penalized coefficients to zero
-# this takes into account some terms will always be included (e.g. intercept) & 
-# prior coefficient estimates
-# see https://stats.stackexchange.com/questions/416144/minimum-and-maximum-regularization-in-l0-pseudonorm-penalized-regression
-maxlambda = function (X, weights, z, dispersion=1, always.include=NULL, coefs, family) {
+# Orthogonal working-model selection threshold on the -2 logLik scale.
+# This seeds a search, not a global bound for correlated designs or GLMs.
+# The AR factor 1/4 is already accounted for: b_j^2 > lambda * phi * a_j.
+maxlambda <- function(X, weights, z, dispersion = 1, always.include = NULL,
+                      coefs, family, nonnegative = FALSE) {
   z <- as.matrix(z)
-  weights <- as.matrix(weights)
-  sel_task <- which.max(colMeans(abs(z))) # for multitask select column with max mean abs value?
-  z <- z[, sel_task, drop=F]
-  weights <- weights[, sel_task, drop=F]
-  if (family$family %in% c("binomial", "poisson")) { dispersion = 1 }
-  
-  # remove contribution of terms that are always included
-  if (!is.null(always.include)) { X_penalized <- X[, -always.include, drop=F]
-  # Calculate the contribution to z of the terms that are always included
-  unpen_contrib = X[, always.include, drop=F] %*% coefs[always.include]
-  # Adjust z by subtracting the unpenalized contribution
-  z <- z - unpen_contrib
-  X <- X_penalized
+  weights <- matrix(as.numeric(weights), nrow(z), ncol(z))
+  dispersion <- abs(L0glm_dispersion(dispersion, family, ncol(z)))
+  always.include <- intersect(seq_len(ncol(X)), always.include)
+  if (length(always.include)) {
+    z <- z - X[, always.include, drop = FALSE] %*%
+      as.matrix(coefs)[always.include, , drop = FALSE]
+    X <- X[, setdiff(seq_len(ncol(X)), always.include), drop = FALSE]
   }
-  
-  Xw <- Diagonal(x=sqrt(weights)) %*% X
-  zw <- Diagonal(x=sqrt(weights)) %*% z
-  
-  maxlambda <- (4/dispersion) * max((1/colSums(Xw^2)) * (crossprod(Xw, zw)^2), na.rm=T) 
-  # the factor of 4 is to put lambda on the lambda scale instead of the 
-  # lambda tilde scale, which is how things are now done in the L0glm function 
-  # (cf Frommlet & Nuel paper)
-  if (family$family=="gaussian") maxlambda = maxlambda*(1/2) # TODO check this
-  
-  return(maxlambda)
+  if (!ncol(X)) return(0)
+  max(vapply(seq_len(ncol(z)), function(j) {
+    good <- is.finite(weights[, j]) & weights[, j] > 0 & is.finite(z[, j])
+    if (!any(good)) return(0)
+    Xw <- Matrix::Diagonal(x = sqrt(weights[good, j])) %*% X[good, , drop = FALSE]
+    info <- as.numeric(Matrix::colSums(Xw^2))
+    rhs <- as.numeric(Matrix::crossprod(Xw, z[good, j] * sqrt(weights[good, j])))
+    if (nonnegative) rhs <- pmax(rhs, 0)
+    score <- rhs^2 / (info * dispersion[j])
+    max(c(0, score[is.finite(score) & info > 0]))
+  }, numeric(1)))
 }

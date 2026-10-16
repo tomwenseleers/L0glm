@@ -16,6 +16,9 @@
 #' if coefficients of either sign are required.
 #'
 #' @inheritParams L0glm.fit
+#' @param dispersion Poisson dispersion is fixed at 1. Accepts \code{NULL}
+#'   or 1; other finite nonzero numeric values are ignored with a warning.
+#'   Negative values cannot request dispersion estimation for this family.
 #' @param intercept Logical; if \code{TRUE}, add an intercept column to \code{X}.
 #'   The intercept is constrained to be nonnegative, just like every other
 #'   coefficient. Defaults to \code{FALSE}.
@@ -77,10 +80,7 @@ L0nnpois <- function(X,
     warning("L0nnpois always uses the Eigen Cholesky LLT solver; ",
             "solver and method were ignored.", call. = FALSE)
   }
-  if (!is.null(dispersion) && any(as.numeric(dispersion) != 1)) {
-    warning("Poisson dispersion is fixed at 1 in L0nnpois; dispersion was ignored.",
-            call. = FALSE)
-  }
+  dispersion <- L0glm_dispersion(dispersion, family, NCOL(y))
   if (!is.null(nthreads) && verbose) {
     message("L0nnpois uses ncores for OpenMP outcome-level threading; nthreads is ignored.")
   }

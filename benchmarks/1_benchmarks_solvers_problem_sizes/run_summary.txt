@@ -4,4 +4,4 @@ Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmark
 OpenMP/native dispatch: FALSE
 BLAS threads: 1
 High-resolution timing repetitions: 1
-Run completed: 2026-10-16 00:08:54 CEST
+Run completed: 2026-10-16 14:47:58 CEST

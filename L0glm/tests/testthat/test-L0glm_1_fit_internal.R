@@ -312,63 +312,6 @@ test_that("L0glm.fit.internal computes lambdas correctly with zero lambda", {
 })
 
 
-test_that("L0glm.fit.internal updates dispersion correctly when dispersion_init is NULL", {
-  # Simulate some data
-  set.seed(1)
-  n <- 100
-  p <- 10
-  X <- matrix(rnorm(n * p), n, p)
-  y <- rnorm(n)
-  
-  # Define a mock family object with identity link
-  family <- gaussian(link = "identity")
-  
-  # Mock residuals and weights
-  mu <- rnorm(n)  # Expected values
-  gprime <- rep(1, n)  # Derivative of the link function
-  residuals <- y - mu
-  residuals_old <- residuals  # Initially, old residuals are the same
-  W.ret <- rep(1, n)  # Equal weights
-  good <- 1:n  # All observations are good
-  nonzero <- rep(TRUE, n)  # All coefficients are non-zero
-  
-  # Simulate the initial dispersion
-  dispersion_init <- NULL
-  
-  # Implement the relevant part of the function to test
-  if (is.null(dispersion_init)) {
-    residuals_old <- residuals  # old unweighted working residuals (on adjusted z scale)
-    
-    if (family$link == "identity") {
-      residuals <- y - mu  # updated unweighted residuals
-    } else {
-      residuals <- (y - mu) / gprime  # updated unweighted residuals
-    }
-    
-    n.ok <- length(good)  # good observations
-    rank <- sum(nonzero)  # estimated rank
-    df.residual <- n.ok  # residual degrees of freedom
-    
-    if (rank < n.ok) {
-      df.residual <- df.residual - rank  # to also allow for high dimensional case
-    }
-    
-    dispersion_old <- sum((W.ret[good] * residuals_old[good]^2)) / df.residual  # previous iteration's estimated dispersion
-    dispersion_new <- sum((W.ret[good] * residuals[good]^2)) / df.residual  # updated estimate of dispersion (variance for Gaussian case)
-    disp_rel_change <- abs(dispersion_new - dispersion_old) / dispersion_old
-    
-    if (disp_rel_change < 0.1) {
-      dispersion <- dispersion_new  # update the dispersion
-    } else {
-      dispersion <- dispersion_old  # if not converged, keep old dispersion
-    }
-  }
-  
-  # Assertions to test the expected behavior
-  expect_true(!is.null(dispersion), info = "Dispersion should not be NULL after update.")
-  expect_true(dispersion >= 0, info = "Dispersion should be non-negative.")
-})
-
 test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solver fallback", {
   # Controlled small data
   n <- 5
