@@ -128,7 +128,6 @@ system.time(L0glmfit <- L0glm.fit(X=X, y=Y,
                       family=poisson(identity), 
                       nonnegative=TRUE, 
                       start = coefs3[-1],
-                      warm.start = 1,
                       lambda='gic'))
 # 0.03s
 coefs5 <- as.vector(L0glmfit$coefficients)
@@ -144,7 +143,6 @@ system.time(L0glmfit <- L0glm.fit(X=X, y=Y,
                                   family=poisson(identity), 
                                   nonnegative=TRUE, 
                                   start = rep(1, ncol(X)), 
-                                  warm.start = 1,
                                   lambda='gic'))
 # 0.05s
 coefs5b <- as.vector(L0glmfit$coefficients)
@@ -163,7 +161,6 @@ system.time(L0glmfit2 <- L0glm.fit(X=X, y=Y, weights=(1/(Y+0.1)),
                                   family=gaussian(identity), 
                                   nonnegative=TRUE, 
                                   start = coefs3[-1], # NULL, # rep(1, ncol(X)), # 
-                                  warm.start = 1,
                                   lambda='gic'))
 # 0.01s
 coefs6 <- as.vector(L0glmfit2$coefficients)

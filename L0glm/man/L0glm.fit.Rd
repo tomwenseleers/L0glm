@@ -27,7 +27,6 @@ L0glm.fit(
   grouped = TRUE,
   group.maxit = 6,
   relaxed = grouped & NCOL(y) > 1,
-  warm.start = 0.9,
   prior.mean = NULL,
   gamma = 2,
   thresh = 1e-05,
@@ -67,8 +66,14 @@ IRLS loop; fixed at 1 for family binomial & Poisson.}
 
 \item{start}{Optional vector of coefficient starting values of length
 \code{p}, or a matrix of starting values with dimension \code{p} x
-\code{m}, with \code{p} corresponding to the number of predictors and
-\code{m} to the number of columns in \code{y}. These will determine the
+\code{m}, with \code{p} the number of predictors and \code{m} the number
+of response columns. Starting values are used directly, subject to the coefficient
+constraints. Exact zeros in a nonempty starting support are excluded within
+each selection fit; grouped fits can share support across channels. An
+all-zero or missing start uses the componentwise initializer. For binomial
+and quasibinomial models with an intercept, automatic slope starts account
+for its cross-products with the predictors.
+These values determine the
 level of penalisation of the different coefficients during the first IRLS
 ridge regression update. The ridge penalty used equals
 \eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
@@ -206,16 +211,6 @@ while adaptive ridge weights remain unsmoothed. This can
 reduce coefficient bias and increase sensitivity, especially for the multivariate case
 with grouped variable selection. Defaults to \code{TRUE} when
 \code{grouped=TRUE} & multichannel data are passed in \code{y}.}
-
-\item{warm.start}{A numeric value in the range of [0, 1] that represents the
-level of confidence in the initial start values when provided. This
-parameter is used in a weighted average to calculate the 'start' values.
-Default is set at 0.9. The formula used is: \deqn{start = \text{warm.start}
-\cdot start + (1 - \text{warm.start}) \cdot
-\text{rep}(\text{sd}(start)^{\frac{1}{\gamma}}, \text{ncol}(X))} If
-`warm.start` is closer to 1, more weight is given to the original 'start'
-value. Using this weighted average avoids the problem that coefficients
-initialized at zero would otherwise always be removed from the model.}
 
 \item{prior.mean}{An optional numeric vector of length \code{p} specifying
 the center towards which coefficients should be shrunk in each IRLS ridge

@@ -469,8 +469,7 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   nonnegative = FALSE,
   prior.mean = priormean[nonzero],
   start = startcoefs[nonzero], 
-  warm.start = 1, 
-  # TODO make sure that with warm.start=1 vars with zero coefs are efficiently removed from the start
+  # TODO make sure that with supplied starting coefficients vars with zero coefs are efficiently removed from the start
   gamma = 2, 
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
@@ -559,8 +558,7 @@ system.time(L0glm_gaus_presetlambda_full <- L0glm.fit(
   # dispersion = dispersion,
   # prior.mean = priormean, # [nonzero],
   start = startcoefs, # [nonzero], 
-  warm.start = 1-50/1000000, # 0.1 would return too small a solution, e.g. with just 17 true pos, values >0.7 give 34 true pos 
-  # TODO make sure that with warm.start=1 vars with zero coefs are efficiently removed from the start
+  # TODO make sure that with supplied starting coefficients vars with zero coefs are efficiently removed from the start
   gamma = 2, 
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # maxit = 1, 
@@ -659,7 +657,6 @@ system.time(L0glm.out_updated <- L0glm.fit(X = X[,sel,drop=F],
                                     nonnegative = FALSE,
                                     prior.mean = priormean[sel], # we can now specify our prior centers
                                     start = startcoefs[sel], # 
-                                    warm.start = 0.7, # note 0.5-0.8 also work well
                                     # dispersion = L0glm_gaus_presetlambda$dispersion, # L0glm.out_2nditeration$dispersion,
                                     solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                     method = 4L, # historically LSCG was twice as fast as Cholesky LLT for this dense case
@@ -1279,7 +1276,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          # no.pen = 1,
                          nonnegative = FALSE,
                          start = L0glm.out_updated$coefficients, #, start, # 
-                         warm.start = warmstart,
                          # dispersion = dispersion,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
@@ -1482,7 +1478,6 @@ L0glm.out_2nditeration <- L0glm.fit(X = X,
                                     gamma = 1.1,
                                     nonnegative = TRUE,
                                     start = L0glm_gaus_presetlambda$coefficients, #, start, # 
-                                    warm.start = 0.1,
                                     dispersion = L0glm_gaus_presetlambda$dispersion,
                                     solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                     method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
@@ -1556,7 +1551,6 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           # prior.mean = start[selected], # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
                                           start = start[selected], # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          warm.start = 0.1,
                                           gamma = 2,
                                           solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
                                           method = 1L,

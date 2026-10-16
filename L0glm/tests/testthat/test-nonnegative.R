@@ -33,7 +33,7 @@ test_that("all ridge backends respect optional nonnegativity including Gaussian 
             intercept = TRUE, nonnegative = nonnegative, normalize = normalize,
             always.include = 2L,
             lambda = 1e-12, dispersion = 1, solver = backends[i], method = methods[i],
-            warm.start = 1, relaxed = TRUE, parallelize = FALSE, maxit = 30
+             relaxed = TRUE, parallelize = FALSE, maxit = 30
           )
           expected <- if (nonnegative) c(0, 3, 0) else c(-2, 3, -1.5)
           expect_equal(as.numeric(fit$coefficients), expected, tolerance = 1e-5,
@@ -56,7 +56,7 @@ test_that("binomial intercepts remain free across solvers and explicit intercept
           Matrix::Matrix(X, sparse = sparse), y, family = binomial,
           weights = rep(1000, length(y)), intercept = !explicit,
           nonnegative = TRUE, normalize = TRUE, lambda = 1e-12,
-          solver = solver, warm.start = 0.9, relaxed = TRUE,
+          solver = solver,  relaxed = TRUE,
           parallelize = FALSE, maxit = 60
         )
         beta <- as.numeric(fit$coefficients)
@@ -77,8 +77,7 @@ test_that("binomial slopes remain constrained through grouped, relaxed and paral
       args <- list(
         X = Matrix::Matrix(matrix(x, ncol = 1), sparse = TRUE), y = y,
         family = binomial(), weights = rep(1000, length(x)),
-        nonnegative = TRUE, lambda = 1e-8, warm.start = 0.9,
-        grouped = grouped, relaxed = relaxed, group.maxit = 2L, maxit = 50L
+        nonnegative = TRUE, lambda = 1e-8, grouped = grouped, relaxed = relaxed, group.maxit = 2L, maxit = 50L
       )
       serial <- do.call(L0glm.fit, c(args, list(parallelize = FALSE)))
       beta <- as.matrix(serial$coefficients)
@@ -101,7 +100,7 @@ test_that("non-binomial intercepts follow nonnegative for other GLM families", {
     for (nonnegative in c(FALSE, TRUE)) {
       fit <- L0glm.fit(
         X, y, family = family, intercept = TRUE, nonnegative = nonnegative,
-        lambda = 1e-10, dispersion = 1, start = c(-1, 0.4), warm.start = 1,
+        lambda = 1e-10, dispersion = 1, start = c(-1, 0.4),
         parallelize = FALSE, maxit = 60
       )
       beta <- as.numeric(fit$coefficients)
@@ -123,8 +122,7 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
             X = Matrix::Matrix(X, sparse = sparse),
             y = if (multichannel) cbind(y, y + 1) else y,
             offset = rep(4, length(y)), intercept = TRUE, normalize = normalize,
-            lambda = 1e-8, start = c(-1, 2), warm.start = 1,
-            grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,
+            lambda = 1e-8, start = c(-1, 2), grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,
             parallelize = multichannel, ncores = 2L
           )
           fast <- do.call(L0nnpois, args)
@@ -142,7 +140,7 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
   unrestricted <- L0glm.fit(
     X, y, family = poisson(identity), offset = rep(4, length(y)),
     intercept = TRUE, nonnegative = FALSE, lambda = 1e-12, start = c(-1, 2),
-    warm.start = 1, parallelize = FALSE, maxit = 50
+     parallelize = FALSE, maxit = 50
   )
   expect_equal(as.numeric(unrestricted$coefficients), c(-2, 3), tolerance = 1e-6)
 })

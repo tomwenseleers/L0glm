@@ -101,8 +101,14 @@
 #'   IRLS loop; fixed at 1 for family binomial & Poisson.
 #' @param start Optional vector of coefficient starting values of length
 #'   \code{p}, or a matrix of starting values with dimension \code{p} x
-#'   \code{m}, with \code{p} corresponding to the number of predictors and
-#'   \code{m} to the number of columns in \code{y}. These will determine the
+#'   \code{m}, with \code{p} the number of predictors and \code{m} the number
+#'   of response columns. Starting values are used directly, subject to the coefficient
+#'   constraints. Exact zeros in a nonempty starting support are excluded within
+#'   each selection fit; grouped fits can share support across channels. An
+#'   all-zero or missing start uses the componentwise initializer. For binomial
+#'   and quasibinomial models with an intercept, automatic slope starts account
+#'   for its cross-products with the predictors.
+#'   These values determine the
 #'   level of penalisation of the different coefficients during the first IRLS
 #'   ridge regression update. The ridge penalty used equals
 #'   \eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
@@ -234,15 +240,6 @@
 #'   reduce coefficient bias and increase sensitivity, especially for the multivariate case
 #'   with grouped variable selection. Defaults to \code{TRUE} when
 #'   \code{grouped=TRUE} & multichannel data are passed in \code{y}.
-#' @param warm.start A numeric value in the range of [0, 1] that represents the
-#'   level of confidence in the initial start values when provided. This
-#'   parameter is used in a weighted average to calculate the 'start' values.
-#'   Default is set at 0.9. The formula used is: \deqn{start = \text{warm.start}
-#'   \cdot start + (1 - \text{warm.start}) \cdot
-#'   \text{rep}(\text{sd}(start)^{\frac{1}{\gamma}}, \text{ncol}(X))} If
-#'   `warm.start` is closer to 1, more weight is given to the original 'start'
-#'   value. Using this weighted average avoids the problem that coefficients
-#'   initialized at zero would otherwise always be removed from the model.
 #' @param prior.mean An optional numeric vector of length \code{p} specifying
 #'   the center towards which coefficients should be shrunk in each IRLS ridge
 #'   regression iteration. This is done via nonzero centered ridge regression.
@@ -437,7 +434,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       grouped       = TRUE,
                       group.maxit   = 6,
                       relaxed       = grouped & NCOL(y)>1,
-                      warm.start    = 0.9,
                       prior.mean    = NULL,
                       gamma         = 2,
                       thresh         = 1e-5,
@@ -471,7 +467,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       normalize = normalize, solver = solver, method = method,
       parallelize = parallelize, ncores = ncores, nthreads = nthreads,
       maxit = maxit, grouped = grouped, group.maxit = group.maxit,
-      relaxed = relaxed, warm.start = warm.start, prior.mean = prior.mean,
+      relaxed = relaxed, prior.mean = prior.mean,
       gamma = gamma, thresh = thresh, tol = tol,
       control.solver = control.solver, verbose = verbose
     ))
@@ -552,9 +548,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     #   scaling <- attr(Xscaled, "scaling")
     #   # start   <- start * scaling
     # }
-    if (length(start) > 1L) {
-      start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
-    }
   } else {
     start <- NULL # leave initialisation to internal function
   }
@@ -716,7 +709,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         always.include        = always.include,
                                         thresh         = thresh,
                                         solver        = solver,
-                                        warm.start    = warm.start,
                                         lower         = lower[vars],
                                         upper         = upper[vars],
                                         method        = method,
@@ -733,7 +725,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                gamma      = gamma,
                                normalize   = normalize,
                                offset      = offset[, col],
-                               warm.start  = warm.start,
                                prior.mean  = prior.mean[vars, col],
                                dispersion  = disp_list[[col]],          # slice
                                start       = start[vars, col],
@@ -793,7 +784,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           always.include        = always.include,
                                           thresh         = thresh,
                                           solver        = solver,
-                                          warm.start    = warm.start,
                                           lower         = lower[vars],
                                           upper         = upper[vars],
                                           method        = method,
@@ -811,7 +801,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  gamma      = gamma,
                                  normalize   = normalize,
                                  offset      = offset[, col], 
-                                 warm.start  = warm.start,
                                  prior.mean  = prior.mean[vars, col], 
                                  dispersion  = disp_list[[col]],
                                  start       = start[vars, col],
@@ -878,7 +867,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               lower       = lower,
                               upper       = upper,
                               lambda      = lambda,
-                              warm.start  = warm.start,
                               prior.mean  = prior.mean,
                               gamma       = gamma,
                               thresh       = thresh,
@@ -913,7 +901,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       upper       = upper[vars],
                                       lambda      = 1e-30,
                                       hard_threshold = FALSE,
-                                      warm.start  = warm.start,
                                       prior.mean  = prior.mean[vars],
                                       gamma       = gamma,
                                       thresh       = thresh,
@@ -1128,7 +1115,6 @@ L0glmfun_chunk <- function(job, ...) {
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      normalize,
                      X, y, family,
-                     warm.start = 0.9,
                      prior.mean = NULL, weights = NULL, dispersion = NULL,
                      start = NULL, lower, upper,
                      verbose = FALSE, maxit, tol, offset, always.include = 0,
@@ -1147,7 +1133,6 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       gamma        = gamma,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
       start        = as.vector(start[, col]),
-      warm.start   = warm.start,
       maxit        = maxit,
       tol          = tol,
       always.include       = always.include,

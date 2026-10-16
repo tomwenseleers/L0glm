@@ -30,7 +30,7 @@ test_that("both fitters resolve every named preset before fitting", {
   y <- rpois(40, 2 + 4 * X[, 1])
   args <- list(X = X, y = y, family = poisson(identity), intercept = TRUE,
                parallelize = FALSE, grouped = FALSE, relaxed = FALSE,
-               warm.start = 1, maxit = 5)
+               maxit = 5)
 
   for (fitter in list(L0glm.fit, L0nnpois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
@@ -61,7 +61,7 @@ test_that("MEBIC works for sparse grouped and relaxed fits", {
   args <- list(X = X, y = y, family = poisson(identity),
                offset = rep(1, 40), intercept = FALSE,
                grouped = TRUE, parallelize = FALSE, group.maxit = 2,
-               warm.start = 1, maxit = 8)
+               maxit = 8)
   for (fitter in list(L0glm.fit, L0nnpois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL

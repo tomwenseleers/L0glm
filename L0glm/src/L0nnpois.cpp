@@ -33,18 +33,6 @@ inline bool finite_pos(double x) {
   return std::isfinite(x) && x > 0.0;
 }
 
-inline double sample_sd(const VectorXd& x) {
-  const int n = static_cast<int>(x.size());
-  if (n <= 1) return 0.0;
-  const double mean = x.mean();
-  double ss = 0.0;
-  for (int i = 0; i < n; ++i) {
-    const double d = x[i] - mean;
-    ss += d * d;
-  }
-  return std::sqrt(ss / static_cast<double>(n - 1));
-}
-
 inline VectorXd constrain_vec(const VectorXd& x) {
   return x.cwiseMax(0.0);
 }
@@ -157,8 +145,7 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
                                  const VectorXd& offset,
                                  const VectorXd& prior_mean,
                                  const std::vector<int>& vars,
-                                 double lambda, double warm_start,
-                                 double gamma) {
+                                 double lambda) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   VectorXd numer = VectorXd::Zero(q);
@@ -183,10 +170,6 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
       numer[j] / denom[j] : 0.0;
   }
   beta = constrain_vec(beta);
-  if (q > 1) {
-    const double s = std::pow(sample_sd(beta), 1.0 / gamma);
-    beta = warm_start * beta.array() + (1.0 - warm_start) * s;
-  }
   return beta;
 }
 
@@ -196,8 +179,7 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                   const VectorXd& offset,
                                   const VectorXd& prior_mean,
                                   const std::vector<int>& vars,
-                                  double lambda, double warm_start,
-                                  double gamma) {
+                                  double lambda) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   VectorXd w(n);
@@ -230,10 +212,6 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
       numer[j] / denom[j] : 0.0;
   }
   beta = constrain_vec(beta);
-  if (q > 1) {
-    const double s = std::pow(sample_sd(beta), 1.0 / gamma);
-    beta = warm_start * beta.array() + (1.0 - warm_start) * s;
-  }
   return beta;
 }
 
@@ -358,7 +336,6 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            double lambda,
                            bool normalize,
                            int maxit,
-                           double warm_start,
                            double gamma,
                            double thresh,
                            double tol,
@@ -378,7 +355,6 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            double lambda,
                                            bool normalize,
                                            int maxit,
-                                           double warm_start,
                                            double gamma,
                                            double thresh,
                                            double tol,
@@ -414,7 +390,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     have_start = !any_bad && any_nonzero;
   }
   if (!have_start) {
-    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lambda, warm_start, gamma);
+    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lambda);
   }
   beta = constrain_vec(beta);
 
@@ -494,7 +470,6 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     double lambda,
     bool normalize,
     int maxit,
-    double warm_start,
     double gamma,
     double thresh,
     double tol,
@@ -529,7 +504,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     have_start = !any_bad && any_nonzero;
   }
   if (!have_start) {
-    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lambda, warm_start, gamma);
+    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lambda);
   }
   beta = constrain_vec(beta);
 
@@ -609,7 +584,6 @@ Rcpp::List fit_all_impl(const Design& X,
                         bool relaxed,
                         int group_maxit,
                         int maxit,
-                        double warm_start,
                         double gamma,
                         double thresh,
                         double tol,
@@ -667,7 +641,7 @@ Rcpp::List fit_all_impl(const Design& X,
     for (int col = 0; col < m; ++col) {
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
-        always_include, lambda_fit, normalize, maxit, warm_start,
+        always_include, lambda_fit, normalize, maxit,
         gamma, thresh, tol, natural_ordering, hard_threshold);
     }
 
@@ -731,7 +705,6 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               bool relaxed,
                               int group_maxit,
                               int maxit,
-                              double warm_start,
                               double gamma,
                               double thresh,
                               double tol,
@@ -739,7 +712,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               bool natural_ordering) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
+    lambda, normalize, grouped, relaxed, group_maxit, maxit, gamma,
     thresh, tol, nthreads, natural_ordering);
 }
 
@@ -757,7 +730,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                bool relaxed,
                                int group_maxit,
                                int maxit,
-                               double warm_start,
                                double gamma,
                                double thresh,
                                double tol,
@@ -765,6 +737,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                bool natural_ordering) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, grouped, relaxed, group_maxit, maxit, warm_start, gamma,
+    lambda, normalize, grouped, relaxed, group_maxit, maxit, gamma,
     thresh, tol, nthreads, natural_ordering);
 }

@@ -215,7 +215,6 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    family = family, 
                    intercept = FALSE,
                    start = rep(1, ncol(X_full)), # WORKED WHILE start=NULL DID NOT
-                   warm.start = 1,
                    nonnegative = TRUE, # nonnegative coefficients, including any intercept
                    lambda = IC, 
                    grouped = grouped,

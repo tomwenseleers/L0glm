@@ -976,6 +976,28 @@ init_coefs = function( X,
   
   # orthogonal initialisation (assuming variables are approx orthogonal)
   beta_init = as.vector(crossprod(Xwaug, zwaug) / colSums(Xwaug ^ 2))
+  if (family$family %in% c("binomial", "quasibinomial")) {
+    intercept_columns <- which(Matrix::colSums(X == 1) == nrow(X))
+    if (length(intercept_columns)) {
+      # Working weights generally make even centered predictors nonorthogonal
+      # to the intercept. Initialize each slope conditional on that intercept
+      # using the 2 x 2 ridge system's Schur complement. No Gram matrix or
+      # factorization is needed, and the sparse design stays sparse.
+      intercept_column <- intercept_columns[1L]
+      slopes <- setdiff(seq_len(ncol(X)), intercept_columns)
+      information <- as.numeric(Matrix::colSums(Xwaug ^ 2))
+      rhs <- as.numeric(Matrix::crossprod(Xwaug, zwaug))
+      cross_intercept <- as.numeric(Matrix::crossprod(X[good, , drop = FALSE], W))
+      intercept_information <- information[intercept_column]
+      if (intercept_information > 0 && length(slopes)) {
+        numerator <- rhs[slopes] - cross_intercept[slopes] *
+          rhs[intercept_column] / intercept_information
+        denominator <- information[slopes] - cross_intercept[slopes]^2 /
+          intercept_information
+        beta_init[slopes] <- ifelse(denominator > 0, numerator / denominator, 0)
+      }
+    }
+  }
   # NOTE: colSums(Xwaug^2) = diag(crossprod(Xwaug)))
   # PS original variables in columns of X can be very far from orthogonal,
   # but the augmentation with a diagonal matrix with sqrt(lambdas) along the diagonal

@@ -419,7 +419,6 @@ system.time(L0glmfit_fused_ad <- L0glm.fit(# X=X, y=y,
   lambda = lambda, # # for q other than 0: *L0overLqnorm*4*(1/2^(2-q_Lqpen)), # when using q = 1 in adaptive penalties this would have to be lambda_preset*L0overL1norm to be roughly on right scale, with L0overLqnorm calculated from L0glm fit with q=0? 
   nonnegative = TRUE,
   # prior.mean = start*0.1,
-  warm.start = 0.1, 
   start = start, # use starting values of initial L0glm fit
   solver = "eigen", # note: solver osqp & glmnet recommended here - eigen often fails
   maxit = 20, # 

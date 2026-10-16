@@ -181,7 +181,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              nonnegative = TRUE,
                              start = start, # start, # NULL, # L0glm.out_preset_coefs, # start, # 
                              # prior.mean = priormean*0.01,
-                             warm.start = warmstart,
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 1L,
                              # maxit = 200,
@@ -929,7 +928,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              nonnegative = TRUE,
                              dispersion = L0glm.out_preset$dispersion,
                              start = start, # L0glm.out_preset_coefs, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                             # warm.start = warmstart, 
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 1L,
                              relaxed = FALSE,

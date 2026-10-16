@@ -175,7 +175,6 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
                                   lambda = lambda_preset,  
                                   nonnegative = nonnegative,
                                   start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
-                                  warm.start = 1,
                                   # prior.mean = priormean[S],
                                   # dispersion = disp,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
@@ -206,7 +205,6 @@ timing_SISL0glm
 #                                         lambda = lambda_preset,  
 #                                         nonnegative = nonnegative,
 #                                         start = beta_start[S],  
-#                                         warm.start = 1,
 #                                         # prior.mean = beta_start, # [S],
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                         method = 1L, # Cholesky
@@ -331,7 +329,6 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                   lambda = IC, # lambda_preset,  
                                   nonnegative = nonnegative,
                                   start = NULL, # rep(1, length(S)), #  sqrt(Tj_signed[S]), # rep(1, length(S)), #  # # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
-                                  warm.start = 1,
                                   maxit = 100,
                                   # prior.mean = priormean[S],
                                   # dispersion = disp,
@@ -363,7 +360,6 @@ timing_SISL0glm
 #                                         lambda = lambda_preset,  
 #                                         nonnegative = nonnegative,
 #                                         start = beta_start[S],  
-#                                         warm.start = 1,
 #                                         # prior.mean = beta_start, # [S],
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                         method = 1L, # Cholesky

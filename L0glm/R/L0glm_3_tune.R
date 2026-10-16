@@ -14,6 +14,10 @@
 #' accuracy, precision, recall and the IC of interest, all in function of the level of
 #' regularization (L0 penalty lambda). Some plots are only produced if the user 
 #' passes the true coefficients \code{coefs.true} (e.g. from a simulation).
+#' Each lambda fit starts from the warm-up coefficients without mixing.
+#' Features excluded by that warm-up cannot enter the tuning fits. For a path
+#' that initializes each model independently, call \code{L0glm.fit} separately
+#' for each lambda.
 #' 
 #' @param X 
 #' A matrix of predictor variables.
@@ -50,8 +54,6 @@
 #' \code{prop_range = 0.1} preserves only 10% of the original 
 #' log10 span above and below the preset lambda value that 
 #' a priori would be expected to optimise the chosen IC.
-#' @param warm.start A numeric value indicating the ratio of warm start 
-#' coefficients to use. Default 0.01.
 #' @param coefs.true A vector or matrix of true coefficient values, for comparison 
 #' with the estimated coefficients.
 #' @param printbest A logical value indicating whether to print the best lambda 
@@ -83,7 +85,6 @@ L0glm.tune <- function(X, y,
                        IC           = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
                        nlambda      = 10,
                        prop_range   = 1,
-                       warm.start   = 0.01,
                        coefs.true   = NULL,
                        printbest    = TRUE,
                        plot         = TRUE,
@@ -95,7 +96,7 @@ L0glm.tune <- function(X, y,
   y <- as.matrix(y)
   n <- nrow(X); p <- ncol(X); m <- ncol(y)
   
-  ## ---- warm-up fit (used to build lambda-grid and optional warm start) ----------
+  ## ---- warm-up fit (used to build lambda-grid and starting coefficients) -----
   lambda_preset  <- preset.lambda(IC = IC, p = p, n = n)
   
   warmup <- L0glm.fit(X = X, y = y,
@@ -128,14 +129,8 @@ L0glm.tune <- function(X, y,
   log_down <- g_IC - log_step * seq_len(n_down)
   lambda_grid <- sort(10^c(log_up, log_down))
   
-  ## ---- optional warm-start coefficients for every lambda ------------------------
-  if (warm.start > 0) {
-    beta_const <- matrix(start_coefs(X, family = family), nrow = p, ncol = m)
-    beta_start <- beta0 * warm.start + beta_const * (1 - warm.start)
-    beta_start[beta0 == 0] <- 0                      # keep strict zeros
-  } else {
-    beta_start <- NULL
-  }
+  ## ---- reuse the warm-up coefficients without mixing -----------------------
+  beta_start <- beta0
   
   ## containers ---------------------------------------------------------------
   coefmat  <- Matrix::Matrix(0, nrow = length(lambda_grid), ncol = p,

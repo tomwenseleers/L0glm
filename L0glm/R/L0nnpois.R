@@ -61,7 +61,6 @@ L0nnpois <- function(X,
                      grouped       = TRUE,
                      group.maxit   = 6,
                      relaxed       = grouped & NCOL(y) > 1,
-                     warm.start    = 0.9,
                      prior.mean    = NULL,
                      gamma         = 2,
                      thresh         = 1e-5,
@@ -179,10 +178,6 @@ L0nnpois <- function(X,
       stop("start must have dimension p x m (or length p for univariate y).",
            call. = FALSE)
     }
-    if (length(start) > 1L) {
-      start <- warm.start * start +
-        (1 - warm.start) * rep(stats::sd(start)^(1 / gamma), p)
-    }
   }
 
   if (is.null(prior.mean)) {
@@ -228,13 +223,13 @@ L0nnpois <- function(X,
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
+      as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalize, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), warm.start, gamma, thresh, tol, ncores,
+      as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   }
 

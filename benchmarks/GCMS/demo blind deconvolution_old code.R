@@ -49,7 +49,6 @@ L0_sparse_deco <- function(y,                            # response to be deconv
                      family = family, 
                      intercept = FALSE,
                      # start = XXX,
-                     warm.start = 1,
                      nonnegative = TRUE, # imposing nonnegativity constraints on coefficients
                      lambda = IC, 
                      grouped = grouped,
@@ -106,7 +105,6 @@ L0_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) 
                        # no.pen = seq(1, ncol(X), by=2), # not penalising every other scan line could be similar to penalising the difference between consecutive coefficients, i.e. to using a fused ridge penalty, but with pre-set lambda that will approx optimise GIC
                        nonnegative = TRUE,
                        # start = XXX,
-                       warm.start = 1,
                        # prior.mean = kernel_est*y_deconv_scalings[col], # shrink towards prior kernel estimate (more stable)
                        grouped = FALSE, 
                        lambda = IC,

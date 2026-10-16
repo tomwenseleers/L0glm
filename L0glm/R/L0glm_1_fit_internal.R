@@ -33,7 +33,6 @@ L0glm.fit.internal = function(X,
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
                               maxit = 25,
-                              warm.start = 1,
                               prior.mean = NULL,
                               gamma = 2,
                               thresh = 1e-5,
@@ -105,7 +104,6 @@ L0glm.fit.internal = function(X,
     start <- init_coefs(X, y, mu, weights, offset,
                         prior.mean, family, lambda) # component-wise initialisation
     start <- clamp(start, lower, upper)
-    if (length(start)>1) start <- warm.start * start + (1 - warm.start) * rep(sd(start)^(1/gamma), p)
   }
   start <- clamp(start, lower, upper)
   beta <- beta_old <- start

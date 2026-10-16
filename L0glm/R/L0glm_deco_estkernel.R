@@ -106,7 +106,6 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                                                          nonnegative = TRUE,
                                                          start = NULL,
                                                          normalize = FALSE,
-                                                         warm.start = 1,
                                                          prior.mean = prior.mean, 
                                                          grouped = FALSE, 
                                                          lambda = IC,

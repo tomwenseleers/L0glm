@@ -25,9 +25,7 @@ test_that("multichannel parallel fit matches serial fit", {
     solver = "eigen",
     method = 1L,
     maxit = 10L,
-    group.maxit = 2L,
-    warm.start = 0.5
-  )
+    group.maxit = 2L)
 
   parallel <- L0glm.fit(
     X, y,
@@ -42,9 +40,7 @@ test_that("multichannel parallel fit matches serial fit", {
     solver = "eigen",
     method = 1L,
     maxit = 10L,
-    group.maxit = 2L,
-    warm.start = 0.5
-  )
+    group.maxit = 2L)
 
   expect_identical(parallel$coefficients, serial$coefficients)
   expect_identical(parallel$lambdas, serial$lambdas)
@@ -68,9 +64,7 @@ test_that("grouped relaxed fit keeps rows with cancelling channel coefficients",
     intercept = FALSE,
     normalize = FALSE,
     maxit = 10L,
-    group.maxit = 2L,
-    warm.start = 1
-  )
+    group.maxit = 2L)
 
   coefs <- as.matrix(fit$coefficients)
   lambdas <- as.matrix(fit$lambdas)
@@ -101,9 +95,7 @@ test_that("serial nthreads setting is restored after fit", {
     parallelize = FALSE,
     nthreads = 1L,
     solver = "eigen",
-    method = 1L,
-    warm.start = 1
-  )
+    method = 1L)
 
   expect_s4_class(fit$coefficients, "dgCMatrix")
   expect_identical(RhpcBLASctl::blas_get_num_procs(), before_blas)

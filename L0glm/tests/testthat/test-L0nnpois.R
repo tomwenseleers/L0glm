@@ -23,7 +23,6 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     parallelize = FALSE,
     solver = "eigen",
     method = 1L,
-    warm.start = 1,
     maxit = 15L
   )
   fit_nn <- L0nnpois(
@@ -32,7 +31,6 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     grouped = FALSE,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 15L
   )
 
@@ -62,7 +60,6 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     parallelize = FALSE,
     solver = "eigen",
     method = 1L,
-    warm.start = 1,
     maxit = 15L
   )
   fit_nn_s <- L0nnpois(
@@ -71,7 +68,6 @@ test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits",
     grouped = FALSE,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 15L
   )
 
@@ -101,7 +97,6 @@ test_that("L0nnpois ignores grouped outer passes for single-channel fits", {
     group.maxit = 4L,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 10L
   )
   ungrouped <- L0nnpois(
@@ -111,7 +106,6 @@ test_that("L0nnpois ignores grouped outer passes for single-channel fits", {
     group.maxit = 4L,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 10L
   )
 
@@ -139,7 +133,6 @@ test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
     grouped = TRUE,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 10L,
     group.maxit = 2L
   )
@@ -149,7 +142,6 @@ test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
     grouped = TRUE,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 10L,
     group.maxit = 2L,
     control.solver = list(NaturalOrdering = TRUE)
@@ -160,7 +152,6 @@ test_that("L0nnpois accepts NaturalOrdering control for sparse Cholesky", {
     grouped = TRUE,
     relaxed = FALSE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 10L,
     group.maxit = 2L,
     control.solver = list(NaturalOrdering = FALSE)
@@ -199,7 +190,6 @@ test_that("L0nnpois OpenMP multichannel fits match serial fits", {
     grouped = TRUE,
     relaxed = TRUE,
     parallelize = FALSE,
-    warm.start = 1,
     maxit = 12L,
     group.maxit = 3L
   )
@@ -210,7 +200,6 @@ test_that("L0nnpois OpenMP multichannel fits match serial fits", {
     relaxed = TRUE,
     parallelize = TRUE,
     ncores = 2L,
-    warm.start = 1,
     maxit = 12L,
     group.maxit = 3L
   )

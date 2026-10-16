@@ -14,7 +14,6 @@ L0glm.tune(
   IC = c("gic", "mebic", "aic", "bic", "ebic", "mbic"),
   nlambda = 10,
   prop_range = 1,
-  warm.start = 0.01,
   coefs.true = NULL,
   printbest = TRUE,
   plot = TRUE,
@@ -60,9 +59,6 @@ that are denser around \code{lambda_preset}. For example,
 log10 span above and below the preset lambda value that 
 a priori would be expected to optimise the chosen IC.}
 
-\item{warm.start}{A numeric value indicating the ratio of warm start 
-coefficients to use. Default 0.01.}
-
 \item{coefs.true}{A vector or matrix of true coefficient values, for comparison 
 with the estimated coefficients.}
 
@@ -95,4 +91,8 @@ estimated support size, deviance, log likelihood, mean absolute deviation,
 accuracy, precision, recall and the IC of interest, all in function of the level of
 regularization (L0 penalty lambda). Some plots are only produced if the user 
 passes the true coefficients \code{coefs.true} (e.g. from a simulation).
+Each lambda fit starts from the warm-up coefficients without mixing.
+Features excluded by that warm-up cannot enter the tuning fits. For a path
+that initializes each model independently, call \code{L0glm.fit} separately
+for each lambda.
 }

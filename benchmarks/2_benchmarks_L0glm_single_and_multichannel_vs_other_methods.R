@@ -414,7 +414,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     method = 1L)) 
 # openmp 0.11s 
 
-x_vals <- as.vector(rowMeans(L0nnpois.chol$coefficients))        # estimated
+x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))          # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
@@ -547,7 +547,7 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                           grouped = TRUE,
                           solver = "eigen", method = 1L,
                           ncores = 4)) # openmp 3.53s
-tune_zoomed$lambda_best # 2.603467 (best lambda tune)
+tune_zoomed$lambda_best # 0.9755287 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
 L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
@@ -561,7 +561,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
-                                    method = 1L))  # openmp 0.28s
+                                    method = 1L))  # openmp 0.39s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true

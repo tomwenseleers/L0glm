@@ -9,7 +9,7 @@ test_that("eligible L0glm.fit calls forward all fitting controls to L0nnpois", {
     always.include = 2L, normalize = TRUE, solver = "eigen", method = 1L,
     parallelize = TRUE, ncores = 2L, nthreads = 1L,
     maxit = 12L, grouped = FALSE, group.maxit = 3L, relaxed = TRUE,
-    warm.start = 0.7, prior.mean = matrix(0.2, 3, 2), gamma = 1.8,
+    prior.mean = matrix(0.2, 3, 2), gamma = 1.8,
     thresh = 1e-6, tol = 1e-8,
     control.solver = list(NaturalOrdering = TRUE), verbose = TRUE
   )
@@ -32,7 +32,7 @@ test_that("ineligible or disabled OpenMP fits retain the general R path", {
   local_mocked_bindings(L0nnpois = function(...) stop("Unexpected dispatch"))
   base <- list(X = diag(4), y = c(4, 3, 2, 1), family = poisson(identity),
                nonnegative = TRUE, parallelize = FALSE, grouped = FALSE,
-               relaxed = FALSE, lambda = 0.01, warm.start = 1)
+               relaxed = FALSE, lambda = 0.01)
   variants <- list(
     list(openmp = FALSE), list(nonnegative = FALSE),
     list(family = gaussian(identity)), list(family = poisson(log)),
@@ -65,8 +65,7 @@ test_that("dispatched grouped fits agree with direct and R fits", {
                    weights = seq(0.7, 1.2, length.out = 60),
                    offset = Matrix::Matrix(0.2, 60, 3),
                    lambda = "gic", grouped = grouped, relaxed = TRUE,
-                   parallelize = FALSE, group.maxit = 2L, maxit = 15L,
-                   warm.start = 1)
+                   parallelize = FALSE, group.maxit = 2L, maxit = 15L)
       direct <- do.call(L0nnpois, args)
       dispatched <- do.call(L0glm.fit, c(args, list(
         family = poisson(identity), nonnegative = TRUE)))
