@@ -68,9 +68,12 @@ intercept, and \code{m} the number of response columns. A scalar is repeated
 for every coefficient in every response channel; for example,
 \code{start = 1} initializes them all to 1, including the intercept.
 Starting values are used directly, subject to the coefficient
-constraints. Exact zeros in a nonempty starting support are excluded within
-each selection fit; grouped fits can share support across channels. An
-all-zero or missing start uses the componentwise initializer. For binomial
+constraints. Exact zeros exclude those coefficients throughout selection,
+grouped passes and relaxed refits, separately in each channel. Rows zero
+across every channel are screened before fitting. Intercepts and
+\code{always.include} terms remain eligible even with zero starts.
+Only \code{NULL} requests automatic initialization; an all-zero start
+fits just the mandatory terms, if any. For binomial
 and quasibinomial models with an intercept, automatic slope starts account
 for its cross-products with the predictors.
 These values determine the
@@ -104,9 +107,9 @@ The intercept is constrained to be nonnegative, just like every other
 coefficient. Defaults to \code{FALSE}.}
 
 \item{always.include}{A vector of coefficient indices that should always be
-estimated & included in the model. This is done by updating \code{prior.mean}
-in each IRLS iteration for these coefficients, instead of using sceptical
-zero-centered prior updates for the other coefficients. Coefficients with 
+estimated & included in the model. These terms are unpenalized and remain
+eligible when their current estimate or explicit starting value is zero.
+Coefficients with
 a name that includes \code{"Intercept"} in their name are always included. 
 Specify 0 if all terms should be allowed to be
 shrunk to zero. If `intercept = TRUE`, the first column (intercept) will

@@ -112,9 +112,12 @@
 #'   for every coefficient in every response channel; for example,
 #'   \code{start = 1} initializes them all to 1, including the intercept.
 #'   Starting values are used directly, subject to the coefficient
-#'   constraints. Exact zeros in a nonempty starting support are excluded within
-#'   each selection fit; grouped fits can share support across channels. An
-#'   all-zero or missing start uses the componentwise initializer. For binomial
+#'   constraints. Exact zeros exclude those coefficients throughout selection,
+#'   grouped passes and relaxed refits, separately in each channel. Rows zero
+#'   across every channel are screened before fitting. Intercepts and
+#'   \code{always.include} terms remain eligible even with zero starts.
+#'   Only \code{NULL} requests automatic initialization; an all-zero start
+#'   fits just the mandatory terms, if any. For binomial
 #'   and quasibinomial models with an intercept, automatic slope starts account
 #'   for its cross-products with the predictors.
 #'   These values determine the
@@ -149,9 +152,9 @@
 #'   `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
 #'   except for binomial and quasibinomial models, where it may have either sign.
 #' @param always.include A vector of coefficient indices that should always be
-#'   estimated & included in the model. This is done by updating \code{prior.mean}
-#'   in each IRLS iteration for these coefficients, instead of using sceptical
-#'   zero-centered prior updates for the other coefficients. Coefficients with 
+#'   estimated & included in the model. These terms are unpenalized and remain
+#'   eligible when their current estimate or explicit starting value is zero.
+#'   Coefficients with
 #'   a name that includes \code{"Intercept"} in their name are always included. 
 #'   Specify 0 if all terms should be allowed to be
 #'   shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
@@ -568,6 +571,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
   upper <- rep(.Machine$double.xmax, p)
+  always.include <- intersect(as.integer(always.include), seq_len(p))
   if (nonnegative && family$family %in% c("binomial", "quasibinomial")) {
     # Recognize intercepts supplied explicitly in X as well as the added column.
     lower[which(Matrix::colSums(X == 1) == n)] <- -.Machine$double.xmax
@@ -612,6 +616,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     #   # start   <- start * scaling
     # }
   }
+  if (!is.null(start) && any(!is.finite(start)))
+    stop("start must contain finite coefficients.", call. = FALSE)
+  allowed <- if (is.null(start)) NULL else matrix(as.numeric(start) != 0, p, m)
+  if (!is.null(allowed)) allowed[always.include, ] <- TRUE
   
   # 4  Prior.mean ------------------------------------------------------------
   if (is.null(prior.mean)) {
@@ -672,6 +680,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     }
     
     fit_multichannel <- function(do_parallel) {
+      coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
+      weights.mat <- z.mat <- Matrix(0, n, m, sparse = TRUE)
       if (do_parallel) {
         nworkers <- min(ncores, m)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
@@ -727,7 +737,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         }
       }
       group_support_start <- function(coefs) {
-        L0glm_group_start(coefs, nonnegative)
+        support <- L0glm_group_start(coefs, nonnegative)
+        support$vars <- sort(unique(c(support$vars, always.include.start)))
+        if (!is.null(allowed)) support$start[!allowed] <- 0
+        support
       }
       
       for (iter in seq_len(group.maxit)) {
@@ -737,10 +750,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           always.include <- match(always.include.start[always.include.start %in% vars], vars)
           start  <- support$start
         } else {
-          vars <- seq_len(p)
+          vars <- if (is.null(allowed)) seq_len(p) else which(rowSums(allowed) > 0)
+          always.include <- match(always.include.start, vars)
         }
         
-        if (!length(vars)) {
+        if (!length(vars) && iter > 1L) {
           if (verbose) warning("All coefficients zero - use a smaller lambda")
           break
         }
@@ -939,7 +953,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     
     # --- relaxed - refit selected variables nearly unpenalised -------------
     if (relaxed) { 
-      vars <- which(coefficients != 0)
+      vars <- sort(unique(c(which(coefficients != 0), always.include.start)))
       if (length(vars)) {
         always.include <- match(always.include.start[always.include.start %in% vars], vars)
         fit     <- L0glm.fit.internal(X          = X[, vars, drop = FALSE],
@@ -982,19 +996,17 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   if (any(is.infinite(weights.ret))) {
     weights.ret[is.infinite(weights.ret)] <- 1e11
   }
+  if (!is.null(allowed)) {
+    if (m == 1L) lambdas[!as.vector(allowed)] <- Inf else lambdas[!allowed] <- Inf
+  }
   if (any(is.infinite(lambdas))) {
     lambdas[is.infinite(lambdas)] <- 1e11
   }
   
   ## ensure coefficients are returned as sparse coeff-matrix also for univariate case
-  if (m == 1L) {
-    coefficients <- Matrix::Matrix(
-      coefficients,
-      ncol      = 1L,
-      sparse    = TRUE,
-      dimnames  = list(colnames(X), NULL)   # keep predictor names
-    )
-  }
+  coefficients <- Matrix::Matrix(matrix(as.numeric(coefficients), p, m), sparse = TRUE,
+                                  dimnames = list(colnames(X), if (m > 1L) colnames(y) else NULL))
+  coefficients <- as(as(coefficients, "generalMatrix"), "CsparseMatrix")
   
   list(coefficients = coefficients,
                  weights      = weights.ret,

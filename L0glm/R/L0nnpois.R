@@ -179,6 +179,8 @@ L0nnpois <- function(X,
       stop("start must be a scalar, have dimension p x m, or have length p for univariate y.",
            call. = FALSE)
     }
+    if (any(!is.finite(start)))
+      stop("start must contain finite coefficients.", call. = FALSE)
   }
 
   if (is.null(prior.mean)) {
@@ -205,6 +207,8 @@ L0nnpois <- function(X,
   always.include <- always.include[!is.na(always.include) &
                                      always.include >= 1L &
                                      always.include <= p]
+  allowed <- if (is.null(start)) NULL else start != 0
+  if (!is.null(allowed)) allowed[always.include, ] <- TRUE
 
   ncores <- suppressWarnings(as.integer(ncores[1L]))
   if (is.na(ncores) || ncores < 1L) ncores <- 1L
@@ -239,6 +243,7 @@ L0nnpois <- function(X,
   lambdas <- fit$lambdas
   z <- fit$z
   dispersion <- fit$dispersion
+  if (!is.null(allowed)) lambdas[!allowed] <- Inf
 
   weights.ret[is.infinite(weights.ret)] <- 1e11
   lambdas[is.infinite(lambdas)] <- 1e11
@@ -259,6 +264,7 @@ L0nnpois <- function(X,
     z <- Matrix::Matrix(z, sparse = TRUE)
     dispersion <- as.numeric(dispersion)
   }
+  coefficients <- methods::as(methods::as(coefficients, "generalMatrix"), "CsparseMatrix")
 
   list(coefficients = coefficients,
        weights      = weights.ret,

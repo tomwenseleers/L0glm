@@ -37,18 +37,21 @@ inline VectorXd constrain_vec(const VectorXd& x) {
   return x.cwiseMax(0.0);
 }
 
-inline std::vector<int> active_positions(const VectorXd& beta) {
+inline std::vector<int> active_positions(const VectorXd& beta,
+                                          const std::vector<int>& vars,
+                                          const std::vector<char>& always_include) {
   std::vector<int> active;
   active.reserve(beta.size());
   for (int i = 0; i < beta.size(); ++i) {
-    if (beta[i] != 0.0) active.push_back(i);
+    if (beta[i] != 0.0 || always_include[vars[i]]) active.push_back(i);
   }
   return active;
 }
 
 inline void group_support_start(const MatrixXd& coef,
                                 std::vector<int>& vars,
-                                MatrixXd& start_current) {
+                                MatrixXd& start_current,
+                                const std::vector<char>& always_include) {
   const int p = coef.rows();
   const int m = coef.cols();
   vars.clear();
@@ -56,7 +59,7 @@ inline void group_support_start(const MatrixXd& coef,
   starts.reserve(p);
 
   for (int j = 0; j < p; ++j) {
-    bool active = false;
+    bool active = always_include[j];
     double signed_sum = 0.0;
     double abs_sum = 0.0;
     for (int col = 0; col < m; ++col) {
@@ -456,13 +459,13 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   bool have_start = start_mat != NULL;
   if (have_start) {
     bool any_bad = false;
-    bool any_nonzero = false;
+
     for (int j = 0; j < q; ++j) {
       beta[j] = (*start_mat)(j, channel);
       any_bad = any_bad || !std::isfinite(beta[j]);
-      any_nonzero = any_nonzero || beta[j] != 0.0;
+
     }
-    have_start = !any_bad && any_nonzero;
+    have_start = !any_bad;
   }
   if (!have_start) {
     beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lambda);
@@ -483,11 +486,11 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     z = y - offset;
 
     for (int j = 0; j < q; ++j) {
-      lambdas[j] = (beta[j] == 0.0) ? R_PosInf :
+      lambdas[j] = always_include[vars[j]] ? 0.0 : (beta[j] == 0.0) ? R_PosInf :
         (lambda / 4.0) / std::pow(std::abs(beta[j]), gamma);
     }
 
-    std::vector<int> active = active_positions(beta);
+    std::vector<int> active = active_positions(beta, vars, always_include);
     if (active.empty()) break;
     bool bad_beta = false;
     for (int j = 0; j < q; ++j) bad_beta = bad_beta || !std::isfinite(beta[j]);
@@ -508,10 +511,10 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
 
     const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
     for (int j = 0; j < q; ++j) {
-      if (hard_threshold && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
+      if (hard_threshold && !always_include[vars[j]] && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
         beta[j] = 0.0;
       }
-      if (always_include[vars[j]]) prior_mean[j] = beta[j];
+      
     }
 
     VectorXd eta = predict_dense(X, offset, vars, beta);
@@ -570,13 +573,13 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   bool have_start = start_mat != NULL;
   if (have_start) {
     bool any_bad = false;
-    bool any_nonzero = false;
+
     for (int j = 0; j < q; ++j) {
       beta[j] = (*start_mat)(j, channel);
       any_bad = any_bad || !std::isfinite(beta[j]);
-      any_nonzero = any_nonzero || beta[j] != 0.0;
+
     }
-    have_start = !any_bad && any_nonzero;
+    have_start = !any_bad;
   }
   if (!have_start) {
     beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lambda);
@@ -597,11 +600,11 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     z = y - offset;
 
     for (int j = 0; j < q; ++j) {
-      lambdas[j] = (beta[j] == 0.0) ? R_PosInf :
+      lambdas[j] = always_include[vars[j]] ? 0.0 : (beta[j] == 0.0) ? R_PosInf :
         (lambda / 4.0) / std::pow(std::abs(beta[j]), gamma);
     }
 
-    std::vector<int> active = active_positions(beta);
+    std::vector<int> active = active_positions(beta, vars, always_include);
     if (active.empty()) break;
     bool bad_beta = false;
     for (int j = 0; j < q; ++j) bad_beta = bad_beta || !std::isfinite(beta[j]);
@@ -622,10 +625,10 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
     const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
     for (int j = 0; j < q; ++j) {
-      if (hard_threshold && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
+      if (hard_threshold && !always_include[vars[j]] && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
         beta[j] = 0.0;
       }
-      if (always_include[vars[j]]) prior_mean[j] = beta[j];
+      
     }
 
     VectorXd eta = predict_sparse(X, offset, vars, beta);
@@ -695,15 +698,30 @@ Rcpp::List fit_all_impl(const Design& X,
 
   const int effective_group_maxit = (grouped && m > 1) ?
     std::max(1, group_maxit) : 1;
-  std::vector<int> vars(p);
-  std::iota(vars.begin(), vars.end(), 0);
+  std::vector<int> vars;
+  for (int j = 0; j < p; ++j) {
+    if (!has_start || always_include[j] || (start_full.row(j).array() != 0.0).any())
+      vars.push_back(j);
+  }
 
   MatrixXd coef = MatrixXd::Zero(p, m);
   MatrixXd lambdas = MatrixXd::Zero(p, m);
   MatrixXd weights_out = MatrixXd::Zero(n, m);
   MatrixXd z_out = MatrixXd::Zero(n, m);
   MatrixXd start_current;
-  MatrixXd* start_ptr = has_start ? &start_full : NULL;
+  if (has_start) {
+    start_current.resize(vars.size(), m);
+    for (int a = 0; a < static_cast<int>(vars.size()); ++a)
+      start_current.row(a) = start_full.row(vars[a]);
+  }
+  MatrixXd* start_ptr = has_start ? &start_current : NULL;
+
+  auto preserve_start_mask = [&]() {
+    if (has_start) for (int a = 0; a < static_cast<int>(vars.size()); ++a)
+      for (int col = 0; col < m; ++col)
+        if (!always_include[vars[a]] && start_full(vars[a], col) == 0.0)
+          start_current(a, col) = 0.0;
+  };
 
   auto fit_for_vars = [&](double lambda_fit, MatrixXd* start_for_fit,
                           bool hard_threshold) {
@@ -734,7 +752,8 @@ Rcpp::List fit_all_impl(const Design& X,
 
   for (int iter = 0; iter < effective_group_maxit; ++iter) {
     if (iter > 0) {
-      group_support_start(coef, vars, start_current);
+      group_support_start(coef, vars, start_current, always_include);
+      preserve_start_mask();
       if (vars.empty()) break;
       start_ptr = &start_current;
     }
@@ -742,7 +761,8 @@ Rcpp::List fit_all_impl(const Design& X,
   }
 
   if (relaxed) {
-    group_support_start(coef, vars, start_current);
+    group_support_start(coef, vars, start_current, always_include);
+    preserve_start_mask();
     if (!vars.empty()) {
       fit_for_vars(1e-30, &start_current, false);
     }

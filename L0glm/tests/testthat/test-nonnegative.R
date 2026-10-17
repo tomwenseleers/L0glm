@@ -84,7 +84,7 @@ test_that("binomial slopes remain constrained through grouped, relaxed and paral
       expect_true(all(beta[1, ] < 0))
       expect_true(all(beta[2, ] >= 0))
       expect_gt(beta[2, 1], 0.9)
-      expect_equal(beta[2, 2], 0)
+      expect_equal(unname(beta[2, 2]), 0)
       parallel <- do.call(L0glm.fit, c(args, list(parallelize = TRUE, ncores = 2L)))
       expect_equal(parallel$coefficients, serial$coefficients, tolerance = 1e-12)
     }

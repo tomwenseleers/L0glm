@@ -65,6 +65,33 @@ L0glm.fit.internal = function(X,
   if (is.null(prior.mean)) { prior.mean <- rep(0, p) } else 
     if (length(prior.mean)==1) { prior.mean <- rep(prior.mean, p) } else 
       if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
+  always.include <- intersect(as.integer(always.include), seq_len(p))
+  if (length(start) == 1L) start <- rep(as.numeric(start), p)
+  if (!is.null(start)) {
+    if (length(start) != p || any(!is.finite(start)))
+      stop("start must contain finite coefficients, one per design column.", call. = FALSE)
+    allowed <- as.numeric(start) != 0
+    allowed[always.include] <- TRUE
+    if (any(!allowed)) {
+      # Screen before the dispersion pilot as well as the repeated ridge solves.
+      args <- mget(names(formals(L0glm.fit.internal)), envir = environment())
+      args$X <- X[, allowed, drop = FALSE]
+      args$start <- as.numeric(start)[allowed]
+      args$prior.mean <- as.numeric(prior.mean)[allowed]
+      args$lower <- lower[allowed]
+      args$upper <- upper[allowed]
+      args$dispersion <- if (estimate_dispersion && !is.null(dispersion)) -dispersion else dispersion
+      args$always.include <- match(always.include, which(allowed))
+      fit <- do.call(L0glm.fit.internal, args)
+      coefficients <- rep(0, p)
+      penalties <- rep(Inf, p)
+      coefficients[allowed] <- fit$coefficients
+      penalties[allowed] <- fit$lambdas
+      fit$coefficients <- coefficients
+      fit$lambdas <- penalties
+      return(fit)
+    }
+  }
   
   ## 4. optional normalisation ------------------------------------------------
   scaling <- L0glm_column_scale(X, normalize)
@@ -95,9 +122,6 @@ L0glm.fit.internal = function(X,
   # z.ret     <- rep(0, n)                # working response
   
   ## 6. set starting coefficients ---------------------------------------------
-  if (length(start) == 1L) start <- rep(as.numeric(start), p)
-  if (any(is.na(start))) start <- NULL
-  if (!is.null(start)) if (all(start == 0)) start <- NULL
   if (is.null(start)) {
     start <- init_coefs(X, y, mu, weights, offset,
                         prior.mean, family, lambda) # component-wise initialisation
@@ -105,8 +129,11 @@ L0glm.fit.internal = function(X,
   }
   start <- clamp(start, lower, upper)
   beta <- beta_old <- start
-  if (is.null(dispersion))
-    dispersion <- L0glm_initial_dispersion(X, y, mu, weights, offset, family)
+  if (is.null(dispersion)) {
+    dispersion <- if (p) L0glm_initial_dispersion(X, y, mu, weights, offset, family) else
+      L0glm_pearson_scale(y, linkinv(as.numeric(offset)), weights, family, 0L)
+    if (!is.finite(dispersion) || dispersion <= 0) dispersion <- 1
+  }
   # names(beta) = colnames(X)
   
   # dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
@@ -141,7 +168,7 @@ L0glm.fit.internal = function(X,
     lambda_tilde <- lambda*dispersion/4
     lambdas <- lambda_tilde * pen.w
     lambdas[beta == 0] <- Inf # excluded coefficients, including when lambda=0
-    # if (!is.null(always.include)) lambdas[always.include] <- 0 # terms that should be left unpenalized (e.g. intercept)
+    lambdas[always.include] <- 0
 
     # lambda_tilde ridge penalties on individual coefficients, we scale these penalties 
     # by (1/4)*dispersion (cf Frommlet & Nuel 2016) so that we 
@@ -153,6 +180,7 @@ L0glm.fit.internal = function(X,
     
     ## ----- update coefs using adaptive ridge regression  (zero or nonzero centered) ---
     nonzero <- beta != 0L          # logical mask
+    nonzero[always.include] <- TRUE
     if (verbose) { print(paste("IRLS iteration", iter))
                    print(paste(sum(nonzero), "coefficients nonzero; range:", min(beta), "-", max(beta))) }
     if (!any(nonzero)) {           
@@ -184,12 +212,14 @@ L0glm.fit.internal = function(X,
     beta[nonzero]            <- beta_sub
     # Relative selection cutoff plus an absolute numerical floor.
     # The final relaxed refit applies neither cutoff.
-    if (hard_threshold)
-      beta[(abs(beta) < max(abs(beta)) * thresh) | abs(beta) < 1E-20] <- 0
+    if (hard_threshold) {
+      remove <- (abs(beta) < max(abs(beta)) * thresh) | abs(beta) < 1E-20
+      remove[always.include] <- FALSE
+      beta[remove] <- 0
+    }
     nonzero <- beta != 0L
     
     # use informative prior updates for terms that should always be kept (e.g. for intercept)
-    if (!is.null(always.include)) prior.mean[always.include] <- as.vector(beta)[always.include] 
     
     ## ----- update mu and eta --------------------------------------
     eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
