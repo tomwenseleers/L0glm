@@ -472,6 +472,11 @@ penalized fits but using a shared row-level start derived from the
 coefficients across all channels (response variables) so as to achieve a
 group penalty and perform grouped feature selection. Active rows are detected
 by a row-wise nonzero count, equivalently by any positive within-row norm.
+With signed coefficients, the shared start uses mean absolute magnitude
+with the sign of the row mean. If that mean is exactly zero, the sign of the
+first largest-magnitude entry is used. Thus opposite signs across channels
+cannot reduce the starting magnitude by cancellation. Nonnegative fits retain
+arithmetic averaging.
 This is then further iterated until convergence. Finally, as for single
 channel data, if \code{relaxed=TRUE}, the algorithm can finish with a final
 step whereby the selected variables are refit using a nearly unpenalized model
