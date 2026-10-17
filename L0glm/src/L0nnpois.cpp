@@ -85,45 +85,26 @@ inline void group_support_start(const MatrixXd& coef,
   }
 }
 
-inline VectorXd compute_scaling_dense(const Map<MatrixXd>& X,
-                                      const std::vector<int>& vars, int normalize) {
-  VectorXd scaling(vars.size());
-  for (int j = 0; j < static_cast<int>(vars.size()); ++j) {
-    double ss = 0.0;
-    const int col = vars[j];
-    for (int i = 0; i < X.rows(); ++i) {
-      const double x = X(i, col);
-      ss += x * x;
-    }
-    if (normalize == 2) ss /= X.rows();
-    if (normalize == 3) {
-      const double sum = X.col(col).sum();
-      ss = X.rows() > 1 ? std::max(0.0, ss - sum * sum / X.rows()) / (X.rows() - 1) : 0.0;
-    }
-    const double s = std::sqrt(ss);
-    scaling[j] = (s == 0.0 || !std::isfinite(s)) ? 1.0 : s;
+inline double coefficient_change(const VectorXd& beta, const VectorXd& previous,
+                                  const VectorXd& scaling, const std::vector<int>& vars,
+                                  const std::vector<char>& mandatory,
+                                  const VectorXd& prediction, const VectorXd& old_prediction,
+                                  const VectorXd& weights, bool normalize) {
+  if (!normalize) return (beta - previous).norm() / std::max(1e-12, beta.norm());
+  double change = 0.0, magnitude = 0.0;
+  bool nuisance = false;
+  for (int j = 0; j < beta.size(); ++j) {
+    if (mandatory[vars[j]]) { nuisance = true; continue; }
+    change += std::pow((beta[j] - previous[j]) * scaling[j], 2);
+    magnitude += std::pow(beta[j] * scaling[j], 2);
   }
-  return scaling;
-}
-
-inline VectorXd compute_scaling_sparse(const Eigen::MappedSparseMatrix<double>& X,
-                                       const std::vector<int>& vars, int normalize) {
-  VectorXd scaling(vars.size());
-  for (int j = 0; j < static_cast<int>(vars.size()); ++j) {
-    double ss = 0.0;
-    const int col = vars[j];
-    for (Eigen::MappedSparseMatrix<double>::InnerIterator it(X, col); it; ++it) {
-      ss += it.value() * it.value();
-    }
-    if (normalize == 2) ss /= X.rows();
-    if (normalize == 3) {
-      const double sum = X.col(col).sum();
-      ss = X.rows() > 1 ? std::max(0.0, ss - sum * sum / X.rows()) / (X.rows() - 1) : 0.0;
-    }
-    const double s = std::sqrt(ss);
-    scaling[j] = (s == 0.0 || !std::isfinite(s)) ? 1.0 : s;
-  }
-  return scaling;
+  double relative = std::sqrt(change) / std::max(1e-12, std::sqrt(magnitude));
+  if (!nuisance) return relative;
+  const double total = weights.sum();
+  const double mean = total > 0.0 ? weights.dot(prediction) / total : 0.0;
+  const double fitted_change = std::sqrt((weights.array() * (prediction - old_prediction).array().square()).sum());
+  const double fitted_size = std::sqrt((weights.array() * (prediction.array() - mean).square()).sum());
+  return std::max(relative, fitted_change / std::max(1e-12, std::max(std::sqrt(total), fitted_size)));
 }
 
 inline VectorXd predict_dense(const Map<MatrixXd>& X, const VectorXd& offset,
@@ -159,12 +140,12 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
                                  const VectorXd& offset,
                                  const VectorXd& prior_mean,
                                  const std::vector<int>& vars,
-                                 double lambda) {
+                                 const VectorXd& penalty) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   VectorXd numer = VectorXd::Zero(q);
-  VectorXd denom = VectorXd::Constant(q, lambda);
-  for (int j = 0; j < q; ++j) numer[j] = lambda * prior_mean[j];
+  VectorXd denom = penalty;
+  for (int j = 0; j < q; ++j) numer[j] = penalty[j] * prior_mean[j];
 
   for (int i = 0; i < n; ++i) {
     const double mu = y[i] + 0.1;
@@ -193,7 +174,7 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                   const VectorXd& offset,
                                   const VectorXd& prior_mean,
                                   const std::vector<int>& vars,
-                                  double lambda) {
+                                  const VectorXd& penalty) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   VectorXd w(n);
@@ -207,8 +188,8 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
   VectorXd numer(q);
   VectorXd denom(q);
   for (int j = 0; j < q; ++j) {
-    numer[j] = lambda * prior_mean[j];
-    denom[j] = lambda;
+    numer[j] = penalty[j] * prior_mean[j];
+    denom[j] = penalty[j];
     const int col = vars[j];
     for (Eigen::MappedSparseMatrix<double>::InnerIterator it(X, col); it; ++it) {
       const int row = it.row();
@@ -377,6 +358,7 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            const std::vector<char>& always_include,
                            double lambda,
                            int normalize,
+                           const VectorXd& scaling_full,
                            int maxit,
                            double gamma,
                            double thresh,
@@ -396,6 +378,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            const std::vector<char>& always_include,
                                            double lambda,
                                            int normalize,
+                                           const VectorXd& scaling_full,
                                            int maxit,
                                            double gamma,
                                            double thresh,
@@ -416,8 +399,11 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     prior_mean[j] = prior_mean_full(col, channel);
   }
 
-  VectorXd scaling = normalize ? compute_scaling_dense(X, vars, normalize) :
-    VectorXd::Ones(q);
+  VectorXd scaling(q), initial_penalty = VectorXd::Constant(q, lambda);
+  for (int j = 0; j < q; ++j) {
+    scaling[j] = scaling_full[vars[j]];
+    if (normalize) initial_penalty[j] = always_include[vars[j]] ? 0.0 : lambda * scaling[j] * scaling[j];
+  }
 
   VectorXd beta(q);
   bool have_start = start_mat != NULL;
@@ -432,12 +418,13 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     have_start = !any_bad;
   }
   if (!have_start) {
-    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, lambda);
+    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, initial_penalty);
   }
   beta = constrain_vec(beta);
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
+  VectorXd prediction_old = normalize ? predict_dense(X, VectorXd::Zero(n), vars, beta) : VectorXd();
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
@@ -473,9 +460,13 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
       beta[active[a]] = beta_sub[a];
     }
 
-    const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
+    double maximum = 0.0;
+    for (int j = 0; j < q; ++j) if (!always_include[vars[j]])
+      maximum = std::max(maximum, std::abs(beta[j]) * scaling[j]);
+    const double relative_cutoff = maximum * thresh;
     for (int j = 0; j < q; ++j) {
-      if (hard_threshold && !always_include[vars[j]] && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
+      const double magnitude = std::abs(beta[j]) * scaling[j];
+      if (hard_threshold && !always_include[vars[j]] && (magnitude < relative_cutoff || magnitude < 1e-20)) {
         beta[j] = 0.0;
       }
 
@@ -484,10 +475,12 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     VectorXd eta = predict_dense(X, offset, vars, beta);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
-    const double rel = (beta - beta_old).norm() /
-      std::max(1e-12, beta.norm());
+    const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
+    const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
+                                          prediction, prediction_old, prior_w, normalize);
     if (rel < tol) break;
     beta_old = beta;
+    if (normalize) prediction_old = prediction;
   }
 
   FitResult out;
@@ -511,6 +504,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     const std::vector<char>& always_include,
     double lambda,
     int normalize,
+    const VectorXd& scaling_full,
     int maxit,
     double gamma,
     double thresh,
@@ -530,8 +524,11 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     prior_mean[j] = prior_mean_full(col, channel);
   }
 
-  VectorXd scaling = normalize ? compute_scaling_sparse(X, vars, normalize) :
-    VectorXd::Ones(q);
+  VectorXd scaling(q), initial_penalty = VectorXd::Constant(q, lambda);
+  for (int j = 0; j < q; ++j) {
+    scaling[j] = scaling_full[vars[j]];
+    if (normalize) initial_penalty[j] = always_include[vars[j]] ? 0.0 : lambda * scaling[j] * scaling[j];
+  }
 
   VectorXd beta(q);
   bool have_start = start_mat != NULL;
@@ -546,12 +543,13 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     have_start = !any_bad;
   }
   if (!have_start) {
-    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, lambda);
+    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, initial_penalty);
   }
   beta = constrain_vec(beta);
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
+  VectorXd prediction_old = normalize ? predict_sparse(X, VectorXd::Zero(n), vars, beta) : VectorXd();
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
@@ -587,9 +585,13 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
       beta[active[a]] = beta_sub[a];
     }
 
-    const double relative_cutoff = hard_threshold ? beta.cwiseAbs().maxCoeff() * thresh : 0.0;
+    double maximum = 0.0;
+    for (int j = 0; j < q; ++j) if (!always_include[vars[j]])
+      maximum = std::max(maximum, std::abs(beta[j]) * scaling[j]);
+    const double relative_cutoff = maximum * thresh;
     for (int j = 0; j < q; ++j) {
-      if (hard_threshold && !always_include[vars[j]] && (std::abs(beta[j]) < relative_cutoff || std::abs(beta[j]) < 1e-20)) {
+      const double magnitude = std::abs(beta[j]) * scaling[j];
+      if (hard_threshold && !always_include[vars[j]] && (magnitude < relative_cutoff || magnitude < 1e-20)) {
         beta[j] = 0.0;
       }
 
@@ -598,10 +600,12 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     VectorXd eta = predict_sparse(X, offset, vars, beta);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
-    const double rel = (beta - beta_old).norm() /
-      std::max(1e-12, beta.norm());
+    const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
+    const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
+                                          prediction, prediction_old, prior_w, normalize);
     if (rel < tol) break;
     beta_old = beta;
+    if (normalize) prediction_old = prediction;
   }
 
   FitResult out;
@@ -622,6 +626,7 @@ Rcpp::List fit_all_impl(const Design& X,
                         Rcpp::IntegerVector always_include_r,
                         double lambda,
                         int normalize,
+                        const Eigen::Map<Eigen::VectorXd>& scaling_full,
                         bool grouped,
                         bool relaxed,
                         int group_maxit,
@@ -639,6 +644,7 @@ Rcpp::List fit_all_impl(const Design& X,
   MatrixXd prior_weights = Wmap;
   MatrixXd Offset = Offsetmap;
   MatrixXd prior_mean_full = Priormap;
+  const VectorXd scaling = scaling_full;
 
   MatrixXd start_full;
   bool has_start = start_nullable.isNotNull();
@@ -698,7 +704,7 @@ Rcpp::List fit_all_impl(const Design& X,
     for (int col = 0; col < m; ++col) {
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
-        always_include, lambda_fit, normalize, maxit,
+        always_include, lambda_fit, normalize, scaling, maxit,
         gamma, thresh, tol, natural_ordering, hard_threshold);
     }
 
@@ -760,6 +766,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               Rcpp::IntegerVector always_include,
                               double lambda,
                               int normalize,
+                              const Eigen::Map<Eigen::VectorXd>& scaling,
                               bool grouped,
                               bool relaxed,
                               int group_maxit,
@@ -771,7 +778,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               bool natural_ordering) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, grouped, relaxed, group_maxit, maxit, gamma,
+    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
     thresh, tol, nthreads, natural_ordering);
 }
 
@@ -785,6 +792,7 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                Rcpp::IntegerVector always_include,
                                double lambda,
                                int normalize,
+                               const Eigen::Map<Eigen::VectorXd>& scaling,
                                bool grouped,
                                bool relaxed,
                                int group_maxit,
@@ -796,6 +804,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                bool natural_ordering) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, grouped, relaxed, group_maxit, maxit, gamma,
+    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
     thresh, tol, nthreads, natural_ordering);
 }

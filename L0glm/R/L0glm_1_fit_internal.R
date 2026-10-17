@@ -39,7 +39,8 @@ L0glm.fit.internal = function(X,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE,
-                              hard_threshold = TRUE) {
+                              hard_threshold = TRUE,
+                              preprocessing = NULL) {
 
   ## 1. sanity checks ---------------------------------------------------------
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
@@ -66,6 +67,8 @@ L0glm.fit.internal = function(X,
     if (length(prior.mean)==1) { prior.mean <- rep(prior.mean, p) } else 
       if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
   always.include <- intersect(as.integer(always.include), seq_len(p))
+  if (is.null(preprocessing))
+    preprocessing <- L0glm_preprocessing(X, normalize, lower, always.include)
   if (length(start) == 1L) start <- rep(as.numeric(start), p)
   if (!is.null(start)) {
     if (length(start) != p || any(!is.finite(start)))
@@ -82,6 +85,7 @@ L0glm.fit.internal = function(X,
       args$upper <- upper[allowed]
       args$dispersion <- if (estimate_dispersion && !is.null(dispersion)) -dispersion else dispersion
       args$always.include <- match(always.include, which(allowed))
+      args$preprocessing <- L0glm_subset_preprocessing(preprocessing, which(allowed))
       fit <- do.call(L0glm.fit.internal, args)
       coefficients <- rep(0, p)
       penalties <- rep(Inf, p)
@@ -94,7 +98,7 @@ L0glm.fit.internal = function(X,
   }
   
   ## 4. optional normalisation ------------------------------------------------
-  scaling <- L0glm_column_scale(X, normalize)
+  scaling <- preprocessing$scale
   # if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
 
   ## 5. family helpers --------------------------------------------------------
@@ -123,14 +127,15 @@ L0glm.fit.internal = function(X,
   
   ## 6. set starting coefficients ---------------------------------------------
   if (is.null(start)) {
-    start <- init_coefs(X, y, mu, weights, offset,
-                        prior.mean, family, lambda) # component-wise initialisation
+    start <- L0glm_initial_coefficients(X, y, mu, weights, offset, prior.mean,
+      family, lambda, always.include, lower, preprocessing)
     start <- clamp(start, lower, upper)
   }
   start <- clamp(start, lower, upper)
   beta <- beta_old <- start
   if (is.null(dispersion)) {
-    dispersion <- if (p) L0glm_initial_dispersion(X, y, mu, weights, offset, family) else
+    dispersion <- if (p) L0glm_initial_dispersion(X, y, mu, weights, offset, family,
+      always.include = always.include, preprocessing = preprocessing) else
       L0glm_pearson_scale(y, linkinv(as.numeric(offset)), weights, family, 0L)
     if (!is.finite(dispersion) || dispersion <= 0) dispersion <- 1
   }
@@ -213,7 +218,9 @@ L0glm.fit.internal = function(X,
     # Relative selection cutoff plus an absolute numerical floor.
     # The final relaxed refit applies neither cutoff.
     if (hard_threshold) {
-      remove <- (abs(beta) < max(abs(beta)) * thresh) | abs(beta) < 1E-20
+      magnitude <- abs(beta) * scaling
+      cutoff <- max(c(0, magnitude[setdiff(seq_len(p), always.include)])) * thresh
+      remove <- (magnitude < cutoff) | magnitude < 1E-20
       remove[always.include] <- FALSE
       beta[remove] <- 0
     }
@@ -243,8 +250,10 @@ L0glm.fit.internal = function(X,
     # dev = sum(dev.resids(y, mu, weights)) # deviance
     
     ## ----- convergence test ---------------------------------------
-    if ( sqrt(sum((beta - beta_old)^2)) /
-         max(1e-12, sqrt(sum(beta^2))) < tol &&
+    change <- if (preprocessing$mode == "none") sqrt(sum((beta - beta_old)^2)) /
+      max(1e-12, sqrt(sum(beta^2))) else
+        L0glm_coefficient_change(beta, beta_old, scaling, always.include, X, weights)
+    if (change < tol &&
          (scale_frozen || !hard_threshold || lambda == 0 ||
           (iter >= 3L && !scale_estimable)) ) break
     beta_old <- beta

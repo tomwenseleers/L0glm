@@ -15,7 +15,7 @@ L0nnpois(
   lambda = "gic",
   intercept = FALSE,
   always.include = NULL,
-  normalize = FALSE,
+  normalize = "auto",
   solver = "eigen",
   method = 1L,
   parallelize = TRUE,
@@ -118,16 +118,23 @@ Specify 0 if all terms should be allowed to be
 shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
 always be estimated and included in the model.}
 
-\item{normalize}{Column scaling for the internal linear solves:
-\code{FALSE} or \code{"none"} (default), \code{TRUE} or \code{"l2"}
-for unit L2 norm, \code{"rms"} for unit root-mean-square
-(\eqn{\sum_i X_{ij}^2/n=1}), or \code{"sd"} for unit sample standard
-deviation. This option does not center columns. Zero-scale columns use a
-scale of one. Penalties, starts, ridge centers and bounds are transformed
-consistently, so this is a change of solver coordinates; coefficients and
-explicit starts retain their original input units. Different automatic
-initialization conventions should be compared separately from this numerical
-scaling. Sparse designs remain sparse.}
+\item{normalize}{Preprocessing convention: \code{"auto"} (default) uses
+\code{"rms"} for signed fits or a free intercept, and \code{"none"} for
+fully nonnegative fits. Other choices are \code{FALSE} or \code{"none"},
+\code{TRUE} or \code{"l2"} for unit L2 norm, \code{"rms"} for unit
+root-mean-square (\eqn{\sum_i X_{ij}^2/n=1}), and \code{"sd"} for unit
+sample standard deviation. With a free intercept, column means are
+accounted for implicitly and the norms use centered columns; neither
+\code{X} nor \code{y} is explicitly centered. A constrained intercept
+prevents this centering, including in \code{L0nnpois()}. Mandatory terms
+and zero-scale columns use scale one. Penalties, starts, ridge centers and
+bounds are transformed consistently, and coefficients and explicit starts
+retain their original input units. Non-\code{"none"} modes also use
+these scales for automatic initialization, thresholding and convergence.
+With \code{gamma = 2}, automatic signed fits are therefore invariant to
+changes of predictor units, up to numerical precision. Sparse designs
+remain sparse. The training centers and scales are returned in
+\code{preprocessing}; predictions use the original columns directly.}
 
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic
@@ -221,9 +228,11 @@ Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.}
 
 \item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
 hard thresholding during selection. After each update, coefficients with
-\code{abs(beta) < max(abs(beta))*thresh} or \code{abs(beta) < 1e-20}
-are set to zero. The maximum is computed separately for each response
-channel, on the coefficient scale returned by the ridge solver.
+\code{abs(beta)*scale < max(abs(beta)*scale)*thresh} or
+\code{abs(beta)*scale < 1e-20} are set to zero. With
+\code{normalize = "none"}, \code{scale = 1}. The maximum is computed
+separately for each response channel, excluding unpenalized mandatory
+terms; these terms are never hard thresholded.
 Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
 disables only the relative cutoff; the absolute numerical floor remains.
 The final relaxed refit applies neither cutoff; nonnegativity clipping
@@ -232,7 +241,10 @@ still applies when requested. Adaptive ridge weights are unsmoothed,
 
 \item{tol}{Convergence tolerance. Iterations are stopped when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
-threshold. When dispersion is estimated, selection also waits until its
+threshold. With preprocessing, the test uses scaled selectable slopes
+and, when mandatory terms exist, changes in predictions, so that the
+predictor or response origin cannot hide slope changes.
+When dispersion is estimated, selection also waits until its
 update has stabilized as described in Details, subject to \code{maxit}.}
 
 \item{control.solver}{Optional list of solver controls. \code{L0nnpois}

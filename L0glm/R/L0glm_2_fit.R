@@ -170,16 +170,23 @@
 #'   coefficients may have either sign. Defaults to \code{FALSE} in
 #'   \code{L0glm.fit()}. The specialized \code{L0nnpois()} function always
 #'   enforces nonnegativity and has no \code{nonnegative} argument.
-#' @param normalize Column scaling for the internal linear solves:
-#'   \code{FALSE} or \code{"none"} (default), \code{TRUE} or \code{"l2"}
-#'   for unit L2 norm, \code{"rms"} for unit root-mean-square
-#'   (\eqn{\sum_i X_{ij}^2/n=1}), or \code{"sd"} for unit sample standard
-#'   deviation. This option does not center columns. Zero-scale columns use a
-#'   scale of one. Penalties, starts, ridge centers and bounds are transformed
-#'   consistently, so this is a change of solver coordinates; coefficients and
-#'   explicit starts retain their original input units. Different automatic
-#'   initialization conventions should be compared separately from this numerical
-#'   scaling. Sparse designs remain sparse.
+#' @param normalize Preprocessing convention: \code{"auto"} (default) uses
+#'   \code{"rms"} for signed fits or a free intercept, and \code{"none"} for
+#'   fully nonnegative fits. Other choices are \code{FALSE} or \code{"none"},
+#'   \code{TRUE} or \code{"l2"} for unit L2 norm, \code{"rms"} for unit
+#'   root-mean-square (\eqn{\sum_i X_{ij}^2/n=1}), and \code{"sd"} for unit
+#'   sample standard deviation. With a free intercept, column means are
+#'   accounted for implicitly and the norms use centered columns; neither
+#'   \code{X} nor \code{y} is explicitly centered. A constrained intercept
+#'   prevents this centering, including in \code{L0nnpois()}. Mandatory terms
+#'   and zero-scale columns use scale one. Penalties, starts, ridge centers and
+#'   bounds are transformed consistently, and coefficients and explicit starts
+#'   retain their original input units. Non-\code{"none"} modes also use
+#'   these scales for automatic initialization, thresholding and convergence.
+#'   With \code{gamma = 2}, automatic signed fits are therefore invariant to
+#'   changes of predictor units, up to numerical precision. Sparse designs
+#'   remain sparse. The training centers and scales are returned in
+#'   \code{preprocessing}; predictions use the original columns directly.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
@@ -273,9 +280,11 @@
 #'   Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.
 #' @param thresh Finite nonnegative scalar, default \code{1e-5}, controlling
 #'   hard thresholding during selection. After each update, coefficients with
-#'   \code{abs(beta) < max(abs(beta))*thresh} or \code{abs(beta) < 1e-20}
-#'   are set to zero. The maximum is computed separately for each response
-#'   channel, on the coefficient scale returned by the ridge solver.
+#'   \code{abs(beta)*scale < max(abs(beta)*scale)*thresh} or
+#'   \code{abs(beta)*scale < 1e-20} are set to zero. With
+#'   \code{normalize = "none"}, \code{scale = 1}. The maximum is computed
+#'   separately for each response channel, excluding unpenalized mandatory
+#'   terms; these terms are never hard thresholded.
 #'   Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
 #'   disables only the relative cutoff; the absolute numerical floor remains.
 #'   The final relaxed refit applies neither cutoff; nonnegativity clipping
@@ -283,7 +292,10 @@
 #'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
 #' @param tol Convergence tolerance. Iterations are stopped when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
-#'   threshold. When dispersion is estimated, selection also waits until its
+#'   threshold. With preprocessing, the test uses scaled selectable slopes
+#'   and, when mandatory terms exist, changes in predictions, so that the
+#'   predictor or response origin cannot hide slope changes.
+#'   When dispersion is estimated, selection also waits until its
 #'   update has stabilized as described in Details, subject to \code{maxit}.
 #' @param control.solver List of parameters controlling the optimization
 #'   solvers. Auto-initialised with \code{control.solver.gen} when \code{NULL}.
@@ -431,6 +443,9 @@
 #' \item{\code{p}}{original number of selectable predictors.}
 #' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 #' including recognized intercepts, in the returned coefficient matrix.}
+#' \item{\code{preprocessing}}{training column centers and scales, resolved
+#' normalization mode, centering eligibility, and original selectable count.
+#' Coefficients are already on the original input scale.}
 #'
 #' @examples
 #' x <- seq(-1, 1, length.out = 30)
@@ -494,7 +509,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       intercept     = (family$family=="binomial"), # always fit an intercept with binomial family
                       always.include        = NULL,
                       nonnegative   = FALSE,
-                      normalize     = FALSE,
+                      normalize     = "auto",
                       solver        = "eigen",
                       method        = 1L,
                       parallelize   = TRUE,
@@ -585,6 +600,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     # Recognize intercepts supplied explicitly in X as well as the added column.
     lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
   }
+  preprocessing <- L0glm_preprocessing(X, normalize, lower, always.include)
   
   # ----- preset lambda ------------------------------------------------------
   lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = nrow(X))
@@ -788,6 +804,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                         upper         = upper[vars],
                                         method        = method,
                                         normalize     = normalize,
+                                        preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                         control.solver = control.solver,
                                         verbose       = verbose)
         } else {
@@ -799,6 +816,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                lambda     = lambda,
                                gamma      = gamma,
                                normalize   = normalize,
+                               preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                offset      = offset[, col],
                                prior.mean  = prior.mean[vars, col],
                                dispersion  = disp_list[[col]],          # slice
@@ -864,6 +882,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                           upper         = upper[vars],
                                           method        = method,
                                           normalize     = normalize,
+                                          preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                           control.solver = control.solver,
                                           verbose       = verbose)
           } else {
@@ -876,6 +895,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  hard_threshold = FALSE,
                                  gamma      = gamma,
                                  normalize   = normalize,
+                                 preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                  offset      = offset[, col], 
                                  prior.mean  = prior.mean[vars, col], 
                                  dispersion  = disp_list[[col]],
@@ -937,6 +957,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               weights    = weights,
                               family     = family,
                               normalize   = normalize,
+                              preprocessing = preprocessing,
                               offset      = offset,
                               dispersion  = dispersion,
                               start       = start,
@@ -970,6 +991,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       weights    = weights,
                                       family     = family,
                                       normalize   = normalize,
+                                      preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                       offset      = offset,
                                       dispersion  = next_dispersion(dispersion),
                                       start       = coefficients[vars],
@@ -1025,6 +1047,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                  family       = family,
                  p            = p_selectable,
                  always.include = always.include.start,
+                 preprocessing = preprocessing,
                  z            = z,
                  X            = X,
                  y            = y)
@@ -1196,7 +1219,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      verbose = FALSE, maxit, tol, offset, always.include = 0,
                      control.solver = do.call("control.solver.gen",
                                               list(solver = solver, method = method)),
-                     hard_threshold = TRUE) {
+                     hard_threshold = TRUE, preprocessing = NULL) {
   
   lapply(cols, function(col) {
     disp_col <- if (is.list(dispersion)) dispersion[[col]] else dispersion
@@ -1221,6 +1244,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       hard_threshold = hard_threshold,
       solver       = solver,
       normalize    = normalize,
+      preprocessing = preprocessing,
       method       = method,
       verbose      = verbose,
       control.solver = control.solver)

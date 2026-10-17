@@ -55,7 +55,7 @@ L0nnpois <- function(X,
                      lambda        = "gic",
                      intercept     = FALSE,
                      always.include        = NULL,
-                     normalize     = FALSE,
+                     normalize     = "auto",
                      solver        = "eigen",
                      method        = 1L,
                      parallelize   = TRUE,
@@ -74,7 +74,7 @@ L0nnpois <- function(X,
   validate_thresh(thresh)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
-  normalization <- L0glm_normalization(normalize)
+  normalization <- L0glm_normalization(normalize, nonnegative = TRUE)
   normalization_code <- match(normalization, c("none", "l2", "rms", "sd")) - 1L
   if (!inherits(family, "family")) family <- family()
   if (!identical(family$family, "poisson") || !identical(family$link, "identity")) {
@@ -119,17 +119,20 @@ L0nnpois <- function(X,
   }
 
   if (intercept) {
+    predictor_names <- colnames(X)
     X <- if (issparse) {
       methods::as(cbind(Intercept = Matrix::Matrix(1, n, 1, sparse = TRUE), X),
                   "dgCMatrix")
     } else {
       cbind(Intercept = 1, X)
     }
+    colnames(X) <- c("Intercept", if (is.null(predictor_names)) rep("", p0) else predictor_names)
     always.include <- c(1L, always.include + 1L)
   }
   p <- ncol(X)
   always.include <- L0glm_mandatory(X, always.include)
   p_selectable <- p - length(always.include)
+  preprocessing <- L0glm_preprocessing(X, normalize, rep(0, p), always.include)
   lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = n)
   init.lambda <- lambda
 
@@ -230,13 +233,13 @@ L0nnpois <- function(X,
   if (issparse) {
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
-      lambda, normalization_code, grouped, relaxed, as.integer(group.maxit),
+      lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
-      lambda, normalization_code, grouped, relaxed, as.integer(group.maxit),
+      lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   }
@@ -277,6 +280,7 @@ L0nnpois <- function(X,
        family       = family,
        p            = p_selectable,
        always.include = always.include,
+       preprocessing = preprocessing,
        z            = z,
        X            = if (issparse) X else Matrix::Matrix(X, sparse = FALSE),
        y            = y)
