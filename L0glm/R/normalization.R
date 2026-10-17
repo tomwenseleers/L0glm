@@ -61,6 +61,19 @@ L0glm_subset_preprocessing <- function(preprocessing, vars) {
   preprocessing
 }
 
+# Numeric scalar one is a unit start in working coefficient coordinates.
+# Explicit vectors/matrices and every other scalar retain original input units.
+L0glm_unit_start <- function(start, X, preprocessing, m = 1L) {
+  if (!is.numeric(start) || !is.null(dim(start)) || length(start) != 1L ||
+      is.na(start) || start != 1) return(start)
+  beta <- matrix(1 / preprocessing$scale, nrow = ncol(X), ncol = m)
+  if (preprocessing$centered) {
+    intercept <- L0glm_unit_intercepts(X)[1L]
+    beta[intercept, ] <- 1 - sum(preprocessing$center / preprocessing$scale)
+  }
+  beta
+}
+
 # Change only the internal working origin. For sparse designs, shift only
 # fully stored columns: these can have an arbitrarily large mean/SD ratio,
 # and shifting their stored values adds no new entries. The remaining columns

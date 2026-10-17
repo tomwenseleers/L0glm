@@ -61,14 +61,14 @@ L0nnpois <- function(X,
                      parallelize   = TRUE,
                      ncores        = L0glm_default_ncores(parallelize),
                      nthreads      = NULL,
-                     maxit         = 200,
+                     maxit         = 25,
                      grouped       = TRUE,
                      group.maxit   = 6,
                      relaxed       = grouped & NCOL(y) > 1,
                      prior.mean    = NULL,
                      gamma         = 2,
                      thresh         = 1e-5,
-                     tol           = 1e-8,
+                     tol           = 1e-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose       = FALSE) {
   validate_thresh(thresh)
@@ -135,6 +135,7 @@ L0nnpois <- function(X,
   preprocessing <- L0glm_preprocessing(X, normalize, rep(0, p), always.include)
   lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = n)
   init.lambda <- lambda
+  start <- L0glm_unit_start(start, X, preprocessing, m)
 
   if (is.null(weights)) {
     weights <- matrix(1, n, m)
@@ -216,9 +217,9 @@ L0nnpois <- function(X,
   allowed <- if (is.null(start)) NULL else start != 0
   if (!is.null(allowed)) allowed[always.include, ] <- TRUE
 
-  ncores <- suppressWarnings(as.integer(ncores[1L]))
-  if (is.na(ncores) || ncores < 1L) ncores <- 1L
   if (isTRUE(parallelize) && m > 1L) {
+    ncores <- suppressWarnings(as.integer(ncores[1L]))
+    if (is.na(ncores) || ncores < 1L) ncores <- 1L
     logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
     if (!is.na(logical_cores) && logical_cores >= 1L &&
         ncores > logical_cores) {

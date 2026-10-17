@@ -32,11 +32,11 @@ L0glm.fit.internal = function(X,
                               method = 1L, 
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
-                              maxit = 200,
+                              maxit = 25,
                               prior.mean = NULL,
                               gamma = 2,
                               thresh = 1e-5,
-                              tol = 1E-8,
+                              tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE,
                               hard_threshold = TRUE,
@@ -73,6 +73,7 @@ L0glm.fit.internal = function(X,
   always.include <- intersect(as.integer(always.include), seq_len(p))
   if (is.null(preprocessing))
     preprocessing <- L0glm_preprocessing(X, normalize, lower, always.include)
+  start <- L0glm_unit_start(start, X, preprocessing)
   if (length(start) == 1L) start <- rep(as.numeric(start), p)
   if (!is.null(start)) {
     if (length(start) != p || any(!is.finite(start)))
@@ -83,7 +84,7 @@ L0glm.fit.internal = function(X,
       # Screen before the dispersion pilot as well as the repeated ridge solves.
       args <- mget(names(formals(L0glm.fit.internal)), envir = environment())
       args$X <- X[, allowed, drop = FALSE]
-      args$start <- as.numeric(start)[allowed]
+      args$start <- matrix(as.numeric(start)[allowed], ncol = 1L)
       args$prior.mean <- as.numeric(prior.mean)[allowed]
       args$lower <- lower[allowed]
       args$upper <- upper[allowed]

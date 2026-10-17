@@ -1,8 +1,8 @@
 # BENCHMARKS L0GLM: SINGLE CHANNEL VS MULTICHANNEL DECONVOLUTION OF BLURRED SPIKE TRAIN ####
 # Historical timings below are machine/build dependent.
-# Historical numerical tables are retained for comparison. In particular, the
-# Poisson table below used the former 0.9 coefficient-start mixture; removing
-# that mixture changes one selected feature on this simulation.
+# Historical numerical tables are retained for comparison. The Poisson table
+# is reproduced by maxit = 25, tol = 1e-10 (the restored fitting defaults).
+# More iterations can improve GIC while worsening recovery against the truth.
 # Current L0glm.tune fits each lambda independently and verifies its numerical
 # zero endpoint. That endpoint is not a global L0 likelihood bound: a zero-mean
 # Poisson model has infinite deviance if any count is positive.

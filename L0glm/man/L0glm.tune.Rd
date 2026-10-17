@@ -102,8 +102,9 @@ CV training penalties retain their training-weight scaling, so they can
 be smaller than this full-data bound. A zoomed grid can start above it.}
 
 \item{start}{\code{NULL} (default) automatically initializes each lambda
-fit. A numeric scalar, vector or matrix supplies the same original-scale
-start to every fit, with the structural-zero semantics of \code{L0glm.fit}.
+fit. Numeric scalar \code{1} supplies ones in each fit's normalized working
+coordinates. Other numeric starts use original coefficient units, with the
+structural-zero semantics of \code{L0glm.fit}.
 Use \code{"pilot"} to build a common seed from ten independent unrelaxed
 fits at log-spaced penalties between \code{lambda_min} and the GIC preset
 (or one fit when these bounds coincide). The magnitude is the mean absolute

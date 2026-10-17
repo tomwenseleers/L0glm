@@ -109,8 +109,13 @@
 #'   \code{p}, or matrix of starting values with dimension \code{p} x
 #'   \code{m}, with \code{p} the number of design columns, including any added
 #'   intercept, and \code{m} the number of response columns. A scalar is repeated
-#'   for every coefficient in every response channel; for example,
-#'   \code{start = 1} initializes them all to 1, including the intercept.
+#'   for every coefficient in every response channel.
+#'   Numeric scalar \code{start = 1} initializes all coefficients to one in
+#'   normalized working coordinates, including the intercept. With a free
+#'   intercept this refers to the centered design. All other scalars and all
+#'   explicit vectors/matrices use original input coefficient units. To request
+#'   original-coordinate ones, pass a vector or a \code{p x m} matrix; use a
+#'   matrix to distinguish this from the scalar shorthand in a one-term model.
 #'   Starting values are used directly, subject to the coefficient
 #'   constraints. Exact zeros exclude those coefficients throughout selection,
 #'   grouped passes and relaxed refits, separately in each channel. Rows zero
@@ -182,8 +187,9 @@
 #'   with the other means handled by the intercept. A constrained intercept
 #'   prevents this centering, including in \code{L0nnpois()}. Mandatory terms
 #'   and zero-scale columns use scale one. Penalties, starts, ridge centers and
-#'   bounds are transformed consistently, and coefficients and explicit starts
-#'   retain their original input units. Non-\code{"none"} modes also use
+#'   bounds are transformed consistently. Returned coefficients and explicit
+#'   vector/matrix starts retain their input units; numeric scalar \code{start=1}
+#'   is the normalized-coordinate shorthand described above. Non-\code{"none"} modes also use
 #'   these scales for automatic initialization, thresholding and convergence.
 #'   With \code{gamma = 2}, automatic signed fits are therefore invariant to
 #'   changes of predictor units, up to numerical precision. Sparse designs
@@ -249,7 +255,7 @@
 #'   tune per-worker threading on systems with a multithreaded BLAS.
 #'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
-#'   perform per channel and fitting pass (default 200). Fits stop earlier
+#'   perform per channel and fitting pass (default 25). Fits stop earlier
 #'   when the convergence criterion is met; inspect \code{convergence} to
 #'   distinguish this from reaching the iteration cap.
 #' @param grouped A logical value indicating whether a grouped fit should be
@@ -294,7 +300,7 @@
 #'   The final relaxed refit applies neither cutoff; nonnegativity clipping
 #'   still applies when requested. Adaptive ridge weights are unsmoothed,
 #'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
-#' @param tol Convergence tolerance (default \code{1e-8}). Iterations stop when the relative
+#' @param tol Convergence tolerance (default \code{1e-10}). Iterations stop when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
 #'   threshold. With preprocessing, the test uses scaled selectable slopes
 #'   and, when mandatory terms exist, changes in predictions, so that the
@@ -534,14 +540,14 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       parallelize   = TRUE,
                       ncores        = L0glm_default_ncores(parallelize),
                       nthreads      = NULL,
-                      maxit         = 200,
+                      maxit         = 25,
                       grouped       = TRUE,
                       group.maxit   = 6,
                       relaxed       = grouped & NCOL(y)>1,
                       prior.mean    = NULL,
                       gamma         = 2,
                       thresh         = 1e-5,
-                      tol           = 1e-8,
+                      tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE,
                       openmp        = TRUE) {
@@ -662,6 +668,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   }
   if (!is.null(start) && any(!is.finite(start)))
     stop("start must contain finite coefficients.", call. = FALSE)
+  start <- L0glm_unit_start(start, X, preprocessing, m)
   allowed <- if (is.null(start)) NULL else matrix(as.numeric(start) != 0, p, m)
   if (!is.null(allowed)) allowed[always.include, ] <- TRUE
   
@@ -843,7 +850,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                prior.mean  = prior.mean[vars, col],
                                dispersion  = disp_list[[col]],          # slice
                                start       = if (is.null(start) || length(start) == 1L)
-                                 start else start[vars, col],
+                                 start else start[vars, col, drop = FALSE],
                                lower       = lower[vars],
                                upper       = upper[vars],
                                maxit       = maxit,
@@ -923,7 +930,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                  offset      = offset[, col], 
                                  prior.mean  = prior.mean[vars, col], 
                                  dispersion  = disp_list[[col]],
-                                 start       = start[vars, col],
+                                 start       = start[vars, col, drop = FALSE],
                                  lower       = lower[vars],
                                  upper       = upper[vars],
                                  maxit       = maxit,
@@ -1023,7 +1030,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
                                       offset      = offset,
                                       dispersion  = next_dispersion(dispersion),
-                                      start       = coefficients[vars],
+                                      start       = matrix(coefficients[vars], ncol = 1L),
                                       lower       = lower[vars],
                                       upper       = upper[vars],
                                       lambda      = 1e-30,
@@ -1265,7 +1272,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       gamma        = gamma,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
       start        = if (is.null(start) || length(start) == 1L)
-        start else as.vector(start[, col]),
+        start else start[, col, drop = FALSE],
       maxit        = maxit,
       tol          = tol,
       always.include       = always.include,

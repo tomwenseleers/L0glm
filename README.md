@@ -19,6 +19,17 @@ The package supports:
 
 The source package is in the `L0glm/` subdirectory of this repository.
 
+Fitting defaults are `maxit = 25, tol = 1e-10`. Increase `maxit` explicitly when
+more iterations are needed, and inspect the returned `convergence` diagnostics.
+For signed models, `normalize = "auto"` uses centered RMS scaling with L2 norm
+`sqrt(n)` when there is a free intercept. Fully nonnegative models retain
+`normalize = "none"`, including peak-one PSF deconvolution designs.
+Numeric scalar `start = 1` means ones in normalized working coefficient
+coordinates. Other scalars and all explicit vectors/matrices use original input
+coefficient units. With `normalize = "none"`, these unit-start conventions
+coincide. See the [QSAR benchmark](benchmarks/2_benchmark_vs_abess_relaxed_LASSO_toxicityQSAR/README.md)
+for comparisons of both L2 conventions, starts and iteration budgets.
+
 ## Installation
 
 Install from GitHub with:

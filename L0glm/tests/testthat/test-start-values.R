@@ -55,12 +55,75 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
                      parallelize = FALSE, openmp = FALSE)
         for (start in c(1, -2)) {
           scalar <- do.call(L0glm.fit, c(args, list(start = start)))
+          expected_start <- matrix(start, p, m)
+          if (start == 1) {
+            design <- if (intercept) cbind(Intercept = 1, X) else X
+            center <- if (intercept) c(0, colMeans(X)) else rep(0, p)
+            scale <- sqrt(colMeans(sweep(as.matrix(design), 2, center, "-")^2))
+            if (intercept) scale[1L] <- 1
+            expected_start <- matrix(1 / scale, p, m)
+            if (intercept) expected_start[1L, ] <- 1 - sum(center / scale)
+          }
           explicit <- do.call(L0glm.fit,
-                              c(args, list(start = matrix(start, p, m))))
-          expect_identical(scalar$coefficients, explicit$coefficients)
-          expect_identical(scalar$lambdas, explicit$lambdas)
+                              c(args, list(start = expected_start)))
+          expect_equal(scalar$coefficients, explicit$coefficients, tolerance = 1e-12)
+          expect_equal(scalar$lambdas, explicit$lambdas, tolerance = 1e-12)
         }
       }
+    }
+  }
+})
+
+test_that("unit starts use normalized coordinates and explicit starts keep input units", {
+  X0 <- cbind(a = c(1, 2, 5, 8), b = c(0, 2, 1, 4))
+  for (sparse in c(FALSE, TRUE)) for (intercept in c(FALSE, TRUE)) {
+    X <- Matrix::Matrix(X0, sparse = sparse)
+    for (mode in c("none", "l2", "rms", "sd", "auto")) {
+      center <- if (intercept && mode != "none") colMeans(X0) else c(0, 0)
+      ss <- colSums(sweep(X0, 2, center, "-")^2)
+      scale <- switch(mode, none = c(1, 1), l2 = sqrt(ss), rms = sqrt(ss / 4),
+                      auto = sqrt(ss / 4), sd = apply(X0, 2, sd))
+      start <- 1 / scale
+      if (intercept) start <- c(1 - sum(center / scale), start)
+      args <- list(X = X, y = c(2, 1, 4, 6), family = gaussian(), dispersion = 1,
+        lambda = 4, normalize = mode, intercept = intercept, maxit = 1,
+        thresh = 0, relaxed = FALSE, parallelize = FALSE, openmp = FALSE)
+      unit <- do.call(L0glm.fit, c(args, list(start = 1)))
+      explicit <- do.call(L0glm.fit, c(args, list(start = matrix(start, ncol = 1))))
+      expect_equal(unit$coefficients, explicit$coefficients, tolerance = 1e-12)
+      expect_equal(unit$lambdas, explicit$lambdas, tolerance = 1e-12)
+    }
+  }
+})
+
+test_that("a remaining explicit one is not reinterpreted after starting-zero screening", {
+  X <- diag(c(2, 3)); y <- c(3, 0)
+  fit <- L0glm.fit(X, y, family = gaussian(), dispersion = 1, normalize = "l2",
+    start = c(1, 0), lambda = 4, maxit = 1, thresh = 0, parallelize = FALSE)
+  expect_equal(as.numeric(fit$coefficients), c(6 / 5, 0))
+  one_term <- L0glm.fit(matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
+    normalize = "l2", start = matrix(1, 1, 1), lambda = 4, maxit = 1,
+    thresh = 0, parallelize = FALSE)
+  expect_equal(as.numeric(one_term$coefficients), 6 / 5)
+})
+
+test_that("normalized Poisson unit starts agree across general and native channels", {
+  set.seed(1710)
+  for (sparse in c(FALSE, TRUE)) for (mode in c("l2", "rms")) {
+    X <- Matrix::Matrix(matrix(runif(40 * 6), 40, 6), sparse = sparse)
+    y <- matrix(rpois(120, 5), 40, 3)
+    scale <- sqrt(colSums(as.matrix(X)^2) / if (mode == "rms") 40 else 1)
+    for (intercept in c(FALSE, TRUE)) {
+      explicit <- matrix(c(if (intercept) 1, 1 / scale), 6 + intercept, 3)
+      args <- list(X = X, y = y, normalize = mode, intercept = intercept,
+        lambda = 1, maxit = 8, grouped = TRUE, relaxed = TRUE,
+        group.maxit = 2, parallelize = FALSE)
+      native <- do.call(L0nnpois, c(args, list(start = 1)))
+      reference <- do.call(L0nnpois, c(args, list(start = explicit)))
+      general <- do.call(L0glm.fit, c(args, list(start = 1,
+        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+      expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-10)
+      expect_equal(native$coefficients, general$coefficients, tolerance = 1e-6)
     }
   }
 })

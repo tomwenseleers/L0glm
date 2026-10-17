@@ -62,8 +62,8 @@ L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family) {
     B <- cbind(response, probes)
     tau <- 1e-6
     dual <- ncol(A) > nrow(A)
-    G <- if (dual) Matrix::tcrossprod(A) else Matrix::crossprod(A)
-    K <- G + Matrix::Diagonal(nrow(G), tau)
+    K <- if (dual) Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau) else
+      L0glm_pilot_gram(A, rep(tau, ncol(A)))
     rhs <- if (dual) B else Matrix::crossprod(A, B)
     if (inherits(K, "sparseMatrix")) {
       factor <- Matrix::Cholesky(Matrix::forceSymmetric(K), LDL = FALSE)
@@ -152,8 +152,7 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
       residual <- tau * residual
     } else {
       design <- cbind(U, A)
-      K <- Matrix::crossprod(design) +
-        Matrix::Diagonal(ncol(design), c(rep(0, length(free)), rep(tau, ncol(A))))
+      K <- L0glm_pilot_gram(design, c(rep(0, length(free)), rep(tau, ncol(A))))
       solution <- solve_factor(K, Matrix::crossprod(design, B))
       residual <- B - design %*% solution
     }
@@ -169,4 +168,15 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
   reference <- max(1, preset.lambda("gic", p = max(1, p), n = nrow(X)), na.rm = TRUE)
   if (!is.finite(phi) || phi <= 0) phi <- .Machine$double.eps
   max(.Machine$double.xmin, phi / reference)
+}
+
+# A large dense-stored PSF design can contain mostly exact zeros. Use the
+# existing sparse row-augmentation path for this auxiliary ridge factorization;
+# the original design and main solver storage remain unchanged. The system is
+# exactly crossprod(A) + diag(penalty); only its construction/storage differ.
+L0glm_pilot_gram <- function(A, penalty) {
+  if (!inherits(A, "sparseMatrix") && length(A) >= 1e6 &&
+      Matrix::nnzero(A) < 0.1 * length(A))
+    return(Matrix::crossprod(row_augX(A, penalty)))
+  Matrix::crossprod(A) + Matrix::Diagonal(ncol(A), penalty)
 }

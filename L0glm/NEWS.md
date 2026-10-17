@@ -2,10 +2,22 @@
 
 ## Development changes
 
+* Restored the fitting defaults `maxit = 25`, `tol = 1e-10`. Increase `maxit`
+  explicitly for problems requiring more iterations; returned convergence
+  diagnostics distinguish stopping at the iteration limit from convergence.
+  Single-channel native fits no longer detect unused OpenMP core counts.
+  Dispersion pilots use sparse row augmentation for large dense-stored designs
+  containing mostly exact zeros, preserving the same ridge system and main
+  solver storage.
+* Numeric scalar `start = 1` now denotes ones in normalized coefficient
+  coordinates, including a free centered intercept. All other scalars and
+  explicit vectors/matrices retain original input units. This applies to both
+  fitters, multichannel fits, and independently initialized tuning/CV fits.
+
 * Added `normalize = "auto"` (default), `"none"`, `"l2"`, `"rms"`, and
   `"sd"`. RMS gives L2 norm `sqrt(n)`. Automatic initialization, numerical
   thresholds and convergence use compatible coordinates, while coefficients,
-  explicit starts and ridge targets retain the original input units.
+  explicit vector/matrix starts and ridge targets retain the original input units.
   Centering requires an unrestricted intercept: nonnegative intercepts remain
   constrained, and binomial/quasibinomial intercepts retain their exception.
 * Wide Eigen and native Poisson systems use typed Woodbury solves, including
@@ -19,8 +31,7 @@
   selectable predictor count before starting-mask or pilot support restriction.
 * Estimated dispersion resumes updating after a support change. A virtually
   interpolating automatic pilot gets one retry with a moderate ridge penalty.
-  Defaults are now `maxit = 200` and `tol = 1e-8`, with early stopping and
-  per-channel/per-pass `convergence` diagnostics.
+  Early stopping and per-channel/per-pass `convergence` diagnostics are returned.
 * `L0glm.tune()` accepts a common numeric `start` or `start = "pilot"`.
   Independent pilot fits supply a shared seed; each requested lambda is fitted
   independently from it. Returned starts and `fit_args` allow direct replay.
@@ -29,9 +40,9 @@
 * Removed the slow NNLS ridge solver and its package dependency. Use Eigen,
   `bigGlm`, or OSQP. Also removed the unused internal block-fitting helper.
 
-* Both fitters accept a scalar `start`, repeating it for every coefficient and
-  response channel, including an added intercept. The general R path expands
-  scalar starts inside `L0glm.fit.internal()`.
+* Both fitters accept scalar starts for every coefficient and response channel,
+  including an added intercept. Numeric scalar one uses normalized coordinates;
+  other scalar starts repeat in original input units.
 * CV tuning returns the full-data `fit_1se` alongside `fit_best`, retaining
   both from the existing path without any additional fits.
 * The full tuning range starts at `lambda_min = 2` by default; a smaller

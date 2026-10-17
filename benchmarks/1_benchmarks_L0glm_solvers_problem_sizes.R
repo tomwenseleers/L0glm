@@ -19,6 +19,8 @@ sizes <- c(100, 500, 1000, 10000)
 use_openmp <- FALSE
 blas_threads <- 1L
 timing_repetitions <- 1L # increase for repeated fits; Time is the median
+fit_maxit <- 25L
+fit_tol <- 1e-10
 RhpcBLASctl::blas_set_num_threads(blas_threads)
 
 criterion <- "gic"
@@ -101,6 +103,8 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
           lambda = lambda,
           nonnegative = TRUE,
           relaxed = FALSE,
+          maxit = fit_maxit,
+          tol = fit_tol,
           thresh = 1e-5,
           openmp = use_openmp,
           parallelize = FALSE,
@@ -182,6 +186,10 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       BLAS_threads = blas_threads,
       Timing_repetitions = timing_repetitions,
       Timing_clock = "microbenchmark",
+      Maxit = fit_maxit,
+      Tolerance = fit_tol,
+      Iterations = if (is.null(fit)) NA_integer_ else max(fit$convergence$iterations),
+      Converged = if (is.null(fit)) NA else all(fit$convergence$converged),
       Status = status,
       Warnings = if (length(fit_warnings) > 0) {
         paste(unique(fit_warnings), collapse = " | ")
@@ -480,6 +488,8 @@ run_summary <- c(
   paste("OpenMP/native dispatch:", use_openmp),
   paste("BLAS threads:", blas_threads),
   paste("High-resolution timing repetitions:", timing_repetitions),
+  paste("Maximum IRLS iterations:", fit_maxit),
+  paste("Convergence tolerance:", fit_tol),
   paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 )
 writeLines(run_summary, normalizePath(file.path(output_dir, "run_summary.txt")))
