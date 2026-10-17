@@ -19,7 +19,7 @@ library(Matrix)
 library(ordinis)
 library(L0Learn) # use at least version 2
 library(abess)
-library(bigGlm)
+library(glmnet)
 
 # 1. SINGLE CHANNEL, SPARSE  ####
 n <- p <- 10000 
@@ -60,7 +60,7 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois$X,
            family = poisson(identity), 
            nonnegative = TRUE, 
            solver = "eigen", 
-           method = 1L)) # 3.44s
+           method = 1L)) # 4.53s
 # The dashed line marks the best grid value; the dotted line is the preset.
 # They need not coincide, especially for unrelaxed fits.
 tune_zoomed$lambda_best # 12.84577 (best lambda tune)
@@ -204,13 +204,13 @@ benchmarks_1_1 = benchmarks_1_1[order(benchmarks_1_1[,"deviance_true"]),] # sort
 benchmarks_1_1
 #          method     p     n m deviance deviance_true    loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
 # 4   L0glm_PLSCG 10000 10000 1 9349.103      2988.746 -41036.03 -0.02861098  80.28593  0.07161198  0.9928605 0.9093004
-# 5     L0glm_PCG 10000 10000 1 9349.100      2988.748 -41036.03 -0.02860991  80.28585  0.07161196  0.9928606 0.9093003
+# 5     L0glm_PCG 10000 10000 1 9349.100      2988.750 -41036.03 -0.02861004  80.28585  0.07161198  0.9928607 0.9093003
 # 3 L0glm_cholLLT 10000 10000 1 9349.100      2988.750 -41036.03 -0.02861004  80.28585  0.07161198  0.9928607 0.9093003
 # 2  L0glm_bigglm 10000 10000 1 9422.418      3019.605 -41072.69 -0.02894092  83.72523  0.07347632  0.9936964 0.9045904
 # 1    L0glm_osqp 10000 10000 1 9462.048      3074.622 -41092.50 -0.02870220  80.66691  0.07307096  0.9914590 0.9085972
 #   MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
 # 4    265.3200     528.5209      0.3977446     0.9928605   0.9400566              1000                   1011
-# 5    265.3201     528.5201      0.3977444     0.9928606   0.9400565              1000                   1011
+# 5    265.3201     528.5201      0.3977446     0.9928607   0.9400565              1000                   1011
 # 3    265.3201     528.5201      0.3977446     0.9928607   0.9400565              1000                   1011
 # 2    243.4808     581.1132      0.4125746     0.9936964   0.9283964              1000                   1015
 # 1    270.6446     526.1757      0.4058395     0.9914590   0.9402930              1000                   1012
