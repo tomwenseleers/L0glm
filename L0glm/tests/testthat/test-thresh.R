@@ -52,7 +52,8 @@ test_that("selection uses a relative cutoff and preserves exact-zero exclusion",
 test_that("relaxed fits retain coefficients below both cutoffs in all execution paths", {
   for (sparse in c(FALSE,TRUE)) for (engine in c("native","R")) {
     fun <- if(engine=="native")L0nnpois else L0glm.fit
-    args <- list(X=Matrix::Matrix(matrix(c(1,0,1,1),2),sparse=sparse),
+    # Neither column is an intercept: both contribute to the relative cutoff.
+    args <- list(X=Matrix::Matrix(matrix(c(1,0,1,1.01),2),sparse=sparse),
                  y=c(1.05,1),family=poisson(identity),start=c(1,1),lambda=1,thresh=0.1,
                  grouped=FALSE,relaxed=FALSE,maxit=1,parallelize=FALSE)
     if(engine=="R") args <- c(args,list(openmp=FALSE,nonnegative=TRUE))
@@ -60,7 +61,7 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
     expect_gt(min(selection$coefficients),max(selection$coefficients)*args$thresh)
     args$relaxed <- TRUE
     fit <- do.call(fun,args)
-    expect_equal(as.vector(fit$coefficients),c(0.05,1),tolerance=1e-12)
+    expect_equal(as.vector(fit$coefficients),c(1.05 - 1 / 1.01, 1 / 1.01),tolerance=1e-12)
 
     # A retained row can have a coefficient below even the numerical floor.
     args$X <- Matrix::Matrix(diag(3),sparse=sparse)

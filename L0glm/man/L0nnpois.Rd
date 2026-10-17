@@ -85,8 +85,8 @@ numerical floor described in \code{thresh} are excluded from later solves.
 Set to \code{NULL} by default, in which case it
 is auto-initialised.}
 
-\item{offset}{Optional vector of offset values of length \code{p}, or a
-matrix of offset values with dimensions \code{c(p, m)}. The offset is a
+\item{offset}{Optional vector of offset values of length \code{n}, or a
+matrix of offset values with dimensions \code{c(n, m)}. The offset is a
 known quantity that is added to the linear predictor of the model.}
 
 \item{lambda}{Either a scalar with the \eqn{L_0} penalty for univariate or

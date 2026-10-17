@@ -88,7 +88,7 @@ test_that("L0glm.fit.internal works with Gamma data", {
   set.seed(1)
   n <- 100
   p <- 10
-  X <- matrix(rnorm(n * p), n, p)
+  X <- cbind(Intercept = 1, matrix(rnorm(n * (p - 1L)), n, p - 1L))
   y <- rgamma(n, 1, 1)
   
   # Run the L0glm.fit.internal function
@@ -96,6 +96,7 @@ test_that("L0glm.fit.internal works with Gamma data", {
     X = X,
     y = y,
     family = Gamma(),
+    always.include = 1L,
     lambda = log(p) * log(log(n)),
     normalize = TRUE,
     weights = rep(1, nrow(X))
