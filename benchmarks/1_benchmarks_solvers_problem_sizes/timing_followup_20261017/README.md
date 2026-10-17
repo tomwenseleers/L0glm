@@ -1,5 +1,10 @@
 # Timing and solution follow-up, 17 October 2026
 
+Subsequent update: the package now uses inner CG tolerance `1e-10` by default.
+The 96-condition grid below retains its original inner CG tolerance `1e-7` so
+the saved before/after comparison remains reproducible. The separate tighter-CG
+checks show the effect of the revised default; LLT is unaffected.
+
 Source commit `2770dfc` restores `maxit=25, tol=1e-10` in both fitters. The
 preceding defaults allowed 200 iterations at tolerance `1e-8`. These budgets
 produce different intermediate adaptive-ridge fits, even for Poisson with its
@@ -110,7 +115,8 @@ at n=500 (dense), truth deviance/n changes from 1.411543 to approximately
 1.018139, with F1 0.878505. At n=10,000 (dense), it changes from 3.247432 to
 approximately 1.181553, with F1 0.937348. The sparse n=10,000 fit reaches the
 same tighter result. These are tested examples, not a guarantee for every
-nonconvex path. The default remains 1e-7; use the more accurate option explicitly:
+nonconvex path. These checks motivated changing the default from 1e-7 to
+1e-10. The equivalent explicit setting is:
 
 ```r
 fit <- L0glm.fit(
@@ -138,7 +144,8 @@ skips or test warnings. The QSAR normalization/start follow-up independently
 recomputed every GIC and held-out RMSE and replayed saved starts. Scratch
 scripts, detailed logs and models remain under the ignored `codex_sandbox`.
 
-The installed package could not be updated while its DLL was in use by another
-R process. Restart the RStudio R session and reinstall, or load this checkout
-with `pkgload::load_all("L0glm", compile=FALSE)` from the repository root when
-its existing native library is available. The results here use the checkout.
+After the subsequent CG tolerance change, the package passed 2,284 assertions
+with zero failures, errors, skips or test warnings. RStudio was closed and the
+package was successfully reinstalled into `C:/R/R-4.5.0/library`; a fresh R
+process verified the revised default and the native Poisson solver. The grid
+above uses the earlier checkout; it was not overwritten with new CG results.

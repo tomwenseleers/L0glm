@@ -78,7 +78,7 @@ test_that("control.solver.gen handles all methods for eigen solver", {
       expect_true(is.null(params$rowaug) || params$rowaug)
     } else if (method == 3) {
       expect_equal(params$method, "CG")
-      expect_equal(params$tol, 1E-7)
+      expect_equal(params$tol, 1E-10)
       expect_true(is.null(params$rowaug) || params$rowaug)
       expect_equal(params$precond, 2L)
     } else if (method == 4) {
@@ -146,6 +146,11 @@ test_that("control.solver.gen exposes only selected iterative preconditioners", 
   lscg_forced <- control.solver.gen(solver = "eigen", method = 4L, precond = 0L)
   expect_equal(lscg_forced$method, "LSCG")
   expect_equal(lscg_forced$precond, 1L)
+})
+
+test_that("an explicit CG tolerance overrides its more accurate default", {
+  expect_equal(control.solver.gen("eigen", 3L, tol = 1e-6)$tol, 1e-6)
+  expect_equal(control.solver.gen("eigen", 4L)$tol, 1e-7)
 })
 
 test_that("control.solver.gen handles invalid methods for eigen solver", {

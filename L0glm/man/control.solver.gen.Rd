@@ -39,6 +39,7 @@ diagonal preconditioner, \code{5L}=column-pivoted QR, and
 \item{reltol}{XXX}
 
 \item{tol}{Relative convergence tolerance for Eigen iterative solvers. For
+CG the default is \code{1e-10}; LSCG defaults to \code{1e-7}. For
 LSCG, Eigen tests the normal-equation residual in the original coefficient
 coordinates; no additional external column equilibration is performed.}
 

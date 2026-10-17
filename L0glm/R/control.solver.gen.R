@@ -24,6 +24,7 @@
 #' XXX
 #' @param tol
 #' Relative convergence tolerance for Eigen iterative solvers. For
+#' CG the default is \code{1e-10}; LSCG defaults to \code{1e-7}. For
 #' LSCG, Eigen tests the normal-equation residual in the original coefficient
 #' coordinates; no additional external column equilibration is performed.
 #' @param abstol
@@ -167,6 +168,7 @@ control.solver.gen <- function(solver,
                 NaturalOrdering = NaturalOrdering,
                 rowaug = rowaug)
     } else if (method == 3){
+      if (tol_was_null) tol <- 1e-10
       if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
       if(is.null(maxit)) maxit <- 5000L
       if(!is.null(precond) && as.integer(precond[1L]) != 2L && verbose) {

@@ -68,3 +68,24 @@ test_that("dense CG uses its diagonal preconditioner without sparse conversion",
     expect_equal(a, b2)
   }
 })
+
+test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
+  for (sparse in c(FALSE, TRUE)) {
+    sim <- simul(method = 1L, n = 500L, p = 500L, sparse = sparse,
+                 seed = 1L, options = list(sd_noise = 1))
+    lambda <- preset.lambda("gic", 500, 500)
+    start <- init_coefs(sim$X, sim$y, mu = sim$y, family = gaussian(), lambda = lambda)
+    fits <- lapply(c(1L, 3L), function(method)
+      L0glm.fit(sim$X, sim$y, family = gaussian(), start = start, lambda = lambda,
+        nonnegative = TRUE, relaxed = FALSE, parallelize = FALSE,
+        openmp = FALSE, method = method))
+    reference <- get.metrics(fits[[1L]]$coefficients, sim$X, sim$y,
+                             family = gaussian(), beta_true = sim$beta_true)
+    actual <- get.metrics(fits[[2L]]$coefficients, sim$X, sim$y,
+                          family = gaussian(), beta_true = sim$beta_true)
+    expect_identical(as.numeric(fits[[1L]]$coefficients) != 0,
+                     as.numeric(fits[[2L]]$coefficients) != 0)
+    expect_lt(abs(actual$deviance_true - reference$deviance_true) / 500, 5e-5)
+    expect_equal(actual$R2_coefs, reference$R2_coefs, tolerance = 1e-5)
+  }
+})

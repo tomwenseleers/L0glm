@@ -2,6 +2,10 @@
 
 ## Development changes
 
+* Eigen CG now defaults to inner relative tolerance `1e-10`, improving agreement
+  with LLT in the Gaussian PSF benchmark. Explicit solver tolerances are retained;
+  LSCG keeps its default `1e-7`. This does not change LLT or the outer tolerance.
+
 * Restored the fitting defaults `maxit = 25`, `tol = 1e-10`. Increase `maxit`
   explicitly for problems requiring more iterations; returned convergence
   diagnostics distinguish stopping at the iteration limit from convergence.
