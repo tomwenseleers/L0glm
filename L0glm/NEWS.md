@@ -2,6 +2,30 @@
 
 ## Development changes
 
+* Added `normalize = "auto"` (default), `"none"`, `"l2"`, `"rms"`, and
+  `"sd"`. RMS gives L2 norm `sqrt(n)`. Automatic initialization, numerical
+  thresholds and convergence use compatible coordinates, while coefficients,
+  explicit starts and ridge targets retain the original input units.
+  Centering requires an unrestricted intercept: nonnegative intercepts remain
+  constrained, and binomial/quasibinomial intercepts retain their exception.
+* Wide Eigen and native Poisson systems use typed Woodbury solves, including
+  unpenalized nuisance terms. Dense CG uses diagonal preconditioning; sparse CG
+  keeps incomplete Cholesky. Dense/sparse design storage is preserved.
+* Exact zero starts exclude coefficients separately in each channel and screen
+  all-zero rows before fitting. Mandatory terms remain eligible with zero starts.
+  Coefficients are returned as sparse matrices in the original dimensions.
+  Signed multichannel starts pool absolute magnitudes without cancellation.
+* Intercepts and `always.include` terms are unpenalized. GIC uses the original
+  selectable predictor count before starting-mask or pilot support restriction.
+* Estimated dispersion resumes updating after a support change. A virtually
+  interpolating automatic pilot gets one retry with a moderate ridge penalty.
+  Defaults are now `maxit = 200` and `tol = 1e-8`, with early stopping and
+  per-channel/per-pass `convergence` diagnostics.
+* `L0glm.tune()` accepts a common numeric `start` or `start = "pilot"`.
+  Independent pilot fits supply a shared seed; each requested lambda is fitted
+  independently from it. Returned starts and `fit_args` allow direct replay.
+  CV builds pilot seeds and preprocessing separately within each training fold.
+
 * Removed the slow NNLS ridge solver and its package dependency. Use Eigen,
   `bigGlm`, or OSQP. Also removed the unused internal block-fitting helper.
 
@@ -64,7 +88,8 @@
   `openmp = FALSE` to select the general R fitting path. Incompatible solver
   controls also retain the R path. `parallelize` and `ncores` control
   outcome-level concurrency in the compiled backend.
-  Local Windows PSOCK workers use `localhost` for their master connection.
+  Local Windows PSOCK workers use a clean R session and IPv4 loopback for their
+  master connection.
 * The default `L0nnpois` penalty is now `lambda = "gic"`.
 * Added the Matthews correlation coefficient (`MCC`, or Pearson's phi) for
   support recovery to fit metrics and the README benchmark. Constant support

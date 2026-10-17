@@ -114,8 +114,8 @@ estimated & included in the model. These terms are unpenalized and remain
 eligible when their current estimate or explicit starting value is zero.
 Coefficients with
 a name that includes \code{"Intercept"} in their name are always included. 
-Specify 0 if all terms should be allowed to be
-shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
+Use \code{NULL} or 0 to request no additional mandatory terms;
+recognized intercepts remain mandatory. If `intercept = TRUE`, the first column (intercept) will
 always be estimated and included in the model.}
 
 \item{normalize}{Preprocessing convention: \code{"auto"} (default) uses

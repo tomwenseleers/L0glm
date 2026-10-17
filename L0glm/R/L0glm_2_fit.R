@@ -159,8 +159,8 @@
 #'   eligible when their current estimate or explicit starting value is zero.
 #'   Coefficients with
 #'   a name that includes \code{"Intercept"} in their name are always included. 
-#'   Specify 0 if all terms should be allowed to be
-#'   shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
+#'   Use \code{NULL} or 0 to request no additional mandatory terms;
+#'   recognized intercepts remain mandatory. If `intercept = TRUE`, the first column (intercept) will
 #'   always be estimated and included in the model.
 #' @param nonnegative A single logical value. If \code{TRUE}, all coefficients,
 #'   including any intercept and \code{always.include} terms, must be
