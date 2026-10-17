@@ -1,340 +1,355 @@
-options(java.parameters = c("-XX:+UseConcMarkSweepGC", "-Xmx12000m")) # increase JAVA memory to 12 Gb
-# install.packages("pacman")
-library(pacman)
-# this command will load all required packages & will install them first if
-# missing - you can place this command at the start of all your scripts
-# this is more elegant than a lot of separate install.packages() and library() statements
-# If you are asked "Would you like to use a personal library instead?" answer YES
-suppressWarnings(pacman::p_load(rJava, glmnet, caret, mgcv, gam,
-                                nnet, e1071, randomForest, xgboost,
-                                Metrics, dplyr, effects, ggplot2, ggthemes, 
-                                officer, flextable, export, abess,
-                                update=FALSE))
+# QSAR: normalization and initialization of L0glm versus abess / relaxed LASSO.
+# Run from the repository root, L0glm package directory, or this directory.
+# Settings are ordinary R values; no environment-variable configuration.
+cfg <- list(
+  seed = 1L,
+  train_fraction = 0.75,
+  normalize = c("none", "l2", "rms", "sd", "auto"),
+  start = c("NULL", "1", "pilot"),
+  relaxed = FALSE,                 # use c(FALSE, TRUE) to compare relaxed refits too
+  repeats = 3L,                    # median elapsed seconds and their range
+  nlambda = 10L,
+  lambda_min = 2,                  # same lower bound for every L0 path
+  nfolds = 5L,
+  gamma = c(0, 0.5, 1),            # fully / partly relaxed, ordinary LASSO
+  maxit = 200L,
+  tol = 1e-8,
+  thresh = 1e-5,
+  threads = 1L,
+  load_checkout = TRUE,            # FALSE to benchmark installed L0glm
+  plot = TRUE,
+  output = "results_normalization_start"
+)
 
+repo_dir <- if (file.exists("L0glm/DESCRIPTION")) "." else
+  if (file.exists("../L0glm/DESCRIPTION")) ".." else "../.."
+repo_dir <- normalizePath(repo_dir, winslash = "/", mustWork = TRUE)
+stopifnot(file.exists(file.path(repo_dir, "L0glm", "DESCRIPTION")))
+data_dir <- file.path(repo_dir, "benchmarks",
+                      "2_benchmark_vs_abess_relaxed_LASSO_toxicityQSAR")
+out_dir <- file.path(data_dir, cfg$output)
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+required <- c("Matrix", "caret", "glmnet", "abess", "RhpcBLASctl",
+              if (cfg$load_checkout) "pkgload" else "L0glm")
+missing <- required[!vapply(required, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) stop("Install these packages first: ", paste(missing, collapse = ", "))
+if (cfg$load_checkout) {
+  pkgload::load_all(file.path(repo_dir, "L0glm"), compile = FALSE, quiet = TRUE)
+} else library(L0glm)
+RhpcBLASctl::blas_set_num_threads(cfg$threads)
+RhpcBLASctl::omp_set_num_threads(cfg$threads)
+stopifnot(cfg$repeats >= 1L, cfg$nlambda >= 3L, cfg$nfolds >= 3L,
+          all(cfg$normalize %in% c("none", "l2", "rms", "sd", "auto")),
+          all(cfg$start %in% c("NULL", "1", "pilot")))
 
-## 1. Load covariate matrix with fingerprints and chemical properties calculated from molecular structures to predict outcome variable (aquatic toxicity) ####
+# Preserve the original seed-1, outcome-stratified 242/80 split. All transforms
+# and near-invariance filtering use training observations only. Test outcomes
+# are used only for final scoring, never for tuning or pilot construction.
+molecules <- read.csv(file.path(data_dir, "aquatictox_molecules_withsmiles.csv"))
+X_raw <- as.matrix(read.csv(file.path(data_dir, "aquatictox_covariates.csv")))
+y <- molecules$toxicity
+stopifnot(nrow(X_raw) == length(y), all(is.finite(X_raw)), all(is.finite(y)))
+storage.mode(X_raw) <- "double"
+set.seed(cfg$seed)
+train <- as.vector(caret::createDataPartition(y, p = cfg$train_fraction, list = FALSE))
+test <- setdiff(seq_along(y), train)
+remove <- caret::nearZeroVar(X_raw[train, , drop = FALSE], freqCut = 99, uniqueCut = 1)
+keep <- setdiff(seq_len(ncol(X_raw)), remove)
+X_train <- X_raw[train, keep, drop = FALSE]
+X_test <- X_raw[test, keep, drop = FALSE]
+y_train <- y[train]
+y_test <- y[test]
+n <- nrow(X_train)
+p <- ncol(X_train)
+set.seed(cfg$seed + 1L)
+foldid <- sample(rep(seq_len(cfg$nfolds), length.out = n))
+lambda_gic <- log(p) * log(log(n))
+cat(sprintf("QSAR: %d training / %d test observations, %d predictors; GIC lambda %.6f\n",
+            n, nrow(X_test), p, lambda_gic))
 
-# file with outcome variable (toxicity) and molecular structures (INCHI & SMILES)
-DF = read.csv("../benchmarks/2_benchmark_vs_abess_relaxed_LASSO_toxicityQSAR/aquatictox_molecules_withsmiles.csv")
-head(DF)
-nrow(DF) # 322 molecules, toxicity=outcome variable, inchi & smiles encodes chemical structure
+# Common Gaussian GIC, profiling sigma^2 = RSS/n, for ALL methods:
+# -2 log L + log(p)*log(log(n)) * (selected slopes + intercept + sigma^2).
+# Count actual nonzero slopes and keep the original p after support restriction.
+# This is an IC score, not a ridge-effective-df correction or an L0 certificate.
+training_scores <- function(beta, X, y) {
+  beta <- as.matrix(beta)          # first row is always the free intercept
+  stopifnot(nrow(beta) == ncol(X) + 1L, all(is.finite(beta)))
+  predicted <- sweep(X %*% beta[-1L, , drop = FALSE], 2L, beta[1L, ], "+")
+  rss <- colSums((predicted - y)^2)
+  k <- colSums(beta[-1L, , drop = FALSE] != 0)
+  min2LL <- length(y) * (log(2 * pi) + 1 + log(rss / length(y)))
+  data.frame(selected = k, train_RMSE = sqrt(rss / length(y)),
+             dispersion_ML = rss / length(y), logLik = -min2LL / 2,
+             GIC = min2LL + log(ncol(X)) * log(log(length(y))) * (k + 2L))
+}
 
-y = DF$toxicity # dependent variable = aquatic toxicity
-names(y) =  paste0("Mol_", 1:length(y))
+# Include complete training/selection work; exclude test scoring and file I/O.
+# Record failures/warnings explicitly instead of dropping unsuccessful variants.
+timed <- function(fun) {
+  warnings <- character()
+  value <- NULL
+  error <- NA_character_
+  seconds <- system.time(tryCatch(
+    value <- withCallingHandlers(fun(), warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }), error = function(e) error <<- conditionMessage(e)))[["elapsed"]]
+  list(value = value, seconds = seconds, error = error,
+       warnings = paste(unique(warnings), collapse = " | "))
+}
 
-# file with calculated molecular fingerprints and chemical properties calculated
-# from these molecular structures to use to predict toxicity and be able to
-# predict the toxicity of other similar chemicals (see Part 1 tutorial to see
-# how this was done) i.e. this is our predictor / covariate matrix
-X = read.csv("../benchmarks/2_benchmark_vs_abess_relaxed_LASSO_toxicityQSAR/aquatictox_covariates.csv")
+# Exact interpolants have unbounded profiled Gaussian likelihood. Flag them
+# instead of silently accepting -Inf as a meaningful model-selection score.
+best_gic <- function(scores) {
+  available <- which(is.finite(scores$GIC))
+  if (length(available) < nrow(scores))
+    warning("Excluded candidates with nonfinite Gaussian GIC (including exact interpolants).")
+  if (!length(available)) stop("No candidate has finite Gaussian GIC.")
+  available[which.min(scores$GIC[available])]
+}
 
+rows <- models <- paths <- list()
+record <- function(run, id, method, selection, normalization = NA_character_,
+                   start = NA_character_, relaxed = NA, repetition = 1L,
+                   overhead = 0) {
+  value <- run$value
+  metadata <- data.frame(id, method, selection, normalization, start, relaxed,
+                         repetition, seconds = run$seconds + overhead,
+                         pilot_seconds = overhead, lambda = NA_real_, gamma = NA_real_,
+                         selected = NA_integer_, train_RMSE = NA_real_,
+                         dispersion_ML = NA_real_, logLik = NA_real_, GIC = NA_real_,
+                         heldout_RMSE = NA_real_, heldout_R2 = NA_real_,
+                         converged = NA, error = run$error, warnings = run$warnings)
+  if (!is.null(value)) {
+    beta <- as.numeric(value$beta)
+    score <- training_scores(beta, X_train, y_train)
+    prediction <- as.numeric(beta[1L] + X_test %*% beta[-1L])
+    metadata[names(score)] <- score
+    metadata$heldout_RMSE <- sqrt(mean((prediction - y_test)^2))
+    metadata$heldout_R2 <- 1 - sum((prediction - y_test)^2) / sum((y_test - mean(y_test))^2)
+    metadata$lambda <- value$lambda
+    metadata$gamma <- if (is.null(value$gamma)) NA_real_ else value$gamma
+    metadata$converged <- if (is.null(value$converged)) NA else value$converged
+    if (!is.null(value$pilot_seconds)) metadata$pilot_seconds <- value$pilot_seconds
+    if (repetition == 1L) models[[id]] <<- value
+  }
+  rows[[length(rows) + 1L]] <<- metadata
+  invisible(metadata)
+}
 
-## 2. Covariate matrix preprocessing ####
+fit_value <- function(fit, lambda) {
+  list(beta = fit$coefficients, lambda = lambda, fit = fit,
+       converged = all(fit$convergence$converged))
+}
 
-# center and/or L2 norm normalize columns, to center all variables & get them
-# all on the same scale 
+# Internal normalization: none = no scaling; l2 = centered L2 norm 1;
+# rms = centered L2 norm sqrt(n); sd = centered sample SD 1. Here auto = rms.
+# Scalar start=1 is in ORIGINAL coefficient units. NULL initializes each fit
+# automatically. "pilot" uses L0glm.tune's signed-mean-absolute common seed from
+# ten independent fits; zero entries restrict support. Save the seed for replay.
+for (norm in cfg$normalize) for (seed in cfg$start) for (relax in cfg$relaxed) {
+  tag <- paste("L0glm", norm, seed, if (relax) "relaxed" else "unrelaxed", sep = "_")
+  cat("Fitting ", tag, "\n", sep = "")
+  common <- list(X = X_train, y = y_train, family = gaussian(identity),
+                 intercept = TRUE, nonnegative = FALSE, normalize = norm,
+                 relaxed = relax, parallelize = FALSE, openmp = FALSE,
+                 solver = "eigen", method = 1L, maxit = cfg$maxit,
+                 tol = cfg$tol, thresh = cfg$thresh,
+                 start = if (seed == "NULL") NULL else if (seed == "1") 1 else "pilot")
+  for (repetition in seq_len(cfg$repeats)) {
+    # Includes endpoint search, all pilots, lambda fits and GIC selection.
+    tuned <- timed(function() do.call(L0glm.tune, c(common,
+      list(tune = "gic", nlambda = cfg$nlambda, lambda_min = cfg$lambda_min,
+           prop_range = 1, plot = FALSE, printbest = FALSE))))
+    if (!is.null(tuned$value)) {
+      result <- tuned$value
+      tuned$value <- fit_value(result$fit_best, result$lambda_best)
+      tuned$value$pilot_seconds <- sum(result$pilot$seconds)
+      if (repetition == 1L) paths[[tag]] <- result
+    }
+    record(tuned, paste0(tag, "_GIC"), "L0glm", "GIC path", norm, seed, relax, repetition)
 
-# function to L2 norm normalize the columns of the design  matrix 
-# (the L2 norm is the square root of the sum of the squared values)
-# (i.e. to have them on the same scale, same aim as standardization) :
-L2norm = function (X) apply(X, 2, function (col) col/norm(as.matrix(col),"2"))
+    # Charge pilot construction to the preset fit too, but not endpoint search.
+    if (seed == "pilot" && is.null(tuned$value)) {
+      preset <- tuned
+      pilot_seconds <- 0
+    } else {
+      preset_args <- common
+      if (seed == "pilot") preset_args$start <- result$start
+      pilot_seconds <- if (seed == "pilot") sum(result$pilot$seconds) else 0
+      preset <- timed(function() {
+        fit <- do.call(L0glm.fit, c(preset_args, list(lambda = "gic")))
+        fit_value(fit, lambda_gic)
+      })
+    }
+    record(preset, paste0(tag, "_preset"), "L0glm", "GIC preset", norm, seed, relax,
+           repetition, overhead = pilot_seconds)
+  }
+  write.csv(do.call(rbind, rows), file.path(out_dir, "runs.csv"), row.names = FALSE)
+}
 
-# function to center & L2 norm normalize the columns of the design matrix :
-centL2norm = function (X) apply(X, 2, function (col) (col-mean(col))/norm((col-mean(col)),"2"))
+# abess: training-only normalization, signed slopes and free intercept.
+# Keep the original broad support search with independent (non-warm) fits.
+# Rescore its returned path using the same GIC as L0glm.
+for (repetition in seq_len(cfg$repeats)) {
+  cat("Fitting abess, repetition ", repetition, "\n", sep = "")
+  run <- timed(function() {
+    path <- abess::abess(X_train, y_train, family = "gaussian", normalize = 1L,
+      tune.type = "gic", fit.intercept = TRUE, support.size = 0:(n - 1L),
+      warm.start = FALSE, num.threads = cfg$threads)
+    beta <- coef(path, support.size = path$support.size)
+    scores <- training_scores(beta, X_train, y_train)
+    best <- best_gic(scores)
+    list(beta = beta[, best, drop = FALSE], lambda = NA_real_,
+         support_size = path$support.size[best], scores = scores, path = path)
+  })
+  record(run, "abess_GIC", "abess", "GIC support path", repetition = repetition)
+}
 
-# here we will just L2 norm normalize all columns of X to get them all on the
-# same scale (same function as standardisation)
-X = L2norm(X=as.matrix(X)) # L2 norm normalize columns of X
-Xc = centL2norm(X=as.matrix(X)) # centered & L2 norm normalized version of X
+# Relaxed LASSO: separate training-GIC and training-only CV selection.
+# gamma=0 is the unpenalized refit; gamma=1 is ordinary LASSO.
+for (repetition in seq_len(cfg$repeats)) {
+  cat("Fitting relaxed LASSO, repetition ", repetition, "\n", sep = "")
+  run <- timed(function() {
+    path <- glmnet::glmnet(X_train, y_train, family = "gaussian", alpha = 1,
+      standardize = TRUE, intercept = TRUE, relax = TRUE)
+    candidates <- lapply(cfg$gamma, function(gamma) {
+      beta <- coef(path, s = path$lambda, gamma = gamma)
+      scores <- training_scores(beta, X_train, y_train)
+      list(beta = beta, scores = transform(scores, lambda = path$lambda, gamma = gamma))
+    })
+    scores <- do.call(rbind, lapply(candidates, `[[`, "scores"))
+    beta <- do.call(cbind, lapply(candidates, `[[`, "beta"))
+    best <- best_gic(scores)
+    list(beta = beta[, best, drop = FALSE], lambda = scores$lambda[best],
+         gamma = scores$gamma[best], scores = scores, path = path)
+  })
+  record(run, "relaxed_LASSO_GIC", "relaxed LASSO", "GIC lambda/gamma path",
+         repetition = repetition)
+  cv_run <- timed(function() {
+    path <- glmnet::cv.glmnet(X_train, y_train, family = "gaussian", alpha = 1,
+      standardize = TRUE, intercept = TRUE, relax = TRUE, gamma = cfg$gamma,
+      foldid = foldid, nfolds = cfg$nfolds, type.measure = "mse", parallel = FALSE)
+    lambda <- path$relaxed$lambda.min
+    gamma <- path$relaxed$gamma.min
+    list(beta = coef(path, s = "lambda.min", gamma = gamma),
+         lambda = lambda, gamma = gamma, path = path)
+  })
+  record(cv_run, "relaxed_LASSO_CV", "relaxed LASSO", paste0(cfg$nfolds, "-fold CV"),
+         repetition = repetition)
+}
 
-# for more help on preprocessing using caret, e.g. to include 
-# one-hot encoded dummy-coded factors see 
-# https://topepo.github.io/caret/pre-processing.html
+runs <- do.call(rbind, rows)
+summary <- do.call(rbind, lapply(split(runs, factor(runs$id, levels = unique(runs$id))), function(z) {
+  first <- z[1L, setdiff(names(z), "repetition"), drop = FALSE]
+  first$seconds <- median(z$seconds)
+  first$seconds_min <- min(z$seconds)
+  first$seconds_max <- max(z$seconds)
+  first$pilot_seconds <- median(z$pilot_seconds)
+  first$completed_runs <- sum(is.na(z$error))
+  first$clean_runs <- sum(is.na(z$error) & !nzchar(z$warnings) & !z$converged %in% FALSE)
+  first$repeats <- nrow(z)
+  first$GIC_range <- if (any(is.finite(z$GIC))) diff(range(z$GIC, finite = TRUE)) else NA_real_
+  first$RMSE_range <- if (any(is.finite(z$heldout_RMSE)))
+    diff(range(z$heldout_RMSE, finite = TRUE)) else NA_real_
+  first$warnings <- paste(unique(z$warnings[nzchar(z$warnings)]), collapse = " | ")
+  first$error <- paste(unique(z$error[!is.na(z$error)]), collapse = " | ")
+  first
+}))
+rownames(summary) <- NULL
+write.csv(runs, file.path(out_dir, "runs.csv"), row.names = FALSE)
+write.csv(summary, file.path(out_dir, "comparison.csv"), row.names = FALSE)
+write.csv(data.frame(row = seq_along(y), partition = ifelse(seq_along(y) %in% train, "train", "test"),
+                     cv_fold = replace(rep(NA_integer_, length(y)), train, foldid)),
+          file.path(out_dir, "split.csv"), row.names = FALSE)
+write.csv(data.frame(column = keep, predictor = colnames(X_train)),
+          file.path(out_dir, "predictors.csv"), row.names = FALSE)
+saveRDS(list(config = cfg, models = models, paths = paths, summary = summary,
+             runs = runs, train = train, test = test, foldid = foldid, keep = keep,
+             lambda_gic = lambda_gic, session = sessionInfo()),
+        file.path(out_dir, "models.rds"))
+writeLines(trimws(capture.output(sessionInfo()), which = "right"),
+           file.path(out_dir, "sessionInfo.txt"))
 
+# Independently verify the common GIC and original-scale training predictions.
+for (value in models) {
+  beta <- value$beta
+  met <- getFromNamespace("get.metrics", "L0glm")(
+    beta, cbind(Intercept = 1, X_train), matrix(y_train),
+    family = gaussian(identity), p = p, always.include = 1L)
+  stopifnot(isTRUE(all.equal(met$gic, training_scores(beta, X_train, y_train)$GIC,
+                            tolerance = 1e-8)))
+  if (!is.null(value$fit)) {
+    fit <- value$fit
+    stopifnot(inherits(fit$coefficients, "dgCMatrix"), nrow(fit$coefficients) == p + 1L,
+              fit$p == p,
+              isTRUE(all.equal(as.numeric(fit$X %*% fit$coefficients),
+                as.numeric(beta[1L] + X_train %*% beta[-1L]), tolerance = 1e-8)))
+  }
+}
 
-## 3. Partition dataset into training & test set & filter out some variables ####
+if (cfg$plot) {
+  draw_comparison <- function(zoom = TRUE) {
+    colors <- c("L0glm" = "#238443", "abess" = "#2166AC", "relaxed LASSO" = "#CB181D")
+    labels <- ifelse(summary$method == "L0glm",
+      paste(summary$normalization, paste0("start=", summary$start), summary$selection,
+            ifelse(summary$relaxed, "relaxed", "")),
+      paste(summary$method, summary$selection))
+    flagged <- nzchar(summary$warnings) | nzchar(summary$error) | summary$converged %in% FALSE
+    labels <- paste0(labels, ifelse(flagged, " *", ""))
+    at <- rev(seq_len(nrow(summary)))
+    old <- par(mfrow = c(1, 3), mar = c(4.5, 1, 3, 1), oma = c(1.2, 18, 2, 0))
+    on.exit(par(old))
+    for (field in c("GIC", "heldout_RMSE", "seconds")) {
+      x <- summary[[field]]
+      finite <- is.finite(x) & (field != "seconds" | x > 0)
+      shown <- x
+      upper <- if (zoom && field != "seconds")
+        min(max(x[finite]), median(x[finite]) + 3 * mad(x[finite])) else Inf
+      clipped <- finite & x > upper
+      shown[clipped] <- upper
+      log_axis <- field == "seconds" || (!zoom && field == "heldout_RMSE")
+      limits <- if (log_axis) range(shown[finite]) * c(0.8, 1.2) else
+        extendrange(shown[finite], f = 0.08)
+      plot(shown[finite], at[finite], xlim = limits,
+        ylim = c(0.4, nrow(summary) + 0.6), pch = 19,
+        col = colors[summary$method[finite]], yaxt = "n",
+        log = if (log_axis) "x" else "", ylab = "",
+        xlab = switch(field, GIC = "Training GIC", heldout_RMSE = "Held-out RMSE",
+                       seconds = "Elapsed seconds (median; log axis)"),
+        main = switch(field, GIC = "Lower GIC is better", heldout_RMSE = "Lower RMSE is better",
+                       seconds = "Training and selection time"))
+      abline(h = at, col = "grey92", lty = 3)
+      if (field == "GIC") axis(2, at = at, labels = labels, las = 1, tick = FALSE, cex.axis = 0.8)
+      if (field == "seconds") segments(pmax(summary$seconds_min, 1e-4), at,
+        pmax(summary$seconds_max, 1e-4), at, col = colors[summary$method])
+      points(shown[finite], at[finite], pch = ifelse(clipped[finite], 17, 19),
+             col = colors[summary$method[finite]])
+      if (any(clipped)) text(shown[clipped], at[clipped],
+        labels = formatC(x[clipped], digits = 3, format = "g"), pos = 2, cex = 0.65)
+    }
+    mtext(sprintf("QSAR: n=%d, p=%d; %d held-out molecules; %d timing repetitions",
+                  n, p, nrow(X_test), cfg$repeats), outer = TRUE, side = 3, line = 0.5)
+    mtext(paste("* Warnings or incomplete convergence.",
+      if (zoom) "Triangles: larger values beyond zoomed range (actual values labeled)." else
+        "Full metric ranges; RMSE and time use log axes."),
+      outer = TRUE, side = 1, line = 0.1, cex = 0.75)
+  }
+  png(file.path(out_dir, "comparison.png"), width = 2400,
+      height = max(1300, 150 + nrow(summary) * 40), res = 150)
+  draw_comparison()
+  dev.off()
+  png(file.path(out_dir, "comparison_all.png"), width = 2400,
+      height = max(1300, 150 + nrow(summary) * 40), res = 150)
+  draw_comparison(zoom = FALSE)
+  dev.off()
+  pdf(file.path(out_dir, "comparison.pdf"), width = 16, height = max(9, nrow(summary) * 0.27))
+  draw_comparison()
+  dev.off()
+}
 
-# we will use 75% of our data (p=0.75) for training the models and use the
-# remaining 25% to test the performance
-set.seed(1) # set random number generator seed to make script reproducible
-data_index = createDataPartition(y, p = .75, list = FALSE)
-
-dim(X) # 322 obs x 4397 variables
-
-X_train = X[data_index, ] # training set covariate values
-X_test = X[-data_index, ] # validation test set covariate values
-Xc_train = Xc[data_index, ] # training set covariate values (also centering variables first)
-Xc_test = Xc[-data_index, ] # validation test set covariate values (also centering variables first)
-
-
-# we will now remove variables that are near-invariant in the training set :
-X = X[,-nearZeroVar(X_train, freqCut = 99/1, uniqueCut = 1)]
-dim(X) # 322 obs x 2776 variables
-Xc = Xc[,-nearZeroVar(Xc_train, freqCut = 99/1, uniqueCut = 1)]
-dim(Xc) # 322 obs x 2776 variables
-
-# sometimes linearly dependent variables are removed using
-X_nolindep = X[, -findLinearCombos(X_train)$remove]
-dim(X_nolindep) # 322 240
-
-# and sometimes highly collinear variables are also removed using
-X_nocol = X_nolindep[,-findCorrelation(cor(X_nolindep), cutoff = 0.99, verbose = TRUE)]
-dim(X_nocol) # 322 195
-
-### here we will only remove the near-invariant variables as above, 
-### so we continue working with X (2776 variables)
-
-X_train = X[data_index, ] # training set covariate values
-X_test = X[-data_index, ] # validation test set covariate values
-Xc_train = Xc[data_index, ] # training set covariate values (also centering variables first)
-Xc_test = Xc[-data_index, ] # validation test set covariate values (also centering variables first)
-
-y_train = y[data_index] # training set outcome variable
-y_test = y[-data_index] # validation test set outcome variable
-
-n=nrow(Xc_train)
-p=ncol(Xc_train)
-
-
-
-## 1. RELAXED LASSO REGRESSION USING glmnet PACKAGE (L1 norm penalized regression) ####
-
-# The L1 penalty in LASSO regression causes coefficients to have a downward bias.
-# To reduce this bias, glmnet also offers the possibility to fit relaxed LASSO
-# models, whereby the LASSO selected variables are refit unpenalised using a 
-# regular least square regression or glm (if gamma is set to 0). With mixing
-# hyperparameter gamma set to a value between 0 and 1 it will give a weighted
-# average of the LASSO and relaxed LASSO solution.
-
-# The optimal level of regularisation in relaxed LASSO comes out higher
-# than in LASSO, which also reduces the nr of false positives.
-
-# first determine optimal lambda regularization parameter using cross validation
-set.seed(1)
-system.time(relaxedlasso_cv <- cv.glmnet(x = X, y = y, 
-                            family = "gaussian", # normally distributed noise, can also be "binomial", "poisson", "multinomial" or "cox" (for survival data)
-                            alpha = 1, # to get LASSO penalty (ie with L1 norm penalty, 0<alpha<1 gives elastic net, with weighted L1 and L2 norm penalty, which can be better with many collinear variables)
-                            type.measure = "deviance", # loss to use for cross-validation, "deviance" more general and also works for binomial & Poisson data
-                            standardize = TRUE,
-                            nfolds = 5, # we do 5-fold cross validation
-                            gamma = c(0, 0.5), relax = TRUE, path = TRUE, # for relaxed LASSO, here using 2 different values of gamma
-                            intercept = TRUE)) 
-# 9.3s 
-optlambda = relaxedlasso_cv$relaxed$lambda.min # optimal lambda that gives minimum out-of-sample MSE
-optlambda # 0.07920818 - this is always higher than for regular LASSO, so model will result in fewer false positives
-optgamma = relaxedlasso_cv$relaxed$gamma.min # optimal gamma value for relaxed LASSO (gamma=0=full relaxed LASSO, gamma=1=LASSO, in between: weighted avg)
-optgamma # 0.5
-
-plot(relaxedlasso_cv) # MSE ifo lambda sequence
-# graph2ppt(file="relaxed LASSO_cv_lambda_MSE.pptx", width=4, height=4)
-
-# now again fit relaxed LASSO model over sequence of lambda values (these are automatically set)
-system.time(relaxedlassomodel <- glmnet(X_train, y_train, family = "gaussian", 
-                           alpha = 1, # to get LASSO penalty
-                           standardize = TRUE,
-                           gamma = c(0, 0.5), relax = TRUE, path = TRUE, # for relaxed LASSO, here using 2 different values of gamma
-                           intercept = TRUE)) 
-# 1.3s
-plot(relaxedlassomodel, xvar="lambda", gamma=optgamma) # coefficients ifo lambda for best gamma value
-abline(v=log(optlambda), col="green4", lty=3, lwd=3) # optimal lambda
-# graph2ppt(file="3_relaxed LASSO_coefficient paths.pptx", width=8, height=6)
-
-beta = coef(relaxedlassomodel, s=optlambda, gamma=optgamma) # model coefficients at optimal lambda & gamma value determined using 5-fold cross validation
-sum(beta!=0) # nr nonzero coefficients: 40 (39+intercept)
-coefsrelaxedlasso = as.vector(beta)
-
-# show results & validate on test set:
-pred_test_relaxedlasso <- yhat_test <- predict(relaxedlassomodel, newx=X_test, s=optlambda, gamma=optgamma) # predictions test set
-pred_train_relaxedlasso <- predict(relaxedlassomodel, newx=X_train, s=optlambda, gamma=optgamma) # predictions training set
-relaxedlassoset = which(beta[-1]!=0)-1 # set of variables included in the model
-rownames(beta)[relaxedlassoset] # variables included in the model
-
-# benchmarks calculated on test set
-benchm_relaxedlasso = c(RMSE = RMSE(yhat_test, y_test), # root mean squared error, sqrt(mean((pred - obs)^2))
-                        Rsq = 1 - (sum((yhat_test - y_test) ^ 2))/(sum((y_test - mean(y_test)) ^ 2)), # R squared 
-                        MAE = MAE(yhat_test, y_test), # mean absolute error
-                        MdAE = median(abs(yhat_test-y_test)), # median absolute error
-                        maxdev = max(abs(yhat_test-y_test))) # maximum deviation
-benchm_relaxedlasso
-#      RMSE  Rsquared       MAE      MdAE    maxdev 
-# 0.4483345 0.8510729 0.3527127 0.2958129 1.4820455
-plot(pred_train_relaxedlasso, y_train, 
-     xlab="Predicted toxicity", ylab="Observed toxicity", pch=16, col="grey", xlim=c(0,7), ylim=c(0,7),
-     main=paste0("relaxed LASSO regression (test R2=", as.character(round(benchm_relaxedlasso["Rsq"]*100,1)), "%)") )
-points(pred_test_relaxedlasso, y_test, pch=16, col="blue" )
-title("(grey=training set, blue=validation set, 2776 features, 39 features selected)", line=0.8, cex.main=0.9)
-# graph2ppt(file="relaxed LASSO_obs vs pred.pptx", width=6, height=6)
-
-
-
-## 2. BEST SUBSET SELECTION VIA abess PACKAGE ####
-
-# preselected_vars = relaxedlassoset # to work with relaxed LASSO preselected variables
-preselected_vars = 1:ncol(X_train) # to use all variables 
-system.time(bestsubsetmodel <- abess(x = X_train[,preselected_vars], 
-                        y = y_train, 
-                        family = "gaussian",
-                        tune.type = "gic", # use "gic" for best subset selection
-                        fit.intercept = TRUE,
-                        support.size = 0:(n-1), # min(n, round(n/(log(log(n))*log(p)))) = 18,
-                        warm.start = FALSE # slower but gives better solution
-)) 
-# 0.06s if max support size is in(n, round(n/(log(log(n))*log(p)))) = 18
-# 1s with max support size of n-1
-plot(bestsubsetmodel, type="tune") # information criterion in function of support size (nr of selected variables / model size)
-# graph2ppt(file="bestsubset_abess_cv_error_in_function_of_modelsize.pptx", width=4, height=4)
-
-plot(bestsubsetmodel, type="coef") # coefficient path in functions of support size (nr of selected variables / model size)
-# graph2ppt(file="bestsubset_abess_coefficient paths.pptx", width=8, height=6)
-
-bestsubsetcoefs = as.vector(coef(bestsubsetmodel, 
-                                 support.size = bestsubsetmodel[["best.size"]]))
-sum(bestsubsetcoefs!=0) # 13=12+intercept
-
-# show results & validate on test set:
-coefs = bestsubsetcoefs 
-pred_test_bestsubset <- yhat <- cbind(1, X_test[,preselected_vars]) %*% coefs 
-pred_train_bestsubset <- cbind(1, X_train[,preselected_vars])  %*% coefs
-abess_bestsubset_set = which(coefs[-1]!=0) # set of variables included in the model
-colnames(X_train[,preselected_vars])[abess_bestsubset_set] # variables included in the model
-
-# selected variables with coefficients
-bestsubset_set_coefs = bestsubsetcoefs[-1][abess_bestsubset_set]
-names(bestsubset_set_coefs) = colnames(X_train[,preselected_vars])[abess_bestsubset_set]
-bestsubset_set_coefs
-
-# benchmarks calculated on test set
-benchm_bestsubset <- c(RMSE = RMSE(yhat, y_test), # root mean squared error, sqrt(mean((pred - obs)^2)) 
-                       Rsquared = 1 - (sum((yhat - y_test) ^ 2))/(sum((y_test - mean(y_test)) ^ 2)), # R squared 
-                       MAE = MAE(yhat, y_test), # mean absolute error
-                       MdAE = median(abs(yhat-y_test)), # median absolute error
-                       maxdev = max(abs(yhat-y_test))) # maximum deviation
-benchm_bestsubset
-#      RMSE  Rsquared       MAE      MdAE    maxdev 
-# 0.5517107 0.7744763 0.4123050 0.3338744 1.9931948  
-plot(pred_train_bestsubset, y_train, 
-     xlab="Predicted toxicity", ylab="Observed toxicity", pch=16, col="grey", xlim=c(0,7), ylim=c(0,7),
-     main=paste0("abess best subset (R2=", as.character(round(benchm_bestsubset["Rsquared"]*100,1)), "%)") )
-points(pred_test_bestsubset, y_test, pch=16, col="blue" )
-title("(grey=training set, blue=validation set, 2776 features, 12 features selected)", line=0.8, cex.main=0.9)
-# graph2ppt(file="bestsubset_abess_obs vs pred.pptx", width=6, height=6)
-
-
-# NOTE: abess currently does not report confidence intervals or p values
-# for the selected variables; in principle those could be calculated using
-# bootstrapping (resampling the original data with replacement & fitting the model
-# on each resampled dataset, after which the 95% confidence intervals on the
-# fitted coefficients would be given by the 2.5% and 97.5% percentiles of the
-# coefficients obtained over all fits done on all resampled datasets).
-
-
-
-
-## 3. APPROXIMATE BEST SUBSET SELECTION VIA L0glm PACKAGE ####
-
-# NOTE: you can also approximately fit best subset glm models (L0 penalized GLM models)
-# using my experimental L0glm package. This package uses an adapted iteratively reweighted least squares
-# algorithm (IRLS) with adaptive ridge penalties to approximate best subset (cf. Frommlet & Nuel 2016).
-# The level of penalisation (lambda) can be chosen a priori to approximately optimise an information
-# criterion like AIC, BIC or GIC. The final version
-# will appear on https://github.com/tomwenseleers/L0glm
-# install.packages("L0glm_0.2.0.tar.gz")
-library(L0glm)
-preselected_vars_all = 1:ncol(X_train) # to use all variables
-preselected_vars_sis = sis_glm( # select top n variables using sure independence screening
-  X = Xc_train,
-  y = y_train,
-  family = gaussian(),
-  nsis = n*2)$indices
-preselected_vars_relaxedlasso = relaxedlassoset # relaxed LASSO preselected variables
-preselected_vars_abess = abess_bestsubset_set # abess preselected variables
-
-length(preselected_vars_sis) # n=484
-length(preselected_vars_abess) # 12
-length(preselected_vars_relaxedlasso) # 39
-
-length(intersect(preselected_vars_abess, preselected_vars_relaxedlasso)) # 2
-length(intersect(preselected_vars_abess, preselected_vars_sis)) # 6
-
-
-# choose which set to use
-# preselected_vars <- preselected_vars_abess # warm starting from the abess solution works, but that's defeating the purpose
-# preselected_vars <- preselected_vars_sis # warm starting from the sis preselect set also still OKish
-# preselected_vars <- preselected_vars_relaxedlasso # works badly
-preselected_vars <- preselected_vars_all # using all variables
-
-
-# # # CV based lambda tuning
-# system.time(lambdatune <- L0glm.tune(X = Xc_train[,preselected_vars], # coding design matrix as sparse & also adding an intercept
-#                         y = y_train,
-#                         intercept = TRUE,
-#                         nonnegative = FALSE,
-#                         family = gaussian(identity),
-#                         tune = "cv",
-#                         nfolds = 5,
-#                         nlambda = 10,
-#                         lambda_min = 0.1,
-#                         solver = "eigen",
-#                         method = 1L
-#                         )) 
-# bestlambda_cv = lambdatune$lambda_best
-# bestlambda_cv 
-
-# GIC based lambda tuning
-system.time(lambdatune <- L0glm.tune(X = Xc_train[,preselected_vars], # coding design matrix as sparse & also adding an intercept
-                        y = y_train, 
-                        intercept = TRUE,
-                        nonnegative = FALSE,
-                        family = gaussian(identity),
-                        tune = "gic",
-                        nlambda = 10,
-                        lambda_min = 2,
-                        solver = "eigen", 
-                        method = 1L
-)) # 188s
-bestlambda_gic = lambdatune$lambda_best
-bestlambda_gic # 13.5012
-lambdatune$fit_best$dispersion # 0.3236964
-
-system.time(bestsubsetcoefs2 <- L0glm.fit(X = Xc_train[,preselected_vars], # coding design matrix as sparse & also adding an intercept
-                                                             y = y_train, 
-                                                             intercept = TRUE,
-                                                             family = gaussian(identity),
-                                                             lambda = "gic", # bestlambda_gic also works, "aic" doesn't
-                                                             nonnegative = FALSE,
-                                                             start = 1, # this one works!, start=NULL does not
-                                                             solver = "eigen" # using the glmnet::bigGlm solver internally
-                                )$coefficients) # 17s
-sum(bestsubsetcoefs2!=0) # 15
-bestsubset_set2 = which(bestsubsetcoefs2[-1]!=0) # set of variables included in the model
-bestsubsetcoefs2[-1][bestsubset_set2]
-colnames(X_train[,preselected_vars])[bestsubset_set2] # 14 variables
-# selected variables with coefficients
-bestsubset_set_coefs2 = bestsubsetcoefs2[-1][bestsubset_set2]
-names(bestsubset_set_coefs2) = colnames(X_train[,preselected_vars])[bestsubset_set2]
-bestsubset_set_coefs2
-
-
-# show results & validate on test set:
-coefs = bestsubsetcoefs2 
-pred_test_bestsubset <- yhat <- cbind(1, Xc_test[,preselected_vars])  %*% coefs
-pred_train_bestsubset <- yhat_train <- cbind(1, Xc_train[,preselected_vars])  %*% coefs
-bestsubset_set2 = which(coefs[-1]!=0) # set of variables included in the model
-colnames(X_train[,preselected_vars])[bestsubset_set2] # variables included in the model
-
-# benchmarks calculated on test set
-benchm_bestsubset <- c(RMSE = RMSE(as.vector(yhat), y_test), # root mean squared error, sqrt(mean((pred - obs)^2)) 
-                       Rsquared = 1 - (sum((as.vector(yhat) - y_test) ^ 2))/(sum((y_test - mean(y_test)) ^ 2)), # R squared 
-                       sqcor = cor(as.vector(yhat), y_test)^2, # squared correlation
-                       MAE = MAE(as.vector(yhat), y_test), # mean absolute error
-                       MdAE = median(abs(yhat-y_test)), # median absolute error
-                       maxdev = max(abs(yhat-y_test))) # maximum deviation
-benchm_bestsubset
-#      RMSE  Rsquared     sqcor       MAE      MdAE    maxdev 
-# 0.5010755 0.8139731 0.8354221 0.3568975 0.2884061 1.9826291  
-plot(pred_train_bestsubset, y_train, 
-     xlab="Predicted toxicity", ylab="Observed toxicity", pch=16, col="grey", xlim=c(0,7), ylim=c(0,7),
-     main=paste0("L0glm best subset (R2=", as.character(round(benchm_bestsubset["Rsquared"]*100,1)), "%)") )
-points(pred_test_bestsubset, y_test, pch=16, col="steelblue" )
-title("(grey=training set, blue=validation set, 2757 features, 14 features selected)", line=0.8, cex.main=0.9)
-# graph2ppt(file="bestsubset_L0glm_obs vs pred.pptx", width=6, height=6)
+print(summary[, c("method", "selection", "normalization", "start", "relaxed",
+                  "selected", "GIC", "heldout_RMSE", "seconds", "completed_runs", "clean_runs")], row.names = FALSE)
+cat("\nResults: ", normalizePath(out_dir, winslash = "/"), "\n", sep = "")
+if (any(runs$converged %in% FALSE) || any(!is.na(runs$error)) || any(nzchar(runs$warnings)))
+  message("Some fits reported warnings, failures or incomplete convergence; inspect runs.csv.")
