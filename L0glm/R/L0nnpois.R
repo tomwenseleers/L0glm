@@ -166,16 +166,20 @@ L0nnpois <- function(X,
   }
 
   if (!is.null(start)) {
-    start <- as.matrix(start)
+    if (length(start) == 1L) {
+      start <- matrix(as.numeric(start), p, m)
+    } else {
+      start <- as.matrix(start)
+      if (intercept && nrow(start) == p0) {
+        start <- rbind(0, start)
+      }
+      if (m > 1L && ncol(start) == 1L) {
+        start <- matrix(rep(start, m), nrow = nrow(start), ncol = m)
+      }
+    }
     storage.mode(start) <- "double"
-    if (intercept && nrow(start) == p0) {
-      start <- rbind(0, start)
-    }
-    if (m > 1L && ncol(start) == 1L) {
-      start <- matrix(rep(start, m), nrow = nrow(start), ncol = m)
-    }
     if (!identical(dim(start), c(p, m))) {
-      stop("start must have dimension p x m (or length p for univariate y).",
+      stop("start must be a scalar, have dimension p x m, or have length p for univariate y.",
            call. = FALSE)
     }
   }

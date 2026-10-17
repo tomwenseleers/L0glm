@@ -95,6 +95,7 @@ L0glm.fit.internal = function(X,
   # z.ret     <- rep(0, n)                # working response
   
   ## 6. set starting coefficients ---------------------------------------------
+  if (length(start) == 1L) start <- rep(as.numeric(start), p)
   if (any(is.na(start))) start <- NULL
   if (!is.null(start)) if (all(start == 0)) start <- NULL
   if (is.null(start)) {

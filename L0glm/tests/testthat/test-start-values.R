@@ -20,6 +20,103 @@ test_that("explicit signed starts set the first ridge penalties without mixing",
   }
 })
 
+test_that("internal scalar starts expand over the full design", {
+  for (sparse in c(FALSE, TRUE)) {
+    for (intercept in c(FALSE, TRUE)) {
+      X <- rbind(diag(3), diag(3))
+      if (intercept) X <- cbind(Intercept = 1, X)
+      X <- Matrix::Matrix(X, sparse = sparse)
+      args <- list(X = X, y = seq_len(6), family = gaussian(),
+                   dispersion = 1, lambda = 4, maxit = 1, thresh = 0)
+      for (start in c(1, -2)) {
+        scalar <- do.call(L0glm.fit.internal, c(args, list(start = start)))
+        vector <- do.call(L0glm.fit.internal,
+                          c(args, list(start = rep(start, ncol(X)))))
+        expect_identical(scalar, vector)
+        expect_equal(as.numeric(scalar$lambdas), rep(1 / start^2, ncol(X)))
+      }
+    }
+  }
+})
+
+test_that("scalar starts work for signed single and multichannel Gaussian fits", {
+  set.seed(16011)
+  X0 <- matrix(rnorm(36 * 4), 36, 4)
+  for (sparse in c(FALSE, TRUE)) {
+    X <- Matrix::Matrix(X0, sparse = sparse)
+    for (intercept in c(FALSE, TRUE)) {
+      p <- ncol(X) + as.integer(intercept)
+      for (m in c(1L, 3L)) {
+        y <- matrix(rnorm(36 * m), 36, m)
+        args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
+                     intercept = intercept, nonnegative = FALSE,
+                     lambda = 4, maxit = 1, thresh = 0,
+                     grouped = FALSE, relaxed = FALSE,
+                     parallelize = FALSE, openmp = FALSE)
+        for (start in c(1, -2)) {
+          scalar <- do.call(L0glm.fit, c(args, list(start = start)))
+          explicit <- do.call(L0glm.fit,
+                              c(args, list(start = matrix(start, p, m))))
+          expect_identical(scalar$coefficients, explicit$coefficients)
+          expect_identical(scalar$lambdas, explicit$lambdas)
+        }
+      }
+    }
+  }
+})
+
+test_that("scalar Poisson starts cover intercepts, grouping and both backends", {
+  set.seed(16012)
+  for (p0 in c(1L, 4L)) {
+    X0 <- matrix(runif(30 * p0), 30, p0)
+    y <- matrix(rpois(90, 3), 30, 3)
+    for (sparse in c(FALSE, TRUE)) {
+      X <- Matrix::Matrix(X0, sparse = sparse)
+      for (intercept in c(FALSE, TRUE)) {
+        p <- p0 + as.integer(intercept)
+        for (grouped in c(FALSE, TRUE)) {
+          args <- list(X = X, y = y, family = poisson(identity),
+                       intercept = intercept, lambda = 0.5, maxit = 3,
+                       group.maxit = 2, grouped = grouped, relaxed = grouped,
+                       parallelize = FALSE)
+          for (backend in c("general", "native", "dispatch")) {
+            fitter <- if (backend == "native") L0nnpois else L0glm.fit
+            controls <- if (backend == "native") list() else
+              list(nonnegative = TRUE, openmp = backend == "dispatch")
+            scalar <- do.call(fitter, c(args, controls, list(start = 1)))
+            explicit <- do.call(fitter,
+              c(args, controls, list(start = matrix(1, p, ncol(y)))))
+            expect_identical(scalar$coefficients, explicit$coefficients)
+            expect_identical(scalar$lambdas, explicit$lambdas)
+          }
+        }
+      }
+    }
+  }
+})
+
+test_that("scalar starts survive multichannel parallel job splitting", {
+  cores <- parallel::detectCores()
+  skip_if(is.na(cores) || cores < 2L, "parallel test requires two cores")
+  set.seed(16013)
+  X <- matrix(runif(30 * 4), 30, 4)
+  y <- matrix(rpois(90, 3), 30, 3)
+  args <- list(X = X, y = y, family = poisson(identity),
+               intercept = TRUE, lambda = 0.5, maxit = 3,
+               grouped = TRUE, group.maxit = 2, relaxed = TRUE, ncores = 2L)
+  for (backend in c("general", "native")) {
+    fitter <- if (backend == "native") L0nnpois else L0glm.fit
+    controls <- if (backend == "native") list() else
+      list(nonnegative = TRUE, openmp = FALSE)
+    serial <- do.call(fitter,
+      c(args, controls, list(start = matrix(1, 5, 3), parallelize = FALSE)))
+    parallel <- do.call(fitter,
+      c(args, controls, list(start = 1, parallelize = TRUE)))
+    expect_identical(parallel$coefficients, serial$coefficients)
+    expect_identical(parallel$lambdas, serial$lambdas)
+  }
+})
+
 test_that("Gaussian initialization respects response units with fixed dispersion", {
   set.seed(16010)
   X <- matrix(rnorm(120 * 12), 120)

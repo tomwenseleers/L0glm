@@ -2,6 +2,9 @@
 
 ## Development changes
 
+* Both fitters accept a scalar `start`, repeating it for every coefficient and
+  response channel, including an added intercept. The general R path expands
+  scalar starts inside `L0glm.fit.internal()`.
 * CV tuning returns the full-data `fit_1se` alongside `fit_best`, retaining
   both from the existing path without any additional fits.
 * The full tuning range starts at `lambda_min = 2` by default; a smaller

@@ -70,10 +70,13 @@ values are invalid. Poisson, binomial and negative binomial with known
 \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 \code{family$dispersion}. See Details for initialization and updating.}
 
-\item{start}{Optional vector of coefficient starting values of length
-\code{p}, or a matrix of starting values with dimension \code{p} x
-\code{m}, with \code{p} the number of predictors and \code{m} the number
-of response columns. Starting values are used directly, subject to the coefficient
+\item{start}{Optional scalar, vector of coefficient starting values of length
+\code{p}, or matrix of starting values with dimension \code{p} x
+\code{m}, with \code{p} the number of design columns, including any added
+intercept, and \code{m} the number of response columns. A scalar is repeated
+for every coefficient in every response channel; for example,
+\code{start = 1} initializes them all to 1, including the intercept.
+Starting values are used directly, subject to the coefficient
 constraints. Exact zeros in a nonempty starting support are excluded within
 each selection fit; grouped fits can share support across channels. An
 all-zero or missing start uses the componentwise initializer. For binomial

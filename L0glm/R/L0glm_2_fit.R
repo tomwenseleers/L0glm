@@ -105,10 +105,13 @@
 #'   values are invalid. Poisson, binomial and negative binomial with known
 #'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 #'   \code{family$dispersion}. See Details for initialization and updating.
-#' @param start Optional vector of coefficient starting values of length
-#'   \code{p}, or a matrix of starting values with dimension \code{p} x
-#'   \code{m}, with \code{p} the number of predictors and \code{m} the number
-#'   of response columns. Starting values are used directly, subject to the coefficient
+#' @param start Optional scalar, vector of coefficient starting values of length
+#'   \code{p}, or matrix of starting values with dimension \code{p} x
+#'   \code{m}, with \code{p} the number of design columns, including any added
+#'   intercept, and \code{m} the number of response columns. A scalar is repeated
+#'   for every coefficient in every response channel; for example,
+#'   \code{start = 1} initializes them all to 1, including the intercept.
+#'   Starting values are used directly, subject to the coefficient
 #'   constraints. Exact zeros in a nonempty starting support are excluded within
 #'   each selection fit; grouped fits can share support across channels. An
 #'   all-zero or missing start uses the componentwise initializer. For binomial
@@ -585,19 +588,17 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   }
   
   # 3  Starting coefficient values --------------------------------------------
-  if (!is.null(start)) {
+  if (!is.null(start) && length(start) != 1L) {
     start <- as.matrix(start)
     if (m > 1 && ncol(start) == 1L)
       start <- matrix(rep(start, m), nrow = nrow(start), ncol = m)
     if (!identical(dim(start), c(p, m)))
-      stop("start must have dimension p x m (or length p for univariate)")
+      stop("start must be a scalar, have dimension p x m, or have length p for univariate y")
     # if (normalize) { # normalisation is done in L0glm.fit.internal
     #   Xscaled <- normalizeX(X, no.norm = intercept.col)
     #   scaling <- attr(Xscaled, "scaling")
     #   # start   <- start * scaling
     # }
-  } else {
-    start <- NULL # leave initialisation to internal function
   }
   
   # 4  Prior.mean ------------------------------------------------------------
@@ -692,7 +693,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                weights    = weights[, cols, drop = FALSE],
                prior.mean = prior.mean[vars, cols, drop = FALSE],
                dispersion = disp_list[cols],
-               start      = if (is.null(start.mat)) NULL else start.mat[vars, cols, drop = FALSE],
+               start      = if (is.null(start.mat) || length(start.mat) == 1L)
+                 start.mat else start.mat[vars, cols, drop = FALSE],
                offset     = offset[, cols, drop = FALSE])
         })
       }
@@ -772,7 +774,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                offset      = offset[, col],
                                prior.mean  = prior.mean[vars, col],
                                dispersion  = disp_list[[col]],          # slice
-                               start       = start[vars, col],
+                               start       = if (is.null(start) || length(start) == 1L)
+                                 start else start[vars, col],
                                lower       = lower[vars],
                                upper       = upper[vars],
                                maxit       = maxit,
@@ -1177,7 +1180,8 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       lambda       = lambda,
       gamma        = gamma,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
-      start        = as.vector(start[, col]),
+      start        = if (is.null(start) || length(start) == 1L)
+        start else as.vector(start[, col]),
       maxit        = maxit,
       tol          = tol,
       always.include       = always.include,
