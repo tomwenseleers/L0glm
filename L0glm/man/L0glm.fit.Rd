@@ -23,14 +23,14 @@ L0glm.fit(
   parallelize = TRUE,
   ncores = L0glm_default_ncores(parallelize),
   nthreads = NULL,
-  maxit = 25,
+  maxit = 200,
   grouped = TRUE,
   group.maxit = 6,
   relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
   gamma = 2,
   thresh = 1e-05,
-  tol = 1e-10,
+  tol = 1e-08,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE,
   openmp = TRUE
@@ -215,7 +215,9 @@ tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
-perform.}
+perform per channel and fitting pass (default 200). Fits stop earlier
+when the convergence criterion is met; inspect \code{convergence} to
+distinguish this from reaching the iteration cap.}
 
 \item{grouped}{A logical value indicating whether a grouped fit should be
 performed in the multivariate case or not. If \code{TRUE}, the algorithm
@@ -265,7 +267,7 @@ The final relaxed refit applies neither cutoff; nonnegativity clipping
 still applies when requested. Adaptive ridge weights are unsmoothed,
 \code{1/abs(beta)^gamma}, independently of \code{thresh}.}
 
-\item{tol}{Convergence tolerance. Iterations are stopped when the relative
+\item{tol}{Convergence tolerance (default \code{1e-8}). Iterations stop when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
 threshold. With preprocessing, the test uses scaled selectable slopes
 and, when mandatory terms exist, changes in predictions, so that the
@@ -313,6 +315,11 @@ including recognized intercepts, in the returned coefficient matrix.}
 \item{\code{preprocessing}}{training column centers and scales, resolved
 normalization mode, centering eligibility, and original selectable count.
 Coefficients are already on the original input scale.}
+\item{\code{convergence}}{one row per channel and selection or relaxed pass,
+containing its stage, pass, channel, iteration count, convergence flag,
+number of dispersion updates and number of reactivations after a freeze.
+Convergence refers to the iterative stopping test, not a certificate of
+constrained or global optimality.}
 }
 \description{
 Fits a generalized linear model with an \eqn{L_0} penalty or,
@@ -439,6 +446,9 @@ The caller's random-number state is preserved. The pilot residual scale is
 divided by \code{max(1, preset.lambda("gic", p, n))} for a permissive start
 independent of the fitted lambda; its support is never
 imposed on the main fit. A supplied negative value bypasses this pilot.
+With preprocessing enabled, mandatory terms are profiled out and column
+information is conditional on them, preserving changes of predictor origin
+when an unrestricted intercept is present.
 
 Starting at iteration 3, when the number \eqn{k} of active coefficients is
 below \eqn{0.7N}, dispersion is updated toward
@@ -448,7 +458,8 @@ Here \eqn{N} counts positive-weight observations, \eqn{k} includes the
 intercept, and \eqn{V} is \code{family$variance}, evaluated at the newly
 fitted mean. Each update is bounded to \eqn{[\phi/2,2\phi]}. After three
 consecutive updates with unchanged support and a target within 1\% of the
-current dispersion, it is held fixed for the remaining coefficient iterations.
+current dispersion, it is held fixed until the support changes again.
+A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
 A relaxed refit holds dispersion fixed during its coefficient solves and
 reports the final Pearson residual scale for estimated channels; user-supplied

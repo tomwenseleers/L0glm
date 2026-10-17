@@ -28,6 +28,8 @@ struct FitResult {
   VectorXd weights;
   VectorXd z;
   VectorXd lambdas;
+  int iterations = 0;
+  bool converged = false;
 };
 
 inline bool finite_pos(double x) {
@@ -428,8 +430,11 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
+  int iterations = 0;
+  bool converged = false;
 
   for (int iter = 0; iter < maxit; ++iter) {
+    iterations = iter + 1;
     for (int i = 0; i < n; ++i) {
       const double wi = prior_w[i] / mu[i];
       weights[i] = finite_pos(wi) ? wi : 0.0;
@@ -442,7 +447,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     }
 
     std::vector<int> active = active_positions(beta, vars, always_include);
-    if (active.empty()) break;
+    if (active.empty()) { converged = true; break; }
     bool bad_beta = false;
     for (int j = 0; j < q; ++j) bad_beta = bad_beta || !std::isfinite(beta[j]);
     if (bad_beta) break;
@@ -478,7 +483,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
-    if (rel < tol) break;
+    if (rel < tol) { converged = true; break; }
     beta_old = beta;
     if (normalize) prediction_old = prediction;
   }
@@ -488,6 +493,8 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   out.weights = weights;
   out.z = z;
   out.lambdas = lambdas;
+  out.iterations = iterations;
+  out.converged = converged;
   return out;
 }
 
@@ -553,8 +560,11 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
+  int iterations = 0;
+  bool converged = false;
 
   for (int iter = 0; iter < maxit; ++iter) {
+    iterations = iter + 1;
     for (int i = 0; i < n; ++i) {
       const double wi = prior_w[i] / mu[i];
       weights[i] = finite_pos(wi) ? wi : 0.0;
@@ -567,7 +577,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     }
 
     std::vector<int> active = active_positions(beta, vars, always_include);
-    if (active.empty()) break;
+    if (active.empty()) { converged = true; break; }
     bool bad_beta = false;
     for (int j = 0; j < q; ++j) bad_beta = bad_beta || !std::isfinite(beta[j]);
     if (bad_beta) break;
@@ -603,7 +613,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
-    if (rel < tol) break;
+    if (rel < tol) { converged = true; break; }
     beta_old = beta;
     if (normalize) prediction_old = prediction;
   }
@@ -613,6 +623,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   out.weights = weights;
   out.z = z;
   out.lambdas = lambdas;
+  out.iterations = iterations;
+  out.converged = converged;
   return out;
 }
 
@@ -685,6 +697,9 @@ Rcpp::List fit_all_impl(const Design& X,
       start_current.row(a) = start_full.row(vars[a]);
   }
   MatrixXd* start_ptr = has_start ? &start_current : NULL;
+  std::vector<std::string> stages;
+  std::vector<int> passes, channels, iterations;
+  std::vector<bool> converged;
 
   auto preserve_start_mask = [&]() {
     if (has_start) for (int a = 0; a < static_cast<int>(vars.size()); ++a)
@@ -694,7 +709,7 @@ Rcpp::List fit_all_impl(const Design& X,
   };
 
   auto fit_for_vars = [&](double lambda_fit, MatrixXd* start_for_fit,
-                          bool hard_threshold) {
+                          bool hard_threshold, int pass) {
     const int q = static_cast<int>(vars.size());
     std::vector<FitResult> fits(m);
 
@@ -711,6 +726,11 @@ Rcpp::List fit_all_impl(const Design& X,
     coef.setZero();
     lambdas.setZero();
     for (int col = 0; col < m; ++col) {
+      stages.push_back(hard_threshold ? "selection" : "relaxed");
+      passes.push_back(pass);
+      channels.push_back(col + 1);
+      iterations.push_back(fits[col].iterations);
+      converged.push_back(fits[col].converged);
       for (int a = 0; a < q; ++a) {
         coef(vars[a], col) = fits[col].beta[a];
         lambdas(vars[a], col) = fits[col].lambdas[a];
@@ -727,14 +747,14 @@ Rcpp::List fit_all_impl(const Design& X,
       if (vars.empty()) break;
       start_ptr = &start_current;
     }
-    fit_for_vars(lambda, start_ptr, true);
+    fit_for_vars(lambda, start_ptr, true, iter + 1);
   }
 
   if (relaxed) {
     group_support_start(coef, vars, start_current, always_include);
     preserve_start_mask();
     if (!vars.empty()) {
-      fit_for_vars(1e-30, &start_current, false);
+      fit_for_vars(1e-30, &start_current, false, 1);
     }
   }
 
@@ -745,6 +765,12 @@ Rcpp::List fit_all_impl(const Design& X,
     Rcpp::Named("dispersion") = dispersion,
     Rcpp::Named("lambdas") = lambdas,
     Rcpp::Named("z") = z_out,
+    Rcpp::Named("convergence") = Rcpp::DataFrame::create(
+      Rcpp::Named("stage") = stages, Rcpp::Named("pass") = passes,
+      Rcpp::Named("channel") = channels, Rcpp::Named("iterations") = iterations,
+      Rcpp::Named("converged") = converged,
+      Rcpp::Named("dispersion_updates") = Rcpp::IntegerVector(stages.size(), 0),
+      Rcpp::Named("dispersion_restarts") = Rcpp::IntegerVector(stages.size(), 0)),
     Rcpp::Named("openmp") =
 #ifdef _OPENMP
       true,

@@ -52,15 +52,15 @@ L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,
   beta
 }
 
-L0glm_coefficient_change <- function(beta, previous, scaling, included, X, weights) {
+L0glm_coefficient_change <- function(beta, previous, scaling, included,
+                                    prediction, previous_prediction, weights) {
   selectable <- setdiff(seq_along(beta), included)
   difference <- (beta - previous) * scaling
   slope_change <- if (length(selectable)) sqrt(sum(difference[selectable]^2)) /
     max(1e-12, sqrt(sum((beta[selectable] * scaling[selectable])^2))) else 0
   if (!length(included)) return(slope_change)
   # Changes of input origin or response location must not hide slope changes.
-  prediction <- as.numeric(X %*% beta)
-  prediction_change <- as.numeric(X %*% (beta - previous))
+  prediction_change <- prediction - previous_prediction
   total <- sum(weights)
   centered <- prediction - if (total > 0) sum(weights * prediction) / total else 0
   fitted_change <- sqrt(sum(weights * prediction_change^2)) /

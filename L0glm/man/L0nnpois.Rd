@@ -21,14 +21,14 @@ L0nnpois(
   parallelize = TRUE,
   ncores = L0glm_default_ncores(parallelize),
   nthreads = NULL,
-  maxit = 25,
+  maxit = 200,
   grouped = TRUE,
   group.maxit = 6,
   relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
   gamma = 2,
   thresh = 1e-05,
-  tol = 1e-10,
+  tol = 1e-08,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE
 )
@@ -189,7 +189,9 @@ tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
-perform.}
+perform per channel and fitting pass (default 200). Fits stop earlier
+when the convergence criterion is met; inspect \code{convergence} to
+distinguish this from reaching the iteration cap.}
 
 \item{grouped}{A logical value indicating whether a grouped fit should be
 performed in the multivariate case or not. If \code{TRUE}, the algorithm
@@ -239,7 +241,7 @@ The final relaxed refit applies neither cutoff; nonnegativity clipping
 still applies when requested. Adaptive ridge weights are unsmoothed,
 \code{1/abs(beta)^gamma}, independently of \code{thresh}.}
 
-\item{tol}{Convergence tolerance. Iterations are stopped when the relative
+\item{tol}{Convergence tolerance (default \code{1e-8}). Iterations stop when the relative
 change in the \eqn{L_2} norm of the coefficients drops below this
 threshold. With preprocessing, the test uses scaled selectable slopes
 and, when mandatory terms exist, changes in predictions, so that the

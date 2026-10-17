@@ -247,7 +247,9 @@
 #'   tune per-worker threading on systems with a multithreaded BLAS.
 #'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
-#'   perform.
+#'   perform per channel and fitting pass (default 200). Fits stop earlier
+#'   when the convergence criterion is met; inspect \code{convergence} to
+#'   distinguish this from reaching the iteration cap.
 #' @param grouped A logical value indicating whether a grouped fit should be
 #'   performed in the multivariate case or not. If \code{TRUE}, the algorithm
 #'   will return a group penalized fit, otherwise independent L0glm fits will be
@@ -290,7 +292,7 @@
 #'   The final relaxed refit applies neither cutoff; nonnegativity clipping
 #'   still applies when requested. Adaptive ridge weights are unsmoothed,
 #'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
-#' @param tol Convergence tolerance. Iterations are stopped when the relative
+#' @param tol Convergence tolerance (default \code{1e-8}). Iterations stop when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
 #'   threshold. With preprocessing, the test uses scaled selectable slopes
 #'   and, when mandatory terms exist, changes in predictions, so that the
@@ -357,6 +359,9 @@
 #' divided by \code{max(1, preset.lambda("gic", p, n))} for a permissive start
 #' independent of the fitted lambda; its support is never
 #' imposed on the main fit. A supplied negative value bypasses this pilot.
+#' With preprocessing enabled, mandatory terms are profiled out and column
+#' information is conditional on them, preserving changes of predictor origin
+#' when an unrestricted intercept is present.
 #'
 #' Starting at iteration 3, when the number \eqn{k} of active coefficients is
 #' below \eqn{0.7N}, dispersion is updated toward
@@ -366,7 +371,8 @@
 #' intercept, and \eqn{V} is \code{family$variance}, evaluated at the newly
 #' fitted mean. Each update is bounded to \eqn{[\phi/2,2\phi]}. After three
 #' consecutive updates with unchanged support and a target within 1\% of the
-#' current dispersion, it is held fixed for the remaining coefficient iterations.
+#' current dispersion, it is held fixed until the support changes again.
+#' A later support loss reactivates these bounded updates in the same IRLS loop.
 #' Each subsequent grouped selection pass may update it again on the new support.
 #' A relaxed refit holds dispersion fixed during its coefficient solves and
 #' reports the final Pearson residual scale for estimated channels; user-supplied
@@ -446,6 +452,11 @@
 #' \item{\code{preprocessing}}{training column centers and scales, resolved
 #' normalization mode, centering eligibility, and original selectable count.
 #' Coefficients are already on the original input scale.}
+#' \item{\code{convergence}}{one row per channel and selection or relaxed pass,
+#' containing its stage, pass, channel, iteration count, convergence flag,
+#' number of dispersion updates and number of reactivations after a freeze.
+#' Convergence refers to the iterative stopping test, not a certificate of
+#' constrained or global optimality.}
 #'
 #' @examples
 #' x <- seq(-1, 1, length.out = 30)
@@ -515,14 +526,14 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       parallelize   = TRUE,
                       ncores        = L0glm_default_ncores(parallelize),
                       nthreads      = NULL,
-                      maxit         = 25,
+                      maxit         = 200,
                       grouped       = TRUE,
                       group.maxit   = 6,
                       relaxed       = grouped & NCOL(y)>1,
                       prior.mean    = NULL,
                       gamma         = 2,
                       thresh         = 1e-5,
-                      tol           = 1e-10,
+                      tol           = 1e-8,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE,
                       openmp        = TRUE) {
@@ -705,6 +716,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     }
     
     fit_multichannel <- function(do_parallel) {
+      convergence <- list()
       coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
       weights.mat <- z.mat <- Matrix(0, n, m, sparse = TRUE)
       if (do_parallel) {
@@ -751,6 +763,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
                dispersion   = unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE),
                lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+               convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
                z            = do.call(cbind, lapply(fit, `[[`, "z")))
         } else {
           list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
@@ -758,6 +771,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                dispersion   = as.numeric(Matrix(do.call(cbind, lapply(fit, `[[`, "dispersion")),
                                                 sparse = FALSE)[1, ]),
                lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+               convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
                z            = do.call(cbind, lapply(fit, `[[`, "z")))
         }
       }
@@ -836,6 +850,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         }
         
         fit <- collect_fit(fit, chunked = do_parallel)
+        convergence[[length(convergence) + 1L]] <-
+          cbind(stage = "selection", pass = iter, channel = seq_len(m), fit$convergence)
         if (length(vars) == p && identical(vars, seq_len(p))) {
           coefficients <- Matrix(fit$coefficients, sparse = TRUE)
         } else {
@@ -914,6 +930,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           }
           
           fit <- collect_fit(fit, chunked = do_parallel)
+          convergence[[length(convergence) + 1L]] <-
+            cbind(stage = "relaxed", pass = 1L, channel = seq_len(m), fit$convergence)
           if (length(vars) == p && identical(vars, seq_len(p))) {
             coefficients <- Matrix(fit$coefficients, sparse = TRUE)
           } else {
@@ -937,6 +955,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
            weights      = weights.mat,
            dispersion   = dispersion,
            lambdas      = lambdas.mat,
+           convergence  = do.call(rbind, convergence),
            z            = z.mat)
     } # ------- end fit_multichannel() --------------------------------------
     
@@ -947,6 +966,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     dispersion   <- res_multi$dispersion
     lambdas      <- res_multi$lambdas
     z            <- res_multi$z
+    convergence  <- res_multi$convergence
     
   } else {
     # =======================================================================
@@ -980,6 +1000,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     lambdas      <- fit$lambdas
     weights.ret  <- fit$weights
     z            <- fit$z
+    convergence <- cbind(stage = "selection", pass = 1L, channel = 1L, fit$convergence)
     
     # --- relaxed - refit selected variables nearly unpenalised -------------
     if (relaxed) { 
@@ -1016,6 +1037,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         dispersion         <- fit$dispersion
         weights.ret        <- fit$weights
         z                  <- fit$z
+        convergence <- rbind(convergence,
+          cbind(stage = "relaxed", pass = 1L, channel = 1L, fit$convergence))
       }
     }
   }
@@ -1048,6 +1071,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                  p            = p_selectable,
                  always.include = always.include.start,
                  preprocessing = preprocessing,
+                 convergence = convergence,
                  z            = z,
                  X            = X,
                  y            = y)
@@ -1208,6 +1232,7 @@ L0glmfun_chunk <- function(job, ...) {
        weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
        dispersion   = vapply(fit, `[[`, numeric(1), "dispersion"),
        lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+       convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
        z            = do.call(cbind, lapply(fit, `[[`, "z")))
 }
 

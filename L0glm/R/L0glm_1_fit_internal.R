@@ -32,11 +32,11 @@ L0glm.fit.internal = function(X,
                               method = 1L, 
                               lower = rep(-.Machine$double.xmax, ncol(X)),
                               upper = rep(.Machine$double.xmax, ncol(X)),
-                              maxit = 25,
+                              maxit = 200,
                               prior.mean = NULL,
                               gamma = 2,
                               thresh = 1e-5,
-                              tol = 1E-10,
+                              tol = 1E-8,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE,
                               hard_threshold = TRUE,
@@ -61,6 +61,10 @@ L0glm.fit.internal = function(X,
   if (!is.null(dispersion)) dispersion <- abs(dispersion)
   scale_stable <- 0L
   scale_frozen <- !estimate_dispersion
+  scale_updates <- 0L
+  scale_restarts <- 0L
+  converged <- FALSE
+  iterations <- 0L
 
   ##  3. prior mean (vector of length p) --------------------------------------  
   if (is.null(prior.mean)) { prior.mean <- rep(0, p) } else 
@@ -133,6 +137,8 @@ L0glm.fit.internal = function(X,
   }
   start <- clamp(start, lower, upper)
   beta <- beta_old <- start
+  prediction_old <- if (preprocessing$mode != "none" && length(always.include))
+    as.numeric(X %*% beta) else numeric()
   if (is.null(dispersion)) {
     dispersion <- if (p) L0glm_initial_dispersion(X, y, mu, weights, offset, family,
       always.include = always.include, preprocessing = preprocessing) else
@@ -148,6 +154,7 @@ L0glm.fit.internal = function(X,
 
   ## 7. main IRLS loop with adaptive ridge step -------------------------------
   for (iter in seq_len(maxit)) {
+    iterations <- iter
     ## ---------- working response & weights ---------------------------
     var = variance(mu) # variance in function of the mean u
     
@@ -191,6 +198,7 @@ L0glm.fit.internal = function(X,
     if (!any(nonzero)) {           
       if (verbose) warning("All coefficients zero - nothing to fit")
       mu <- linkinv(as.numeric(offset))
+      converged <- TRUE
       break
     }
 
@@ -226,6 +234,14 @@ L0glm.fit.internal = function(X,
     }
     nonzero <- beta != 0L
     nonzero[always.include] <- TRUE
+    previous_active <- beta_old != 0L
+    previous_active[always.include] <- TRUE
+    support_changed <- any(nonzero != previous_active)
+    if (estimate_dispersion && hard_threshold && support_changed) {
+      if (scale_frozen) scale_restarts <- scale_restarts + 1L
+      scale_frozen <- FALSE
+      scale_stable <- 0L
+    }
     
     ## ----- update mu and eta --------------------------------------
     eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
@@ -237,10 +253,10 @@ L0glm.fit.internal = function(X,
     if (!scale_frozen && hard_threshold && iter >= 3L && scale_estimable) {
       target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero))
       if (is.finite(target) && target > 0) {
-        stable <- sum(nonzero) == sum(beta_old != 0) + sum(beta_old[always.include] == 0) &&
-          abs(target / dispersion - 1) < 0.01
+        stable <- !support_changed && abs(target / dispersion - 1) < 0.01
         scale_stable <- if (stable) scale_stable + 1L else 0L
         dispersion <- min(2 * dispersion, max(dispersion / 2, target))
+        scale_updates <- scale_updates + 1L
         scale_frozen <- scale_stable >= 3L
       }
     }
@@ -252,11 +268,16 @@ L0glm.fit.internal = function(X,
     ## ----- convergence test ---------------------------------------
     change <- if (preprocessing$mode == "none") sqrt(sum((beta - beta_old)^2)) /
       max(1e-12, sqrt(sum(beta^2))) else
-        L0glm_coefficient_change(beta, beta_old, scaling, always.include, X, weights)
+        L0glm_coefficient_change(beta, beta_old, scaling, always.include,
+          as.numeric(eta) - as.numeric(offset), prediction_old, weights)
     if (change < tol &&
          (scale_frozen || !hard_threshold || lambda == 0 ||
-          (iter >= 3L && !scale_estimable)) ) break
+          (iter >= 3L && !scale_estimable)) ) {
+      converged <- TRUE
+      break
+    }
     beta_old <- beta
+    if (length(prediction_old)) prediction_old <- as.numeric(eta) - as.numeric(offset)
     
     # dev_rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in L2 norm of coefficient vector
     # if (dev_rel_change < tol) break
@@ -276,6 +297,8 @@ L0glm.fit.internal = function(X,
   list(coefficients = as.numeric(beta),
        weights      = as.numeric(W.ret),
        dispersion   = dispersion,
+       convergence  = data.frame(iterations = iterations, converged = converged,
+         dispersion_updates = scale_updates, dispersion_restarts = scale_restarts),
        lambdas      = as.numeric(lambdas),
        z            = as.numeric(z.ret))
 }
