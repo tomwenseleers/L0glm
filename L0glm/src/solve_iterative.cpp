@@ -157,14 +157,8 @@ Rcpp::List solve_dense_CG(
     return run_iterative_solver<Solver>(A, b, x0, tol, maxit);
   }
 
-  if(precond == 2) {
-    Eigen::SparseMatrix<double> A_sparse = A.sparseView();
-    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<double>,
-                                     Eigen::Lower|Eigen::Upper,
-                                     Eigen::IncompleteCholesky<double> > Solver;
-    return run_iterative_solver<Solver>(A_sparse, b, x0, tol, maxit);
-  }
-
+  // Incomplete Cholesky is a sparse preconditioner. Dense CG uses diagonal
+  // preconditioning instead, without copying a dense system into sparse storage.
   if(precond > 2) {
     Rcpp::warning("No valid preconditioner requested for dense CG -- using default.");
   }

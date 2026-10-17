@@ -27,7 +27,8 @@ control.solver.gen(
 
 \item{method}{Solver-specific method. For \code{solver="eigen"}, the exposed methods are
 \code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
-incomplete Cholesky preconditioner, \code{4L}=LSCG with least-squares
+incomplete Cholesky preconditioning for sparse systems or diagonal
+preconditioning for dense systems, \code{4L}=LSCG with least-squares
 diagonal preconditioner, \code{5L}=column-pivoted QR, and
 \code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.}
 
@@ -47,7 +48,8 @@ coordinates; no additional external column equilibration is performed.}
 
 \item{precond}{Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
 Eigen iterative methods this is fixed by the chosen method: method
-\code{3L} uses incomplete Cholesky CG and method \code{4L} uses LSCG with
+\code{3L} uses incomplete Cholesky CG for sparse systems and diagonal CG
+for dense systems; method \code{4L} uses LSCG with
 least-squares diagonal preconditioning.}
 
 \item{pivot}{Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults

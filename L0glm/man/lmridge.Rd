@@ -115,7 +115,8 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
 
   The \code{method} parameter specifies the specific method to be used when
   the \code{"eigen"} solver is used (1=Cholesky LLT, 2=Cholesky LDLT,
-  3=CG with incomplete Cholesky preconditioner, 4=LSCG with diagonal
+  3=CG with incomplete Cholesky preconditioning for sparse systems or
+  diagonal preconditioning for dense systems, 4=LSCG with diagonal
   least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
   systems or Jacobi SVD for sparse systems).
 
@@ -130,6 +131,14 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   bounds) are retained. Such a warning does not establish convergence.
   Finite-tolerance solutions can change the subsequent adaptive ridge
   selection path.
+
+  Eligible wide Eigen ridge systems use the Woodbury identity to solve an
+  observation-space system of dimension \code{n}, rather than a predictor-space
+  system of dimension \code{p}. The requested Eigen method is retained.
+  Dense and sparse designs retain their storage type; optional row augmentation
+  constructs a sparse augmented matrix. Eigen's SVD requires a dense factorization
+  internally even when its input is sparse. OSQP and NNLS also require,
+  respectively, sparse and dense arrays at their solver boundaries.
 }
 \examples{
 \dontrun{
