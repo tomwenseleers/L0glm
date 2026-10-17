@@ -8,9 +8,10 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   x <- log10(metrics$lambda)
   xlim <- rev(range(x))
   beta <- object$coefficients[[1L]]
+  selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
   multichannel <- ncol(beta) > 1L
-  coefmat <- t(matrix(vapply(object$coefficients, function(b) Matrix::rowMeans(b),
-                             numeric(nrow(beta))), nrow = nrow(beta)))
+  coefmat <- t(matrix(vapply(object$coefficients, function(b) Matrix::rowMeans(b[selectable, , drop = FALSE]),
+                             numeric(length(selectable))), nrow = length(selectable)))
   colors <- grDevices::hcl(h = (15 + 137.508 * (seq_len(ncol(coefmat)) - 1)) %% 360,
                           c = 70, l = 50)
 
@@ -33,8 +34,11 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   margins[3L] <- max(margins[3L], 6.2)
   graphics::par(mar = margins)
 
-  graphics::matplot(x, coefmat, type = "l", lty = 1, col = colors,
-                    xlim = xlim, xlab = expression(log[10](lambda)), ylab = "")
+  if (ncol(coefmat)) {
+    graphics::matplot(x, coefmat, type = "l", lty = 1, col = colors,
+                      xlim = xlim, xlab = expression(log[10](lambda)), ylab = "")
+  } else graphics::plot(x, rep(0, length(x)), type = "n", xlim = xlim,
+                         xlab = expression(log[10](lambda)), ylab = "")
   graphics::mtext(expression(hat(beta)), side = 2, line = 3, las = 1)
   graphics::abline(v = log10(object$lambda_max), col = "black", lty = 3)
   graphics::abline(v = log10(object$lambda_best), col = "red", lty = 2)
@@ -44,6 +48,7 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
     graphics::abline(v = log10(object$lambda_preset), col = "red", lty = 3)
   if (!is.null(coefs.true)) {
     if (multichannel) coefs.true <- Matrix::rowMeans(coefs.true)
+    coefs.true <- coefs.true[selectable]
     graphics::abline(h = as.vector(coefs.true[coefs.true != 0]),
                      col = scales::alpha("blue", 0.1))
   }

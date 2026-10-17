@@ -38,7 +38,7 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
   expect_equal(tuned$cv$lambda_train,outer(tuned$lambdas,1-fold_weights/total))
   expect_identical(tuned$cv$nfolds,3L)
   expect_equal(tuned$lambda_best,tuned$lambdas[which.min(mean)])
-  expect_equal(tuned$lambda_preset,preset.lambda("gic",ncol(X)+1,n))
+  expect_equal(tuned$lambda_preset,preset.lambda("gic",ncol(X),n))
   full <- do.call(L0glm.fit,c(args,list(lambda=tuned$lambda_best)))
   expect_equal(tuned$fit_best$coefficients,full$coefficients)
   expect_equal(tuned$fit_best$dispersion,full$dispersion)

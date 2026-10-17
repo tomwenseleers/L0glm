@@ -139,6 +139,9 @@
 #'   For example, \code{"GIC"} and \code{"gic"} are equivalent.
 #'   The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
 #'   AIC uses 2, BIC uses \eqn{\log n}, and GIC uses \eqn{\log p\,\log\log n}.
+#'   Here \eqn{p} counts the original selectable predictors, excluding intercepts
+#'   and \code{always.include} terms, before screening by explicit starts.
+#'   A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 #'   See \link{information_criteria} for
 #'   all formulas, intended uses and references. Set \code{lambda = 0} to
 #'   disable penalization. Presets approximate the chosen criterion; they do
@@ -425,6 +428,9 @@
 #' final iteration of \code{L0glm.fit}}
 #' \item{\code{X}}{design matrix X, including the intercept column if added}
 #' \item{\code{y}}{response vector or matrix y.}
+#' \item{\code{p}}{original number of selectable predictors.}
+#' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
+#' including recognized intercepts, in the returned coefficient matrix.}
 #'
 #' @examples
 #' x <- seq(-1, 1, length.out = 30)
@@ -573,14 +579,15 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
   upper <- rep(.Machine$double.xmax, p)
-  always.include <- intersect(as.integer(always.include), seq_len(p))
+  always.include <- L0glm_mandatory(X, always.include)
+  p_selectable <- p - length(always.include)
   if (nonnegative && family$family %in% c("binomial", "quasibinomial")) {
     # Recognize intercepts supplied explicitly in X as well as the added column.
-    lower[which(Matrix::colSums(X == 1) == n)] <- -.Machine$double.xmax
+    lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
   }
   
   # ----- preset lambda ------------------------------------------------------
-  lambda <- L0glm_resolve_lambda(lambda, p = ncol(X), n = nrow(X))
+  lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = nrow(X))
   
   # - Some argument checking & conversion to matrices -----------------------
   # 1  Observation weights --------------------------------------------------
@@ -1016,6 +1023,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                  init.lambda  = init.lambda,
                  lambdas      = lambdas,
                  family       = family,
+                 p            = p_selectable,
+                 always.include = always.include.start,
                  z            = z,
                  X            = X,
                  y            = y)

@@ -79,8 +79,8 @@
 #' Multichannel paths show coefficient row means. The top axes show support
 #' sizes at 16 equally spaced log-scale positions, using the nearest fitted
 #' lambda at each position. For multichannel fits these count rows with any
-#' nonzero coefficient, independently of the plotted row means. Counts include
-#' nonzero intercepts and always-included terms; no additional models are fitted.
+#' nonzero coefficient, independently of the plotted row means. Paths and support
+#' counts exclude mandatory terms; no additional models are fitted.
 #' @param mu_floor Nonnegative prediction floor used only when scoring
 #' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 #' observations and makes scores finite when a fitted mean is zero. Set to zero
@@ -214,8 +214,8 @@ L0glm.tune <- function(X, y,
       if (missing(nfolds) && !is.null(foldid)) NULL else nfolds, foldid)
   } else if (!is.null(foldid)) stop("foldid is only used with tune = \"cv\".", call. = FALSE)
   intercept <- if (is.null(dots$intercept)) family$family == "binomial" else dots$intercept
-  p <- ncol(X) + as.integer(intercept)
-  lambda_preset <- preset.lambda(IC = if (do_cv) "gic" else tune, p = p, n = n)
+  p <- L0glm_predictor_count(X, intercept, dots$always.include)
+  lambda_preset <- preset.lambda(IC = if (do_cv) "gic" else tune, p = max(1L, p), n = n)
   lambda_reference <- if (do_cv && (!is.finite(lambda_preset) || lambda_preset <= 0))
     2 else lambda_preset
   if (!is.finite(lambda_reference) || lambda_reference <= 0)
@@ -226,9 +226,8 @@ L0glm.tune <- function(X, y,
                  offset = offset, dispersion = dispersion), dots)
   fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
   preset_fit <- fit_lambda(lambda_reference)
-  included <- dots$always.include
-  if (intercept) included <- c(1L, included + 1L)
-  penalized <- setdiff(seq_len(p), included)
+  included <- preset_fit$always.include
+  penalized <- setdiff(seq_len(ncol(preset_fit$X)), included)
   is_zero <- function(fit) all(fit$coefficients[penalized, , drop = FALSE] == 0)
 
   # A working-model threshold only seeds the search. Verify the endpoint by
@@ -320,7 +319,8 @@ L0glm.tune <- function(X, y,
                        weights = if (is.null(weights)) matrix(1, n, m) else weights,
                        offset = if (is.null(offset)) matrix(0, n, m) else offset,
                        dispersion = dispersion, mu_floor = mu_floor,
-                       beta_true = coefs.true)
+                       beta_true = coefs.true, p = p,
+                       always.include = included)
     score <- if (do_cv) cv$mean[i] else met[[tune]]
     if (!is.na(score) && score < best_score) {
       best_score <- score
@@ -359,6 +359,7 @@ L0glm.tune <- function(X, y,
   
   ## ----------------------------------------------------------------- return
   result <- list(tune         = tune,
+       always.include = included,
        metrics      = metrics,
        lambda_best  = lambda_best, # 
        lambda_1se   = lambda_1se,

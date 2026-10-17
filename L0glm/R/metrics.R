@@ -7,9 +7,10 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
                         offset = Matrix(0, nrow=nrow(X), ncol=ncol(y), sparse = T), 
                         family = gaussian(identity), 
                         beta_true = NULL, 
-                        p = NULL, # original design dimension if a subset was fitted
+                        p = NULL, # original selectable predictor count
                         dispersion = NULL,
-                        mu_floor = .Machine$double.eps
+                        mu_floor = .Machine$double.eps,
+                        always.include = NULL
                         # edf=sum(beta!=0)
 ) {
   
@@ -28,7 +29,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # nr of tasks/outcomes, variables & observations
   m = ncol(y) # nr of tasks/outcomes
   # nr of variables, cases & tasks & effective degrees of freedom ####
-  if (is.null(p)) p = ncol(X) # nr of variables
+  always.include <- L0glm_mandatory(X, always.include)
+  if (is.null(p)) p <- ncol(X) - length(always.include)
   
   # A scale parameter adds to model dimension, not to the predictor pool p.
   dispersion <- L0glm_dispersion(dispersion, family, m)
@@ -45,7 +47,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # effective degrees of freedom
   edf = sum(beta!=0) # as in abess package, note we assume beta includes intercept if present
   # allow for estimated dispersion, cf https://github.com/SurajGupta/r-source/blob/master/src/library/stats/R/glm.R
-  edf <- edf + scale_parameters
+  edf <- edf + scale_parameters + sum(beta[always.include, , drop = FALSE] == 0)
   
   # beta[beta<lower] = lower
   # beta[beta>upper] = upper
@@ -54,6 +56,8 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   # true support & estimated support & all variable sets
   if (!is.null(beta_true)) vars_true = which(rowMax(abs(beta_true))!=0) else vars_true = NA
   vars_estimated = which(rowMax(abs(beta))!=0)
+  vars_estimated <- setdiff(vars_estimated, always.include)
+  if (!is.null(beta_true)) vars_true <- setdiff(vars_true, always.include)
   
   # support size & ratio of estimated support size over true support size
   if (!is.null(beta_true)) support_size_true = length(vars_true) else support_size_true = NA
@@ -64,7 +68,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
   if (!is.null(beta_true)) {
     TP = length(intersect(vars_true, vars_estimated)) # Intersection of true and estimated sets
     FP = length(setdiff(vars_estimated, vars_true)) # In estimated but not in true
-    TN = ncol(X)-length(union(vars_true, vars_estimated)) # In neither
+    TN = p-length(union(vars_true, vars_estimated)) # In neither
     FN = length(setdiff(vars_true, vars_estimated)) # In true but not in estimated
     
     # calculate precision, recall, sensitivity, accuracy & F1 score to recover true support from these
@@ -176,7 +180,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
     value
   }, numeric(1)))
   loglik = -0.5 * min2LL # plain log-likelihood
-  IC = get.IC(loglik = loglik, n = n, p = p, edf = edf) 
+  IC = get.IC(loglik = loglik, n = n, p = max(1L, p), edf = edf)
   
   # weighted_rmse = sqrt(sum((predicted-actual)^2*weight)/sum(weight))
   # z = (eta - offset) + (y - mu) / mu.prime # working (adjusted) response

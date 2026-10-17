@@ -16,9 +16,13 @@
 #' coefficients. These presets set the per-coefficient \eqn{L_0} penalty on
 #' the \emph{minus twice log-likelihood} scale, rather than on the
 #' \eqn{-\ell} or mean-loss scale. All logarithms are natural.
-#' In the fitters, \eqn{n} is the number of rows of \code{X} and \eqn{p} is its
-#' number of columns after adding an intercept if requested. The preset is
-#' resolved before any predictors are removed during fitting.
+#' In the fitters, \eqn{n} is the number of rows of \code{X} and \eqn{p} is the
+#' original number of selectable predictors, excluding intercepts and other
+#' mandatory terms. The preset is resolved before any predictors are removed,
+#' including screening by explicit zero starts. A pool with no selectable
+#' predictors uses \eqn{p=1} in logarithms. Mandatory terms are unpenalized in
+#' the coefficient updates; scoring counts their parameter dimensions even
+#' when their fitted value is zero, adding a model-independent criterion term.
 #'
 #' \describe{
 #'   \item{\code{"aic"}: Akaike information criterion}{

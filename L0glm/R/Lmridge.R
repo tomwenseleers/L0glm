@@ -393,6 +393,35 @@ eigen_ridge_solve <- function(A, b, start, control, iteration) {
   as.numeric(coefs)
 }
 
+eigen_ridge_dual <- function(Xw, yw, lambdas, prior.mean, control, iteration) {
+  n <- nrow(Xw); p <- ncol(Xw)
+  penalized <- any(lambdas > 0)
+  free <- if (penalized) which(lambdas == 0) else integer()
+  invsqrt <- if (penalized) ifelse(lambdas > 0, 1 / sqrt(lambdas), 0) else rep(1, p)
+  center <- if (penalized) prior.mean else rep(0, p)
+  center[free] <- 0
+  Z <- Xw %*% Matrix::Diagonal(x = invsqrt)
+  A <- Matrix::tcrossprod(Z)
+  if (penalized) diag(A) <- diag(A) + 1
+  U <- Xw[, free, drop = FALSE]
+  rhs <- cbind(as.numeric(yw - Xw %*% center), as.matrix(U))
+  solution <- eigen_ridge_solve(A, rhs, matrix(0, n, ncol(rhs)), control, iteration)
+  if (is.null(solution)) return(NULL)
+  solution <- matrix(solution, n, ncol(rhs))
+  u <- solution[, 1L]
+  alpha <- numeric()
+  if (length(free)) {
+    T <- solution[, -1L, drop = FALSE]
+    G <- as.matrix(Matrix::crossprod(U, T))
+    alpha <- as.numeric(qr.coef(qr(G), as.numeric(Matrix::crossprod(U, u))))
+    alpha[is.na(alpha)] <- 0
+    u <- u - as.numeric(T %*% alpha)
+  }
+  beta <- center + invsqrt * as.numeric(Matrix::crossprod(Z, u))
+  beta[free] <- alpha
+  beta
+}
+
 lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                           lower = rep(-.Machine$double.xmax, ncol(Xw)),
                           upper = rep(.Machine$double.xmax, ncol(Xw)),
@@ -410,17 +439,10 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   Xw <- if (issparse(Xw)) as(Xw, "generalMatrix") else as.matrix(Xw)
   # Positive diagonal penalties admit an n by n Woodbury system as soon as p > n.
   # With no penalty this is the minimum-norm observation-space least-squares solve.
-  dual <- p > n && (all(lambdas > 0) || all(lambdas == 0))
+  dual <- p > n && all(lambdas >= 0) &&
+    (all(lambdas == 0) || sum(lambdas == 0) <= n)
   if (dual) {
-    penalized <- any(lambdas > 0)
-    invsqrt <- if (penalized) 1 / sqrt(lambdas) else rep(1, p)
-    center <- if (penalized) prior.mean else rep(0, p)
-    Z <- Xw %*% Matrix::Diagonal(x = invsqrt)
-    A <- Matrix::tcrossprod(Z)
-    if (penalized) diag(A) <- diag(A) + 1
-    rhs <- as.numeric(yw - Xw %*% center)
-    u <- eigen_ridge_solve(A, rhs, rep(0, n), control.solver, iteration)
-    coefs <- if (!is.null(u)) center + invsqrt * as.numeric(Matrix::crossprod(Z, u))
+    coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
   } else {
     if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {
       A <- row_augX(Xw, lambdas)

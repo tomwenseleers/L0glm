@@ -75,8 +75,8 @@ have a separate color per predictor and are labeled \eqn{\hat\beta}.
 Multichannel paths show coefficient row means. The top axes show support
 sizes at 16 equally spaced log-scale positions, using the nearest fitted
 lambda at each position. For multichannel fits these count rows with any
-nonzero coefficient, independently of the plotted row means. Counts include
-nonzero intercepts and always-included terms; no additional models are fitted.}
+nonzero coefficient, independently of the plotted row means. Paths and support
+counts exclude mandatory terms; no additional models are fitted.}
 
 \item{mu_floor}{Nonnegative prediction floor used only when scoring
 positive-mean families, such as Poisson (default \code{1e-8}). It retains all

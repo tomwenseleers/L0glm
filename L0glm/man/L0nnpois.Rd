@@ -97,6 +97,9 @@ case-insensitive criterion name: \code{"aic"}, \code{"bic"},
 For example, \code{"GIC"} and \code{"gic"} are equivalent.
 The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
 AIC uses 2, BIC uses \eqn{\log n}, and GIC uses \eqn{\log p\,\log\log n}.
+Here \eqn{p} counts the original selectable predictors, excluding intercepts
+and \code{always.include} terms, before screening by explicit starts.
+A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
 disable penalization. Presets approximate the chosen criterion; they do

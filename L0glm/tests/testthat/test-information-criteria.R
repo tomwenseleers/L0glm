@@ -35,7 +35,7 @@ test_that("both fitters resolve every named preset before fitting", {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
     for (ic in c("aic", "bic", "gic", "ebic", "mbic")) {
-      penalty <- L0glm:::preset.lambda(ic, p = 5, n = 40)
+      penalty <- L0glm:::preset.lambda(ic, p = 4, n = 40)
       numeric_fit <- do.call(fitter, c(args, list(lambda = penalty)))
       mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
       for (name in c(ic, toupper(ic), mixed)) {
@@ -81,7 +81,7 @@ test_that("supported criterion metrics are available without known true coeffici
   metrics <- L0glm:::get.metrics(beta, X, y = matrix(rep(1:4, 5)),
                                 family = poisson(identity))
   expect_equal(metrics$gic + 2 * metrics$loglik,
-               log(ncol(X)) * log(log(nrow(X))) * sum(beta != 0))
+               log(ncol(X) - 1L) * log(log(nrow(X))) * sum(beta != 0))
   criteria <- c("gic", "ebic", "bic", "aic", "mbic")
   expect_named(tail(metrics, length(criteria)), criteria)
   scores <- L0glm:::get.IC(metrics$loglik, nrow(X), ncol(X), sum(beta != 0))

@@ -218,8 +218,7 @@ L0glm.fit.internal = function(X,
       beta[remove] <- 0
     }
     nonzero <- beta != 0L
-    
-    # use informative prior updates for terms that should always be kept (e.g. for intercept)
+    nonzero[always.include] <- TRUE
     
     ## ----- update mu and eta --------------------------------------
     eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
@@ -231,7 +230,7 @@ L0glm.fit.internal = function(X,
     if (!scale_frozen && hard_threshold && iter >= 3L && scale_estimable) {
       target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero))
       if (is.finite(target) && target > 0) {
-        stable <- sum(nonzero) == sum(beta_old != 0) &&
+        stable <- sum(nonzero) == sum(beta_old != 0) + sum(beta_old[always.include] == 0) &&
           abs(target / dispersion - 1) < 0.01
         scale_stable <- if (stable) scale_stable + 1L else 0L
         dispersion <- min(2 * dispersion, max(dispersion / 2, target))
@@ -261,7 +260,8 @@ L0glm.fit.internal = function(X,
   # A relaxed fit holds scale fixed during the solves, then reports its own
   # residual scale. Supplied positive dispersions remain unchanged throughout.
   if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
-    target <- L0glm_pearson_scale(y, mu, weights, family, sum(beta != 0))
+    target <- L0glm_pearson_scale(y, mu, weights, family,
+                                 sum(beta != 0) + sum(beta[always.include] == 0))
     if (is.finite(target) && target > 0) dispersion <- target
   }
   list(coefficients = as.numeric(beta),

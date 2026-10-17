@@ -128,8 +128,9 @@ L0nnpois <- function(X,
     always.include <- c(1L, always.include + 1L)
   }
   p <- ncol(X)
-
-  lambda <- L0glm_resolve_lambda(lambda, p = p, n = n)
+  always.include <- L0glm_mandatory(X, always.include)
+  p_selectable <- p - length(always.include)
+  lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = n)
   init.lambda <- lambda
 
   if (is.null(weights)) {
@@ -274,6 +275,8 @@ L0nnpois <- function(X,
        init.lambda  = init.lambda,
        lambdas      = lambdas,
        family       = family,
+       p            = p_selectable,
+       always.include = always.include,
        z            = z,
        X            = if (issparse) X else Matrix::Matrix(X, sparse = FALSE),
        y            = y)

@@ -123,9 +123,10 @@ test_that("Gaussian likelihood profiles scale once per channel and counts p corr
   b <- matrix(0,2,2)
   met <- get.metrics(b,X,y,family=gaussian())
   expected <- sum(dnorm(y[,1],0,1,log=TRUE)) + sum(dnorm(y[,2],0,2,log=TRUE))
-  expect_equal(met$p,2)
+  expect_equal(met$p,1)
   expect_equal(met$loglik,expected)
-  expect_equal(met$gic,-2*expected+preset.lambda("gic",2,30)*2)
+  expect_equal(met$gic,-2*expected+preset.lambda("gic",1,30)*4)
+  expect_equal(met$aic,-2*expected+2*4)
 })
 
 test_that("scoring retains channel dimensions through nonidentity inverse links", {
@@ -136,7 +137,7 @@ test_that("scoring retains channel dimensions through nonidentity inverse links"
   y <- round(w*prob)/w
   met <- get.metrics(b,X,y,weights=w,family=binomial())
   expect_equal(met$loglik,sum(dbinom(round(w*y),size=w,prob=prob,log=TRUE)))
-  expect_equal(met$gic,-2*met$loglik+preset.lambda("gic",2,12)*sum(b!=0))
+  expect_equal(met$gic,-2*met$loglik+preset.lambda("gic",1,12)*sum(b!=0))
   yy <- exp(X %*% b) + .2
   phi <- c(.5,.8)
   met <- get.metrics(b,X,yy,family=Gamma(log),dispersion=phi)
@@ -168,7 +169,7 @@ test_that("tuning handles an empty preset, intercepts, and invalid controls", {
   expect_true(a$endpoint_zero)
   b <- do.call(L0glm.tune,c(args,list(intercept=TRUE)))
   expect_equal(nrow(b$coefficients[[1]]),2)
-  expect_equal(b$metrics$p,rep(2,2))
+  expect_equal(b$metrics$p,rep(1,2))
   expect_error(do.call(L0glm.tune,c(args,list(start=c(1)))),"independently")
   args$nlambda <- 1
   expect_error(do.call(L0glm.tune,args),"at least 2")
