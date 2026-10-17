@@ -6,7 +6,7 @@
 \description{
 Both [L0glm.fit()] and [L0nnpois()] accept a numeric \code{lambda} or a
 case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
-\code{"mebic"}, \code{"ebic"}, or \code{"mbic"}.
+\code{"ebic"}, or \code{"mbic"}.
 For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
 [L0glm.tune()] accepts the same names through its \code{tune} argument,
 or \code{tune = "cv"} for cross-validation by held-out deviance.
@@ -40,13 +40,6 @@ resolved before any predictors are removed during fitting.
     the design, response tails, signal strength and candidate model path.
     It is a consistent choice under those conditions, not a uniquely
     optimal penalty for every finite sample.}
-  \item{\code{"mebic"}: modified extended BIC in Zhang (2024)}{
-    \eqn{\lambda = 2\log p\,\log\log n}, exactly twice the GIC penalty.
-    Use it when stronger complexity penalization is desired: it favors
-    smaller models in exact criterion minimization, with a possible loss
-    of sensitivity to weak signals. The factor of two remains at every
-    sample size; the two criteria can still select the same true model
-    asymptotically when both selectors are consistent.}
   \item{\code{"ebic"}: linearized extended BIC}{
     \eqn{\lambda = \log n + 2\gamma_{\rm EBIC}\log p}, with package
     default \eqn{\gamma_{\rm EBIC}=\max\{0,1-\log n/(2\log p)\}}.
@@ -62,7 +55,7 @@ resolved before any predictors are removed during fitting.
     \eqn{\lambda = \log(np^2/16)}. This multiplicity-adjusted criterion
     is intended for sparse selection among many candidate predictors
     (Bogdan, Ghosh and Zak-Szatkowska, 2008). The constant used here follows
-    Frommlet and Nuel (2016). It is distinct from both MEBIC and the
+    Frommlet and Nuel (2016). It is distinct from the
     false-discovery-rate-oriented mBIC2 criterion.}
 }
 }
@@ -111,12 +104,12 @@ set.seed(7)
 X <- matrix(runif(120), nrow = 40, ncol = 3)
 y <- rpois(40, 1 + 3 * X[, 1])
 fit <- L0glm.fit(X, y, family = poisson(identity),
-  nonnegative = TRUE, intercept = TRUE, lambda = "MEBIC",
+  nonnegative = TRUE, intercept = TRUE, lambda = "GIC",
   parallelize = FALSE)
-fast <- L0nnpois(X, y, intercept = TRUE, lambda = "mebic",
+fast <- L0nnpois(X, y, intercept = TRUE, lambda = "gic",
   parallelize = FALSE)
 # Both presets use p = 4, including the added intercept.
-c(fit$init.lambda, fast$init.lambda, 2 * log(4) * log(log(40)))
+c(fit$init.lambda, fast$init.lambda, log(4) * log(log(40)))
 
 }
 \references{
@@ -140,10 +133,6 @@ Zhu, J., Wen, C., Zhu, J., Zhang, H. and Wang, X. (2020).
 A polynomial algorithm for best-subset selection problem.
 \emph{Proceedings of the National Academy of Sciences}, 117, 33117--33123.
 \doi{10.1073/pnas.2014241117}.
-
-Zhang, T. (2024). Variables selection using L0 penalty.
-\emph{Computational Statistics & Data Analysis}, 190, 107860.
-\doi{10.1016/j.csda.2023.107860}.
 
 Chen, J. and Chen, Z. (2008). Extended Bayesian information criteria for
 model selection with large model spaces. \emph{Biometrika}, 95, 759--771.

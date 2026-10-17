@@ -14,7 +14,7 @@ The package supports:
 - sparse or dense design matrices and support for high-dimensional `p >= n` problems with millions of variables;
 - optional nonnegativity constraints on coefficients;
 - unpenalized terms, offsets, observation weights, starting values and optional nonzero prior means;
-- automatically setting the level of regularisation to approximate information-criteria such as `"aic"`, `"bic"`, `"gic"`, `"mebic"`, `"ebic"` or `"mbic"`, without requiring computationally expensive cross-validation;
+- automatically setting the level of regularisation to approximate information-criteria such as `"aic"`, `"bic"`, `"gic"`, `"ebic"` or `"mbic"`, without requiring computationally expensive cross-validation;
 - several fast least-squares backends, including Eigen Cholesky, QR, CG and LSCG solvers, plus `glmnet::bigGlm` and `osqp`-based constrained solvers for sparse or dense systems.
 
 The source package is in the `L0glm/` subdirectory of this repository.
@@ -83,7 +83,6 @@ For a single response, the objective that is minimised is `-2 * logLik + lambda 
 | `aic` | `2` | Prediction-oriented model selection approximating leave-one-out-cross-validations; typically does not lead to consistent variable selection. |
 | `bic` | `log(n)` | Consistent variable selection in low-dimensional settings. |
 | `gic` | `log(p) * log(log(n))` | Consistent variable selection in low or high-dimensional settings, under the conditions listed by Fan & Tang (2013). |
-| `mebic` | `2 * log(p) * log(log(n))` | Zhang's (2024) stronger complexity penalty to achieve consistent variable selection in low or high-dimensional settings; can reduce false positives at the cost of more false negatives. |
 | `ebic` | `log(n) + 2 * gamma_ebic * log(p)` with `gamma_ebic = max(0, 1 - log(n)/(2 * log(p)))` | Consistent variable selection in high or ultrahigh-dimensional settings. Reduced to BIC when `p <= sqrt(n)`. |
 | `mbic` | `log(n * p^2 / 16)` | Consistent variable selection in high or ultrahigh-dimensional settings. |
 
@@ -136,7 +135,6 @@ See `help("information_criteria", package = "L0glm")` for further details, scori
 - Fan, Y. & Tang, C. Y. (2013). *Tuning parameter selection in high dimensional penalized likelihood.* JRSS B 75, 531–552. [DOI](https://doi.org/10.1111/rssb.12001).
 - Wang, L., Kim, Y. & Li, R. (2013). *Calibrating nonconvex penalized regression in ultra-high dimension.* Annals of Statistics 41, 2505–2536. [DOI](https://doi.org/10.1214/13-AOS1159).
 - Zhu, J., Wen, C., Zhu, J., Zhang, H. & Wang, X. (2020). *A polynomial algorithm for best-subset selection problem.* PNAS 117, 33117–33123. [DOI](https://doi.org/10.1073/pnas.2014241117).
-- Zhang, T. (2024). *Variables selection using L0 penalty.* Computational Statistics & Data Analysis 190, 107860. [DOI](https://doi.org/10.1016/j.csda.2023.107860).
 - Chen, J. & Chen, Z. (2008). *Extended Bayesian information criteria for model selection with large model spaces.* Biometrika 95, 759–771. [DOI](https://doi.org/10.1093/biomet/asn034).
 - Bogdan, M., Ghosh, J. K. & Zak-Szatkowska, M. (2008). *Selecting explanatory variables with the modified version of the Bayesian information criterion.* Quality and Reliability Engineering International 24, 627–641. [DOI](https://doi.org/10.1002/qre.936).
 - Frommlet, F. & Nuel, G. (2016). *An adaptive ridge procedure for L0 regularization.* PLOS ONE 11, e0148620. [DOI](https://doi.org/10.1371/journal.pone.0148620).

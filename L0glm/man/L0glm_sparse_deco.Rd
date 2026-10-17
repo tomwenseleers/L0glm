@@ -102,7 +102,7 @@ leverages the general machinery of \pkg{L0glm}.  This results in the following
 improvements:
 \itemize{
   \item No manual tuning of the regularisation parameter is required; instead
-        it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
+        it can be preset to approximate information criteria such as GIC, AIC,
         BIC, EBIC or MBIC
   \item Both single channel data with L0 best subset selection or 
         multichannel data with grouped L0 best subset of group selection 

@@ -259,14 +259,14 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                    lambda=0,
                    warm.start = TRUE,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       args <- c(list(x = X, y = y, weight = W, 
                      family = "gaussian",
                      tune.type = "bic", # trick to support any IC that L0glm supports
-                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                               p = p, 
                                               n = n)/log(n)), # trick to support any IC that L0glm supports, 
                 options)
@@ -313,7 +313,7 @@ benchmark_sparse_glm <- function(sim, family = NULL, method = 1, options = NULL,
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {

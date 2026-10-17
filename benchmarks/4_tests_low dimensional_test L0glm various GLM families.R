@@ -83,7 +83,7 @@ BIC(glm_gaus)-metrics_gaus$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y,
                               X = X, 
                               family = gaussian(identity),
@@ -225,27 +225,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # note: as expected using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
@@ -308,7 +308,7 @@ BIC(glm_pois)-metrics_pois$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_pois = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset_pois = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = poisson(log),
@@ -445,27 +445,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.258925
 # note: as expected using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_pois$y), 
               X = Matrix(data_pois$X, sparse=TRUE), 
               family = poisson(log),
@@ -527,7 +527,7 @@ BIC(glm_binom)-metrics_binom$bic # 0, correct
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_binom = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset_binom = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = binomial(logit),
@@ -661,27 +661,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 0.6309573
 # note: as expected using warm starts in the L0glm.fit function shifts the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_binom$y), 
               X = Matrix(data_binom$X, sparse=TRUE), 
               family = binomial(logit),
@@ -741,7 +741,7 @@ BIC(glm_gamma)-metrics_gamma$bic # 9.806899e-08
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_gamma = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset_gamma = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                    y = y, 
                                    X = X, 
                                    family = Gamma(log),
@@ -874,27 +874,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # note: using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gamma$y), 
               X = Matrix(data_gamma$X, sparse=TRUE), 
               family = Gamma(log),
@@ -951,7 +951,7 @@ BIC(glm_invgaus)-metrics_invgaus$bic # 1.487871e-06
 
 
 # L0 glm fit with lambda preset to optimise given IC
-lambda_preset_invgaus = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset_invgaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                     y = y, 
                                     X = X, 
                                     family = inverse.gaussian(log),
@@ -1087,27 +1087,27 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 3.981072
 # note: using warm starts in the L0glm.fit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "ebic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "mbic", # options aic, bic, gic, mebic, ebic, mbic
+preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_invgaus$y), 
               X = Matrix(data_invgaus$X, sparse=TRUE), 
               family = inverse.gaussian(log),

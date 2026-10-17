@@ -65,7 +65,7 @@ range(beta_true)
 
 # NOTE: best possible "oracle" model that would be achievable with L0glm & the gic criterion is
 IC = "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # using original problem size
                               n = nrow(X))
 system.time(L0glm_bestfit <- L0glm.fit(X = X, # X[,beta_true_set,drop=F], # X
@@ -123,7 +123,7 @@ method="oracle_L0glm"
 # WORKS & RECOVERS BETTER SOLUTION THAN ABESS & MCP BUT FASTER!
 
 # IC = "gic"
-# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
 #                               p = ncol(X), # note that we use original problem size
 #                               n = nrow(X))  
 # # iterating SIS & L0glm:
@@ -179,7 +179,7 @@ method="oracle_L0glm"
 
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 system.time(sis <- sis_glm(X, y, family, 
@@ -752,7 +752,7 @@ metrics_ncvreg_SCAD
 # (returns an empty set)
 
 # # we use mbic because original problem is high dimensional
-# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
 #                               p = ncol(X),
 #                               n = nrow(X))
 # timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- L0glm.fit(

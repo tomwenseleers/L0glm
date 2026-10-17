@@ -11,7 +11,7 @@ L0glm.tune(
   weights = matrix(1, nrow = nrow(as.matrix(y)), ncol = ncol(as.matrix(y))),
   offset = Matrix::Matrix(0, nrow = nrow(X), ncol = ncol(as.matrix(y)), sparse = TRUE),
   dispersion = NULL,
-  tune = c("gic", "mebic", "aic", "bic", "ebic", "mbic", "cv"),
+  tune = c("gic", "aic", "bic", "ebic", "mbic", "cv"),
   nlambda = 10,
   prop_range = 1,
   coefs.true = NULL,
@@ -44,7 +44,7 @@ separate values for the response channels. Fixed-scale families retain their
 family dispersion.}
 
 \item{tune}{A case-insensitive method for model selection:
-\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+\code{"aic"}, \code{"bic"}, \code{"gic"},
 \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
 Cross-validation minimizes mean held-out deviance. This replaces the former
 \code{IC} argument.

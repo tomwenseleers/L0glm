@@ -50,7 +50,7 @@ system.time(abess_fit_mc <- abess(
   fit.intercept=FALSE,
   tune.path="sequence",
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 20s with support.size=1:(n-1), 0.31s with support.size=1:round(n*0.2) 
@@ -201,7 +201,7 @@ system.time(abess_fit_sc <- abess(
   tune.path = "sequence",
   # tune.type = "cv", num.threads = 5 # slower this tuning based on IC
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, mebic, ebic, mbic
+  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 21s with support.size=1:(n-1), 0.2s with support.size=1:round(n*0.2)

@@ -87,11 +87,11 @@ known quantity that is added to the linear predictor of the model.}
 independent multichannel fits (when \code{grouped=FALSE}) or the grouped
 row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
 case-insensitive criterion name: \code{"aic"}, \code{"bic"},
-\code{"gic"}, \code{"mebic"}, \code{"ebic"}, or
-\code{"mbic"}. For example, \code{"GIC"} and \code{"gic"} are equivalent.
+\code{"gic"}, \code{"ebic"}, or \code{"mbic"}.
+For example, \code{"GIC"} and \code{"gic"} are equivalent.
 The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
-AIC uses 2, BIC uses \eqn{\log n}, GIC uses \eqn{\log p\,\log\log n},
-and MEBIC uses twice the GIC value. See \link{information_criteria} for
+AIC uses 2, BIC uses \eqn{\log n}, and GIC uses \eqn{\log p\,\log\log n}.
+See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
 disable penalization. Presets approximate the chosen criterion; they do
 not guarantee its global minimizer.}

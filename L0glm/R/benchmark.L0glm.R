@@ -289,14 +289,14 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    lambda = 0,
                    warm.start = TRUE,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
       args <- c(list(x = X, y = y, weight = W, 
                      family = "gaussian", # identity link poisson not supported
                      tune.type = "bic", # trick to support any IC that L0glm supports
-                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                               p = p, 
                                               n = n)/log(n) ), 
                 options)
@@ -342,7 +342,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                    lambda = 0, 
                    warm.start = TRUE, # FALSE worked better here, but much slower
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                             p = p, 
                                             n = n)/log(n)) # trick to support any IC that L0glm supports
     } else {
@@ -350,7 +350,7 @@ fit.GLM <- function(sim, family = NULL, method = 1, options = NULL, plot = TRUE,
                      weight = W,
                      family = "gaussian",
                      tune.type = "bic", # trick to support any IC that L0glm supports
-                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                     ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                               p = p, 
                                               n = n)/log(n),
                      support.size = c(1:(p_selcoefs-1))), options)
@@ -515,7 +515,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    lambda=0, 
                    warm.start = TRUE,
                    tune.type = "aic" #, # trick to support any IC that L0glm supports
-                   # ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   # ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                    #                         p = p, 
                    #                         n = n)/log(n)
                    ) 
@@ -531,7 +531,7 @@ fit.GLM.mc <- function(sim, family = NULL, method = 1, options = NULL, plot = TR
                    lambda=options$lambda, 
                    warm.start = options$warm.start,
                    tune.type = "bic", # trick to support any IC that L0glm supports
-                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+                   ic.scale = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                                              p = p, 
                                              n = n)/log(n)
                    ) 

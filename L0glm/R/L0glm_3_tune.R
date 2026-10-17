@@ -39,7 +39,7 @@
 #' separate values for the response channels. Fixed-scale families retain their
 #' family dispersion.
 #' @param tune A case-insensitive method for model selection:
-#' \code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"mebic"},
+#' \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
 #' Cross-validation minimizes mean held-out deviance. This replaces the former
 #' \code{IC} argument.
@@ -170,7 +170,7 @@ L0glm.tune <- function(X, y,
                                                      ncol = ncol(as.matrix(y)),
                                                      sparse = TRUE),
                        dispersion   = NULL,
-                       tune         = c("gic", "mebic", "aic", "bic", "ebic", "mbic", "cv"),
+                       tune         = c("gic", "aic", "bic", "ebic", "mbic", "cv"),
                        nlambda      = 10,
                        prop_range   = 1,
                        coefs.true   = NULL,

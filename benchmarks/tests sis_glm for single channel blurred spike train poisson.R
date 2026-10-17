@@ -17,7 +17,7 @@ length(SIS_glm$indices) # 1086
 length(intersect(SIS_glm$indices, which(beta_true!=0))) # 265
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 # iterating SIS & L0glm:

@@ -248,7 +248,7 @@ get.metrics <- function(beta, X, y, weights=matrix(1, nrow = nrow(y), ncol = nco
               TP=TP, FP=FP, TN=TN, FN=FN, 
               precision=precision, recall=recall, specificity=specificity, 
               accuracy=accuracy, F1_score=F1_score, MCC=MCC,
-              gic=IC$gic, mebic=IC$mebic, ebic=IC$ebic,
+              gic=IC$gic, ebic=IC$ebic,
               bic=IC$bic, aic=IC$aic, mbic=IC$mbic) )
 }
 
@@ -277,19 +277,18 @@ get.IC = function(loglik, n, p, edf,
   # aicc = ifelse(n > edf, min2LL + 2*edf*n/(n-edf), NA) # small sample AIC
   bic = min2LL + log(n) * edf # Bayesian information criterion
   gic = min2LL + log(p) * log(log(n)) * edf # generalized information criterion GIC = SIC in https://www.pnas.org/doi/10.1073/pnas.2014241117
-  mebic = min2LL + 2 * log(p) * log(log(n)) * edf # Zhang (2024), doi:10.1016/j.csda.2023.107860
    
   ebic = min2LL + (log(n) + 2 * gamma_ebic * log(p)) * edf # linearized EBIC; Chen and Chen (2008), Biometrika 95, 759-771
   hbic = min2LL + Cn_hbic * log(p) * edf # HBIC, recommended for ultra-high dimensional settings, cf https://arxiv.org/pdf/1311.4981 & https://www.annualreviews.org/docserver/fulltext/statistics/7/1/annurev-statistics-030718-105038.pdf
   mbic = min2LL + log(n * (p ^ 2) / 16) * edf # multiplicity-adjusted mBIC; Bogdan et al. (2008), doi:10.1002/qre.936; distinct from mBIC2
   # TODO maybe still add mbic2, cf Frommlet paper
-  return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mebic = mebic, mbic = mbic))
+  return(data.frame(aic = aic, bic = bic, ebic = ebic, hbic = hbic, gic = gic, mbic = mbic))
 }
 
 
 # Shared, case-insensitive names for fitting, scoring and tuning interfaces.
 L0glm_ic_name <- function(IC, allow_cv = FALSE) {
-  choices <- c("aic", "bic", "gic", "mebic", "ebic", "mbic")
+  choices <- c("aic", "bic", "gic", "ebic", "mbic")
   if (allow_cv) choices <- c(choices, "cv")
   if (!is.character(IC) || length(IC) != 1L || is.na(IC) ||
       !tolower(IC) %in% choices) {
@@ -317,7 +316,6 @@ preset.lambda <- function(IC="gic", p, n,
   IC <- L0glm_ic_name(IC)
   lambda <- switch(IC,
                    gic = log(p)*log(log(n)),
-                   mebic = 2*log(p)*log(log(n)),
                    aic = 2,
                    bic = log(n),
                    ebic = log(n) + 2*gamma_ebic*log(p),

@@ -84,7 +84,7 @@ y <- y_true + rnorm(n)
 family <- gaussian(identity)
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, mebic, ebic, mbic
+lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 nonnegative <- FALSE

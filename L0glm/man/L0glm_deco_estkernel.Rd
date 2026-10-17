@@ -72,7 +72,7 @@ leverages the general machinery of \pkg{L0glm}.  This results in the
 following improvements:
 \itemize{
   \item No manual tuning of the regularisation parameter is required; instead
-        it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
+        it can be preset to approximate information criteria such as GIC, AIC,
         BIC, EBIC or MBIC
   \item Both single channel or multichannel data are allowed for
    \item We allow the estimated convolution kernel \eqn{g} to be smoothed by

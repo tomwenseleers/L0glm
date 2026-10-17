@@ -20,7 +20,7 @@
 #' improvements:
 #' \itemize{
 #'   \item No manual tuning of the regularisation parameter is required; instead
-#'         it can be preset to approximate information criteria such as GIC, MEBIC, AIC,
+#'         it can be preset to approximate information criteria such as GIC, AIC,
 #'         BIC, EBIC or MBIC
 #'   \item Both single channel data with L0 best subset selection or 
 #'         multichannel data with grouped L0 best subset of group selection 
@@ -183,7 +183,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                            X = NULL, # (sparse) deconvolution kernel - can be used to specify matrix with time-varying PSFs & which would then override kernel
                            baseline    = NULL,
                            nknots      = max(4L, floor(nrow(as.matrix(y))/500)),
-                           IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mebic, ebic or mbic
+                           IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, ebic or mbic
                            grouped = TRUE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
                            control.solver = do.call("control.solver.gen",
                                                     list(solver = "eigen", method = 1L))) {

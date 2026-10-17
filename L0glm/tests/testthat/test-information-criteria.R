@@ -2,7 +2,6 @@ test_that("criterion presets match the documented penalties in any case", {
   for (n in c(40, 400)) {
     for (p in c(3, 30)) {
       expected <- c(aic = 2, bic = log(n), gic = log(p) * log(log(n)),
-                    mebic = 2 * log(p) * log(log(n)),
                     ebic = log(n) + 2 * max(0, 1 - log(n)/(2 * log(p))) * log(p),
                     mbic = log(n * p^2 / 16))
       for (ic in names(expected)) {
@@ -35,7 +34,7 @@ test_that("both fitters resolve every named preset before fitting", {
   for (fitter in list(L0glm.fit, L0nnpois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
-    for (ic in c("aic", "bic", "gic", "mebic", "ebic", "mbic")) {
+    for (ic in c("aic", "bic", "gic", "ebic", "mbic")) {
       penalty <- L0glm:::preset.lambda(ic, p = 5, n = 40)
       numeric_fit <- do.call(fitter, c(args, list(lambda = penalty)))
       mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
@@ -50,14 +49,14 @@ test_that("both fitters resolve every named preset before fitting", {
   }
 })
 
-test_that("MEBIC works for sparse grouped and relaxed fits", {
+test_that("GIC works for sparse grouped and relaxed fits", {
   set.seed(72)
   X <- Matrix::rsparsematrix(40, 8, density = 0.5)
   X@x <- abs(X@x)
   beta <- matrix(0, 8, 2)
   beta[c(2, 6), ] <- c(3, 2)
   y <- matrix(rpois(80, as.vector(1 + X %*% beta)), 40, 2)
-  penalty <- 2 * log(8) * log(log(40))
+  penalty <- log(8) * log(log(40))
   args <- list(X = X, y = y, family = poisson(identity),
                offset = rep(1, 40), intercept = FALSE,
                grouped = TRUE, parallelize = FALSE, group.maxit = 2,
@@ -68,7 +67,7 @@ test_that("MEBIC works for sparse grouped and relaxed fits", {
     for (relaxed in c(FALSE, TRUE)) {
       args$relaxed <- relaxed
       numeric_fit <- do.call(fitter, c(args, list(lambda = penalty)))
-      named_fit <- do.call(fitter, c(args, list(lambda = "MeBiC")))
+      named_fit <- do.call(fitter, c(args, list(lambda = "GiC")))
       expect_equal(named_fit$init.lambda, penalty)
       expect_identical(named_fit$coefficients, numeric_fit$coefficients)
       expect_identical(named_fit$lambdas, numeric_fit$lambdas)
@@ -76,31 +75,36 @@ test_that("MEBIC works for sparse grouped and relaxed fits", {
   }
 })
 
-test_that("MEBIC metrics are available without known true coefficients", {
+test_that("supported criterion metrics are available without known true coefficients", {
   X <- cbind(1, seq(0, 1, length.out = 20))
   beta <- c(1, 2)
   metrics <- L0glm:::get.metrics(beta, X, y = matrix(rep(1:4, 5)),
                                 family = poisson(identity))
-  expect_equal(metrics$mebic + 2 * metrics$loglik,
-               2 * (metrics$gic + 2 * metrics$loglik))
+  expect_equal(metrics$gic + 2 * metrics$loglik,
+               log(ncol(X)) * log(log(nrow(X))) * sum(beta != 0))
+  criteria <- c("gic", "ebic", "bic", "aic", "mbic")
+  expect_named(tail(metrics, length(criteria)), criteria)
+  scores <- L0glm:::get.IC(metrics$loglik, nrow(X), ncol(X), sum(beta != 0))
+  expect_false("mebic" %in% names(scores))
   expect_false("hbic" %in% names(metrics))
   expect_true(is.na(metrics$MD_selcoefs))
 })
 
-test_that("tuning selects MEBIC scores with case-insensitive names", {
+test_that("tuning selects EBIC scores with case-insensitive names", {
   set.seed(73)
   X <- matrix(rnorm(240), 60, 4)
   y <- 8 * X[, 1] + 2 * X[, 2] + rnorm(60, sd = 0.2)
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                nlambda = 3, prop_range = 0.2, printbest = FALSE, plot = FALSE,
                grouped = FALSE, parallelize = FALSE, maxit = 20)
-  lower <- do.call(L0glm.tune, c(args, list(tune = "mebic")))
-  upper <- do.call(L0glm.tune, c(args, list(tune = "MEBIC")))
+  lower <- do.call(L0glm.tune, c(args, list(tune = "ebic")))
+  upper <- do.call(L0glm.tune, c(args, list(tune = "EBIC")))
   expect_identical(upper, lower)
-  expect_identical(upper$tune, "mebic")
-  expect_equal(upper$lambda_preset, 2 * log(4) * log(log(60)))
+  expect_identical(upper$tune, "ebic")
+  expect_equal(upper$lambda_preset, log(60))
   expect_equal(upper$lambda_best,
-               upper$metrics$lambda[which.min(upper$metrics$mebic)])
+               upper$metrics$lambda[which.min(upper$metrics$ebic)])
+  expect_false("mebic" %in% names(upper$metrics))
   default <- do.call(L0glm.tune, args)
   expect_identical(default$tune, "gic")
   expect_error(do.call(L0glm.tune, c(args, list(tune = "HBIC"))),
@@ -111,13 +115,25 @@ test_that("invalid criteria and lambda values fail clearly in both fitters", {
   X <- cbind(1, seq(0, 1, length.out = 12))
   for (fitter in list(L0glm.fit, L0nnpois)) {
     args <- list(X = X, y = rep(2, 12), parallelize = FALSE)
-    for (bad in list("unknown", "hbic", "HBIC", "", NA_character_, c("aic", "bic"))) {
+    for (bad in list("unknown", "hbic", "HBIC", "mebic", "MEBIC", "",
+                     NA_character_, c("aic", "bic"))) {
       expect_error(do.call(fitter, c(args, list(lambda = bad))),
-                   "Information criterion must be one of.*mebic")
+                   "Information criterion must be one of.*gic.*ebic.*mbic")
     }
     for (bad in list(NA_real_, Inf, c(1, 2), numeric(0))) {
       expect_error(do.call(fitter, c(args, list(lambda = bad))),
                    "lambda must be a finite numeric scalar")
     }
+  }
+})
+
+test_that("removed criteria are rejected by preset resolution and tuning", {
+  X <- matrix(seq_len(60), 20, 3)
+  for (ic in c("mebic", "MEBIC", "MeBiC")) {
+    expect_error(L0glm:::preset.lambda(ic, p = 3, n = 20),
+                 "Information criterion must be one of.*gic.*ebic.*mbic")
+    expect_error(L0glm.tune(X, rep(1, 20), family = gaussian(), tune = ic,
+                           plot = FALSE),
+                 "tune must be one of.*gic.*ebic.*mbic.*cv")
   }
 })

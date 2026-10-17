@@ -68,13 +68,10 @@
   blue true positives, red false positives and magenta false negatives.
 * Audited package and benchmark solver calls and migrated remaining historical
   Eigen method numbers, including Cholesky LLT from `7L` to `1L`.
-* Added `lambda = "mebic"` to `L0glm.fit()` and `L0nnpois()`, using
-  `2 * log(p) * log(log(n))`, twice the GIC penalty.
 * Information-criterion names are now consistently case-insensitive in both
-  fitters, tuning and benchmark helpers. MEBIC is listed immediately after GIC.
-* Added MEBIC to the fit metrics used for tuning. Added a shared
-  information-criteria help topic with penalty formulas, usage guidance,
-  original references and the GIC/SIC/HBIC relationship.
+  fitters, tuning and benchmark helpers.
+* Added a shared information-criteria help topic with penalty formulas, usage
+  guidance, original references and the GIC/SIC/HBIC relationship.
 * Fixed metric calculation when true coefficients are not supplied, allowing
   information-criterion tuning on observed data without simulation truth.
 * Removed `lower` and `upper` from `L0glm.fit()` and `L0nnpois()`. General box
