@@ -37,7 +37,7 @@ L0glm_column_scale <- function(X, normalize) {
 L0glm_preprocessing <- function(X, normalize, lower, always.include) {
   selectable <- setdiff(seq_len(ncol(X)), always.include)
   nonnegative <- !length(selectable) || all(lower[selectable] >= 0)
-  free_intercept <- intersect(L0glm_intercepts(X), which(lower < 0))
+  free_intercept <- intersect(L0glm_unit_intercepts(X), which(lower < 0))
   mode <- L0glm_normalization(normalize, nonnegative && !length(free_intercept))
   center <- rep(0, ncol(X)); scale <- rep(1, ncol(X))
   if (mode != "none") {
@@ -59,4 +59,25 @@ L0glm_subset_preprocessing <- function(preprocessing, vars) {
   preprocessing$center <- preprocessing$center[vars]
   preprocessing$scale <- preprocessing$scale[vars]
   preprocessing
+}
+
+# Change only the internal working origin. For sparse designs, shift only
+# fully stored columns: these can have an arbitrarily large mean/SD ratio,
+# and shifting their stored values adds no new entries. The remaining columns
+# retain their sparse representation and are profiled with the intercept.
+L0glm_center_working_design <- function(X, preprocessing, lower) {
+  shift <- rep(0, ncol(X))
+  intercept <- intersect(L0glm_unit_intercepts(X), which(lower < 0))
+  if (!preprocessing$centered || !length(intercept))
+    return(list(X = X, shift = shift, intercept = integer()))
+  shift <- preprocessing$center
+  if (inherits(X, "sparseMatrix")) {
+    X <- as(as(X, "generalMatrix"), "CsparseMatrix")
+    shift[diff(X@p) != nrow(X)] <- 0
+    for (j in which(shift != 0)) {
+      entries <- seq.int(X@p[j] + 1L, X@p[j + 1L])
+      X@x[entries] <- X@x[entries] - shift[j]
+    }
+  } else X <- sweep(as.matrix(X), 2L, shift, "-")
+  list(X = X, shift = shift, intercept = intercept[1L])
 }

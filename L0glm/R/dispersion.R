@@ -110,7 +110,7 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
     G <- Matrix::crossprod(U)
     C <- Matrix::crossprod(U, A)
     info <- pmax(0, info - colSums(as.matrix(C) * L0glm_nuisance_solve(G, C)))
-    if (length(free) == 1L && free %in% L0glm_intercepts(X))
+    if (length(free) == 1L && free %in% L0glm_unit_intercepts(X))
       info <- moments$centered_ss
   }
   use <- use[is.finite(info[use]) & info[use] > 0]
@@ -137,29 +137,35 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
       backsolve(factor, forwardsolve(t(factor), as.matrix(rhs)))
     }
   }
-  tau <- 1e-6
-  if (!ncol(A)) {
-    residual <- B
-  } else if (ncol(A) > nrow(A)) {
-    K <- Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau)
-    solution <- solve_factor(K, cbind(B, U))
-    residual <- solution[, seq_len(ncol(B)), drop = FALSE]
-    if (length(free)) {
-      inverse_U <- solution[, ncol(B) + seq_along(free), drop = FALSE]
-      residual <- residual - inverse_U %*% L0glm_nuisance_solve(
-        Matrix::crossprod(U, inverse_U), Matrix::crossprod(U, residual))
+  pilot_scale <- function(tau) {
+    if (!ncol(A)) {
+      residual <- B
+    } else if (ncol(A) > nrow(A)) {
+      K <- Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau)
+      solution <- solve_factor(K, cbind(B, U))
+      residual <- solution[, seq_len(ncol(B)), drop = FALSE]
+      if (length(free)) {
+        inverse_U <- solution[, ncol(B) + seq_along(free), drop = FALSE]
+        residual <- residual - inverse_U %*% L0glm_nuisance_solve(
+          Matrix::crossprod(U, inverse_U), Matrix::crossprod(U, residual))
+      }
+      residual <- tau * residual
+    } else {
+      design <- cbind(U, A)
+      K <- Matrix::crossprod(design) +
+        Matrix::Diagonal(ncol(design), c(rep(0, length(free)), rep(tau, ncol(A))))
+      solution <- solve_factor(K, Matrix::crossprod(design, B))
+      residual <- B - design %*% solution
     }
-    residual <- tau * residual
-  } else {
-    design <- cbind(U, A)
-    K <- Matrix::crossprod(design) +
-      Matrix::Diagonal(ncol(design), c(rep(0, length(free)), rep(tau, ncol(A))))
-    solution <- solve_factor(K, Matrix::crossprod(design, B))
-    residual <- B - design %*% solution
+    df <- mean(Matrix::colSums(residual[, -1L, drop = FALSE]^2))
+    if (is.finite(df) && df > 0) sum(residual[, 1L]^2) / df else NA_real_
   }
-  df <- mean(Matrix::colSums(residual[, -1L, drop = FALSE]^2))
-  phi <- if (is.finite(df) && df > 0) sum(residual[, 1L]^2) / df else
-    mean(as.numeric(B[, 1L])^2)
+  phi <- pilot_scale(1e-6)
+  null_scale <- sum(B[, 1L]^2) / max(1, nrow(A) - length(free))
+  # A virtually interpolating weak pilot can lock selection into a dense fit
+  # before Pearson scale is estimable. Retry once with a moderate pilot ridge;
+  # ordinary fits retain the weak pilot, and no main-model loop is added.
+  if (!is.finite(phi) || phi < 1e-6 * null_scale) phi <- pilot_scale(0.1)
   reference <- max(1, preset.lambda("gic", p = max(1, p), n = nrow(X)), na.rm = TRUE)
   if (!is.finite(phi) || phi <= 0) phi <- .Machine$double.eps
   max(.Machine$double.xmin, phi / reference)

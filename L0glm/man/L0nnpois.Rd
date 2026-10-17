@@ -124,8 +124,10 @@ fully nonnegative fits. Other choices are \code{FALSE} or \code{"none"},
 \code{TRUE} or \code{"l2"} for unit L2 norm, \code{"rms"} for unit
 root-mean-square (\eqn{\sum_i X_{ij}^2/n=1}), and \code{"sd"} for unit
 sample standard deviation. With a free intercept, column means are
-accounted for implicitly and the norms use centered columns; neither
-\code{X} nor \code{y} is explicitly centered. A constrained intercept
+accounted for and the norms use centered columns. The original \code{X}
+and \code{y} are unchanged. Dense working columns are centered once;
+sparse working columns are shifted only when this adds no stored entries,
+with the other means handled by the intercept. A constrained intercept
 prevents this centering, including in \code{L0nnpois()}. Mandatory terms
 and zero-scale columns use scale one. Penalties, starts, ridge centers and
 bounds are transformed consistently, and coefficients and explicit starts

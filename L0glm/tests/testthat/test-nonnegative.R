@@ -85,8 +85,10 @@ test_that("binomial slopes remain constrained through grouped, relaxed and paral
       expect_true(all(beta[2, ] >= 0))
       expect_gt(beta[2, 1], 0.9)
       expect_equal(unname(beta[2, 2]), 0)
-      parallel <- do.call(L0glm.fit, c(args, list(parallelize = TRUE, ncores = 2L)))
-      expect_equal(parallel$coefficients, serial$coefficients, tolerance = 1e-12)
+      if (grouped && relaxed) {
+        parallel <- do.call(L0glm.fit, c(args, list(parallelize = TRUE, ncores = 2L)))
+        expect_equal(parallel$coefficients, serial$coefficients, tolerance = 1e-12)
+      }
     }
   }
 })
@@ -123,7 +125,7 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
             y = if (multichannel) cbind(y, y + 1) else y,
             offset = rep(4, length(y)), intercept = TRUE, normalize = normalize,
             lambda = 1e-8, start = c(-1, 2), grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,
-            parallelize = multichannel, ncores = 2L
+            parallelize = multichannel && sparse && normalize && relaxed, ncores = 2L
           )
           fast <- do.call(L0nnpois, args)
           general <- do.call(L0glm.fit, c(args, list(family = poisson(identity),

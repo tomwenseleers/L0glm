@@ -176,8 +176,10 @@
 #'   \code{TRUE} or \code{"l2"} for unit L2 norm, \code{"rms"} for unit
 #'   root-mean-square (\eqn{\sum_i X_{ij}^2/n=1}), and \code{"sd"} for unit
 #'   sample standard deviation. With a free intercept, column means are
-#'   accounted for implicitly and the norms use centered columns; neither
-#'   \code{X} nor \code{y} is explicitly centered. A constrained intercept
+#'   accounted for and the norms use centered columns. The original \code{X}
+#'   and \code{y} are unchanged. Dense working columns are centered once;
+#'   sparse working columns are shifted only when this adds no stored entries,
+#'   with the other means handled by the intercept. A constrained intercept
 #'   prevents this centering, including in \code{L0nnpois()}. Mandatory terms
 #'   and zero-scale columns use scale one. Penalties, starts, ridge centers and
 #'   bounds are transformed consistently, and coefficients and explicit starts
@@ -362,6 +364,11 @@
 #' With preprocessing enabled, mandatory terms are profiled out and column
 #' information is conditional on them, preserving changes of predictor origin
 #' when an unrestricted intercept is present.
+#' If this weak pilot estimates a variance below \code{1e-6} times the
+#' nuisance-adjusted working-response variance, one retry uses pilot ridge
+#' \code{0.1}. This guards against a nearly interpolating pilot freezing a
+#' dense fit at an extremely small dispersion. It is an initialization
+#' safeguard, not a statistical lower bound on the true dispersion.
 #'
 #' Starting at iteration 3, when the number \eqn{k} of active coefficients is
 #' below \eqn{0.7N}, dispersion is updated toward
@@ -384,7 +391,8 @@
 #' freezing safeguards are heuristics; they do not guarantee a global optimum or
 #' an unbiased noise estimate, especially in nearly interpolating models. If the
 #' active model remains too large for the update, the starting scale is retained.
-#' The pilot requires one factorization; subsequent scale updates require only
+#' The pilot normally requires one factorization (two with the rare retry);
+#' subsequent scale updates require only
 #' \eqn{O(N)} arithmetic, without nested fitting or further factorizations.
 #' Supplying a dispersion value avoids the pilot factorization, which can be
 #' appreciable for very large dense designs even when the main solver is iterative.
@@ -724,7 +732,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
         cl <- if (cluster_type == "PSOCK") {
           parallel::makeCluster(nworkers, type = cluster_type, useXDR = FALSE,
-                                master = "localhost")
+                                master = "127.0.0.1", rscript_args = "--vanilla")
         } else {
           parallel::makeCluster(nworkers, type = cluster_type)
         }

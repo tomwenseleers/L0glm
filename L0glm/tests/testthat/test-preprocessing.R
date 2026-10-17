@@ -41,6 +41,28 @@ test_that("a constant training predictor cannot create enormous held-out estimat
   }
 })
 
+test_that("nearly constant free-intercept columns have a stable working origin", {
+  set.seed(1635)
+  X <- cbind(0.004 + 1e-8 * rnorm(100), rnorm(100), rnorm(100))
+  y <- 1 + 2e8 * (X[, 1] - 0.004) + rnorm(100, sd = 0.2)
+  fits <- list()
+  for (sparse in c(FALSE, TRUE)) {
+    Z <- Matrix::Matrix(X, sparse = sparse)
+    expect_warning(fit <- L0glm.fit(Z, y, family = gaussian(), intercept = TRUE,
+      lambda = "gic", parallelize = FALSE), NA)
+    expect_gt(abs(as.numeric(fit$coefficients)[2]), 1e8)
+    expect_lt(mean((y - as.numeric(fit$X %*% fit$coefficients))^2), 0.1)
+    expect_identical(inherits(fit$X, "sparseMatrix"), sparse)
+    prep <- L0glm_preprocessing(cbind(Intercept = 1, Z), "auto", rep(-Inf, 4), 1L)
+    working <- L0glm_center_working_design(cbind(Intercept = 1, Z), prep, rep(-Inf, 4))
+    expect_identical(inherits(working$X, "sparseMatrix"), sparse)
+    if (sparse) expect_equal(length(working$X@x), length(cbind(Intercept = 1, Z)@x))
+    fits[[length(fits) + 1L]] <- fit
+  }
+  expect_equal(as.numeric(fits[[1]]$coefficients), as.numeric(fits[[2]]$coefficients),
+               tolerance = 1e-6)
+})
+
 test_that("implicit centering requires a free intercept, not signed slopes", {
   X <- cbind(Intercept = 1, x = 1:20, z = (1:20)^2)
   free <- L0glm_preprocessing(X, "auto", c(-Inf, 0, 0), 1L)
@@ -55,6 +77,8 @@ test_that("implicit centering requires a free intercept, not signed slopes", {
   expect_equal(constrained$scale[-1], unname(sqrt(colMeans(X[, -1]^2))))
   expect_equal(constrained$center, rep(0, 3))
   expect_identical(L0glm_preprocessing(X, "auto", rep(0, 3), 1L)$mode, "none")
+  named_nuisance <- cbind(Intercept_like = 1:20, z = (1:20)^2)
+  expect_false(L0glm_preprocessing(named_nuisance, "auto", rep(-Inf, 2), 1L)$centered)
 })
 
 test_that("free-intercept automatic Gaussian fits are invariant to predictor units and origin", {
@@ -122,6 +146,20 @@ test_that("nonnegative binomial slopes permit centered initialization", {
   expect_true(a$preprocessing$centered)
   expect_true(all(a$coefficients[-1, ] >= 0))
   expect_equal(recovered, as.numeric(a$coefficients), tolerance = 1e-6)
+})
+
+test_that("free intercepts are reprofiled after clipping or thresholding slopes", {
+  set.seed(1636)
+  X <- matrix(rbinom(120 * 5, 1, 0.3), 120, 5)
+  y <- rbinom(120, 1, plogis(-1 + 3 * X[, 1] - 3 * X[, 2]))
+  args <- list(y = y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
+    start = 1, lambda = 2, maxit = 1L, parallelize = FALSE, relaxed = FALSE)
+  dense <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = FALSE)), args))
+  sparse <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = TRUE)), args))
+  expect_equal(as.numeric(dense$coefficients), as.numeric(sparse$coefficients), tolerance = 1e-7)
+  expect_true(any(dense$coefficients[-1, ] == 0))
+  expect_true(all(dense$coefficients[-1, ] >= 0))
+  expect_identical(inherits(sparse$X, "sparseMatrix"), TRUE)
 })
 
 test_that("canonical Poisson initialization agrees between native and R paths", {

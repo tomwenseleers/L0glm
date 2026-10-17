@@ -31,7 +31,7 @@ L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,
     C <- Matrix::crossprod(U, A)
     response <- b - as.numeric(U %*% L0glm_nuisance_solve(G, Matrix::crossprod(U, b)))
     info <- pmax(0, info - colSums(as.matrix(C) * L0glm_nuisance_solve(G, C)))
-    if (length(free) == 1L && free %in% L0glm_intercepts(X))
+    if (length(free) == 1L && free %in% L0glm_unit_intercepts(X))
       info <- moments$centered_ss
   }
   rhs <- as.numeric(Matrix::crossprod(A, response))

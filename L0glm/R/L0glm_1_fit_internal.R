@@ -103,6 +103,17 @@ L0glm.fit.internal = function(X,
   
   ## 4. optional normalisation ------------------------------------------------
   scaling <- preprocessing$scale
+  centered <- L0glm_center_working_design(X, preprocessing, lower)
+  X <- centered$X
+  free_intercept <- intersect(always.include, intersect(L0glm_unit_intercepts(X), which(lower < 0)))
+  if (length(free_intercept)) free_intercept <- free_intercept[1L]
+  intercept_column <- if (length(free_intercept)) as.numeric(X[, free_intercept]) else numeric()
+  if (length(centered$intercept)) {
+    if (!is.null(start)) start[centered$intercept] <-
+      start[centered$intercept] + sum(centered$shift * start)
+    prior.mean[centered$intercept] <- prior.mean[centered$intercept] +
+      sum(centered$shift * as.numeric(prior.mean))
+  }
   # if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
 
   ## 5. family helpers --------------------------------------------------------
@@ -245,6 +256,15 @@ L0glm.fit.internal = function(X,
     
     ## ----- update mu and eta --------------------------------------
     eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
+    if (length(free_intercept)) {
+      information <- sum(W * intercept_column[good]^2)
+      if (information > 0) {
+        adjustment <- sum(W * intercept_column[good] *
+          (as.numeric(z) - as.numeric(eta - offset)[good])) / information
+        beta[free_intercept] <- beta[free_intercept] + adjustment
+        eta <- eta + intercept_column * adjustment
+      }
+    }
     mu  <- linkinv(eta)    # predictions on response scale u
     if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
     
@@ -294,6 +314,8 @@ L0glm.fit.internal = function(X,
                                  sum(beta != 0) + sum(beta[always.include] == 0))
     if (is.finite(target) && target > 0) dispersion <- target
   }
+  if (length(centered$intercept)) beta[centered$intercept] <-
+    beta[centered$intercept] - sum(centered$shift * beta)
   list(coefficients = as.numeric(beta),
        weights      = as.numeric(W.ret),
        dispersion   = dispersion,

@@ -7,6 +7,11 @@ L0glm_intercepts <- function(X) {
   integer()
 }
 
+L0glm_unit_intercepts <- function(X) {
+  candidates <- L0glm_intercepts(X)
+  candidates[vapply(candidates, function(j) all(X[, j, drop = FALSE] == 1), logical(1))]
+}
+
 L0glm_mandatory <- function(X, always.include = NULL) {
   sort(unique(c(intersect(as.integer(always.include), seq_len(ncol(X))),
                 L0glm_intercepts(X))))
