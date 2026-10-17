@@ -235,6 +235,31 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
     const int pos = active[a];
     Xw.col(a) = X.col(vars[pos]).array() * sqrtw.array() / scaling[pos];
   }
+  VectorXd penalty(k), center(k);
+  for (int a = 0; a < k; ++a) {
+    penalty[a] = lambdas[active[a]];
+    center[a] = prior_mean[active[a]];
+  }
+  if (k > n && ((penalty.array() > 0.0).all() || (penalty.array() == 0.0).all())) {
+    const bool penalized = (penalty.array() > 0.0).all();
+    VectorXd invsqrt = VectorXd::Ones(k);
+    if (penalized) invsqrt = penalty.array().sqrt().inverse();
+    else center.setZero();
+    MatrixXd Z = Xw * invsqrt.asDiagonal();
+    MatrixXd dual = MatrixXd::Zero(n, n);
+    const double one = 1.0, zero = 0.0;
+    F77_CALL(dsyrk)("L", "N", &n, &k, &one, Z.data(), &n, &zero,
+                    dual.data(), &n FCONE FCONE);
+    if (penalized) dual.diagonal().array() += 1.0;
+    Eigen::LLT<MatrixXd> solver(dual);
+    if (solver.info() != Eigen::Success) return start;
+    VectorXd u = solver.solve(zw - Xw * center);
+    if (solver.info() != Eigen::Success || !u.allFinite()) return start;
+    VectorXd sol = center + invsqrt.asDiagonal() * (Z.transpose() * u);
+    sol = constrain_vec(sol);
+    for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
+    return sol;
+  }
   MatrixXd A = MatrixXd::Zero(k, k);
   const double one = 1.0;
   const double zero = 0.0;
@@ -294,6 +319,42 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   SparseMatrix<double> Xw(n, k);
   Xw.setFromTriplets(triplets.begin(), triplets.end());
   Xw.makeCompressed();
+
+  VectorXd penalty(k), center(k);
+  for (int a = 0; a < k; ++a) {
+    penalty[a] = lambdas[active[a]];
+    center[a] = prior_mean[active[a]];
+  }
+  if (k > n && ((penalty.array() > 0.0).all() || (penalty.array() == 0.0).all())) {
+    const bool penalized = (penalty.array() > 0.0).all();
+    VectorXd invsqrt = VectorXd::Ones(k);
+    if (penalized) invsqrt = penalty.array().sqrt().inverse();
+    else center.setZero();
+    SparseMatrix<double> Z = Xw * invsqrt.asDiagonal();
+    SparseMatrix<double> dual = Z * Z.transpose();
+    if (penalized) for (int i = 0; i < n; ++i) dual.coeffRef(i, i) += 1.0;
+    dual.makeCompressed();
+    VectorXd rhs = zw - Xw * center;
+    VectorXd u;
+    if (natural_ordering) {
+      Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::NaturalOrdering<int> > solver;
+      solver.compute(dual);
+      if (solver.info() != Eigen::Success) return start;
+      u = solver.solve(rhs);
+      if (solver.info() != Eigen::Success) return start;
+    } else {
+      Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
+      solver.compute(dual);
+      if (solver.info() != Eigen::Success) return start;
+      u = solver.solve(rhs);
+      if (solver.info() != Eigen::Success) return start;
+    }
+    if (!u.allFinite()) return start;
+    VectorXd sol = center + invsqrt.asDiagonal() * (Z.transpose() * u);
+    sol = constrain_vec(sol);
+    for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
+    return sol;
+  }
 
   SparseMatrix<double> A = Xw.transpose() * Xw;
   VectorXd b = Xw.transpose() * zw;

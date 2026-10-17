@@ -247,9 +247,10 @@ workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solv
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
 fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
 the design matrix `X` in shared memory across outcome channels.
-Dense inputs with at least 90% exact zeros are compressed once and use the
-sparse solver; every nonzero entry is retained. Otherwise, the dense solver
-forms weighted crossproducts using the BLAS library linked to R.
+Dense inputs retain dense storage and sparse inputs retain sparse storage.
+The dense solver forms weighted crossproducts using R's BLAS library.
+Eligible wide active systems use the Woodbury identity to factor an
+observation-space system rather than a predictor-space system.
 The default penalty is `lambda = "gic"`.
 Every coefficient, including any intercept, is constrained to be nonnegative.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`

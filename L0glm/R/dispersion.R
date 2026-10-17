@@ -39,9 +39,6 @@ L0glm_initial_dispersion <- function(X, y, mu, weights, offset, family) {
   good <- is.finite(W) & W > 0 & is.finite(z)
   if (!any(good)) return(1)
   A <- Matrix::Diagonal(x = sqrt(W[good])) %*% X[good, , drop = FALSE]
-  if (!inherits(A, "sparseMatrix") &&
-      Matrix::nnzero(A) <= 0.1 * as.double(nrow(A)) * ncol(A))
-    A <- Matrix::Matrix(A, sparse = TRUE)
   info <- as.numeric(Matrix::colSums(A^2))
   use <- is.finite(info) & info > 0
   A <- A[, use, drop = FALSE] %*% Matrix::Diagonal(x = 1 / sqrt(info[use]))

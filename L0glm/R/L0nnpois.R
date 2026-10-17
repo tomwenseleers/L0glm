@@ -7,9 +7,10 @@
 #' `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
 #' fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
 #' the design matrix `X` in shared memory across outcome channels.
-#' Dense inputs with at least 90% exact zeros are compressed once and use the
-#' sparse solver; every nonzero entry is retained. Otherwise, the dense solver
-#' forms weighted crossproducts using the BLAS library linked to R.
+#' Dense inputs retain dense storage and sparse inputs retain sparse storage.
+#' The dense solver forms weighted crossproducts using R's BLAS library.
+#' Eligible wide active systems use the Woodbury identity to factor an
+#' observation-space system rather than a predictor-space system.
 #' The default penalty is `lambda = "gic"`.
 #' Every coefficient, including any intercept, is constrained to be nonnegative.
 #' This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
@@ -106,12 +107,6 @@ L0nnpois <- function(X,
   }
 
   issparse <- inherits(X, "sparseMatrix")
-  # Dense storage does not imply a dense design (e.g. banded deconvolution).
-  # Compress once when at least 90% of entries are exact zeros, rather than
-  # repeatedly factorizing large dense Gram matrices. No nonzero is discarded.
-  if (!issparse && isTRUE(Matrix::nnzero(X) <= 0.1 * as.double(n) * p0)) {
-    issparse <- TRUE
-  }
   if (issparse) {
     X <- methods::as(Matrix::Matrix(X, sparse = TRUE), "dgCMatrix")
   } else {
