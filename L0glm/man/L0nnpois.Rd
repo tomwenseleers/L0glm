@@ -112,10 +112,16 @@ Specify 0 if all terms should be allowed to be
 shrunk to zero. If `intercept = TRUE`, the first column (intercept) will
 always be estimated and included in the model.}
 
-\item{normalize}{Logical indicating whether the columns of the design matrix
-\strong{X} should be scaled to have unit \eqn{L_2} norm. It is advised to
-use normalization unless the covariates were measured on a similar scale.
-Defaults to \code{TRUE}}
+\item{normalize}{Column scaling for the internal linear solves:
+\code{FALSE} or \code{"none"} (default), \code{TRUE} or \code{"l2"}
+for unit L2 norm, \code{"rms"} for unit root-mean-square
+(\eqn{\sum_i X_{ij}^2/n=1}), or \code{"sd"} for unit sample standard
+deviation. This option does not center columns. Zero-scale columns use a
+scale of one. Penalties, starts, ridge centers and bounds are transformed
+consistently, so this is a change of solver coordinates; coefficients and
+explicit starts retain their original input units. Different automatic
+initialization conventions should be compared separately from this numerical
+scaling. Sparse designs remain sparse.}
 
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic

@@ -67,7 +67,7 @@ L0glm.fit.internal = function(X,
       if (length(prior.mean)!=p) { stop("prior.mean must have length p") }
   
   ## 4. optional normalisation ------------------------------------------------
-  scaling <- if (normalize) scaleX(X) else rep(1, p) # to normalise to unit L2 norm
+  scaling <- L0glm_column_scale(X, normalize)
   # if (!is.null(colnames(X))) { if (colnames(X)[1]=="Intercept") scaling[1] <- 1 }
 
   ## 5. family helpers --------------------------------------------------------

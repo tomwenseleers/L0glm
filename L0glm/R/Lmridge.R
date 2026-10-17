@@ -121,11 +121,6 @@ lmridge <- function(X, y,
                     control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                     verbose = FALSE){
   
-  # scale columns of X if desired
-  if (sum(scaling)!=length(scaling)) { 
-    X <- Matrix(X %*% Matrix::Diagonal(x = 1 / scaling), sparse=issparse(X)) 
-    start <- start * scaling }
-  
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
   Xw <- Xweights(X, weights)
@@ -139,6 +134,20 @@ lmridge <- function(X, y,
     prior.mean = rep(prior.mean, ncol(X))
   } else if (length(as.vector(prior.mean)) != ncol(X)) {
     stop("Prior.mean needs to be a vector of length p or a numerical.")
+  }
+  if (length(scaling) != ncol(X) || any(!is.finite(scaling) | scaling <= 0))
+    stop("scaling must contain one finite positive value per column of X.", call. = FALSE)
+  scaled <- any(scaling != 1)
+  if (scaled) {
+    # theta = S beta: preserve the original quadratic objective and constraints.
+    Xw <- Xw %*% Matrix::Diagonal(x = 1 / scaling)
+    start <- start * scaling
+    lambdas <- lambdas / scaling^2
+    prior.mean <- prior.mean * scaling
+    lower[lower <= -.Machine$double.xmax] <- -Inf
+    upper[upper >= .Machine$double.xmax] <- Inf
+    lower <- lower * scaling
+    upper <- upper * scaling
   }
   
   if (solver == "osqp") {
@@ -172,10 +181,10 @@ lmridge <- function(X, y,
     stop("Invalid solver choice") }
   
   # rescale coefficients to original scale
-  if (sum(scaling)!=length(scaling)) { coefs = coefs / scaling }
+  if (scaled) coefs <- coefs / scaling
   
   if (sum(is.na(coefs))==length(coefs)) { warning("Ridge solver failed, returning starting coefficients.")
-                                          return(start) } 
+                                          return(if (scaled) start / scaling else start) }
   
   return(coefs)
 }

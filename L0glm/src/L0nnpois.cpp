@@ -82,7 +82,7 @@ inline void group_support_start(const MatrixXd& coef,
 }
 
 inline VectorXd compute_scaling_dense(const Map<MatrixXd>& X,
-                                      const std::vector<int>& vars) {
+                                      const std::vector<int>& vars, int normalize) {
   VectorXd scaling(vars.size());
   for (int j = 0; j < static_cast<int>(vars.size()); ++j) {
     double ss = 0.0;
@@ -91,6 +91,11 @@ inline VectorXd compute_scaling_dense(const Map<MatrixXd>& X,
       const double x = X(i, col);
       ss += x * x;
     }
+    if (normalize == 2) ss /= X.rows();
+    if (normalize == 3) {
+      const double sum = X.col(col).sum();
+      ss = X.rows() > 1 ? std::max(0.0, ss - sum * sum / X.rows()) / (X.rows() - 1) : 0.0;
+    }
     const double s = std::sqrt(ss);
     scaling[j] = (s == 0.0 || !std::isfinite(s)) ? 1.0 : s;
   }
@@ -98,13 +103,18 @@ inline VectorXd compute_scaling_dense(const Map<MatrixXd>& X,
 }
 
 inline VectorXd compute_scaling_sparse(const Eigen::MappedSparseMatrix<double>& X,
-                                       const std::vector<int>& vars) {
+                                       const std::vector<int>& vars, int normalize) {
   VectorXd scaling(vars.size());
   for (int j = 0; j < static_cast<int>(vars.size()); ++j) {
     double ss = 0.0;
     const int col = vars[j];
     for (Eigen::MappedSparseMatrix<double>::InnerIterator it(X, col); it; ++it) {
       ss += it.value() * it.value();
+    }
+    if (normalize == 2) ss /= X.rows();
+    if (normalize == 3) {
+      const double sum = X.col(col).sum();
+      ss = X.rows() > 1 ? std::max(0.0, ss - sum * sum / X.rows()) / (X.rows() - 1) : 0.0;
     }
     const double s = std::sqrt(ss);
     scaling[j] = (s == 0.0 || !std::isfinite(s)) ? 1.0 : s;
@@ -235,10 +245,12 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
     const int pos = active[a];
     Xw.col(a) = X.col(vars[pos]).array() * sqrtw.array() / scaling[pos];
   }
-  VectorXd penalty(k), center(k);
+  VectorXd penalty(k), center(k), previous = start;
   for (int a = 0; a < k; ++a) {
-    penalty[a] = lambdas[active[a]];
-    center[a] = prior_mean[active[a]];
+    const double scale = scaling[active[a]];
+    penalty[a] = lambdas[active[a]] / (scale * scale);
+    center[a] = prior_mean[active[a]] * scale;
+    previous[a] /= scale;
   }
   if (k > n && ((penalty.array() > 0.0).all() || (penalty.array() == 0.0).all())) {
     const bool penalized = (penalty.array() > 0.0).all();
@@ -252,9 +264,9 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
                     dual.data(), &n FCONE FCONE);
     if (penalized) dual.diagonal().array() += 1.0;
     Eigen::LLT<MatrixXd> solver(dual);
-    if (solver.info() != Eigen::Success) return start;
+    if (solver.info() != Eigen::Success) return previous;
     VectorXd u = solver.solve(zw - Xw * center);
-    if (solver.info() != Eigen::Success || !u.allFinite()) return start;
+    if (solver.info() != Eigen::Success || !u.allFinite()) return previous;
     VectorXd sol = center + invsqrt.asDiagonal() * (Z.transpose() * u);
     sol = constrain_vec(sol);
     for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
@@ -270,14 +282,14 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
   VectorXd b = Xw.transpose() * zw;
   for (int a = 0; a < k; ++a) {
     const int pos = active[a];
-    A(a, a) += lambdas[pos];
-    b[a] += lambdas[pos] * prior_mean[pos];
+    A(a, a) += penalty[a];
+    b[a] += penalty[a] * center[a];
   }
 
   Eigen::LLT<MatrixXd> solver(A);
-  if (solver.info() != Eigen::Success) return start;
+  if (solver.info() != Eigen::Success) return previous;
   VectorXd sol = solver.solve(b);
-  if (solver.info() != Eigen::Success) return start;
+  if (solver.info() != Eigen::Success) return previous;
 
   sol = constrain_vec(sol);
   for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
@@ -320,10 +332,12 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   Xw.setFromTriplets(triplets.begin(), triplets.end());
   Xw.makeCompressed();
 
-  VectorXd penalty(k), center(k);
+  VectorXd penalty(k), center(k), previous = start;
   for (int a = 0; a < k; ++a) {
-    penalty[a] = lambdas[active[a]];
-    center[a] = prior_mean[active[a]];
+    const double scale = scaling[active[a]];
+    penalty[a] = lambdas[active[a]] / (scale * scale);
+    center[a] = prior_mean[active[a]] * scale;
+    previous[a] /= scale;
   }
   if (k > n && ((penalty.array() > 0.0).all() || (penalty.array() == 0.0).all())) {
     const bool penalized = (penalty.array() > 0.0).all();
@@ -339,17 +353,17 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
     if (natural_ordering) {
       Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::NaturalOrdering<int> > solver;
       solver.compute(dual);
-      if (solver.info() != Eigen::Success) return start;
+      if (solver.info() != Eigen::Success) return previous;
       u = solver.solve(rhs);
-      if (solver.info() != Eigen::Success) return start;
+      if (solver.info() != Eigen::Success) return previous;
     } else {
       Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
       solver.compute(dual);
-      if (solver.info() != Eigen::Success) return start;
+      if (solver.info() != Eigen::Success) return previous;
       u = solver.solve(rhs);
-      if (solver.info() != Eigen::Success) return start;
+      if (solver.info() != Eigen::Success) return previous;
     }
-    if (!u.allFinite()) return start;
+    if (!u.allFinite()) return previous;
     VectorXd sol = center + invsqrt.asDiagonal() * (Z.transpose() * u);
     sol = constrain_vec(sol);
     for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
@@ -360,8 +374,8 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   VectorXd b = Xw.transpose() * zw;
   for (int a = 0; a < k; ++a) {
     const int pos = active[a];
-    A.coeffRef(a, a) += lambdas[pos];
-    b[a] += lambdas[pos] * prior_mean[pos];
+    A.coeffRef(a, a) += penalty[a];
+    b[a] += penalty[a] * center[a];
   }
   A.makeCompressed();
 
@@ -369,15 +383,15 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   if (natural_ordering) {
     Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::NaturalOrdering<int> > solver;
     solver.compute(A);
-    if (solver.info() != Eigen::Success) return start;
+    if (solver.info() != Eigen::Success) return previous;
     sol = solver.solve(b);
-    if (solver.info() != Eigen::Success) return start;
+    if (solver.info() != Eigen::Success) return previous;
   } else {
     Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
     solver.compute(A);
-    if (solver.info() != Eigen::Success) return start;
+    if (solver.info() != Eigen::Success) return previous;
     sol = solver.solve(b);
-    if (solver.info() != Eigen::Success) return start;
+    if (solver.info() != Eigen::Success) return previous;
   }
 
   sol = constrain_vec(sol);
@@ -395,7 +409,7 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            const std::vector<int>& vars,
                            const std::vector<char>& always_include,
                            double lambda,
-                           bool normalize,
+                           int normalize,
                            int maxit,
                            double gamma,
                            double thresh,
@@ -414,7 +428,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            const std::vector<int>& vars,
                                            const std::vector<char>& always_include,
                                            double lambda,
-                                           bool normalize,
+                                           int normalize,
                                            int maxit,
                                            double gamma,
                                            double thresh,
@@ -435,7 +449,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     prior_mean[j] = prior_mean_full(col, channel);
   }
 
-  VectorXd scaling = normalize ? compute_scaling_dense(X, vars) :
+  VectorXd scaling = normalize ? compute_scaling_dense(X, vars, normalize) :
     VectorXd::Ones(q);
 
   VectorXd beta(q);
@@ -529,7 +543,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     const std::vector<int>& vars,
     const std::vector<char>& always_include,
     double lambda,
-    bool normalize,
+    int normalize,
     int maxit,
     double gamma,
     double thresh,
@@ -549,7 +563,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     prior_mean[j] = prior_mean_full(col, channel);
   }
 
-  VectorXd scaling = normalize ? compute_scaling_sparse(X, vars) :
+  VectorXd scaling = normalize ? compute_scaling_sparse(X, vars, normalize) :
     VectorXd::Ones(q);
 
   VectorXd beta(q);
@@ -640,7 +654,7 @@ Rcpp::List fit_all_impl(const Design& X,
                         Rcpp::Nullable<Rcpp::NumericMatrix> start_nullable,
                         Rcpp::IntegerVector always_include_r,
                         double lambda,
-                        bool normalize,
+                        int normalize,
                         bool grouped,
                         bool relaxed,
                         int group_maxit,
@@ -761,7 +775,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               Rcpp::Nullable<Rcpp::NumericMatrix> start,
                               Rcpp::IntegerVector always_include,
                               double lambda,
-                              bool normalize,
+                              int normalize,
                               bool grouped,
                               bool relaxed,
                               int group_maxit,
@@ -786,7 +800,7 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                Rcpp::Nullable<Rcpp::NumericMatrix> start,
                                Rcpp::IntegerVector always_include,
                                double lambda,
-                               bool normalize,
+                               int normalize,
                                bool grouped,
                                bool relaxed,
                                int group_maxit,

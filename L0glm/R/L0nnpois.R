@@ -72,6 +72,8 @@ L0nnpois <- function(X,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose       = FALSE) {
   validate_thresh(thresh)
+  normalization <- L0glm_normalization(normalize)
+  normalization_code <- match(normalization, c("none", "l2", "rms", "sd")) - 1L
   if (!inherits(family, "family")) family <- family()
   if (!identical(family$family, "poisson") || !identical(family$link, "identity")) {
     stop("L0nnpois is only defined for family = poisson(identity).",
@@ -221,13 +223,13 @@ L0nnpois <- function(X,
   if (issparse) {
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
-      lambda, normalize, grouped, relaxed, as.integer(group.maxit),
+      lambda, normalization_code, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
-      lambda, normalize, grouped, relaxed, as.integer(group.maxit),
+      lambda, normalization_code, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
       natural_ordering)
   }

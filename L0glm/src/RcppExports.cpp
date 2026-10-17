@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // L0nnpois_dense_cpp
-Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, bool normalize, bool grouped, bool relaxed, int group_maxit, int maxit, double gamma, double thresh, double tol, int nthreads, bool natural_ordering);
+Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, bool grouped, bool relaxed, int group_maxit, int maxit, double gamma, double thresh, double tol, int nthreads, bool natural_ordering);
 RcppExport SEXP _L0glm_L0nnpois_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP gammaSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -25,7 +25,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type start(startSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type always_include(always_includeSEXP);
     Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
-    Rcpp::traits::input_parameter< bool >::type normalize(normalizeSEXP);
+    Rcpp::traits::input_parameter< int >::type normalize(normalizeSEXP);
     Rcpp::traits::input_parameter< bool >::type grouped(groupedSEXP);
     Rcpp::traits::input_parameter< bool >::type relaxed(relaxedSEXP);
     Rcpp::traits::input_parameter< int >::type group_maxit(group_maxitSEXP);
@@ -40,7 +40,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // L0nnpois_sparse_cpp
-Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, bool normalize, bool grouped, bool relaxed, int group_maxit, int maxit, double gamma, double thresh, double tol, int nthreads, bool natural_ordering);
+Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, bool grouped, bool relaxed, int group_maxit, int maxit, double gamma, double thresh, double tol, int nthreads, bool natural_ordering);
 RcppExport SEXP _L0glm_L0nnpois_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP gammaSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -53,7 +53,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix> >::type start(startSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type always_include(always_includeSEXP);
     Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
-    Rcpp::traits::input_parameter< bool >::type normalize(normalizeSEXP);
+    Rcpp::traits::input_parameter< int >::type normalize(normalizeSEXP);
     Rcpp::traits::input_parameter< bool >::type grouped(groupedSEXP);
     Rcpp::traits::input_parameter< bool >::type relaxed(relaxedSEXP);
     Rcpp::traits::input_parameter< int >::type group_maxit(group_maxitSEXP);
