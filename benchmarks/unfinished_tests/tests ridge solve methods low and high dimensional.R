@@ -987,4 +987,3 @@ system.time(coefs_block_eigen1 <- block_lmridge(Xsp, y = y, lambda = lambda, wei
 cor(coefs_eigen1, coefs_block_eigen1)
 
 
-beta <- block.fit(X = X, y = y, block.id = block.ids, nonnegative = nonnegative, control = control.fit)

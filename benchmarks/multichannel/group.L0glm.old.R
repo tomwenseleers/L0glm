@@ -96,9 +96,6 @@ group.cpglm.fit.old <- function(X = X, Y = Y,
     Beta <- do.call(cbind, lapply(1:m, function(channel){
       # beta <- cpglm.iwls(X = X, y = Y[,channel], weights = Weights[,channel],
       #                  family = family, start = Start[channel,], lambda = lambda_adap[channel,],
-      # beta <- block.fit(X = rbind(X*sqrt(Weights[,channel]), diag(sqrt(lambda_adap[channel,]))),
-      #                   y = c(Y[,channel]*sqrt(Weights[,channel]), rep(0, p)),
-      #                   control.fit = control.fit) # TODO put block size as an argument
       # microbenchmark(
       #   beta <- nnls(A = rbind(X*sqrt(Weights[,channel]), diag(sqrt(lambda_adap[channel,]))),
       #                b = c(Y[,channel]*sqrt(Weights[,channel]), rep(0, p)))$x

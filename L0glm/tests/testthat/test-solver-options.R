@@ -6,10 +6,3 @@ test_that("removed solver choices are rejected consistently", {
                      parallelize = FALSE), "Invalid solver choice")
 })
 
-test_that("nonnegative block fits use the remaining constrained backend", {
-  for (sparse in c(FALSE, TRUE)) {
-    beta <- block.fit(c(-1, 2, 3), Matrix::Matrix(diag(3), sparse = sparse),
-                      nonnegative = TRUE)
-    expect_equal(beta, c(0, 2, 3), tolerance = 1e-6)
-  }
-})
