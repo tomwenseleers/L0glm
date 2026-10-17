@@ -5,15 +5,17 @@ cfg <- list(
   seed = 1L,
   train_fraction = 0.75,
   normalize = c("none", "l2", "rms", "sd", "auto"),
-  start = c("NULL", "1", "pilot"),
+  start = c("NULL", "1", "original_ones", "pilot"),
   relaxed = FALSE,                 # use c(FALSE, TRUE) to compare relaxed refits too
   repeats = 3L,                    # median elapsed seconds and their range
   nlambda = 10L,
   lambda_min = 2,                  # same lower bound for every L0 path
   nfolds = 5L,
   gamma = c(0, 0.5, 1),            # fully / partly relaxed, ordinary LASSO
-  maxit = 200L,
-  tol = 1e-8,
+  maxit = 25L,
+  compare_maxit = 200L,            # also test longer runs for l2/rms scalar-one starts
+  historical_reference = TRUE,     # reproduce the original all-row L2 transform separately
+  tol = 1e-10,
   thresh = 1e-5,
   threads = 1L,
   load_checkout = TRUE,            # FALSE to benchmark installed L0glm
@@ -40,7 +42,7 @@ RhpcBLASctl::blas_set_num_threads(cfg$threads)
 RhpcBLASctl::omp_set_num_threads(cfg$threads)
 stopifnot(cfg$repeats >= 1L, cfg$nlambda >= 3L, cfg$nfolds >= 3L,
           all(cfg$normalize %in% c("none", "l2", "rms", "sd", "auto")),
-          all(cfg$start %in% c("NULL", "1", "pilot")))
+          all(cfg$start %in% c("NULL", "1", "original_ones", "pilot")))
 
 # Preserve the original seed-1, outcome-stratified 242/80 split. All transforms
 # and near-invariance filtering use training observations only. Test outcomes
@@ -111,9 +113,9 @@ best_gic <- function(scores) {
 rows <- models <- paths <- list()
 record <- function(run, id, method, selection, normalization = NA_character_,
                    start = NA_character_, relaxed = NA, repetition = 1L,
-                   overhead = 0) {
+                   overhead = 0, maxit = NA_integer_) {
   value <- run$value
-  metadata <- data.frame(id, method, selection, normalization, start, relaxed,
+  metadata <- data.frame(id, method, selection, normalization, start, relaxed, maxit,
                          repetition, seconds = run$seconds + overhead,
                          pilot_seconds = overhead, lambda = NA_real_, gamma = NA_real_,
                          selected = NA_integer_, train_RMSE = NA_real_,
@@ -144,18 +146,23 @@ fit_value <- function(fit, lambda) {
 
 # Internal normalization: none = no scaling; l2 = centered L2 norm 1;
 # rms = centered L2 norm sqrt(n); sd = centered sample SD 1. Here auto = rms.
-# Scalar start=1 is in ORIGINAL coefficient units. NULL initializes each fit
+# Scalar start=1 is in NORMALIZED working coordinates; original_ones passes an
+# explicit matrix of ones in original descriptor units. NULL initializes each fit
 # automatically. "pilot" uses L0glm.tune's signed-mean-absolute common seed from
 # ten independent fits; zero entries restrict support. Save the seed for replay.
-for (norm in cfg$normalize) for (seed in cfg$start) for (relax in cfg$relaxed) {
-  tag <- paste("L0glm", norm, seed, if (relax) "relaxed" else "unrelaxed", sep = "_")
+for (norm in cfg$normalize) for (seed in cfg$start) for (relax in cfg$relaxed)
+  for (budget in unique(c(cfg$maxit,
+      if (seed == "1" && norm %in% c("l2", "rms")) cfg$compare_maxit))) {
+  tag <- paste("L0glm", norm, seed, if (relax) "relaxed" else "unrelaxed",
+               paste0("iter", budget), sep = "_")
   cat("Fitting ", tag, "\n", sep = "")
   common <- list(X = X_train, y = y_train, family = gaussian(identity),
                  intercept = TRUE, nonnegative = FALSE, normalize = norm,
                  relaxed = relax, parallelize = FALSE, openmp = FALSE,
-                 solver = "eigen", method = 1L, maxit = cfg$maxit,
+                 solver = "eigen", method = 1L, maxit = budget,
                  tol = cfg$tol, thresh = cfg$thresh,
-                 start = if (seed == "NULL") NULL else if (seed == "1") 1 else "pilot")
+                 start = if (seed == "NULL") NULL else if (seed == "1") 1 else
+                   if (seed == "original_ones") matrix(1, p + 1L, 1L) else "pilot")
   for (repetition in seq_len(cfg$repeats)) {
     # Includes endpoint search, all pilots, lambda fits and GIC selection.
     tuned <- timed(function() do.call(L0glm.tune, c(common,
@@ -167,7 +174,8 @@ for (norm in cfg$normalize) for (seed in cfg$start) for (relax in cfg$relaxed) {
       tuned$value$pilot_seconds <- sum(result$pilot$seconds)
       if (repetition == 1L) paths[[tag]] <- result
     }
-    record(tuned, paste0(tag, "_GIC"), "L0glm", "GIC path", norm, seed, relax, repetition)
+    record(tuned, paste0(tag, "_GIC"), "L0glm", "GIC path", norm, seed, relax, repetition,
+           maxit = budget)
 
     # Charge pilot construction to the preset fit too, but not endpoint search.
     if (seed == "pilot" && is.null(tuned$value)) {
@@ -183,9 +191,40 @@ for (norm in cfg$normalize) for (seed in cfg$start) for (relax in cfg$relaxed) {
       })
     }
     record(preset, paste0(tag, "_preset"), "L0glm", "GIC preset", norm, seed, relax,
-           repetition, overhead = pilot_seconds)
+           repetition, overhead = pilot_seconds, maxit = budget)
   }
   write.csv(do.call(rbind, rows), file.path(out_dir, "runs.csv"), row.names = FALSE)
+}
+
+# Historical reference only: the original script normalized/centered all input
+# rows before splitting. Retain that exact convention here for reproduction;
+# it is separate from every training-only comparison above. No test outcomes
+# enter these fits. Convert coefficients back to raw descriptor units to score.
+if (cfg$historical_reference) {
+  raw_scale <- sqrt(colSums(X_raw[, keep, drop = FALSE]^2))
+  unit <- sweep(X_raw[, keep, drop = FALSE], 2, raw_scale, "/")
+  unit_center <- colMeans(unit)
+  unit <- sweep(unit, 2, unit_center, "-")
+  unit_scale <- sqrt(colSums(unit^2))
+  X_reference <- sweep(unit, 2, unit_scale, "/")[train, , drop = FALSE]
+  for (budget in unique(c(cfg$maxit, cfg$compare_maxit))) for (repetition in seq_len(cfg$repeats)) {
+    run <- timed(function() {
+      fit <- L0glm.fit(X_reference, y_train, family = gaussian(), intercept = TRUE,
+        start = matrix(1, p + 1L, 1L), normalize = "none", lambda = "gic",
+        nonnegative = FALSE, relaxed = FALSE, maxit = budget, tol = cfg$tol,
+        parallelize = FALSE, openmp = FALSE, solver = "eigen", method = 1L)
+      value <- fit_value(fit, lambda_gic)
+      b <- as.numeric(value$beta)
+      b[-1L] <- b[-1L] / (raw_scale * unit_scale)
+      b[1L] <- b[1L] - sum(raw_scale * unit_center * b[-1L])
+      value$beta <- Matrix::Matrix(b, ncol = 1L, sparse = TRUE)
+      value$reference_transform <- list(center = raw_scale * unit_center,
+                                         scale = raw_scale * unit_scale)
+      value
+    })
+    record(run, paste0("historical_l2_iter", budget), "L0glm", "historical preset",
+      "historical_l2", "1", FALSE, repetition, maxit = budget)
+  }
 }
 
 # abess: training-only normalization, signed slopes and free intercept.
@@ -293,12 +332,13 @@ if (cfg$plot) {
     colors <- c("L0glm" = "#238443", "abess" = "#2166AC", "relaxed LASSO" = "#CB181D")
     labels <- ifelse(summary$method == "L0glm",
       paste(summary$normalization, paste0("start=", summary$start), summary$selection,
+            paste0("it=", summary$maxit),
             ifelse(summary$relaxed, "relaxed", "")),
       paste(summary$method, summary$selection))
     flagged <- nzchar(summary$warnings) | nzchar(summary$error) | summary$converged %in% FALSE
     labels <- paste0(labels, ifelse(flagged, " *", ""))
     at <- rev(seq_len(nrow(summary)))
-    old <- par(mfrow = c(1, 3), mar = c(4.5, 1, 3, 1), oma = c(1.2, 18, 2, 0))
+    old <- par(mfrow = c(1, 3), mar = c(4.5, 1, 3, 1), oma = c(1.2, 25, 2, 0))
     on.exit(par(old))
     for (field in c("GIC", "heldout_RMSE", "seconds")) {
       x <- summary[[field]]
@@ -346,10 +386,22 @@ if (cfg$plot) {
   pdf(file.path(out_dir, "comparison.pdf"), width = 16, height = max(9, nrow(summary) * 0.27))
   draw_comparison()
   dev.off()
+  full_summary <- summary
+  focus <- summary$method != "L0glm" | summary$normalization == "historical_l2" |
+    (summary$normalization %in% c("l2", "rms") & summary$start == "1") |
+    (summary$normalization == "rms" & summary$start == "NULL" & summary$selection == "GIC preset")
+  summary <- summary[which(focus), , drop = FALSE]
+  png(file.path(out_dir, "comparison_unit_starts.png"), width = 2400, height = 1100, res = 150)
+  draw_comparison()
+  dev.off()
+  pdf(file.path(out_dir, "comparison_unit_starts.pdf"), width = 16, height = 8)
+  draw_comparison()
+  dev.off()
+  summary <- full_summary
 }
 
 print(summary[, c("method", "selection", "normalization", "start", "relaxed",
-                  "selected", "GIC", "heldout_RMSE", "seconds", "completed_runs", "clean_runs")], row.names = FALSE)
+                  "maxit", "selected", "GIC", "heldout_RMSE", "seconds", "completed_runs", "clean_runs")], row.names = FALSE)
 cat("\nResults: ", normalizePath(out_dir, winslash = "/"), "\n", sep = "")
 if (any(runs$converged %in% FALSE) || any(!is.na(runs$error)) || any(nzchar(runs$warnings)))
   message("Some fits reported warnings, failures or incomplete convergence; inspect runs.csv.")
