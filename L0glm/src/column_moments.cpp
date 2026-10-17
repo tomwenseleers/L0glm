@@ -25,11 +25,12 @@ Rcpp::List L0glm_column_moments_cpp(SEXP X,
   for (int j = 0; j < p; ++j) {
     double sum = 0.0, represented = 0.0;
     if (sparse) {
+      const double origin = n > 0 && pointers[j + 1] - pointers[j] == n ? values[pointers[j]] : 0.0;
       for (int k = pointers[j]; k < pointers[j + 1]; ++k) {
         const double wi = w[rows[k]], x = values[k];
-        sum += wi * x; ss[j] += wi * x * x; represented += wi;
+        sum += wi * (x - origin); ss[j] += wi * x * x; represented += wi;
       }
-      mean[j] = total > 0.0 ? sum / total : 0.0;
+      mean[j] = total > 0.0 ? origin + sum / total : 0.0;
       for (int k = pointers[j]; k < pointers[j + 1]; ++k) {
         const double difference = values[k] - mean[j];
         centered[j] += w[rows[k]] * difference * difference;
@@ -37,11 +38,12 @@ Rcpp::List L0glm_column_moments_cpp(SEXP X,
       centered[j] += std::max(0.0, total - represented) * mean[j] * mean[j];
     } else {
       const R_xlen_t offset = static_cast<R_xlen_t>(j) * n;
+      const double origin = n > 0 ? values[offset] : 0.0;
       for (int i = 0; i < n; ++i) {
         const double x = values[offset + i];
-        sum += w[i] * x; ss[j] += w[i] * x * x;
+        sum += w[i] * (x - origin); ss[j] += w[i] * x * x;
       }
-      mean[j] = total > 0.0 ? sum / total : 0.0;
+      mean[j] = total > 0.0 ? origin + sum / total : 0.0;
       for (int i = 0; i < n; ++i) {
         const double difference = values[offset + i] - mean[j];
         centered[j] += w[i] * difference * difference;

@@ -39,6 +39,7 @@ L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,
   penalty[always.include] <- 0
   beta <- ifelse(info + penalty > 0,
     (rhs + penalty * as.numeric(prior.mean)) / (info + penalty), 0)
+  beta[info == 0 & as.numeric(prior.mean) == 0] <- 0
   beta[free] <- 0
   if (family$family == "gaussian") {
     prediction <- as.numeric(A %*% beta)

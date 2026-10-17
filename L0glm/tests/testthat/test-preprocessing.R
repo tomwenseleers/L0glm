@@ -17,6 +17,28 @@ test_that("column information uses stable weighted dense and sparse moments", {
   expect_equal(L0glm_moments(X)$centered_ss,
                colSums(sweep(X, 2, colMeans(X))^2), tolerance = 1e-12)
   expect_equal(L0glm_moments(matrix(1:20, 10))$ss, colSums(matrix(1:20, 10)^2))
+  constant <- matrix(0.123456789, 242, 1)
+  for (sparse in c(FALSE, TRUE)) {
+    moments <- L0glm_moments(Matrix::Matrix(constant, sparse = sparse), rep(0.3, 242))
+    expect_identical(moments$mean, 0.123456789)
+    expect_identical(moments$centered_ss, 0)
+  }
+})
+
+test_that("a constant training predictor cannot create enormous held-out estimates", {
+  set.seed(1634)
+  X <- cbind(rep(0.123456789, 60), rnorm(60), rnorm(60))
+  y <- 1 + 2 * X[, 2] + rnorm(60)
+  for (sparse in c(FALSE, TRUE)) {
+    fit <- L0glm.fit(Matrix::Matrix(X, sparse = sparse), y, family = gaussian(),
+      intercept = TRUE, parallelize = FALSE, lambda = "gic")
+    expect_equal(as.numeric(fit$coefficients)[2], 0)
+    expect_equal(fit$preprocessing$scale[2], 1)
+    validation <- X; validation[, 1] <- seq(-10, 10, length.out = 60)
+    prediction <- as.numeric(cbind(1, validation) %*% fit$coefficients)
+    expect_true(all(is.finite(prediction)))
+    expect_lt(max(abs(prediction)), 20)
+  }
 })
 
 test_that("implicit centering requires a free intercept, not signed slopes", {
