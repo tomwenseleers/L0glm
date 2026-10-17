@@ -170,7 +170,8 @@ test_that("tuning handles an empty preset, intercepts, and invalid controls", {
   b <- do.call(L0glm.tune,c(args,list(intercept=TRUE)))
   expect_equal(nrow(b$coefficients[[1]]),2)
   expect_equal(b$metrics$p,rep(1,2))
-  expect_error(do.call(L0glm.tune,c(args,list(start=c(1)))),"independently")
+  supplied <- do.call(L0glm.tune, c(args, list(start = 1)))
+  expect_identical(supplied$start, 1)
   args$nlambda <- 1
   expect_error(do.call(L0glm.tune,args),"at least 2")
   args$nlambda <- 3; args$prop_range <- 0

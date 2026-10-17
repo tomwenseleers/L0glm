@@ -21,6 +21,7 @@ L0glm.tune(
   nfolds = 5,
   foldid = NULL,
   lambda_min = 2,
+  start = NULL,
   ...
 )
 }
@@ -100,11 +101,33 @@ minimum for predictive optimality or a guarantee of numerical stability.
 CV training penalties retain their training-weight scaling, so they can
 be smaller than this full-data bound. A zoomed grid can start above it.}
 
-\item{...}{Other arguments to pass to the `L0glm.fit` function except for \code{start}.}
+\item{start}{\code{NULL} (default) automatically initializes each lambda
+fit. A numeric scalar, vector or matrix supplies the same original-scale
+start to every fit, with the structural-zero semantics of \code{L0glm.fit}.
+Use \code{"pilot"} to build a common seed from ten independent unrelaxed
+fits at log-spaced penalties between \code{lambda_min} and the GIC preset
+(or one fit when these bounds coincide). The magnitude is the mean absolute
+coefficient across pilots, with the sign of its mean; exact cancellation
+uses the sign of the first largest-magnitude pilot coefficient. This retains
+the union of pilot supports separately in each channel. Mandatory terms
+remain eligible. No preceding path fit is used to initialize the next fit.}
+
+\item{...}{Other arguments passed to \code{L0glm.fit}.}
 }
 \value{
 \code{L0glm.tune} returns a list containing the following elements:
 \item{\code{tune}}{chosen selection method.}
+\item{\code{p}}{original number of selectable predictors, retained despite
+structural starting zeros and pilot support restriction.}
+\item{\code{start}}{the common numeric start, including any intercept row,
+or \code{NULL} for independent automatic starts.}
+\item{\code{pilot}}{pilot penalties, elapsed seconds and row support sizes,
+or \code{NULL} when no pilot was requested.}
+\item{\code{fit_args}}{fitting arguments, including the resolved common
+start, excluding \code{X}, \code{y} and \code{lambda}. For example,
+\code{do.call(L0glm.fit, c(list(X = X, y = y, lambda = result$lambda_best),
+result$fit_args))} reproduces \code{fit_best} with the same package version.}
+\item{\code{preprocessing}}{training preprocessing of the full-data fit.}
 \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
 with different regularization parameters; CV adds \code{cv_deviance} and
 \code{cv_se}.}
@@ -132,7 +155,8 @@ penalized coefficients.}
 \code{lambda}, \code{mean}, \code{se}, the lambda-by-fold \code{deviance}
 matrix, \code{foldid}, \code{nfolds}, \code{fold_weights}, and the training
 penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
-full-data fits, not individual fold models.}
+full-data fits, not individual fold models. Also contains each fold's
+\code{starts}, \code{pilots} and training \code{preprocessing}.}
 }
 \description{
 Tunes the lambda parameter for the \code{\link{L0glm.fit}} 
@@ -146,6 +170,8 @@ regularization (L0 penalty lambda). Some plots are only produced if the user
 passes the true coefficients \code{coefs.true} (e.g. from a simulation).
 Each lambda fit is initialized independently. The preset fit is used only
 to construct the grid; its selected support is not imposed on other fits.
+A common supplied start or pilot-derived seed can be reused independently
+at every lambda, avoiding dependence on the order of the grid.
 The preset is an approximate adaptive-ridge calibration, not a guarantee
 that the chosen criterion is minimized there. In particular, unrelaxed
 estimates retain shrinkage and correlated designs need not follow the
@@ -177,6 +203,13 @@ grid is constructed from full-data fits; all coefficient initialization,
 dispersion estimation and grouped selection in each fold use training rows
 only. Folds are fitted sequentially; \code{parallelize} still controls
 response-channel parallelism within each fit.
+With \code{start = "pilot"}, each fold constructs its own seed from its
+training rows, using training-weight-scaled pilot penalties. Full-data
+coefficients never initialize a CV training fit. A user-supplied numeric
+start is reused as supplied; the user is responsible for its provenance.
+Pilot support restriction is a heuristic and can exclude a useful feature
+missed by every pilot. It does not guarantee monotone supports or global
+minimization along the path.
 
 The fitter's penalty is on a total-likelihood scale. In each fold lambda
 is multiplied by the fraction of total prior weight in the training rows,

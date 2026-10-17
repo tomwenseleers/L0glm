@@ -44,7 +44,8 @@ L0glm_cv_folds <- function(weights, nfolds, foldid) {
 # Use one common full-data lambda grid and train each model independently.
 # Dividing the total likelihood by total prior weight shows that a training fit
 # needs lambda * (training weight / full weight) on the fitter's sum-loss scale.
-L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor) {
+L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor,
+                                pilot_bounds = NULL) {
   nfolds <- max(foldid)
   fold_weights <- vapply(seq_len(nfolds), function(k)
     sum(args$weights[foldid == k, , drop = FALSE]), numeric(1))
@@ -52,6 +53,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   fold_lambdas <- outer(lambdas, fractions)
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
                      dimnames = list(NULL, paste0("Fold", seq_len(nfolds))))
+  starts <- pilots <- preprocessing <- vector("list", nfolds)
   for (k in seq_len(nfolds)) {
     validation <- foldid == k
     training <- !validation
@@ -60,6 +62,11 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     train_args$y <- args$y[training, , drop = FALSE]
     train_args$weights <- args$weights[training, , drop = FALSE]
     train_args$offset <- args$offset[training, , drop = FALSE]
+    initialization <- if (is.null(pilot_bounds)) list(start = args$start, pilot = NULL) else
+      L0glm_pilot_start(train_args, pilot_bounds * fractions[k])
+    train_args$start <- initialization$start
+    starts[k] <- list(initialization$start)
+    pilots[k] <- list(initialization$pilot)
     w <- args$weights[validation, , drop = FALSE]
     keep <- w > 0
     yy <- args$y[validation, , drop = FALSE][keep]
@@ -67,6 +74,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
       fit <- tryCatch(do.call(L0glm.fit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
+      if (i == 1L) preprocessing[[k]] <- fit$preprocessing
       eta <- as.matrix(design[validation, , drop = FALSE] %*% fit$coefficients) +
         args$offset[validation, , drop = FALSE]
       mu <- family$linkinv(eta)
@@ -87,5 +95,6 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   }
   list(lambda = lambdas, mean = mean_deviance, se = se, deviance = deviance,
        foldid = foldid, nfolds = nfolds, fold_weights = fold_weights,
+       starts = starts, pilots = pilots, preprocessing = preprocessing,
        lambda_train = fold_lambdas)
 }
