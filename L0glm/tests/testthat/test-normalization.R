@@ -33,9 +33,6 @@ test_that("scaled bounds and ridge targets describe the original coefficients", 
                     lower = lower, upper = upper, solver = solver)
     expect_equal(beta, expected, tolerance = 1e-6)
   }
-  beta <- lmridge(X, y, lambdas = d, prior.mean = target, scaling = scaleX(X),
-                  nonnegative = TRUE, solver = "nnls")
-  expect_equal(beta, pmax(0, (diag(X) * y + d * target) / (diag(X)^2 + d)), tolerance = 1e-8)
   expect_error(lmridge(X, y, scaling = c(1, 0, 1, 1)), "finite positive")
 })
 

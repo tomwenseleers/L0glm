@@ -97,7 +97,7 @@ system.time({
             lower = rep(0, ncol(sim$X)),
             upper = rep(Inf, ncol(sim$X)),
             nonnegative = TRUE,
-            solver = "nnls",
+            solver = "osqp",
             method = NULL,
             start = rep(0, ncol(sim$X)),
             control.solver = NULL,
@@ -182,7 +182,7 @@ system.time(beta_nnpois <- apply(sim$y, 2, function(ycol) {
              # weights = 1/(as.vector(ycol)+0.1),
              family = poisson(identity),
              nonnegative = TRUE,
-             solver = "nnls",
+             solver = "osqp",
              method = NULL,
              start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
              control.solver = NULL,
@@ -253,7 +253,7 @@ for (iter in 1:10) {
                                                       # weights = 1/(ycol+0.1),
                                                       family = poisson(identity),
                                                       nonnegative = TRUE,
-                                                      solver = "nnls",
+                                                      solver = "osqp",
                                                       method = NULL,
                                                       # start = rep(0, ncol(sim$X)), # prob faster to start from nnls coefficients?
                                                       # control.solver = NULL,

@@ -37,10 +37,6 @@ test_that("OSQP solver with nonnegativity constraints and vector lambdas", {
   expect_true(all(result >= 0))
 })
 
-test_that("NNLS solver enforces nonnegative constraint with vector lambdas", {
-  result <- lmridge(X, y, lambdas = rep(1, p), solver = "nnls", nonnegative = TRUE)
-  expect_true(all(result >= 0))
-})
 
 test_that("Lower and upper bounds constraints are respected with vector lambdas", {
   lower_bounds <- rep(-0.5, ncol(X))
@@ -467,116 +463,6 @@ test_that("lmridge.glmnet solves targeted ridge via row augmentation", {
   
   expect_equal(coefs, reference, tolerance = 1e-7)
 })
-
-# Testing the lmridge.nnls function
-#----------------------------------
-# NNLS supports zero lower bounds or unrestricted coefficients, not finite boxes.
-lower_bounds <- rep(0, ncol(X))
-upper_bounds <- rep(Inf, ncol(X))
-lambdas_nonzero <- rep(1, ncol(X))
-
-# Test with non-zero lambdas (augmented case)
-test_that("lmridge.nnls handles augmented matrices with non-zero lambdas", {
-  set.seed(123)
-  X <- matrix(rnorm(100), nrow = 20, ncol = 5)
-  y <- rnorm(20)
-  lambdas_nonzero <- rep(1, ncol(X))
-  lower_bounds <- rep(0, ncol(X))
-  upper_bounds <- rep(Inf, ncol(X))
-  
-  result <- lmridge.nnls(X, y, lambdas = lambdas_nonzero, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control.solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-  expect_true(all(result >= lower_bounds))
-})
-
-# Test with zero lambdas (non-augmented case)
-test_that("lmridge.nnls handles non-augmented matrices with zero lambdas", {
-  lambdas_zero <- rep(0, ncol(X))
-  
-  result <- lmridge.nnls(X, y, lambdas = lambdas_zero, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control.solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-  expect_true(all(result >= lower_bounds))
-})
-
-# Test with NULL lambdas
-test_that("lmridge.nnls handles NULL lambdas", {
-  result <- lmridge.nnls(X, y, lambdas = NULL, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control.solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-  expect_true(all(result >= lower_bounds))
-})
-
-# Test with single lambda value
-test_that("lmridge.nnls handles single lambda value", {
-  lambdas_single_value <- rep(1, ncol(X))
-  result <- lmridge.nnls(X, y, lambdas = lambdas_single_value, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control.solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-  expect_true(all(result >= lower_bounds))
-})
-
-# Test with nonnegativity constraints
-test_that("lmridge.nnls respects nonnegativity constraints", {
-  lower_bounds <- rep(0, ncol(X))
-  upper_bounds <- rep(Inf, ncol(X))
-  
-  result <- lmridge.nnls(X, y, lambdas = lambdas_nonzero, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control.solver, iteration = 1)
-  expect_true(all(result >= lower_bounds))
-  expect_true(all(result <= upper_bounds))
-})
-
-# Test with large matrix dimensions
-test_that("lmridge.nnls handles large matrix dimensions", {
-  lambdas_large <- rep(1, ncol(X))
-  result <- lmridge.nnls(X, y, lambdas = lambdas_large, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control_solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-})
-
-# Test with small matrix dimensions
-test_that("lmridge.nnls handles small matrix dimensions", {
-  X_small <- matrix(rnorm(4), nrow = 2, ncol = 2)
-  y_small <- rnorm(2)
-  
-  result <- lmridge.nnls(X_small, y_small, lambdas = c(0.1, 0.1), 
-                         lower = c(0, 0), upper = c(Inf, Inf),
-                         control.solver = control.solver, iteration = 1)
-  expect_length(result, ncol(X_small))
-})
-
-test_that("lmridge.nnls rejects finite box constraints instead of ignoring them", {
-  expect_error(lmridge.nnls(diag(2), c(2, 3), lambdas = NULL,
-                            lower = c(0, 0), upper = c(1, 1),
-                            control.solver = list()),
-               "only nonnegative or unrestricted")
-})
-
-# Consistency check on repeated runs
-test_that("lmridge.nnls produces consistent results on repeated runs", {
-  result_1 <- lmridge.nnls(X, y, lambdas = lambdas_nonzero, lower = lower_bounds, upper = upper_bounds, 
-                           control.solver = control.solver, iteration = 1)
-  result_2 <- lmridge.nnls(X, y, lambdas = lambdas_nonzero, lower = lower_bounds, upper = upper_bounds, 
-                           control.solver = control.solver, iteration = 1)
-  expect_equal(result_1, result_2)
-})
-
-# Test with extreme values in X and y
-test_that("lmridge.nnls handles extreme values", {
-  lambdas_extreme <- rep(10^6, ncol(X))  # Extreme values for lambda
-  result <- lmridge.nnls(X, y, lambdas = lambdas_extreme, lower = lower_bounds, upper = upper_bounds, 
-                         control.solver = control_solver, iteration = 1)
-  expect_type(result, "double")
-  expect_length(result, ncol(X))
-})
-
 
 # Testing the lmridge.eigen function
 #-----------------------------------

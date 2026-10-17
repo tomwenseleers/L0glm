@@ -1,7 +1,6 @@
 #' @useDynLib L0glm
 #' @importFrom Rcpp evalCpp
 #' @importFrom graphics layout
-#' @importFrom nnls nnls
 #' @importFrom stats as.dist pnorm predict quantile rlnorm var
 NULL
 

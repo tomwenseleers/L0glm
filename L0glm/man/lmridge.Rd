@@ -61,7 +61,7 @@ nonzero-centered ridge regression being used instead.}
 
 \item{solver}{Character string specifying which solver to use. Options are
 \code{"eigen"}, \code{"bigGlm"} (or legacy alias \code{"glmnet"}),
-\code{"osqp"}, \code{"nnls"}. Default is \code{"eigen"}.}
+\code{"osqp"}. Default is \code{"eigen"}.}
 
 \item{method}{Integer code specifying the method to be used within the
 solver. Default is \code{1L}, i.e. Cholesky LLT.}
@@ -107,10 +107,6 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   regression problem using one of several solvers (see \code{method} option).}
   \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is accepted as a legacy alias.}
   \item{\code{"osqp"}}{Uses the \code{\link[osqp]{osqp}} package (Operator Splitting Quadratic Program solver) to solve the problem with constraints. Most appropriate when box or nonnegativity constraints are applied.}
-  \item{\code{"nnls"}}{Uses a non-negative least squares algorithm. Supports
-  nonnegative and unrestricted coefficients, representing each unrestricted
-  coefficient as the difference of two nonnegative coefficients. Finite
-  nonzero bounds are not supported.}
 }
 
   The \code{method} parameter specifies the specific method to be used when
@@ -137,8 +133,8 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   system of dimension \code{p}. The requested Eigen method is retained.
   Dense and sparse designs retain their storage type; optional row augmentation
   constructs a sparse augmented matrix. Eigen's SVD requires a dense factorization
-  internally even when its input is sparse. OSQP and NNLS also require,
-  respectively, sparse and dense arrays at their solver boundaries.
+  internally even when its input is sparse. OSQP requires sparse arrays at
+  its solver boundary.
 }
 \examples{
 \dontrun{
@@ -164,7 +160,7 @@ abline(0, 1, col = "red")
 }
 \seealso{
 \code{\link[glmnet]{glmnet}}, \code{\link[osqp]{osqp}},
-\code{\link[nnls]{nnls}}, \code{\link{control.solver.gen}}
+\code{\link{control.solver.gen}}
 }
 \author{
 Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\ Laboratory of

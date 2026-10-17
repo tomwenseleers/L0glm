@@ -2,6 +2,9 @@
 
 ## Development changes
 
+* Removed the slow NNLS ridge solver and its package dependency. Use Eigen,
+  `bigGlm`, or OSQP; the internal nonnegative block-fitting helper uses OSQP.
+
 * Both fitters accept a scalar `start`, repeating it for every coefficient and
   response channel, including an added intercept. The general R path expands
   scalar starts inside `L0glm.fit.internal()`.

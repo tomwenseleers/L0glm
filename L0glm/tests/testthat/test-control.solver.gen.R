@@ -59,10 +59,6 @@ test_that("control.solver.gen does not warn if rowaug is FALSE for bigGlm", {
   expect_true(is.null(params$rowaug) || !params$rowaug)
 })
 
-test_that("control.solver.gen handles nnls solver", {
-  params <- control.solver.gen(solver = "nnls")
-  expect_equal(params, list())
-})
 
 test_that("control.solver.gen sets default method for eigen solver", {
   params <- control.solver.gen(solver = "eigen")

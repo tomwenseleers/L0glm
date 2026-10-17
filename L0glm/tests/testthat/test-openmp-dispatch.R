@@ -37,7 +37,7 @@ test_that("ineligible or disabled OpenMP fits retain the general R path", {
     list(openmp = FALSE), list(nonnegative = FALSE),
     list(family = gaussian(identity)), list(family = poisson(log)),
     list(method = 2L), list(method = 3L), list(method = 4L),
-    list(method = 5L), list(method = 6L), list(solver = "nnls"),
+    list(method = 5L), list(method = 6L), list(solver = "osqp"),
     list(control.solver = control.solver.gen("eigen", 2L)),
     list(control.solver = control.solver.gen("eigen", 5L)),
     list(control.solver = control.solver.gen("eigen", 1L, rowaug = FALSE))

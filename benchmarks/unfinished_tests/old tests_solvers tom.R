@@ -583,7 +583,7 @@ system.time(coefs_nnls <- lmridge(X=Xsp[,nonzero,drop=F], y,
                                   weights,
                                   lower=rep(0,sum(nonzero)),
                                   upper=rep(Inf,sum(nonzero)),
-                                  nonnegative=T, solver="nnls")) 
+                                  nonnegative=T, solver="osqp")) 
 # 1841s for n=p=10000 (31 mins), ie 184100x slower than LSCG
 cor(coefs_nnls, coefs_osqp) # 0.9712636
 

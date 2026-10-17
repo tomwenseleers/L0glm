@@ -908,7 +908,7 @@ plot(coefs_osqp, coefs_glmnet) # correct...
 
 # nnls: SLOW
 system.time(coefs_nnls <- lmridge(X=Xsp, y, lambda, weights, lower, upper,
-                                  nonnegative, solver="nnls")) # 1841s for n=p=10000
+                                  nonnegative, solver="osqp")) # 1841s for n=p=10000
 lines(coefs_nnls, col="yellow", type="h")
 cor(coefs_nnls, coefs_true) # 0.98
 

@@ -133,9 +133,6 @@ control.solver.gen <- function(solver,
   #             method = "FAST"  # "FAST"=Armadillo Cholesky LLT or "LINPACK" or "LAPACK"
   #             )
     
-  } else if (solver == "nnls"){
-    l <- list()
-    
   } else if (solver == "eigen"){
     if (is.null(method)){
       if (verbose) print("No method for Eigen solver was provided. Method is set to 1.")

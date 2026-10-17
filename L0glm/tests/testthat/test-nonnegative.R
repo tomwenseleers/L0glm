@@ -22,8 +22,8 @@ test_that("the public constraint arguments are restricted to the supported API",
 test_that("all ridge backends respect optional nonnegativity including Gaussian intercepts", {
   X <- cbind(x = rep(c(-1, 1), 12), z = rep(c(-1, -1, 1, 1), 6))
   y <- -2 + 3 * X[, 1] - 1.5 * X[, 2]
-  backends <- c(rep("eigen", 6), "osqp", "bigGlm", "nnls")
-  methods <- c(1:6, 1L, 1L, 1L)
+  backends <- c(rep("eigen", 6), "osqp", "bigGlm")
+  methods <- c(1:6, 1L, 1L)
   for (sparse in c(FALSE, TRUE)) {
     for (normalize in c(FALSE, TRUE)) {
       for (i in seq_along(backends)) {
@@ -48,7 +48,7 @@ test_that("binomial intercepts remain free across solvers and explicit intercept
   x <- rep(seq(-1, 1, length.out = 20), 2)
   y <- round(1000 * plogis(-2 + 0.7 * x)) / 1000
   expected <- unname(coef(glm(y ~ x, family = binomial(), weights = rep(1000, length(y)))))
-  for (solver in c("eigen", "osqp", "bigGlm", "nnls")) {
+  for (solver in c("eigen", "osqp", "bigGlm")) {
     for (sparse in c(FALSE, TRUE)) {
       for (explicit in c(FALSE, TRUE)) {
         X <- if (explicit) cbind(x, 1) else matrix(x, ncol = 1)

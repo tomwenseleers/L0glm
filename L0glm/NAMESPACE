@@ -74,7 +74,6 @@ importFrom(methods,
   as,
   is
 )
-importFrom(nnls,nnls)
 importFrom(parallel,
   clusterApply,
   clusterCall,

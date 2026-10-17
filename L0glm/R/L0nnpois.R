@@ -72,6 +72,8 @@ L0nnpois <- function(X,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose       = FALSE) {
   validate_thresh(thresh)
+  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
+    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
   normalization <- L0glm_normalization(normalize)
   normalization_code <- match(normalization, c("none", "l2", "rms", "sd")) - 1L
   if (!inherits(family, "family")) family <- family()

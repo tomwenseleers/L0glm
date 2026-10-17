@@ -307,7 +307,8 @@ block.fit <- function(y, X, coefs = rep(0, ncol(X)), nonnegative = FALSE,
 
       # Compute coefficients
       if(nonnegative){
-        coefs[block.id == i] <- nnls(A = A, b = b)$x
+        coefs[block.id == i] <- lmridge(A, as.numeric(b), nonnegative = TRUE,
+                                        solver = "osqp")
       } else {
         coefs[block.id == i] <- lm.fit(x = as.matrix(A), y = as.vector(b), tol = 1E-07)$coefficients
         coefs[is.na(coefs) | is.infinite(coefs)] <- 0

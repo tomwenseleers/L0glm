@@ -507,6 +507,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       openmp        = TRUE) {
   validate_thresh(thresh)
   L0glm_normalization(normalize)
+  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
+    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
   
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
