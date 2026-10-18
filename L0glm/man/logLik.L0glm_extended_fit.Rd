@@ -9,8 +9,12 @@
 \arguments{
 \item{object}{A fitted extended-family model.}
 
-\item{...}{Unused.}
+\item{...}{Passed to the common \code{logLik} method, including
+\code{mu_floor = 0} for exact scoring by default.}
 }
 \description{
 Log likelihood of an extended-family fit
+}
+\seealso{
+\link{model_criteria} for likelihood and information-criterion conventions.
 }

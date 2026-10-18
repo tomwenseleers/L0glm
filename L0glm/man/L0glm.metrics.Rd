@@ -2,7 +2,7 @@
 % Please edit documentation in R/family_methods.R
 \name{L0glm.metrics}
 \alias{L0glm.metrics}
-\title{Score an extended-family model}
+\title{Essential fit and recovery metrics for an L0glm model}
 \usage{
 L0glm.metrics(
   object,
@@ -10,22 +10,100 @@ L0glm.metrics(
   y = NULL,
   weights = NULL,
   offset = NULL,
-  mu_floor = 1e-08
+  mu_floor = 1e-08,
+  beta_true = NULL
 )
 }
 \arguments{
-\item{object}{A fitted extended-family model.}
+\item{object}{A model returned by \code{\link[=L0glm.fit]{L0glm.fit()}} or \code{\link[=L0nnpois]{L0nnpois()}}.}
 
-\item{newdata}{New predictor matrix, or NULL for training data.}
+\item{newdata}{New predictor matrix, without an automatically added
+intercept, or \code{NULL} for training data.}
 
-\item{y}{Responses for newdata, or NULL for training responses.}
+\item{y}{Responses for \code{newdata}; required when it is supplied.
+\code{NULL} otherwise uses the training responses. Special-family response
+formats are described in \code{\link[=L0glm.fit]{L0glm.fit()}}.}
 
-\item{weights}{Optional prior weights for the scored observations.}
+\item{weights}{Optional prior observation weights for scoring. Training
+scores default to the original prior weights, rather than IRLS working
+weights. New data default to unit weights. Supports the fitting family's
+vector or matrix weight formats.}
 
-\item{offset}{Optional prediction offsets.}
+\item{offset}{Optional prediction offsets. Training scores use the stored
+offsets; new data default to zero. Supports the fitting family's offset
+formats.}
 
-\item{mu_floor}{Scoring-only NB mean floor; zero requests exact likelihood.}
+\item{mu_floor}{Nonnegative scoring-only floor for Poisson, NB, Gamma and
+inverse-Gaussian means. The default is \code{1e-8}; zero requests exact
+scoring. This does not alter the fitted model. \code{logLik()} and the
+criterion methods default to zero.}
+
+\item{beta_true}{Optional true coefficient vector or matrix, on the original
+scale and with the same dimensions as \code{coef(object)}, including any
+intercept. Multinomial truth must use the displayed CLR coordinates.}
+}
+\value{
+A one-row data frame of fit metrics and information criteria.
+Ordinary GLMs include row and coefficient summaries, with \code{NA}
+values where truth is unavailable. Special-family scores retain their
+model-specific objective summaries; supplying \code{beta_true} also
+adds the same recovery metrics. The information criteria are
+\code{aic}, \code{bic}, \code{gic}, \code{ebic} and \code{mbic}.
 }
 \description{
-Score an extended-family model
+Essential fit and recovery metrics for an L0glm model
+}
+\details{
+Row support is defined by at least one exactly nonzero coefficient in a
+row. Intercepts and other \code{always.include} terms are excluded from
+support classification. Overall row metrics include TP, FP, TN, FN,
+precision, recall, F1 and Matthews correlation coefficient (MCC/Phi).
+
+For multichannel data, \code{within_row_*} metrics assess coefficient
+zero/nonzero classification within correctly recovered rows. If
+\eqn{R=\{j:\|\widehat\beta_{j\cdot}\|_1>0,
+                \|\beta^*_{j\cdot}\|_1>0\}}
+excludes mandatory rows, these counts pool all entries \eqn{(j,k)} with
+\eqn{j\in R} across channels. They are micro-averaged, rather than an
+average of per-row scores. Missed and spurious rows remain visible in the
+overall row metrics and are not included in the conditional scores.
+\code{within_row_TP}, \code{within_row_FP}, \code{within_row_TN} and
+\code{within_row_FN} use exact nonzero indicators, and their derived
+precision, recall, \code{within_row_F1_score} and \code{within_row_MCC}
+describe recovery of the within-row sparsity pattern. No additional
+numerical coefficient threshold is applied.
+
+Within-row metrics are \code{NA} for a single response or unavailable
+truth. If no rows are correctly recovered, the multichannel counts are
+zero and the ratios are \code{NA}. Any ratio with zero denominator is
+\code{NA}; MCC is \code{NA} if either binary margin is constant.
+
+Coefficient accuracy retains mean absolute error (the legacy name
+\code{MAD_coefs}), \code{RMSE_coefs} and \code{R2_coefs} across all
+entries, including mandatory terms. For compatibility,
+\code{R2_coefs} is the through-origin regression R-squared,
+\eqn{(\widehat\beta^T\beta^*)^2/
+      (\|\widehat\beta\|_2^2\|\beta^*\|_2^2)}, with matrices vectorized.
+It measures alignment and can equal one despite multiplicative bias;
+MAE and RMSE quantify absolute error. Selected-coefficient-only summaries,
+signed mean error, sMAPE, slope, accuracy, specificity and support-size
+ratio have been removed.
+
+Likelihood and criterion conventions, including dispersion estimates,
+sample sizes and grouped parameter counts, are detailed in
+\link{model_criteria}. Ordinary GLMs also report \code{deviance_true}
+when truth is supplied: deviance comparing the noiseless true mean with
+the fitted mean, using the scoring weights and offsets.
+}
+\examples{
+set.seed(12)
+X <- matrix(runif(300), 60, 5)
+truth <- rbind(c(3, 0, 2), c(0, 4, 1), matrix(0, 3, 3))
+y <- matrix(rpois(180, 1 + X \%*\% truth), 60, 3)
+fit <- L0nnpois(X, y, offset = rep(1, 60), parallelize = FALSE)
+scores <- L0glm.metrics(fit, beta_true = truth)
+scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+}
+\seealso{
+\link{model_criteria}, \link{information_criteria}
 }

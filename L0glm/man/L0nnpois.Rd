@@ -418,9 +418,12 @@ natural ordering and \code{0L} meaning AMD ordering.}
 printed to the console.}
 }
 \value{
-A list with the same main components as [L0glm.fit()]:
+An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:
   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
-  `family`, `z`, `X`, and `y`.
+  `family`, `z`, `X`, and `y`. Original prior weights and offsets are
+  retained separately from the working weights for scoring. Methods
+  \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
+  \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
 }
 \description{
 `L0nnpois()` is a fast RcppEigen/OpenMP implementation of

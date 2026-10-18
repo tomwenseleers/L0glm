@@ -465,11 +465,22 @@ The working-size guard applies to dense direct Cox and multinomial systems,
 not matrix-free Cox products. See the dedicated family help pages.}
 }
 \value{
-Returns a list with the following elements:
+An object of class \code{L0glm_fit}, with list components below.
+Special-family models additionally inherit from \code{L0glm_extended_fit}.
+Use \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()},
+\code{GIC()}, \code{EBIC()} and \code{MBIC()} to extract coefficients
+and scores; see \link{model_criteria} and \link{L0glm.metrics}.
 \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
 (single column for the univariate case). If `intercept = TRUE`, the first 
 row is for the intercept.}
-\item{\code{weights}}{a vector or matrix of observation weights.}
+\item{\code{weights}}{final IRLS working weights for ordinary GLMs and
+native Poisson; prior observation weights for special-family models.}
+\item{\code{prior.weights}, \code{offset}}{original prior observation
+weights and offsets retained for ordinary-model scoring. Special-family
+models retain prior weights in \code{weights}.}
+\item{\code{dispersion}, \code{dispersion.estimated}}{fitted dispersions
+and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
+Special families retain their nuisance-parameter information separately.}
 \item{\code{init.lambda}}{intial lambda.} \item{\code{lambdas}}{a vector or
 matrix with the adaptive penalties lambdas.} \item{\code{family}}{The error
 structure used to fit the data.}

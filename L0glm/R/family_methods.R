@@ -39,7 +39,8 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     p = data$p_selectable, n_ic = data$n_ic, init.lambda = lambda,
     grouped = grouped, relaxed = relaxed, convergence = convergence,
     history = lapply(passes, `[[`, "history"), solver = args$solver,
-    method = args$method, control.family = data$control), class = "L0glm_extended_fit")
+    method = args$method, control.family = data$control),
+    class = c("L0glm_extended_fit", "L0glm_fit"))
   if (data$kind == "multinomial") answer$coordinates <- "clr"
   if (data$kind == "cox") {
     answer$cox.cache <- data$cox.cache
@@ -98,24 +99,105 @@ predict.L0glm_extended_fit <- function(object, newdata = NULL, type = "response"
 
 #' Log likelihood of an extended-family fit
 #' @param object A fitted extended-family model.
-#' @param ... Unused.
+#' @param ... Passed to the common \code{logLik} method, including
+#'   \code{mu_floor = 0} for exact scoring by default.
+#' @seealso \link{model_criteria} for likelihood and information-criterion conventions.
 #' @export
 logLik.L0glm_extended_fit <- function(object, ...) {
-  value <- L0glm.metrics(object, mu_floor = 0)$loglik
-  structure(value, df = object$metrics$df, nobs = object$n_ic, class = "logLik")
+  logLik.L0glm_fit(object, ...)
 }
 
-#' Score an extended-family model
-#' @param object A fitted extended-family model.
-#' @param newdata New predictor matrix, or NULL for training data.
-#' @param y Responses for newdata, or NULL for training responses.
-#' @param weights Optional prior weights for the scored observations.
-#' @param offset Optional prediction offsets.
-#' @param mu_floor Scoring-only NB mean floor; zero requests exact likelihood.
+#' Essential fit and recovery metrics for an L0glm model
+#'
+#' @md
+#' @param object A model returned by [L0glm.fit()] or [L0nnpois()].
+#' @param newdata New predictor matrix, without an automatically added
+#'   intercept, or \code{NULL} for training data.
+#' @param y Responses for \code{newdata}; required when it is supplied.
+#'   \code{NULL} otherwise uses the training responses. Special-family response
+#'   formats are described in [L0glm.fit()].
+#' @param weights Optional prior observation weights for scoring. Training
+#'   scores default to the original prior weights, rather than IRLS working
+#'   weights. New data default to unit weights. Supports the fitting family's
+#'   vector or matrix weight formats.
+#' @param offset Optional prediction offsets. Training scores use the stored
+#'   offsets; new data default to zero. Supports the fitting family's offset
+#'   formats.
+#' @param mu_floor Nonnegative scoring-only floor for Poisson, NB, Gamma and
+#'   inverse-Gaussian means. The default is \code{1e-8}; zero requests exact
+#'   scoring. This does not alter the fitted model. \code{logLik()} and the
+#'   criterion methods default to zero.
+#' @param beta_true Optional true coefficient vector or matrix, on the original
+#'   scale and with the same dimensions as \code{coef(object)}, including any
+#'   intercept. Multinomial truth must use the displayed CLR coordinates.
+#'
+#' @details
+#' Row support is defined by at least one exactly nonzero coefficient in a
+#' row. Intercepts and other \code{always.include} terms are excluded from
+#' support classification. Overall row metrics include TP, FP, TN, FN,
+#' precision, recall, F1 and Matthews correlation coefficient (MCC/Phi).
+#'
+#' For multichannel data, \code{within_row_*} metrics assess coefficient
+#' zero/nonzero classification within correctly recovered rows. If
+#' \eqn{R=\{j:\|\widehat\beta_{j\cdot}\|_1>0,
+#'                 \|\beta^*_{j\cdot}\|_1>0\}}
+#' excludes mandatory rows, these counts pool all entries \eqn{(j,k)} with
+#' \eqn{j\in R} across channels. They are micro-averaged, rather than an
+#' average of per-row scores. Missed and spurious rows remain visible in the
+#' overall row metrics and are not included in the conditional scores.
+#' \code{within_row_TP}, \code{within_row_FP}, \code{within_row_TN} and
+#' \code{within_row_FN} use exact nonzero indicators, and their derived
+#' precision, recall, \code{within_row_F1_score} and \code{within_row_MCC}
+#' describe recovery of the within-row sparsity pattern. No additional
+#' numerical coefficient threshold is applied.
+#'
+#' Within-row metrics are \code{NA} for a single response or unavailable
+#' truth. If no rows are correctly recovered, the multichannel counts are
+#' zero and the ratios are \code{NA}. Any ratio with zero denominator is
+#' \code{NA}; MCC is \code{NA} if either binary margin is constant.
+#'
+#' Coefficient accuracy retains mean absolute error (the legacy name
+#' \code{MAD_coefs}), \code{RMSE_coefs} and \code{R2_coefs} across all
+#' entries, including mandatory terms. For compatibility,
+#' \code{R2_coefs} is the through-origin regression R-squared,
+#' \eqn{(\widehat\beta^T\beta^*)^2/
+#'       (\|\widehat\beta\|_2^2\|\beta^*\|_2^2)}, with matrices vectorized.
+#' It measures alignment and can equal one despite multiplicative bias;
+#' MAE and RMSE quantify absolute error. Selected-coefficient-only summaries,
+#' signed mean error, sMAPE, slope, accuracy, specificity and support-size
+#' ratio have been removed.
+#'
+#' Likelihood and criterion conventions, including dispersion estimates,
+#' sample sizes and grouped parameter counts, are detailed in
+#' \link{model_criteria}. Ordinary GLMs also report \code{deviance_true}
+#' when truth is supplied: deviance comparing the noiseless true mean with
+#' the fitted mean, using the scoring weights and offsets.
+#'
+#' @return A one-row data frame of fit metrics and information criteria.
+#'   Ordinary GLMs include row and coefficient summaries, with \code{NA}
+#'   values where truth is unavailable. Special-family scores retain their
+#'   model-specific objective summaries; supplying \code{beta_true} also
+#'   adds the same recovery metrics. The information criteria are
+#'   \code{aic}, \code{bic}, \code{gic}, \code{ebic} and \code{mbic}.
+#' @seealso \link{model_criteria}, \link{information_criteria}
+#' @examples
+#' set.seed(12)
+#' X <- matrix(runif(300), 60, 5)
+#' truth <- rbind(c(3, 0, 2), c(0, 4, 1), matrix(0, 3, 3))
+#' y <- matrix(rpois(180, 1 + X %*% truth), 60, 3)
+#' fit <- L0nnpois(X, y, offset = rep(1, 60), parallelize = FALSE)
+#' scores <- L0glm.metrics(fit, beta_true = truth)
+#' scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 #' @export
 L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
-                          offset = NULL, mu_floor = 1e-8) {
+                          offset = NULL, mu_floor = 1e-8, beta_true = NULL) {
+  if (!inherits(object, "L0glm_fit"))
+    stop("object must be a model returned by L0glm.fit or L0nnpois.", call. = FALSE)
   training <- is.null(newdata)
+  if (!training && is.null(y))
+    stop("Supply y when scoring newdata.", call. = FALSE)
+  if (!inherits(object, "L0glm_extended_fit"))
+    return(L0glm_metrics_glm(object, newdata, y, weights, offset, mu_floor, beta_true))
   if (is.null(y)) y <- object$y
   n <- if (training) nrow(object$X) else nrow(newdata)
   m <- if (object$kind == "nb") ncol(object$coefficients) else 1L
@@ -153,9 +235,9 @@ L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
     deviance <- -2 * likelihood
     mass <- sum(w[, 1L] * response$status)
   }
-  beta <- as.matrix(object$coefficients)
+  beta <- object$coefficients
   selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
-  selected <- sum(rowSums(beta[selectable, , drop = FALSE] != 0) > 0)
+  selected <- sum(Matrix::rowSums(beta[selectable, , drop = FALSE] != 0) > 0)
   elements <- sum(beta[selectable, , drop = FALSE] != 0)
   mandatory <- length(object$always.include) * (ncol(beta) - (object$kind == "multinomial"))
   nuisance <- sum(object$theta.estimated)
@@ -163,10 +245,29 @@ L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
     (if (object$grouped) selected * (ncol(beta) - 1L) else elements - selected) + mandatory
   } else elements + mandatory + nuisance
   IC <- get.IC(likelihood, max(2, object$n_ic), max(1, object$p), df)
+  IC <- IC[c("gic", "ebic", "bic", "aic", "mbic")]
   charge <- if (object$grouped) selected else elements
-  data.frame(loglik = likelihood, deviance, mean_deviance = deviance/if (mass > 0) mass else 1,
+  scores <- data.frame(loglik = likelihood, deviance, mean_deviance = deviance/if (mass > 0) mass else 1,
     df, selected, nonzero = elements, mandatory, nuisance,
     objective = -2 * likelihood + object$init.lambda * charge,
     GIC_rows = -2 * likelihood + preset.lambda("gic", max(1, object$p), max(2, object$n_ic)) * selected,
     IC, row.names = NULL)
+  if (!is.null(beta_true)) scores <- cbind(scores,
+    as.data.frame(L0glm_recovery_metrics(beta, beta_true, object$always.include, object$p)))
+  scores
+}
+
+# Ordinary GLMs retain prior weights separately from the final IRLS weights.
+L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, beta_true) {
+  training <- is.null(newdata)
+  X <- if (training) object$X else newdata
+  if (!training && object$added_intercept) X <- cbind(Intercept = 1, X)
+  if (is.null(y)) y <- object$y
+  if (is.null(weights) && training) weights <- object$prior.weights
+  if (is.null(offset) && training) offset <- object$offset
+  dispersion <- ifelse(object$dispersion.estimated, -object$dispersion, object$dispersion)
+  as.data.frame(get.metrics(object$coefficients, X, y, weights = weights,
+    offset = offset, family = object$family, beta_true = beta_true,
+    p = object$p, dispersion = dispersion, mu_floor = mu_floor,
+    always.include = object$always.include))
 }

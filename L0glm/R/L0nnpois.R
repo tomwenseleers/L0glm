@@ -35,9 +35,12 @@
 #'   \code{control.solver$ordering} is also accepted, with \code{1L} meaning
 #'   natural ordering and \code{0L} meaning AMD ordering.
 #'
-#' @return A list with the same main components as [L0glm.fit()]:
+#' @return An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
-#'   `family`, `z`, `X`, and `y`.
+#'   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
+#'   retained separately from the working weights for scoring. Methods
+#'   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
+#'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
 #'
 #' @seealso [L0glm.fit()], \link{information_criteria} for case-insensitive
 #'   criterion presets, penalty formulas, guidance and original references.
@@ -273,9 +276,12 @@ L0nnpois <- function(X,
   }
   coefficients <- methods::as(methods::as(coefficients, "generalMatrix"), "CsparseMatrix")
 
-  list(coefficients = coefficients,
+  structure(list(coefficients = coefficients,
        weights      = weights.ret,
+       prior.weights = weights,
+       offset       = offset,
        dispersion   = dispersion,
+       dispersion.estimated = rep(FALSE, m),
        init.lambda  = init.lambda,
        lambdas      = lambdas,
        family       = family,
@@ -283,7 +289,9 @@ L0nnpois <- function(X,
        always.include = always.include,
        preprocessing = preprocessing,
        convergence = fit$convergence,
+       added_intercept = intercept,
+       grouped      = grouped,
        z            = z,
        X            = if (issparse) X else Matrix::Matrix(X, sparse = FALSE),
-       y            = y)
+       y            = y), class = "L0glm_fit")
 }

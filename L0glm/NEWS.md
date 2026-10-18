@@ -2,6 +2,14 @@
 
 ## Development changes
 
+* Fits now inherit from `L0glm_fit`, providing `coef()`, `logLik()`, `nobs()`,
+  standard `AIC()`/`BIC()` and S3 `GIC()`/`EBIC()`/`MBIC()` extraction for
+  ordinary, native Poisson and special-family models. Original prior weights,
+  offsets and dispersion-estimation flags are retained for correct on-demand
+  scoring. `L0glm.metrics()` now also supports ordinary models and optional
+  `beta_true` recovery scores. The help pages explain likelihood conventions,
+  parameter counts, conditional within-row scores and removed diagnostics.
+
 * Recovery metrics now report channel-entry confusion counts, precision, recall,
   F1 and MCC within correctly recovered nonmandatory rows of multichannel fits.
   The pooled scores are conditional on recovering the row; row-support metrics

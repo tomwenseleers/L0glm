@@ -16,7 +16,8 @@
 #' coefficients. These presets set the per-coefficient \eqn{L_0} penalty on
 #' the \emph{minus twice log-likelihood} scale, rather than on the
 #' \eqn{-\ell} or mean-loss scale. All logarithms are natural.
-#' In the fitters, \eqn{n} is the number of rows of \code{X} and \eqn{p} is the
+#' For ordinary GLMs, \eqn{n} is the number of rows of \code{X}; special
+#' families use the conventions in \link{model_criteria}. Here \eqn{p} is the
 #' original number of selectable predictors, excluding intercepts and other
 #' mandatory terms. The preset is resolved before any predictors are removed,
 #' including screening by explicit zero starts. A pool with no selectable
@@ -89,13 +90,17 @@
 #' requested criterion on the resulting fits.
 #'
 #' Reported scores use the fitted likelihood and the package's parameter
-#' counts, including nonzero intercepts and an extra dispersion parameter
-#' where applicable. The metrics helper also augments \eqn{p} by one for
-#' Gaussian, Gamma and inverse-Gaussian families. For multichannel fits,
-#' reported IC scores count nonzero coefficient entries, not active rows;
+#' counts, including all mandatory coefficient dimensions and an extra
+#' parameter for each estimated dispersion. A known dispersion adds no
+#' parameter; dispersion does not change the selectable predictor pool
+#' \eqn{p}. For ordinary multichannel fits, reported IC scores count nonzero
+#' coefficient entries, not active rows;
 #' the scalar presets do not establish a group-selection consistency result.
 #' Likelihood-based criteria are not defined by the standard R quasi-family
 #' likelihoods, so their reported scores can be \code{NA}.
+#' Scores are available through \code{logLik()}, \code{AIC()}, \code{BIC()},
+#' \code{GIC()}, \code{EBIC()} and \code{MBIC()}; see \link{model_criteria}
+#' for sample-size and special-family parameter-count conventions.
 #'
 #' @references
 #' Akaike, H. (1974). A new look at the statistical model identification.
@@ -141,8 +146,8 @@
 #'   parallelize = FALSE)
 #' fast <- L0nnpois(X, y, intercept = TRUE, lambda = "gic",
 #'   parallelize = FALSE)
-#' # Both presets use p = 4, including the added intercept.
-#' c(fit$init.lambda, fast$init.lambda, log(4) * log(log(40)))
+#' # Both presets use p = 3 selectable predictors, excluding the intercept.
+#' c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
 #'
 #' @seealso [L0glm.fit()], [L0nnpois()], [L0glm.tune()]
 NULL
