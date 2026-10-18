@@ -573,16 +573,6 @@ augY <- function(yw, p, prior.mean = NULL, lambdas = NULL){
 }
 
 
-# diaglambdas <- function(lambdas){ # this one always returns a sparse matrix
-#   # if(sparse) {
-#   #  dlambdas <- Diagonal(x=lambdas) # faster than .sparseDiagonal(p, lambdas)
-#   # } else {
-#   #  dlambdas <- Diagonal(x=lambdas) # as.matrix(Diagonal(x=lambdas)) # faster than diag(lambdas, p)
-#   # }
-#   return (Diagonal(x=lambdas))
-# }
-
-
 # Calculate scaling of columns of matrix X in terms of L2 norm
 # INPUT X matrix
 scaleX = function (X) {
@@ -619,11 +609,6 @@ centerX <- function(X) {
   Xcenter = Matrix::colMeans(X)
   return(X - rep(Xcenter, rep.int(nrow(X), ncol(X))))
 }
-
-# is X normalized?
-isnormalized = function (X) { out = !is.null(attr(X, "normalized"))
-if (out) out = attr(X, "normalized")
-return(out) }
 
 # function to calculate good coefficient initialisations to use as starting values in 
 # L0glm.fit which can be used as start - uses a component-wise initialisation 

@@ -857,11 +857,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       start <- matrix(rep(start, m), nrow = nrow(start), ncol = m)
     if (!identical(dim(start), c(p, m)))
       stop("start must be a scalar, have dimension p x m, or have length p for univariate y")
-    # if (normalize) { # normalisation is done in L0glm.fit.internal
-    #   Xscaled <- normalizeX(X, no.norm = intercept.col)
-    #   scaling <- attr(Xscaled, "scaling")
-    #   # start   <- start * scaling
-    # }
   }
   if (!is.null(start) && any(!is.finite(start)))
     stop("start must contain finite coefficients.", call. = FALSE)

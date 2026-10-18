@@ -581,12 +581,3 @@ L0glm.tune <- function(X, y,
   result
 }
 
-optimize.threshold <- function(thresh, IC = "bic", coefficients, Xmat, y, family){
-  coefficients[abs(coefficients) < thresh[1]] = 0
-  IC.val <- get.metrics(beta = coefficients, 
-                        X = Xmat, y = y, 
-                        family = family)[[paste0(IC)]]
-  return(IC.val)
-}
-
-

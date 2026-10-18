@@ -2,6 +2,9 @@
 
 ## Development changes
 
+* Removed eight unused internal helpers and obsolete commented-out code.
+  Fitting, solver and scoring routines retain their existing implementations.
+
 * Added S3 `predict()` and `fitted()` methods for ordinary/native L0glm models
   and `sparseglm()` comparisons, sharing prediction logic with the special
   families. New-data prediction supports sparse/dense designs, original-scale

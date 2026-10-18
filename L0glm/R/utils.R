@@ -1,44 +1,4 @@
-###########################
-#### GENERIC FUNCTIONS ####
-###########################
-
-# TODO define various S3 methods
-
-# print.L0glm <- function(x){
-#  # TODO
-# }
-#
-# summary.L0glm <- function(x){
-#   # TODO
-# }
-# predict.L0glm <- function(x, newdata){
-#   if (missing(newdata)) return(x$fitted.values)
-#   # TODO if (x$intercept) newdata <- cbind(1, newdata) # TODO make sure this still works
-#   return(newdata %*% x$coefficients)
-# }
-#
-# residuals.L0glm <- function(x){
-#   # TODO
-#   print(stats:::residuals.lm)
-#   return(x$residuals)
-# }
-#
-# coefficients.L0glm <- function(x, lambda){
-#   if(missing(lambda)) return(x$coefficients)
-#   else stop("to implement") # TODO
-#   return(x$coefficients)
-# }
-
-# to allow conversion of dgRMatrix to dgCMatrix & avoiding having to substitute dgCMatrix by CsparseMatrix in code 
-# BUT: ideally dgRMatrix class should never be produced, only dgCMatrix should be used
-# so removed this code again
-# setAs("dgRMatrix", to = "dgCMatrix", function(from){
-#   as(as(from, "CsparseMatrix"), "dgCMatrix")
-# })
-
-########################################
-#### NON-EXPORTED UTILITY FUNCTIONS ####
-########################################
+# Internal utilities and benchmark plotting.
 
 # clamp vector of coefficients between vectors with bounds lower and upper
 clamp = function (coefs, lower, upper) {
@@ -47,167 +7,6 @@ clamp = function (coefs, lower, upper) {
 }
   
 
-
-# compute.df ####
-# Calculate appropriate degrees of freedom with ridge penalty.
-#   - Effective degrees of freedom (edf) taken up by the fit = trace(H). This
-#     can be seen as the Cp correction for the average squared residual
-#   - Degrees of freedom for error, aka residual degrees of freedom
-#     (rdf) = n - 2 * trace(H) + trace(H %*% t(H))
-# The hat matrix is not computed explicitely but we take a shortcut using QR
-# decomposition.
-#
-# REF
-#   Cule et al., Significance testing in ridge regression for genetic data, 2011
-#
-# INPUT:
-#   X:    the model matrix
-#   fit:  the fitted model
-#   return.diagH:   if TRUE, the diagonal of the hat matrix is returned
-# OUTPUT:
-#   edf: effective degrees of freedom
-#   rdf: residual degrees of freedom
-compute.df <- function(X, fit){
-  n <- sum(fit$weights != 0)
-  lambda <- fit$lambda.w * fit$lambda
-  if(sum(lambda) != 0){
-    X <- rbind(X, diag(sqrt(lambda),ncol(X)))
-    rw <- c(sqrt(fit$weights), rep(1, nrow(X) - length(fit$weights)))
-  }
-
-  # Calculate trace of the hat matrix using QR decomposition:
-  # see https://stackoverflow.com/questions/20562177/get-hat-matrix-from-qr-decomposition-for-weighted-least-square-regression
-  QR <- qr.default(X, LAPACK = TRUE)
-  if(sum(lambda) == 0){
-    edf <- QR$rank # p
-    rdf <- n - edf # n - p
-    return(list(edf = edf, rdf = rdf))
-  }
-  if (QR$rank != 0) {
-    Q <- qr.qy(QR, diag(1, nrow = nrow(QR$qr), ncol = QR$rank))
-    Q1 <- (1 / rw) * Q
-    Q2 <- rw * Q
-    d <- rowSums(Q1 * Q2)[1:n] # diag of H
-    edf <- sum(d) # effective df = trace(H)
-    if(!fit$family$family %in% c("poisson","binomial")) edf <- edf + 1 # estimated dispersion eats up one more df
-    rdf <- n - 2 * sum((Q1[1:n,] * Q2[1:n,])) + sum(crossprod(Q1[1:n,]) * crossprod(Q2[1:n,])) # residual df = n-tr(2H-HH')
-    # Note: in case sum(lambda)!=0, edf != n - rdf
-  } else {
-    edf <- 0
-    rdf <- n
-  }
-  return(list(edf = edf, rdf = rdf))
-}
-
-
-# compute.diagH ####
-# Calculate the diagonal of the hat matrix. The hat matrix is not computed
-# explicitly but we take a shortcut using QR decomposition.
-#
-# INPUT:
-#   X:    the model matrix
-#   fit:  the fitted model
-# OUTPUT:
-#   d:    the diagonal of the hat matrix returned as a vector
-compute.diagH <- function(X, w, fit){
-  n <- sum(w != 0)
-  lambda <- fit$lambda.w * fit$lambda
-  if(sum(lambda) != 0){
-    X <- rbind(X, diag(sqrt(lambda),ncol(X)))
-    rw <- c(sqrt(w), rep(1, nrow(X) - length(w)))
-  }
-#  QR decomposition
-  QR <- qr.default(X, LAPACK = TRUE)
-  if (QR$rank != 0) {
-    Q <- qr.qy(QR, diag(1, nrow = nrow(QR$qr), ncol = QR$rank))
-    Q1 <- (1 / rw) * Q
-    Q2 <- rw * Q
-    d <- rowSums(Q1 * Q2)[1:n] # diag of H
-  } else {
-    d <- rep(n, 0)
-  }
-  return(d)
-}
-
-# NOTE: a way to calculate this using any of the available solvers
-# would be by doing
-# Solve the WLS problem
-# sol <- wls_solver(Xwaug, w, method)
-# Calculate the diagonal of the hat matrix
-# d <- rowSums((Xwaug %*% sol) * Xwaug)
-
-
-# compute.ic ####
-# Function that computes a variety of information criteria
-# INPUT:
-#   y:      the response signal
-#   y.hat:  the fitted response
-#   w:      the observation weights associated to y
-#   fit:    the L0glm object that predicted y.hat
-# OUTPUT
-#   ICs:  loglik, rss, aic, aicc, bic, ebic, hq, ric, mric, cic, bicg, bicq
-compute.ic <- function(y, y.hat, w, fit){
-  fam <- fit$family
-  if(sum(fit$coefficients != 0) == 0){
-    rss <- min2LL <- aic <- bic <- aicc <- ebic <- hq <- ric <- mric <- cic <- bicg <- bicq <- Inf # TODO update
-    loglik <- -Inf
-  } else {
-    if(fam$family == "quasipoisson") fam <- poisson(identity) # Fix to let loglik be calculated for quasi families as for regular families
-    n <- sum(w != 0)
-    p <- length(fit$coefficients) # pn = model size
-
-    # Get the number of parameters
-    # k <- fit$df$edf
-    k <- sum(fit$coefficients != 0)
-    # print(k) # TODO delete
-
-    # Residual sums of square
-    rss <- compute.ss(mu = y.hat, y = y, w = w, fam = fam)
-
-    # TODO implement R2, adj R2, D2 here
-
-    # Get -2 * log-likelihood
-    min2LL <- fam$aic(y = y, mu = y.hat, wt = w, n = sum(w != 0),
-                      dev = sum(fam$dev.resids(y = y, mu = y.hat, wt = w)))
-
-    # Compute the information criteria
-    # See Zhang & Chen 2010
-    aic <- min2LL + 2*k # Akaike information criterion
-    aicc <- ifelse(n > k, min2LL + 2*k*n/(n-k), NA) # corrected AIC
-    bic <- min2LL + log(n)*k # Baysesian information criterion
-    xi <- 1-log(n)/(2*log(p))
-    ebic <- bic + 2*xi*k*log(p) # extenved BIC
-    c <- 2 # TODO default, add as a parameter
-    hq <- min2LL + c*log(log(n))*k # Hannan and Quinnn information criterion
-    ric <- min2LL + 2 * log(p) # risk inflation criterion
-    mric <- min2LL + 2 * sum(log(p/(1:k))) # modified risk inflation criterion
-    cic <- min2LL + 4 * sum(log(p/(1:k))) # covariance inflation criterion
-    # See Xu thesis 2010, Model Selection with Information Criteria
-    g <- 1 # TODO Defautl add as argument
-    bicg =  min2LL + log(n)*k + 2*g*lchoose(p,round(k))
-    q <- 0.25 # TODO Defautl add as argument
-    bicq <-  min2LL + log(n)*k - 2*k*log(q/(1-q))
-  }
-  return(c(loglik = -1/2 * min2LL, rss = rss, aic = aic, aicc = aicc, bic = bic, ebic = ebic,
-           hq = hq, ric = ric, mric = mric, cic = cic, bicg = bicg, bicq = bicq))
-}
-
-# compute.ss ####
-# Compute sums of square on the adjusted IWLS scale
-# INPUT
-#   mu:   the fitted response
-#   y:    the response signal
-#   w:    the observation weights associated to y
-#   fam:  the error family used to fit mu
-# OUTPUT
-#   ss:   the sums of squares computed on the adjsuted IWLS scale
-compute.ss <- function(mu, y, w, fam){
-  eta <- fam$linkfun(mu)
-  w <- w * as.vector(fam$mu.eta(eta)^2 / fam$variance(mu)) # IWLS weights from last iteration
-  z.res <- (y - mu)/fam$mu.eta(eta) # the residuals on the adjusted scale = z.res = z - z.fit = eta + (y - mu)/g'(eta) - eta = (y - mu)/g'(eta)
-  ss <- sum(w * z.res^2) # sums of squares
-  return(ss)
-}
 
 # AR.weights ####
 # adaptive ridge penalty weights to approximate L0 norm penalty:
@@ -232,36 +31,6 @@ validate_thresh <- function(thresh) {
     stop("thresh must be a single finite nonnegative number.", call. = FALSE)
   invisible(NULL)
 }
-
-# AL.weights ####
-# adaptive lasso penalty weights to approximate L0 norm penalty:
-# INPUT
-#   beta:   a vector of coefficents
-#   delta:  a small constant
-# OUTPUT
-#   AL.weights: a vector with adaptive weights associated to beta
-# REF
-#   Zou, 2006; Candes et al., 2008 & Nuel talk
-AL.weights <- function(beta, delta = 1E-5){
-  penweights = 1/(abs(beta) + delta)
-  # renormalize so that penalty weights sum to length(penweights)
-  penweights = length(penweights)*penweights/sum(penweights) 
-  return(penweights)
-}
-
-
-# # L0glm.bfun ####
-# # Wrapper function around L0glm.fit to be used with boot for bootstrapping
-# # see L0glm.fit documentatio for more details
-# L0glm.bfun <- function(data, indices, X, family, lambda, start, wts, nonnegative,
-#                        control.l0, control.iwls, control.fit, post.filter.fn){
-#   beta <- L0glm.fit(y = data[indices], X = X[indices,], weights = wts[indices],
-#                     family = family, lambda = lambda, start = start, nonnegative = nonnegative,
-#                     control.l0 = control.l0, control.iwls = control.iwls, control.fit = control.fit,
-#                     post.filter.fn = post.filter.fn)$coefficients
-#   return(beta)
-# }
-
 
 ####################################
 #### EXPORTED UTILITY FUNCTIONS ####
@@ -300,15 +69,6 @@ AL.weights <- function(beta, delta = 1E-5){
 #' @export
 plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, ...){
   a.fit <- coefs
-  # a.fit <- fit$coefficients
-  # if(!is.null(names(a.fit))){
-  #   int.ind <- grepl("Intercept", names(a.fit))
-  #   inference$CI.lower <- inference$CI.lower[!int.ind]
-  #   inference$CI.upper <- inference$CI.upper[!int.ind]
-  #   inference$p.value <- inference$p.value[!int.ind]
-  #   a.fit <- a.fit[!int.ind]
-  # }
-  # transf <- function(x) sqrt(x) # transform data for better rendering
   transf <- function(x) return(x)
   plot(x, transf(y), type="l", ylab="Signal", xlab="Time", col = "grey40",
        ylim=c(-transf(max(y)), transf(max(y))), ...)
@@ -335,17 +95,6 @@ plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, 
            legend = c("Input signal", "Fitted signal", "Ground truth",
                       "L0glm estimates"))
   }
-}
-
-
-# print_progress ####
-# Prints progress of a loop to the console
-print_progress <- function(current, total, before = "Progress: ", after = "", ...){
-  if(length(current)!=1 && length(total) != 1) stop("Arguments \'current\' and \'total\' must have length 1.")
-  perc <- format(current/total*100, digits = 1,...)
-  cat(paste0("\r", before, perc, " %", after, "   "))
-  if(current == total) cat ("\n")
-  flush.console()
 }
 
 
