@@ -43,6 +43,8 @@
 #'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
 #'   \code{print()} and \code{summary()} provide compact model displays;
 #'   see \link{model_summary}.
+#'   \code{predict()} and \code{fitted()} return original-scale Poisson means;
+#'   see \link{model_predictions} for new data and prediction offsets.
 #'
 #' @seealso [L0glm.fit()], \link{information_criteria} for case-insensitive
 #'   criterion presets, penalty formulas, guidance and original references.

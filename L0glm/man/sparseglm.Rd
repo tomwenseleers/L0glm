@@ -137,6 +137,8 @@ diagnostics, \code{timings}, common \code{foldid}, input data and optional truth
 of metrics and timings, including unavailable-method rows.
 \code{print()} gives a compact overview; \code{summary()} adds essential fit and
 recovery scores while retaining the complete table in \verb{$metrics}.
+\code{predict()} and \code{fitted()} return named per-method prediction lists;
+unavailable methods retain \code{NULL} entries. See \link{model_predictions}.
 }
 \description{
 Compare sparse single-response, independent multichannel, joint multinomial
@@ -199,5 +201,5 @@ comparison <- sparseglm(X, y, method=c("lasso","relaxed_lasso"),
 L0glm.metrics(comparison)[c("method","seconds","gic","F1_score","MCC")]
 }
 \seealso{
-\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}, \link{model_summary}
+\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}, \link{model_summary}, \link{model_predictions}
 }

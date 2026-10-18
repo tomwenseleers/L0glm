@@ -426,6 +426,8 @@ An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit
   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
   \code{print()} and \code{summary()} provide compact model displays;
   see \link{model_summary}.
+  \code{predict()} and \code{fitted()} return original-scale Poisson means;
+  see \link{model_predictions} for new data and prediction offsets.
 }
 \description{
 `L0nnpois()` is a fast RcppEigen/OpenMP implementation of

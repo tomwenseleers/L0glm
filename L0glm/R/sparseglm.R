@@ -124,7 +124,9 @@
 #'   of metrics and timings, including unavailable-method rows.
 #'   `print()` gives a compact overview; `summary()` adds essential fit and
 #'   recovery scores while retaining the complete table in `$metrics`.
-#' @seealso [L0glm.metrics()], [L0glm.tune()], [model_summary]
+#'   `predict()` and `fitted()` return named per-method prediction lists;
+#'   unavailable methods retain `NULL` entries. See [model_predictions].
+#' @seealso [L0glm.metrics()], [L0glm.tune()], [model_summary], [model_predictions]
 #' @examples
 #' set.seed(1)
 #' X <- matrix(rnorm(360), 60, 6)

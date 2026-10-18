@@ -619,6 +619,8 @@
 #' and scores; see \link{model_criteria} and \link{L0glm.metrics}.
 #' \code{print()} shows a compact overview; \code{summary()} adds fit metrics
 #' and a bounded coefficient display; see \link{model_summary}.
+#' \code{predict()} and \code{fitted()} provide original-scale predictions;
+#' see \link{model_predictions} for new data, offsets and special-family types.
 #' \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
 #' (single column for the univariate case). If `intercept = TRUE`, the first 
 #' row is for the intercept.}

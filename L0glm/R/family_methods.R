@@ -52,51 +52,6 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
   answer
 }
 
-#' Predict from an extended-family fit
-#' @param object A fitted extended-family model.
-#' @param newdata Predictor matrix without an automatically added intercept.
-#' @param type Prediction type; response, link, class, risk or survival.
-#'   Multinomial link predictions are CLR scores for every category.
-#' @param offset Optional prediction offset, on each linear predictor.
-#'   Multinomial offsets have one column per category and are centered rowwise.
-#' @param times Evaluation times for Cox survival probabilities.
-#' @param ... Unused.
-#' @export
-predict.L0glm_extended_fit <- function(object, newdata = NULL, type = "response",
-                                       offset = NULL, times = NULL, ...) {
-  if (is.null(newdata)) {
-    X <- object$X
-    if (is.null(offset)) offset <- object$offset
-  } else {
-    X <- newdata
-    if (object$added_intercept) X <- cbind(Intercept = 1, X)
-  }
-  if (ncol(X) != nrow(object$coefficients)) stop("Wrong number of prediction columns.", call. = FALSE)
-  coefficients <- object$coefficients
-  eta <- as.matrix(X %*% coefficients)
-  eta <- eta + L0glm_ext_matrix(offset, nrow(X), ncol(eta), 0, "offset")
-  if (object$kind == "multinomial") eta <- eta - rowMeans(eta)
-  if (type == "link") return(eta)
-  if (object$kind == "nb") {
-    if (type != "response") stop("NB prediction type must be response or link.", call. = FALSE)
-    return(matrix(object$family$linkinv(eta), nrow(eta), ncol(eta)))
-  }
-  if (object$kind == "multinomial") {
-    probability <- L0glm_ext_softmax(eta)$p
-    colnames(probability) <- object$response$levels
-    if (type == "class") return(factor(object$response$levels[max.col(probability)], levels = object$response$levels))
-    if (type != "response") stop("Multinomial prediction type must be response, class or link.", call. = FALSE)
-    return(probability)
-  }
-  if (type %in% c("risk", "response")) return(as.numeric(exp(eta)))
-  if (type != "survival" || is.null(times)) stop("Supply times for Cox survival prediction.", call. = FALSE)
-  if (any(!is.finite(times) | times < 0)) stop("Survival times must be finite and nonnegative.", call. = FALSE)
-  index <- findInterval(times, object$baseline$time)
-  loghazard <- if (is.null(object$baseline$log_cumhaz)) log(object$baseline$cumhaz) else object$baseline$log_cumhaz
-  loghazard <- c(-Inf, loghazard)[index + 1L]
-  exp(-exp(outer(as.numeric(eta), loghazard, "+")))
-}
-
 #' Log likelihood of an extended-family fit
 #' @param object A fitted extended-family model.
 #' @param ... Passed to the common \code{logLik} method, including

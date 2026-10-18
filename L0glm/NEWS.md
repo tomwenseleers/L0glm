@@ -2,6 +2,14 @@
 
 ## Development changes
 
+* Added S3 `predict()` and `fitted()` methods for ordinary/native L0glm models
+  and `sparseglm()` comparisons, sharing prediction logic with the special
+  families. New-data prediction supports sparse/dense designs, original-scale
+  coefficients, automatic intercepts, named-column matching and explicit offsets.
+  Outputs include GLM/NB means, multinomial probabilities/classes and Cox risks
+  or survival curves. Comparison survival baselines are calculated on demand.
+  Empty new-data matrices are supported; multinomial class ties are deterministic.
+
 * Added S3 `print()` and `summary()` methods for L0glm and native Poisson fits,
   inherited by special-family fits, and for `sparseglm()` comparisons. Printing
   uses stored metadata; summaries compute common fit/recovery scores without

@@ -318,6 +318,8 @@ comparison <- sparseglm(X, y, family = gaussian(), method = "all",
 L0glm.metrics(comparison)  # fit/recovery metrics, tuning scores and elapsed times
 summary(comparison)       # concise comparison table and method-status notes
 coef(comparison)$adaptive_relaxed_lasso
+fitted(comparison)$lasso
+predict(comparison, newdata = X_new)$lasso
 ```
 
 Use `tune = "gic"` (or `"aic"`, `"bic"`, `"ebic"`, `"mbic"`) for information-criterion
@@ -328,9 +330,13 @@ in the results. Joint multinomial and right-censored Cox comparisons use
 `family = mgcv::multinom(K)` and `family = mgcv::cox.ph()`, respectively.
 See `?sparseglm` for backend support and explicitly labelled approximations.
 
-Models from `L0glm.fit()` and `L0nnpois()` also support `print()` and `summary()`.
+Models from `L0glm.fit()` and `L0nnpois()` also support `print()`, `summary()`,
+`predict()` and `fitted()`.
 Use `print(summary(fit), max.rows = 20, max.cols = 6)` to limit the displayed
 coefficients; the summary retains the complete sparse matrix and fit metrics.
+Predictions default to response means, multinomial probabilities or Cox relative
+risks. Use `type = "link"` for linear predictors and supply new-data offsets
+explicitly. See `?model_predictions` for all prediction types and formats.
 
 ## References
 
