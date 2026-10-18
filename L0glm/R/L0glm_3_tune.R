@@ -25,16 +25,61 @@
 #' 
 #' @param X 
 #' A matrix of predictor variables.
-#' @param y 
-#' A vector or matrix of response variables.
-#' @param family 
-#' A description of the error distribution and link function to be
-#' used in the model. This should be a call to a family function. (See
-#' \code{stats::family} for details of family functions.)
-#' @param weights 
-#' A matrix of observation weights.
-#' @param offset 
-#' A matrix to be added to the linear predictor.
+#' @param y Response data with \code{n} observations, aligned with the rows of
+#'   \code{X}. For ordinary GLMs, a vector of length \code{n} or an
+#'   \code{n} by \code{m} matrix of response variables (tasks/channels).
+#'   Special-family response formats are:
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: a vector or \code{n} by \code{m} matrix of
+#'   nonnegative integer counts, with one column per response channel.
+#'   \item \code{mgcv::multinom(K)}: a factor/class vector of length \code{n}
+#'   with \code{K+1} categories (one trial per observation), or an
+#'   \code{n} by \code{K+1} nonnegative integer count matrix with one column
+#'   per category. Row sums give the numbers of trials.
+#'   \item \code{mgcv::cox.ph()}: a right-censored
+#'   \code{survival::Surv(time, status)} response, or a numeric two-column
+#'   matrix with time in the first column and status in the second.
+#'   Use \code{status=1} for an observed event and \code{status=0} for right
+#'   censoring. Event indicators belong in \code{y}, not in \code{weights}.
+#'   }
+#' @param family Model family and link function. All standard GLM families and
+#'   their supported link functions are accepted; see
+#'   \code{\link[stats]{family}}. Special families are \code{mgcv::nb()} for
+#'   negative binomial regression with fixed or estimated shape,
+#'   \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
+#'   categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
+#'   hazards models. See \emph{Special families} under Details.
+#' @param weights Optional finite, nonnegative prior/case observation weights.
+#'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
+#'   \code{m} matrix; for binomial proportions, weights give trial totals.
+#'   Special families accept a scalar, a vector of length \code{n}, or an
+#'   \code{n} by \code{1} matrix; \code{NULL} uses unit weights.
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: these formats share weights across response
+#'   channels; an \code{n} by \code{m} matrix supplies channel-specific weights.
+#'   \item \code{mgcv::multinom(K)}: one weight per observation, shared across
+#'   categories. For a count-matrix response, trial totals come from row sums of
+#'   \code{y}; weights multiply each observation's log-likelihood contribution.
+#'   \item \code{mgcv::cox.ph()}: case weights enter both weighted event counts
+#'   and risk sets. Event indicators belong in \code{y}, not in \code{weights}.
+#'   }
+#'   At least one positive weight is required.
+#' @param offset Optional finite, known additive offsets on the linear-predictor
+#'   (link) scale. For ordinary GLMs, supply a vector of length \code{n} or an
+#'   \code{n} by \code{m} matrix. For special families, \code{NULL} uses zero
+#'   offsets; a scalar is replicated over observations and response columns,
+#'   while a length-\code{n} vector or \code{n} by \code{1} matrix supplies one
+#'   offset per observation, shared across response columns.
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: an \code{n} by \code{m} matrix supplies
+#'   channel-specific offsets on the chosen link scale.
+#'   \item \code{mgcv::multinom(K)}: an \code{n} by \code{K+1} matrix supplies
+#'   category-specific offsets, including every category. Offsets are centered
+#'   across categories within each row. A scalar or shared observation offset
+#'   therefore cancels from the multinomial probabilities.
+#'   \item \code{mgcv::cox.ph()}: use a scalar, length-\code{n} vector or
+#'   \code{n} by \code{1} matrix of offsets on the log-relative-hazard scale.
+#'   }
 #' @param dispersion Passed to \code{L0glm.fit}: \code{NULL} automatically
 #' initializes and estimates dispersion, a positive value fixes it, and a negative
 #' value supplies its absolute value as an initial estimate. A vector can specify
@@ -71,16 +116,31 @@
 #' CV training penalties retain their training-weight scaling, so they can
 #' be smaller than this full-data bound. A zoomed grid can start above it.
 #' @param start \code{NULL} (default) automatically initializes each lambda
-#' fit. Numeric scalar \code{1} supplies ones in each fit's normalized working
-#' coordinates. Other numeric starts use original coefficient units, with the
-#' structural-zero semantics of \code{L0glm.fit}.
+#' fit. Numeric starts can be a scalar, a length-\code{p} vector repeated across
+#' response columns, or a \code{p} by \code{m} matrix, including any added
+#' intercept row. Negative binomial models use one column per response channel;
+#' Cox uses one column and no intercept; \code{mgcv::multinom(K)} uses all
+#' \code{K+1} category columns in response-category order, centered rowwise to CLR.
+#' Numeric scalar \code{1} supplies ones in each fit's normalized working
+#' coordinates; other numeric starts use original coefficient units.
+#' For ordinary GLMs, negative binomial and Cox models, exact starting zeros
+#' exclude individual coefficients. For multinomial models, rows supplied as
+#' all zero are excluded before CLR centering; zero category entries in other
+#' rows remain eligible. Scalar \code{1} centers to zero without excluding rows,
+#' whereas scalar \code{0} excludes all selectable rows. Intercepts and
+#' \code{always.include} terms remain eligible. These restrictions also apply
+#' during relaxed refits, and output coefficients retain their original sparse
+#' dimensions. See \code{L0glm.fit} for further starting-value details.
 #' Use \code{"pilot"} to build a common seed from ten independent unrelaxed
 #' fits at log-spaced penalties between \code{lambda_min} and the GIC preset
 #' (or one fit when these bounds coincide). The magnitude is the mean absolute
 #' coefficient across pilots, with the sign of its mean; exact cancellation
-#' uses the sign of the first largest-magnitude pilot coefficient. This retains
-#' the union of pilot supports separately in each channel. Mandatory terms
-#' remain eligible. No preceding path fit is used to initialize the next fit.
+#' uses the sign of the first largest-magnitude pilot coefficient. For ordinary
+#' GLMs, negative binomial and Cox models this retains the union of pilot supports
+#' separately in each channel. Multinomial seeds are centered to CLR, then rows
+#' that are all zero in the pooled seed are excluded. CV constructs each pilot
+#' seed using training observations only. No preceding path fit is used to
+#' initialize the next fit.
 #' @param coefs.true A vector or matrix of true coefficient values, for comparison 
 #' with the estimated coefficients.
 #' @param printbest A logical value indicating whether to print the best lambda 
@@ -98,9 +158,41 @@
 #' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 #' observations and makes scores finite when a fitted mean is zero. Set to zero
 #' for exact likelihood scoring, which can give infinite criteria.
-#' @param ... Other arguments passed to \code{L0glm.fit}.
+#' @param ... Other arguments passed to \code{L0glm.fit}, including:
+#' \itemize{
+#' \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
+#' response channels or multinomial categories; \code{FALSE} selects individual
+#' channel coefficients or CLR category entries. Multinomial fitting always uses
+#' the joint likelihood, and Cox has one coefficient per predictor so the choices
+#' coincide there.
+#' \item \code{relaxed}: refit the selected support before scoring each candidate
+#' full-data or CV training model. Special families use \code{lambda = 0} for this
+#' refit. Grouped refits admit eligible entries within retained rows; ungrouped
+#' refits retain only selected entries. The default is \code{TRUE} for grouped
+#' multichannel ordinary GLMs and NB, and grouped multinomial models with either
+#' factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
+#' other single-channel fits. Set it explicitly to refit an ungrouped model.
+#' \item \code{gamma}: exponent in the unsmoothed adaptive ridge weights
+#' (default \code{2}). Grouped multichannel NB and multinomial fits use the
+#' coefficient row norm raised to \code{gamma}; ungrouped fits use individual
+#' channel or CLR-entry magnitudes. Cox and single-channel NB use the scalar rule.
+#' These special families have scale dispersion one.
+#' \item \code{thresh}: relative hard cutoff during selection (default
+#' \code{1e-5}), applied to working coefficient row norms for grouped
+#' multichannel NB/multinomial fits and individual magnitudes for ungrouped or
+#' single-channel fits. The absolute \code{1e-20} cutoff remains when
+#' \code{thresh = 0}. Multinomial rows are restored to zero-sum CLR coordinates
+#' after thresholding. Mandatory terms are exempt, and relaxed refits do not
+#' apply these cutoffs. Cutoffs use each fit's normalized working coefficients,
+#' not returned original-unit coefficients, and do not smooth adaptive weights.
+#' \item \code{prior.mean}: ridge-penalty centers in original input coefficient
+#' units.
+#' }
+#' See Special families below and \code{\link{L0glm.fit}} for support restrictions
+#' and further details of these arguments.
 #'
-#' @details For a zero prior mean, the upper endpoint is expanded until an
+#' @details For \code{prior.mean = NULL} or an explicitly all-zero prior mean,
+#' the upper endpoint is expanded until an
 #' actual fit has no nonzero penalized coefficients, excluding an intercept
 #' and \code{always.include} terms. When the preset fit is nonzero, logarithmic
 #' bisection refines the nonzero/zero bracket to within 5\%, so a conservative
@@ -149,6 +241,64 @@
 #' \code{fit_1se} contains the full-data fit at \code{lambda_1se}, retained
 #' from the same path without any additional fits.
 #' 
+#' \subsection{Special families}{
+#' NB, Cox and multinomial fits use independent initializations at each lambda.
+#' A supplied \code{prior.mean} is reused in the full-data, pilot and CV training
+#' fits, with normalization handled within each fit. For NB it centers regression
+#' coefficients, not theta; for Cox it centers log-relative-hazard coefficients,
+#' not the baseline hazard, and no intercept is included. Multinomial targets
+#' have \code{K+1} category columns and are centered rowwise to CLR; a scalar or
+#' vector shared across categories therefore gives zero CLR targets.
+#' Nonzero targets cannot reactivate coefficients or rows excluded by
+#' \code{start}. Mandatory terms remain unpenalized, and special-family relaxed
+#' refits remove the ridge penalty on retained support. Adaptive weights and
+#' support counts continue to use coefficients relative to zero.
+#' The endpoint search tests the supplied prior for literal zero before CLR
+#' centering; use \code{NULL} or explicit zero targets for automatic refinement.
+#' Multinomial coefficient paths and seeds are CLR; all-zero starting rows
+#' exclude predictors, while individual category zeroes remain eligible.
+#' With \eqn{b} denoting normalized working coefficients, grouped NB and
+#' multinomial adaptive ridge weights are
+#' \eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}; ungrouped weights are
+#' \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)}. Cox uses the scalar rule.
+#' Grouped hard thresholding compares each row norm with \code{thresh} times
+#' the largest selectable row norm or the absolute floor \code{1e-20}; it does
+#' not threshold individual entries within retained rows. Ungrouped multinomial
+#' thresholding compares individual CLR magnitudes within each category column,
+#' then recenters surviving entries within their allowed set. Excluded entries
+#' stay zero, and rows with fewer than two allowed entries are zero. Mandatory
+#' terms are excluded from cutoff maxima. The same \code{gamma} and \code{thresh}
+#' are used in full-data candidates, pilot selection fits and CV training fits;
+#' each fit computes its own training normalization. Special-family cutoffs
+#' apply only during selection with positive lambda and are disabled during
+#' relaxed refits. \code{thresh = 0} retains the absolute cutoff and does not
+#' smooth adaptive weights.
+#' With \code{relaxed = TRUE}, grouped multinomial refits jointly estimate all
+#' category coefficients in retained predictor rows; previously zero category
+#' entries within those rows may become nonzero. Ungrouped multinomial refits
+#' jointly estimate only the selected CLR entries and keep the others fixed at
+#' zero. Both preserve zero-sum rows: \eqn{s} admitted category entries give
+#' \eqn{s-1} free directions. Starting-row exclusions remain in force, mandatory
+#' terms remain eligible, and no other predictor rows can enter the refit.
+#' NB refits follow the same row-versus-entry support rule and continue updating
+#' estimated channel shapes. Cox refits selected log-relative-hazard effects.
+#' Refits apply inside each CV training fold, before validation scoring; full-data
+#' paths, \code{fit_best} and \code{fit_1se} contain the corresponding refitted
+#' models. Pilot initialization fits remain unrelaxed.
+#' Grouped multinomial IC tuning charges active rows and ungrouped tuning
+#' charges nonzero CLR entries. Parameter-count ICs account for the zero-sum
+#' constraint separately from these L0 objective charges.
+#' Grouped IC tuning charges rows; \code{metrics$tuning_score} is the selected
+#' row criterion plus mandatory/nuisance parameter constants, whereas the
+#' ordinary \code{gic} metric retains its parameter-count definition.
+#' CV trains theta, normalization and pilot starts using training observations
+#' only. Cox CV uses the difference between full-data and training partial log
+#' likelihood at training coefficients, divided by held-out event weight;
+#' this retains full risk sets. Multinomial CV uses deviance per weighted trial,
+#' and NB uses deviance per weighted response. The common lambda grid is chosen
+#' using full data and is not a nested-CV estimate of prediction error.
+#' }
+#'
 #' @return
 #' \code{L0glm.tune} returns a list containing the following elements:
 #' \item{\code{tune}}{chosen selection method.}
@@ -194,21 +344,6 @@
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
 #' 
 #' @export
-#' @section Additional-family tuning:
-#' NB, Cox and multinomial fits use independent initializations at each lambda.
-#' Multinomial coefficient paths and seeds are CLR; starting zeroes do not
-#' restrict support. Grouped tuning charges active rows and ungrouped tuning
-#' charges nonzero CLR entries. Parameter-count ICs account for the zero-sum
-#' constraint separately from these L0 objective charges.
-#' Grouped IC tuning charges rows; \code{metrics$tuning_score} is the selected
-#' row criterion plus mandatory/nuisance parameter constants, whereas the
-#' ordinary \code{gic} metric retains its parameter-count definition.
-#' CV trains theta, normalization and pilot starts using training observations
-#' only. Cox CV uses the difference between full-data and training partial log
-#' likelihood at training coefficients, divided by held-out event weight;
-#' this retains full risk sets. Multinomial CV uses deviance per weighted trial,
-#' and NB uses deviance per weighted response. The common lambda grid is chosen
-#' using full data and is not a nested-CV estimate of prediction error.
 L0glm.tune <- function(X, y,
                        family,
                        weights      = matrix(1, nrow = nrow(as.matrix(y)),

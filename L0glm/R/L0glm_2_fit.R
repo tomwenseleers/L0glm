@@ -82,20 +82,45 @@
 #'   \code{p} being the number of predictor columns. Use \code{intercept = TRUE}
 #'   to add an intercept, or include a column of ones in \code{X} and set
 #'   \code{intercept = FALSE}.
-#' @param y Response variable(s). Can be either a vector of length \code{n} or a
-#'   matrix of dimension \code{n} x \code{m}, where \code{n} is the number of
-#'   observations and \code{m} the number of response variables
-#'   (tasks/channels).
-#' @param family a description of the error distribution (gaussian, poisson,
-#'   binomial, Gamma, inverse.gaussian) and link function (identity, log, sqrt,
-#'   logit, cloglog, probit, cauchit, inverse, 1/mu^2) to be to be used for the
-#'   GLM model. See \code{?stats::family} for details of family functions.
-#' @param weights Optional vector of prior observation weights ("prior weights")
-#'   of length \code{n}, or a matrix of weights with dimension \code{n} x
-#'   \code{m}, with \code{n} corresponding to the number of observations and
-#'   \code{m} the number of response variables (columns in \code{y}). For
-#'   binomial proportion data this would be the total number of trials per
-#'   observed proportion (passed in \code{y}).
+#' @param y Response data with \code{n} observations, aligned with the rows of
+#'   \code{X}. For ordinary GLMs, a vector of length \code{n} or an
+#'   \code{n} by \code{m} matrix of response variables (tasks/channels).
+#'   Special-family response formats are:
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: a vector or \code{n} by \code{m} matrix of
+#'   nonnegative integer counts, with one column per response channel.
+#'   \item \code{mgcv::multinom(K)}: a factor/class vector of length \code{n}
+#'   with \code{K+1} categories (one trial per observation), or an
+#'   \code{n} by \code{K+1} nonnegative integer count matrix with one column
+#'   per category. Row sums give the numbers of trials.
+#'   \item \code{mgcv::cox.ph()}: a right-censored
+#'   \code{survival::Surv(time, status)} response, or a numeric two-column
+#'   matrix with time in the first column and status in the second.
+#'   Use \code{status=1} for an observed event and \code{status=0} for right
+#'   censoring. Event indicators belong in \code{y}, not in \code{weights}.
+#'   }
+#' @param family Model family and link function. All standard GLM families and
+#'   their supported link functions are accepted; see
+#'   \code{\link[stats]{family}}. Special families are \code{mgcv::nb()} for
+#'   negative binomial regression with fixed or estimated shape,
+#'   \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
+#'   categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
+#'   hazards models. See \emph{Special families} under Details.
+#' @param weights Optional finite, nonnegative prior/case observation weights.
+#'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
+#'   \code{m} matrix; for binomial proportions, weights give trial totals.
+#'   Special families accept a scalar, a vector of length \code{n}, or an
+#'   \code{n} by \code{1} matrix; \code{NULL} uses unit weights.
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: these formats share weights across response
+#'   channels; an \code{n} by \code{m} matrix supplies channel-specific weights.
+#'   \item \code{mgcv::multinom(K)}: one weight per observation, shared across
+#'   categories. For a count-matrix response, trial totals come from row sums of
+#'   \code{y}; weights multiply each observation's log-likelihood contribution.
+#'   \item \code{mgcv::cox.ph()}: case weights enter both weighted event counts
+#'   and risk sets. Event indicators belong in \code{y}, not in \code{weights}.
+#'   }
+#'   At least one positive weight is required.
 #' @param dispersion \code{NULL} (default) automatically initializes and
 #'   estimates dispersion. A positive number fixes it at that value. A negative
 #'   number initializes it at its absolute value, then estimates it; the supplied
@@ -105,37 +130,59 @@
 #'   values are invalid. Poisson, binomial and negative binomial with known
 #'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 #'   \code{family$dispersion}. See Details for initialization and updating.
-#' @param start Optional scalar, vector of coefficient starting values of length
-#'   \code{p}, or matrix of starting values with dimension \code{p} x
-#'   \code{m}, with \code{p} the number of design columns, including any added
-#'   intercept, and \code{m} the number of response columns. A scalar is repeated
-#'   for every coefficient in every response channel.
+#' @param start \code{NULL} (default) requests automatic initialization.
+#'   Otherwise supply finite starting coefficients as a scalar, a length-\code{p}
+#'   vector repeated across response columns, or a \code{p} by \code{m} matrix.
+#'   Here \code{p} includes any added intercept; \code{m} is the number of
+#'   response channels for ordinary GLMs and negative binomial models,
+#'   \code{K+1} for \code{mgcv::multinom(K)}, and one for Cox models.
+#'   Cox models do not add an intercept. Scalars are repeated over coefficients.
 #'   Numeric scalar \code{start = 1} initializes all coefficients to one in
 #'   normalized working coordinates, including the intercept. With a free
 #'   intercept this refers to the centered design. All other scalars and all
 #'   explicit vectors/matrices use original input coefficient units. To request
 #'   original-coordinate ones, pass a vector or a \code{p x m} matrix; use a
 #'   matrix to distinguish this from the scalar shorthand in a one-term model.
-#'   Starting values are used directly, subject to the coefficient
-#'   constraints. Exact zeros exclude those coefficients throughout selection,
-#'   grouped passes and relaxed refits, separately in each channel. Rows zero
-#'   across every channel are screened before fitting. Intercepts and
-#'   \code{always.include} terms remain eligible even with zero starts.
-#'   Only \code{NULL} requests automatic initialization; an all-zero start
-#'   fits just the mandatory terms, if any. For binomial
-#'   and quasibinomial models with an intercept, automatic slope starts account
-#'   for its cross-products with the predictors.
-#'   These values determine the
-#'   level of penalisation of the different coefficients during the first IRLS
-#'   ridge regression update. The ridge penalty used equals
-#'   \eqn{(\lambda/4) \phi / |\beta|^\gamma}. After each
-#'   selection update, coefficients below the relative cutoff or the absolute
-#'   numerical floor described in \code{thresh} are excluded from later solves.
-#'   Set to \code{NULL} by default, in which case it
-#'   is auto-initialised.
-#' @param offset Optional vector of offset values of length \code{n}, or a
-#'   matrix of offset values with dimensions \code{c(n, m)}. The offset is a
-#'   known quantity that is added to the linear predictor of the model.
+#'   Starting values determine the initial adaptive ridge penalties, subject to
+#'   the coefficient constraints and the following support restrictions.
+#'   \itemize{
+#'   \item Ordinary GLMs and \code{mgcv::nb()}: exact zeros exclude individual
+#'   coefficients separately in each channel, throughout selection, grouped
+#'   passes and relaxed refits. Rows zero in every channel are screened out.
+#'   \item \code{mgcv::cox.ph()}: use a scalar, length-\code{p} vector or
+#'   \code{p} by \code{1} matrix; exact zeros exclude the corresponding predictors.
+#'   \item \code{mgcv::multinom(K)}: a starting matrix has one column per category,
+#'   in factor-level or response-matrix column order. Rows are centered across
+#'   categories to give CLR coefficients. Rows supplied as all zero are excluded
+#'   before centering and remain zero during selection and relaxed refits.
+#'   Individual zero entries in an otherwise nonzero row remain eligible.
+#'   Common nonzero rows, including scalar \code{start = 1}, center to zero but
+#'   remain eligible; a weak-ridge step seeds eligible zero starts.
+#'   }
+#'   Intercepts and \code{always.include} terms remain eligible even with zero
+#'   starts. Thus \code{start = 0} fits only mandatory terms, if any, whereas
+#'   \code{NULL} selects automatic initialization. Returned sparse coefficient
+#'   matrices retain all original predictor rows and response/category columns,
+#'   including zero rows excluded by the start. For binomial and quasibinomial
+#'   models with an intercept, automatic slope starts account for its
+#'   cross-products with the predictors. During selection, additional small
+#'   coefficients can be excluded according to \code{thresh}.
+#' @param offset Optional finite, known additive offsets on the linear-predictor
+#'   (link) scale. For ordinary GLMs, supply a vector of length \code{n} or an
+#'   \code{n} by \code{m} matrix. For special families, \code{NULL} uses zero
+#'   offsets; a scalar is replicated over observations and response columns,
+#'   while a length-\code{n} vector or \code{n} by \code{1} matrix supplies one
+#'   offset per observation, shared across response columns.
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: an \code{n} by \code{m} matrix supplies
+#'   channel-specific offsets on the chosen link scale.
+#'   \item \code{mgcv::multinom(K)}: an \code{n} by \code{K+1} matrix supplies
+#'   category-specific offsets, including every category. Offsets are centered
+#'   across categories within each row. A scalar or shared observation offset
+#'   therefore cancels from the multinomial probabilities.
+#'   \item \code{mgcv::cox.ph()}: use a scalar, length-\code{n} vector or
+#'   \code{n} by \code{1} matrix of offsets on the log-relative-hazard scale.
+#'   }
 #' @param lambda Either a scalar with the \eqn{L_0} penalty for univariate or
 #'   independent multichannel fits (when \code{grouped=FALSE}) or the grouped
 #'   row-\eqn{L_0}/\eqn{L_{2,0}} penalty (when \code{grouped=TRUE}), or a
@@ -258,48 +305,150 @@
 #'   perform per channel and fitting pass (default 25). Fits stop earlier
 #'   when the convergence criterion is met; inspect \code{convergence} to
 #'   distinguish this from reaching the iteration cap.
-#' @param grouped A logical value indicating whether a grouped fit should be
-#'   performed in the multivariate case or not. If \code{TRUE}, the algorithm
-#'   will return a group penalized fit, otherwise independent L0glm fits will be
-#'   performed on each response. These procedures approximate grouped
-#'   row-\eqn{L_0}/\eqn{L_{2,0}} and independent elementwise \eqn{L_0} penalties,
-#'   and can be used to do Best Subset of Groups Selection or plain Best Subset
-#'   Selection.
+#' @param grouped Logical (default \code{TRUE}) choosing the unit of sparse
+#'   selection. For multichannel ordinary GLMs and negative binomial models,
+#'   \code{TRUE} uses a grouped row-\eqn{L_0}/\eqn{L_{2,0}} penalty: a predictor
+#'   is counted once when any response-channel coefficient in its row is nonzero.
+#'   \code{FALSE} uses elementwise \eqn{L_0} selection separately in each channel.
+#'   For special families:
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: grouped selection shares adaptive ridge weights
+#'   across each predictor row and thresholds its row norm; ungrouped selection
+#'   uses channel-specific coefficients and weights. Each channel retains its
+#'   own shape parameter, whether grouping is enabled or not.
+#'   \item \code{mgcv::multinom(K)}: \code{TRUE} selects predictor rows using
+#'   the norm of their \code{K+1} CLR category coefficients and counts each
+#'   nonzero row once. \code{FALSE} selects and counts individual nonzero CLR
+#'   entries. Both fit the same joint multinomial likelihood with zero-sum
+#'   coefficient rows; ungrouped fitting is not independent binomial regression
+#'   and does not select entries of an arbitrary ILR contrast basis. A nonzero
+#'   CLR row needs at least two nonzero category entries.
+#'   \item \code{mgcv::cox.ph()}: there is one coefficient per predictor, so
+#'   grouped and ungrouped selection coincide.
+#'   }
+#'   Mandatory terms are unpenalized. Starting-value exclusions remain in force;
+#'   the returned sparse coefficient matrix keeps all original dimensions.
 #' @param group.maxit Integer  specifying the maximum number of iterations to
 #'   perform for the group penalized fitting procedure when \code{grouped =
 #'   TRUE}. In each iteration, the columns of the response matrix \code{y} will
 #'   be refitted on the active row support using shared row-level starting
 #'   values derived from the current coefficients, which then imposes a group
-#'   penalty.
-#' @param relaxed Logical indicating if the algorithm should conduct a nearly
-#'   unpenalized fit on the L0glm selected variables (using
-#'   \code{lambda=1E-30}). Hard thresholding is disabled in this final refit,
-#'   while adaptive ridge weights remain unsmoothed. This can
-#'   reduce coefficient bias and increase sensitivity, especially for the multivariate case
-#'   with grouped variable selection. Defaults to \code{TRUE} when
-#'   \code{grouped=TRUE} & multichannel data are passed in \code{y}.
-#' @param prior.mean An optional numeric vector of length \code{p} specifying
-#'   the center towards which coefficients should be shrunk in each IRLS ridge
-#'   regression iteration. This is done via nonzero centered ridge regression.
-#'   This can be useful if there is good prior information available that some
-#'   coefficients should have a particular nonnegative value. The default
-#'   \code{prior.mean = NULL} will shrink to zero using a default zero centered
-#'   ridge regression.
-#' @param gamma Scalar with the exponent to use when calculating the ridge
-#'   penalty \code{(lambda/4)*dispersion/abs(beta)^gamma}.
-#'   Defaults to \code{gamma = 2}, as in Frommlet & Nuel 2016.
+#'   penalty. This argument applies to ordinary GLMs, not the special-family
+#'   loops; those update grouping within IRLS and use \code{maxit} per pass.
+#' @param relaxed Logical controlling a final refit to reduce shrinkage bias.
+#'   \code{FALSE} returns the selection fit. For ordinary GLMs, \code{TRUE}
+#'   uses a nearly unpenalized refit with \code{lambda = 1e-30} and unsmoothed
+#'   adaptive ridge weights. Special families instead use an unpenalized IRLS
+#'   pass with \code{lambda = 0}, on the following support:
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: grouped refits admit all eligible channel
+#'   coefficients within selected predictor rows; ungrouped refits admit only
+#'   entries nonzero at the end of selection. Estimated shape parameters continue
+#'   to be updated during refitting; shapes fixed in the constructor remain fixed.
+#'   \item \code{mgcv::multinom(K)}: grouped refits jointly estimate all
+#'   category coefficients within retained predictor rows, allowing category
+#'   entries that were zero during selection to become nonzero. Ungrouped refits
+#'   jointly estimate only the selected nonzero CLR entries and hold all other
+#'   category entries at zero. Both retain the joint multinomial likelihood and
+#'   zero-sum row constraints; a row with \eqn{s} admitted category entries has
+#'   \eqn{s-1} free directions. No new predictor rows are introduced.
+#'   \item \code{mgcv::cox.ph()}: refit the selected log-relative-hazard
+#'   coefficients using the Cox partial likelihood, without an intercept.
+#'   }
+#'   Hard thresholding is disabled during refitting. Explicit starting-value
+#'   exclusions are respected; intercepts and \code{always.include} terms remain
+#'   eligible and unpenalized. Sparse output retains the original dimensions.
+#'   The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
+#'   and for grouped multinomial models with either factor or count-matrix
+#'   responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
+#'   fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
+#'   Each special-family pass has its own \code{maxit} limit; inspect
+#'   \code{convergence} to assess whether the refit converged.
+#' @param prior.mean Optional finite centers for the ridge penalty in each IRLS
+#'   update. \code{NULL} (default) uses zero centers. Supply values in original
+#'   input coefficient units; normalization and any eligible predictor centering
+#'   are handled internally. Unlike \code{start = 1}, \code{prior.mean = 1} has
+#'   no special normalized-coordinate meaning. For ordinary GLMs, use a
+#'   length-\code{p} vector shared across channels or a \code{p} by \code{m}
+#'   matrix, including any added intercept row. Special families also accept a
+#'   scalar repeated over predictors and response/category columns:
+#'   \itemize{
+#'   \item \code{mgcv::nb()}: use a length-\code{p} vector or \code{p} by
+#'   \code{m} matrix for regression-coefficient centers. These do not specify
+#'   a center for the shape parameter \eqn{\theta} or dispersion.
+#'   \item \code{mgcv::cox.ph()}: use a length-\code{p} vector or \code{p} by
+#'   \code{1} matrix for log-relative-hazard coefficients, without an intercept.
+#'   These are not centers for the baseline hazard.
+#'   \item \code{mgcv::multinom(K)}: use a \code{p} by \code{K+1} matrix in
+#'   response-category order. Targets are centered across categories within each
+#'   predictor row to give CLR targets,
+#'   \eqn{a_{jc} \leftarrow a_{jc}-(K+1)^{-1}\sum_h a_{jh}}.
+#'   Adding a common constant to all category targets in a row has no effect.
+#'   A scalar or length-\code{p} vector is shared across categories and therefore
+#'   gives zero CLR targets. Supply category contrasts for nonzero CLR targets.
+#'   }
+#'   The ridge penalty is centered on these targets, but adaptive weights and
+#'   support counts are still based on coefficients relative to zero, not on
+#'   deviations from \code{prior.mean}. These targets are not starting
+#'   coefficients and do not change the eligibility rules of \code{start}: a nonzero
+#'   target cannot reactivate an excluded starting coefficient or an all-zero
+#'   multinomial starting row. Such rows remain zero in the full-size sparse
+#'   output. Unpenalized intercepts and \code{always.include} terms are not
+#'   shrunk toward their targets. For special families, the final relaxed refit
+#'   removes the ridge penalty on retained support, so these centers no longer
+#'   exert shrinkage during that refit.
+#' @param gamma Scalar exponent in the unsmoothed adaptive ridge weights,
+#'   default \code{2}, as in Frommlet & Nuel (2016). Weights use coefficients
+#'   in normalized working coordinates, denoted by \eqn{b}, relative to zero
+#'   rather than deviations from \code{prior.mean}. Ordinary single-channel
+#'   updates use \eqn{D_j=(\lambda/4)\phi/|b_j|^\gamma}, with scale dispersion
+#'   \eqn{\phi}. For special families, scale dispersion is one:
+#'   \itemize{
+#'   \item Grouped multichannel NB and grouped multinomial models use
+#'   \eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}, shared across the row.
+#'   For multinomial models, \eqn{b_j} contains all \code{K+1} CLR category
+#'   coefficients; positive and negative category effects cannot cancel in this
+#'   norm. The default \code{gamma = 2} uses the sum of squared row coefficients.
+#'   \item Ungrouped NB and multinomial models use
+#'   \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for individual channel or CLR
+#'   category entries. Cox and single-channel NB use the same scalar rule.
+#'   }
+#'   Mandatory terms have zero ridge penalty; excluded coefficients remain
+#'   excluded. This argument changes adaptive weighting, not the hard cutoff
+#'   specified by \code{thresh}. Special-family relaxed refits use
+#'   \code{lambda = 0}, so \code{gamma} imposes no shrinkage during that pass.
 #' @param thresh Finite nonnegative scalar, default \code{1e-5}, controlling
-#'   hard thresholding during selection. After each update, coefficients with
-#'   \code{abs(beta)*scale < max(abs(beta)*scale)*thresh} or
-#'   \code{abs(beta)*scale < 1e-20} are set to zero. With
-#'   \code{normalize = "none"}, \code{scale = 1}. The maximum is computed
-#'   separately for each response channel, excluding unpenalized mandatory
-#'   terms; these terms are never hard thresholded.
-#'   Exact zeros remain excluded within that IRLS run. Setting \code{thresh=0}
-#'   disables only the relative cutoff; the absolute numerical floor remains.
-#'   The final relaxed refit applies neither cutoff; nonnegativity clipping
-#'   still applies when requested. Adaptive ridge weights are unsmoothed,
-#'   \code{1/abs(beta)^gamma}, independently of \code{thresh}.
+#'   hard thresholding during selection. Cutoffs use normalized working
+#'   coefficients \eqn{b}; for selectable slopes,
+#'   \code{abs(b) = abs(beta)*scale}, where \code{beta} is in original input
+#'   units and \code{scale = 1} with \code{normalize = "none"}.
+#'   Ordinary GLM updates use individual coefficient magnitudes, comparing each
+#'   with \code{thresh} times the largest selectable magnitude in its response
+#'   channel, or the absolute floor \code{1e-20}. For special families:
+#'   \itemize{
+#'   \item Grouped multichannel NB and grouped multinomial models threshold
+#'   \eqn{r_j=\|b_j\|_2}. An entire predictor row is removed when
+#'   \eqn{r_j < \texttt{thresh}\max_{k\in S} r_k} or \eqn{r_j < 10^{-20}},
+#'   where \eqn{S} contains selectable, nonmandatory rows. Individual entries
+#'   within retained rows are not hard thresholded, even if very small.
+#'   \item Ungrouped NB and multinomial models threshold individual entries:
+#'   \eqn{|b_{jc}| < \texttt{thresh}\max_{k\in S}|b_{kc}|} or
+#'   \eqn{|b_{jc}| < 10^{-20}}. Each response/category column has its own
+#'   relative cutoff. Cox and single-channel NB use this scalar rule.
+#'   \item After multinomial thresholding, surviving entries are recentered
+#'   within their allowed category set to maintain zero-sum CLR rows, leaving
+#'   excluded entries at zero. Rows with fewer than two allowed entries are zero.
+#'   Row norms, not arithmetic row means, are used for grouped thresholding.
+#'   }
+#'   Mandatory terms are excluded from cutoff maxima and never hard thresholded.
+#'   Removed rows or entries stay excluded during the selection pass; grouped
+#'   relaxed refits may recover eligible entries within retained rows as described
+#'   in \code{relaxed}. Starting-value exclusions remain binding, and sparse
+#'   output keeps its original dimensions. Setting \code{thresh = 0} disables
+#'   only the relative cutoff; the absolute floor remains. Final relaxed refits
+#'   apply neither cutoff. For special families, cutoffs are applied only in
+#'   selection passes with \code{lambda > 0}. Coefficient constraints still apply.
+#'   \code{thresh} does not smooth or otherwise alter the adaptive ridge weights.
 #' @param tol Convergence tolerance (default \code{1e-10}). Iterations stop when the relative
 #'   change in the \eqn{L_2} norm of the coefficients drops below this
 #'   threshold. With preprocessing, the test uses scaled selectable slopes
@@ -448,6 +597,21 @@
 #' approximates the Best Subset of Groups solution if lambda is adequately
 #' chosen.
 #'
+#' \subsection{Special families}{
+#' The constructors \code{mgcv::nb()}, \code{mgcv::multinom(K)} and
+#' \code{mgcv::cox.ph()} select family-specific IRLS implemented using this
+#' package's ridge kernels. NB estimates one shape per channel unless fixed in
+#' the constructor. Multinomial fits return all K+1 category coefficients in CLR
+#' coordinates, with a default free intercept and invariant grouped row penalties.
+#' Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
+#' sets and automatic LLT/matrix-free PCG routing. See
+#' \link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
+#' for the mathematics, examples, controls and limitations. These family loops
+#' are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
+#' \code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
+#' retain their existing behavior.
+#' }
+#'
 #' @return Returns a list with the following elements:
 #' \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
 #' (single column for the univariate case). If `intercept = TRUE`, the first 
@@ -532,19 +696,6 @@
 #'   \code{"pcg"}; a scalar LLT threshold applies to both storage types.
 #'   The working-size guard applies to dense direct Cox and multinomial systems,
 #'   not matrix-free Cox products. See the dedicated family help pages.
-#' @section Additional families:
-#' The constructors \code{mgcv::nb()}, \code{mgcv::multinom(K)} and
-#' \code{mgcv::cox.ph()} select family-specific IRLS implemented using this
-#' package's ridge kernels. NB estimates one shape per channel unless fixed in
-#' the constructor. Multinomial fits return all K+1 category coefficients in CLR
-#' coordinates, with a default free intercept and invariant grouped row penalties.
-#' Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
-#' sets and automatic LLT/matrix-free PCG routing. See
-#' \link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
-#' for the mathematics, examples, controls and limitations. These family loops
-#' are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
-#' \code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
-#' retain their existing behavior.
 L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       y, # n x m outcome matrix
                       weights       = NULL,

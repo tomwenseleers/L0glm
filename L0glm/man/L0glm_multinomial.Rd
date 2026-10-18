@@ -21,11 +21,32 @@ predictor units. An unrestricted, unpenalized intercept is added by default.
 \code{predict(type="link")} returns centered scores;
 \code{predict(type="response")} returns probabilities; and
 \code{predict(type="class")} returns class labels.
-Starts, prior means and offsets have \eqn{C} columns and are centered across
-categories. Scalar \code{start=1}, like \code{start=0}, centers to zero.
-A weak-ridge step seeds zero starting coefficients before adaptive weighting.
-Starting zeroes are not structural masks for multinomial fitting.
+Starting matrices, prior means and offsets have \eqn{C} columns in response
+category order and are centered across categories. A starting row supplied as
+all zero excludes that predictor before CLR centering, throughout selection
+and relaxed refitting. Individual category zeroes within other starting rows
+remain eligible. Intercepts and \code{always.include} rows remain eligible
+even with zero starts. Scalar \code{start=1} centers to zero but keeps all rows
+eligible; \code{start=0} fits only mandatory terms. A weak-ridge step seeds
+eligible zero starts before adaptive weighting. The returned sparse coefficient
+matrix retains all original predictor rows and \eqn{C} category columns, with
+excluded rows filled with zeroes. Use \code{start=NULL} for automatic initialization.
 \code{nonnegative=TRUE} is ignored with a warning.
+
+\code{prior.mean} supplies ridge-penalty targets in original predictor units.
+Supply a \eqn{p} by \eqn{C} matrix in response-category order, including any
+added intercept row. Targets are transformed internally and centered to CLR:
+\deqn{a_{jc}\leftarrow a_{jc}-C^{-1}\sum_{h=1}^C a_{jh}.}
+Common row shifts have no effect. A scalar or length-\eqn{p} vector is repeated
+across categories and therefore gives zero CLR targets; nonzero targets require
+category contrasts. \code{NULL} uses zero targets.
+The quadratic ridge term is centered on these targets, whereas adaptive weights
+and support counts still use coefficients relative to zero. Targets are not
+starting coefficients and do not override starting-row exclusions: a nonzero target
+for an excluded row leaves that row fixed at zero in the full-size sparse output.
+Unpenalized intercept/mandatory rows are not shrunk toward their targets.
+The final relaxed refit removes the ridge penalty on retained support, so the
+targets no longer exert shrinkage during that refit.
 }
 \section{Joint quadratic IRLS}{
 The observation score and information on class scores are
@@ -53,20 +74,52 @@ et al.; their sparse penalty is L1, not the adaptive L0 procedure here.
 With \code{grouped=TRUE}, the target is
 \deqn{-2\ell(B)+\lambda\sum_{j\notin M}
   \mathbf{1}\{\|B_j\|_2>0\},}
-where \eqn{M} contains mandatory terms. Default adaptive ridge diagonals are
-\eqn{D_{jc}=\lambda/(4\sum_hB_{jh}^2)}.
+where \eqn{M} contains mandatory terms. In normalized working CLR coefficients
+\eqn{b}, adaptive ridge diagonals are
+\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}.
+The default \code{gamma=2} uses \eqn{\|b_j\|_2^2=\sum_h b_{jh}^2}.
 Positive and negative class effects cannot cancel in this norm.
 Both the row penalty and the model are invariant to the choice of orthonormal
 contrast basis and to permutations of category labels.
 
 With \code{grouped=FALSE}, the charge counts nonzero displayed CLR entries,
-and \eqn{D_{jc}=\lambda/(4B_{jc}^2)}. This is a different sparsity target from
+and \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)}. This is a different sparsity target from
 entrywise ILR sparsity. Each active row is solved on the zero-sum plane of its
 allowed class entries; a row with fewer than two entries must be zero.
-Entrywise thresholding recenters surviving entries within their allowed set.
-The relative \code{thresh} and absolute \code{1e-20} cutoff apply during
-selection; relaxed refitting disables thresholding and removes the penalty.
-A grouped relaxed refit can restore class entries within retained rows.
+Adaptive weights are unsmoothed and use coefficients relative to zero, not
+deviations from \code{prior.mean}; \code{thresh} does not alter them.
+With \code{grouped=TRUE}, hard thresholding acts on
+\eqn{r_j=\|b_j\|_2}, not individual category entries or arithmetic row means.
+An entire row is removed if
+\eqn{r_j<\texttt{thresh}\max_{k\in S}r_k} or \eqn{r_j<10^{-20}},
+where \eqn{S} contains selectable, nonmandatory rows. Very small category
+entries in a retained row are not individually hard thresholded.
+With \code{grouped=FALSE}, each category column instead uses
+\eqn{|b_{jc}|<\texttt{thresh}\max_{k\in S}|b_{kc}|} or
+\eqn{|b_{jc}|<10^{-20}}. Surviving entries are then recentered within their
+allowed set to preserve zero-sum rows, while removed entries remain zero;
+rows with fewer than two allowed entries are zero. Mandatory rows are exempt
+and excluded from cutoff maxima. Thresholded entries or rows remain excluded
+during selection. Cutoffs use normalized working coordinates; selectable
+slopes equal original-unit coefficients times the stored column scales.
+\code{normalize="none"} gives scale one. Defaults are \code{gamma=2} and
+\code{thresh=1e-5}. Setting \code{thresh=0} removes only the relative cutoff.
+These cutoffs apply only during selection with \code{lambda>0}.
+
+With \code{relaxed=TRUE}, a final joint multinomial IRLS pass uses
+\code{lambda=0} and disables hard thresholding. A grouped refit admits all
+category entries in retained predictor rows, so previously zero category
+entries within those rows can become nonzero. An ungrouped refit admits only
+the selected nonzero CLR entries and fixes other category entries at zero.
+Both preserve zero-sum rows: \eqn{s} admitted entries give \eqn{s-1} free
+directions, and a nonzero row needs at least two nonzero entries. No new
+predictor rows can enter. Explicit all-zero starting rows remain excluded;
+intercept and \code{always.include} rows remain eligible and unpenalized.
+Sparse output retains all original predictor rows and category columns.
+Grouping defaults to \code{TRUE}, and relaxed fitting defaults to \code{TRUE}
+for grouped multinomial models with either factor or count-matrix responses.
+Set \code{relaxed=TRUE} explicitly to refit an ungrouped model. Each selection
+or relaxed pass has its own \code{maxit} limit; \code{group.maxit} is unused.
 
 \code{metrics$objective} uses the requested L0 charge. \code{GIC_rows} charges
 selected rows. Parameter-count ICs instead use \eqn{C-1} free directions per

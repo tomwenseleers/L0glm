@@ -28,6 +28,14 @@ Let \eqn{u=\partial\ell/\partial\beta} and
 \eqn{H=-\partial^2\ell/\partial\beta\partial\beta^T}.
 With ridge diagonal \eqn{D} and center \eqn{a}, a working update solves
 \deqn{(H+D)\Delta=u-D(\beta-a),\qquad \beta^+=\beta+\Delta.}
+The center \eqn{a} is \code{prior.mean}, supplied in original predictor units
+as a scalar, length-\eqn{p} vector or \eqn{p} by \eqn{1} matrix, without an
+intercept. Normalization is handled internally; \code{NULL} uses zero centers.
+These are targets for log-relative-hazard coefficients, not the baseline hazard.
+Nonzero targets cannot reactivate predictors excluded by explicit zero starts;
+their rows remain zero in the original sparse coefficient dimensions.
+Unpenalized mandatory terms are unaffected by their targets. The final relaxed
+refit removes the ridge penalty on retained support.
 An exact partial-likelihood line search safeguards the current ridge subproblem.
 For selectable terms, default adaptive weights are
 \eqn{D_j=\lambda/(4\beta_j^2)}. Mandatory terms have zero ridge penalty.

@@ -24,11 +24,29 @@ or three-column integer count matrix. All K+1 category coefficients are returned
 in centered log-ratio (CLR) coordinates: every coefficient row sums to zero.
 A free intercept is added by default. Starts, offsets and prior means also
 have K+1 columns and are centered across categories. Common shifts have no
-effect on probabilities. Scalar start=1 centers to zero, as does start=0;
-zero starts receive one weak-ridge IRLS step before adaptive weighting.
-Starting zeroes impose no support restriction. Nonnegative=TRUE is ignored
+effect on probabilities. All-zero starting rows exclude predictors before CLR
+centering; individual category zeroes in other rows remain eligible.
+Scalar start=1 centers to zero while keeping all rows eligible; start=0 fits
+only mandatory terms. Intercepts and always.include rows remain eligible even
+with zero starts. Eligible zero starts receive one weak-ridge IRLS step before
+adaptive weighting. Returned sparse coefficients retain their original
+predictor and category dimensions, including excluded zero rows. Nonnegative=TRUE is ignored
 with a warning. The model and output stay in CLR; K orthonormal contrast
 coordinates are used only to solve nonsingular linear systems efficiently.
+
+\code{prior.mean} supplies ridge-penalty centers in original input coefficient
+units: a scalar, length-\eqn{p} vector, or \eqn{p} by \eqn{m} matrix, with
+any added intercept included in \eqn{p}. NB uses one column per response
+channel; Cox uses one column, no intercept, and centers log-relative-hazard
+coefficients rather than the baseline hazard. NB shape is not a prior target.
+Multinomial uses all K+1 category columns and centers each target row to CLR;
+scalar or vector targets shared across categories become zero. \code{NULL}
+also uses zero targets. A nonzero target cannot override an excluded starting
+coefficient or multinomial row, which remains zero in the full-size sparse
+output. Mandatory terms remain unpenalized. Adaptive weights and support counts
+still use coefficients relative to zero, rather than deviations from the
+targets. Special-family relaxed refits remove the ridge penalty on retained
+support, so the targets no longer exert shrinkage during that refit.
 
 Multinomial uses coupled block IRLS with the exact class covariance. IRLS for
 logistic models is algebraically equivalent to a Newton/Fisher-scoring step,
@@ -37,15 +55,45 @@ The alternative \code{control.family=list(multinomial="bound")} uses a diagonal
 upper curvature bound on the zero-sum plane inspired by Krishnapuram et al.; their paper uses an L1
 penalty, while the adaptive L0 extension here is separate.
 
-Grouped selection penalizes a predictor row if any contrast or channel is
-nonzero. Its adaptive ridge weights are shared across a row. Relaxed refits
-can recover coefficients within retained rows, while respecting explicit
-structural-zero starts for NB and Cox. Multinomial ungrouped L0 counts nonzero
-CLR entries, with row sums kept exactly constrained during fitting. A row with
-s active entries has s-1 free directions. Grouped multinomial L0 counts active
-rows and uses a category-invariant CLR row norm. Its parameter-count IC charges
-K free directions per active row. Mandatory terms remain unpenalized.
-Hard thresholding is disabled during relaxed fitting.
+Grouped selection penalizes a predictor row if any channel or CLR category
+coefficient is nonzero. Its adaptive ridge weights are shared across a row.
+NB ungrouped selection counts individual channel coefficients. Multinomial
+ungrouped selection counts individual CLR entries, with zero-sum rows; it still
+fits the joint multinomial likelihood. Grouped multinomial selection instead
+counts active rows using a category-invariant CLR row norm. Its parameter-count
+IC charges K free directions per active row. Cox has one coefficient per
+predictor, so grouped and ungrouped selection coincide.
+
+For normalized working coefficients \eqn{b}, \code{gamma} (default two)
+sets the unsmoothed adaptive weights:
+\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)} for grouped multichannel NB and
+multinomial models, and \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for ungrouped
+or single-channel fits, including Cox. Scale dispersion is one.
+\code{thresh} (default \code{1e-5}) acts on row norms for grouped selection,
+removing whole rows, and on individual magnitudes within each response/category
+column for ungrouped or single-channel selection. The relative cutoff is
+\code{thresh} times the corresponding largest selectable magnitude; an
+absolute \code{1e-20} cutoff also applies. Mandatory terms are excluded from
+these maxima and never thresholded. Retained grouped rows do not receive
+individual-entry hard cutoffs. Multinomial surviving entries are recentered
+within their allowed category set, keeping removed entries zero; rows with
+fewer than two allowed entries are zero. Cutoffs apply only in selection passes
+with positive lambda. \code{thresh=0} retains the absolute cutoff, and
+\code{thresh} does not smooth adaptive weights.
+
+With \code{relaxed=TRUE}, special families refit using \code{lambda=0} without
+hard thresholding. Grouped refits admit all eligible entries in retained rows;
+ungrouped refits admit only entries nonzero at the end of selection. A grouped
+multinomial refit can recover category entries within a retained row, whereas
+an ungrouped refit holds unselected CLR entries at zero. Both retain zero-sum
+rows: s admitted category entries give s-1 free directions. No new predictor
+rows enter the refit. Starting exclusions remain binding, and mandatory terms
+remain eligible and unpenalized. Estimated NB shapes continue to be updated.
+Sparse outputs retain all original coefficient dimensions. Relaxed fitting is
+enabled by default for grouped multichannel NB and all grouped multinomial
+responses, but not for Cox, ungrouped fits or single-channel NB. Each pass uses
+\code{maxit}; \code{group.maxit} is unused. Tuning applies refits to each
+candidate and within CV training folds before scoring; pilot fits are unrelaxed.
 The reported L0 objective is a target for a heuristic, not a global certificate.
 There is no reference category in multinomial fitting or selection.
 

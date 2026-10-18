@@ -32,6 +32,14 @@ At each IRLS iteration, with \eqn{\dot\mu=d\mu/d\eta}, the working quantities ar
 The existing ridge solver computes
 \deqn{(X^T W X+D)\beta^+=X^T Wz+Da,}
 where \eqn{a} is \code{prior.mean} in working coefficient coordinates.
+Supply \code{prior.mean} in original predictor units as a scalar,
+length-\eqn{p} vector shared across channels, or \eqn{p} by \eqn{m} matrix,
+including any added intercept row; normalization is handled internally.
+\code{NULL} uses zero centers. These targets concern regression coefficients,
+not shape or dispersion. Nonzero targets cannot reactivate coefficients excluded
+by explicit zero starts; excluded entries remain zero in the original sparse
+output dimensions. Unpenalized mandatory terms are unaffected by their targets,
+and the final relaxed refit removes the ridge penalty on retained support.
 For the default \code{gamma=2}, a selectable coefficient has
 \eqn{D_j=\lambda/(4\beta_j^2)}. Grouped selection instead shares
 \eqn{D_{jc}=\lambda/(4\sum_h\beta_{jh}^2)} across channels.
