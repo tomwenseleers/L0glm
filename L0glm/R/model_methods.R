@@ -67,7 +67,7 @@
 #'   \code{df} and \code{nobs} attributes. Each criterion returns a numeric
 #'   score; \code{coef()} returns a sparse matrix; \code{nobs()} returns the
 #'   criterion sample size.
-#' @seealso [L0glm.metrics()], \link{information_criteria}, [stats::AIC()]
+#' @seealso [L0glm.metrics()], \link{model_summary}, \link{information_criteria}, [stats::AIC()]
 #' @examples
 #' set.seed(7)
 #' X <- matrix(rnorm(240), 60, 4)

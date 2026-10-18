@@ -3,7 +3,6 @@
 \name{sparseglm}
 \alias{sparseglm}
 \alias{coef.sparseglm}
-\alias{print.sparseglm}
 \alias{plot.sparseglm}
 \title{Fit, tune and compare sparse regression methods}
 \usage{
@@ -35,8 +34,6 @@ sparseglm(
 )
 
 \method{coef}{sparseglm}(object, ...)
-
-\method{print}{sparseglm}(x, ...)
 
 \method{plot}{sparseglm}(x, ...)
 }
@@ -138,6 +135,8 @@ A \code{sparseglm} object with named \code{fits}, \code{tuning} candidate paths/
 diagnostics, \code{timings}, common \code{foldid}, input data and optional truth.
 \code{coef()} extracts named sparse matrices; \code{\link[=L0glm.metrics]{L0glm.metrics()}} returns a table
 of metrics and timings, including unavailable-method rows.
+\code{print()} gives a compact overview; \code{summary()} adds essential fit and
+recovery scores while retaining the complete table in \verb{$metrics}.
 }
 \description{
 Compare sparse single-response, independent multichannel, joint multinomial
@@ -200,5 +199,5 @@ comparison <- sparseglm(X, y, method=c("lasso","relaxed_lasso"),
 L0glm.metrics(comparison)[c("method","seconds","gic","F1_score","MCC")]
 }
 \seealso{
-\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}
+\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}, \link{model_summary}
 }

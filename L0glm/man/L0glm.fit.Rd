@@ -470,6 +470,8 @@ Special-family models additionally inherit from \code{L0glm_extended_fit}.
 Use \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()},
 \code{GIC()}, \code{EBIC()} and \code{MBIC()} to extract coefficients
 and scores; see \link{model_criteria} and \link{L0glm.metrics}.
+\code{print()} shows a compact overview; \code{summary()} adds fit metrics
+and a bounded coefficient display; see \link{model_summary}.
 \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
 (single column for the univariate case). If `intercept = TRUE`, the first 
 row is for the intercept.}

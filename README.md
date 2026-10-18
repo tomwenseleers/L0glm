@@ -316,6 +316,7 @@ adaptive LASSO and adaptive relaxed LASSO on the same data:
 comparison <- sparseglm(X, y, family = gaussian(), method = "all",
                         tune = "cv", nfolds = 5)
 L0glm.metrics(comparison)  # fit/recovery metrics, tuning scores and elapsed times
+summary(comparison)       # concise comparison table and method-status notes
 coef(comparison)$adaptive_relaxed_lasso
 ```
 
@@ -326,6 +327,10 @@ available; independent-channel fits and unavailable combinations are identified
 in the results. Joint multinomial and right-censored Cox comparisons use
 `family = mgcv::multinom(K)` and `family = mgcv::cox.ph()`, respectively.
 See `?sparseglm` for backend support and explicitly labelled approximations.
+
+Models from `L0glm.fit()` and `L0nnpois()` also support `print()` and `summary()`.
+Use `print(summary(fit), max.rows = 20, max.cols = 6)` to limit the displayed
+coefficients; the summary retains the complete sparse matrix and fit metrics.
 
 ## References
 

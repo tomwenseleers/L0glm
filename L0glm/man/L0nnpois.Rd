@@ -424,6 +424,8 @@ An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit
   retained separately from the working weights for scoring. Methods
   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
+  \code{print()} and \code{summary()} provide compact model displays;
+  see \link{model_summary}.
 }
 \description{
 `L0nnpois()` is a fast RcppEigen/OpenMP implementation of

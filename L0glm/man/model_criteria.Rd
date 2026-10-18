@@ -112,5 +112,5 @@ c(AIC = AIC(fit), BIC = BIC(fit), GIC = GIC(fit),
 coef(fit)
 }
 \seealso{
-\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \link{information_criteria}, \code{\link[stats:AIC]{stats::AIC()}}
+\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \link{model_summary}, \link{information_criteria}, \code{\link[stats:AIC]{stats::AIC()}}
 }

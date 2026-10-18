@@ -44,12 +44,52 @@ coef.sparseglm <- function(object, ...) {
   lapply(object$fits, function(fit) if (is.null(fit)) NULL else stats::coef(fit))
 }
 
-#' @rdname sparseglm
+#' @rdname model_summary
 #' @method print sparseglm
 #' @export
-print.sparseglm <- function(x, ...) {
-  print(x$timings[c("method", "status", "scope", "tune", "selected_parameter", "seconds")], row.names=FALSE)
+print.sparseglm <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
+  L0glm_print_comparison_info(x$data$family, nrow(x$data$X), ncol(x$data$X),
+    x$data$m, x$data$tune, if (is.null(x$foldid)) NULL else max(x$foldid))
+  print(x$timings[c("method", "status", "scope", "parameter", "selected_parameter", "seconds")],
+    digits=digits, row.names=FALSE)
   invisible(x)
+}
+
+#' @rdname model_summary
+#' @method summary sparseglm
+#' @export
+summary.sparseglm <- function(object, ..., mu_floor=object$mu_floor, beta_true=object$beta_true) {
+  structure(list(call=object$call, family=object$data$family,
+    n=nrow(object$data$X), p=ncol(object$data$X), m=object$data$m,
+    tune=object$data$tune, nfolds=if (is.null(object$foldid)) NULL else max(object$foldid),
+    mu_floor=mu_floor, metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true)),
+    class="summary.sparseglm")
+}
+
+#' @rdname model_summary
+#' @method print summary.sparseglm
+#' @export
+print.summary.sparseglm <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
+  L0glm_print_comparison_info(x$family, x$n, x$p, x$m, x$tune, x$nfolds)
+  if (x$mu_floor > 0) cat("Scoring mean floor:", format(x$mu_floor, digits=digits), "\n")
+  fields <- unique(c("method", "status", "scope", "parameter", "selected_parameter", "seconds",
+    if (x$tune == "cv") c("cv_mean", "cv_se") else x$tune,
+    "support_size_estimated", "loglik", "deviance", "gic", L0glm_summary_recovery(x$metrics)))
+  print(x$metrics[intersect(fields, names(x$metrics))], digits=digits, row.names=FALSE)
+  notes <- which(!is.na(x$metrics$note) & nzchar(x$metrics$note))
+  if (length(notes)) {
+    cat("\nMethod notes:\n")
+    for (i in notes) cat(x$metrics$method[i], ": ", x$metrics$note[i], "\n", sep="")
+  }
+  invisible(x)
+}
+
+L0glm_print_comparison_info <- function(family, n, p, m, tune, nfolds) {
+  cat("Sparse GLM comparison\nFamily:", family$family, "  Link:", family$link, "\n")
+  cat(sprintf("Observations: %d   Predictors: %d   Channels: %d\n", n, p, m))
+  cat("Tuning:", toupper(tune))
+  if (!is.null(nfolds)) cat(sprintf(" (%d folds)", nfolds))
+  cat("\n")
 }
 
 #' @rdname sparseglm

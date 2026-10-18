@@ -2,6 +2,13 @@
 
 ## Development changes
 
+* Added S3 `print()` and `summary()` methods for L0glm and native Poisson fits,
+  inherited by special-family fits, and for `sparseglm()` comparisons. Printing
+  uses stored metadata; summaries compute common fit/recovery scores without
+  refitting. Coefficient previews are bounded while retaining the complete sparse
+  matrix. Convergence displays use the last pass per stage and channel, and
+  comparison summaries retain tuning scores, timings and method-status notes.
+
 * Added `sparseglm()` to fit, tune and compare L0glm, ABESS, L0Learn, MCP, SCAD,
   LASSO, relaxed LASSO and both adaptive LASSO variants. Every candidate uses
   common likelihood/IC scoring or shared row-fold CV, with training-only

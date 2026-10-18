@@ -122,7 +122,9 @@
 #'   diagnostics, `timings`, common `foldid`, input data and optional truth.
 #'   `coef()` extracts named sparse matrices; [L0glm.metrics()] returns a table
 #'   of metrics and timings, including unavailable-method rows.
-#' @seealso [L0glm.metrics()], [L0glm.tune()]
+#'   `print()` gives a compact overview; `summary()` adds essential fit and
+#'   recovery scores while retaining the complete table in `$metrics`.
+#' @seealso [L0glm.metrics()], [L0glm.tune()], [model_summary]
 #' @examples
 #' set.seed(1)
 #' X <- matrix(rnorm(360), 60, 6)

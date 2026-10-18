@@ -41,6 +41,8 @@
 #'   retained separately from the working weights for scoring. Methods
 #'   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
 #'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
+#'   \code{print()} and \code{summary()} provide compact model displays;
+#'   see \link{model_summary}.
 #'
 #' @seealso [L0glm.fit()], \link{information_criteria} for case-insensitive
 #'   criterion presets, penalty formulas, guidance and original references.
