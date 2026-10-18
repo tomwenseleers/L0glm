@@ -2,6 +2,9 @@
 
 ## Development changes
 
+* Consolidated the legacy Gaussian path likelihood adapters while preserving
+  their existing weighting, residual-scale and parameter-count conventions.
+
 * Removed eight unused internal helpers and obsolete commented-out code.
   Fitting, solver and scoring routines retain their existing implementations.
 

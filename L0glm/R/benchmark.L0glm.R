@@ -12,25 +12,8 @@
 #' @export
 logLik.glmnet = function(object, ...) {
   args <- get_logLik_args(...)
-  weights <- args$weights
-  X <- args$X
-  y <- args$y
-  n  = as.numeric(object$nobs)
-  df = Matrix::colSums(object$beta!=0)
-  # df = nr of nonzero coefficients (incl intercept) (NOTE: more correct for the LASSO would be to calculate this as the trace of the hat matrix)
-
-  # Compute y_pred for all columns of object$beta at once
-  y_pred = X %*% object$beta
-
-  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-  resid.ss = Matrix::colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - y_pred) ^ 2)
-
-  rdf = n - df
-  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-  attr(logL, "df") = df  # nr of nonzero coefficients
-  attr(logL, "nobs") = n
-  attr(logL, "p") = object$dim[[2]]
-  return(logL)
+  L0glm_gaussian_path_loglik(args$X %*% object$beta, args$y, args$weights,
+    as.numeric(object$nobs), Matrix::colSums(object$beta != 0), object$dim[[2]])
 }
 
 # log-likelihood method for gaussian L0Learn fit,
@@ -44,27 +27,22 @@ logLik.glmnet = function(object, ...) {
 #' @export
 logLik.L0Learn = function(object, ...) {
   args <- get_logLik_args(...)
-  weights <- args$weights
-  X <- args$X
-  y <- args$y
-  n  = object$n
-  p = object$p
-  df = object$suppSize[[1]]
-  # df = nr of nonzero coefficients (incl intercept)
-  
-  # Compute y_pred for all columns of object$beta at once
-  y_pred = X %*% object$beta[[1]]
-  
-  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) -
-                                  y_pred) ^ 2)
-  
-  rdf = n - df
-  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-  attr(logL, "df") = df  # nr of nonzero coefficients
-  attr(logL, "nobs") = n
-  attr(logL, "p") = object$dim[[2]]
-  return(logL)
+  L0glm_gaussian_path_loglik(args$X %*% object$beta[[1]], args$y, args$weights,
+    object$n, object$suppSize[[1]], object$dim[[2]])
+}
+
+# Preserve the legacy residual-df scale and likelihood conventions of all
+# three adapters. Their model-specific prediction and parameter counts stay
+# in the callers; only the common weighted Gaussian calculation is shared.
+L0glm_gaussian_path_loglik <- function(y_pred, y, weights, n, df, p) {
+  resid.ss <- Matrix::colSums(weights *
+    (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred)) - y_pred)^2)
+  rdf <- n - df
+  logL <- -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
+  attr(logL, "df") <- df
+  attr(logL, "nobs") <- n
+  attr(logL, "p") <- p
+  logL
 }
 
 get_logLik_args <- function(...) {
@@ -102,22 +80,6 @@ get_logLik_args <- function(...) {
 # account weights here https://github.com/jaredhuling/ordinis/blob/master/R/ordinis_call.R
 # hence the redefinition of the log likelihood here
 logLik2 = function(object, weights, X, y) {  
-  n  = as.numeric(object$nobs)
-  p = object$nvars
-  df = Matrix::colSums(object$beta!=0)  
-  # df = nr of nonzero coefficients (incl intercept)
-  
-  # Compute y_pred for all columns of object$beta at once
-  y_pred =  cbind(1, X) %*% object$beta
-  
-  # Compute squared residuals, multiply by weights, and sum over rows to get resid.ss
-  resid.ss = colSums(weights * (matrix(rep(y, ncol(y_pred)), ncol = ncol(y_pred) ) - 
-                                  y_pred) ^ 2)
-  
-  rdf = n - df 
-  logL = -0.5 * n * (log(2 * pi) - log(rdf) + log(resid.ss)) - 0.5 * rdf
-  attr(logL, "df") = df  # nr of nonzero coefficients
-  attr(logL, "nobs") = n
-  attr(logL, "p") = p
-  return(logL)
+  L0glm_gaussian_path_loglik(cbind(1, X) %*% object$beta, y, weights,
+    as.numeric(object$nobs), Matrix::colSums(object$beta != 0), object$nvars)
 }
