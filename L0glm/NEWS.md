@@ -2,6 +2,10 @@
 
 ## Development changes
 
+* Normalized dense fits avoid repeated prediction-column copies when most
+  coefficients remain active. Restricted-domain links retain their previous
+  summation order, preserving the difficult Gamma square-root-link fit.
+
 * Eigen CG now defaults to inner relative tolerance `1e-10`, improving agreement
   with LLT in the Gaussian PSF benchmark. Explicit solver tolerances are retained;
   LSCG keeps its default `1e-7`. This does not change LLT or the outer tolerance.

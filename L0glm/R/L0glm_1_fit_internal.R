@@ -169,6 +169,10 @@ L0glm.fit.internal = function(X,
   # their unsmoothed adaptive penalty weights are infinite.
 
   ## 7. main IRLS loop with adaptive ridge step -------------------------------
+  # Keep the original summation order for links with restricted eta domains.
+  dense_prediction <- preprocessing$mode != "none" && !issparse(X) &&
+    (family$link %in% c("log", "logit", "probit", "cloglog", "cauchit") ||
+      family$family == "gaussian" && family$link == "identity")
   for (iter in seq_len(maxit)) {
     iterations <- iter
     ## ---------- working response & weights ---------------------------
@@ -262,7 +266,11 @@ L0glm.fit.internal = function(X,
     }
     
     ## ----- update mu and eta --------------------------------------
-    eta <- as.matrix(offset + X[, which(nonzero), drop = FALSE] %*% beta[nonzero]) # predictions on link scale eta
+    # A dense matrix-vector product avoids copying most columns when the
+    # normalized working fit remains fairly dense. Zeros contribute exactly 0.
+    prediction <- if (dense_prediction && sum(nonzero) > p/2)
+      X %*% beta else X[, which(nonzero), drop = FALSE] %*% beta[nonzero]
+    eta <- as.matrix(offset + prediction)
     if (length(free_intercept)) {
       information <- sum(W * intercept_column[good]^2)
       if (information > 0) {
