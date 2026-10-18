@@ -458,7 +458,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
-# openmp 0.34s
+# openmp 0.1s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))          # true
@@ -539,7 +539,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     solver = "eigen",
                                     method = 1L,
                                     ncores = 4)) 
-# openmp 0.5s
+# openmp 0.2s
 
 
 
@@ -571,7 +571,7 @@ system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                         parallelize = TRUE, 
                         grouped = TRUE,
                         solver = "eigen", method = 1L,
-                        ncores = 4)) # openmp 11.36s
+                        ncores = 4)) # openmp 4s
 tune_full$lambda_best # 1.043608 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
 L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -588,7 +588,7 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                           parallelize = TRUE, 
                           grouped = TRUE,
                           solver = "eigen", method = 1L,
-                          ncores = 4)) # openmp 10.62s
+                          ncores = 4)) # openmp 4.9s
 tune_zoomed$lambda_best # 1.682115 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
 L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -603,7 +603,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                     parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
-                                    method = 1L))  # openmp 0.51s
+                                    method = 1L))  # openmp 0.25s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
