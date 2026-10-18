@@ -229,9 +229,19 @@ correspond to \code{lambda_best}.
 from the same path without any additional fits.
 }
 \section{Additional-family tuning}{
-Family-specific fits are independently initialized at each lambda.
-Grouped IC tuning uses row support and ungrouped IC tuning uses entry support.
-CV fits shape, normalization and pilot starts using training observations only.
-NB validation deviance uses training-estimated shape; multinomial deviance is per weighted trial.
-The common lambda grid uses full data, so this is not nested validation.
+
+NB, Cox and multinomial fits use independent initializations at each lambda.
+Multinomial coefficient paths and seeds are CLR; starting zeroes do not
+restrict support. Grouped tuning charges active rows and ungrouped tuning
+charges nonzero CLR entries. Parameter-count ICs account for the zero-sum
+constraint separately from these L0 objective charges.
+Grouped IC tuning charges rows; \code{metrics$tuning_score} is the selected
+row criterion plus mandatory/nuisance parameter constants, whereas the
+ordinary \code{gic} metric retains its parameter-count definition.
+CV trains theta, normalization and pilot starts using training observations
+only. Cox CV uses the difference between full-data and training partial log
+likelihood at training coefficients, divided by held-out event weight;
+this retains full risk sets. Multinomial CV uses deviance per weighted trial,
+and NB uses deviance per weighted response. The common lambda grid is chosen
+using full data and is not a nested-CV estimate of prediction error.
 }

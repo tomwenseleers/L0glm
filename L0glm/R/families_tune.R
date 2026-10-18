@@ -3,11 +3,16 @@
 L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   response <- args$y
   mass <- switch(kind, nb = rowSums(args$weights),
-    multinomial = args$weights[, 1L] * rowSums(response))
+    multinomial = args$weights[, 1L] * rowSums(response),
+    cox = args$weights[, 1L] * response[, 2L])
   K <- max(foldid)
   fold_weights <- vapply(seq_len(K), function(k) sum(mass[foldid == k]), numeric(1))
+  if (kind == "cox") {
+    full_response <- L0glm_ext_cox_response(response, nrow(response))
+    full_cache <- L0glm_ext_cox_cache(full_response, args$weights[, 1L])
+  }
   if (any(fold_weights <= 0) || any(fold_weights >= sum(mass)))
-    stop("Each CV fold and its complement need positive likelihood mass.", call. = FALSE)
+    stop("Each CV fold and its complement need positive likelihood mass (events for Cox).", call. = FALSE)
   fractions <- 1 - fold_weights/sum(mass)
   lambda_train <- outer(lambdas, fractions)
   loss <- matrix(NA_real_, length(lambdas), K)
@@ -26,10 +31,16 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
         error = function(e) stop(sprintf("CV fold %d, lambda %.4g: %s", k, lambdas[i], conditionMessage(e)), call. = FALSE))
       if (i == 1L) preprocessing[[k]] <- fit$preprocessing
       theta[[k]][i] <- list(fit$theta)
-      loss[i, k] <- L0glm.metrics(fit, args$X[!train, , drop = FALSE],
-        response[!train, , drop = FALSE], args$weights[!train, , drop = FALSE],
-        args$offset[!train, , drop = FALSE], mu_floor)$mean_deviance
-
+      if (kind == "cox") {
+        # Verweij--van Houwelingen subtraction retains the full risk sets.
+        eta <- as.numeric(predict(fit, args$X, type = "link", offset = args$offset))
+        full <- L0glm_ext_cox_eta(eta, full_response, args$weights[, 1L], full_cache)$loglik
+        loss[i, k] <- -2 * (full - as.numeric(logLik(fit)))/fold_weights[k]
+      } else {
+        loss[i, k] <- L0glm.metrics(fit, args$X[!train, , drop = FALSE],
+          response[!train, , drop = FALSE], args$weights[!train, , drop = FALSE],
+          args$offset[!train, , drop = FALSE], mu_floor)$mean_deviance
+      }
     }
   }
   proportions <- fold_weights/sum(fold_weights)
@@ -39,7 +50,8 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   list(lambda = lambdas, mean = means, se = se, deviance = loss, foldid = foldid,
     nfolds = K, fold_weights = fold_weights, lambda_train = lambda_train,
     starts = starts, pilots = pilots, preprocessing = preprocessing, theta = theta,
-    scoring = "held-out deviance per weighted response/trial")
+    scoring = if (kind == "cox") "Cox partial-likelihood subtraction per held-out event" else
+      "held-out deviance per weighted response/trial")
 }
 
 L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
@@ -58,14 +70,14 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   kind <- L0glm_ext_kind(family)
   n <- nrow(X)
   response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
-    multinomial = L0glm_ext_multinomial_response(y, family, n))
+    cox = L0glm_ext_cox_response(y, n), multinomial = L0glm_ext_multinomial_response(y, family, n))
   weights <- L0glm_ext_matrix(weights, n, if (kind == "nb") response$m else 1L, 1, "weights")
   offset <- L0glm_ext_matrix(offset, n, response$m, 0, "offset")
   if (any(!is.finite(weights) | weights < 0) || !any(weights > 0))
     stop("Weights must be finite, nonnegative and not all zero.", call. = FALSE)
   intercept <- if (is.null(dots$intercept)) kind == "multinomial" else isTRUE(dots$intercept)
-  p <- L0glm_predictor_count(X, intercept, dots$always.include)
-  n_ic <- sum(rowSums(weights) > 0)
+  p <- L0glm_predictor_count(X, intercept && kind != "cox", dots$always.include)
+  n_ic <- if (kind == "cox") sum(weights[, 1L] * response$status) else sum(rowSums(weights) > 0)
   if (n_ic < 1) stop("No positive likelihood mass.", call. = FALSE)
   do_cv <- tune == "cv"
   if (do_cv) foldid <- L0glm_cv_folds(weights, nfolds, foldid) else

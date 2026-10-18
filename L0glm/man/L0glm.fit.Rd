@@ -305,7 +305,15 @@ another factorization or \code{rowaug=FALSE} also retain the R path.
 This option selects the backend; \code{parallelize} controls whether
 its outcome channels run concurrently.}
 
-\item{control.family}{Family-specific IRLS controls. A named list with \code{theta.min=1e-6}, \code{theta.max=1e7}, \code{theta.tol=1e-6}, \code{multinomial="irls"} or \code{"bound"}, and \code{max.working=2000L}. See the dedicated family help pages.}
+\item{control.family}{Family-specific IRLS controls. A named list with
+  \code{multinomial="irls"} (joint block IRLS) or \code{"bound"}
+  (upper curvature bound), \code{theta.min=1e-6}, \code{theta.max=1e7},
+  \code{theta.tol=1e-6}, \code{max.working=2000L}, \code{cox="auto"},
+  \code{cox.llt.max=c(dense=1024L,sparse=0L)}, \code{cox.cg.tol=1e-10}
+  and \code{cox.cg.maxit=2000L}. Cox also accepts \code{"direct"} or
+  \code{"pcg"}; a scalar LLT threshold applies to both storage types.
+  The working-size guard applies to dense direct Cox and multinomial systems,
+  not matrix-free Cox products. See the dedicated family help pages.}
 }
 \value{
 Returns a list with the following elements:
@@ -539,11 +547,18 @@ approximates the Best Subset of Groups solution if lambda is adequately
 chosen.
 }
 \section{Additional families}{
-Use \code{mgcv::nb()} for negative binomial fitting with fixed or estimated
-shape. See \link{L0glm_negative_binomial} for mathematics and an example.
-Use \code{mgcv::multinom(K)} for joint multinomial IRLS with CLR
-coefficients; see \link{L0glm_multinomial}.
-These family-specific loops are serial. Ordinary GLMs retain their existing paths.
+The constructors \code{mgcv::nb()}, \code{mgcv::multinom(K)} and
+\code{mgcv::cox.ph()} select family-specific IRLS implemented using this
+package's ridge kernels. NB estimates one shape per channel unless fixed in
+the constructor. Multinomial fits return all K+1 category coefficients in CLR
+coordinates, with a default free intercept and invariant grouped row penalties.
+Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
+sets and automatic LLT/matrix-free PCG routing. See
+\link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
+for the mathematics, examples, controls and limitations. These family loops
+are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
+\code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
+retain their existing behavior.
 }
 
 \examples{

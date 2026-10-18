@@ -2,6 +2,7 @@
 L0glm_ext_kind <- function(family) {
   name <- tolower(family$family)
   if (identical(name, "negative binomial") && is.function(family$putTheta)) return("nb")
+  if (name %in% c("cox.ph", "cox ph")) return("cox")
   if (name %in% c("multinom", "multinomial")) return("multinomial")
   NULL
 }
@@ -17,18 +18,28 @@ L0glm_ext_matrix <- function(value, n, m, default, name) {
 
 L0glm_ext_control <- function(control) {
   defaults <- list(multinomial = "irls", theta.min = 1e-6, theta.max = 1e7,
-                   theta.tol = 1e-6, max.working = 2000L)
+                   theta.tol = 1e-6, max.working = 2000L, cox = "auto",
+                   cox.llt.max = c(dense = 1024L, sparse = 0L), cox.cg.tol = 1e-10, cox.cg.maxit = 2000L)
   if (!is.list(control) || (length(control) && is.null(names(control))) ||
       any(!names(control) %in% names(defaults)))
     stop("Unknown control.family option.", call. = FALSE)
   defaults[names(control)] <- control
   if (length(defaults$multinomial) != 1L || !defaults$multinomial %in% c("irls", "bound"))
     stop('control.family$multinomial must be "irls" or "bound".', call. = FALSE)
-  numeric <- defaults[setdiff(names(defaults), "multinomial")]
+  if (length(defaults$cox) != 1L || !defaults$cox %in% c("auto", "direct", "pcg"))
+    stop('control.family$cox must be "auto", "direct" or "pcg".', call. = FALSE)
+  cut <- defaults$cox.llt.max
+  if (!is.numeric(cut) || !length(cut) %in% c(1L, 2L) || any(!is.finite(cut)) ||
+      any(cut < 0 | cut != floor(cut)) ||
+      (length(cut) == 2L && !setequal(names(cut), c("dense", "sparse"))))
+    stop("cox.llt.max must be a nonnegative integer or named dense/sparse pair.", call. = FALSE)
+  numeric <- defaults[setdiff(names(defaults), c("multinomial", "cox", "cox.llt.max"))]
   if (any(lengths(numeric) != 1L) || !all(vapply(numeric, is.numeric, logical(1))) ||
       any(!is.finite(unlist(numeric))) ||
       defaults$theta.min <= 0 || defaults$theta.max <= defaults$theta.min ||
-      defaults$theta.tol <= 0 || defaults$max.working < 2)
+      defaults$theta.tol <= 0 || defaults$max.working < 2 ||
+      defaults$cox.cg.tol <= 0 || defaults$cox.cg.tol >= 1 ||
+      defaults$cox.cg.maxit < 1 || defaults$cox.cg.maxit != floor(defaults$cox.cg.maxit))
     stop("Invalid family control bounds/tolerances.", call. = FALSE)
   defaults
 }
@@ -43,6 +54,7 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     stop("X must be a finite numeric design matrix.", call. = FALSE)
   n <- nrow(X)
   response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
+    cox = L0glm_ext_cox_response(y, n),
     multinomial = L0glm_ext_multinomial_response(y, family, n))
   m <- response$m
   multinomial <- kind == "multinomial"
@@ -50,11 +62,17 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     warning("nonnegative is ignored for multinomial CLR coefficients.", call. = FALSE)
     nonnegative <- FALSE
   }
+  if (kind == "cox" && intercept) {
+    warning("A Cox intercept is not identifiable; intercept was omitted.", call. = FALSE)
+    intercept <- FALSE
+  }
   if (intercept) X <- cbind(Intercept = 1, X)
   p <- ncol(X)
   included <- L0glm_mandatory(X, always.include)
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
   if (kind == "multinomial") lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
+  if (kind == "cox" && length(L0glm_intercepts(X)))
+    stop("Remove constant/intercept columns from a Cox design.", call. = FALSE)
   preprocessing <- L0glm_preprocessing(X, normalize, lower, included)
   centered <- L0glm_center_working_design(X, preprocessing, lower)
   scale <- preprocessing$scale
@@ -96,7 +114,12 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     family = family, B = B, allowed = allowed, explicit = explicit, m = m,
     added_intercept = intercept,
     p = p, n = n, p_selectable = p - length(included))
-  data$n_ic <- sum(rowSums(w) > 0)
+  data$n_ic <- if (kind == "cox") sum(response$status * w[, 1L]) else sum(rowSums(w) > 0)
+  if (kind == "cox" && data$n_ic == 0) stop("Cox fitting needs an observed event.", call. = FALSE)
+  if (kind == "cox") {
+    data$cox.cache <- L0glm_ext_cox_cache(response, w[, 1L])
+    data$Z <- data$Z[data$cox.cache$order, , drop = FALSE]
+  }
   data
 }
 
@@ -148,7 +171,10 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
     D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped, gamma)
     proposal <- switch(data$kind,
       nb = L0glm_ext_nb_working(data, B, D, state, args),
+      cox = L0glm_ext_cox_working(data, B, D, state, args),
       multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
+    solve <- attr(proposal, "cox.solve")
+    attr(proposal, "cox.solve") <- NULL
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
     objective <- function(candidate) -2 * L0glm_ext_loglik(data, candidate, state) + ridge(candidate)
     baseline <- objective(B)
@@ -192,6 +218,11 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
     history[[iteration]] <- data.frame(iteration, loglik = L0glm_ext_loglik(data, B, state),
       selected = sum(rowSums(B != 0)[selectable] > 0), step_halvings = halving,
       coefficient_change = max(slope_change, prediction_change), nuisance_change)
+    if (data$kind == "cox") {
+      history[[iteration]]$backend <- solve$backend
+      history[[iteration]]$inner_iterations <- solve$iterations
+      history[[iteration]]$inner_residual <- solve$residual
+    }
     if (max(slope_change, prediction_change) < tol && nuisance_change < data$control$theta.tol) {
       converged <- TRUE
       break
@@ -216,6 +247,9 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
                             nonnegative, normalize, start, prior.mean, control.family)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))
   args <- list(solver = solver, method = method, control.solver = control.solver)
+  if (data$kind == "cox" && data$control$cox == "pcg" &&
+      (solver != "eigen" || any(data$lower > -1e100)))
+    stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)
   state <- if (data$kind == "nb") list(theta = data$response$theta, estimated = data$response$estimated) else list()
   B <- data$B
   if (!data$explicit) {
@@ -223,7 +257,12 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
     D[data$included, ] <- 0
     B <- switch(data$kind,
       nb = L0glm_ext_nb_working(data, B, D, state, args),
+      cox = L0glm_ext_cox_initial(data),
       multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
+  }
+  if (data$kind == "cox") {
+    data$initialization <- attr(B, "cox.solve")
+    attr(B, "cox.solve") <- NULL
   }
   if (data$kind == "multinomial" && data$explicit && any(B == 0)) {
     # Starting zeroes are initial values, not multinomial support constraints.

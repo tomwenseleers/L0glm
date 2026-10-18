@@ -8,6 +8,7 @@ L0glm_ext_loglik <- function(data, B, state) {
         mu = mu[good, j], size = state$theta[j], log = TRUE))
     }, numeric(1))))
   }
+  if (data$kind == "cox") return(L0glm_ext_cox_stats(data, B)$loglik)
   probability <- L0glm_ext_softmax(as.matrix(data$Z %*% B + data$offset))
   constant <- lgamma(rowSums(data$y) + 1) - rowSums(lgamma(data$y + 1))
   sum(data$weights[, 1L] * (constant + rowSums(ifelse(data$y == 0, 0, data$y * probability$logp))))
@@ -19,7 +20,7 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     beta[data$shifted_intercept, ] - as.numeric(crossprod(data$shift, beta))
   rownames(beta) <- colnames(data$X)
   colnames(beta) <- if (data$kind == "multinomial") data$response$levels else
-    colnames(data$y)
+    if (data$kind == "cox") "linear_predictor" else colnames(data$y)
   convergence <- do.call(rbind, lapply(names(passes), function(stage)
     data.frame(stage, iterations = passes[[stage]]$iterations,
                converged = passes[[stage]]$converged)))
@@ -40,6 +41,11 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     history = lapply(passes, `[[`, "history"), solver = args$solver,
     method = args$method, control.family = data$control), class = "L0glm_extended_fit")
   if (data$kind == "multinomial") answer$coordinates <- "clr"
+  if (data$kind == "cox") {
+    answer$cox.cache <- data$cox.cache
+    answer$initialization <- data$initialization
+    answer$baseline <- L0glm_ext_cox_baseline(answer)
+  }
   answer$metrics <- L0glm.metrics(answer, mu_floor = 0)
   answer$objective <- answer$metrics$objective
   answer
@@ -48,11 +54,11 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
 #' Predict from an extended-family fit
 #' @param object A fitted extended-family model.
 #' @param newdata Predictor matrix without an automatically added intercept.
-#' @param type Prediction type; response, link or class.
+#' @param type Prediction type; response, link, class, risk or survival.
 #'   Multinomial link predictions are CLR scores for every category.
 #' @param offset Optional prediction offset, on each linear predictor.
 #'   Multinomial offsets have one column per category and are centered rowwise.
-#' @param times Unused for these families.
+#' @param times Evaluation times for Cox survival probabilities.
 #' @param ... Unused.
 #' @export
 predict.L0glm_extended_fit <- function(object, newdata = NULL, type = "response",
@@ -81,7 +87,13 @@ predict.L0glm_extended_fit <- function(object, newdata = NULL, type = "response"
     if (type != "response") stop("Multinomial prediction type must be response, class or link.", call. = FALSE)
     return(probability)
   }
-  stop("Unknown extended-family prediction type.", call. = FALSE)
+  if (type %in% c("risk", "response")) return(as.numeric(exp(eta)))
+  if (type != "survival" || is.null(times)) stop("Supply times for Cox survival prediction.", call. = FALSE)
+  if (any(!is.finite(times) | times < 0)) stop("Survival times must be finite and nonnegative.", call. = FALSE)
+  index <- findInterval(times, object$baseline$time)
+  loghazard <- if (is.null(object$baseline$log_cumhaz)) log(object$baseline$cumhaz) else object$baseline$log_cumhaz
+  loghazard <- c(-Inf, loghazard)[index + 1L]
+  exp(-exp(outer(as.numeric(eta), loghazard, "+")))
 }
 
 #' Log likelihood of an extended-family fit
@@ -132,6 +144,14 @@ L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
     saturated <- rowSums(ifelse(yy == 0, 0, yy * log(yy/pmax(1, rowSums(yy)))))
     deviance <- 2 * sum(w[, 1L] * (saturated - rowSums(ifelse(yy == 0, 0, yy * lp))))
     mass <- sum(w[, 1L] * rowSums(yy))
+  } else {
+    same_response <- training && identical(y, object$y)
+    response <- if (same_response) object$response else L0glm_ext_cox_response(y, n)
+    cache <- if (same_response && identical(as.numeric(w), as.numeric(object$weights))) object$cox.cache else NULL
+    eta <- as.numeric(predict(object, newdata, type = "link", offset = offset))
+    likelihood <- L0glm_ext_cox_eta(eta, response, w[, 1L], cache)$loglik
+    deviance <- -2 * likelihood
+    mass <- sum(w[, 1L] * response$status)
   }
   beta <- as.matrix(object$coefficients)
   selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
