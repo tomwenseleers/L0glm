@@ -22,18 +22,25 @@
 #' @param method Name, vector of names or `"all"`: `"L0glm"`, `"abess"`,
 #'   `"L0Learn"`, `"MCP"`, `"SCAD"`, `"lasso"`, `"relaxed_lasso"`,
 #'   `"adaptive_lasso"`, `"adaptive_relaxed_lasso"`. Names are case-insensitive;
-#'   spaces and hyphens may replace underscores.
+#'   spaces and hyphens may replace underscores. `"all"` includes only installed
+#'   methods compatible with the family, constraints, grouping, weights and
+#'   offsets. Explicitly requested unavailable methods report their reason.
 #' @param tune `"aic"`, `"bic"`, `"gic"`, `"ebic"`, `"mbic"` or `"cv"`.
 #'   Every candidate is rescored with the same package likelihood/IC code.
 #' @param nlambda Requested number of path values, default 40. Actual backend
-#'   grids are retained and may contain fewer distinct models.
+#'   grids are retained and may contain fewer distinct models. The glmnet methods
+#'   use an explicit log-spaced grid of this length from their native
+#'   `lambda_max` to `lambda_max * lambda.min.ratio`; set the ratio through
+#'   method-specific `options`. A supplied `lambda` sequence takes precedence.
 #' @param lambda Optional nonnegative sequence, or named list of method-specific
 #'   sequences. Penalty units differ between methods. ABESS instead searches
 #'   `support.size`; its additional ridge penalty is fixed at zero.
 #' @param support.size Optional integer candidate sizes for ABESS. The default
 #'   spans zero to `min(ncol(X), nrow(X)-1-intercept)` in up to `nlambda`
 #'   steps, without a 100-feature cap. L0Learn uses its maximum as a support
-#'   limit; its L0 path need not visit every intermediate size.
+#'   limit; its L0 path need not visit every intermediate size. For strongly
+#'   correlated designs, supply consecutive sizes (for example `1:2000`) and
+#'   retain ABESS's `warm.start=TRUE`; coarse jumps can give poor local fits.
 #' @param nfolds Number of CV folds, default 5. Inferred from `foldid` when only
 #'   that argument is supplied.
 #' @param foldid Optional row-fold labels shared by every method and channel.
@@ -59,9 +66,11 @@
 #'   tuning and path arguments cannot be overridden. Native Gaussian LASSO
 #'   variants and ABESS require common channel weights for grouped fits; auto
 #'   otherwise preserves the full weight matrix using independent paths.
-#' @param approximation `"none"` or `"wls"`. WLS permits an explicitly labelled
-#'   Gaussian approximation for unsupported identity-link Poisson methods,
-#'   using fitting weights `weights/(y+0.1)`. Scoring still uses original
+#' @param approximation `"none"` or `"wls"`. For identity-link Poisson, WLS
+#'   fits every competing method except L0glm with an explicitly labelled
+#'   Gaussian approximation using weights `weights/(y+0.1)`. This also avoids
+#'   glmnet's invalid zero-mean Poisson null model without an intercept or
+#'   positive offset. Scoring still uses original
 #'   Poisson likelihood, weights and offsets. Other families are not approximated.
 #' @param adaptive.gamma Adaptive-LASSO exponent, default 1.
 #' @param adaptive.epsilon Positive adaptive denominator floor, default `1e-8`.

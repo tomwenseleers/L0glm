@@ -140,7 +140,121 @@ test_that("identity Poisson approximations are explicit and scored as Poisson", 
     expected <- sum(dpois(y,1+as.numeric(X %*% B),log=TRUE))
     expect_equal(L0glm.metrics(result)$loglik[result$timings$method == name],expected)
     expect_equal(result$timings$approximation[result$timings$method == name],
-      if (name == "lasso") "none" else "identity_poisson_wls")
+      "identity_poisson_wls")
+  }
+})
+
+test_that("Poisson deconvolution evaluates ten finite glmnet candidates without an intercept", {
+  sim <- simul(method=2,n=120,p=120,s=.1,seed=2)
+  expect_true(any(sim$y == 0))
+  methods <- c("lasso","relaxed_lasso","adaptive_lasso","adaptive_relaxed_lasso")
+  result <- sparseglm(sim,family=poisson(identity),method=methods,
+    approximation="wls",nonnegative=TRUE,intercept=FALSE,nlambda=10)
+  expect_true(all(result$timings$status == "ok"))
+  expect_true(all(result$timings$approximation == "identity_poisson_wls"))
+  for (name in methods) {
+    candidates <- result$tuning[[name]]$candidates
+    expect_equal(nrow(candidates),10L)
+    expect_equal(candidates$support_size[1],0)
+    expect_true(all(is.finite(candidates$score)))
+    expect_true(all(is.finite(candidates$parameter) & candidates$parameter > 0))
+    expect_true(all(diff(candidates$parameter) < 0))
+    expect_equal(diff(log(candidates$parameter)),rep(log(1e-4)/9,9))
+    expect_equal(dim(coef(result)[[name]]),c(120L,1L))
+    expect_true(all(coef(result)[[name]] >= 0))
+  }
+  # An explicit user grid, including zero, must be used without modification.
+  specified <- sparseglm(sim,family=poisson(identity),method="lasso",
+    approximation="wls",nonnegative=TRUE,intercept=FALSE,nlambda=10,lambda=c(1,.1,0))
+  expect_equal(specified$tuning$lasso$candidates$parameter,c(1,.1,0))
+  # ABESS must search beyond its own conservative default support ceiling.
+  abess <- sparseglm(sim,family=poisson(identity),method="abess",approximation="wls",
+    nonnegative=TRUE,intercept=FALSE,support.size=c(0,12,24),nlambda=10)
+  expect_equal(abess$timings$status,"ok")
+  expect_equal(abess$tuning$abess$candidates$parameter,c(0,12,24))
+  expect_true(all(is.finite(abess$tuning$abess$candidates$score)))
+})
+
+test_that("all expands only to installed methods supporting the supplied arguments", {
+  sim <- sparseglm_fixture()
+  methods <- L0glm_benchmark_methods("all")
+  for (nonnegative in c(FALSE,TRUE)) {
+    result <- sparseglm(sim,method="all",nonnegative=nonnegative,intercept=TRUE,
+      nlambda=3,support.size=0:2,lambda=list(L0glm=6))
+    packages <- c(L0glm="L0glm",abess="abess",L0Learn="L0Learn",MCP="ordinis",SCAD="ordinis",
+      lasso="glmnet",relaxed_lasso="glmnet",adaptive_lasso="glmnet",adaptive_relaxed_lasso="glmnet")
+    expected <- methods[vapply(packages[methods],requireNamespace,logical(1),quietly=TRUE)]
+    if (nonnegative) expected <- intersect(expected,c("L0glm","L0Learn"))
+    expect_identical(names(result$fits),expected)
+    expect_true(all(result$timings$status == "ok"))
+  }
+  sim <- simul(method=2,n=120,p=120,s=.1,seed=2)
+  exact <- sparseglm(sim,family=poisson(identity),method="all",nonnegative=TRUE,
+    intercept=FALSE,nlambda=3,lambda=list(L0glm=6))
+  expect_identical(names(exact$fits),"L0glm")
+  expect_identical(exact$timings$status,"ok")
+  multi <- sparseglm_fixture(2)
+  group <- sparseglm(multi,method="all",grouped=TRUE,weights=matrix(seq(.5,2,length.out=144),72,2),
+    nlambda=3,support.size=0:2,lambda=list(L0glm=6))
+  expect_identical(names(group$fits),"L0glm")
+  expect_identical(group$timings$status,"ok")
+  binary <- sparseglm_fixture()
+  binary$y <- as.numeric(rep(c(1,0,0),24)); binary$beta_true <- NULL
+  probit <- sparseglm(binary,family=binomial("probit"),method="all",intercept=TRUE,
+    nonnegative=TRUE,nlambda=3,lambda=list(L0glm=6))
+  expect_identical(names(probit$fits),c("L0glm","lasso","relaxed_lasso","adaptive_lasso","adaptive_relaxed_lasso"))
+  expect_true(all(probit$timings$status == "ok"))
+  testthat::local_mocked_bindings(L0glm_benchmark_require=function(package) {
+    L0glm_benchmark_unavailable("Optional test backend is not installed.","missing_package")
+  }, .package="L0glm")
+  installed <- sparseglm(sim,family=poisson(identity),method="all",nonnegative=TRUE,
+    intercept=FALSE,approximation="wls",nlambda=3,lambda=list(L0glm=6))
+  expect_identical(names(installed$fits),"L0glm")
+  # Explicit requests retain unsupported rows and their diagnostic.
+  expect_warning(explicit <- sparseglm(sim,family=poisson(identity),method="lasso",
+    nonnegative=TRUE,intercept=FALSE,nlambda=3),"unavailable")
+  expect_identical(explicit$timings$status,"unsupported")
+  expect_match(explicit$timings$note,"null mean")
+})
+
+test_that("multichannel Poisson WLS paths retain channel weights and valid CV scores", {
+  sim <- simul(method=4,n=100,p=100,s=.1,seed=2)
+  channels <- order(colSums(sim$y),decreasing=TRUE)[1:2]
+  for (name in c("y","y_true","beta_true")) sim[[name]] <- sim[[name]][,channels,drop=FALSE]
+  methods <- c("lasso","relaxed_lasso","adaptive_lasso","adaptive_relaxed_lasso")
+  folds <- rep(1:2,50)
+  result <- sparseglm(sim,family=poisson(identity),method=methods,
+    nonnegative=TRUE,intercept=FALSE,approximation="wls",nlambda=10,
+    tune="cv",foldid=folds)
+  expect_true(all(result$timings$status == "ok"))
+  expect_true(all(result$timings$scope == "independent"))
+  for (name in methods) {
+    expect_equal(dim(coef(result)[[name]]),c(100L,2L))
+    expect_equal(nrow(result$tuning[[name]]$candidates),10L)
+    expect_true(all(is.finite(result$tuning[[name]]$cv$mean)))
+    expect_equal(result$fits[[name]]$prior.weights,matrix(1,100,2))
+  }
+  keep <- folds != 1L
+  grid <- result$tuning$lasso$candidates$parameter
+  predictions <- vapply(1:2,function(k) {
+    ref <- glmnet::glmnet(sim$X[keep,],sim$y[keep,k],family="gaussian",
+      weights=1/(sim$y[keep,k]+.1),lambda=grid,intercept=FALSE,lower.limits=0)
+    as.numeric(sim$X[!keep,] %*% as.numeric(coef(ref)[-1,5]))
+  },numeric(sum(!keep)))
+  expected <- sum(poisson()$dev.resids(sim$y[!keep,,drop=FALSE],pmax(predictions,1e-8),1))/length(predictions)
+  expect_equal(result$tuning$lasso$cv$deviance[5,1],expected)
+})
+
+test_that("ABESS Gaussian row weighting agrees with weighted least squares on a fixed support", {
+  sim <- sparseglm_fixture()
+  W <- seq(.2,2,length.out=72)
+  for (intercept in c(FALSE,TRUE)) {
+    fit <- sparseglm(sim,method="abess",weights=W,intercept=intercept,support.size=8)
+    X <- if (intercept) cbind(1,sim$X) else sim$X
+    expected <- stats::lm.wfit(X,as.numeric(sim$y),w=W)$coefficients
+    expect_equal(fit$timings$status,"ok")
+    expect_equal(as.numeric(coef(fit)$abess),unname(expected),tolerance=1e-8)
+    expect_equal(fit$tuning$abess$candidates$parameter,8)
   }
 })
 

@@ -1,6 +1,5 @@
-# Shared path adapters: no backend information criteria are used for selection.
-L0glm_benchmark_path <- function(method, data, grid = NULL) {
-  original <- data
+# Check capabilities before fitting, also used to expand method="all".
+L0glm_benchmark_setup <- function(method, data) {
   kind <- data$kind
   if (kind != "glm" && method == "L0Learn")
     L0glm_benchmark_unavailable("L0Learn has no native Cox or multinomial loss.")
@@ -14,14 +13,13 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     L0Learn=gaussian || binomial, MCP=kind == "cox" || ordinis_native,
     SCAD=kind == "cox" || ordinis_native, TRUE)
   approximation <- "none"
-  if (!native) {
-    if (data$approximation == "wls" && data$family$family == "poisson" && data$family$link == "identity") {
-      data$weights <- data$weights/(data$y + .1)
-      data$family <- gaussian()
-      gaussian <- TRUE; approximation <- "identity_poisson_wls"
-    } else L0glm_benchmark_unavailable(paste(method, "does not natively support this family/link;",
-      "identity Poisson can opt into approximation='wls'."))
-  }
+  if (method != "L0glm" && data$approximation == "wls" &&
+      data$family$family == "poisson" && data$family$link == "identity") {
+    data$weights <- data$weights/(data$y + .1)
+    data$family <- gaussian()
+    gaussian <- TRUE; approximation <- "identity_poisson_wls"
+  } else if (!native) L0glm_benchmark_unavailable(paste(method, "does not natively support this family/link;",
+    "identity Poisson can opt into approximation='wls'."))
   m <- data$m
   common <- m == 1L || all(data$weights == data$weights[, 1L])
   can_group <- method == "L0glm" || (kind == "multinomial") || (gaussian && common &&
@@ -33,7 +31,43 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     if (kind == "multinomial") "ungrouped" else "independent"
   if (kind == "multinomial" && method == "abess" && !grouped)
     L0glm_benchmark_unavailable("Multinomial ABESS selects whole feature rows; it has no CLR-entry selection mode.")
-  joint <- grouped || kind == "multinomial"
+  if (method != "L0glm" && method != "L0Learn" && data$nonnegative && data$intercept &&
+      !data$family$family %in% c("binomial", "quasibinomial"))
+    L0glm_benchmark_unavailable(paste(method, "cannot constrain its native intercept; use intercept=FALSE or nonnegative=FALSE."))
+  if (method == "abess" && !gaussian && any(data$offset != 0))
+    L0glm_benchmark_unavailable("ABESS has no offset argument for this non-Gaussian model.")
+  if (method == "abess" && !any(data$support.size <= min(ncol(data$X), nrow(data$X) - 1L - data$intercept)))
+    L0glm_benchmark_unavailable("No ABESS support.size candidate is feasible for these data.")
+  if (kind == "cox" && method %in% c("abess", "MCP", "SCAD")) {
+    if (anyDuplicated(data$y[, 1L]))
+      L0glm_benchmark_unavailable(paste(method, "Cox tie handling differs from Breslow; this adapter requires untied times."))
+    if (any(data$weights != 1) || (method != "abess" &&
+        (data$nonnegative || any(data$offset != 0))))
+      L0glm_benchmark_unavailable(paste(method, "Cox requires unit weights; MCP/SCAD also require signed coefficients and zero offsets."))
+  }
+  if (method == "L0Learn" && !gaussian &&
+      (!binomial || any(data$weights != 1) || any(data$offset != 0) || any(!data$y %in% c(0, 1))))
+    L0glm_benchmark_unavailable("L0Learn logistic paths require binary outcomes, unit weights and zero offsets.")
+  backend <- if (method == "L0glm") "L0glm" else
+    if (kind == "cox" && method %in% c("MCP", "SCAD")) "ncvreg" else
+      switch(method, abess="abess", L0Learn="L0Learn", MCP="ordinis", SCAD="ordinis", "glmnet")
+  if (backend == "glmnet" && kind == "glm" && !gaussian && !binomial && !poisson && !data$intercept) {
+    mu <- data$family$linkinv(data$offset)
+    if (any(!is.finite(mu)) || !data$family$validmu(mu) || any(data$family$variance(mu) <= 0))
+      L0glm_benchmark_unavailable("glmnet requires a valid null mean; identity Poisson with a zero offset needs approximation='wls'.")
+  }
+  if (backend != "L0glm") L0glm_benchmark_require(backend)
+  list(data=data, grouped=grouped, joint=grouped || kind == "multinomial",
+    scope=scope, approximation=approximation, backend=backend)
+}
+
+# Shared path adapters: no backend information criteria are used for selection.
+L0glm_benchmark_path <- function(method, data, grid = NULL) {
+  original <- data
+  setup <- L0glm_benchmark_setup(method, data)
+  data <- setup$data
+  kind <- data$kind; m <- data$m
+  grouped <- setup$grouped; joint <- setup$joint
   options <- data$options[[method]]
   if (is.null(options)) options <- list()
   locked <- c("X", "x", "y", "weights", "weight", "offset", "family", "dispersion",
@@ -46,8 +80,6 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     stop("Backend options must have unique argument names.", call.=FALSE)
   if (any(names(options) %in% locked))
     stop("Use shared benchmark arguments instead of overriding: ", paste(intersect(names(options), locked), collapse=", "), call.=FALSE)
-  if (method != "L0glm" && method != "L0Learn" && data$nonnegative && data$intercept && !binomial)
-    L0glm_benchmark_unavailable(paste(method, "cannot constrain its native intercept; use intercept=FALSE or nonnegative=FALSE."))
   adaptive <- NULL
   if (grepl("adaptive", method)) {
     pilot_options <- data$options$L0glm
@@ -82,11 +114,8 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
       path <- list(grid=grid, coefficients=lapply(grid, function(value)
         do.call(L0glm.fit, c(args, list(lambda=value)))$coefficients))
     }
-    path$parameter <- "lambda"; path$backend <- "L0glm"
+    path$parameter <- "lambda"
   } else {
-    package <- if (kind == "cox" && method %in% c("MCP", "SCAD")) "ncvreg" else
-      switch(method, abess="abess", L0Learn="L0Learn", MCP="ordinis", SCAD="ordinis", "glmnet")
-    L0glm_benchmark_require(package)
     run <- function(d, g, channel=NULL) L0glm_benchmark_backend(method, d, g, options,
       if (is.null(adaptive)) NULL else if (joint) adaptive$penalty.factor else
         as.matrix(adaptive$penalty.factor)[, channel], grouped)
@@ -112,9 +141,9 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
       })
     }
     path$parameter <- if (method == "abess") "support.size" else "lambda"
-    path$backend <- package
   }
-  path$scope <- scope; path$approximation <- approximation; path$adaptive <- adaptive
+  path$backend <- setup$backend
+  path$scope <- setup$scope; path$approximation <- setup$approximation; path$adaptive <- adaptive
   L0glm_benchmark_align(path, grid)
 }
 
@@ -130,9 +159,22 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     sizes <- if (is.null(grid)) data$support.size else grid
     sizes <- sizes[sizes <= min(p, n - 1L - data$intercept)]
     if (!length(sizes)) return(list(grid=numeric(), coefficients=list()))
-    if (!gaussian && any(off != 0))
-      L0glm_benchmark_unavailable("ABESS has no offset argument for this non-Gaussian model.")
     yy <- if (gaussian) y - off else y
+    weighted_intercept <- gaussian && any(w != 1) && data$intercept
+    if (gaussian && any(w != 1)) {
+      # Row scaling gives ABESS the exact WLS loss even in versions whose
+      # Gaussian selection loss does not consistently apply native weights.
+      X <- X * sqrt(w); yy <- yy * sqrt(w); w <- rep(1, n)
+      if (weighted_intercept) {
+        if (is.null(colnames(X))) colnames(X) <- paste0("x", seq_len(p))
+        X <- cbind(Intercept=sqrt(data$weights[, 1L]), X)
+        colnames(X) <- make.unique(colnames(X))
+        sizes <- sizes + 1L
+        options$always.include <- unique(c(1L, options$always.include + 1L))
+        if (!is.null(options$init.active.set)) options$init.active.set <- unique(c(1L, options$init.active.set + 1L))
+        if (!is.null(options$group.index)) options$group.index <- c(1L, options$group.index + 1L)
+      }
+    }
     # ABESS 0.4.11's fallback for unnamed mgaussian responses calls colnames
     # with an invalid do.NULL argument. Supply names without altering the data.
     if (gaussian && m > 1L && is.null(colnames(yy)))
@@ -146,31 +188,26 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
       yy <- factor(data$response$levels[index[, 2L]], levels=data$response$levels)
     }
     if (kind == "cox") {
-      if (anyDuplicated(y[, 1L]))
-        L0glm_benchmark_unavailable("ABESS Cox tie handling differs from Breslow; this adapter requires untied times.")
-      if (any(w != 1))
-        L0glm_benchmark_unavailable("ABESS Cox requires unit weights for a common Breslow comparison.")
       yy <- as.matrix(y)
     }
     fit <- do.call(abess::abess, utils::modifyList(list(x=X,
       y=if (kind != "glm") yy else if (m == 1L) as.numeric(yy) else yy,
       family=if (kind != "glm") kind else if (m > 1L) "mgaussian" else if (gaussian) "gaussian" else if (binomial) "binomial" else "poisson",
-      weight=w, fit.intercept=data$intercept, beta.low=if (data$nonnegative) 0 else -.Machine$double.xmax,
+      weight=w, fit.intercept=data$intercept && !weighted_intercept,
+      beta.low=if (data$nonnegative) 0 else -.Machine$double.xmax,
       support.size=sizes, tune.path="sequence", tune.type="bic", lambda=0,
       num.threads=1L, seed=data$seed), options))
     coefficients <- lapply(seq_along(fit$support.size), function(j) {
       B <- if (m == 1L) fit$beta[, j, drop=FALSE] else fit$beta[[j]]
       a <- if (m == 1L) fit$intercept[j] else fit$intercept[[j]]
+      if (weighted_intercept) {a <- as.numeric(B[1L, ]); B <- B[-1L, , drop=FALSE]}
       if (kind == "multinomial") {B <- cbind(B, 0); a <- c(a, 0)}
       add_intercept(B, a)
     })
-    return(L0glm_benchmark_align(list(grid=fit$support.size, coefficients=coefficients), grid))
+    return(L0glm_benchmark_align(list(grid=fit$support.size - as.integer(weighted_intercept),
+      coefficients=coefficients), grid))
   }
   if (kind == "cox" && method %in% c("MCP", "SCAD")) {
-    if (data$nonnegative || any(w != 1) || any(off != 0))
-      L0glm_benchmark_unavailable("ncvreg Cox MCP/SCAD requires signed coefficients, unit weights and zero offsets.")
-    if (anyDuplicated(y[, 1L]))
-      L0glm_benchmark_unavailable("ncvreg Cox tie handling differs from Breslow; this adapter requires untied times.")
     args <- list(X=as.matrix(X), y=y, penalty=method, nlambda=data$nlambda)
     if (!is.null(grid)) args$lambda <- grid
     fit <- do.call(ncvreg::ncvsurv, utils::modifyList(args, options))
@@ -178,8 +215,6 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
       coefficients=lapply(seq_len(ncol(fit$beta)), function(j) fit$beta[, j, drop=FALSE])), grid))
   }
   if (method == "L0Learn") {
-    if (!gaussian && (!binomial || any(w != 1) || any(off != 0) || any(!y %in% c(0, 1))))
-      L0glm_benchmark_unavailable("L0Learn logistic paths require binary outcomes, unit weights and zero offsets.")
     # Explicit mandatory intercept permits exact Gaussian row weighting and
     # nonnegative intercept constraints, which its native intercept cannot impose.
     A <- if (data$intercept) cbind(Intercept=1, X) else X
@@ -234,7 +269,24 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     relax=relaxed, standardize.response=FALSE,
     type.multinomial=if (grouped) "grouped" else "ungrouped", cox.ties="breslow")
   if (kind == "cox") args$intercept <- NULL
-  fit <- do.call(glmnet::glmnet, utils::modifyList(args, options, keep.null=TRUE))
+  args <- utils::modifyList(args, options, keep.null=TRUE)
+  if (is.null(grid)) {
+    ratio <- args$lambda.min.ratio
+    if (is.null(ratio)) ratio <- if (n < ncol(X)) .01 else 1e-4
+    if (length(ratio) != 1L || !is.finite(ratio) || ratio <= 0 || ratio >= 1)
+      stop("lambda.min.ratio must lie strictly between zero and one.", call.=FALSE)
+    # Obtain lambda_max in glmnet's own units, including standardization and
+    # adaptive penalty factors. The short near-null pilot avoids fitting a
+    # second full path. An explicit grid prevents automatic path truncation.
+    probe <- args
+    probe$relax <- FALSE; probe$nlambda <- 3L; probe$lambda.min.ratio <- .99
+    lambda_max <- do.call(glmnet::glmnet, probe)$lambda[1L]
+    if (length(lambda_max) != 1L || !is.finite(lambda_max) || lambda_max <= 0)
+      stop("glmnet could not determine a finite positive lambda_max.", call.=FALSE)
+    lambda_max <- lambda_max * (1 + 1e-6) # keep the null endpoint above roundoff
+    args$lambda <- exp(seq(log(lambda_max), log(lambda_max) + log(ratio), length.out=data$nlambda))
+  }
+  fit <- do.call(glmnet::glmnet, args)
   if (relaxed) fit <- fit$relaxed
   if (is.null(fit)) stop("Backend did not return a relaxed path.", call.=FALSE)
   coefficients <- lapply(seq_along(fit$lambda), function(j) {

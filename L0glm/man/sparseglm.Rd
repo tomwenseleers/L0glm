@@ -55,13 +55,18 @@ currently supported.}
 \item{method}{Name, vector of names or \code{"all"}: \code{"L0glm"}, \code{"abess"},
 \code{"L0Learn"}, \code{"MCP"}, \code{"SCAD"}, \code{"lasso"}, \code{"relaxed_lasso"},
 \code{"adaptive_lasso"}, \code{"adaptive_relaxed_lasso"}. Names are case-insensitive;
-spaces and hyphens may replace underscores.}
+spaces and hyphens may replace underscores. \code{"all"} includes only installed
+methods compatible with the family, constraints, grouping, weights and
+offsets. Explicitly requested unavailable methods report their reason.}
 
 \item{tune}{\code{"aic"}, \code{"bic"}, \code{"gic"}, \code{"ebic"}, \code{"mbic"} or \code{"cv"}.
 Every candidate is rescored with the same package likelihood/IC code.}
 
 \item{nlambda}{Requested number of path values, default 40. Actual backend
-grids are retained and may contain fewer distinct models.}
+grids are retained and may contain fewer distinct models. The glmnet methods
+use an explicit log-spaced grid of this length from their native
+\code{lambda_max} to \code{lambda_max * lambda.min.ratio}; set the ratio through
+method-specific \code{options}. A supplied \code{lambda} sequence takes precedence.}
 
 \item{lambda}{Optional nonnegative sequence, or named list of method-specific
 sequences. Penalty units differ between methods. ABESS instead searches
@@ -70,7 +75,9 @@ sequences. Penalty units differ between methods. ABESS instead searches
 \item{support.size}{Optional integer candidate sizes for ABESS. The default
 spans zero to \code{min(ncol(X), nrow(X)-1-intercept)} in up to \code{nlambda}
 steps, without a 100-feature cap. L0Learn uses its maximum as a support
-limit; its L0 path need not visit every intermediate size.}
+limit; its L0 path need not visit every intermediate size. For strongly
+correlated designs, supply consecutive sizes (for example \code{1:2000}) and
+retain ABESS's \code{warm.start=TRUE}; coarse jumps can give poor local fits.}
 
 \item{nfolds}{Number of CV folds, default 5. Inferred from \code{foldid} when only
 that argument is supplied.}
@@ -105,9 +112,11 @@ tuning and path arguments cannot be overridden. Native Gaussian LASSO
 variants and ABESS require common channel weights for grouped fits; auto
 otherwise preserves the full weight matrix using independent paths.}
 
-\item{approximation}{\code{"none"} or \code{"wls"}. WLS permits an explicitly labelled
-Gaussian approximation for unsupported identity-link Poisson methods,
-using fitting weights \code{weights/(y+0.1)}. Scoring still uses original
+\item{approximation}{\code{"none"} or \code{"wls"}. For identity-link Poisson, WLS
+fits every competing method except L0glm with an explicitly labelled
+Gaussian approximation using weights \code{weights/(y+0.1)}. This also avoids
+glmnet's invalid zero-mean Poisson null model without an intercept or
+positive offset. Scoring still uses original
 Poisson likelihood, weights and offsets. Other families are not approximated.}
 
 \item{adaptive.gamma}{Adaptive-LASSO exponent, default 1.}

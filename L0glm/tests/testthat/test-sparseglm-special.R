@@ -38,6 +38,23 @@ test_that("multinomial adapters reconstruct reference coefficients and score cou
   expect_true(all(L0glm.metrics(unsupported)$status == "unsupported"))
 })
 
+test_that("all respects multinomial grouping and Cox risk-set restrictions", {
+  skip_if_not_installed("mgcv"); skip_if_not_installed("survival")
+  set.seed(2412)
+  X <- matrix(rnorm(180),60,3)
+  Y <- factor(rep(letters[1:3],20))
+  multinomial <- sparseglm(X,Y,family="multinomial",method="all",grouped=FALSE,
+    nlambda=3,support.size=0:2,lambda=list(L0glm=6))
+  expect_identical(names(multinomial$fits),c("L0glm","lasso","relaxed_lasso",
+    "adaptive_lasso","adaptive_relaxed_lasso"))
+  expect_true(all(multinomial$timings$status == "ok"))
+  times <- rep(1:20,3)
+  cox <- sparseglm(X,survival::Surv(times,rep(c(1,1,0),20)),family="cox",
+    method="all",nlambda=3,lambda=list(L0glm=6))
+  expect_identical(names(cox$fits),names(multinomial$fits))
+  expect_true(all(cox$timings$status == "ok"))
+})
+
 test_that("Cox adapters use common Breslow likelihood and full-risk-set CV subtraction", {
   skip_if_not_installed("mgcv"); skip_if_not_installed("survival")
   set.seed(2411)

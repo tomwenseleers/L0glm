@@ -16,7 +16,6 @@ library(remotes)
 library(L0glm)
 library(export)
 library(Matrix)
-library(ordinis)
 library(L0Learn) # use at least version 2
 library(abess)
 library(glmnet)
@@ -877,7 +876,13 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 # 3. BENCHMARKS AGAINST OTHER METHODS ####
 # Take our best working solver & method and compare it against others: 
-# bigGlm (LASSO), ordinis (MCP & SCAD), L0Learn & abess
+# glmnet (LASSO variants), L0Learn & abess.
+# MCP and SCAD were unacceptably slow for these n = p = 10000 deconvolution
+# problems: their ordinis backend requires dense designs. Omit them here.
+# ABESS uses beta.low = 0; its early unconstrained examples in issue #510
+# predate that option: https://github.com/abess-team/abess/issues/510
+comparison_methods <- c("L0glm", "abess", "L0Learn", "lasso", "relaxed_lasso",
+                        "adaptive_lasso", "adaptive_relaxed_lasso")
 
 ## 3.1 SINGLE CHANNEL POISSON ####
 n <- p <- 10000
@@ -908,14 +913,16 @@ plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
 
 
 ### 3.1.2 COMPARE SPARSE METHODS ####
-# Use method = "all" to include ABESS, MCP and SCAD as well.
 # The L0glm candidate uses the same preset as the fit above; other methods
-# search their native paths and are rescored with the common GIC.
+# are rescored with the common Poisson GIC. WLS is labelled in the table.
+# glmnet uses 10 lambda values. ABESS needs consecutive support sizes and
+# warm starts on this correlated design: 1:2000 here (twice the peak count).
 comparison.sc.pois <- sparseglm(sim.pois, family = poisson(identity),
-  method = c("L0glm", "L0Learn", "lasso", "relaxed_lasso",
-             "adaptive_lasso", "adaptive_relaxed_lasso"),
+  method = comparison_methods, nlambda = 10L,
   tune = "gic", nonnegative = TRUE, intercept = FALSE, approximation = "wls",
-  lambda = list(L0glm = L0glm.chol$init.lambda))
+  support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
+  lambda = list(L0glm = L0glm.chol$init.lambda),
+  options = list(abess = list(warm.start = TRUE)))
 benchmarks_3_1 <- L0glm.metrics(comparison.sc.pois)
 plot(comparison.sc.pois)
 # Tables pasted below are historical results from the earlier benchmark.
@@ -982,14 +989,15 @@ plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
 
 
 ### 3.2.2 COMPARE SPARSE METHODS ####
-# Use method = "all" to include ABESS, MCP and SCAD as well.
 # The L0glm candidate uses the same preset as the fit above; other methods
-# search their native paths and are rescored with the common GIC.
+# share GIC scoring. ABESS uses unit support increments with warm starts;
+# glmnet uses 10 lambda values.
 comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity),
-  method = c("L0glm", "L0Learn", "lasso", "relaxed_lasso",
-             "adaptive_lasso", "adaptive_relaxed_lasso"),
+  method = comparison_methods, nlambda = 10L,
   tune = "gic", nonnegative = TRUE, intercept = FALSE,
-  lambda = list(L0glm = L0glm.chol$init.lambda))
+  support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
+  lambda = list(L0glm = L0glm.chol$init.lambda),
+  options = list(abess = list(warm.start = TRUE)))
 benchmarks_3_2 <- L0glm.metrics(comparison.sc.gaus)
 plot(comparison.sc.gaus)
 # Tables pasted below are historical results from the earlier benchmark.
@@ -1068,11 +1076,15 @@ plotmat(L0glm.chol.pois$coefficients,
 # TODO Fix bug Error: unable to find an inherited method for function ???rowQ??? for signature ???imat = "dgCMatrix", which = "numeric"???
 
 
-### 3.3.2 MULTICHANNEL POISSON LASSO ####
-# glmnet has no joint identity-Poisson group loss: these are independent
-# channel paths, sharing a lambda grid and selected by the joint GIC.
+### 3.3.2 COMPARE MULTICHANNEL POISSON METHODS ####
+# L0glm fits the exact grouped Poisson model. Competitors use WLS with the
+# full channel-specific weight matrix, independent paths and a shared lambda.
 comparison.mc.pois <- sparseglm(sim.pois.mc, family = poisson(identity),
-  method = "lasso", tune = "gic", nonnegative = TRUE, intercept = FALSE)
+  method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE,
+  intercept = FALSE, approximation = "wls",
+  support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
+  lambda = list(L0glm = L0glm.chol.pois$init.lambda),
+  options = list(L0glm = list(relaxed = TRUE), abess = list(warm.start = TRUE)))
 lasso.mc.pois <- coef(comparison.mc.pois)$lasso
 
 x_vals <- as.vector(rowMeans(lasso.mc.pois))                      # estimated
@@ -1099,20 +1111,7 @@ plotmat(lasso.mc.pois,
 
 ### 3.3.4 BENCHMARKS TABLE ####
 
-benchmarks_3_3 = rbind(
-  data.frame(method="relaxed_group_L0glm_poisson", do.call(cbind, L0glm:::get.metrics(beta = as.matrix(L0glm.chol.pois$coefficients),  # TODO: make sure that metrics work with either dense or sparse coefs
-                                                                        X = sim.pois.mc$X, y = sim.pois.mc$y,
-                                                                        family = poisson(identity), 
-                                                                        beta_true = sim.pois.mc$beta_true) ) ),
-  # data.frame(method="BSGS_abess_poisson", do.call(cbind, L0glm:::get.metrics(beta = bsgs.abess.pois, 
-  #                                                                    X = sim.pois.mc$X, y = sim.pois.mc$y, 
-  #                                                                    family = poisson(identity), 
-  #                                                                    beta_true = sim.pois.mc$beta_true) ) ),
-  data.frame(method="independent_channel_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = lasso.mc.pois,
-                                                                     X = sim.pois.mc$X, y = sim.pois.mc$y, 
-                                                                     family = poisson(identity), 
-                                                                     beta_true = sim.pois.mc$beta_true) ) ) 
-  )
+benchmarks_3_3 <- L0glm.metrics(comparison.mc.pois)
 benchmarks_3_3 = benchmarks_3_3[order(benchmarks_3_3[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_3
 #                             method     p     n   m    deviance deviance_true    loglik     MD_coefs MAD_coefs sMAPE_coefs
@@ -1171,9 +1170,14 @@ plotmat(L0glm.chol.gaus$coefficients,
 
 
 
-### 3.4.2 MULTICHANNEL GAUSSIAN GROUP LASSO ####
+### 3.4.2 COMPARE MULTICHANNEL GAUSSIAN METHODS ####
+# Auto grouping uses native grouped fits where supported, independent paths
+# otherwise; the table records the scope of every method.
 comparison.mc.gaus <- sparseglm(sim.gaus.mc, family = gaussian(identity),
-  method = "lasso", tune = "gic", nonnegative = TRUE, intercept = FALSE)
+  method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE, intercept = FALSE,
+  support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
+  lambda = list(L0glm = L0glm.chol.gaus$init.lambda),
+  options = list(L0glm = list(relaxed = TRUE), abess = list(warm.start = TRUE)))
 lasso.mc.gaus <- coef(comparison.mc.gaus)$lasso
 
 x_vals <- as.vector(rowMeans(lasso.mc.gaus))                      # estimated
@@ -1203,19 +1207,7 @@ plotmat(lasso.mc.gaus,
 
 ### 3.4.3 BENCHMARKS TABLE ####
 
-benchmarks_3_4 = rbind(
-  data.frame(method="relaxed_group_L0glm_gaussian", do.call(cbind, L0glm:::get.metrics(beta = as.matrix(L0glm.chol.gaus$coefficients),  # TODO: allow coefs to be either dense or sparse matrix in get.metrics
-                                                                         X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
-                                                                         family = gaussian(identity),
-                                                                         beta_true = sim.gaus.mc$beta_true)) ),
-  # data.frame(method="BSGS_abess_gaussian", do.call(cbind, L0glm:::get.metrics(beta = bsgs.abess.gaus,  # some metrics
-  #                                                                     X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
-  #                                                                     family = gaussian(identity),
-  #                                                                     beta_true = sim.gaus.mc$beta_true)) ),
-  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = lasso.mc.gaus,
-                                                                                   X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
-                                                                                   family = gaussian(identity), 
-                                                                                   beta_true = sim.gaus.mc$beta_true)) ) )
+benchmarks_3_4 <- L0glm.metrics(comparison.mc.gaus)
 
 benchmarks_3_4 = benchmarks_3_4[order(benchmarks_3_4[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_4

@@ -80,6 +80,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) rm(".Random.seed", envir = .GlobalEnv))
   set.seed(seed)
   methods <- L0glm_benchmark_methods(method)
+  all_methods <- any(gsub("[^a-z0-9]", "", tolower(method)) == "all")
   if (is.null(weights)) weights <- sim$weights
   if (is.null(offset)) offset <- sim$offset
   weights <- L0glm_tune_matrix(weights, n, if (kind == "glm") m else 1L, 1, "weights")
@@ -135,6 +136,14 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     adaptive.epsilon=adaptive.epsilon, options=options, seed=seed, mu_floor=mu_floor,
     tune=tune)
   if (kind == "cox") data$cox.cache <- L0glm_ext_cox_cache(response, weights[, 1L])
+  if (all_methods) {
+    supported <- vapply(methods, function(name) tryCatch({
+      L0glm_benchmark_setup(name, data)
+      TRUE
+    }, L0glm_benchmark_unavailable=function(e) FALSE), logical(1))
+    methods <- methods[supported]
+    if (!length(methods)) stop("No installed method supports the supplied arguments.", call.=FALSE)
+  }
   fits <- tuning <- vector("list", length(methods)); names(fits) <- names(tuning) <- methods
   timings <- vector("list", length(methods))
   for (i in seq_along(methods)) {
