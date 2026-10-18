@@ -924,8 +924,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     
     fit_multichannel <- function(do_parallel) {
       convergence <- list()
-      coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
-      weights.mat <- z.mat <- Matrix(0, n, m, sparse = TRUE)
+      empty_coefs <- Matrix(0, p, m, sparse = TRUE)
+      empty_obs <- Matrix(0, n, m, sparse = TRUE)
+      fit <- list(coefficients = empty_coefs, weights = empty_obs,
+                  dispersion = dispersion, lambdas = empty_coefs,
+                  convergence = NULL, z = empty_obs)
       if (do_parallel) {
         nworkers <- min(ncores, m)
         cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
@@ -946,10 +949,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         parallel::clusterCall(cl, worker_init, .libPaths(), L0glm_dll_path,
                               worker_nthreads, L0glm_pkg_path, L0glm_is_dev)
       }
-      
+
       make_chunks <- function(vec, k) {
         k <- min(as.integer(k), length(vec))
-        cs  <- rep(length(vec) %/% k, k); extra <- length(vec) %% k
+        cs <- rep(length(vec) %/% k, k); extra <- length(vec) %% k
         if (extra) cs[1:extra] <- cs[1:extra] + 1
         split(vec, rep(seq_len(k), cs))
       }
@@ -964,208 +967,93 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                offset     = offset[, cols, drop = FALSE])
         })
       }
-      collect_fit <- function(fit, chunked) {
-        if (chunked) {
-          list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
-               weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
-               dispersion   = unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE),
-               lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
-               convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
-               z            = do.call(cbind, lapply(fit, `[[`, "z")))
-        } else {
-          list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
-               weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
-               dispersion   = as.numeric(Matrix(do.call(cbind, lapply(fit, `[[`, "dispersion")),
-                                                sparse = FALSE)[1, ]),
-               lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
-               convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
-               z            = do.call(cbind, lapply(fit, `[[`, "z")))
-        }
-      }
       group_support_start <- function(coefs) {
         support <- L0glm_group_start(coefs, nonnegative)
         support$vars <- sort(unique(c(support$vars, always.include.start)))
         if (!is.null(allowed)) support$start[!allowed] <- 0
         support
       }
-      
+
+      # Selection and relaxed refitting share dispatch, channel assembly and
+      # restoration of excluded rows; only their penalty/thresholding differs.
+      fit_channels <- function(vars, start, lambda, hard_threshold = TRUE) {
+        included <- match(always.include.start[always.include.start %in% vars], vars)
+        if (do_parallel) {
+          chunks <- make_chunks(seq_len(m), length(cl))
+          jobs <- make_jobs(chunks, vars, start)
+          channels <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
+            X = X[, vars, drop = FALSE], family = family, lambda = lambda,
+            hard_threshold = hard_threshold, gamma = gamma, maxit = maxit,
+            tol = tol, always.include = included, thresh = thresh,
+            solver = solver, lower = lower[vars], upper = upper[vars],
+            method = method, normalize = normalize,
+            preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
+            control.solver = control.solver, verbose = verbose)
+        } else {
+          channels <- lapply(seq_len(m), function(col) {
+            L0glm.fit.internal(X = X[, vars, drop = FALSE],
+              y = y[, col, drop = FALSE], weights = weights[, col],
+              family = family, lambda = lambda, gamma = gamma,
+              hard_threshold = hard_threshold, normalize = normalize,
+              preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
+              offset = offset[, col], prior.mean = prior.mean[vars, col],
+              dispersion = disp_list[[col]],
+              start = if (is.null(start) || length(start) == 1L)
+                start else start[vars, col, drop = FALSE],
+              lower = lower[vars], upper = upper[vars], maxit = maxit,
+              thresh = thresh, solver = solver, method = method, tol = tol,
+              always.include = included, control.solver = control.solver,
+              verbose = verbose)
+          })
+        }
+        result <- L0glm_collect_channels(channels)
+        if (length(vars) == p && identical(vars, seq_len(p))) {
+          result$coefficients <- Matrix(result$coefficients, sparse = TRUE)
+          result$lambdas <- Matrix(result$lambdas, sparse = TRUE)
+        } else {
+          coefficients <- lambdas <- Matrix(0, p, m, sparse = TRUE)
+          coefficients[vars, ] <- Matrix(result$coefficients, sparse = TRUE)
+          lambdas[vars, ] <- Matrix(result$lambdas, sparse = TRUE)
+          result$coefficients <- coefficients
+          result$lambdas <- lambdas
+        }
+        result$weights <- Matrix(result$weights, sparse = TRUE)
+        result$z <- Matrix(result$z, sparse = TRUE)
+        result
+      }
+
       for (iter in seq_len(group.maxit)) {
-        if (iter > 1) {
-          support <- group_support_start(coefficients)
-          vars   <- support$vars
-          always.include <- match(always.include.start[always.include.start %in% vars], vars)
-          start  <- support$start
+        if (iter > 1L) {
+          support <- group_support_start(fit$coefficients)
+          vars <- support$vars
+          start <- support$start
         } else {
           vars <- if (is.null(allowed)) seq_len(p) else which(rowSums(allowed) > 0)
-          always.include <- match(always.include.start, vars)
         }
-        
         if (!length(vars) && iter > 1L) {
           if (verbose) warning("All coefficients zero - use a smaller lambda")
           break
         }
-        
-        coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
-        weights.mat  <- Matrix(0, n, m, sparse = TRUE)
-        
-        if (do_parallel) {
-          chunks <- make_chunks(seq_len(m), length(cl))
-          jobs <- make_jobs(chunks, vars, start)
-          fit <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
-                                        X             = X[, vars, drop = FALSE],
-                                        family        = family,
-                                        lambda        = lambda,
-                                        gamma         = gamma,
-                                        maxit         = maxit,
-                                        tol           = tol,
-                                        always.include        = always.include,
-                                        thresh         = thresh,
-                                        solver        = solver,
-                                        lower         = lower[vars],
-                                        upper         = upper[vars],
-                                        method        = method,
-                                        normalize     = normalize,
-                                        preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-                                        control.solver = control.solver,
-                                        verbose       = verbose)
-        } else {
-          fit <- lapply(seq_len(m), function(col) {
-            L0glm.fit.internal(X          = X[, vars, drop = FALSE],
-                               y          = y[, col, drop = FALSE],
-                               weights     = weights[, col],
-                               family     = family,
-                               lambda     = lambda,
-                               gamma      = gamma,
-                               normalize   = normalize,
-                               preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-                               offset      = offset[, col],
-                               prior.mean  = prior.mean[vars, col],
-                               dispersion  = disp_list[[col]],          # slice
-                               start       = if (is.null(start) || length(start) == 1L)
-                                 start else start[vars, col, drop = FALSE],
-                               lower       = lower[vars],
-                               upper       = upper[vars],
-                               maxit       = maxit,
-                               thresh       = thresh,
-                               solver      = solver,
-                               method      = method,
-                               tol         = tol,
-                               always.include      = always.include,
-                               control.solver = control.solver,
-                               verbose     = verbose)
-          })
-        }
-        
-        fit <- collect_fit(fit, chunked = do_parallel)
+        fit <- fit_channels(vars, start, lambda)
         convergence[[length(convergence) + 1L]] <-
           cbind(stage = "selection", pass = iter, channel = seq_len(m), fit$convergence)
-        if (length(vars) == p && identical(vars, seq_len(p))) {
-          coefficients <- Matrix(fit$coefficients, sparse = TRUE)
-        } else {
-          coefficients[vars, ] <- Matrix(fit$coefficients, sparse = TRUE)
-        }
-        weights.mat          <- Matrix(fit$weights,      sparse = TRUE)
-        dispersion           <- fit$dispersion
-        disp_list            <- as_list(next_dispersion(dispersion))
-        if (length(vars) == p && identical(vars, seq_len(p))) {
-          lambdas.mat <- Matrix(fit$lambdas, sparse = TRUE)
-        } else {
-          lambdas.mat[vars, ]  <- Matrix(fit$lambdas, sparse = TRUE)
-        }
-        z.mat                <- Matrix(fit$z,            sparse = TRUE)
-
+        disp_list <- as_list(next_dispersion(fit$dispersion))
       }
-      
-      # ----- relaxed - refit selected variables nearly unpenalised -----------
+
       if (relaxed) {
-        disp_list <- as_list(next_dispersion(dispersion))
-        support <- group_support_start(coefficients)
-        vars   <- support$vars
-        if (length(vars)) {
-          always.include <- match(always.include.start[always.include.start %in% vars], vars)
-          start  <- support$start
-          coefficients <- lambdas.mat <- Matrix(0, p, m, sparse = TRUE)
-          weights.mat  <- Matrix(0, n, m, sparse = TRUE)
-          
-          if (do_parallel) {
-            chunks <- make_chunks(seq_len(m), length(cl))
-            jobs <- make_jobs(chunks, vars, start)
-            fit <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
-                                          X             = X[, vars, drop = FALSE],
-                                          family        = family,
-                                          lambda        = 1e-30, # using a very small lambda here
-                                          hard_threshold = FALSE,
-                                          gamma         = gamma,
-                                          maxit         = maxit,
-                                          tol           = tol,
-                                          always.include        = always.include,
-                                          thresh         = thresh,
-                                          solver        = solver,
-                                          lower         = lower[vars],
-                                          upper         = upper[vars],
-                                          method        = method,
-                                          normalize     = normalize,
-                                          preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-                                          control.solver = control.solver,
-                                          verbose       = verbose)
-          } else {
-            fit <- lapply(seq_len(m), function(col) {
-              L0glm.fit.internal(X          = X[, vars, drop = FALSE],
-                                 y          = y[, col, drop = FALSE],
-                                 weights     = weights[, col], 
-                                 family     = family,
-                                 lambda     = 1e-30,
-                                 hard_threshold = FALSE,
-                                 gamma      = gamma,
-                                 normalize   = normalize,
-                                 preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-                                 offset      = offset[, col], 
-                                 prior.mean  = prior.mean[vars, col], 
-                                 dispersion  = disp_list[[col]],
-                                 start       = start[vars, col, drop = FALSE],
-                                 lower       = lower[vars],
-                                 upper       = upper[vars],
-                                 maxit       = maxit,
-                                 thresh       = thresh,
-                                 solver      = solver,
-                                 method      = method,
-                                 tol         = tol,
-                                 always.include      = always.include,
-                                 control.solver = control.solver,
-                                 verbose     = verbose)
-            })
-          }
-          
-          fit <- collect_fit(fit, chunked = do_parallel)
+        disp_list <- as_list(next_dispersion(fit$dispersion))
+        support <- group_support_start(fit$coefficients)
+        if (length(support$vars)) {
+          fit <- fit_channels(support$vars, support$start, 1e-30, hard_threshold = FALSE)
           convergence[[length(convergence) + 1L]] <-
             cbind(stage = "relaxed", pass = 1L, channel = seq_len(m), fit$convergence)
-          if (length(vars) == p && identical(vars, seq_len(p))) {
-            coefficients <- Matrix(fit$coefficients, sparse = TRUE)
-          } else {
-            coefficients[vars, ] <- Matrix(fit$coefficients, sparse = TRUE)
-          }
-          weights.mat          <- Matrix(fit$weights,      sparse = TRUE)
-          dispersion           <- fit$dispersion
-          disp_list            <- as_list(dispersion)      # keep the helper in sync
-          if (length(vars) == p && identical(vars, seq_len(p))) {
-            lambdas.mat <- Matrix(fit$lambdas, sparse = TRUE)
-          } else {
-            lambdas.mat[vars, ] <- Matrix(fit$lambdas, sparse = TRUE)
-          }
-          z.mat                <- Matrix(fit$z,            sparse = TRUE)
-          
+          disp_list <- as_list(fit$dispersion)
         } else if (verbose) warning("Relaxed fit skipped - all coeffs zero")
       }
-      
-      # return everything needed by the caller
-      list(coefficients = coefficients,
-           weights      = weights.mat,
-           dispersion   = dispersion,
-           lambdas      = lambdas.mat,
-           convergence  = do.call(rbind, convergence),
-           z            = z.mat)
-    } # ------- end fit_multichannel() --------------------------------------
-    
+      fit["convergence"] <- list(do.call(rbind, convergence))
+      fit
+    }
+
     res_multi <- fit_multichannel(do_parallel = parallelize && ncores > 1)
     
     coefficients <- res_multi$coefficients
@@ -1430,6 +1318,16 @@ L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
   NULL
 }
 
+# Combine either individual channels or already combined worker chunks.
+L0glm_collect_channels <- function(fit) {
+  list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
+       weights = do.call(cbind, lapply(fit, `[[`, "weights")),
+       dispersion = as.numeric(unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE)),
+       lambdas = do.call(cbind, lapply(fit, `[[`, "lambdas")),
+       convergence = do.call(rbind, lapply(fit, `[[`, "convergence")),
+       z = do.call(cbind, lapply(fit, `[[`, "z")))
+}
+
 L0glmfun_chunk <- function(job, ...) {
   fit <- L0glmfun(cols       = seq_len(ncol(job$y)),
                   y          = job$y,
@@ -1440,12 +1338,7 @@ L0glmfun_chunk <- function(job, ...) {
                   offset     = job$offset,
                   ...)
 
-  list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
-       weights      = do.call(cbind, lapply(fit, `[[`, "weights")),
-       dispersion   = vapply(fit, `[[`, numeric(1), "dispersion"),
-       lambdas      = do.call(cbind, lapply(fit, `[[`, "lambdas")),
-       convergence  = do.call(rbind, lapply(fit, `[[`, "convergence")),
-       z            = do.call(cbind, lapply(fit, `[[`, "z")))
+  L0glm_collect_channels(fit)
 }
 
 L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,

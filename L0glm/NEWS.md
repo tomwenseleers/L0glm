@@ -2,6 +2,9 @@
 
 ## Development changes
 
+* Shared multichannel selection/refit dispatch and channel/chunk assembly,
+  preserving starting masks, dispersion updates and relaxed-fit behavior.
+
 * Consolidated the legacy Gaussian path likelihood adapters while preserving
   their existing weighting, residual-scale and parameter-count conventions.
 
