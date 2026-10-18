@@ -54,7 +54,7 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   }
   annotate("Regularisation path")
 
-  selection <- if (do_cv) metrics$cv_deviance else metrics[[object$tune]]
+  selection <- if (do_cv) metrics$cv_deviance else if (!is.null(object$kind)) metrics$tuning_score else metrics[[object$tune]]
   finite <- is.finite(selection)
   limits <- if (do_cv) range(cv$mean[finite] - cv$se[finite],
                              cv$mean[finite] + cv$se[finite]) else NULL

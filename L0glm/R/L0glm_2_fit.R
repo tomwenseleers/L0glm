@@ -523,6 +523,11 @@
 #' Laboratory of Socioecology and Social Evolution, KU Leuven \\
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
+#' @param control.family Family-specific IRLS controls. A named list with \code{theta.min=1e-6}, \code{theta.max=1e7}, \code{theta.tol=1e-6}. See the dedicated family help pages.
+#' @section Additional families:
+#' Use \code{mgcv::nb()} for negative binomial fitting with fixed or estimated
+#' shape. See \link{L0glm_negative_binomial} for mathematics and an example.
+#' These family-specific loops are serial. Ordinary GLMs retain their existing paths.
 L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       y, # n x m outcome matrix
                       weights       = NULL,
@@ -550,7 +555,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE,
-                      openmp        = TRUE) {
+                      openmp        = TRUE,
+                      control.family = list()) {
   validate_thresh(thresh)
   L0glm_normalization(normalize)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
@@ -563,6 +569,14 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     stop("openmp must be TRUE or FALSE.", call. = FALSE)
   }
   if (!inherits(family, "family")) family <- family()
+
+  kind <- L0glm_ext_kind(family)
+  if (!is.null(kind)) return(L0glm_ext_fit(
+    X, y, weights, family, dispersion, start, offset, lambda,
+    if (missing(intercept)) FALSE else intercept,
+    always.include, nonnegative, normalize, solver, method, nthreads, maxit,
+    grouped, if (missing(relaxed)) grouped && NCOL(y) > 1L else relaxed,
+    prior.mean, gamma, thresh, tol, control.solver, control.family))
 
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are

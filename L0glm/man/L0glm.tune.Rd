@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0glm_3_tune.R
 \name{L0glm.tune}
 \alias{L0glm.tune}
-\title{Tunes the regularisation parameter lambda of an L0glm fit.}
+\title{Tunes the regularisation parameter lambda of an L0glm fit}
 \usage{
 L0glm.tune(
   X,
@@ -227,4 +227,11 @@ the minimum-deviance choice and the GIC preset. \code{fit_best} continues to
 correspond to \code{lambda_best}.
 \code{fit_1se} contains the full-data fit at \code{lambda_1se}, retained
 from the same path without any additional fits.
+}
+\section{Additional-family tuning}{
+Family-specific fits are independently initialized at each lambda.
+Grouped IC tuning uses row support and ungrouped IC tuning uses entry support.
+CV fits shape, normalization and pilot starts using training observations only.
+NB validation deviance uses training-estimated shape; its score is per weighted response.
+The common lambda grid uses full data, so this is not nested validation.
 }

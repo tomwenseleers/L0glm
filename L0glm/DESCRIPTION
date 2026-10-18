@@ -1,7 +1,7 @@
 Package: L0glm
 Type: Package
 Title: L0-Norm or Group-L0 Norm Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
-Version: 0.2.1
+Version: 0.2.1.9001
 Date: 2026-06-16
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
     	     email = "tom.wenseleers@kuleuven.be"),
@@ -35,6 +35,7 @@ LazyData: true
 Suggests: 
     ALS,
     MASS,
+    mgcv,
     pkgload,
     SIS,
     testthat (>= 3.0.0)

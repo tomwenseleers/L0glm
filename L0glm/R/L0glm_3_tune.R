@@ -1,6 +1,6 @@
 #' @name L0glm.tune
 #' @aliases L0glm.tune
-#' @title Tunes the regularisation parameter lambda of an L0glm fit.
+#' @title Tunes the regularisation parameter lambda of an L0glm fit
 #'
 #' @importFrom qlcMatrix colMax colMin
 #' 
@@ -194,6 +194,12 @@
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
 #' 
 #' @export
+#' @section Additional-family tuning:
+#' Family-specific fits are independently initialized at each lambda.
+#' Grouped IC tuning uses row support and ungrouped IC tuning uses entry support.
+#' CV fits shape, normalization and pilot starts using training observations only.
+#' NB validation deviance uses training-estimated shape; its score is per weighted response.
+#' The common lambda grid uses full data, so this is not nested validation.
 L0glm.tune <- function(X, y,
                        family,
                        weights      = matrix(1, nrow = nrow(as.matrix(y)),
@@ -218,6 +224,12 @@ L0glm.tune <- function(X, y,
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
+  if (!is.null(L0glm_ext_kind(family))) return(L0glm_ext_tune(
+    X, y, family, if (missing(weights)) NULL else weights,
+    if (missing(offset)) NULL else offset, dispersion, tune, nlambda, prop_range,
+    coefs.true, printbest, plot, mu_floor,
+    if (missing(nfolds) && !is.null(foldid)) NULL else nfolds,
+    foldid, lambda_min, start, list(...)))
   if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
       nlambda < 2 || nlambda != as.integer(nlambda))
     stop("nlambda must be an integer of at least 2.", call. = FALSE)

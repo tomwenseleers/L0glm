@@ -33,7 +33,8 @@ L0glm.fit(
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE,
-  openmp = TRUE
+  openmp = TRUE,
+  control.family = list()
 )
 }
 \arguments{
@@ -303,6 +304,8 @@ Set \code{FALSE} to use that path explicitly. Solver controls requesting
 another factorization or \code{rowaug=FALSE} also retain the R path.
 This option selects the backend; \code{parallelize} controls whether
 its outcome channels run concurrently.}
+
+\item{control.family}{Family-specific IRLS controls. A named list with \code{theta.min=1e-6}, \code{theta.max=1e7}, \code{theta.tol=1e-6}. See the dedicated family help pages.}
 }
 \value{
 Returns a list with the following elements:
@@ -535,6 +538,12 @@ methods, such as the group LASSO or multitask lasso, which use an
 approximates the Best Subset of Groups solution if lambda is adequately
 chosen.
 }
+\section{Additional families}{
+Use \code{mgcv::nb()} for negative binomial fitting with fixed or estimated
+shape. See \link{L0glm_negative_binomial} for mathematics and an example.
+These family-specific loops are serial. Ordinary GLMs retain their existing paths.
+}
+
 \examples{
 x <- seq(-1, 1, length.out = 30)
 X <- matrix(x, ncol = 1)
