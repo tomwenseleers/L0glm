@@ -87,7 +87,8 @@ test_that("supported criterion metrics are available without known true coeffici
   scores <- L0glm:::get.IC(metrics$loglik, nrow(X), ncol(X), sum(beta != 0))
   expect_false("mebic" %in% names(scores))
   expect_false("hbic" %in% names(metrics))
-  expect_true(is.na(metrics$MD_selcoefs))
+  expect_false("MD_selcoefs" %in% names(metrics))
+  expect_true(is.na(metrics$within_row_F1_score))
 })
 
 test_that("tuning selects EBIC scores with case-insensitive names", {

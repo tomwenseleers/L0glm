@@ -199,7 +199,6 @@ abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_bestloglik), col="blue")
 # graph2png(file="../benchmarks/plots/6 log likelihood vs lambda relaxed group L0.png", width=7, height=5)
 
-plot(x=log10(lambdas), y=metrics$MD_coefs, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
 
 
@@ -211,12 +210,8 @@ lambdas[which.min(metrics$MAD_coefs)]
 abline(v=log10(bestlambda), col="red")
 # graph2png(file="../benchmarks/plots/7 mean abs deviation true coefficients vs lambda relaxed group L0.png", width=7, height=5)
 
-plot(x=log10(lambdas), y=metrics$sMAPE_coefs, pch=16, type="o")
-lambdas[which.min(metrics$sMAPE_coefs)]
 abline(v=log10(bestlambda), col="red")
 
-plot(x=log10(lambdas), y=metrics$bias_coefs, pch=16, type="o", ylim=c(0.9,1.1)) # closest to 1 best
-lambda_minimal_bias = min(lambdas[which(abs(unlist(metrics$bias_coefs)-1)<=min(abs(unlist(metrics$bias_coefs)-1), na.rm=T)*1.3)]) # 1
 lambda_minimal_bias 
 abline(v=log10(bestlambda), col="red")
 abline(h=1, col="blue")
@@ -224,8 +219,6 @@ abline(h=1, col="blue")
 plot(x=log10(lambdas), y=metrics$R2_coefs, pch=16, type="o", ylim=c(0, 1)) # highest lambda before sudden drop in R2 optimal
 abline(v=log10(bestlambda), col="red") # best would be lambda of 1
 
-plot(x=log10(lambdas), y=metrics$estimated_over_true_support_size, pch=16, type="o") # lambda 1 close to optimal
-lambda_correct_support_size = min(lambdas[which.min(abs(unlist(metrics$estimated_over_true_support_size)-1))]) #
 lambda_correct_support_size 
 abline(v=log10(bestlambda), col="red") 
 abline(v=log10(lambda_correct_support_size), col="blue")
@@ -236,14 +229,8 @@ abline(v=log10(bestlambda), col="red")
 plot(x=log10(lambdas), y=metrics$recall, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
 
-plot(x=log10(lambdas), y=metrics$specificity, pch=16, type="o")
 abline(v=log10(bestlambda), col="red")
 
-plot(x=log10(lambdas), y=metrics$accuracy,
-     main="Accuracy to recover true support\nusing nonnegative relaxed group L0 GLM\n(red=estimate at best GIC)",
-     ylab="accuracy",
-     pch=16, type="o") # GOOD FOR THEORETICAL BEST SUPPORT RECOVERY
-lambda_best_accuracy = lambdas[which.max(metrics$accuracy)] # 
 lambda_best_accuracy
 abline(v=log10(bestlambda), col="red")
 # abline(v=log10(lambda_best_accuracy), col="blue")
@@ -562,16 +549,11 @@ plot(x=support.size[sel], y=metrics$deviance[sel], pch=16, type="o", ylim=c(0,ma
 abline(v=metrics$support_size_true, col="red")
 plot(x=support.size[sel], y=metrics$loglik[sel], pch=16, type="o")
 abline(v=metrics$support_size_true, col="red")
-plot(x=support.size[sel], y=metrics$MD_coefs[sel], pch=16, type="o")
 abline(v=metrics$support_size_true, col="red")
 plot(x=support.size[sel], y=metrics$MAD_coefs[sel], pch=16, type="o") # optimal at support=11
 support.size[which.min(metrics$MAD_coefs)] # 12
 abline(v=metrics$support_size_true, col="red")
-plot(x=support.size[sel], y=metrics$sMAPE_coefs[sel], pch=16, type="o") # optimal at support=11
-support.size[which.min(metrics$sMAPE_coefs)] # 12
 abline(v=metrics$support_size_true, col="red")
-plot(x=support.size[sel], y=metrics$bias_coefs[sel], pch=16, type="o", ylim=c(0.1,2)) #
-support.size[which.min(metrics$bias_coefs)]
 abline(v=metrics$support_size_true, col="red")
 abline(h=1, col="blue")
 plot(x=support.size[sel], y=metrics$R2_coefs[sel], pch=16, type="o", ylim=c(0, 1)) #
@@ -580,12 +562,8 @@ plot(x=support.size[sel], y=metrics$precision[sel], pch=16, type="o")
 abline(v=metrics$support_size_true, col="red")
 plot(x=support.size[sel], y=metrics$recall[sel], pch=16, type="o")
 abline(v=metrics$support_size_true, col="red")
-plot(x=support.size[sel], y=metrics$specificity[sel], pch=16, type="o")
 abline(v=metrics$support_size_true, col="red")
-plot(x=support.size[sel], y=metrics$accuracy[sel], pch=16, type="o")
-support.size[which.max(metrics$accuracy)] # 12
 abline(v=metrics$support_size_true, col="red")
-abline(v=support.size[sel][which.max(as.vector(metrics$accuracy[sel]))], col="blue")
 plot(x=support.size[sel], y=metrics$F1_score[sel], pch=16, type="o") 
 support.size[which.max(metrics$F1_score)] # 12
 abline(v=metrics$support_size_true, col="red")

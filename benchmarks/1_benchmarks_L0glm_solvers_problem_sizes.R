@@ -28,11 +28,10 @@ metric_columns <- c(
   "Time",
   "Precision",
   "Recall",
-  "Specificity",
-  "Accuracy",
   "F1",
+  "MCC",
   "R2",
-  "Estimated_over_true_support_size",
+  "RMSE_coefficients",
   "deviance"
 )
 
@@ -154,12 +153,10 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
     if (!is.null(metrics)) {
       metric_values$Precision <- metrics$precision
       metric_values$Recall <- metrics$recall
-      metric_values$Specificity <- metrics$specificity
-      metric_values$Accuracy <- metrics$accuracy
       metric_values$F1 <- metrics$F1_score
+      metric_values$MCC <- metrics$MCC
       metric_values$R2 <- metrics$R2_coefs
-      metric_values$Estimated_over_true_support_size <-
-        metrics$estimated_over_true_support_size
+      metric_values$RMSE_coefficients <- metrics$RMSE_coefs
       metric_values$deviance <- metrics$deviance_true / nrow(X)
     } else {
       fit_error <- paste(

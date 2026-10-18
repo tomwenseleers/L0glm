@@ -231,26 +231,15 @@ plot(log10(metrics$lambda), metrics$deviance_true, type="l")
 metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # XX for n=p=10000, 10 for n=p=100 # NOTE this is deviance relative to observed signal, not deviance relative to ground truth though
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 metrics$lambda[which(metrics$loglik==max(metrics$loglik))] # 1 for n=p=10000, 0.1 for n=p=100
-plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 min(metrics$lambda[which(round(metrics$MAD_coefs,0)==min(round(metrics$MAD_coefs,0)))]) # 2.238721 for n=p=10000, 0.5623413 for n=p=100 
-plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-min(metrics$lambda[which(round(metrics$sMAPE_coefs,2)==min(round(metrics$sMAPE_coefs,2)))]) # 11.22018 for n=p=10000, 0.5623413 for n=p=100
-plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which(abs(metrics$bias_coefs-1)==min(abs(metrics$bias_coefs-1)))] # 
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
-range(metrics$lambda[which(abs(metrics$estimated_over_true_support_size-1)==min(abs(metrics$estimated_over_true_support_size-1)))]) # 2.238721 for n=p=10000, 0.5623413-25.1188643 for n=p=100
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
 plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
-plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-min(metrics$lambda[which(metrics$accuracy==max(metrics$accuracy))]) # 12.58925 for n=p=10000, 0.5623413 for n=p=100
-range(metrics$lambda[which(metrics$accuracy==max(metrics$accuracy))]) # 12.58925 12.58925 for n=p=10000, 0.5623413-25.1188643 for n=p=100
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 12.58925 for n=p=10000, 0.5623413 for n=p=100
 plot(log10(metrics$lambda), metrics$aic, type="l")
@@ -971,25 +960,15 @@ metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # 100 #
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 abline(v=log10(maxlam), col="red") # max lambda where all coefs would be penalized to 0
 metrics$lambda[which.max(metrics$loglik)] # 1.985 - this is AIC optimal value
-plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 4.466836
-plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 4.466836
-plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 1.778279
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.min(abs(metrics$estimated_over_true_support_size-1))] # 4.466836
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
 plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
-plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one, optimal for lambda between 1 & 10
-metrics$lambda[which.max(metrics$accuracy)] # 4.466836
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 
 plot(log10(metrics$lambda), metrics$aic, type="l")
@@ -1651,25 +1630,15 @@ plot(log10(metrics$lambda), metrics$deviance_true, type="l")
 metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))] # 0.2511886 0.3981072 1.0000000 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 metrics$lambda[which.max(metrics$loglik)] # 0.6309573
-plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 1.584893
-plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 1.584893
-plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 10
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one
-range(metrics$lambda[which(abs(metrics$estimated_over_true_support_size-1)==min(abs(metrics$estimated_over_true_support_size-1)))]) # 1.584893 10.000000
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
 plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
-plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one
-metrics$lambda[which.max(metrics$accuracy)] # 1.584893
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 1.584893
 plot(log10(metrics$lambda), metrics$aic, type="l")
@@ -1841,25 +1810,15 @@ plot(log10(metrics$lambda), metrics$deviance_true, type="l")
 range(metrics$lambda[which(metrics$deviance_true==min(metrics$deviance_true))]) # 1.0000 251.1886 # deviance relative to ground truth
 plot(log10(metrics$lambda), metrics$loglik, type="l")
 metrics$lambda[which.max(metrics$loglik)] # 1
-plot(log10(metrics$lambda), metrics$MD_coefs, type="l")
 plot(log10(metrics$lambda), metrics$MAD_coefs, type="l")
 metrics$lambda[which.min(metrics$MAD_coefs)] # 1
-plot(log10(metrics$lambda), metrics$sMAPE_coefs, type="l") # good one
-metrics$lambda[which.min(metrics$sMAPE_coefs)] # 1
-plot(log10(metrics$lambda), metrics$bias_coefs, type="l")
-metrics$lambda[which.min(abs(metrics$bias_coefs-1))] # 1
 plot(log10(metrics$lambda), metrics$R2_coefs, type="l")
-plot(log10(metrics$lambda), metrics$estimated_over_true_support_size, type="l") # good one
-range(metrics$lambda[which(abs(metrics$estimated_over_true_support_size-1)==min(abs(metrics$estimated_over_true_support_size-1)))]) # 1.000 1584.893
 plot(log10(metrics$lambda), metrics$TP, type="l")
 plot(log10(metrics$lambda), metrics$FP, type="l")
 plot(log10(metrics$lambda), metrics$TN, type="l")
 plot(log10(metrics$lambda), metrics$FN, type="l")
 plot(log10(metrics$lambda), metrics$precision, type="l")
 plot(log10(metrics$lambda), metrics$recall, type="l")
-plot(log10(metrics$lambda), metrics$specificity, type="l")
-plot(log10(metrics$lambda), metrics$accuracy, type="l") # good one
-metrics$lambda[which.max(metrics$accuracy)] # 1
 plot(log10(metrics$lambda), metrics$F1_score, type="l")
 metrics$lambda[which.max(metrics$F1_score)] # 1
 plot(log10(metrics$lambda), metrics$aic, type="l")

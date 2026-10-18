@@ -2,6 +2,15 @@
 
 ## Development changes
 
+* Recovery metrics now report channel-entry confusion counts, precision, recall,
+  F1 and MCC within correctly recovered nonmandatory rows of multichannel fits.
+  The pooled scores are conditional on recovering the row; row-support metrics
+  still account for missed and spurious rows. Coefficient summaries retain MAE,
+  RMSE and through-origin R-squared. Selected-coefficient summaries, signed mean
+  error, sMAPE, regression slope, support-size ratio, accuracy and specificity
+  were removed. Historical result tables are preserved; retired diagnostics in
+  benchmark scripts were removed and the solver benchmark now includes MCC/RMSE.
+
 * Normalized dense Gaussian identity fits reuse fixed weighted cross-products
   for LLT/LDLT solves with at most 2,000 coefficients. The cache follows the
   shrinking active set; effectively wide and sparse systems retain their
