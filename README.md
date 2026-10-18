@@ -30,6 +30,10 @@ coefficient units. With `normalize = "none"`, these unit-start conventions
 coincide. See the [QSAR benchmark](benchmarks/2_benchmark_vs_abess_relaxed_LASSO_toxicityQSAR/README.md)
 for comparisons of both L2 conventions, starts and iteration budgets.
 
+The [GLM performance benchmark](benchmarks/3_benchmark_fastglm_sparse_and_documented/README.md)
+compares fastglmPure, L0glm and abess across sparse-truth simulations and the
+documented fastglm examples, including dense solutions, timings and convergence diagnostics.
+
 ## Installation
 
 Install from GitHub with:

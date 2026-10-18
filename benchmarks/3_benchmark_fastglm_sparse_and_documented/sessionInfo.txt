@@ -1,0 +1,44 @@
+R version 4.5.0 (2025-04-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26300)
+
+Matrix products: default
+  LAPACK version 3.12.0
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: Europe/Brussels
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] fastglm_0.1.2    L0glm_0.2.1.9001 testthat_3.3.2
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6          shape_1.4.6.1         ggplot2_4.0.3
+ [4] L0Learn_2.1.0         processx_3.9.0        sparsesvd_0.2-3
+ [7] qlcMatrix_0.9.9       lattice_0.23-1        callr_3.8.0
+[10] vctrs_0.7.3           tools_4.5.0           generics_0.1.4
+[13] parallel_4.5.0        sandwich_3.1-3        tibble_3.3.1
+[16] pkgconfig_2.0.3       Matrix_1.7-6          RColorBrewer_1.1-3
+[19] S7_0.2.2              desc_1.4.3            uuid_1.2-2
+[22] lifecycle_1.0.5       compiler_4.5.0        farver_2.1.2
+[25] stringr_1.6.0         abess_0.4.11          MatrixModels_0.5-4
+[28] microbenchmark_1.5.0  brio_1.1.5            statmod_1.5.2
+[31] RhpcBLASctl_0.23-42   codetools_0.2-20      SparseM_1.84-2
+[34] quantreg_6.1          gsignal_0.3-7         glmnet_5.1
+[37] pillar_1.11.1         MASS_7.3-66           iterators_1.0.14
+[40] foreach_1.5.2         nlme_3.1-171          tidyselect_1.2.1
+[43] stringi_1.8.9         slam_0.1-56           dplyr_1.2.1
+[46] reshape2_1.4.5        splines_4.5.0         rprojroot_2.1.1
+[49] grid_4.5.0            cli_3.6.6             magrittr_2.0.5
+[52] cobs_1.3-9-1          survival_3.8-12       dynamicTreeCut_1.63-1
+[55] bigmemory.sri_0.1.8   bigmemory_4.6.6       scales_1.4.0
+[58] otel_0.2.0            fastcluster_1.3.0     zoo_1.9-1
+[61] mgcv_1.9-4            rlang_1.3.0           Rcpp_1.1.2
+[64] docopt_0.7.2          glue_1.8.1            osqp_1.0.0
+[67] pkgload_1.5.3         R6_2.6.1              plyr_1.8.9
