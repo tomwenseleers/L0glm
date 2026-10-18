@@ -67,7 +67,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
   if (!is.numeric(nlambda) || length(nlambda) != 1 || !is.finite(nlambda) || nlambda < 2 || nlambda != floor(nlambda))
     stop("nlambda must be an integer of at least 2.", call. = FALSE)
   tune <- L0glm_ic_name(tune, allow_cv = TRUE)
-  approximation <- match.arg(approximation, c("none", "wls"))
+  approximation <- match.arg(approximation, c("none", "wls", "wls_grouped"))
   if (any(!is.finite(c(adaptive.gamma, adaptive.epsilon, mu_floor))) ||
       length(adaptive.gamma) != 1 || adaptive.gamma <= 0 || length(adaptive.epsilon) != 1 ||
       adaptive.epsilon <= 0 || length(mu_floor) != 1 || mu_floor < 0)

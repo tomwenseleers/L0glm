@@ -1077,11 +1077,12 @@ plotmat(L0glm.chol.pois$coefficients,
 
 
 ### 3.3.2 COMPARE MULTICHANNEL POISSON METHODS ####
-# L0glm fits the exact grouped Poisson model. Competitors use WLS with the
-# full channel-specific weight matrix, independent paths and a shared lambda.
+# L0glm fits the exact grouped Poisson model. Grouped ABESS and glmnet use a
+# labelled Gaussian approximation with shared row weights 1/(rowMeans(y)+0.1).
+# L0Learn uses independent channel-specific WLS; all are scored as Poisson.
 comparison.mc.pois <- sparseglm(sim.pois.mc, family = poisson(identity),
   method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE,
-  intercept = FALSE, approximation = "wls",
+  intercept = FALSE, approximation = "wls_grouped",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol.pois$init.lambda),
   options = list(L0glm = list(relaxed = TRUE), abess = list(warm.start = TRUE)))

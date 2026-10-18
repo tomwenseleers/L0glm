@@ -245,6 +245,54 @@ test_that("multichannel Poisson WLS paths retain channel weights and valid CV sc
   expect_equal(result$tuning$lasso$cv$deviance[5,1],expected)
 })
 
+test_that("shared-row Poisson WLS enables native grouped ABESS and glmnet comparisons", {
+  sim <- simul(method=4,n=100,p=100,s=.1,seed=2)
+  channels <- order(colSums(sim$y),decreasing=TRUE)[1:2]
+  for (name in c("y","y_true","beta_true")) sim[[name]] <- sim[[name]][,channels,drop=FALSE]
+  glmnet_methods <- c("lasso","relaxed_lasso","adaptive_lasso","adaptive_relaxed_lasso")
+  result <- sparseglm(sim,family=poisson(identity),method=c("abess",glmnet_methods),
+    nonnegative=TRUE,intercept=FALSE,approximation="wls_grouped",nlambda=10,support.size=0:15)
+  expect_true(all(result$timings$status == "ok"))
+  expect_true(all(result$timings$scope == "grouped"))
+  expect_true(all(result$timings$approximation == "identity_poisson_row_wls"))
+  row_w <- 1/(rowMeans(sim$y)+.1)
+  setup <- L0glm_benchmark_setup("lasso",result$data)
+  expect_equal(setup$data$weights,matrix(row_w,100,2))
+  expect_equal(result$fits$lasso$prior.weights,matrix(1,100,2))
+  for (method in glmnet_methods) expect_equal(nrow(result$tuning[[method]]$candidates),10L)
+  reference <- glmnet::glmnet(sim$X,sim$y,family="mgaussian",weights=row_w,
+    lambda=result$tuning$lasso$candidates$parameter,intercept=FALSE,lower.limits=0,
+    standardize.response=FALSE)
+  index <- result$tuning$lasso$index
+  expected <- do.call(cbind,lapply(reference$beta,function(B)B[,index,drop=FALSE]))
+  expect_equal(unname(as.matrix(coef(result)$lasso)),unname(as.matrix(expected)))
+  expect_warning(unavailable <- sparseglm(sim,family=poisson(identity),method="abess",
+    nonnegative=TRUE,intercept=FALSE,approximation="wls",support.size=0:2),"unavailable")
+  expect_equal(unavailable$timings$status,"unsupported")
+  expect_match(unavailable$timings$note,"channel-specific weights")
+  auto <- sparseglm(sim,family=poisson(identity),method="all",approximation="wls",
+    nonnegative=TRUE,intercept=FALSE,nlambda=3,support.size=0:2,lambda=list(L0glm=6))
+  expect_false("abess" %in% names(auto$fits))
+  expect_true(all(auto$timings$status == "ok"))
+  independent <- sparseglm(sim,family=poisson(identity),method="abess",approximation="wls",
+    grouped=FALSE,nonnegative=TRUE,intercept=FALSE,support.size=0:2)
+  expect_equal(independent$timings$status,"ok")
+  expect_equal(independent$timings$scope,"independent")
+  # Fold-local shared row weights must still be scored as held-out Poisson.
+  folds <- rep(1:2,50)
+  cv <- sparseglm(sim,family=poisson(identity),method="lasso",approximation="wls_grouped",
+    nonnegative=TRUE,intercept=FALSE,nlambda=4,tune="cv",foldid=folds)
+  expect_equal(cv$timings$scope,"grouped")
+  train <- folds != 1L
+  reference <- glmnet::glmnet(sim$X[train,],sim$y[train,,drop=FALSE],family="mgaussian",
+    weights=row_w[train],lambda=cv$tuning$lasso$candidates$parameter,
+    intercept=FALSE,lower.limits=0,standardize.response=FALSE)
+  B <- do.call(cbind,lapply(reference$beta,function(B)B[,2,drop=FALSE]))
+  mu <- as.matrix(sim$X[!train,] %*% B)
+  expected <- sum(poisson()$dev.resids(sim$y[!train,,drop=FALSE],pmax(mu,1e-8),1))/length(mu)
+  expect_equal(cv$tuning$lasso$cv$deviance[2,1],expected)
+})
+
 test_that("ABESS Gaussian row weighting agrees with weighted least squares on a fixed support", {
   sim <- sparseglm_fixture()
   W <- seq(.2,2,length.out=72)

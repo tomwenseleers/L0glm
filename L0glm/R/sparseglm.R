@@ -60,18 +60,28 @@
 #'   selection when available and independent channels otherwise. `TRUE`
 #'   requires native grouping; `FALSE` uses independent channels. For
 #'   multinomial it chooses grouped versus ungrouped *joint* selection;
-#'   marginal binomial fits are never substituted. `scope` records the choice.
+#'   marginal binomial fits are never substituted. See `approximation` for
+#'   grouped Poisson WLS and ABESS restrictions. `scope` records the choice.
 #' @param options Named backend argument lists, e.g.
 #'   `list(L0glm=list(maxit=50), abess=list(c.max=5))`. Shared data, constraints,
 #'   tuning and path arguments cannot be overridden. Native Gaussian LASSO
-#'   variants and ABESS require common channel weights for grouped fits; auto
-#'   otherwise preserves the full weight matrix using independent paths.
-#' @param approximation `"none"` or `"wls"`. For identity-link Poisson, WLS
+#'   variants and ABESS require common channel weights for grouped fits; see
+#'   `approximation` for shared-row Poisson weights and independent fits.
+#' @param approximation `"none"`, `"wls"` or `"wls_grouped"`. For identity-link
+#'   Poisson, WLS
 #'   fits every competing method except L0glm with an explicitly labelled
 #'   Gaussian approximation using weights `weights/(y+0.1)`. This also avoids
 #'   glmnet's invalid zero-mean Poisson null model without an intercept or
 #'   positive offset. Scoring still uses original
-#'   Poisson likelihood, weights and offsets. Other families are not approximated.
+#'   Poisson likelihood, weights and offsets. `"wls_grouped"` instead allows
+#'   native grouped Gaussian ABESS and glmnet fits with a shared row-weight
+#'   vector `rowMeans(weights)/(rowMeans(y)+0.1)` when grouping is auto or true.
+#'   These fits are labelled `"identity_poisson_row_wls"`; this is not the full
+#'   channel-specific Poisson WLS loss. Other competing methods retain
+#'   channel-specific WLS. With `"wls"`, ABESS cannot select rows jointly when
+#'   channel weights differ, so auto/true grouping excludes it; explicitly
+#'   request `grouped=FALSE` for independent ABESS fits. Other families are not
+#'   approximated.
 #' @param adaptive.gamma Adaptive-LASSO exponent, default 1.
 #' @param adaptive.epsilon Positive adaptive denominator floor, default `1e-8`.
 #' @param seed Random seed; the caller's random-number state is restored.

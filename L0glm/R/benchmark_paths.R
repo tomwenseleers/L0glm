@@ -13,15 +13,27 @@ L0glm_benchmark_setup <- function(method, data) {
     L0Learn=gaussian || binomial, MCP=kind == "cox" || ordinis_native,
     SCAD=kind == "cox" || ordinis_native, TRUE)
   approximation <- "none"
-  if (method != "L0glm" && data$approximation == "wls" &&
+  if (method != "L0glm" && data$approximation %in% c("wls", "wls_grouped") &&
       data$family$family == "poisson" && data$family$link == "identity") {
-    data$weights <- data$weights/(data$y + .1)
+    if (data$approximation == "wls_grouped" && data$m > 1L && !identical(data$grouped, FALSE) &&
+        method %in% c("abess", "lasso", "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso")) {
+      row_w <- rowMeans(data$weights)/(rowMeans(data$y) + .1)
+      data$weights <- matrix(row_w, nrow(data$X), data$m)
+      approximation <- "identity_poisson_row_wls"
+    } else {
+      data$weights <- data$weights/(data$y + .1)
+      approximation <- "identity_poisson_wls"
+    }
     data$family <- gaussian()
-    gaussian <- TRUE; approximation <- "identity_poisson_wls"
+    gaussian <- TRUE
   } else if (!native) L0glm_benchmark_unavailable(paste(method, "does not natively support this family/link;",
     "identity Poisson can opt into approximation='wls'."))
   m <- data$m
   common <- m == 1L || all(data$weights == data$weights[, 1L])
+  if (method == "abess" && approximation == "identity_poisson_wls" && m > 1L &&
+      !identical(data$grouped, FALSE) && !common)
+    L0glm_benchmark_unavailable(paste("ABESS cannot use channel-specific weights for grouped Poisson WLS;",
+      "use approximation='wls_grouped' for shared row weights, or grouped=FALSE for independent fits."))
   can_group <- method == "L0glm" || (kind == "multinomial") || (gaussian && common &&
     method %in% c("abess", "lasso", "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso"))
   grouped <- m > 1L && !identical(data$grouped, FALSE) && can_group

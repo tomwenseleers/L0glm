@@ -104,20 +104,30 @@ intercept. Ignored with a warning for multinomial CLR coefficients.}
 selection when available and independent channels otherwise. \code{TRUE}
 requires native grouping; \code{FALSE} uses independent channels. For
 multinomial it chooses grouped versus ungrouped \emph{joint} selection;
-marginal binomial fits are never substituted. \code{scope} records the choice.}
+marginal binomial fits are never substituted. See \code{approximation} for
+grouped Poisson WLS and ABESS restrictions. \code{scope} records the choice.}
 
 \item{options}{Named backend argument lists, e.g.
 \code{list(L0glm=list(maxit=50), abess=list(c.max=5))}. Shared data, constraints,
 tuning and path arguments cannot be overridden. Native Gaussian LASSO
-variants and ABESS require common channel weights for grouped fits; auto
-otherwise preserves the full weight matrix using independent paths.}
+variants and ABESS require common channel weights for grouped fits; see
+\code{approximation} for shared-row Poisson weights and independent fits.}
 
-\item{approximation}{\code{"none"} or \code{"wls"}. For identity-link Poisson, WLS
+\item{approximation}{\code{"none"}, \code{"wls"} or \code{"wls_grouped"}. For identity-link
+Poisson, WLS
 fits every competing method except L0glm with an explicitly labelled
 Gaussian approximation using weights \code{weights/(y+0.1)}. This also avoids
 glmnet's invalid zero-mean Poisson null model without an intercept or
 positive offset. Scoring still uses original
-Poisson likelihood, weights and offsets. Other families are not approximated.}
+Poisson likelihood, weights and offsets. \code{"wls_grouped"} instead allows
+native grouped Gaussian ABESS and glmnet fits with a shared row-weight
+vector \code{rowMeans(weights)/(rowMeans(y)+0.1)} when grouping is auto or true.
+These fits are labelled \code{"identity_poisson_row_wls"}; this is not the full
+channel-specific Poisson WLS loss. Other competing methods retain
+channel-specific WLS. With \code{"wls"}, ABESS cannot select rows jointly when
+channel weights differ, so auto/true grouping excludes it; explicitly
+request \code{grouped=FALSE} for independent ABESS fits. Other families are not
+approximated.}
 
 \item{adaptive.gamma}{Adaptive-LASSO exponent, default 1.}
 
