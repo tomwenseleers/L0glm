@@ -307,7 +307,25 @@ These deconvolution functions are motivated by GC/MS chromatogram peak deconvolu
 - `L0glm_blind_deco()` estimates both sparse peaks and the PSF.
 - `simulate_spike_train()` simulates single- or multichannel blurred spike trains.
 - `simulate_GCMS()` simulates synthetic GC/MS chromatograms with ground truth.
-- `benchmark_sparse_glm()` and `benchmark_sparse_group_glm()` provide benchmark wrappers for simulated sparse GLM examples.
+- `sparseglm()` fits and compares sparse methods using common likelihood scores, information criteria or cross-validation.
+
+For example, compare L0glm, ABESS, L0Learn, MCP, SCAD, LASSO, relaxed LASSO,
+adaptive LASSO and adaptive relaxed LASSO on the same data:
+
+``` r
+comparison <- sparseglm(X, y, family = gaussian(), method = "all",
+                        tune = "cv", nfolds = 5)
+L0glm.metrics(comparison)  # fit/recovery metrics, tuning scores and elapsed times
+coef(comparison)$adaptive_relaxed_lasso
+```
+
+Use `tune = "gic"` (or `"aic"`, `"bic"`, `"ebic"`, `"mbic"`) for information-criterion
+selection. Adaptive penalties use a single-iteration L0glm ridge pilot, recomputed
+inside each CV training fold. Native grouped multichannel methods are used when
+available; independent-channel fits and unavailable combinations are identified
+in the results. Joint multinomial and right-censored Cox comparisons use
+`family = mgcv::multinom(K)` and `family = mgcv::cox.ph()`, respectively.
+See `?sparseglm` for backend support and explicitly labelled approximations.
 
 ## References
 

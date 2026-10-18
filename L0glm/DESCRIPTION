@@ -37,9 +37,12 @@ Suggests:
     MASS,
     mgcv,
     nnet,
+    ncvreg,
+    ordinis,
     pkgload,
     SIS,
     survival,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.1
+Remotes: jaredhuling/ordinis

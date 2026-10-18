@@ -2,6 +2,18 @@
 
 ## Development changes
 
+* Added `sparseglm()` to fit, tune and compare L0glm, ABESS, L0Learn, MCP, SCAD,
+  LASSO, relaxed LASSO and both adaptive LASSO variants. Every candidate uses
+  common likelihood/IC scoring or shared row-fold CV, with training-only
+  adaptive ridge pilots. Results retain sparse original-dimension coefficients,
+  paths, fold diagnostics, timings and explicit failure/availability statuses.
+  `L0glm.metrics()` is now an S3 generic with a comparison-table method.
+  Native grouped Gaussian, joint multinomial and Cox adapters are included;
+  matrix channel weights are preserved using independent paths where needed.
+  Identity-Poisson WLS approximations require an explicit opt-in. Retired the
+  old benchmark drivers and `fit.GLM` entry points without compatibility wrappers,
+  and migrated their examples to the new interface.
+
 * Fits now inherit from `L0glm_fit`, providing `coef()`, `logLik()`, `nobs()`,
   standard `AIC()`/`BIC()` and S3 `GIC()`/`EBIC()`/`MBIC()` extraction for
   ordinary, native Poisson and special-family models. Original prior weights,

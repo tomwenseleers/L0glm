@@ -2,14 +2,20 @@
 
 S3method(EBIC,L0glm_fit)
 S3method(GIC,L0glm_fit)
+S3method(L0glm.metrics,L0glm_fit)
+S3method(L0glm.metrics,default)
+S3method(L0glm.metrics,sparseglm)
 S3method(MBIC,L0glm_fit)
 S3method(coef,L0glm_fit)
+S3method(coef,sparseglm)
 S3method(logLik,L0Learn)
 S3method(logLik,L0glm_extended_fit)
 S3method(logLik,L0glm_fit)
 S3method(logLik,glmnet)
 S3method(nobs,L0glm_fit)
+S3method(plot,sparseglm)
 S3method(predict,L0glm_extended_fit)
+S3method(print,sparseglm)
 export(EBIC)
 export(GIC)
 export(L0BestRankGNMF)
@@ -21,14 +27,10 @@ export(L0glm_deco_estkernel)
 export(L0glm_sparse_deco)
 export(L0nnpois)
 export(MBIC)
-export(benchmark_sparse_glm)
-export(benchmark_sparse_group_glm)
 export(control.solver.gen)
 export(convkernel)
 export(convmatrix)
 export(estimate_psf_from_std)
-export(fit.GLM)
-export(fit.GLM.mc)
 export(glm_aggregate)
 export(glm_cluster)
 export(glm_dist)
@@ -40,8 +42,8 @@ export(simul)
 export(simulate_GCMS)
 export(simulate_spike_train)
 export(sis_glm)
+export(sparseglm)
 import(Matrix)
-importFrom(L0Learn,L0Learn.fit)
 importFrom(Matrix,
   Diagonal,
   Matrix,
@@ -54,18 +56,9 @@ importFrom(RhpcBLASctl,
   get_num_cores,
   get_num_procs
 )
-importFrom(abess,
-  abess,
-  extract
-)
 importFrom(cobs,cobs)
 importFrom(dynamicTreeCut,cutreeDynamic)
 importFrom(fastcluster,hclust)
-importFrom(glmnet,
-  coef.glmnet,
-  cv.glmnet,
-  glmnet
-)
 importFrom(grDevices,
   colorRampPalette,
   topo.colors
@@ -98,7 +91,6 @@ importFrom(qlcMatrix,
   colMin,
   rowMax
 )
-importFrom(scales,alpha)
 importFrom(splines,bs)
 importFrom(statmod,rinvgauss)
 importFrom(stats,

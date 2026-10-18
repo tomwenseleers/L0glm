@@ -109,8 +109,10 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 
 #' Essential fit and recovery metrics for an L0glm model
 #'
+#' @name L0glm.metrics
 #' @md
-#' @param object A model returned by [L0glm.fit()] or [L0nnpois()].
+#' @param object A model returned by [L0glm.fit()] or [L0nnpois()], or a
+#'   comparison from [sparseglm()].
 #' @param newdata New predictor matrix, without an automatically added
 #'   intercept, or \code{NULL} for training data.
 #' @param y Responses for \code{newdata}; required when it is supplied.
@@ -130,6 +132,7 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' @param beta_true Optional true coefficient vector or matrix, on the original
 #'   scale and with the same dimensions as \code{coef(object)}, including any
 #'   intercept. Multinomial truth must use the displayed CLR coordinates.
+#' @param ... Further S3 method arguments; currently unused.
 #'
 #' @details
 #' Row support is defined by at least one exactly nonzero coefficient in a
@@ -179,6 +182,9 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #'   model-specific objective summaries; supplying \code{beta_true} also
 #'   adds the same recovery metrics. The information criteria are
 #'   \code{aic}, \code{bic}, \code{gic}, \code{ebic} and \code{mbic}.
+#'   For a \code{sparseglm} collection, one row per requested method
+#'   includes timings, status, grouping scope, approximation and tuning values.
+#'   Failed methods retain a row with unavailable fit metrics.
 #' @seealso \link{model_criteria}, \link{information_criteria}
 #' @examples
 #' set.seed(12)
@@ -190,7 +196,14 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 #' @export
 L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
-                          offset = NULL, mu_floor = 1e-8, beta_true = NULL) {
+                          offset = NULL, mu_floor = 1e-8, beta_true = NULL, ...) {
+  UseMethod("L0glm.metrics")
+}
+
+#' @rdname L0glm.metrics
+#' @export
+L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = NULL,
+                          offset = NULL, mu_floor = 1e-8, beta_true = NULL, ...) {
   if (!inherits(object, "L0glm_fit"))
     stop("object must be a model returned by L0glm.fit or L0nnpois.", call. = FALSE)
   training <- is.null(newdata)
@@ -255,6 +268,12 @@ L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
   if (!is.null(beta_true)) scores <- cbind(scores,
     as.data.frame(L0glm_recovery_metrics(beta, beta_true, object$always.include, object$p)))
   scores
+}
+
+#' @rdname L0glm.metrics
+#' @export
+L0glm.metrics.default <- function(object, ...) {
+  stop("object must be a model returned by L0glm.fit or L0nnpois, or a benchmark result.", call. = FALSE)
 }
 
 # Ordinary GLMs retain prior weights separately from the final IRLS weights.

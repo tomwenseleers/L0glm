@@ -907,127 +907,18 @@ plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
 
 
 
-### 3.1.2 LASSO USING bigGlm ####
-system.time(bigGlm.sc.pois <- fit.GLM(sim = sim.pois, method = 2, 
-                                      family = poisson(identity), plot = TRUE)) 
-# 3.02s
-
-
-### 3.1.3 ADAPTIVE LASSO USING bigGlm ####
-system.time(bigGlm.al.sc.pois <- fit.GLM(sim = sim.pois, method = 3, 
-                                         family = poisson(identity), plot = T)) 
-# 2.88s
-# TODO check what ridge penalty is used to calculate adaptive penalties
-# maybe use the same one as used in 1st iteration of L0glm with lambda preset to optimise GIC?
-
-# TODO add relaxed LASSO as additional fitting method in fit.GLM
-
-
-### 3.1.4 L0LEARN ####
-system.time(L0learn.sc.pois <- fit.GLM(sim = sim.pois, method = 4, 
-                                       family = poisson(identity), plot = T))  
-# 20.04s
-# TODO fix warning below
-# Warning message:
-# `aes_string()` was deprecated in ggplot2 3.0.0.
-# ??? Please use tidy evaluation idioms with `aes()`.
-# ??? See also `vignette("ggplot2-in-packages")` for more information.
-# ??? The deprecated feature was likely used in the L0Learn package.
-# Please report the issue at <https://github.com/hazimehh/L0Learn/issues>.
-# This warning is displayed once every 8 hours.
-# Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated. 
-
-
-
-### 3.1.5 L0LEARN AFTER LASSO ####
-# better solution than regular L0Learn
-system.time(L0learn.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 5, family = poisson(identity), plot = T)) 
-# 2.84s
-
-
-### 3.1.6 ABESS ####
-# system.time(abess.sc.pois <- fit.GLM(sim = sim.pois, method = 6, 
-#                                      family = poisson(identity), 
-#                                      plot = T, IC = "gic"))  
-# XXs
-# TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# TODO: NOTE: result is better if I do not use weights 
-# CHECK WHY - maybe a bug in abess?
-
-### 3.1.7 ABESS AFTER LASSO ####
-# system.time(abess.after.lasso.sc.pois <- fit.GLM(sim = sim.pois, method = 7, 
-#                                                  family = poisson(identity), 
-#                                                  plot = T, 
-#                                                  IC = "gic"))  
-# XXs
-# TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# TODO: NOTE: result is better if I do not use weights - then cor 0.8849495 - CHECK
-# CHECK WHY - maybe a bug in abess?
-
-
-### 3.1.8 MCP USING ORDINIS ####
-# system.time(ordinis.mcp.sc.pois <- fit.GLM(sim = sim.pois, method = 8, 
-#                                            family = poisson(identity), plot = T,
-#                                            IC = "gic")) 
-# # XXs
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & ordinis is called correctly?
-# 
-# 
-### 3.1.9 SCAD USING ORDINIS ####
-# system.time(ordinis.scad.sc.pois <- fit.GLM(sim = sim.pois, method = 9, 
-#                                             family = poisson(identity), 
-#                                             plot = T, IC = "gic"))  
-# # XXs
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & ordinis is called correctly?
-
-
-
-
-### 3.1.10 BENCHMARKS TABLE ####
-
-X <- sim.pois$X
-y <- sim.pois$y
-# W <- 1/(y+0.1)
-IC <- "gic"
-
-benchmarks_3_1 = rbind(
-  data.frame(method="L0glm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol$coefficients,  # some metrics
-                                                        X = X, y = y, 
-                                                        family = poisson(identity), 
-                                                        beta_true = sim.pois$beta_true))),
-  data.frame(method="nnalasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.al.sc.pois,  # some metrics
-                                                                  X = cbind(1, X), y = y, 
-                                                                  family = poisson(identity), 
-                                                                  beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  data.frame(method="nnL0Learn_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.pois,  # some metrics
-                                                                                 X = X, y = y, 
-                                                                                 family = poisson(identity),
-                                                                                 beta_true = as.vector(sim.pois$beta_true)) )),
-  # data.frame(method="nnabess", do.call(cbind, L0glm:::get.metrics(beta = abess.sc.pois,  # some metrics
-  #                                                         X = X, y = y, 
-  #                                                         family = poisson(identity),
-  #                                                         beta_true = as.vector(sim.pois$beta_true)) )),
-  # data.frame(method="nnabess_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.pois,  # some metrics
-  #                                                                              X = X, y = y, 
-  #                                                                              family = poisson(identity),
-  #                                                                              beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnL0Learn", do.call(cbind, L0glm:::get.metrics(beta = L0learn.sc.pois,  # some metrics
-                                                            X = X, y = y, 
-                                                            family = poisson(identity), 
-                                                            beta_true = as.vector(sim.pois$beta_true)) )),
-  data.frame(method="nnlasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.sc.pois,  # some metrics
-                                                                 X = cbind(1, X), y = y, 
-                                                                 family = poisson(identity), 
-                                                                 beta_true = c(0, as.vector(sim.pois$beta_true))) )) # ,
-  # data.frame(method="nnMCP_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.mcp.sc.pois,  # some metrics
-  #                                                               X = cbind(1, X), y = y, 
-  #                                                               family = poisson(identity),
-  #                                                               beta_true = c(0, as.vector(sim.pois$beta_true))) )),
-  # data.frame(method="nnSCAD_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.scad.sc.pois,  # some metrics
-  #                                                                X = cbind(1, X), y = y, 
-  #                                                                family = poisson(identity), 
-  #                                                                beta_true = c(0, as.vector(sim.pois$beta_true))) ))
-  )
+### 3.1.2 COMPARE SPARSE METHODS ####
+# Use method = "all" to include ABESS, MCP and SCAD as well.
+# The L0glm candidate uses the same preset as the fit above; other methods
+# search their native paths and are rescored with the common GIC.
+comparison.sc.pois <- sparseglm(sim.pois, family = poisson(identity),
+  method = c("L0glm", "L0Learn", "lasso", "relaxed_lasso",
+             "adaptive_lasso", "adaptive_relaxed_lasso"),
+  tune = "gic", nonnegative = TRUE, intercept = FALSE, approximation = "wls",
+  lambda = list(L0glm = L0glm.chol$init.lambda))
+benchmarks_3_1 <- L0glm.metrics(comparison.sc.pois)
+plot(comparison.sc.pois)
+# Tables pasted below are historical results from the earlier benchmark.
 
 benchmarks_3_1 = benchmarks_3_1[order(benchmarks_3_1[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_1
@@ -1090,108 +981,18 @@ plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
      xlab="estimated coefficients", ylab="true coefficients")
 
 
-### 3.2.2 LASSO USING bigGlm ####
-system.time(bigGlm.sc.gaus <- fit.GLM(sim = sim.gaus, method = 2, 
-                                      family = gaussian(identity), plot = TRUE)) 
-# 3.00s 
-
-
-### 3.2.3 ADAPTIVE LASSO USING bigGlm ####
-system.time(bigGlm.al.sc.gaus <- fit.GLM(sim = sim.gaus, method = 3, 
-                                         family = gaussian(identity), plot = T)) 
-# 2.90s 
-
-
-### 3.2.4 L0LEARN ####
-
-system.time(L0learn.sc.gaus <- fit.GLM(sim = sim.gaus, method = 4, 
-                                       family = gaussian(identity), plot = T))  
-# 21.15s
-
-
-### 3.2.5 L0LEARN AFTER LASSO ####
-# Better than regular L0Learn & faster
-system.time(L0learn.after.lasso.sc.gaus <- fit.GLM(sim = sim.gaus, method = 5, 
-                                                   family = gaussian(identity), plot = T))  
-# 2.90s 
-
-
-### 3.2.6 ABESS ####
-# system.time(abess.sc.gaus <- fit.GLM(sim = sim.gaus, method = 6, 
-#                                      family = gaussian(identity), 
-#                                      plot = T, IC = "gic"))  
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# # XXs
-# 
-# 
-### 3.2.7 ABESS AFTER LASSO ####
-# system.time(abess.after.lasso.sc.gaus <- fit.GLM(sim = sim.gaus, method = 7, 
-#                                                  family = gaussian(identity), 
-#                                                  plot = T, IC = "gic"))  
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# # XXs
-
-
-### 3.2.8 MCP USING ORDINIS ####
-# system.time(ordinis.mcp.sc.gaus <- fit.GLM(sim = sim.gaus, method = 8, 
-#                                            family = gaussian(identity), 
-#                                            plot = T, IC = "gic"))  
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & ordinis is called correctly?
-# # 0.27s
-# 
-# 
-### 3.2.9 SCAD USING ORDINIS ####
-# system.time(ordinis.scad.sc.gaus <- fit.GLM(sim = sim.gaus, method = 9, 
-#                                             family = gaussian(identity), 
-#                                             plot = T, IC = "gic"))  
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & ordinis is called correctly?
-# # 0.28s
-
-
-### 3.2.10 BENCHMARKS TABLE ####
-
-X <- sim.gaus$X
-y <- sim.gaus$y
-IC <- "gic"
-
-benchmarks_3_2 = rbind(
-  data.frame(method="L0glm", do.call(cbind, L0glm:::get.metrics(beta = L0glm.chol$coefficients,  # some metrics
-                                                                     X = X, y = y, 
-                                                                     family = gaussian(identity), 
-                                                                     beta_true = sim.gaus$beta_true))),
-  data.frame(method="nnalasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.al.sc.gaus,  # some metrics
-                                                                  X = cbind(1, X), y = y, 
-                                                                  family = gaussian(identity), 
-                                                                  beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  data.frame(method="nnL0Learn_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = L0learn.after.lasso.sc.gaus,  # some metrics
-                                                                                 X = X, y = y, 
-                                                                                 family = gaussian(identity),
-                                                                                 beta_true = as.vector(sim.gaus$beta_true)) )),
-  # data.frame(method="abess_after_bigGlm_nnlasso", do.call(cbind, L0glm:::get.metrics(beta = abess.after.lasso.sc.gaus,  # some metrics
-  #                                                                            X = X, y = y, 
-  #                                                                            family = gaussian(identity),
-  #                                                                            beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="nnL0Learn", do.call(cbind, L0glm:::get.metrics(beta = L0learn.sc.gaus,  # some metrics
-                                                            X = X, y = y, 
-                                                            family = gaussian(identity), 
-                                                            beta_true = as.vector(sim.gaus$beta_true)) )),
-  # data.frame(method="abess", do.call(cbind, L0glm:::get.metrics(beta = abess.sc.gaus,  # some metrics
-  #                                                       X = X, y = y, 
-  #                                                       family = gaussian(identity), 
-  #                                                       beta_true = as.vector(sim.gaus$beta_true)) )),
-  data.frame(method="nnlasso_bigGlm", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.sc.gaus,  # some metrics
-                                                                 X = cbind(1, X), y = y, 
-                                                                 family = gaussian(identity), 
-                                                                 beta_true = c(0, as.vector(sim.gaus$beta_true))) )) # ,
-  # data.frame(method="nnMCP_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.mcp.sc.gaus,  # some metrics
-  #                                                               X = cbind(1, X), y = y, 
-  #                                                               family = gaussian(identity),
-  #                                                               beta_true = c(0, as.vector(sim.gaus$beta_true))) )),
-  # data.frame(method="nnSCAD_ordinis", do.call(cbind, L0glm:::get.metrics(beta = ordinis.scad.sc.gaus,  # some metrics
-  #                                                                X = cbind(1, X), y = y, 
-  #                                                                family = gaussian(identity), 
-  #                                                                beta_true = c(0, as.vector(sim.gaus$beta_true))) ))
-  )
+### 3.2.2 COMPARE SPARSE METHODS ####
+# Use method = "all" to include ABESS, MCP and SCAD as well.
+# The L0glm candidate uses the same preset as the fit above; other methods
+# search their native paths and are rescored with the common GIC.
+comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity),
+  method = c("L0glm", "L0Learn", "lasso", "relaxed_lasso",
+             "adaptive_lasso", "adaptive_relaxed_lasso"),
+  tune = "gic", nonnegative = TRUE, intercept = FALSE,
+  lambda = list(L0glm = L0glm.chol$init.lambda))
+benchmarks_3_2 <- L0glm.metrics(comparison.sc.gaus)
+plot(comparison.sc.gaus)
+# Tables pasted below are historical results from the earlier benchmark.
 
 benchmarks_3_2 = benchmarks_3_2[order(benchmarks_3_2[,"deviance_true"]),] # sort by deviance relative to ground truth
 benchmarks_3_2
@@ -1267,46 +1068,31 @@ plotmat(L0glm.chol.pois$coefficients,
 # TODO Fix bug Error: unable to find an inherited method for function ???rowQ??? for signature ???imat = "dgCMatrix", which = "numeric"???
 
 
-### 3.3.2 BEST SUBSET OF GROUP SELECTION (BSGS) USING ABESS ####
-# system.time(bsgs.abess.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 1, 
-#                                              family = poisson(identity), 
-#                                              plot = T, IC = "gic"))
-# # XXs
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# # NOTE: this is now fit as if noise was Gaussian
-# # TODO also compare what solution & timings one would get with
-# # https://skscope.readthedocs.io/en/latest/gallery/GeneralizedLinearModels/poisson-identity-link.html
-# # (but tuning optimal support size)
-# # maybe implement this as an additional fitting method in 
-# # fit.GLM.mc?
+### 3.3.2 MULTICHANNEL POISSON LASSO ####
+# glmnet has no joint identity-Poisson group loss: these are independent
+# channel paths, sharing a lambda grid and selected by the joint GIC.
+comparison.mc.pois <- sparseglm(sim.pois.mc, family = poisson(identity),
+  method = "lasso", tune = "gic", nonnegative = TRUE, intercept = FALSE)
+lasso.mc.pois <- coef(comparison.mc.pois)$lasso
 
-
-
-
-### 3.3.3 MULTIVARIATE GROUP LASSO USING bigGlm ####
-system.time(bigGlm.mc.pois <- fit.GLM.mc(sim = sim.pois.mc, method = 2, 
-                                    family = poisson(identity), plot = T, 
-                                    IC = "gic"))
-# 527.18s
-
-x_vals <- as.vector(rowMeans(bigGlm.mc.pois))                      # estimated
+x_vals <- as.vector(rowMeans(lasso.mc.pois))                      # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
 main_expr <- bquote(
   atop("true vs estimated coefficients (row means)",
-       atop("multivariate weighted group LASSO",
+       atop("independent-channel Poisson LASSO",
             R^2 == .(sprintf("%.2f", R2p)) * "%")))
 plot(x_vals, y_vals, pch = 16, col = "steelblue",
      xlab = "estimated coefficients", 
      ylab = "true coefficients",
      main = main_expr)
 
-plotmat(bigGlm.mc.pois, 
+plotmat(lasso.mc.pois,
       xlab="Time index", ylab="Channel", 
-      main="bigGlm nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
+      main="nonnegative independent-channel Poisson LASSO\n(red = true peaks, cyan = estimated peaks)")
 # abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMax(sim.pois.mc$beta_true)!=0)], col="red")
-# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(bigGlm.mc.pois)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.pois.mc$X))[as.vector(rowMin(lasso.mc.pois)!=0)], col="cyan")
 
 
 
@@ -1322,7 +1108,7 @@ benchmarks_3_3 = rbind(
   #                                                                    X = sim.pois.mc$X, y = sim.pois.mc$y, 
   #                                                                    family = poisson(identity), 
   #                                                                    beta_true = sim.pois.mc$beta_true) ) ),
-  data.frame(method="multivariate_group_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.mc.pois,  
+  data.frame(method="independent_channel_LASSO_poisson", do.call(cbind, L0glm:::get.metrics(beta = lasso.mc.pois,
                                                                      X = sim.pois.mc$X, y = sim.pois.mc$y, 
                                                                      family = poisson(identity), 
                                                                      beta_true = sim.pois.mc$beta_true) ) ) 
@@ -1385,24 +1171,12 @@ plotmat(L0glm.chol.gaus$coefficients,
 
 
 
-# ### 3.4.2 BEST SUBSET OF GROUP SELECTION (BSGS) USING ABESS ####
-# system.time(bsgs.abess.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 1, 
-#                                           family = gaussian(identity), plot = T, 
-#                                           IC = "gic")) 
-# # 5s
-# # TODO: takes a really long time to run - check if there is a bug in fit.GLM & abess is called correctly?
-# # TODO post this as a reproducible example in https://github.com/abess-team/abess/issues/510
-# # and ask if the solution quality could be improved here somehow
+### 3.4.2 MULTICHANNEL GAUSSIAN GROUP LASSO ####
+comparison.mc.gaus <- sparseglm(sim.gaus.mc, family = gaussian(identity),
+  method = "lasso", tune = "gic", nonnegative = TRUE, intercept = FALSE)
+lasso.mc.gaus <- coef(comparison.mc.gaus)$lasso
 
-
-
-# bigGlm nonnegative mgaussian multivariate group LASSO fit
-system.time(bigGlm.mc.gaus <- fit.GLM.mc(sim = sim.gaus.mc, method = 2, 
-                                    family = gaussian(identity), plot = T, 
-                                    IC = "gic"))
-# 592.73s
-
-x_vals <- as.vector(rowMeans(bigGlm.mc.gaus))                      # estimated
+x_vals <- as.vector(rowMeans(lasso.mc.gaus))                      # estimated
 y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
 fit <- lm(y_vals ~ 0 + x_vals)
 R2p <- round(100 * summary(fit)$r.squared, 2)
@@ -1418,11 +1192,11 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 sum(sim.gaus.mc$beta_true!=0)        # 73070
 sum(L0glm.chol.gaus$coefficients!=0) # 187365 - TODO: check how overall sparsity can be made to match better
 
-plotmat(bigGlm.mc.gaus,
+plotmat(lasso.mc.gaus,
       xlab="Time index", ylab="Channel", 
       main="nonnegative multivariate group LASSO\n(red = true peaks, cyan = estimated peaks)")
 # abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
-# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(bigGlm.mc.gaus)!=0)], col="cyan")
+# abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(lasso.mc.gaus)!=0)], col="cyan")
 
 
 
@@ -1438,7 +1212,7 @@ benchmarks_3_4 = rbind(
   #                                                                     X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
   #                                                                     family = gaussian(identity),
   #                                                                     beta_true = sim.gaus.mc$beta_true)) ),
-  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = bigGlm.mc.gaus,  
+  data.frame(method="multivariate_group_LASSO_gaussian", do.call(cbind, L0glm:::get.metrics(beta = lasso.mc.gaus,
                                                                                    X = sim.gaus.mc$X, y = sim.gaus.mc$y, 
                                                                                    family = gaussian(identity), 
                                                                                    beta_true = sim.gaus.mc$beta_true)) ) )
