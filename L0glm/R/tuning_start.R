@@ -26,6 +26,7 @@ L0glm_pilot_start <- function(args, bounds) {
   }
   direction[total != 0] <- sign(total[total != 0])
   seed <- direction * absolute / length(lambdas)
+  if (identical(fit$kind, "multinomial")) seed <- seed - rowMeans(seed)
   list(start = seed, pilot = data.frame(lambda = lambdas, seconds = timing,
                                         support_size = support))
 }

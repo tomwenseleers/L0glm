@@ -305,7 +305,7 @@ another factorization or \code{rowaug=FALSE} also retain the R path.
 This option selects the backend; \code{parallelize} controls whether
 its outcome channels run concurrently.}
 
-\item{control.family}{Family-specific IRLS controls. A named list with \code{theta.min=1e-6}, \code{theta.max=1e7}, \code{theta.tol=1e-6}. See the dedicated family help pages.}
+\item{control.family}{Family-specific IRLS controls. A named list with \code{theta.min=1e-6}, \code{theta.max=1e7}, \code{theta.tol=1e-6}, \code{multinomial="irls"} or \code{"bound"}, and \code{max.working=2000L}. See the dedicated family help pages.}
 }
 \value{
 Returns a list with the following elements:
@@ -541,6 +541,8 @@ chosen.
 \section{Additional families}{
 Use \code{mgcv::nb()} for negative binomial fitting with fixed or estimated
 shape. See \link{L0glm_negative_binomial} for mathematics and an example.
+Use \code{mgcv::multinom(K)} for joint multinomial IRLS with CLR
+coefficients; see \link{L0glm_multinomial}.
 These family-specific loops are serial. Ordinary GLMs retain their existing paths.
 }
 

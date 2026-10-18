@@ -18,9 +18,11 @@
 
 \item{newdata}{Predictor matrix without an automatically added intercept.}
 
-\item{type}{Prediction type; response or link.}
+\item{type}{Prediction type; response, link or class.
+Multinomial link predictions are CLR scores for every category.}
 
-\item{offset}{Optional prediction offset, on each linear predictor.}
+\item{offset}{Optional prediction offset, on each linear predictor.
+Multinomial offsets have one column per category and are centered rowwise.}
 
 \item{times}{Unused for these families.}
 

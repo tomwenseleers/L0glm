@@ -198,7 +198,7 @@
 #' Family-specific fits are independently initialized at each lambda.
 #' Grouped IC tuning uses row support and ungrouped IC tuning uses entry support.
 #' CV fits shape, normalization and pilot starts using training observations only.
-#' NB validation deviance uses training-estimated shape; its score is per weighted response.
+#' NB validation deviance uses training-estimated shape; multinomial deviance is per weighted trial.
 #' The common lambda grid uses full data, so this is not nested validation.
 L0glm.tune <- function(X, y,
                        family,

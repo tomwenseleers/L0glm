@@ -36,6 +36,7 @@ Suggests:
     ALS,
     MASS,
     mgcv,
+    nnet,
     pkgload,
     SIS,
     testthat (>= 3.0.0)

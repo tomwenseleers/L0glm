@@ -2,6 +2,7 @@
 L0glm_ext_kind <- function(family) {
   name <- tolower(family$family)
   if (identical(name, "negative binomial") && is.function(family$putTheta)) return("nb")
+  if (name %in% c("multinom", "multinomial")) return("multinomial")
   NULL
 }
 
@@ -15,13 +16,15 @@ L0glm_ext_matrix <- function(value, n, m, default, name) {
 }
 
 L0glm_ext_control <- function(control) {
-  defaults <- list(theta.min = 1e-6, theta.max = 1e7,
+  defaults <- list(multinomial = "irls", theta.min = 1e-6, theta.max = 1e7,
                    theta.tol = 1e-6, max.working = 2000L)
   if (!is.list(control) || (length(control) && is.null(names(control))) ||
       any(!names(control) %in% names(defaults)))
     stop("Unknown control.family option.", call. = FALSE)
   defaults[names(control)] <- control
-  numeric <- defaults
+  if (length(defaults$multinomial) != 1L || !defaults$multinomial %in% c("irls", "bound"))
+    stop('control.family$multinomial must be "irls" or "bound".', call. = FALSE)
+  numeric <- defaults[setdiff(names(defaults), "multinomial")]
   if (any(lengths(numeric) != 1L) || !all(vapply(numeric, is.numeric, logical(1))) ||
       any(!is.finite(unlist(numeric))) ||
       defaults$theta.min <= 0 || defaults$theta.max <= defaults$theta.min ||
@@ -39,12 +42,19 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
       any(!is.finite(if (inherits(X, "sparseMatrix")) X@x else X)))
     stop("X must be a finite numeric design matrix.", call. = FALSE)
   n <- nrow(X)
-  response <- L0glm_ext_nb_response(y, family, n)
+  response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
+    multinomial = L0glm_ext_multinomial_response(y, family, n))
   m <- response$m
+  multinomial <- kind == "multinomial"
+  if (multinomial && nonnegative) {
+    warning("nonnegative is ignored for multinomial CLR coefficients.", call. = FALSE)
+    nonnegative <- FALSE
+  }
   if (intercept) X <- cbind(Intercept = 1, X)
   p <- ncol(X)
   included <- L0glm_mandatory(X, always.include)
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
+  if (kind == "multinomial") lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
   preprocessing <- L0glm_preprocessing(X, normalize, lower, included)
   centered <- L0glm_center_working_design(X, preprocessing, lower)
   scale <- preprocessing$scale
@@ -56,22 +66,29 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
       B[centered$intercept, ] + as.numeric(crossprod(centered$shift, B))
     B * scale
   }
+  if (multinomial && !is.null(dim(start)) && ncol(start) != m)
+    stop("Multinomial starts need one CLR column per category.", call. = FALSE)
   unit <- L0glm_unit_start(start, X, preprocessing, m)
   explicit <- !is.null(start)
   B <- if (explicit) L0glm_ext_matrix(unit, p, m, 0, "start") else matrix(0, p, m)
   if (any(!is.finite(B))) stop("Starting coefficients must be finite.", call. = FALSE)
-  allowed <- if (explicit) B != 0 else matrix(TRUE, p, m)
+  if (multinomial) B <- B - rowMeans(B)
+  allowed <- if (explicit && !multinomial) B != 0 else matrix(TRUE, p, m)
   allowed[included, ] <- TRUE
   prior <- to_working(L0glm_ext_matrix(prior.mean, p, m, 0, "prior.mean"))
+  if (multinomial) prior <- prior - rowMeans(prior)
   if (any(!is.finite(prior))) stop("prior.mean must be finite.", call. = FALSE)
   B <- to_working(B)
   B <- pmax(B, lower * scale)
-  w <- L0glm_ext_matrix(weights, n, m, 1, "weights")
+  w <- L0glm_ext_matrix(weights, n, if (kind == "nb") m else 1L, 1, "weights")
   off <- L0glm_ext_matrix(offset, n, m, 0, "offset")
+  if (multinomial) off <- off - rowMeans(off)
   if (any(!is.finite(w) | w < 0) || !any(w > 0) || any(!is.finite(off)))
     stop("Weights must be finite and nonnegative; offsets must be finite.", call. = FALSE)
   if (kind == "nb" && any(colSums(w) == 0))
     stop("Each NB channel needs a positive-weight observation.", call. = FALSE)
+  if (kind == "multinomial" && any(colSums(response$y * w[, 1L]) == 0))
+    stop("Each multinomial category needs a positive-weight observation.", call. = FALSE)
   data <- list(kind = kind, X = X, Z = Z, response = response, y = response$y,
     weights = w, offset = off, included = included, lower = lower * scale,
     prior = prior, preprocessing = preprocessing, shift = centered$shift,
@@ -129,7 +146,9 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
   included <- data$included
   for (iteration in seq_len(maxit)) {
     D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped, gamma)
-    proposal <- L0glm_ext_nb_working(data, B, D, state, args)
+    proposal <- switch(data$kind,
+      nb = L0glm_ext_nb_working(data, B, D, state, args),
+      multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
     objective <- function(candidate) -2 * L0glm_ext_loglik(data, candidate, state) + ridge(candidate)
     baseline <- objective(B)
@@ -150,6 +169,13 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
       selection <- L0glm_ext_threshold(candidate, allowed, included, thresh, grouped)
       candidate <- selection$B
       allowed <- selection$allowed
+      if (data$kind == "multinomial") {
+        for (j in seq_len(nrow(candidate))) {
+          keep <- which(allowed[j, ])
+          if (length(keep) < 2L) { candidate[j, ] <- 0; allowed[j, ] <- FALSE } else
+            candidate[j, keep] <- candidate[j, keep] - mean(candidate[j, keep])
+        }
+      }
     }
     nuisance_change <- 0
     if (data$kind == "nb") {
@@ -183,7 +209,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
       !is.numeric(tol) || length(tol) != 1L || tol <= 0 || !is.finite(tol))
     stop("maxit and tol must be finite positive scalars.", call. = FALSE)
   if (!is.null(dispersion) && any(dispersion != 1))
-    stop("These families have scale dispersion=1; theta is supplied in family=mgcv::nb().", call. = FALSE)
+    stop("These families have scale dispersion=1; NB theta is supplied in family=mgcv::nb().", call. = FALSE)
   thread_state <- L0glm_set_thread_count(nthreads)
   if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state), add = TRUE)
   data <- L0glm_ext_prepare(X, y, family, weights, offset, intercept, always.include,
@@ -195,7 +221,18 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   if (!data$explicit) {
     D <- matrix(1e-3, data$p, data$m)
     D[data$included, ] <- 0
-    B <- L0glm_ext_nb_working(data, B, D, state, args)
+    B <- switch(data$kind,
+      nb = L0glm_ext_nb_working(data, B, D, state, args),
+      multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
+  }
+  if (data$kind == "multinomial" && data$explicit && any(B == 0)) {
+    # Starting zeroes are initial values, not multinomial support constraints.
+    # Take one finite-ridge step before using inverse-square adaptive weights.
+    D <- matrix(1e-3, data$p, data$m); D[data$included, ] <- 0
+    pilot <- L0glm_ext_multinomial_working(data, B, D, state, args)
+    zero <- if (grouped) matrix(rowSums(B^2) == 0, data$p, data$m) else B == 0
+    B[zero] <- pilot[zero]
+    B <- B - rowMeans(B)
   }
   selection <- L0glm_ext_pass(data, B, data$allowed, state, lambda, grouped, gamma,
                               thresh, as.integer(maxit), tol, args)

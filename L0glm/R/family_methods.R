@@ -8,7 +8,9 @@ L0glm_ext_loglik <- function(data, B, state) {
         mu = mu[good, j], size = state$theta[j], log = TRUE))
     }, numeric(1))))
   }
-
+  probability <- L0glm_ext_softmax(as.matrix(data$Z %*% B + data$offset))
+  constant <- lgamma(rowSums(data$y) + 1) - rowSums(lgamma(data$y + 1))
+  sum(data$weights[, 1L] * (constant + rowSums(ifelse(data$y == 0, 0, data$y * probability$logp))))
 }
 
 L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, args) {
@@ -16,7 +18,8 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
   if (length(data$shifted_intercept)) beta[data$shifted_intercept, ] <-
     beta[data$shifted_intercept, ] - as.numeric(crossprod(data$shift, beta))
   rownames(beta) <- colnames(data$X)
-  colnames(beta) <- colnames(data$y)
+  colnames(beta) <- if (data$kind == "multinomial") data$response$levels else
+    colnames(data$y)
   convergence <- do.call(rbind, lapply(names(passes), function(stage)
     data.frame(stage, iterations = passes[[stage]]$iterations,
                converged = passes[[stage]]$converged)))
@@ -36,6 +39,7 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     grouped = grouped, relaxed = relaxed, convergence = convergence,
     history = lapply(passes, `[[`, "history"), solver = args$solver,
     method = args$method, control.family = data$control), class = "L0glm_extended_fit")
+  if (data$kind == "multinomial") answer$coordinates <- "clr"
   answer$metrics <- L0glm.metrics(answer, mu_floor = 0)
   answer$objective <- answer$metrics$objective
   answer
@@ -44,8 +48,10 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
 #' Predict from an extended-family fit
 #' @param object A fitted extended-family model.
 #' @param newdata Predictor matrix without an automatically added intercept.
-#' @param type Prediction type; response or link.
+#' @param type Prediction type; response, link or class.
+#'   Multinomial link predictions are CLR scores for every category.
 #' @param offset Optional prediction offset, on each linear predictor.
+#'   Multinomial offsets have one column per category and are centered rowwise.
 #' @param times Unused for these families.
 #' @param ... Unused.
 #' @export
@@ -62,10 +68,18 @@ predict.L0glm_extended_fit <- function(object, newdata = NULL, type = "response"
   coefficients <- object$coefficients
   eta <- as.matrix(X %*% coefficients)
   eta <- eta + L0glm_ext_matrix(offset, nrow(X), ncol(eta), 0, "offset")
+  if (object$kind == "multinomial") eta <- eta - rowMeans(eta)
   if (type == "link") return(eta)
   if (object$kind == "nb") {
     if (type != "response") stop("NB prediction type must be response or link.", call. = FALSE)
     return(matrix(object$family$linkinv(eta), nrow(eta), ncol(eta)))
+  }
+  if (object$kind == "multinomial") {
+    probability <- L0glm_ext_softmax(eta)$p
+    colnames(probability) <- object$response$levels
+    if (type == "class") return(factor(object$response$levels[max.col(probability)], levels = object$response$levels))
+    if (type != "response") stop("Multinomial prediction type must be response, class or link.", call. = FALSE)
+    return(probability)
   }
   stop("Unknown extended-family prediction type.", call. = FALSE)
 }
@@ -110,14 +124,24 @@ L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
     }
     deviance <- 2 * (saturated - likelihood)
     mass <- sum(w)
+  } else if (object$kind == "multinomial") {
+    yy <- L0glm_ext_multinomial_response(y, object$family, n, object$response$levels)$y
+    eta <- predict(object, newdata, type = "link", offset = offset)
+    lp <- L0glm_ext_softmax(eta)$logp
+    likelihood <- sum(w[, 1L] * (lgamma(rowSums(yy) + 1) - rowSums(lgamma(yy + 1)) + rowSums(ifelse(yy == 0, 0, yy * lp))))
+    saturated <- rowSums(ifelse(yy == 0, 0, yy * log(yy/pmax(1, rowSums(yy)))))
+    deviance <- 2 * sum(w[, 1L] * (saturated - rowSums(ifelse(yy == 0, 0, yy * lp))))
+    mass <- sum(w[, 1L] * rowSums(yy))
   }
   beta <- as.matrix(object$coefficients)
   selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
   selected <- sum(rowSums(beta[selectable, , drop = FALSE] != 0) > 0)
   elements <- sum(beta[selectable, , drop = FALSE] != 0)
-  mandatory <- length(object$always.include) * ncol(beta)
+  mandatory <- length(object$always.include) * (ncol(beta) - (object$kind == "multinomial"))
   nuisance <- sum(object$theta.estimated)
-  df <- elements + mandatory + nuisance
+  df <- if (object$kind == "multinomial") {
+    (if (object$grouped) selected * (ncol(beta) - 1L) else elements - selected) + mandatory
+  } else elements + mandatory + nuisance
   IC <- get.IC(likelihood, max(2, object$n_ic), max(1, object$p), df)
   charge <- if (object$grouped) selected else elements
   data.frame(loglik = likelihood, deviance, mean_deviance = deviance/if (mass > 0) mass else 1,

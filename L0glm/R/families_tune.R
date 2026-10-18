@@ -2,7 +2,8 @@
 # independently, including theta and preprocessing inside every training fold.
 L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   response <- args$y
-  mass <- rowSums(args$weights)
+  mass <- switch(kind, nb = rowSums(args$weights),
+    multinomial = args$weights[, 1L] * rowSums(response))
   K <- max(foldid)
   fold_weights <- vapply(seq_len(K), function(k) sum(mass[foldid == k]), numeric(1))
   if (any(fold_weights <= 0) || any(fold_weights >= sum(mass)))
@@ -56,12 +57,13 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     stop('start must be NULL, numeric, or "pilot".', call. = FALSE)
   kind <- L0glm_ext_kind(family)
   n <- nrow(X)
-  response <- L0glm_ext_nb_response(y, family, n)
-  weights <- L0glm_ext_matrix(weights, n, response$m, 1, "weights")
+  response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
+    multinomial = L0glm_ext_multinomial_response(y, family, n))
+  weights <- L0glm_ext_matrix(weights, n, if (kind == "nb") response$m else 1L, 1, "weights")
   offset <- L0glm_ext_matrix(offset, n, response$m, 0, "offset")
   if (any(!is.finite(weights) | weights < 0) || !any(weights > 0))
     stop("Weights must be finite, nonnegative and not all zero.", call. = FALSE)
-  intercept <- if (is.null(dots$intercept)) FALSE else isTRUE(dots$intercept)
+  intercept <- if (is.null(dots$intercept)) kind == "multinomial" else isTRUE(dots$intercept)
   p <- L0glm_predictor_count(X, intercept, dots$always.include)
   n_ic <- sum(rowSums(weights) > 0)
   if (n_ic < 1) stop("No positive likelihood mass.", call. = FALSE)
@@ -124,6 +126,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     if (!is.null(coefs.true)) {
       b <- as.matrix(fit$coefficients); truth <- as.matrix(coefs.true)
       if (!identical(dim(b), dim(truth))) stop("coefs.true must have returned coefficient dimensions.", call. = FALSE)
+      if (kind == "multinomial") truth <- truth - rowMeans(truth)
       keep <- setdiff(seq_len(nrow(b)), fit$always.include)
       a <- rowSums(b[keep, , drop = FALSE] != 0) > 0
       t <- rowSums(truth[keep, , drop = FALSE] != 0) > 0
@@ -153,6 +156,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     endpoint_zero = is_zero(endpoint), mu_floor = mu_floor,
     coefficients = coefficients, theta = theta, fit_best = fit_best, fit_1se = fit_1se,
     cv = cv, criterion_support = if (preset_fit$grouped) "rows" else "coefficients")
+  if (kind == "multinomial") result$coordinates <- "clr"
   if (printbest) message(sprintf("Best lambda by %s = %.4g", toupper(tune), grid[best]))
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result

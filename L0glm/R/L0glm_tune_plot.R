@@ -10,9 +10,14 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   beta <- object$coefficients[[1L]]
   selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
   multichannel <- ncol(beta) > 1L
-  coefmat <- t(matrix(vapply(object$coefficients, function(b) Matrix::rowMeans(b[selectable, , drop = FALSE]),
-                             numeric(length(selectable))), nrow = length(selectable)))
-  colors <- grDevices::hcl(h = (15 + 137.508 * (seq_len(ncol(coefmat)) - 1)) %% 360,
+  multinomial <- identical(object$kind, "multinomial")
+  contrast_count <- if (multinomial) ncol(beta) else 1L
+  path <- function(b) if (multinomial) as.numeric(b[selectable, , drop = FALSE]) else
+    Matrix::rowMeans(b[selectable, , drop = FALSE])
+  coefmat <- t(matrix(vapply(object$coefficients, path,
+                             numeric(length(selectable) * contrast_count)),
+                      nrow = length(selectable) * contrast_count))
+  colors <- grDevices::hcl(h = (15 + 137.508 * (rep(seq_along(selectable), contrast_count) - 1)) %% 360,
                           c = 70, l = 50)
 
   # Support is discrete: label the nearest evaluated model, never interpolate
@@ -35,11 +40,14 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   graphics::par(mar = margins)
 
   if (ncol(coefmat)) {
-    graphics::matplot(x, coefmat, type = "l", lty = 1, col = colors,
+    graphics::matplot(x, coefmat, type = "l", lty = rep(seq_len(contrast_count), each = length(selectable)), col = colors,
                       xlim = xlim, xlab = expression(log[10](lambda)), ylab = "")
   } else graphics::plot(x, rep(0, length(x)), type = "n", xlim = xlim,
                          xlab = expression(log[10](lambda)), ylab = "")
   graphics::mtext(expression(hat(beta)), side = 2, line = 3, las = 1)
+  if (multinomial && length(selectable)) graphics::legend("topright",
+    paste(colnames(beta), "CLR"),
+    lty = seq_len(contrast_count), col = "grey30", bty = "n", cex = .7)
   graphics::abline(v = log10(object$lambda_max), col = "black", lty = 3)
   graphics::abline(v = log10(object$lambda_best), col = "red", lty = 2)
   if (has_1se)
@@ -47,14 +55,17 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   if (has_preset)
     graphics::abline(v = log10(object$lambda_preset), col = "red", lty = 3)
   if (!is.null(coefs.true)) {
-    if (multichannel) coefs.true <- Matrix::rowMeans(coefs.true)
-    coefs.true <- coefs.true[selectable]
+    if (multinomial) coefs.true <- as.numeric((coefs.true - rowMeans(coefs.true))[selectable, , drop = FALSE]) else {
+      if (multichannel) coefs.true <- Matrix::rowMeans(coefs.true)
+      coefs.true <- coefs.true[selectable]
+    }
     graphics::abline(h = as.vector(coefs.true[coefs.true != 0]),
                      col = scales::alpha("blue", 0.1))
   }
   annotate("Regularisation path")
 
-  selection <- if (do_cv) metrics$cv_deviance else if (!is.null(object$kind)) metrics$tuning_score else metrics[[object$tune]]
+  selection <- if (do_cv) metrics$cv_deviance else
+    if (!is.null(object$kind)) metrics$tuning_score else metrics[[object$tune]]
   finite <- is.finite(selection)
   limits <- if (do_cv) range(cv$mean[finite] - cv$se[finite],
                              cv$mean[finite] + cv$se[finite]) else NULL
