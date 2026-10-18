@@ -35,7 +35,7 @@ test_that("multinomial grouped penalties do not cancel opposite signs", {
   expect_true(all(!threshold$allowed[3, ]))
 })
 
-test_that("multinomial CLR normalization and nonstructural zero starts work", {
+test_that("multinomial CLR normalization respects row masks and free category starts", {
   skip_if_not_installed("mgcv")
   set.seed(1808)
   X <- matrix(rnorm(300 * 4), 300, 4)
@@ -54,7 +54,7 @@ test_that("multinomial CLR normalization and nonstructural zero starts work", {
     always.include = 3L, lambda = 0, grouped = TRUE, relaxed = FALSE,
     maxit = 150, tol = 1e-8)
   expect_equal(dim(fit$coefficients), c(5L, 3L))
-  expect_true(any(fit$coefficients[5, ] != 0))
+  expect_true(all(fit$coefficients[5, ] == 0))
   expect_true(any(fit$coefficients[2, ] != 0))
   expect_true(any(fit$coefficients[3, ] != 0))
   expect_true(any(fit$coefficients[1, ] != 0))

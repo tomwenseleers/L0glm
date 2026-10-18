@@ -85,7 +85,7 @@ test_that("binomial multinomial limit, CLR offsets and start values are consiste
   expect_equal(fit$metrics$df,5)
   common <- matrix(runif(250),250,2)
   same <- L0glm.fit(X,Y,family=mgcv::multinom(K=1),offset=offset+common,
-    lambda=0,relaxed=FALSE,maxit=100,tol=1e-9,start=matrix(0,5,2))
+    lambda=0,relaxed=FALSE,maxit=100,tol=1e-9,start=matrix(1,5,2))
   expect_equal(fit$coefficients,same$coefficients,tolerance=1e-9)
   expect_equal(rowSums(same$offset),rep(0,250),tolerance=1e-13)
   expect_error(L0glm.fit(X,Y,family=mgcv::multinom(K=1),start=matrix(1,5,1)),"CLR column")

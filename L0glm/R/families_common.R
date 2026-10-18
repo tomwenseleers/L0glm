@@ -90,9 +90,10 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
   explicit <- !is.null(start)
   B <- if (explicit) L0glm_ext_matrix(unit, p, m, 0, "start") else matrix(0, p, m)
   if (any(!is.finite(B))) stop("Starting coefficients must be finite.", call. = FALSE)
-  if (multinomial) B <- B - rowMeans(B)
-  allowed <- if (explicit && !multinomial) B != 0 else matrix(TRUE, p, m)
+  allowed <- if (explicit) B != 0 else matrix(TRUE, p, m)
+  if (multinomial && explicit) allowed <- matrix(rowSums(allowed) > 0, p, m)
   allowed[included, ] <- TRUE
+  if (multinomial) B <- B - rowMeans(B)
   prior <- to_working(L0glm_ext_matrix(prior.mean, p, m, 0, "prior.mean"))
   if (multinomial) prior <- prior - rowMeans(prior)
   if (any(!is.finite(prior))) stop("prior.mean must be finite.", call. = FALSE)
@@ -264,14 +265,17 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
     data$initialization <- attr(B, "cox.solve")
     attr(B, "cox.solve") <- NULL
   }
-  if (data$kind == "multinomial" && data$explicit && any(B == 0)) {
-    # Starting zeroes are initial values, not multinomial support constraints.
-    # Take one finite-ridge step before using inverse-square adaptive weights.
-    D <- matrix(1e-3, data$p, data$m); D[data$included, ] <- 0
-    pilot <- L0glm_ext_multinomial_working(data, B, D, state, args)
+  if (data$kind == "multinomial" && data$explicit) {
+    # Seed eligible CLR zeroes without reopening explicitly excluded rows.
     zero <- if (grouped) matrix(rowSums(B^2) == 0, data$p, data$m) else B == 0
-    B[zero] <- pilot[zero]
-    B <- B - rowMeans(B)
+    zero <- zero & data$allowed
+    if (any(zero)) {
+      D <- matrix(1e-3, data$p, data$m)
+      D[!data$allowed] <- Inf; D[data$included, ] <- 0
+      pilot <- L0glm_ext_multinomial_working(data, B, D, state, args)
+      B[zero] <- pilot[zero]
+      B <- B - rowMeans(B)
+    }
   }
   selection <- L0glm_ext_pass(data, B, data$allowed, state, lambda, grouped, gamma,
                               thresh, as.integer(maxit), tol, args)
