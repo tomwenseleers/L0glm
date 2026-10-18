@@ -72,7 +72,13 @@ default threshold is used.}
 
 \item{verbose}{XXX}
 
-\item{rowaug}{XXX}
+\item{rowaug}{Whether to append diagonal ridge-penalty rows before solving the working
+least-squares problem. For Eigen LLT, LDLT and CG, \code{NULL} chooses direct
+Gram construction for dense designs and sparse augmentation for sparse
+designs, including dense-stored matrices with at least one million entries
+and fewer than 10 percent nonzeros. Explicit \code{TRUE} or \code{FALSE}
+overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
+unchanged. Eligible wide Eigen systems use the Woodbury route instead.}
 }
 \value{
 The function return a list with the required options to solve a linear

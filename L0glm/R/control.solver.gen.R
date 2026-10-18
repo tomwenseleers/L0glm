@@ -57,7 +57,13 @@
 #' @param verbose
 #' XXX
 #' @param rowaug
-#' XXX
+#' Whether to append diagonal ridge-penalty rows before solving the working
+#' least-squares problem. For Eigen LLT, LDLT and CG, \code{NULL} chooses direct
+#' Gram construction for dense designs and sparse augmentation for sparse
+#' designs, including dense-stored matrices with at least one million entries
+#' and fewer than 10 percent nonzeros. Explicit \code{TRUE} or \code{FALSE}
+#' overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
+#' unchanged. Eligible wide Eigen systems use the Woodbury route instead.
 #'
 #' @return
 #'
@@ -149,7 +155,7 @@ control.solver.gen <- function(solver,
     }
     
     if (method == 1){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      # NULL selects Gram construction from the working design's sparsity.
       if(is.null(pivot)) pivot <- 0L
       if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
       NaturalOrdering <- as.integer(ordering[1L]) == 1L
@@ -159,7 +165,7 @@ control.solver.gen <- function(solver,
                 rowaug = rowaug)
       
     } else if (method == 2){
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      # Resolve the storage-dependent default in lmridge.eigen.
       if(is.null(pivot)) pivot <- 1L
       if(is.null(ordering)) ordering <- if (NaturalOrdering) 1L else 0L
       NaturalOrdering <- as.integer(ordering[1L]) == 1L
@@ -169,7 +175,7 @@ control.solver.gen <- function(solver,
                 rowaug = rowaug)
     } else if (method == 3){
       if (tol_was_null) tol <- 1e-10
-      if(is.null(rowaug)) rowaug <- TRUE # TODO check why rowaug <- FALSE gives bad results
+      # Resolve the storage-dependent default in lmridge.eigen.
       if(is.null(maxit)) maxit <- 5000L
       if(!is.null(precond) && as.integer(precond[1L]) != 2L && verbose) {
         print("Eigen CG method 3 uses incomplete Cholesky preconditioning; precond was set to 2.")

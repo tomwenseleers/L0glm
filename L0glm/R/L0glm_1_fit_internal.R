@@ -106,6 +106,10 @@ L0glm.fit.internal = function(X,
   scaling <- preprocessing$scale
   centered <- L0glm_center_working_design(X, preprocessing, lower)
   X <- centered$X
+  # Resolve automatic storage routing once, rather than scanning a large
+  # dense-stored PSF matrix for exact zeros in every IRLS iteration.
+  if (solver == "eigen" && is.null(control.solver$rowaug))
+    control.solver$rowaug <- eigen_rowaug_default(X)
   free_intercept <- intersect(always.include, intersect(L0glm_unit_intercepts(X), which(lower < 0)))
   if (length(free_intercept)) free_intercept <- free_intercept[1L]
   intercept_column <- if (length(free_intercept)) as.numeric(X[, free_intercept]) else numeric()
@@ -220,7 +224,9 @@ L0glm.fit.internal = function(X,
       break
       }
     
-    beta_sub <- lmridge(X              = X[good, which(nonzero), drop = FALSE],
+    working_X <- if (length(good) == nobs && all(nonzero)) X else
+      X[good, which(nonzero), drop = FALSE]
+    beta_sub <- lmridge(X              = working_X,
                         y              = z, # already subsetted to [good]
                         weights        = W, # already subsetted to [good]
                         lambdas        = lambdas[nonzero],

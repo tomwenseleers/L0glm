@@ -131,6 +131,11 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
   observation-space system of dimension \code{n}, rather than a predictor-space
   system of dimension \code{p}. The requested Eigen method is retained.
+  For LLT, LDLT and CG, the default forms the Gram matrix directly for dense
+  predictors. Sparse predictors, or dense-stored working matrices with at
+  least one million entries and fewer than 10 percent nonzeros, use sparse
+  row augmentation. Set \code{control.solver$rowaug} explicitly to override
+  this automatic choice.
   Dense and sparse designs retain their storage type; optional row augmentation
   constructs a sparse augmented matrix. Eigen's SVD requires a dense factorization
   internally even when its input is sparse. OSQP requires sparse arrays at

@@ -88,6 +88,11 @@
 #'   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
 #'   observation-space system of dimension \code{n}, rather than a predictor-space
 #'   system of dimension \code{p}. The requested Eigen method is retained.
+#'   For LLT, LDLT and CG, the default forms the Gram matrix directly for dense
+#'   predictors. Sparse predictors, or dense-stored working matrices with at
+#'   least one million entries and fewer than 10 percent nonzeros, use sparse
+#'   row augmentation. Set \code{control.solver$rowaug} explicitly to override
+#'   this automatic choice.
 #'   Dense and sparse designs retain their storage type; optional row augmentation
 #'   constructs a sparse augmented matrix. Eigen's SVD requires a dense factorization
 #'   internally even when its input is sparse. OSQP requires sparse arrays at
@@ -422,6 +427,10 @@ eigen_ridge_dual <- function(Xw, yw, lambdas, prior.mean, control, iteration) {
   beta
 }
 
+eigen_rowaug_default <- function(X) {
+  issparse(X) || (length(X) >= 1e6 && Matrix::nnzero(X) < 0.1 * length(X))
+}
+
 lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                           lower = rep(-.Machine$double.xmax, ncol(Xw)),
                           upper = rep(.Machine$double.xmax, ncol(Xw)),
@@ -437,6 +446,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   n <- nrow(Xw)
   if (is.null(start)) start <- rep(0, p)
   Xw <- if (issparse(Xw)) as(Xw, "generalMatrix") else as.matrix(Xw)
+  if (is.null(control.solver$rowaug)) control.solver$rowaug <- eigen_rowaug_default(Xw)
   # Positive diagonal penalties admit an n by n Woodbury system as soon as p > n.
   # With no penalty this is the minimum-norm observation-space least-squares solve.
   dual <- p > n && all(lambdas >= 0) &&
@@ -506,6 +516,7 @@ Xweights <- function (X, weights)
   }
   
   ## dense fallback
+  if (length(w_sqrt) == nrow(X)) return(X * w_sqrt)
   sweep(X, 1L, w_sqrt, `*`)
 }
 
