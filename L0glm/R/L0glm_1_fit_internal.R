@@ -173,6 +173,13 @@ L0glm.fit.internal = function(X,
   dense_prediction <- preprocessing$mode != "none" && !issparse(X) &&
     (family$link %in% c("log", "logit", "probit", "cloglog", "cauchit") ||
       family$family == "gaussian" && family$link == "identity")
+  # For Gaussian identity fits only the diagonal ridge penalties change.
+  # Bound the dense Gram cache to at most 32 MB; active sets only shrink.
+  cache_gaussian <- family$family == "gaussian" && family$link == "identity" &&
+    preprocessing$mode != "none" && solver == "eigen" &&
+    identical(control.solver$method, "chol") && !isTRUE(control.solver$rowaug) &&
+    !issparse(X) && p <= n_positive && p <= 2000L
+  gaussian_gram <- NULL
   for (iter in seq_len(maxit)) {
     iterations <- iter
     ## ---------- working response & weights ---------------------------
@@ -230,6 +237,21 @@ L0glm.fit.internal = function(X,
     
     working_X <- if (length(good) == nobs && all(nonzero)) X else
       X[good, which(nonzero), drop = FALSE]
+    if (cache_gaussian) {
+      if (is.null(gaussian_gram)) {
+        Xw <- as.matrix(Xweights(working_X, W) %*%
+          Matrix::Diagonal(x = 1 / scaling[nonzero]))
+        yw <- Yweights(z, W)
+        yw[is.nan(yw)] <- 0
+        gaussian_gram <- list(xx = Matrix::crossprod(Xw),
+          xy = Matrix::crossprod(Xw, yw), active = which(nonzero))
+        rm(Xw, yw)
+      }
+      active <- match(which(nonzero), gaussian_gram$active)
+      control.solver$.crossprod <- if (length(active) == length(gaussian_gram$active))
+        gaussian_gram else list(xx = gaussian_gram$xx[active, active, drop = FALSE],
+          xy = gaussian_gram$xy[active, , drop = FALSE])
+    }
     beta_sub <- lmridge(X              = working_X,
                         y              = z, # already subsetted to [good]
                         weights        = W, # already subsetted to [good]

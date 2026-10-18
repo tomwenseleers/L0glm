@@ -124,8 +124,9 @@ lmridge <- function(X, y,
   
   # If nonnegative is true and no lower bound is provided, or the lower bound is larger than 0, it is clipped to 0
   if(nonnegative) lower[lower < 0] <- 0
-  Xw <- Xweights(X, weights)
-  yw <- Yweights(y, weights)
+  cached <- solver == "eigen" && !is.null(control.solver$.crossprod)
+  Xw <- if (cached) X else Xweights(X, weights)
+  yw <- if (cached) y else Yweights(y, weights)
   # if (!issparse(Xw)) { Xw = as.matrix(Xw) }
   yw[is.nan(yw)] <- 0
   
@@ -141,7 +142,7 @@ lmridge <- function(X, y,
   scaled <- any(scaling != 1)
   if (scaled) {
     # theta = S beta: preserve the original quadratic objective and constraints.
-    Xw <- Xw %*% Matrix::Diagonal(x = 1 / scaling)
+    if (!cached) Xw <- Xw %*% Matrix::Diagonal(x = 1 / scaling)
     start <- start * scaling
     lambdas <- lambdas / scaling^2
     prior.mean <- prior.mean * scaling
@@ -445,13 +446,18 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   p <- ncol(Xw)
   n <- nrow(Xw)
   if (is.null(start)) start <- rep(0, p)
-  Xw <- if (issparse(Xw)) as(Xw, "generalMatrix") else as.matrix(Xw)
+  cached <- control.solver$.crossprod
+  if (is.null(cached))
+    Xw <- if (issparse(Xw)) as(Xw, "generalMatrix") else as.matrix(Xw)
   if (is.null(control.solver$rowaug)) control.solver$rowaug <- eigen_rowaug_default(Xw)
   # Positive diagonal penalties admit an n by n Woodbury system as soon as p > n.
   # With no penalty this is the minimum-norm observation-space least-squares solve.
   dual <- p > n && all(lambdas >= 0) &&
     (all(lambdas == 0) || sum(lambdas == 0) <= n)
-  if (dual) {
+  if (!is.null(cached)) {
+    coefs <- eigen_ridge_solve(cached$xx + Matrix::Diagonal(x = lambdas),
+      cached$xy + lambdas * prior.mean, start, control.solver, iteration)
+  } else if (dual) {
     coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
   } else {
     if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {

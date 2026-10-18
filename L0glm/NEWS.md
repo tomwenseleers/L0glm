@@ -2,6 +2,11 @@
 
 ## Development changes
 
+* Normalized dense Gaussian identity fits reuse fixed weighted cross-products
+  for LLT/LDLT solves with at most 2,000 coefficients. The cache follows the
+  shrinking active set; effectively wide and sparse systems retain their
+  existing solver paths. Adaptive penalties and dispersion updates are unchanged.
+
 * Normalized dense fits avoid repeated prediction-column copies when most
   coefficients remain active. Restricted-domain links retain their previous
   summation order, preserving the difficult Gamma square-root-link fit.
