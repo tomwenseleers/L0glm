@@ -146,14 +146,7 @@
 #'   `predict()` and `fitted()` return named per-method prediction lists;
 #'   unavailable methods retain `NULL` entries. See [model_predictions].
 #' @seealso [L0glm.metrics()], [L0glm.tune()], [model_summary], [model_predictions]
-#' @examples
-#' set.seed(1)
-#' X <- matrix(rnorm(360), 60, 6)
-#' truth <- c(2,-1,rep(0,4))
-#' y <- as.numeric(X %*% truth + rnorm(60))
-#' comparison <- sparseglm(X, y, method=c("lasso","relaxed_lasso"),
-#'   tune="gic", nlambda=5, beta_true=truth)
-#' L0glm.metrics(comparison)[c("method","seconds","gic","F1_score","MCC")]
+#' @example examples/sparseglm.R
 #' @export
 sparseglm <- function(X, y=NULL, family=NULL, method="all", tune="gic",
   nlambda=40L, lambda=NULL, support.size=NULL, nfolds=5L, foldid=NULL,
