@@ -7,7 +7,7 @@
 plotmat(M, maxresolution = 2000, gamma = 0.13, axes = TRUE,
         cols = grDevices::colorRampPalette(
           c("black","black","blue","green","yellow","orange","red"))(1000),
-        ...)
+        signed = FALSE, ...)
 }
 \arguments{
 \item{M}{A numeric matrix or a sparse matrix from the \pkg{Matrix} package
@@ -26,6 +26,10 @@ label ticks; otherwise default index ticks are used. Set \code{FALSE} to draw no
 
 \item{cols}{A character vector of colours (e.g., created by
 \code{\link[grDevices]{colorRampPalette}}). Defaults to a 1000-colour palette.}
+
+\item{signed}{Preserve negative values and use the signed gamma transform
+\eqn{\operatorname{sign}(v)|v|^\gamma}. Default \code{FALSE} truncates
+negative values to zero. Supply a diverging palette for signed data.}
 
 \item{...}{Further arguments passed to \code{\link[graphics]{image}}
 (e.g., \code{xlab}, \code{ylab}, \code{main}, graphical parameters).}
@@ -49,7 +53,7 @@ and tick labels reflect those values.
     in either dimension, it is down-scaled by block averaging (see \code{downscale()}).
   \item \strong{Sparse input:} Sparse matrices are converted to dense form
     via \code{\link[base]{as.matrix}}. Missing values are set to zero and
-    negative values truncated to zero.
+    negative values truncated to zero unless \code{signed=TRUE}.
   \item \strong{Axes:} The image is rendered on the index grid with
     \code{axes = FALSE} in the internal \code{\link[graphics]{image}} call.
     When \code{axes = TRUE}, tick locations are computed by mapping "value

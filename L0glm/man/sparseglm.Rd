@@ -35,7 +35,13 @@ sparseglm(
 
 \method{coef}{sparseglm}(object, ...)
 
-\method{plot}{sparseglm}(x, ...)
+\method{plot}{sparseglm}(
+  x,
+  which = NULL,
+  type = c("coefs", "heatmap"),
+  channels = c("all", "mean"),
+  ...
+)
 }
 \arguments{
 \item{X}{Design matrix without an intercept column, or a list containing
@@ -145,9 +151,27 @@ category and is centered into CLR coordinates.}
 
 \item{object}{A \code{sparseglm} result.}
 
-\item{...}{Further method arguments; currently unused.}
+\item{...}{Further arguments passed to [graphics::plot()] for coefficient
+plots or [plotmat()] for heatmaps; unused by `coef()`.}
 
 \item{x}{A \code{sparseglm} result.}
+
+\item{which}{Numeric method indices, in the order stored in `x$fits`.
+Defaults to all available methods for `type="coefs"` and method 1 for
+`type="heatmap"`. A vector preserves the requested order; unavailable
+selected methods are skipped with a warning.}
+
+\item{type}{`"coefs"` for coefficient comparisons, or `"heatmap"` for
+multichannel ground-truth and estimated coefficient images. Each selected
+heatmap method occupies a separate page with two rows. Heatmaps require
+`beta_true` and omit an automatically added intercept row. Cyan lines show
+true support above, and TP below; FP are red and FN magenta. Lines are
+semitransparent. Both images use the same colour scale; signed coefficients
+use a diverging palette. Support is determined before image downscaling.}
+
+\item{channels}{`"all"` for individual coefficient entries or `"mean"` for
+row means in coefficient plots. Row-mean colours use support across the
+original channels. A coincident `(0,0)` point is drawn only once.}
 }
 \value{
 A \code{sparseglm} object with named \code{fits}, \code{tuning} candidate paths/CV

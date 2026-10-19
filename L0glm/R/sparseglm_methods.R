@@ -38,7 +38,8 @@ L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
 
 #' @rdname sparseglm
 #' @param object A \code{sparseglm} result.
-#' @param ... Further method arguments; currently unused.
+#' @param ... Further arguments passed to [graphics::plot()] for coefficient
+#'   plots or [plotmat()] for heatmaps; unused by `coef()`.
 #' @export
 coef.sparseglm <- function(object, ...) {
   lapply(object$fits, function(fit) if (is.null(fit)) NULL else stats::coef(fit))
@@ -94,26 +95,138 @@ L0glm_print_comparison_info <- function(family, n, p, m, tune, nfolds) {
 
 #' @rdname sparseglm
 #' @param x A \code{sparseglm} result.
+#' @param which Numeric method indices, in the order stored in `x$fits`.
+#'   Defaults to all available methods for `type="coefs"` and method 1 for
+#'   `type="heatmap"`. A vector preserves the requested order; unavailable
+#'   selected methods are skipped with a warning.
+#' @param type `"coefs"` for coefficient comparisons, or `"heatmap"` for
+#'   multichannel ground-truth and estimated coefficient images. Each selected
+#'   heatmap method occupies a separate page with two rows. Heatmaps require
+#'   `beta_true` and omit an automatically added intercept row. Cyan lines show
+#'   true support above, and TP below; FP are red and FN magenta. Lines are
+#'   semitransparent. Both images use the same colour scale; signed coefficients
+#'   use a diverging palette. Support is determined before image downscaling.
+#' @param channels `"all"` for individual coefficient entries or `"mean"` for
+#'   row means in coefficient plots. Row-mean colours use support across the
+#'   original channels. A coincident `(0,0)` point is drawn only once.
 #' @export
-plot.sparseglm <- function(x, ...) {
-  available <- which(!vapply(x$fits, is.null, logical(1)))
-  if (!length(available)) return(invisible(x))
+plot.sparseglm <- function(x, which=NULL, type=c("coefs", "heatmap"),
+                          channels=c("all", "mean"), ...) {
+  type <- match.arg(type); channels <- match.arg(channels)
+  available <- base::which(!vapply(x$fits, is.null, logical(1)))
+  if (is.null(which)) which <- if (type == "heatmap") 1L else available
+  if (!length(which)) return(invisible(x))
+  if (!is.numeric(which) || anyNA(which) || any(!is.finite(which)) ||
+      any(which != floor(which) | which < 1 | which > length(x$fits)))
+    stop("which must contain positive whole-number method indices.", call.=FALSE)
+  unavailable <- setdiff(which, available)
+  if (length(unavailable)) warning("Unavailable methods omitted: ",
+    paste(names(x$fits)[unavailable], collapse=", "), call.=FALSE)
+  selected <- which[which %in% available]
+  if (!length(selected)) return(invisible(x))
+  if (type == "heatmap" && (is.null(x$beta_true) || ncol(coef(x$fits[[selected[1L]]])) < 2L))
+    stop("Heatmaps require multichannel coefficients and beta_true.", call.=FALSE)
+  if (type == "heatmap" && channels != "all")
+    stop("channels='mean' is only available for coefficient plots.", call.=FALSE)
   old <- graphics::par(no.readonly=TRUE); on.exit(graphics::par(old))
-  columns <- min(2L, length(available))
-  graphics::par(mfrow=c(ceiling(length(available)/columns), columns))
-  for (i in available) {
-    beta <- as.numeric(stats::coef(x$fits[[i]]))
+  columns <- min(2L, length(selected))
+  graphics::par(mfrow=if (type == "heatmap") c(2L, 1L) else
+    c(ceiling(length(selected)/columns), columns))
+  dots <- list(...)
+  for (i in selected) {
+    beta <- stats::coef(x$fits[[i]])
     title <- sprintf("%s (%.3g s)", names(x$fits)[i], x$timings$seconds[i])
-    if (is.null(x$beta_true)) {
-      graphics::plot(beta, type="h", xlab="Coefficient entry", ylab=expression(hat(beta)), main=title)
+    if (type == "heatmap") {
+      L0glm_plot_heatmap(beta, x$beta_true, title, isTRUE(x$data$intercept), dots)
     } else {
-      truth <- as.numeric(x$beta_true)
-      color <- ifelse(truth == 0 & beta != 0, "red", ifelse(truth != 0 & beta == 0, "magenta", "navy"))
-      limits <- range(c(beta, truth))
-      graphics::plot(beta, truth, pch=16, col=color, cex=.6, xlim=limits, ylim=limits,
-        xlab="Estimated coefficients", ylab="True coefficients", main=title)
-      graphics::abline(0, 1, lty=2, col="grey60")
+      points <- L0glm_plot_coefficients(beta, x$beta_true, channels)
+      if (is.null(points$truth)) {
+        args <- list(x=points$index, y=points$estimated, type="h",
+          xlim=c(1, points$size), ylim=range(c(0, points$estimated)),
+          xlab=if (channels == "mean") "Coefficient row" else "Coefficient entry",
+          ylab=expression(hat(beta)), main=title)
+      } else {
+        limits <- range(c(0, points$estimated, points$truth))
+        args <- list(x=points$estimated, y=points$truth, pch=16,
+          col=points$color, cex=.6, xlim=limits, ylim=limits,
+          xlab=if (channels == "mean") "Estimated row means" else "Estimated coefficients",
+          ylab=if (channels == "mean") "True row means" else "True coefficients", main=title)
+      }
+      do.call(graphics::plot.default, utils::modifyList(args, dots, keep.null=TRUE))
+      if (!is.null(points$truth)) graphics::abline(0, 1, lty=2, col="grey60")
     }
   }
   invisible(x)
+}
+
+# Extract sparse nonzero entries before converting plotting vectors to dense.
+L0glm_plot_nonzero <- function(B) {
+  if (!inherits(B, "sparseMatrix")) return(base::which(as.vector(B) != 0))
+  entries <- summary(B)
+  present <- if (is.null(entries$x)) rep(TRUE, nrow(entries)) else entries$x != 0
+  entries$i[present] + (entries$j[present] - 1L) * nrow(B)
+}
+
+L0glm_plot_coefficients <- function(beta, truth, channels) {
+  if (!is.null(truth) && is.null(dim(truth))) truth <- matrix(truth, nrow(beta), ncol(beta))
+  if (channels == "mean") {
+    present <- Matrix::rowSums(abs(beta)) != 0
+    true_support <- if (!is.null(truth)) Matrix::rowSums(abs(truth)) != 0
+    beta <- Matrix::rowMeans(beta)
+    if (!is.null(truth)) truth <- Matrix::rowMeans(truth)
+  }
+  size <- length(beta)
+  index <- sort(unique(c(L0glm_plot_nonzero(beta),
+    if (!is.null(truth)) L0glm_plot_nonzero(truth))))
+  if (!is.null(truth) && length(index) < size) {
+    gaps <- base::which(index != seq_along(index))
+    # Retain exactly one common zero without allocating seq_len(size).
+    index <- c(if (length(gaps)) gaps[1L] else length(index) + 1L, index)
+  }
+  estimated <- as.numeric(beta[index])
+  actual <- if (!is.null(truth)) as.numeric(truth[index])
+  color <- if (!is.null(truth)) {
+    selected <- if (channels == "mean") present[index] else estimated != 0
+    positive <- if (channels == "mean") true_support[index] else actual != 0
+    ifelse(!positive & selected, "red", ifelse(positive & !selected, "magenta", "navy"))
+  }
+  list(index=index, estimated=estimated, truth=actual, color=color, size=size)
+}
+
+L0glm_plot_heatmap <- function(beta, truth, title, intercept, dots) {
+  if (intercept) {
+    beta <- beta[-1L, , drop=FALSE]; truth <- truth[-1L, , drop=FALSE]
+  }
+  present <- base::which(Matrix::rowSums(abs(beta)) != 0)
+  positive <- base::which(Matrix::rowSums(abs(truth)) != 0)
+  signed <- min(min(beta), min(truth)) < 0
+  maximum <- max(max(abs(beta)), max(abs(truth)))
+  args <- utils::modifyList(list(maxresolution=2000, gamma=.13, signed=signed,
+    xlab="Time index", ylab="Channel"), dots, keep.null=TRUE)
+  if (signed && is.null(args$cols))
+    args$cols <- grDevices::colorRampPalette(c("navy", "white", "firebrick"))(1000)
+  if (is.null(args$zlim)) args$zlim <- (if (signed) c(-1, 1) else c(0, 1)) *
+    if (maximum > 0) maximum^args$gamma else 1
+  p <- nrow(beta)
+  stride <- if (is.null(args$maxresolution)) 1 else ceiling(p/min(p, args$maxresolution))
+  image_rows <- ceiling(p/stride)
+  position <- function(rows) if (p == 1L) rep(1, length(rows)) else
+    1 + (rows - 1) * (image_rows - 1)/(p - 1)
+  draw <- function(B, main) {
+    rownames(B) <- as.character(seq_len(p))
+    do.call(plotmat, c(list(M=B, main=main), args[setdiff(names(args), "main")]))
+  }
+  cyan <- grDevices::adjustcolor("cyan", alpha.f=.4)
+  red <- grDevices::adjustcolor("red", alpha.f=.4)
+  magenta <- grDevices::adjustcolor("magenta", alpha.f=.4)
+  draw(truth, "Ground truth")
+  graphics::abline(v=position(positive), col=cyan)
+  graphics::legend("topright", "True support", col=cyan, lty=1,
+    bg=grDevices::adjustcolor("white", alpha.f=.85), cex=.75)
+  draw(beta, title)
+  graphics::abline(v=position(intersect(present, positive)), col=cyan)
+  graphics::abline(v=position(setdiff(present, positive)), col=red)
+  graphics::abline(v=position(setdiff(positive, present)), col=magenta)
+  graphics::legend("topright", c("TP", "FP", "FN"), col=c(cyan, red, magenta),
+    lty=1, bg=grDevices::adjustcolor("white", alpha.f=.85), cex=.75)
 }
