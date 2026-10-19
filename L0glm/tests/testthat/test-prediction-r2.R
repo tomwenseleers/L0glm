@@ -31,12 +31,72 @@ test_that("prediction scores use fitted GLM working weights rather than initial 
     expect_equal(scores$R2_weighted,1-rss/tss)
     expect_equal(scores$adj_R2_weighted,1-(rss/tss)*59/57)
   }
-  # Poisson zero means use the fitting guard, independent of deviance floors.
+  # Poisson zero means use an R-squared-only floor, independent of deviance floors.
   X <- matrix(c(0,0,1,2),4,1);y <- c(0,0,2,2)
   exact <- get.metrics(1,X,y,family=poisson(identity),mu_floor=0)
   floored <- get.metrics(1,X,y,family=poisson(identity),mu_floor=.1)
   expect_equal(exact$R2_weighted,5/6)
   expect_equal(exact[c("R2_weighted","adj_R2_weighted")],floored[c("R2_weighted","adj_R2_weighted")])
+})
+
+test_that("count-mean floors stabilize R-squared without changing residuals or other metrics", {
+  X <- diag(6)
+  beta <- cbind(c(0,100,0,100,0,100),c(100,0,100,0,100,0))
+  y <- beta; y[beta == 0] <- 1
+  fields <- c("R2_weighted","adj_R2_weighted")
+  for (m in 1:2) for (sparse in c(FALSE,TRUE)) {
+    B <- beta[,seq_len(m),drop=FALSE];Y <- y[,seq_len(m),drop=FALSE]
+    design <- Matrix::Matrix(X,sparse=sparse)
+    args <- list(beta=B,X=design,y=Y,beta_true=B,family=poisson(identity))
+    scores <- do.call(get.metrics,args)
+    old <- do.call(get.metrics,c(args,list(r2_mu_floor=0)))
+    expect_equal(scores$R2_weighted,10/11)
+    expect_equal(scores$adj_R2_weighted,9/11)
+    expect_lt(old$R2_weighted,1e-10)
+    expect_lt(old$adj_R2_weighted,0)
+    expect_equal(scores[setdiff(names(scores),fields)],old[setdiff(names(old),fields)])
+    custom <- do.call(get.metrics,c(args,list(r2_mu_floor=.5,mu_floor=.01)))
+    expect_equal(custom$R2_weighted,50/51)
+    # Original predictions, not their floored values, enter the residuals.
+    w <- 1/pmax(B,.1)
+    expect_equal(scores$R2_weighted,1-sum(w*(Y-B)^2)/sum(w*Y^2))
+  }
+  for (floor in list(-1,NA_real_,Inf,c(.1,.2),"0.1"))
+    expect_error(get.metrics(beta,X,y,family=poisson(identity),r2_mu_floor=floor),"r2_mu_floor")
+  # Non-count families retain their original working weights.
+  a <- get.metrics(beta,X,y,dispersion=1,r2_mu_floor=0)
+  b <- get.metrics(beta,X,y,dispersion=1,r2_mu_floor=10)
+  expect_equal(a,b)
+})
+
+test_that("S3 model and comparison metrics forward the configurable R-squared floor", {
+  X <- diag(6)
+  beta <- cbind(c(0,100,0,100,0,100),c(100,0,100,0,100,0))
+  y <- beta; y[beta == 0] <- 1
+  data <- list(X=X,design=X,y=y,m=2L,kind="glm",family=poisson(identity),
+    weights=matrix(1,6,2),offset=matrix(0,6,2),dispersion=1,intercept=FALSE)
+  fit <- L0glm_benchmark_fit(beta,data)
+  comparison <- structure(list(fits=list(fit),timings=data.frame(method="fixture",status="ok"),
+    data=data,mu_floor=1e-8,beta_true=beta),class="sparseglm")
+  for (floor in c(0,.1,.5)) {
+    expected <- get.metrics(beta,X,y,family=poisson(identity),r2_mu_floor=floor)$R2_weighted
+    expect_equal(L0glm.metrics(fit,r2_mu_floor=floor)$R2_weighted,expected)
+    expect_equal(L0glm.metrics(comparison,r2_mu_floor=floor)$R2_weighted,expected)
+    expect_equal(summary(fit,r2_mu_floor=floor)$metrics$R2_weighted,expected)
+    expect_equal(summary(comparison,r2_mu_floor=floor)$metrics$R2_weighted,expected)
+  }
+})
+
+test_that("count-model weight floors respect each link and variance function", {
+  mu <- matrix(c(0,2,0,5),4,1);y <- mu+c(1,0,1,0)
+  for (f in list(poisson(identity),poisson("log"),quasipoisson(identity),
+                 MASS::negative.binomial(theta=2,link="identity"))) {
+    weight_mu <- pmax(mu,.1)
+    w <- f$mu.eta(f$linkfun(weight_mu))^2/f$variance(weight_mu)
+    expected <- 1-sum(w*(y-mu)^2)/sum(w*y^2)
+    scores <- L0glm_prediction_metrics(y,mu,matrix(1,4,1),f,matrix(1))
+    expect_equal(scores$R2_weighted,expected)
+  }
 })
 
 test_that("multichannel prediction scores pool within-channel sums and active parameters", {

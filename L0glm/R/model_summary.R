@@ -15,6 +15,8 @@
 #' @param beta_true Optional true coefficients for recovery metrics, with the
 #'   same dimensions as the returned coefficients, including any intercept.
 #'   Comparison summaries default to their saved truth. Use `NULL` to omit it.
+#' @param r2_mu_floor Count-mean floor used only for R-squared working weights,
+#'   default 0.1. See [L0glm.metrics()].
 #' @param digits Significant digits for printed numeric values.
 #' @param max.rows,max.cols Maximum coefficient rows and response columns shown
 #'   by `print.summary.L0glm_fit()`, default 20 and 6. Positive integers or `Inf`.
@@ -72,10 +74,10 @@ print.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
 #' @rdname model_summary
 #' @method summary L0glm_fit
 #' @export
-summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL) {
+summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_floor=0.1) {
   structure(c(L0glm_model_info(object), list(coefficients=stats::coef(object),
-    metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true),
-    mu_floor=mu_floor, dispersion=object$dispersion,
+    metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor),
+    mu_floor=mu_floor, r2_mu_floor=r2_mu_floor, dispersion=object$dispersion,
     dispersion.estimated=object$dispersion.estimated,
     theta=object$theta, theta.estimated=object$theta.estimated)),
     class="summary.L0glm_fit")

@@ -6,7 +6,7 @@
 get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
                         family = gaussian(identity), beta_true = NULL, p = NULL,
                         dispersion = NULL, mu_floor = .Machine$double.eps,
-                        always.include = NULL) {
+                        always.include = NULL, r2_mu_floor = 0.1) {
   if (!inherits(family, "family")) family <- family()
   y <- as.matrix(y)
   n <- nrow(X); m <- ncol(y)
@@ -36,7 +36,7 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
   }
   mu <- predict_mean(beta)
   prediction <- L0glm_prediction_metrics(y, mu, weights, family, beta, always.include,
-    L0glm_metric_intercept(X, always.include))
+    L0glm_metric_intercept(X, always.include), r2_mu_floor)
   if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
     mu <- pmax(mu, mu_floor)
   keep <- which(weights > 0)
@@ -86,7 +86,10 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
 # Response-scale prediction scores using working weights at the fitted means.
 # Count active mean parameters, not dispersion/theta or selection/shrinkage df.
 L0glm_prediction_metrics <- function(y, mu, weights, family, beta, mandatory=integer(),
-                                     intercept=FALSE) {
+                                     intercept=FALSE, r2_mu_floor=0.1) {
+  if (length(r2_mu_floor) != 1L || !is.numeric(r2_mu_floor) ||
+      !is.finite(r2_mu_floor) || r2_mu_floor < 0)
+    stop("r2_mu_floor must be a finite nonnegative number.", call. = FALSE)
   result <- list(R2_weighted=NA_real_, adj_R2_weighted=NA_real_)
   m <- ncol(y)
   families <- if (inherits(family, "family")) rep(list(family), m) else family
@@ -94,11 +97,17 @@ L0glm_prediction_metrics <- function(y, mu, weights, family, beta, mandatory=int
   for (j in seq_len(m)) {
     keep <- weights[, j] > 0
     f <- families[[j]]
+    weight_mu <- mu[keep, j]
+    count <- f$family %in% c("poisson", "quasipoisson") ||
+      grepl("^negative binomial", f$family, ignore.case=TRUE)
     if (f$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian") ||
-        grepl("^negative binomial", f$family, ignore.case=TRUE))
-      mu[, j] <- pmax(mu[, j], .Machine$double.eps)
-    derivative <- f$mu.eta(f$linkfun(mu[keep, j]))
-    variance <- f$variance(mu[keep, j])
+        count)
+      weight_mu <- pmax(weight_mu, .Machine$double.eps)
+    # Boundary count means must not receive machine-epsilon inverse-variance
+    # weights. Stabilize the weight calculation, never the fitted residuals.
+    if (count) weight_mu <- pmax(weight_mu, r2_mu_floor)
+    derivative <- f$mu.eta(f$linkfun(weight_mu))
+    variance <- f$variance(weight_mu)
     value <- weights[keep, j] * derivative^2/variance
     value[variance == 0 & derivative == 0] <- 0
     if (any(!is.finite(value) | value < 0)) return(result)

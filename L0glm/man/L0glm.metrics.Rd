@@ -15,6 +15,7 @@ L0glm.metrics(
   offset = NULL,
   mu_floor = 1e-08,
   beta_true = NULL,
+  r2_mu_floor = 0.1,
   ...
 )
 
@@ -26,6 +27,7 @@ L0glm.metrics(
   offset = NULL,
   mu_floor = 1e-08,
   beta_true = NULL,
+  r2_mu_floor = 0.1,
   ...
 )
 
@@ -39,6 +41,7 @@ L0glm.metrics(
   offset = NULL,
   mu_floor = object$mu_floor,
   beta_true = object$beta_true,
+  r2_mu_floor = 0.1,
   ...
 )
 }
@@ -70,6 +73,13 @@ criterion methods default to zero.}
 \item{beta_true}{Optional true coefficient vector or matrix, on the original
 scale and with the same dimensions as \code{coef(object)}, including any
 intercept. Multinomial truth must use the displayed CLR coordinates.}
+
+\item{r2_mu_floor}{Nonnegative floor for count-model means when calculating
+R-squared working weights. The default is 0.1; zero uses only the
+machine-precision guard. Applies to Poisson, quasipoisson and negative
+binomial models. Residuals retain the original predictions. This is
+independent of \code{mu_floor} and does not affect fitting, deviance,
+likelihood or information criteria.}
 
 \item{...}{Further S3 method arguments; currently unused.}
 }
@@ -127,8 +137,13 @@ Prediction accuracy includes \code{R2_weighted} and \code{adj_R2_weighted} for o
 GLMs and negative binomial models. Working weights are recomputed at the
 fitted means as \eqn{w_{ij}=v_{ij}\{d\mu_{ij}/d\eta_{ij}\}^2/V(\mu_{ij})},
 using original prior weights \eqn{v}, the fitted link, and fitted NB theta.
-Positive-family means use the fitter's machine-precision lower bound;
-changing the deviance scoring floor does not change these R-squared scores.
+For Poisson, quasipoisson and negative-binomial models, these weights use
+\eqn{\widetilde\mu=\max(\widehat\mu,\mathtt{r2\_mu\_floor})}, with a
+default floor of 0.1. This prevents zero or tiny fitted count means from
+receiving enormous inverse-variance weights. The original fitted means
+are retained in the residuals. Other positive families use only a
+machine-precision guard for their weight calculation. The separate
+deviance scoring floor does not change these R-squared scores.
 These are response-scale residual
 scores, not working-response or deviance pseudo-R-squared measures.
 

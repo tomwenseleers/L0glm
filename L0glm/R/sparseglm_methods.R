@@ -3,7 +3,7 @@
 #' @rdname L0glm.metrics
 #' @export
 L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
-  offset=NULL, mu_floor=object$mu_floor, beta_true=object$beta_true, ...) {
+  offset=NULL, mu_floor=object$mu_floor, beta_true=object$beta_true, r2_mu_floor=0.1, ...) {
   if (!is.null(newdata) && is.null(y)) stop("Supply y when scoring newdata.", call.=FALSE)
   rows <- lapply(seq_len(nrow(object$timings)), function(i) {
     fit <- object$fits[[i]]
@@ -19,7 +19,7 @@ L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
       return(cbind(meta, as.data.frame(empty)))
     }
     scores <- L0glm.metrics(fit, newdata=newdata, y=y, weights=weights,
-      offset=offset, mu_floor=mu_floor, beta_true=beta_true)
+      offset=offset, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor)
     if (!"p" %in% names(scores)) scores$p <- fit$p
     if (!"n" %in% names(scores)) scores$n <- if (is.null(newdata)) nrow(fit$X) else nrow(newdata)
     if (!"m" %in% names(scores)) scores$m <- ncol(coef(fit))
@@ -60,11 +60,13 @@ print.sparseglm <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
 #' @rdname model_summary
 #' @method summary sparseglm
 #' @export
-summary.sparseglm <- function(object, ..., mu_floor=object$mu_floor, beta_true=object$beta_true) {
+summary.sparseglm <- function(object, ..., mu_floor=object$mu_floor, beta_true=object$beta_true,
+                               r2_mu_floor=0.1) {
   structure(list(call=object$call, family=object$data$family,
     n=nrow(object$data$X), p=ncol(object$data$X), m=object$data$m,
     tune=object$data$tune, nfolds=if (is.null(object$foldid)) NULL else max(object$foldid),
-    mu_floor=mu_floor, metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true)),
+    mu_floor=mu_floor, r2_mu_floor=r2_mu_floor,
+    metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor)),
     class="summary.sparseglm")
 }
 

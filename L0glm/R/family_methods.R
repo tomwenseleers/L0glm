@@ -87,6 +87,12 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' @param beta_true Optional true coefficient vector or matrix, on the original
 #'   scale and with the same dimensions as \code{coef(object)}, including any
 #'   intercept. Multinomial truth must use the displayed CLR coordinates.
+#' @param r2_mu_floor Nonnegative floor for count-model means when calculating
+#'   R-squared working weights. The default is 0.1; zero uses only the
+#'   machine-precision guard. Applies to Poisson, quasipoisson and negative
+#'   binomial models. Residuals retain the original predictions. This is
+#'   independent of \code{mu_floor} and does not affect fitting, deviance,
+#'   likelihood or information criteria.
 #' @param ... Further S3 method arguments; currently unused.
 #'
 #' @details
@@ -129,8 +135,13 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' GLMs and negative binomial models. Working weights are recomputed at the
 #' fitted means as \eqn{w_{ij}=v_{ij}\{d\mu_{ij}/d\eta_{ij}\}^2/V(\mu_{ij})},
 #' using original prior weights \eqn{v}, the fitted link, and fitted NB theta.
-#' Positive-family means use the fitter's machine-precision lower bound;
-#' changing the deviance scoring floor does not change these R-squared scores.
+#' For Poisson, quasipoisson and negative-binomial models, these weights use
+#' \eqn{\widetilde\mu=\max(\widehat\mu,\mathtt{r2\_mu\_floor})}, with a
+#' default floor of 0.1. This prevents zero or tiny fitted count means from
+#' receiving enormous inverse-variance weights. The original fitted means
+#' are retained in the residuals. Other positive families use only a
+#' machine-precision guard for their weight calculation. The separate
+#' deviance scoring floor does not change these R-squared scores.
 #' These are response-scale residual
 #' scores, not working-response or deviance pseudo-R-squared measures.
 #'
@@ -180,21 +191,23 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 #' @export
 L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
-                          offset = NULL, mu_floor = 1e-8, beta_true = NULL, ...) {
+                          offset = NULL, mu_floor = 1e-8, beta_true = NULL,
+                          r2_mu_floor = 0.1, ...) {
   UseMethod("L0glm.metrics")
 }
 
 #' @rdname L0glm.metrics
 #' @export
 L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = NULL,
-                          offset = NULL, mu_floor = 1e-8, beta_true = NULL, ...) {
+                          offset = NULL, mu_floor = 1e-8, beta_true = NULL,
+                          r2_mu_floor = 0.1, ...) {
   if (!inherits(object, "L0glm_fit"))
     stop("object must be a model returned by L0glm.fit or L0nnpois.", call. = FALSE)
   training <- is.null(newdata)
   if (!training && is.null(y))
     stop("Supply y when scoring newdata.", call. = FALSE)
   if (!inherits(object, "L0glm_extended_fit"))
-    return(L0glm_metrics_glm(object, newdata, y, weights, offset, mu_floor, beta_true))
+    return(L0glm_metrics_glm(object, newdata, y, weights, offset, mu_floor, beta_true, r2_mu_floor))
   if (is.null(y)) y <- object$y
   n <- if (training) nrow(object$X) else nrow(newdata)
   m <- if (object$kind == "nb") ncol(object$coefficients) else 1L
@@ -247,7 +260,7 @@ L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = 
   charge <- if (object$grouped) selected else elements
   prediction <- if (object$kind == "nb") L0glm_prediction_metrics(yy, fitted_mean, w,
     if (is.null(object$families)) object$family else object$families, beta,
-    object$always.include, L0glm_metric_intercept(object$X, object$always.include)) else
+    object$always.include, L0glm_metric_intercept(object$X, object$always.include), r2_mu_floor) else
       list(R2_weighted=NA_real_, adj_R2_weighted=NA_real_)
   scores <- data.frame(loglik = likelihood, deviance, mean_deviance = deviance/if (mass > 0) mass else 1,
     df, selected, nonzero = elements, mandatory, nuisance,
@@ -267,7 +280,8 @@ L0glm.metrics.default <- function(object, ...) {
 }
 
 # Ordinary GLMs retain prior weights separately from the final IRLS weights.
-L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, beta_true) {
+L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, beta_true,
+                              r2_mu_floor=0.1) {
   training <- is.null(newdata)
   X <- if (training) object$X else newdata
   if (!training && object$added_intercept) X <- cbind(Intercept = 1, X)
@@ -278,5 +292,5 @@ L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, bet
   as.data.frame(get.metrics(object$coefficients, X, y, weights = weights,
     offset = offset, family = object$family, beta_true = beta_true,
     p = object$p, dispersion = dispersion, mu_floor = mu_floor,
-    always.include = object$always.include))
+    always.include = object$always.include, r2_mu_floor = r2_mu_floor))
 }

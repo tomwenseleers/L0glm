@@ -12,7 +12,7 @@
 \usage{
 \method{print}{L0glm_fit}(x, digits = max(3L, getOption("digits") - 3L), ...)
 
-\method{summary}{L0glm_fit}(object, ..., mu_floor = 0, beta_true = NULL)
+\method{summary}{L0glm_fit}(object, ..., mu_floor = 0, beta_true = NULL, r2_mu_floor = 0.1)
 
 \method{print}{summary.L0glm_fit}(
   x,
@@ -24,7 +24,13 @@
 
 \method{print}{sparseglm}(x, digits = max(3L, getOption("digits") - 3L), ...)
 
-\method{summary}{sparseglm}(object, ..., mu_floor = object$mu_floor, beta_true = object$beta_true)
+\method{summary}{sparseglm}(
+  object,
+  ...,
+  mu_floor = object$mu_floor,
+  beta_true = object$beta_true,
+  r2_mu_floor = 0.1
+)
 
 \method{print}{summary.sparseglm}(x, digits = max(3L, getOption("digits") - 3L), ...)
 }
@@ -44,6 +50,9 @@ summaries use the floor stored by \code{\link[=sparseglm]{sparseglm()}} to match
 \item{beta_true}{Optional true coefficients for recovery metrics, with the
 same dimensions as the returned coefficients, including any intercept.
 Comparison summaries default to their saved truth. Use \code{NULL} to omit it.}
+
+\item{r2_mu_floor}{Count-mean floor used only for R-squared working weights,
+default 0.1. See \code{\link[=L0glm.metrics]{L0glm.metrics()}}.}
 
 \item{max.rows, max.cols}{Maximum coefficient rows and response columns shown
 by \code{print.summary.L0glm_fit()}, default 20 and 6. Positive integers or \code{Inf}.
