@@ -1249,6 +1249,8 @@ plotmat(lasso.mc.gaus,
 # abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMax(sim.gaus.mc$beta_true)!=0)], col="red")
 # abline(v=(1:nrow(sim.gaus.mc$X))[as.vector(rowMin(lasso.mc.gaus)!=0)], col="cyan")
 
+# TODO add plot method giving this sort of plot with multipanel with top showing correct solution
+# and bottom plot indicating actual solution with TPs, FPs and FNs indicated in different colours
 
 
 
@@ -1294,5 +1296,5 @@ benchmarks_3_4[,!colSums(is.na(benchmarks_3_4))]
 # 2 16633518 16453212 15634855 14994202 17025219
 
 # L0glm.fit is the clear winner
-# TODO timing can still be improved drastically by porting to Rcpp/OpenMP, 
+# TODO timings can still be improved drastically by porting to Rcpp/OpenMP, 
 # maybe make L0nnls function for gaussian case, or port the whole L0glm.fit function to Rcpp/OpenMP?
