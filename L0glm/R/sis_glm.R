@@ -1,208 +1,96 @@
-#' Sure Independence Screening for GLMs via Fast Score Tests
+#' Efficient-score screening for GLMs and special families
+#' @md
 #'
 #' @description
-#' `sis_glm()` implements *sure independence screening* (SIS) for
-#' generalized linear models (GLMs) using a **single null fit** and
-#' **marginal score test statistics** for each feature. It supports all
-#' standard `stats::family`/link combinations (e.g., Gaussian, binomial,
-#' Poisson, Gamma, inverse.gaussian), optional observation `weights`, an
-#' `offset` term, and both **dense** (`matrix`) and **sparse** (classes
-#' from **Matrix**) design matrices.
-#'
-#' In our benchmarks (see the Examples), this implementation is typically
-#' **>10x faster** than the vanilla SIS procedure in the \pkg{SIS}
-#' package for large, tall-and-wide problems, while producing essentially
-#' identical rankings. Speedups come from avoiding \(p\) univariate GLM
-#' fits and instead computing closed-form score statistics using only the
-#' intercept-only (null) GLM fit.
-#'
+#' Screen predictors using one null/nuisance fit and native column reductions,
+#' without fitting a separate model for every predictor. Dense matrices stay
+#' dense and sparse matrices stay sparse.
+#' @param X Numeric predictor matrix, dense or sparse, with observations in rows.
+#' @param y Response as in [L0glm.fit()]: a numeric vector or independent-channel
+#'   matrix for ordinary/NB models; factors, class labels or count matrices for
+#'   multinomial; or `survival::Surv(time, status)` for right-censored Cox models.
+#' @param family Any standard GLM family/link, a fixed-theta negative-binomial
+#'   family, or `mgcv::nb()`, `mgcv::multinom(K)` or `mgcv::cox.ph()`.
+#' @param weights Nonnegative prior weights: a scalar, observation vector, or
+#'   observation-by-channel matrix for ordinary/NB models. Multinomial and Cox
+#'   use shared row weights.
+#' @param offset Known linear-predictor offsets: a scalar, observation vector,
+#'   or observation-by-channel/category matrix. Cox uses a vector.
+#' @param nsis Number of predictors retained, capped at `ncol(X)`. Defaults to
+#'   `min(p, max(1, floor(n/log(n))))`. No size guarantees true-feature retention.
+#' @param return_stats Return all statistics and their full ranking, default
+#'   `TRUE`. Use `FALSE` for large designs to retain only the top predictors.
+#' @param nuisance Optional numeric nuisance design. `NULL` uses an intercept,
+#'   except for Cox, which has none. An explicit zero-column matrix requests no
+#'   nuisance terms. Include an intercept explicitly when supplying other
+#'   nuisance predictors. Constant Cox nuisance columns are omitted.
+#' @param nonnegative Use one-sided scores for nonnegative candidate effects.
+#'   Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.
 #' @details
-#' For each predictor \eqn{x_j}, consider the marginal GLM
-#' \eqn{\eta_i = \beta_0 + \beta_j x_{ij}}{eta_i = beta_0 + beta_j x_{ij}}
-#' with link \eqn{\eta_i = g(\mu_i)}{eta_i = g(mu_i)} and null fit
-#' \eqn{\hat{\mu}_{0i}}{mu0_i}. The per-feature efficient score and (expected)
-#' information at the null are
-#' \deqn{
-#'   U_j = \sum_{i=1}^n x_{ij}\,(y_i - \hat{\mu}_{0i})\,\left.\frac{d\eta_i}{d\mu_i}\right|_{\hat{\mu}_0},
-#'   \qquad
-#'   I_{jj} = \sum_{i=1}^n x_{ij}^2\,\frac{(d\mu_i/d\eta_i)^2}{V(\hat{\mu}_{0i})},
-#' }{
-#'   U_j = sum_i x_{ij} * (y_i - mu0_i) * (d eta_i / d mu_i at mu0),
-#'   and I_{jj} = sum_i x_{ij}^2 * (d mu_i / d eta_i)^2 / V(mu0_i).
-#' }
-#' with variance function \eqn{V(\cdot)}{V(.)}. The screening statistic is
-#' \deqn{T_j = U_j^2 / I_{jj},}{T_j = U_j^2 / I_{jj},}
-#' which is approximately \eqn{\chi^2_1}{chi^2_1} under \eqn{H_0:\beta_j=0}{H0: beta_j = 0}
-#' for canonical GLMs. Ranking by \eqn{T_j} closely tracks ranking by marginal
-#' likelihood gain / deviance drop (and coincides in the Gaussian identity-link case).
+#' For an ordinary GLM let \eqn{s_i=v_i(y_i-\mu_i)\dot\mu_i/
+#' (\phi V(\mu_i))} and \eqn{h_i=v_i\dot\mu_i^2/(\phi V(\mu_i))}, evaluated
+#' at the nuisance fit. For candidate \eqn{x} and nuisance design \eqn{N},
+#' \deqn{U=x^Ts-x^THN(N^THN)^+N^Ts,\qquad
+#' I=x^THx-x^THN(N^THN)^+N^THx,}
+#' with \eqn{H=\operatorname{diag}(h)}. Rank \eqn{U^2/I}, or
+#' \eqn{\max(U,0)^2/I} for a one-sided candidate. Unidentifiable columns get
+#' zero; ties use original column order. Noncanonical derivatives retain their
+#' sign. Free dispersion uses the null-fit Pearson statistic/residual degrees
+#' of freedom. NB theta is fitted or fixed according to the supplied family.
 #'
-#' The function retains the top `nsis` variables (screening size). By default,
-#' `nsis = min(n, floor(n / (log(log(p)) * log(p))))`, a conservative cap related to
-#' the maximum support size that is used in \pkg{abess}. To emulate the classical
-#' SIS choice, set `nsis = floor(n / log(n))`.
-#' 
-#' Note that for quasi families, the score statistic uses the variance and link
-#' functions but there is no full likelihood; this is fine for ranking.
+#' Independent channels contribute separate statistics, preventing cancellation
+#' of opposite effects. Multinomial uses the exact joint score/information in
+#' orthonormal contrasts of the CLR plane; grouped ranking is invariant to
+#' category relabeling. Cox uses exact weighted Breslow risk sets, ties and
+#' nuisance adjustment. Quasi families do not require a likelihood.
 #'
-#' **Computation.** The statistic is computed in two linear-time passes without
-#' fitting \eqn{p} univariate GLMs:
-#' \itemize{
-#'   \item Score numerator: \eqn{U_j = \sum_i x_{ij}\,Uvec_i}, implemented as
-#'         \code{U <- as.numeric(crossprod(X, Uvec))}. This dispatches to
-#'         \pkg{Matrix} methods automatically when \code{X} is sparse.
-#'   \item Score denominator: \eqn{I_{jj} = \sum_i W_i\,x_{ij}^2}. For dense
-#'         \code{matrix} inputs we use row scaling by \code{sqrtW <- sqrt(W)} and
-#'         compute \code{I <- colSums((X * sqrtW)^2)}. For \pkg{Matrix} sparse
-#'         inputs we avoid densifying by scaling only the nonzeros and then
-#'         summing by column:
-#'         \code{Xw <- X; Xw@x <- (X@x * sqrtW[X@i + 1L])^2; I <- as.numeric(Matrix::colSums(Xw))}.
-#' }
-#' Both steps use BLAS/sparse kernels where available; the sparse branch never
-#' forms \code{Diagonal(W)} and never allocates an \eqn{n \times p} temporary.
-#'
-#' @param X Numeric design matrix \eqn{n \times p}{n x p}. May be a base
-#'   `matrix` (dense) or a \pkg{Matrix} sparse class (e.g., `dgCMatrix`).
-#'   Columns are the features to screen.
-#' @param y Response vector of length \eqn{n}. For binomial GLMs, supply a 0/1
-#'   vector; `weights` can encode binomial totals if desired.
-#' @param family A GLM family object (e.g., `gaussian()`, `binomial()`,
-#'   `poisson()`, `Gamma()`, `inverse.gaussian()`), as in `glm()`.
-#' @param weights Optional non-negative observation weights of length \eqn{n}.
-#' @param offset Optional offset vector of length \eqn{n}.
-#' @param nsis Integer, number of predictors to retain. Defaults to
-#'   \eqn{\min\{n, \lfloor n / (\log\log p \cdot \log p)\rfloor\}}{
-#'   min(n, floor(n / (log log p * log p)))}. For the classical SIS size,
-#'   use `nsis = floor(n / log(n))`.
-#' @param return_stats Logical; if `TRUE`, also returns a data frame with the
-#'   per-feature statistic and ranks. Default `FALSE` to minimize memory and I/O
-#'   for ultrahigh-dimensional use.
-#'
-#' @return A `list` with components:
-#' \itemize{
-#'   \item `indices` - integer vector of length `nsis` with the indices of the kept
-#'         predictors (highest \eqn{T_j}).
-#'   \item `ranking` - full ordering of all \eqn{p} features (only if
-#'         `return_stats = TRUE`), decreasing in \eqn{T_j}.
-#'   \item `stats` - data frame with columns `feature`, `stat` (=\eqn{T_j}),
-#'         `sign` (=\eqn{sign(U_j)} as a plain sign), `rank`, and `keep`
-#'         (only if `return_stats = TRUE`).
-#'   \item `nsis` - the number of variables retained.
-#'   \item `family`, `link` - the GLM family and link used.
-#' }
-#'
-#' @references
-#'   \itemize{
-#' \item Fan, J. and Lv, J. (2008).
-#'      Sure independence screening for ultrahigh dimensional feature space.
-#'      \emph{Journal of the Royal Statistical Society: Series B}, 70(5), 849-911. \cr
-#' \item Fan, J. and Song, R. (2010).
-#'       Sure independence screening in generalized linear models with NP-dimensionality.
-#'       \emph{Annals of Statistics}, 38(6), 3567-3604. \cr
-#' \item Saldana, D. F. and Feng, Y. (2018).
-#'       SIS: An R Package for Sure Independence Screening in Ultrahigh-Dimensional Statistical Models.
-#'       \emph{Journal of Statistical Software}, 83(2), 1-25. \cr
-#' \item Zhao, S. D. and Li, Y. (2014).
-#'       Score test variable screening.
-#'       \emph{Biometrics}, 70(4), 862-871.
-#' }
-#'
-#' @seealso
-#' \itemize{
-#'   \item \pkg{SIS} for classical (I)SIS implementations.
-#'   \item \pkg{glmnet} and \pkg{ncvreg} to fit LASSO/MCP on the screened set.
-#' }
-#'
+#' Native kernels avoid `X^2` and scaled design copies. Independent channels
+#' use diagonal information; multinomial accumulates curvature from
+#' probabilities without an observation-by-category-squared array. Without
+#' full statistics, a bounded heap selects top predictors. Screening can miss
+#' weak/suppressor effects and does not certify a global L0 optimum.
+#' @return A list with decreasing-score `indices`, `top_statistics`, `nsis`,
+#'   `family`, `link` and fitted `theta` for NB. With `return_stats=TRUE`,
+#'   `ranking` lists all predictor indices and `stats` contains `feature`,
+#'   `stat`, `sign`, `rank` and `keep`. Signs are `NA` for multichannel/joint
+#'   scores. Full statistics/ranking are otherwise `NULL`.
+#' @seealso [L0glm.fit()]
 #' @example examples/sis_glm.R
 #' @export
-#' @importFrom stats glm.fit
-sis_glm <- function(X, y,
-                    family = gaussian(),
-                    weights = NULL,
-                    offset  = NULL,
-                    nsis       = NULL,
-                    return_stats = TRUE) {
-  
-  # --- basic checks
-  n <- NROW(X); p <- NCOL(X)
-  stopifnot(length(y) == n)
-  if (is.null(offset)) offset <- Matrix(0, ncol=1, nrow=n, sparse=TRUE) else offset <- Matrix(offset, sparse=TRUE)
-  nonnegative <- ((family$family=="poisson"|family$family=="quasipoisson"|
-       family$family=="binomial"|family$family=="quasibinomial"|
-       family$family=="Gamma"|family$family=="inverse.gaussian")&
-       family$link=="identity")
-  
-  # if (is.null(nsis)) nsis <- min(p, max(1L, floor(n / log(max(n, 3)))))  # nsis ~ n/log n as in SIS package
-  if (is.null(nsis)) nsis <- min(n, round(n/(log(log(n))*log(p))))  # maximum support size used in abess package
-  
-  # --- null fit (intercept-only)
-  fit0 <- L0glm.fit(X = matrix(1, n, 1), y = y, lambda = 0,
-                    weights = weights, offset = offset, 
-                    start = c(1),
-                    nonnegative = nonnegative,
-                    family = family, intercept = FALSE)
-  # fit0 <- stats::glm.fit(x = matrix(1, n, 1), y = y,
-  #                        weights = weights, offset = offset,
-  #                        family = family, intercept = TRUE)
-  
-  # --- score test (fast, single null fit)
-  linkinvfun <- family$linkinv
-  eta0       <- matrix(1, n, 1) %*% fit0$coefficients + offset # fit0$linear.predictors
-  mu0        <- linkinvfun(eta0) # fit0$fitted.values
-  vfun       <- family$variance
-  mu_eta     <- family$mu.eta
-  mueta      <- pmax(mu_eta(eta0), .Machine$double.eps)
-  Wdiag      <- (mueta^2) / pmax(vfun(mu0), .Machine$double.eps)
-  detadmu    <- 1 / mueta
-  Uvec       <- (y - mu0) * detadmu
-    
-  # -- score statistic (two BLAS-level passes)
-  # make vectors to avoid S4 broadcasting surprises
-  Uvec  <- as.numeric(Uvec)                  # length n
-  Wvec  <- as.numeric(Wdiag)                 # length n
-  sqrtW <- sqrt(pmax(Wvec, .Machine$double.eps))
-  
-  # U_j = x_j' * Uvec  (dispatches to Matrix method if X is sparse)
-  U <- as.numeric(crossprod(X, Uvec))
-  
-  # I_jj = sum_i W_i * x_{ij}^2
-  if (inherits(X, "sparseMatrix")) {
-    Xw <- X                                  # shallow copy
-    # scale rows by sqrtW and square the nonzeros: (sqrtW * X)^2
-    Xw@x <- (X@x * sqrtW[X@i + 1L])^2
-    I <- as.numeric(Matrix::colSums(Xw))     # stays sparse
-  } else {
-    I <- colSums((X * sqrtW)^2)              # dense path
-  }
-  
-  stats_vec <- U^2 / pmax(I, .Machine$double.eps)
-  signs     <- sign(U)
-  
-  # --- top-nsis selection
-  nsis <- min(as.integer(nsis), length(stats_vec))
-  idx_top  <- sort.list(stats_vec, decreasing = TRUE)[seq_len(nsis)]
-  idx_keep <- idx_top[ order(stats_vec[idx_top], decreasing = TRUE) ]
-  
+sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
+                    nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE) {
+  X <- L0glm_sis_design(X)
+  if (!inherits(family,"family")) family <- family()
+  if (!is.logical(return_stats) || length(return_stats)!=1L || is.na(return_stats) ||
+      !is.logical(nonnegative) || length(nonnegative)!=1L || is.na(nonnegative))
+    stop("return_stats and nonnegative must be TRUE or FALSE.",call.=FALSE)
+  n <- nrow(X);p <- ncol(X)
+  if (is.null(nsis)) nsis <- max(1L,floor(n/log(max(n,3))))
+  if (!is.numeric(nsis) || length(nsis)!=1L || !is.finite(nsis) ||
+      nsis<1 || nsis!=floor(nsis)) stop("nsis must be a positive integer.",call.=FALSE)
+  nsis <- as.integer(min(nsis,p))
+  context <- L0glm_sis_context(y,family,n,weights,offset,nuisance,nonnegative)
+  result <- sis_score_cpp(X,context,nsis,return_stats)
+  ranking <- stats <- NULL
   if (return_stats) {
-    # If we really need full ranks for all p, compute below; otherwise omit for memory.
-    o <- order(stats_vec, decreasing = TRUE)
-    stats <- data.frame(
-      feature = seq_len(p),
-      stat    = stats_vec,
-      sign    = signs,
-      rank    = match(seq_len(p), o),
-      keep    = FALSE
-    )
-    stats$keep[idx_keep] <- TRUE
-  } else {
-    stats <- NULL
+    ranking <- order(result$statistics,decreasing=TRUE,method="radix")
+    stats <- data.frame(feature=seq_len(p),stat=result$statistics,sign=result$sign,
+      rank=match(seq_len(p),ranking),keep=seq_len(p)%in%result$indices)
   }
-  
-  list(
-    indices = idx_keep,
-    ranking = if (return_stats) o else NULL,
-    stats   = stats,
-    nsis    = length(idx_keep),
-    family  = family$family,
-    link    = family$link
-  )
+  list(indices=result$indices,top_statistics=result$top_statistics,
+    ranking=ranking,stats=stats,nsis=length(result$indices),family=family$family,
+    link=family$link,theta=context$theta)
+}
+
+L0glm_sis_design <- function(X) {
+  if (inherits(X,"sparseMatrix"))
+    X <- methods::as(methods::as(methods::as(X,"dMatrix"),"generalMatrix"),"CsparseMatrix")
+  else {
+    X <- as.matrix(X)
+    if (!is.numeric(X) && !is.logical(X)) stop("X must be numeric.",call.=FALSE)
+    if (!is.double(X)) storage.mode(X) <- "double"
+  }
+  if (length(dim(X))!=2L || nrow(X)<2L || ncol(X)<1L)
+    stop("X needs at least two observations and one predictor.",call.=FALSE)
+  X
 }

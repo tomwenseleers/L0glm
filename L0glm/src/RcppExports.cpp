@@ -81,6 +81,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sis_score_cpp
+List sis_score_cpp(SEXP design, List context, int nsis, bool full);
+RcppExport SEXP _L0glm_sis_score_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< List >::type context(contextSEXP);
+    Rcpp::traits::input_parameter< int >::type nsis(nsisSEXP);
+    Rcpp::traits::input_parameter< bool >::type full(fullSEXP);
+    rcpp_result_gen = Rcpp::wrap(sis_score_cpp(design, context, nsis, full));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solve_sparse_QR
 Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_QR(SEXP ASEXP, SEXP bSEXP, SEXP orderingSEXP) {
@@ -233,6 +247,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
     {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 19},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
+    {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 4},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},

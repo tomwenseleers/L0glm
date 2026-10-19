@@ -1,46 +1,30 @@
-## Synthetic Gaussian example (dense X)
-n <- 100; p <- 2000; k <- 10
 set.seed(1)
-X <- matrix(rnorm(n * p), n, p)
-beta <- numeric(p); beta[sample(p, k)] <- runif(k, -0.8, 0.8)
-y <- as.numeric(X %*% beta + rnorm(n))
+n <- 150; p <- 300
+X <- matrix(rnorm(n*p),n,p)
+beta <- c(1,-1,.8,-.8,rep(0,p-4))
+y <- as.numeric(X%*%beta)+rnorm(n)
+screen <- sis_glm(X,y,nsis=40,return_stats=FALSE)
+screen$indices
 
-## Screen with classical SIS size nsis ~ n/log n
-nsis <- round(n / log(n))
+# Independent channels are screened jointly without signed cancellation.
+multi <- sis_glm(X,cbind(y,-y),nsis=40,return_stats=FALSE)
+multi$indices
 
-## Time our sis_glm
-tm_sis_glm <- system.time(
-  SIS_glm <- sis_glm(X, y,
-                     family = stats::gaussian(),
-                     weights = NULL, offset = NULL,
-                     nsis = nsis, return_stats = FALSE)
-)
-print(tm_sis_glm)
+# Conditional screening includes the specified nuisance design.
+conditional <- sis_glm(X,y,nuisance=cbind(1,X[,1]),nsis=40)
+head(conditional$stats[conditional$ranking,])
 
-\dontrun{
-## Larger benchmark-sized example: n = 500, p = 1e6
-n <- 500; p <- 1e6; k <- 60
-set.seed(1)
-X <- matrix(rnorm(n * p), n, p)
-beta <- numeric(p); beta[sample(p, k)] <- runif(k, -0.8, 0.8)
-y <- as.numeric(X %*% beta + rnorm(n))
-nsis <- round(n / log(n))
-tm_sis_glm <- system.time(
-  SIS_glm <- sis_glm(X, y,
-                     family = stats::gaussian(),
-                     weights = NULL, offset = NULL,
-                     nsis = nsis, return_stats = FALSE)
-)
-print(tm_sis_glm)
-
-## Time vanilla SIS::SIS
-if (requireNamespace("SIS", quietly = TRUE)) {
-  tm_SIS <- system.time(
-    SIS_pkg <- SIS::SIS(X, y, family = "gaussian", nsis = nsis, iter = FALSE)
-  )
-  print(tm_SIS)
-  ## On a typical workstation we observe >10x speedup of sis_glm over vanilla SIS::SIS,
-  ## with near-identical selected sets (results vary by hardware and BLAS).
-  length(intersect(SIS_glm$indices, SIS_pkg$ix))
+if (requireNamespace("mgcv",quietly=TRUE)) {
+  counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)
+  nb <- sis_glm(X,counts,family=mgcv::nb(),nsis=20,return_stats=FALSE)
+  nb$theta
+  classes <- factor(sample(letters[1:3],n,TRUE))
+  multinomial <- sis_glm(X,classes,family=mgcv::multinom(2),
+                        nsis=20,return_stats=FALSE)
 }
+if (requireNamespace("mgcv",quietly=TRUE) && requireNamespace("survival",quietly=TRUE)) {
+  time <- rexp(n,exp(.5*X[,1]))
+  outcome <- survival::Surv(pmin(time,2),time<=2)
+  cox <- sis_glm(Matrix::Matrix(X,sparse=TRUE),outcome,
+                family=mgcv::cox.ph(),nsis=20,return_stats=FALSE)
 }

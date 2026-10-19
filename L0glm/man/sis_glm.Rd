@@ -2,7 +2,7 @@
 % Please edit documentation in R/sis_glm.R
 \name{sis_glm}
 \alias{sis_glm}
-\title{Sure Independence Screening for GLMs via Fast Score Tests}
+\title{Efficient-score screening for GLMs and special families}
 \usage{
 sis_glm(
   X,
@@ -11,174 +11,110 @@ sis_glm(
   weights = NULL,
   offset = NULL,
   nsis = NULL,
-  return_stats = TRUE
+  return_stats = TRUE,
+  nuisance = NULL,
+  nonnegative = FALSE
 )
 }
 \arguments{
-\item{X}{Numeric design matrix \eqn{n \times p}{n x p}. May be a base
-`matrix` (dense) or a \pkg{Matrix} sparse class (e.g., `dgCMatrix`).
-Columns are the features to screen.}
+\item{X}{Numeric predictor matrix, dense or sparse, with observations in rows.}
 
-\item{y}{Response vector of length \eqn{n}. For binomial GLMs, supply a 0/1
-vector; `weights` can encode binomial totals if desired.}
+\item{y}{Response as in \code{\link[=L0glm.fit]{L0glm.fit()}}: a numeric vector or independent-channel
+matrix for ordinary/NB models; factors, class labels or count matrices for
+multinomial; or \code{survival::Surv(time, status)} for right-censored Cox models.}
 
-\item{family}{A GLM family object (e.g., `gaussian()`, `binomial()`,
-`poisson()`, `Gamma()`, `inverse.gaussian()`), as in `glm()`.}
+\item{family}{Any standard GLM family/link, a fixed-theta negative-binomial
+family, or \code{mgcv::nb()}, \code{mgcv::multinom(K)} or \code{mgcv::cox.ph()}.}
 
-\item{weights}{Optional non-negative observation weights of length \eqn{n}.}
+\item{weights}{Nonnegative prior weights: a scalar, observation vector, or
+observation-by-channel matrix for ordinary/NB models. Multinomial and Cox
+use shared row weights.}
 
-\item{offset}{Optional offset vector of length \eqn{n}.}
+\item{offset}{Known linear-predictor offsets: a scalar, observation vector,
+or observation-by-channel/category matrix. Cox uses a vector.}
 
-\item{nsis}{Integer, number of predictors to retain. Defaults to
-\eqn{\min\{n, \lfloor n / (\log\log p \cdot \log p)\rfloor\}}{
-min(n, floor(n / (log log p * log p)))}. For the classical SIS size,
-use `nsis = floor(n / log(n))`.}
+\item{nsis}{Number of predictors retained, capped at \code{ncol(X)}. Defaults to
+\code{min(p, max(1, floor(n/log(n))))}. No size guarantees true-feature retention.}
 
-\item{return_stats}{Logical; if `TRUE`, also returns a data frame with the
-per-feature statistic and ranks. Default `FALSE` to minimize memory and I/O
-for ultrahigh-dimensional use.}
+\item{return_stats}{Return all statistics and their full ranking, default
+\code{TRUE}. Use \code{FALSE} for large designs to retain only the top predictors.}
+
+\item{nuisance}{Optional numeric nuisance design. \code{NULL} uses an intercept,
+except for Cox, which has none. An explicit zero-column matrix requests no
+nuisance terms. Include an intercept explicitly when supplying other
+nuisance predictors. Constant Cox nuisance columns are omitted.}
+
+\item{nonnegative}{Use one-sided scores for nonnegative candidate effects.
+Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.}
 }
 \value{
-A `list` with components:
-\itemize{
-  \item `indices` - integer vector of length `nsis` with the indices of the kept
-        predictors (highest \eqn{T_j}).
-  \item `ranking` - full ordering of all \eqn{p} features (only if
-        `return_stats = TRUE`), decreasing in \eqn{T_j}.
-  \item `stats` - data frame with columns `feature`, `stat` (=\eqn{T_j}),
-        `sign` (=\eqn{sign(U_j)} as a plain sign), `rank`, and `keep`
-        (only if `return_stats = TRUE`).
-  \item `nsis` - the number of variables retained.
-  \item `family`, `link` - the GLM family and link used.
-}
+A list with decreasing-score \code{indices}, \code{top_statistics}, \code{nsis},
+\code{family}, \code{link} and fitted \code{theta} for NB. With \code{return_stats=TRUE},
+\code{ranking} lists all predictor indices and \code{stats} contains \code{feature},
+\code{stat}, \code{sign}, \code{rank} and \code{keep}. Signs are \code{NA} for multichannel/joint
+scores. Full statistics/ranking are otherwise \code{NULL}.
 }
 \description{
-`sis_glm()` implements *sure independence screening* (SIS) for
-generalized linear models (GLMs) using a **single null fit** and
-**marginal score test statistics** for each feature. It supports all
-standard `stats::family`/link combinations (e.g., Gaussian, binomial,
-Poisson, Gamma, inverse.gaussian), optional observation `weights`, an
-`offset` term, and both **dense** (`matrix`) and **sparse** (classes
-from **Matrix**) design matrices.
-
-In our benchmarks (see the Examples), this implementation is typically
-**>10x faster** than the vanilla SIS procedure in the \pkg{SIS}
-package for large, tall-and-wide problems, while producing essentially
-identical rankings. Speedups come from avoiding \(p\) univariate GLM
-fits and instead computing closed-form score statistics using only the
-intercept-only (null) GLM fit.
+Screen predictors using one null/nuisance fit and native column reductions,
+without fitting a separate model for every predictor. Dense matrices stay
+dense and sparse matrices stay sparse.
 }
 \details{
-For each predictor \eqn{x_j}, consider the marginal GLM
-\eqn{\eta_i = \beta_0 + \beta_j x_{ij}}{eta_i = beta_0 + beta_j x_{ij}}
-with link \eqn{\eta_i = g(\mu_i)}{eta_i = g(mu_i)} and null fit
-\eqn{\hat{\mu}_{0i}}{mu0_i}. The per-feature efficient score and (expected)
-information at the null are
-\deqn{
-  U_j = \sum_{i=1}^n x_{ij}\,(y_i - \hat{\mu}_{0i})\,\left.\frac{d\eta_i}{d\mu_i}\right|_{\hat{\mu}_0},
-  \qquad
-  I_{jj} = \sum_{i=1}^n x_{ij}^2\,\frac{(d\mu_i/d\eta_i)^2}{V(\hat{\mu}_{0i})},
-}{
-  U_j = sum_i x_{ij} * (y_i - mu0_i) * (d eta_i / d mu_i at mu0),
-  and I_{jj} = sum_i x_{ij}^2 * (d mu_i / d eta_i)^2 / V(mu0_i).
-}
-with variance function \eqn{V(\cdot)}{V(.)}. The screening statistic is
-\deqn{T_j = U_j^2 / I_{jj},}{T_j = U_j^2 / I_{jj},}
-which is approximately \eqn{\chi^2_1}{chi^2_1} under \eqn{H_0:\beta_j=0}{H0: beta_j = 0}
-for canonical GLMs. Ranking by \eqn{T_j} closely tracks ranking by marginal
-likelihood gain / deviance drop (and coincides in the Gaussian identity-link case).
+For an ordinary GLM let \eqn{s_i=v_i(y_i-\mu_i)\dot\mu_i/
+(\phi V(\mu_i))} and \eqn{h_i=v_i\dot\mu_i^2/(\phi V(\mu_i))}, evaluated
+at the nuisance fit. For candidate \eqn{x} and nuisance design \eqn{N},
+\deqn{U=x^Ts-x^THN(N^THN)^+N^Ts,\qquad
+I=x^THx-x^THN(N^THN)^+N^THx,}
+with \eqn{H=\operatorname{diag}(h)}. Rank \eqn{U^2/I}, or
+\eqn{\max(U,0)^2/I} for a one-sided candidate. Unidentifiable columns get
+zero; ties use original column order. Noncanonical derivatives retain their
+sign. Free dispersion uses the null-fit Pearson statistic/residual degrees
+of freedom. NB theta is fitted or fixed according to the supplied family.
 
-The function retains the top `nsis` variables (screening size). By default,
-`nsis = min(n, floor(n / (log(log(p)) * log(p))))`, a conservative cap related to
-the maximum support size that is used in \pkg{abess}. To emulate the classical
-SIS choice, set `nsis = floor(n / log(n))`.
+Independent channels contribute separate statistics, preventing cancellation
+of opposite effects. Multinomial uses the exact joint score/information in
+orthonormal contrasts of the CLR plane; grouped ranking is invariant to
+category relabeling. Cox uses exact weighted Breslow risk sets, ties and
+nuisance adjustment. Quasi families do not require a likelihood.
 
-Note that for quasi families, the score statistic uses the variance and link
-functions but there is no full likelihood; this is fine for ranking.
-
-**Computation.** The statistic is computed in two linear-time passes without
-fitting \eqn{p} univariate GLMs:
-\itemize{
-  \item Score numerator: \eqn{U_j = \sum_i x_{ij}\,Uvec_i}, implemented as
-        \code{U <- as.numeric(crossprod(X, Uvec))}. This dispatches to
-        \pkg{Matrix} methods automatically when \code{X} is sparse.
-  \item Score denominator: \eqn{I_{jj} = \sum_i W_i\,x_{ij}^2}. For dense
-        \code{matrix} inputs we use row scaling by \code{sqrtW <- sqrt(W)} and
-        compute \code{I <- colSums((X * sqrtW)^2)}. For \pkg{Matrix} sparse
-        inputs we avoid densifying by scaling only the nonzeros and then
-        summing by column:
-        \code{Xw <- X; Xw@x <- (X@x * sqrtW[X@i + 1L])^2; I <- as.numeric(Matrix::colSums(Xw))}.
-}
-Both steps use BLAS/sparse kernels where available; the sparse branch never
-forms \code{Diagonal(W)} and never allocates an \eqn{n \times p} temporary.
+Native kernels avoid \code{X^2} and scaled design copies. Independent channels
+use diagonal information; multinomial accumulates curvature from
+probabilities without an observation-by-category-squared array. Without
+full statistics, a bounded heap selects top predictors. Screening can miss
+weak/suppressor effects and does not certify a global L0 optimum.
 }
 \examples{
-## Synthetic Gaussian example (dense X)
-n <- 100; p <- 2000; k <- 10
 set.seed(1)
-X <- matrix(rnorm(n * p), n, p)
-beta <- numeric(p); beta[sample(p, k)] <- runif(k, -0.8, 0.8)
-y <- as.numeric(X \%*\% beta + rnorm(n))
+n <- 150; p <- 300
+X <- matrix(rnorm(n*p),n,p)
+beta <- c(1,-1,.8,-.8,rep(0,p-4))
+y <- as.numeric(X\%*\%beta)+rnorm(n)
+screen <- sis_glm(X,y,nsis=40,return_stats=FALSE)
+screen$indices
 
-## Screen with classical SIS size nsis ~ n/log n
-nsis <- round(n / log(n))
+# Independent channels are screened jointly without signed cancellation.
+multi <- sis_glm(X,cbind(y,-y),nsis=40,return_stats=FALSE)
+multi$indices
 
-## Time our sis_glm
-tm_sis_glm <- system.time(
-  SIS_glm <- sis_glm(X, y,
-                     family = stats::gaussian(),
-                     weights = NULL, offset = NULL,
-                     nsis = nsis, return_stats = FALSE)
-)
-print(tm_sis_glm)
+# Conditional screening includes the specified nuisance design.
+conditional <- sis_glm(X,y,nuisance=cbind(1,X[,1]),nsis=40)
+head(conditional$stats[conditional$ranking,])
 
-\dontrun{
-## Larger benchmark-sized example: n = 500, p = 1e6
-n <- 500; p <- 1e6; k <- 60
-set.seed(1)
-X <- matrix(rnorm(n * p), n, p)
-beta <- numeric(p); beta[sample(p, k)] <- runif(k, -0.8, 0.8)
-y <- as.numeric(X \%*\% beta + rnorm(n))
-nsis <- round(n / log(n))
-tm_sis_glm <- system.time(
-  SIS_glm <- sis_glm(X, y,
-                     family = stats::gaussian(),
-                     weights = NULL, offset = NULL,
-                     nsis = nsis, return_stats = FALSE)
-)
-print(tm_sis_glm)
-
-## Time vanilla SIS::SIS
-if (requireNamespace("SIS", quietly = TRUE)) {
-  tm_SIS <- system.time(
-    SIS_pkg <- SIS::SIS(X, y, family = "gaussian", nsis = nsis, iter = FALSE)
-  )
-  print(tm_SIS)
-  ## On a typical workstation we observe >10x speedup of sis_glm over vanilla SIS::SIS,
-  ## with near-identical selected sets (results vary by hardware and BLAS).
-  length(intersect(SIS_glm$indices, SIS_pkg$ix))
+if (requireNamespace("mgcv",quietly=TRUE)) {
+  counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)
+  nb <- sis_glm(X,counts,family=mgcv::nb(),nsis=20,return_stats=FALSE)
+  nb$theta
+  classes <- factor(sample(letters[1:3],n,TRUE))
+  multinomial <- sis_glm(X,classes,family=mgcv::multinom(2),
+                        nsis=20,return_stats=FALSE)
 }
-}
-}
-\references{
-\itemize{
-\item Fan, J. and Lv, J. (2008).
-     Sure independence screening for ultrahigh dimensional feature space.
-     \emph{Journal of the Royal Statistical Society: Series B}, 70(5), 849-911. \cr
-\item Fan, J. and Song, R. (2010).
-      Sure independence screening in generalized linear models with NP-dimensionality.
-      \emph{Annals of Statistics}, 38(6), 3567-3604. \cr
-\item Saldana, D. F. and Feng, Y. (2018).
-      SIS: An R Package for Sure Independence Screening in Ultrahigh-Dimensional Statistical Models.
-      \emph{Journal of Statistical Software}, 83(2), 1-25. \cr
-\item Zhao, S. D. and Li, Y. (2014).
-      Score test variable screening.
-      \emph{Biometrics}, 70(4), 862-871.
+if (requireNamespace("mgcv",quietly=TRUE) && requireNamespace("survival",quietly=TRUE)) {
+  time <- rexp(n,exp(.5*X[,1]))
+  outcome <- survival::Surv(pmin(time,2),time<=2)
+  cox <- sis_glm(Matrix::Matrix(X,sparse=TRUE),outcome,
+                family=mgcv::cox.ph(),nsis=20,return_stats=FALSE)
 }
 }
 \seealso{
-\itemize{
-  \item \pkg{SIS} for classical (I)SIS implementations.
-  \item \pkg{glmnet} and \pkg{ncvreg} to fit LASSO/MCP on the screened set.
-}
+\code{\link[=L0glm.fit]{L0glm.fit()}}
 }

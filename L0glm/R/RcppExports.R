@@ -13,6 +13,10 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
+sis_score_cpp <- function(design, context, nsis, full) {
+    .Call('_L0glm_sis_score_cpp', PACKAGE = 'L0glm', design, context, nsis, full)
+}
+
 solve_sparse_QR <- function(A, b, ordering = 1L) {
     .Call('_L0glm_solve_sparse_QR', PACKAGE = 'L0glm', A, b, ordering)
 }
