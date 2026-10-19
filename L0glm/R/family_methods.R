@@ -125,6 +125,35 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' signed mean error, sMAPE, slope, accuracy, specificity and support-size
 #' ratio have been removed.
 #'
+#' Prediction accuracy includes `R2_weighted` and `adj_R2_weighted` for ordinary
+#' GLMs and negative binomial models. Working weights are recomputed at the
+#' fitted means as \eqn{w_{ij}=v_{ij}\{d\mu_{ij}/d\eta_{ij}\}^2/V(\mu_{ij})},
+#' using original prior weights \eqn{v}, the fitted link, and fitted NB theta.
+#' Positive-family means use the fitter's machine-precision lower bound;
+#' changing the deviance scoring floor does not change these R-squared scores.
+#' These are response-scale residual
+#' scores, not working-response or deviance pseudo-R-squared measures.
+#'
+#' Let \eqn{SSE=\sum_{ij}w_{ij}(y_{ij}-\widehat\mu_{ij})^2} and
+#' \eqn{SST=\sum_{ij}w_{ij}(y_{ij}-c_j)^2}. With a unit intercept column,
+#' \eqn{c_j} is the channel's working-weighted response mean; without one it is
+#' zero, following the centered/uncentered convention of [stats::summary.lm()].
+#' Then \eqn{R_w^2=1-SSE/SST} and
+#' \eqn{R_{w,adj}^2=1-(SSE/SST)(N-b)/(N-k)}. Here \eqn{N} counts
+#' positive-working-weight response entries, \eqn{b} counts channel intercepts,
+#' and \eqn{k} counts nonzero coefficients plus mandatory terms even when zero.
+#' Multichannel sums pool within-channel residuals and baselines, rather than
+#' averaging channel R-squared values. Precision weights do not change \eqn{N}
+#' into a sum of weights. Dispersion/theta are not mean-model degrees of freedom.
+#' The adjustment uses active-set size, not an estimate of selection or ridge
+#' effective degrees of freedom. Negative scores are retained.
+#'
+#' Prediction R-squared is `NA` for zero total sum of squares, undefined working
+#' weights, or Cox/multinomial models, which do not have the scalar independent
+#' GLM working weights used by this definition. Adjusted R-squared is also
+#' `NA` when residual degrees of freedom are nonpositive. New-data scores use
+#' predictions on the new rows and the original fitted active-set size.
+#'
 #' Likelihood and criterion conventions, including dispersion estimates,
 #' sample sizes and grouped parameter counts, are detailed in
 #' \link{model_criteria}. Ordinary GLMs also report \code{deviance_true}
@@ -177,7 +206,8 @@ L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = 
   if (is.null(offset) && training) offset <- object$offset
   if (object$kind == "nb") {
     yy <- as.matrix(y)
-    mu <- pmax(predict(object, newdata, offset = offset), mu_floor)
+    fitted_mean <- predict(object, newdata, offset = offset)
+    mu <- pmax(fitted_mean, mu_floor)
     likelihood <- saturated <- 0
     for (j in seq_len(m)) {
       good <- w[, j] > 0
@@ -215,8 +245,13 @@ L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = 
   IC <- get.IC(likelihood, max(2, object$n_ic), max(1, object$p), df)
   IC <- IC[c("gic", "ebic", "bic", "aic", "mbic")]
   charge <- if (object$grouped) selected else elements
+  prediction <- if (object$kind == "nb") L0glm_prediction_metrics(yy, fitted_mean, w,
+    if (is.null(object$families)) object$family else object$families, beta,
+    object$always.include, L0glm_metric_intercept(object$X, object$always.include)) else
+      list(R2_weighted=NA_real_, adj_R2_weighted=NA_real_)
   scores <- data.frame(loglik = likelihood, deviance, mean_deviance = deviance/if (mass > 0) mass else 1,
     df, selected, nonzero = elements, mandatory, nuisance,
+    prediction,
     objective = -2 * likelihood + object$init.lambda * charge,
     GIC_rows = -2 * likelihood + preset.lambda("gic", max(1, object$p), max(2, object$n_ic)) * selected,
     IC, row.names = NULL)

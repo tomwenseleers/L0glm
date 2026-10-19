@@ -35,6 +35,8 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
     matrix(family$linkinv(eta), n, m)
   }
   mu <- predict_mean(beta)
+  prediction <- L0glm_prediction_metrics(y, mu, weights, family, beta, always.include,
+    L0glm_metric_intercept(X, always.include))
   if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
     mu <- pmax(mu, mu_floor)
   keep <- which(weights > 0)
@@ -77,9 +79,56 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
   IC = get.IC(loglik = loglik, n = n, p = max(1L, p), edf = edf)
   
   c(list(p = p, n = n, m = m, df = edf,
-    deviance = deviance, deviance_true = deviance_true, loglik = loglik), recovery,
+    deviance = deviance, deviance_true = deviance_true, loglik = loglik), prediction, recovery,
     as.list(IC[c("gic", "ebic", "bic", "aic", "mbic")]))
 }
+
+# Response-scale prediction scores using working weights at the fitted means.
+# Count active mean parameters, not dispersion/theta or selection/shrinkage df.
+L0glm_prediction_metrics <- function(y, mu, weights, family, beta, mandatory=integer(),
+                                     intercept=FALSE) {
+  result <- list(R2_weighted=NA_real_, adj_R2_weighted=NA_real_)
+  m <- ncol(y)
+  families <- if (inherits(family, "family")) rep(list(family), m) else family
+  working <- matrix(0, nrow(y), m)
+  for (j in seq_len(m)) {
+    keep <- weights[, j] > 0
+    f <- families[[j]]
+    if (f$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian") ||
+        grepl("^negative binomial", f$family, ignore.case=TRUE))
+      mu[, j] <- pmax(mu[, j], .Machine$double.eps)
+    derivative <- f$mu.eta(f$linkfun(mu[keep, j]))
+    variance <- f$variance(mu[keep, j])
+    value <- weights[keep, j] * derivative^2/variance
+    value[variance == 0 & derivative == 0] <- 0
+    if (any(!is.finite(value) | value < 0)) return(result)
+    working[keep, j] <- value
+  }
+  observed <- colSums(working > 0)
+  N <- sum(observed)
+  if (!N) return(result)
+  # A common rescaling leaves the score unchanged and avoids huge weights.
+  working <- working/max(working)
+  active <- observed > 0
+  keep <- working > 0
+  response <- y; response[!keep] <- 0
+  center <- if (intercept) colSums(working*response)/pmax(colSums(working), .Machine$double.xmin) else rep(0, m)
+  rss <- sum(working[keep] * (y[keep] - mu[keep])^2)
+  tss <- sum(working[keep] * sweep(y, 2L, center)[keep]^2)
+  if (!is.finite(rss) || !is.finite(tss) || tss <= 0) return(result)
+  result$R2_weighted <- 1 - rss/tss
+  df <- as.numeric(Matrix::colSums(beta != 0) +
+    Matrix::colSums(beta[mandatory, , drop=FALSE] == 0))
+  k <- sum(df[active]); baseline <- as.integer(intercept) * sum(active)
+  if (N > k && N > baseline)
+    result$adj_R2_weighted <- 1 - (rss/tss) * (N - baseline)/(N - k)
+  result
+}
+
+L0glm_metric_intercept <- function(X, mandatory) {
+  any(vapply(mandatory, function(j) all(X[, j, drop=FALSE] == 1), logical(1)))
+}
+
 L0glm_metric_coefficients <- function(beta, p, m) {
   if (is.null(dim(beta))) beta <- matrix(beta, p, m)
   Matrix::Matrix(beta, sparse = TRUE)

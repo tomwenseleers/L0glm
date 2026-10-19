@@ -93,7 +93,7 @@ print.summary.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L),
   L0glm_print_model_info(x, digits)
   if (x$mu_floor > 0) cat("Scoring mean floor:", format(x$mu_floor, digits=digits), "\n")
   cat("\nFit metrics:\n")
-  fields <- intersect(c("loglik", "deviance", "df", "aic", "bic", "gic", "ebic", "mbic"), names(x$metrics))
+  fields <- intersect(c("loglik", "deviance", "adj_R2_weighted", "df", "aic", "bic", "gic", "ebic", "mbic"), names(x$metrics))
   print(x$metrics[fields], digits=digits, row.names=FALSE)
   recovery <- L0glm_summary_recovery(x$metrics)
   if (length(recovery)) {

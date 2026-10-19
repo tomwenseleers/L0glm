@@ -13,6 +13,7 @@ L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
         object$data$intercept, object$data$m, sparse=TRUE))
       empty <- c(list(p=ncol(object$data$X), n=nrow(object$data$X), m=object$data$m,
         df=NA_real_, loglik=NA_real_, deviance=NA_real_, deviance_true=NA_real_,
+        R2_weighted=NA_real_, adj_R2_weighted=NA_real_,
         gic=NA_real_, ebic=NA_real_, bic=NA_real_, aic=NA_real_, mbic=NA_real_), recovery)
       empty$support_size_estimated <- NA_real_
       return(cbind(meta, as.data.frame(empty)))
@@ -75,7 +76,7 @@ print.summary.sparseglm <- function(x, digits=max(3L, getOption("digits") - 3L),
   if (x$mu_floor > 0) cat("Scoring mean floor:", format(x$mu_floor, digits=digits), "\n")
   fields <- unique(c("method", "status", "scope", "parameter", "selected_parameter", "seconds",
     if (x$tune == "cv") c("cv_mean", "cv_se") else x$tune,
-    "support_size_estimated", "loglik", "deviance", "gic", L0glm_summary_recovery(x$metrics)))
+    "support_size_estimated", "loglik", "deviance", "adj_R2_weighted", "gic", L0glm_summary_recovery(x$metrics)))
   print(x$metrics[intersect(fields, names(x$metrics))], digits=digits, row.names=FALSE)
   notes <- which(!is.na(x$metrics$note) & nzchar(x$metrics$note))
   if (length(notes)) {
