@@ -875,16 +875,12 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 # 3. BENCHMARKS AGAINST OTHER METHODS ####
 # Take our best working solver & method and compare it against others: 
-# glmnet (LASSO variants), L0Learn & abess.
-# MCP and SCAD were unacceptably slow for these n = p = 10000 deconvolution
-# problems: their ordinis backend requires dense designs. So we omit them here.
-
-# comparison_methods <- c("L0glm", "abess", "L0Learn", "lasso", "relaxed_lasso",
-#                         "adaptive_lasso", "adaptive_relaxed_lasso")
+# L0Learn & glmnet (LASSO variants)
+# abess, MCP and SCAD were unacceptably slow for these n = p = 10000 deconvolution
+# problems, so we omit them here (and for smaller problems they all give a poor solution).
 
 comparison_methods <- c("L0glm", "L0Learn", "lasso", "relaxed_lasso",
                         "adaptive_lasso", "adaptive_relaxed_lasso")
-# TODO check why abess was unusably slow
 
 
 ## 3.1 SINGLE CHANNEL POISSON ####
@@ -914,6 +910,22 @@ plot(x=L0glm.chol$coefficients, y=sim.pois$beta_true, pch=16, col='blue',
      xlab="estimated coefficients", ylab="true coefficients")
 
 
+# this is super slow:
+# system.time(abessfit <- abess::abess(x = sim.pois$X, 
+#                     y = sim.pois$y,
+#                     weight = 1/(as.vector(sim.pois$y)+0.1), 
+#                     family = "gaussian",
+#                     tune.path = "sequence",
+#                     support.size = c(1:2000),
+#                     fit.intercept = FALSE,
+#                     beta.low = 0, # nonnegativity constraints
+#                     lambda = 0,
+#                     warm.start = TRUE,
+#                     tune.type = "bic", # trick to support any IC that L0glm supports
+#                     ic.scale = L0glm:::preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic
+#                                              p = ncol(sim.pois$X), 
+#                                              n = nrow(sim.pois$X))/log(nrow(sim.pois$X)))) # trick to support any IC that L0glm supports
+
 
 ### 3.1.2 COMPARE SPARSE METHODS ####
 # The L0glm candidate uses the same preset as the fit above; other methods
@@ -925,11 +937,8 @@ system.time(comparison.sc.pois <- sparseglm(sim.pois, family = poisson(identity)
   tune = "gic", nonnegative = TRUE, intercept = FALSE, approximation = "wls",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol$init.lambda),
-  options = list(abess = list(warm.start = TRUE))))
+  options = list(abess = list(warm.start = TRUE)))) # 2s
 plot(comparison.sc.pois)
-
-
-# TODO if abess is included it is super slow - check what's wrong there
 
 
 # BENCHMARK TABLE
@@ -1000,8 +1009,7 @@ plot(x=L0glm.chol$coefficients, y=sim.gaus$beta_true, pch=16, col='blue',
 
 ### 3.2.2 COMPARE SPARSE METHODS ####
 # The L0glm candidate uses the same preset as the fit above; other methods
-# share GIC scoring. ABESS uses unit support increments with warm starts;
-# glmnet uses 10 lambda values.
+# share GIC scoring. glmnet uses 10 lambda values.
 system.time(comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity),
   method = comparison_methods, nlambda = 10L,
   tune = "gic", nonnegative = TRUE, intercept = FALSE,
@@ -1009,8 +1017,6 @@ system.time(comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity
   lambda = list(L0glm = L0glm.chol$init.lambda),
   options = list(abess = list(warm.start = TRUE))))
 plot(comparison.sc.gaus)
-benchmarks_3_2 <- L0glm.metrics(comparison.sc.gaus)
-benchmarks_3_2[,!colSums(is.na(benchmarks_3_2))]
 
 # BENCHMARK TABLE
 
@@ -1093,7 +1099,7 @@ plotmat(L0glm.chol.pois$coefficients,
 
 
 ### 3.3.2 COMPARE MULTICHANNEL POISSON METHODS ####
-# L0glm fits the exact grouped Poisson model. Grouped ABESS and glmnet use a
+# L0glm fits the exact grouped Poisson model. glmnet uses a
 # labelled Gaussian approximation with shared row weights 1/(rowMeans(y)+0.1).
 # L0Learn uses independent channel-specific WLS; all are scored as Poisson.
 system.time(comparison.mc.pois <- sparseglm(sim.pois.mc, family = poisson(identity),
@@ -1296,5 +1302,5 @@ benchmarks_3_4[,!colSums(is.na(benchmarks_3_4))]
 # 2 16633518 16453212 15634855 14994202 17025219
 
 # L0glm.fit is the clear winner
-# TODO timings can still be improved drastically by porting to Rcpp/OpenMP, 
+# TODO timings could still be improved drastically by porting to Rcpp/OpenMP, 
 # maybe make L0nnls function for gaussian case, or port the whole L0glm.fit function to Rcpp/OpenMP?
