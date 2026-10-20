@@ -30,7 +30,8 @@ refit. LASSO and fully relaxed LASSO are tuned by BIC or five-fold CV.
 | Relaxed LASSO | 5-fold CV | 91.76 | 7413 | 20 | 252 | 40 | 999688 | 0.120 | 0.156 |
 
 ```{r million-plot, echo=FALSE, fig.cap="Complete-workflow timings and false positives in the million-predictor example. L0glm uses a GIC preset; both LASSO methods use five-fold CV."}
-par(mfrow=c(1, 2), mar=c(4, 8.2, 2, 1), mgp=c(2.5, .6, 0), family="sans")
+par(mfrow=c(1, 2), mar=c(4, 8.2, 2, 1), mgp=c(2.5, .6, 0), family="sans",
+  bg="white", col.axis="#34465d", col.lab="#34465d", col.main="#0a1930")
 labels <- c("L0glm + ISIS", "LASSO", "Relaxed LASSO")
 cols <- c("#087e83", "#8b5cc7", "#d04a78")
 seconds <- c(3.16, 123.13, 91.76)
@@ -39,7 +40,8 @@ plot(seconds, 3:1, log="x", xlim=c(1, 220), ylim=c(.6, 3.4), pch=21, bg=cols,
 axis(2, at=3:1, labels=labels, las=1, tick=FALSE, cex.axis=.9)
 abline(v=c(1, 10, 100), col="#e1ebef", lty=3)
 points(seconds, 3:1, pch=21, bg=cols, col=cols, cex=2.2)
-text(seconds*1.25, 3:1, sprintf("%.2f s", seconds), pos=4, cex=.8, col="#29455a")
+text(seconds, 3:1, sprintf("%.2f s", seconds), pos=ifelse(seconds > 50, 2, 4),
+  offset=.8, cex=.8, col="#29455a")
 title("Fast fitting and selection", adj=0, cex.main=1.1)
 fp <- c(3, 50, 252)
 plot(fp, 3:1, xlim=c(0, 310), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
