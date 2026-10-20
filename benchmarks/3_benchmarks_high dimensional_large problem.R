@@ -12,6 +12,7 @@ error_sd <- 1
 seed_problem <- 123L
 seed_noise <- 1L
 nsis <- min(p, 2L * floor(n / log(n)))
+nsis_isis <- min(p, max(1L, round(n / (log(p) * log(log(n))))))
 isis_rounds <- 10L
 nlambda <- 10L
 abess_max_support <- min(p, n - 2L, 150L)
@@ -49,12 +50,15 @@ seconds["Full L0glm"] <- system.time(
 # One round is SIS followed by one fit; multiple rounds perform offset-based
 # ISIS. Each round starts afresh. The public API restores all p coefficient rows
 # and retains the best GIC round, so metrics remain comparable to full fits.
-# A screen of twice n/log(n) is used for both; it does not guarantee signal retention.
+# SIS uses a broad one-pass screen. ISIS uses the smaller historical batch size
+# (20 here): admitting 160 per round gave much poorer recovery at p = 1 million.
+# Neither screen guarantees signal retention.
 for (name in c("SIS", "ISIS")) {
   label <- paste(name, "+ L0glm")
   message(label)
   seconds[label] <- system.time(
-    screening[[name]] <- sis_glm(X, y, family = gaussian(), nsis = nsis,
+    screening[[name]] <- sis_glm(X, y, family = gaussian(),
+      nsis = if (name == "SIS") nsis else nsis_isis,
       iterative = TRUE, niter = if (name == "SIS") 1L else isis_rounds,
       return_stats = FALSE, lambda = lambda_gic, intercept = FALSE,
       nonnegative = FALSE, start = NULL, normalize = "auto", relaxed = TRUE,
@@ -70,6 +74,7 @@ for (name in c("SIS", "ISIS")) {
 # The actual grid is retained in comparison$tuning.
 # Timings include screening/fitting and, for competitors, path tuning/refitting.
 message("ABESS and relaxed LASSO")
+invisible(gc()) # Release large temporary design copies before native allocation.
 comparison <- sparseglm(X, y, family = gaussian(), beta_true = beta_true,
   method = c("abess", "relaxed_lasso"), tune = "gic", nlambda = nlambda,
   intercept = FALSE, nonnegative = FALSE,

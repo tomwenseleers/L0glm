@@ -1,0 +1,31 @@
+R version 4.5.0 (2025-04-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26300)
+
+Matrix products: default
+  LAPACK version 3.12.0
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: Europe/Brussels
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] L0glm_0.2.1.9001
+
+loaded via a namespace (and not attached):
+ [1] codetools_0.2-20      shape_1.4.6.1         Matrix_1.7-6
+ [4] lattice_0.23-1        sparsesvd_0.2-3       splines_4.5.0
+ [7] iterators_1.0.14      parallel_4.5.0        docopt_0.7.2
+[10] RhpcBLASctl_0.23-42   dynamicTreeCut_1.63-1 foreach_1.5.2
+[13] gsignal_0.3-7         qlcMatrix_0.9.9       grid_4.5.0
+[16] statmod_1.5.2         slam_0.1-56           compiler_4.5.0
+[19] fastcluster_1.3.0     quantreg_6.1          abess_0.4.11
+[22] tools_4.5.0           SparseM_1.84-2        cobs_1.3-9-1
+[25] Rcpp_1.1.2            survival_3.8-12       glmnet_5.1
+[28] MASS_7.3-66           MatrixModels_0.5-4
