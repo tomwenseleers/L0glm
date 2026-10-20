@@ -18,6 +18,20 @@ Current results (current.csv):
 
 SIS screens 160 predictors once. ISIS admits up to 20 new candidates per round (plus current support), with start=NULL, gamma=2 and relaxed=TRUE; it returns the best GIC round. Full L0glm uses the same GIC preset and fitting options. ABESS searches consecutive sizes 0:150 with warm starts and no intercept. Relaxed LASSO requests ten lambda values; six admissible relaxed models remain after glmnet's near-saturation support restriction. Full L0glm at the GIC preset returns the null fit; GIC selects the null model along the relaxed-LASSO path. MCC is undefined (NA) for these constant selections.
 
+The main fitting interface now exposes the same screening workflow:
+
+```r
+fit <- L0glm.fit(X, y)                  # automatic ISIS on this ultra-wide design
+fit$screening$history
+isis <- L0glm.fit(X, y, screen = "ISIS") # force iterative screening
+sis <- L0glm.fit(X, y, screen = "SIS")   # one-pass screening
+full <- L0glm.fit(X, y, screen = "none", lambda = "gic", relaxed = TRUE)
+```
+
+The automatic trigger requires at least 10,000 eligible predictors and at least ten times as many eligible predictors as observations; mandatory terms and starting-zero exclusions do not count toward it. Screened fits use GIC, relaxed refitting and serial candidate fits when those arguments are omitted. `nsis` and `screen.maxit` can override the default batch and outer-round limit. Coefficients retain all original predictor rows. The benchmark script explicitly uses `screen="none"` for its full-design comparison.
+
+A separate validation of `L0glm.fit(X, y)` with all defaults on the original million-predictor simulation returned exactly the same coefficients and round history as the ISIS result above (maximum coefficient difference zero), with GIC 2582.750628, F1 0.776699 and MCC 0.787489 in 19.52 seconds. This is another individual timing run. On the 10,000-by-10,000 single-channel PSF benchmarks, the new default and preceding implementation gave identical coefficients and GIC for both Poisson and Gaussian responses; median times over five runs were unchanged at 0.11 and 0.25 seconds, respectively. The updated comparison script also completed for all five methods at p=20,000. The integration passed all 4,673 package test expectations, including screening within CV training folds.
+
 Historical results, rescored using today's GIC convention (historical.csv):
 
 | method | seconds | GIC | F1 | MCC | selected | TP | FP | FN |

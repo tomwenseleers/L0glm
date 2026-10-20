@@ -71,6 +71,10 @@
 #' `always.include` instead. Intercept defaults match [L0glm.fit()].
 #' `converged` describes repetition of the outer candidate set; inner-fit
 #' convergence diagnostics remain in `fit$convergence`.
+#' [L0glm.fit()] also exposes this workflow through `screen="SIS"` or
+#' `screen="ISIS"`, with automatic ISIS for ultra-wide eligible designs.
+#' Its small default ISIS batch and other screened-fit defaults are documented
+#' in that function; pass `nsis` explicitly to match a standalone call exactly.
 #' @return A list with decreasing-score `indices`, `top_statistics`, `nsis`,
 #'   `family`, `link` and fitted `theta` for NB. With `return_stats=TRUE`,
 #'   `ranking` lists all predictor indices and `stats` contains `feature`,

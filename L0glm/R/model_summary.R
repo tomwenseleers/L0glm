@@ -30,6 +30,8 @@
 #' recovery metrics. The full original-dimension sparse coefficient matrix is
 #' retained in the model summary. Coefficients are point estimates; standard
 #' errors and Wald tests are not calculated for the selected penalized model.
+#' Screened fits display the screening method, number of rounds, chosen round
+#' and batch size; summaries retain their complete `screening` diagnostics.
 #'
 #' Convergence counts use the last recorded pass for each stage and channel,
 #' rather than counting intermediate grouped-selection passes as final failures.
@@ -46,7 +48,8 @@
 #' @return `summary()` returns a list of class `summary.L0glm_fit` or
 #'   `summary.sparseglm`. Both contain `metrics` and model dimensions. Model
 #'   summaries also contain the full sparse `coefficients`, selected row
-#'   indices, dispersion/theta, and a compact convergence table. `print()`
+#'   indices, dispersion/theta, screening diagnostics when used, and a compact
+#'   convergence table. `print()`
 #'   methods return their input invisibly.
 #' @seealso [L0glm.metrics()], [model_criteria], [sparseglm()]
 #' @examples
@@ -139,7 +142,7 @@ L0glm_model_info <- function(object) {
     n=nrow(object$X), p=object$p, m=ncol(beta), nobs=stats::nobs(object),
     selected_rows=selected, mandatory_rows=mandatory,
     nonzero=sum(beta != 0) - sum(beta[mandatory, , drop=FALSE] != 0),
-    lambda=object$init.lambda, grouped=object$grouped,
+    lambda=object$init.lambda, grouped=object$grouped, screening=object$screening,
     convergence=L0glm_summary_convergence(object$convergence))
 }
 
@@ -164,6 +167,8 @@ L0glm_print_model_info <- function(x, digits) {
   if (length(x$lambda) && !all(is.na(x$lambda)))
     cat("Lambda:", paste(format(x$lambda, digits=digits), collapse=", "), "\n")
   if (x$m > 1L && !is.null(x$grouped)) cat("Grouped selection:", x$grouped, "\n")
+  if (!is.null(x$screening)) cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d\n",
+    x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))
   if (x$kind == "cox") cat("Criterion sample size (Cox):", x$nobs, "\n")
   if (is.null(x$convergence)) cat("Convergence diagnostics: unavailable\n") else {
     cat("Convergence (last pass per stage/channel):\n")

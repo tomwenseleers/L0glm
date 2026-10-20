@@ -44,12 +44,12 @@ seconds["Full L0glm"] <- system.time(
   fits_high_dimensional[["Full L0glm"]] <- L0glm.fit(X, y,
     family = gaussian(), lambda = lambda_gic, intercept = FALSE,
     nonnegative = FALSE, start = NULL, normalize = "auto", relaxed = TRUE,
-    solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L)
+    solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L,
+    screen = "none")
 )[["elapsed"]]
 
-# One round is SIS followed by one fit; multiple rounds perform offset-based
-# ISIS. Each round starts afresh. The public API restores all p coefficient rows
-# and retains the best GIC round, so metrics remain comparable to full fits.
+# One call returns a full-dimension model for either screening strategy.
+# ISIS starts afresh in each round and retains the best original-p GIC round.
 # SIS uses a broad one-pass screen. ISIS uses the smaller historical batch size
 # (20 here): admitting 160 per round gave much poorer recovery at p = 1 million.
 # Neither screen guarantees signal retention.
@@ -57,14 +57,13 @@ for (name in c("SIS", "ISIS")) {
   label <- paste(name, "+ L0glm")
   message(label)
   seconds[label] <- system.time(
-    screening[[name]] <- sis_glm(X, y, family = gaussian(),
+    fits_high_dimensional[[label]] <- L0glm.fit(X, y, family = gaussian(), screen = name,
       nsis = if (name == "SIS") nsis else nsis_isis,
-      iterative = TRUE, niter = if (name == "SIS") 1L else isis_rounds,
-      return_stats = FALSE, lambda = lambda_gic, intercept = FALSE,
+      screen.maxit = isis_rounds, lambda = lambda_gic, intercept = FALSE,
       nonnegative = FALSE, start = NULL, normalize = "auto", relaxed = TRUE,
       solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L)
   )[["elapsed"]]
-  fits_high_dimensional[[label]] <- screening[[name]]$fit
+  screening[[name]] <- fits_high_dimensional[[label]]$screening
 }
 
 # Competitors minimize the same GIC over their native paths. ABESS searches

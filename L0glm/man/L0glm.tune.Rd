@@ -179,6 +179,10 @@ initialize the next fit.}
 
 \item{...}{Other arguments passed to \code{L0glm.fit}, including:
 \itemize{
+\item \code{screen}, \code{nsis}, \code{screen.maxit}: the screening strategy,
+candidate batch size and outer iteration limit from \code{L0glm.fit()}.
+Screening is recomputed inside each full-data or CV training fit; validation
+responses never determine its candidates. \code{screen="none"} disables it.
 \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
 response channels or multinomial categories; \code{FALSE} selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses
@@ -191,6 +195,7 @@ refits retain only selected entries. The default is \code{TRUE} for grouped
 multichannel ordinary GLMs and NB, and grouped multinomial models with either
 factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
 other single-channel fits. Set it explicitly to refit an ungrouped model.
+With screening enabled the default is \code{TRUE}, as in \code{L0glm.fit()}.
 \item \code{gamma}: exponent in the unsmoothed adaptive ridge weights
 (default \code{2}). Grouped multichannel NB and multinomial fits use the
 coefficient row norm raised to \code{gamma}; ungrouped fits use individual

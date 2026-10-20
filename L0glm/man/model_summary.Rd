@@ -63,7 +63,8 @@ not subset the coefficients retained in the summary.}
 \code{summary()} returns a list of class \code{summary.L0glm_fit} or
 \code{summary.sparseglm}. Both contain \code{metrics} and model dimensions. Model
 summaries also contain the full sparse \code{coefficients}, selected row
-indices, dispersion/theta, and a compact convergence table. \code{print()}
+indices, dispersion/theta, screening diagnostics when used, and a compact
+convergence table. \code{print()}
 methods return their input invisibly.
 }
 \description{
@@ -77,6 +78,8 @@ to obtain likelihood, deviance and information criteria, optionally including
 recovery metrics. The full original-dimension sparse coefficient matrix is
 retained in the model summary. Coefficients are point estimates; standard
 errors and Wald tests are not calculated for the selected penalized model.
+Screened fits display the screening method, number of rounds, chosen round
+and batch size; summaries retain their complete \code{screening} diagnostics.
 
 Convergence counts use the last recorded pass for each stage and channel,
 rather than counting intermediate grouped-selection passes as final failures.

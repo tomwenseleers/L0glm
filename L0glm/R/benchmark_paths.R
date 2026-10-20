@@ -99,7 +99,7 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     fixed <- list(X=original$X, y=original$y, weights=original$weights, offset=original$offset,
       family=original$family, dispersion=original$dispersion, intercept=original$intercept,
       nonnegative=original$nonnegative, start=NULL, lambda="gic", maxit=1,
-      grouped=FALSE, relaxed=FALSE, thresh=0, parallelize=FALSE)
+      grouped=FALSE, relaxed=FALSE, thresh=0, parallelize=FALSE, screen="none")
     pilot <- do.call(L0glm.fit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
     B <- as.matrix(pilot$coefficients)
     if (data$intercept) B <- B[-1L, , drop=FALSE]

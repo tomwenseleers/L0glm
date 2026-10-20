@@ -34,7 +34,10 @@ L0glm.fit(
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE,
   openmp = TRUE,
-  control.family = list()
+  control.family = list(),
+  screen = "auto",
+  nsis = NULL,
+  screen.maxit = 10L
 )
 }
 \arguments{
@@ -165,7 +168,9 @@ A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
 disable penalization. Presets approximate the chosen criterion; they do
-not guarantee its global minimizer.}
+not guarantee its global minimizer.
+In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
+screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.}
 
 \item{intercept}{Logical: Whether to include an intercept term in the model.
 If `TRUE`, a column of ones will be added to the design matrix `X`, and
@@ -334,6 +339,8 @@ The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
 and for grouped multinomial models with either factor or count-matrix
 responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
 fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
+Screened \code{L0glm.fit()} models instead default to \code{TRUE},
+including single-channel models, unless explicitly overridden.
 Each special-family pass has its own \code{maxit} limit; inspect
 \code{convergence} to assess whether the refit converged.}
 
@@ -463,6 +470,26 @@ and \code{cox.cg.maxit=2000L}. Cox also accepts \code{"direct"} or
 \code{"pcg"}; a scalar LLT threshold applies to both storage types.
 The working-size guard applies to dense direct Cox and multinomial systems,
 not matrix-free Cox products. See the dedicated family help pages.}
+
+\item{screen}{Screening strategy in \code{L0glm.fit()}: \code{"auto"}
+(default), \code{"none"}, \code{"SIS"} or \code{"ISIS"}, ignoring case.
+Auto uses ISIS only when at least 10,000 eligible predictors remain and
+their number is at least ten times the number of observations. Mandatory
+terms and rows excluded by explicit zero starts do not count toward this
+trigger. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
+SIS screens once; ISIS repeatedly screens using the fitted predictor as
+an offset and refits the original response on the expanded candidate set.
+See Screening under Details and \code{\link{sis_glm}}.}
+
+\item{nsis}{Positive integer screening batch size, capped at \code{ncol(X)}.
+By default SIS uses \eqn{2\lfloor n/\log n\rfloor}; ISIS uses
+\eqn{\operatorname{round}\{n/(\log p\,\log\log n)\}}, at least one.
+Here \eqn{p} is the original selectable predictor count. ISIS also retains
+currently selected and mandatory rows. Ignored when screening is off.}
+
+\item{screen.maxit}{Maximum ISIS rounds, default 10. A repeated candidate
+set stops the search early; SIS always uses one round. This is separate
+from \code{maxit}, the inner IRLS limit. Ignored when screening is off.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.
@@ -493,6 +520,9 @@ final iteration of \code{L0glm.fit}}
 \item{\code{X}}{design matrix X, including the intercept column if added}
 \item{\code{y}}{response vector or matrix y.}
 \item{\code{p}}{original number of selectable predictors.}
+\item{\code{screening}}{screening method, batch size, candidate/retained rows,
+outer iteration history, best round and stopping information when screening
+is used; otherwise absent (\code{NULL}).}
 \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 including recognized intercepts, in the returned coefficient matrix.}
 \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -709,6 +739,31 @@ methods, such as the group LASSO or multitask lasso, which use an
 \eqn{L_{2,1}} penalty, this approach produces a sparser solution that better
 approximates the Best Subset of Groups solution if lambda is adequately
 chosen.
+
+\subsection{Screening}{
+Screening reuses \code{\link{sis_glm}} for all ordinary and special families.
+With screening enabled, omitted \code{lambda}, \code{relaxed} and
+\code{parallelize} use \code{"gic"}, \code{TRUE} and \code{FALSE},
+respectively. Explicit arguments are preserved. Other defaults are unchanged.
+This reproduces the small-batch ISIS workflow used in the ultra-wide
+Gaussian benchmark with a single \code{L0glm.fit(X, y)} call.
+
+Each candidate model starts afresh. The original offsets and prior observation
+weights are used for refitting; the fitted linear predictor is added to the
+offset only for the next screen. The best GIC round is returned, or the last
+round for quasi families without an available GIC. Penalty presets and GIC
+always use the original selectable predictor count, before screening.
+Explicit starting-zero exclusions remain in force, including per-channel
+exclusions, while mandatory terms stay eligible. Coefficients and predictions
+retain the original dimensions and units; screened-out coefficients are zero.
+Sparse designs stay sparse and dense designs stay dense.
+
+\code{screening} records the resolved method, automatic-dispatch flag,
+batch size, candidates, retained indices, outer history and chosen round.
+Outer stopping is distinct from the inner convergence diagnostics and does
+not certify global optimality. Screening may omit weak or suppressor effects.
+Use \code{screen="none"} to request the original full-design fitting path.
+}
 
 \subsection{Special families}{
 The constructors \code{mgcv::nb()}, \code{mgcv::multinom(K)} and

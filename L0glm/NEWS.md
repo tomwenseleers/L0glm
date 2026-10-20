@@ -2,6 +2,15 @@
 
 ## Development changes
 
+* Added `screen = "auto"`, `"SIS"`, `"ISIS"` or `"none"` to `L0glm.fit()`.
+  Automatic ISIS activates for at least 10,000 eligible predictors and at least
+  ten times as many predictors as observations. Screened fits default to GIC,
+  relaxed refitting and serial candidate fits, while respecting explicit
+  controls. SIS/ISIS retain original-dimension sparse coefficients, starting-zero
+  exclusions, mandatory terms, and original-p penalty/scoring conventions.
+  `nsis` and `screen.maxit` control the outer search; `$screening` and S3 displays
+  report its history. CV recomputes screening inside each training fold.
+
 * Shared multichannel selection/refit dispatch and channel/chunk assembly,
   preserving starting masks, dispersion updates and relaxed-fit behavior.
 

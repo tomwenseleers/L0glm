@@ -10,6 +10,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   m <- if (identical(kind,"cox")) 1L else if (identical(kind,"multinomial")) family$nlp+1L else NCOL(y)
   args <- utils::modifyList(list(lambda="gic",start=NULL,relaxed=TRUE,parallelize=FALSE,
     intercept=identical(kind,"multinomial") || identical(family$family,"binomial")),options,keep.null=TRUE)
+  args$screen <- "none" # The outer search owns screening; candidate fits never recurse.
   if (!is.logical(args$intercept) || length(args$intercept)!=1L || is.na(args$intercept))
     stop("intercept must be TRUE or FALSE.",call.=FALSE)
   if (identical(kind,"cox") && args$intercept) {

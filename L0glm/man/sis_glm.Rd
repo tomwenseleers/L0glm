@@ -119,6 +119,10 @@ The lowest-GIC round is returned, using the metrics scoring mean floor of
 \code{always.include} instead. Intercept defaults match \code{\link[=L0glm.fit]{L0glm.fit()}}.
 \code{converged} describes repetition of the outer candidate set; inner-fit
 convergence diagnostics remain in \code{fit$convergence}.
+\code{\link[=L0glm.fit]{L0glm.fit()}} also exposes this workflow through \code{screen="SIS"} or
+\code{screen="ISIS"}, with automatic ISIS for ultra-wide eligible designs.
+Its small default ISIS batch and other screened-fit defaults are documented
+in that function; pass \code{nsis} explicitly to match a standalone call exactly.
 }
 \examples{
 set.seed(1)
@@ -142,6 +146,13 @@ iterated <- sis_glm(X,y,nsis=40,iterative=TRUE,niter=10,return_stats=FALSE)
 iterated$history
 coef(iterated$fit)                 # sparse, all original predictor rows
 head(predict(iterated$fit,X[1:5,,drop=FALSE]))
+
+# The same full-dimension model through the main fitting interface.
+fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10)
+fit$screening$history
+coef(fit)
+# screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.
+# Use screen="none" to fit the full design directly.
 
 if (requireNamespace("mgcv",quietly=TRUE)) {
   counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)

@@ -20,6 +20,13 @@ iterated$history
 coef(iterated$fit)                 # sparse, all original predictor rows
 head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 
+# The same full-dimension model through the main fitting interface.
+fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10)
+fit$screening$history
+coef(fit)
+# screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.
+# Use screen="none" to fit the full design directly.
+
 if (requireNamespace("mgcv",quietly=TRUE)) {
   counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)
   nb <- sis_glm(X,counts,family=mgcv::nb(),nsis=20,return_stats=FALSE)

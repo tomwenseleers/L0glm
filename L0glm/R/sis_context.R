@@ -46,7 +46,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
     eta <- off[,1L]
     if (q) {
       fit <- L0glm.fit(N,y,family=family,weights=w,offset=off,lambda=0,
-        intercept=FALSE,normalize="auto",maxit=100,tol=1e-10)
+        intercept=FALSE,normalize="auto",maxit=100,tol=1e-10,screen="none")
       eta <- as.numeric(N%*%coef(fit))+eta
     }
     risk <- L0glm_ext_cox_eta(eta,response,w[,1L])
@@ -68,7 +68,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
     eta <- off
     if (q) {
       fit <- L0glm.fit(N,y,family=family,weights=w,offset=off,lambda=0,
-        intercept=FALSE,normalize="auto",maxit=100,tol=1e-10)
+        intercept=FALSE,normalize="auto",maxit=100,tol=1e-10,screen="none")
       eta <- as.matrix(N%*%coef(fit))+off
     }
     P <- L0glm_ext_softmax(eta)$p;Q <- L0glm_ext_contrasts(m);r <- m-1L
@@ -92,7 +92,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
   inverse <- array(0,c(q,q,m))
   if (identical(kind,"nb") && q) {
     fit <- L0glm.fit(N,Y,family=family,weights=w,offset=off,lambda=0,
-      intercept=FALSE,normalize="auto",maxit=150,tol=1e-9)
+      intercept=FALSE,normalize="auto",maxit=150,tol=1e-9,screen="none")
     context$theta <- fit$theta
   }
   for (j in seq_len(m)) {

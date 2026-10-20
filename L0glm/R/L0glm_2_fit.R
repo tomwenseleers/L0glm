@@ -198,6 +198,8 @@
 #'   all formulas, intended uses and references. Set \code{lambda = 0} to
 #'   disable penalization. Presets approximate the chosen criterion; they do
 #'   not guarantee its global minimizer.
+#'   In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
+#'   screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
@@ -242,6 +244,23 @@
 #'   changes of predictor units, up to numerical precision. Sparse designs
 #'   remain sparse. The training centers and scales are returned in
 #'   \code{preprocessing}; predictions use the original columns directly.
+#' @param screen Screening strategy in \code{L0glm.fit()}: \code{"auto"}
+#'   (default), \code{"none"}, \code{"SIS"} or \code{"ISIS"}, ignoring case.
+#'   Auto uses ISIS only when at least 10,000 eligible predictors remain and
+#'   their number is at least ten times the number of observations. Mandatory
+#'   terms and rows excluded by explicit zero starts do not count toward this
+#'   trigger. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
+#'   SIS screens once; ISIS repeatedly screens using the fitted predictor as
+#'   an offset and refits the original response on the expanded candidate set.
+#'   See Screening under Details and \code{\link{sis_glm}}.
+#' @param nsis Positive integer screening batch size, capped at \code{ncol(X)}.
+#'   By default SIS uses \eqn{2\lfloor n/\log n\rfloor}; ISIS uses
+#'   \eqn{\operatorname{round}\{n/(\log p\,\log\log n)\}}, at least one.
+#'   Here \eqn{p} is the original selectable predictor count. ISIS also retains
+#'   currently selected and mandatory rows. Ignored when screening is off.
+#' @param screen.maxit Maximum ISIS rounds, default 10. A repeated candidate
+#'   set stops the search early; SIS always uses one round. This is separate
+#'   from \code{maxit}, the inner IRLS limit. Ignored when screening is off.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
@@ -362,6 +381,8 @@
 #'   and for grouped multinomial models with either factor or count-matrix
 #'   responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
 #'   fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
+#'   Screened \code{L0glm.fit()} models instead default to \code{TRUE},
+#'   including single-channel models, unless explicitly overridden.
 #'   Each special-family pass has its own \code{maxit} limit; inspect
 #'   \code{convergence} to assess whether the refit converged.
 #' @param prior.mean Optional finite centers for the ridge penalty in each IRLS
@@ -597,6 +618,31 @@
 #' approximates the Best Subset of Groups solution if lambda is adequately
 #' chosen.
 #'
+#' \subsection{Screening}{
+#' Screening reuses \code{\link{sis_glm}} for all ordinary and special families.
+#' With screening enabled, omitted \code{lambda}, \code{relaxed} and
+#' \code{parallelize} use \code{"gic"}, \code{TRUE} and \code{FALSE},
+#' respectively. Explicit arguments are preserved. Other defaults are unchanged.
+#' This reproduces the small-batch ISIS workflow used in the ultra-wide
+#' Gaussian benchmark with a single \code{L0glm.fit(X, y)} call.
+#'
+#' Each candidate model starts afresh. The original offsets and prior observation
+#' weights are used for refitting; the fitted linear predictor is added to the
+#' offset only for the next screen. The best GIC round is returned, or the last
+#' round for quasi families without an available GIC. Penalty presets and GIC
+#' always use the original selectable predictor count, before screening.
+#' Explicit starting-zero exclusions remain in force, including per-channel
+#' exclusions, while mandatory terms stay eligible. Coefficients and predictions
+#' retain the original dimensions and units; screened-out coefficients are zero.
+#' Sparse designs stay sparse and dense designs stay dense.
+#'
+#' \code{screening} records the resolved method, automatic-dispatch flag,
+#' batch size, candidates, retained indices, outer history and chosen round.
+#' Outer stopping is distinct from the inner convergence diagnostics and does
+#' not certify global optimality. Screening may omit weak or suppressor effects.
+#' Use \code{screen="none"} to request the original full-design fitting path.
+#' }
+#'
 #' \subsection{Special families}{
 #' The constructors \code{mgcv::nb()}, \code{mgcv::multinom(K)} and
 #' \code{mgcv::cox.ph()} select family-specific IRLS implemented using this
@@ -640,6 +686,9 @@
 #' \item{\code{X}}{design matrix X, including the intercept column if added}
 #' \item{\code{y}}{response vector or matrix y.}
 #' \item{\code{p}}{original number of selectable predictors.}
+#' \item{\code{screening}}{screening method, batch size, candidate/retained rows,
+#' outer iteration history, best round and stopping information when screening
+#' is used; otherwise absent (\code{NULL}).}
 #' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 #' including recognized intercepts, in the returned coefficient matrix.}
 #' \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -739,7 +788,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                       verbose       = FALSE,
                       openmp        = TRUE,
-                      control.family = list()) {
+                      control.family = list(),
+                      screen        = "auto",
+                      nsis          = NULL,
+                      screen.maxit  = 10L) {
   validate_thresh(thresh)
   L0glm_normalization(normalize)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
@@ -754,6 +806,18 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   if (!inherits(family, "family")) family <- family()
 
   kind <- L0glm_ext_kind(family)
+  screen_intercept <- if (missing(intercept)) identical(kind, "multinomial") || family$family == "binomial" else intercept
+  screen_method <- L0glm_screen_method(screen, X, start, screen_intercept, always.include)
+  if (screen_method != "none") {
+    # Pass explicit controls; the screening helper supplies GIC, relaxed refits
+    # and serial fitting when these are omitted, as in the standalone ISIS API.
+    supplied <- setdiff(names(match.call())[-1L], c("X", "y", "family", "weights",
+      "offset", "nonnegative", "screen", "nsis", "screen.maxit"))
+    options <- mget(supplied, envir = environment(), inherits = FALSE)
+    options$intercept <- screen_intercept
+    return(L0glm_screen_fit(X, y, family, weights, offset, nonnegative,
+      screen_method, tolower(screen) == "auto", nsis, screen.maxit, options))
+  }
   if (!is.null(kind)) return(L0glm_ext_fit(
     X, y, weights, family, dispersion, start, offset, lambda,
     if (missing(intercept)) kind == "multinomial" else intercept,

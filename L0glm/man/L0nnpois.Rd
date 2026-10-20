@@ -155,7 +155,9 @@ A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
 disable penalization. Presets approximate the chosen criterion; they do
-not guarantee its global minimizer.}
+not guarantee its global minimizer.
+In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
+screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.}
 
 \item{intercept}{Logical; if \code{TRUE}, add an intercept column to \code{X}.
 The intercept is constrained to be nonnegative, just like every other
@@ -307,6 +309,8 @@ The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
 and for grouped multinomial models with either factor or count-matrix
 responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
 fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
+Screened \code{L0glm.fit()} models instead default to \code{TRUE},
+including single-channel models, unless explicitly overridden.
 Each special-family pass has its own \code{maxit} limit; inspect
 \code{convergence} to assess whether the refit converged.}
 
