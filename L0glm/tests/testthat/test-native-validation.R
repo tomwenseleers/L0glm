@@ -51,7 +51,8 @@ test_that("native stopping restores iteration one and its working weights", {
 })
 
 test_that("validation stays in the native backend with default initialization", {
-  local_mocked_bindings(L0glm.fit.internal = function(...) stop("R IRLS fallback"))
+  local_mocked_bindings(L0glm.fit.internal = function(...) stop("R IRLS fallback"),
+    L0glm_screen_fit = function(...) stop("Unexpected automatic screening"))
   d <- native_validation_data()
   fit <- L0nnpois(d$X, d$y, lambda = 2, grouped = TRUE, relaxed = TRUE,
     ncores = 2L, validation = list(X = d$V, y = d$v))
@@ -63,6 +64,16 @@ test_that("validation stays in the native backend with default initialization", 
     ncores = 2L, validation = list(X = d$V, y = d$v, weights = rep(2, 60), offset = rep(.3, 60)))
   expect_equal(coef(scalar), coef(expanded), tolerance = 1e-12)
   expect_equal(scalar$validation$deviance, expanded$validation$deviance, tolerance = 1e-12)
+  controlled <- L0nnpois(d$X, d$y, lambda = 2, ncores = 2L,
+    control.solver = list(rowaug = FALSE, method = "svd", NaturalOrdering = TRUE),
+    validation = list(X = d$V, y = d$v))
+  expect_equal(coef(controlled), coef(fit), tolerance = 1e-12)
+  local_mocked_bindings(L0glm_screen_method = function(screen, ...) {
+    expect_identical(screen, "none")
+    "none"
+  })
+  expect_s3_class(L0nnpois(d$X, d$y, lambda = 2, ncores = 2L,
+    validation = list(X = d$V, y = d$v)), "L0glm_fit")
 })
 
 test_that("OpenMP native validation preserves explicit masks and checkpoint histories", {

@@ -106,6 +106,10 @@ L0nnpois <- function(X,
     args$family <- family; args$lambda <- lambda; args$intercept <- intercept
     args$nonnegative <- TRUE; args$openmp <- TRUE
     args$solver <- "eigen"; args$method <- 1L
+    # Direct calls keep this specialized backend; L0glm.fit owns screening.
+    args$screen <- "none"
+    args$control.solver <- control.solver[intersect(names(control.solver),
+      c("NaturalOrdering", "ordering"))]
     return(do.call(L0glm.fit, args))
   }
   if (!is.null(nthreads) && verbose) {
