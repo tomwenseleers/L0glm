@@ -133,13 +133,14 @@ plot.sparseglm <- function(x, which=NULL, type=c("coefs", "heatmap"),
     stop("channels='mean' is only available for coefficient plots.", call.=FALSE)
   old <- graphics::par(no.readonly=TRUE); on.exit(graphics::par(old))
   columns <- min(2L, length(selected))
-  graphics::par(mfrow=if (type == "heatmap") c(2L, 1L) else
-    c(ceiling(length(selected)/columns), columns))
+  if (type != "heatmap") graphics::par(
+    mfrow=c(ceiling(length(selected)/columns), columns))
   dots <- list(...)
   for (i in selected) {
     beta <- stats::coef(x$fits[[i]])
     title <- sprintf("%s (%.3g s)", names(x$fits)[i], x$timings$seconds[i])
     if (type == "heatmap") {
+      graphics::par(mfrow=c(2L, 1L))
       L0glm_plot_heatmap(beta, x$beta_true, title, isTRUE(x$data$intercept), dots)
     } else {
       points <- L0glm_plot_coefficients(beta, x$beta_true, channels)
