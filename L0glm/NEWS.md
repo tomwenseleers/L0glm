@@ -2,6 +2,12 @@
 
 ## Development changes
 
+* Validation can compare an `nsis` grid and default or conditional marginal
+  starts, selecting minimum error or a sparse model within one SE of it.
+  Explicit starts retain their zero exclusions. Candidate diagnostics include
+  timings, validation errors and selected batch/start; retained models share
+  one original design matrix. `nsis=NULL` keeps the GIC-based ISIS batch size.
+
 * Added optional validation-based IRLS stopping for single-response Gaussian
   identity models. Selection and relaxed passes restore their best validation
   checkpoint, retaining its dispersion and penalties. Weighted observations,

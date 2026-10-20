@@ -258,6 +258,8 @@
 #'   \eqn{\operatorname{round}\{n/(\log p\,\log\log n)\}}, at least one.
 #'   Here \eqn{p} is the original selectable predictor count. ISIS also retains
 #'   currently selected and mandatory rows. Ignored when screening is off.
+#'   With \code{validation}, a vector compares several batch sizes using
+#'   validation error; \code{NULL} retains the GIC-based ISIS default.
 #' @param screen.maxit Maximum ISIS rounds, default 10. A repeated candidate
 #'   set stops the search early; SIS always uses one round. This is separate
 #'   from \code{maxit}, the inner IRLS limit. Ignored when screening is off.
@@ -271,6 +273,12 @@
 #'   \code{offset} (scalars or one value per validation row). Predictors use
 #'   the original training columns; named columns are matched automatically.
 #'   Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
+#'   With automatic starts, \code{starts = c("default", "marginal")} compares
+#'   the default initializer with conditional marginal slopes. Choose either
+#'   string to use one initializer. An explicit \code{start} uses only that
+#'   supplied start, preserving its exclusions. \code{rule = "min"} chooses
+#'   minimum validation error; \code{rule = "1se"} chooses the sparsest
+#'   candidate within one standard error of the minimum.
 #'   The default \code{NULL} fits to the usual numerical stopping criterion.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
@@ -718,6 +726,15 @@
 #' Selection includes a nuisance-only checkpoint; relaxed refitting starts from
 #' the selected checkpoint and can retain it if refitting increases validation
 #' error. SIS/ISIS score their candidate rounds on the same validation set.
+#' A vector \code{nsis}, with SIS/ISIS enabled, compares its batch sizes at
+#' the requested lambda. Each candidate starts afresh, and the nuisance-only
+#' model is included in the comparison. Automatic starts compare the default
+#' initializer and uncontracted conditional marginal slopes; these slopes use
+#' training data only. An explicit start restricts the comparison to that start.
+#' For \code{rule="1se"}, the standard error uses per-observation squared
+#' validation errors from the minimum-error candidate. Among eligible models,
+#' fewer nonzero coefficients take priority, followed by a smaller batch size.
+#' With \code{nsis=NULL}, each screened candidate uses the usual default batch.
 #' Coefficient updates use training data only. Validation selects the stopping
 #' point, so use separate test observations to assess prediction performance.
 #' }
@@ -755,7 +772,11 @@
 #' is used; otherwise absent (\code{NULL}).}
 #' \item{\code{validation}}{when requested, validation deviance and separate
 #' \code{selection} and \code{relaxed} diagnostics, including the best iteration,
-#' number of attempted iterations, stopping flag and per-iteration history.}
+#' number of attempted iterations, stopping flag and per-iteration history.
+#' The \code{starts} table records each start/batch candidate's validation
+#' deviance, fitting time and nonzero count; \code{selected_start} and
+#' \code{selected_nsis} identify the returned model. \code{minimum},
+#' \code{se} and \code{rule} report the validation selection criterion.}
 #' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 #' including recognized intercepts, in the returned coefficient matrix.}
 #' \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -838,6 +859,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       screen.maxit  = 10L,
                       screen.nthreads = 1L,
                       validation    = NULL) {
+  if (!is.null(validation) && !inherits(validation, "L0glm_validation")) {
+    supplied <- names(match.call())[-1L]
+    return(L0glm_validated_fit(mget(supplied, envir = environment(), inherits = FALSE)))
+  }
   validation_info <- NULL
   validate_thresh(thresh)
   L0glm_normalization(normalize)

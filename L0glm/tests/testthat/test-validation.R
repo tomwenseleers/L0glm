@@ -33,8 +33,15 @@ test_that("validation returns the best checkpoint and records both fitting stage
     parallelize = FALSE)
   expect_true(all(coef(null) == 0))
   expect_equal(null$validation$selection$best_iteration, 0L)
-  expect_true(null$validation$selection$stopped)
-  expect_equal(null$validation$selection$iterations, 3L)
+  first <- L0glm.fit(d$X, d$y, start = 1, dispersion = 1, lambda = "gic",
+    maxit = 1, parallelize = FALSE)
+  stopped <- L0glm.fit(d$X, d$y, start = 1, dispersion = 1, lambda = "gic", maxit = 100,
+    validation = list(X = d$V, y = as.numeric(predict(first, d$V)),
+                      patience = 2L, minit = 3L), parallelize = FALSE)
+  expect_equal(coef(stopped), coef(first), tolerance = 1e-12)
+  expect_equal(stopped$validation$selection$best_iteration, 1L)
+  expect_true(stopped$validation$selection$stopped)
+  expect_equal(stopped$validation$selection$iterations, 3L)
 })
 
 test_that("weighted validation respects offsets, predictor units and column names", {
@@ -69,6 +76,7 @@ test_that("checkpointing preserves start masks, constraints and fixed dispersion
     validation = list(X = d$V, y = d$v), parallelize = FALSE)
   expect_equal(dim(coef(fit)), c(21L, 1L))
   expect_true(all(coef(fit)[3:21, 1] == 0))
+  expect_false(any(fit$validation$starts$start == "marginal"))
   expect_identical(fit$dispersion, 2)
   scaled <- L0glm.fit(d$X, 10 * d$y, intercept = TRUE, start = start * 10,
     dispersion = 200, lambda = "gic", relaxed = TRUE, maxit = 100,
@@ -79,6 +87,60 @@ test_that("checkpointing preserves start masks, constraints and fixed dispersion
     validation = list(X = abs(d$V), y = abs(d$v)), parallelize = FALSE)
   expect_true(all(coef(positive) >= 0))
   expect_equal(positive$always.include, c(1L, 4L))
+})
+
+test_that("validation selects batches and starts by minimum error or the one-SE rule", {
+  d <- validation_data()
+  run <- function(rule) L0glm.fit(d$X, d$y, screen = "isis", nsis = c(1:5, 10),
+    screen.maxit = 4, lambda = "gic", relaxed = TRUE, maxit = 100,
+    validation = list(X = d$V, y = d$v, rule = rule), parallelize = FALSE)
+  for (rule in c("min", "1se")) {
+    fit <- run(rule)
+    table <- fit$validation$starts
+    expect_true(all(c("default", "marginal", "null") %in% table$start))
+    expect_equal(nrow(table), 13L)
+    expect_equal(fit$validation$minimum, min(table$validation_deviance))
+    limit <- fit$validation$minimum + if (rule == "1se") fit$validation$se else 0
+    expect_lte(fit$validation$deviance, limit + 1e-12)
+    eligible <- table[table$validation_deviance <= limit, ]
+    expect_equal(sum(coef(fit) != 0), min(eligible$selected))
+    expect_true(is.na(fit$validation$selected_nsis) || fit$validation$selected_nsis %in% c(1:5, 10))
+    expect_equal(dim(coef(fit)), c(20L, 1L))
+    expect_equal(as.numeric(predict(fit, d$V)), as.numeric(d$V %*% coef(fit)), tolerance = 1e-12)
+  }
+  fixed <- L0glm.fit(d$X, d$y, screen = "ISIS", lambda = "gic", relaxed = TRUE,
+    validation = list(X = d$V, y = d$v, starts = "default"), parallelize = FALSE)
+  expected <- min(ncol(d$X), max(1, round(nrow(d$X) /
+    (log(ncol(d$X)) * log(log(nrow(d$X)))))))
+  expect_equal(fixed$validation$starts$nsis[fixed$validation$starts$start == "default"], expected)
+  expect_equal(fixed$init.lambda, preset.lambda("gic", ncol(d$X), nrow(d$X)))
+  # With one equally weighted validation observation the empirical SE is zero.
+  one <- L0glm.fit(d$X, d$y, lambda = "gic", validation = list(
+    X = d$V[1, , drop = FALSE], y = d$v[1], rule = "1se"), parallelize = FALSE)
+  expect_equal(one$validation$se, 0)
+})
+
+test_that("validation batch grids and selection controls validate clearly", {
+  d <- validation_data()
+  validation <- list(X = d$V, y = d$v)
+  for (bad in list(numeric(), 0, 1.5, NA_real_, c(1, Inf), "2"))
+    expect_error(L0glm.fit(d$X, d$y, screen = "ISIS", nsis = bad,
+      validation = validation), "positive integers")
+  expect_error(L0glm.fit(d$X, d$y, nsis = 1:3, validation = validation), "batch grid requires")
+  expect_error(L0glm.fit(d$X, d$y,
+    validation = c(validation, list(starts = "supplied"))), "Validation starts")
+  expect_error(L0glm.fit(d$X, d$y,
+    validation = c(validation, list(rule = "unknown"))), "Validation rule")
+})
+
+test_that("a one-predictor marginal start retains original coefficient units", {
+  X <- matrix(seq(-2, 2, length.out = 40), ncol = 1)
+  start <- L0glm_marginal_start(X, X[, 1], NULL, NULL, FALSE, NULL)
+  expect_equal(dim(start), c(1L, 1L))
+  expect_equal(as.numeric(start), 1)
+  fit <- L0glm.fit(X, X[, 1], start = start, lambda = 0, dispersion = 1,
+    normalize = "rms", maxit = 1, parallelize = FALSE)
+  expect_equal(as.numeric(coef(fit)), 1, tolerance = 1e-12)
 })
 
 test_that("screening uses validation checkpoints with original-dimension coefficients", {

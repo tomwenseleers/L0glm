@@ -487,7 +487,9 @@ See Screening under Details and \code{\link{sis_glm}}.}
 By default SIS uses \eqn{2\lfloor n/\log n\rfloor}; ISIS uses
 \eqn{\operatorname{round}\{n/(\log p\,\log\log n)\}}, at least one.
 Here \eqn{p} is the original selectable predictor count. ISIS also retains
-currently selected and mandatory rows. Ignored when screening is off.}
+currently selected and mandatory rows. Ignored when screening is off.
+With \code{validation}, a vector compares several batch sizes using
+validation error; \code{NULL} retains the GIC-based ISIS default.}
 
 \item{screen.maxit}{Maximum ISIS rounds, default 10. A repeated candidate
 set stops the search early; SIS always uses one round. This is separate
@@ -504,6 +506,12 @@ single-response Gaussian identity-link models. Supply \code{X} and
 \code{offset} (scalars or one value per validation row). Predictors use
 the original training columns; named columns are matched automatically.
 Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
+With automatic starts, \code{starts = c("default", "marginal")} compares
+the default initializer with conditional marginal slopes. Choose either
+string to use one initializer. An explicit \code{start} uses only that
+supplied start, preserving its exclusions. \code{rule = "min"} chooses
+minimum validation error; \code{rule = "1se"} chooses the sparsest
+candidate within one standard error of the minimum.
 The default \code{NULL} fits to the usual numerical stopping criterion.}
 }
 \value{
@@ -540,7 +548,11 @@ outer iteration history, best round and stopping information when screening
 is used; otherwise absent (\code{NULL}).}
 \item{\code{validation}}{when requested, validation deviance and separate
 \code{selection} and \code{relaxed} diagnostics, including the best iteration,
-number of attempted iterations, stopping flag and per-iteration history.}
+number of attempted iterations, stopping flag and per-iteration history.
+The \code{starts} table records each start/batch candidate's validation
+deviance, fitting time and nonzero count; \code{selected_start} and
+\code{selected_nsis} identify the returned model. \code{minimum},
+\code{se} and \code{rule} report the validation selection criterion.}
 \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 including recognized intercepts, in the returned coefficient matrix.}
 \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -846,6 +858,15 @@ pass. The best checkpoint is returned, including its dispersion and penalties.
 Selection includes a nuisance-only checkpoint; relaxed refitting starts from
 the selected checkpoint and can retain it if refitting increases validation
 error. SIS/ISIS score their candidate rounds on the same validation set.
+A vector \code{nsis}, with SIS/ISIS enabled, compares its batch sizes at
+the requested lambda. Each candidate starts afresh, and the nuisance-only
+model is included in the comparison. Automatic starts compare the default
+initializer and uncontracted conditional marginal slopes; these slopes use
+training data only. An explicit start restricts the comparison to that start.
+For \code{rule="1se"}, the standard error uses per-observation squared
+validation errors from the minimum-error candidate. Among eligible models,
+fewer nonzero coefficients take priority, followed by a smaller batch size.
+With \code{nsis=NULL}, each screened candidate uses the usual default batch.
 Coefficient updates use training data only. Validation selects the stopping
 point, so use separate test observations to assess prediction performance.
 }
@@ -961,6 +982,16 @@ fit_stopped <- L0glm.fit(X_validation[train, ], y_validation[train],
   validation=list(X=X_validation[-train, ], y=y_validation[-train]),
   parallelize=FALSE)
 fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
+
+# Optionally select the ISIS batch on the same validation set.
+# Omit nsis to keep the GIC-based default batch.
+fit_batch <- L0glm.fit(X_validation[train, ], y_validation[train],
+  intercept=TRUE, lambda="gic", screen="ISIS", nsis=c(1, 3, 5, 10),
+  relaxed=TRUE, maxit=100, validation=list(
+    X=X_validation[-train, ], y=y_validation[-train], rule="1se"),
+  parallelize=FALSE)
+fit_batch$validation[c("selected_start", "selected_nsis", "deviance")]
+fit_batch$validation$starts
 # Sparse special families: GIC preset fits, GIC tuning and three-fold CV.
 if (requireNamespace("mgcv", quietly=TRUE)) {
   set.seed(204)

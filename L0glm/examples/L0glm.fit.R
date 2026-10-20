@@ -108,3 +108,13 @@ fit_stopped <- L0glm.fit(X_validation[train, ], y_validation[train],
   validation=list(X=X_validation[-train, ], y=y_validation[-train]),
   parallelize=FALSE)
 fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
+
+# Optionally select the ISIS batch on the same validation set.
+# Omit nsis to keep the GIC-based default batch.
+fit_batch <- L0glm.fit(X_validation[train, ], y_validation[train],
+  intercept=TRUE, lambda="gic", screen="ISIS", nsis=c(1, 3, 5, 10),
+  relaxed=TRUE, maxit=100, validation=list(
+    X=X_validation[-train, ], y=y_validation[-train], rule="1se"),
+  parallelize=FALSE)
+fit_batch$validation[c("selected_start", "selected_nsis", "deviance")]
+fit_batch$validation$starts
