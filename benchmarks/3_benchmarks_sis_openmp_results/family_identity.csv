@@ -1,0 +1,53 @@
+"case","comparisons","thread_counts","storage","max_statistic_difference","bitwise_identical"
+"10:poisson:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"11:poisson:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"12:poisson:sqrt",8,"1,2,4,8","dense,sparse",0,TRUE
+"13:Gamma:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"14:Gamma:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"15:Gamma:inverse",8,"1,2,4,8","dense,sparse",0,TRUE
+"16:inverse.gaussian:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"17:inverse.gaussian:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"18:inverse.gaussian:inverse",8,"1,2,4,8","dense,sparse",0,TRUE
+"19:inverse.gaussian:1/mu^2",8,"1,2,4,8","dense,sparse",0,TRUE
+"1:gaussian:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"20:quasibinomial:logit",8,"1,2,4,8","dense,sparse",0,TRUE
+"21:quasibinomial:probit",8,"1,2,4,8","dense,sparse",0,TRUE
+"22:quasibinomial:cloglog",8,"1,2,4,8","dense,sparse",0,TRUE
+"23:quasibinomial:cauchit",8,"1,2,4,8","dense,sparse",0,TRUE
+"24:quasibinomial:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"25:quasibinomial:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"26:quasipoisson:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"27:quasipoisson:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"28:quasipoisson:sqrt",8,"1,2,4,8","dense,sparse",0,TRUE
+"29:quasi:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"2:gaussian:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"30:quasi:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"31:quasi:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"32:quasi:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"33:quasi:logit",8,"1,2,4,8","dense,sparse",0,TRUE
+"34:Negative Binomial(2):log",8,"1,2,4,8","dense,sparse",0,TRUE
+"35:Negative Binomial(2):identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"36:Negative Binomial(2):sqrt",8,"1,2,4,8","dense,sparse",0,TRUE
+"37:negative binomial:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"38:negative binomial:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"39:negative binomial:sqrt",8,"1,2,4,8","dense,sparse",0,TRUE
+"3:gaussian:inverse",8,"1,2,4,8","dense,sparse",0,TRUE
+"40:negative binomial:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"41:negative binomial:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"42:negative binomial:sqrt",8,"1,2,4,8","dense,sparse",0,TRUE
+"4:binomial:logit",8,"1,2,4,8","dense,sparse",0,TRUE
+"5:binomial:probit",8,"1,2,4,8","dense,sparse",0,TRUE
+"6:binomial:cloglog",8,"1,2,4,8","dense,sparse",0,TRUE
+"7:binomial:cauchit",8,"1,2,4,8","dense,sparse",0,TRUE
+"8:binomial:identity",8,"1,2,4,8","dense,sparse",0,TRUE
+"9:binomial:log",8,"1,2,4,8","dense,sparse",0,TRUE
+"cox-ties-0",8,"1,2,4,8","dense,sparse",0,TRUE
+"cox-ties-2",8,"1,2,4,8","dense,sparse",0,TRUE
+"gaussian-null-0",8,"1,2,4,8","dense,sparse",0,TRUE
+"gaussian-null-1",8,"1,2,4,8","dense,sparse",0,TRUE
+"independent_gaussian",8,"1,2,4,8","dense,sparse",0,TRUE
+"independent_nb",8,"1,2,4,8","dense,sparse",0,TRUE
+"independent_poisson",8,"1,2,4,8","dense,sparse",0,TRUE
+"multinomial-counts-0",8,"1,2,4,8","dense,sparse",0,TRUE
+"multinomial-counts-2",8,"1,2,4,8","dense,sparse",0,TRUE
+"multinomial_factor",8,"1,2,4,8","dense,sparse",0,TRUE

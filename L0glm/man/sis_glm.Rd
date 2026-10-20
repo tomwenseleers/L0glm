@@ -16,6 +16,7 @@ sis_glm(
   nonnegative = FALSE,
   iterative = FALSE,
   niter = 10L,
+  nthreads = 1L,
   ...
 )
 }
@@ -55,6 +56,11 @@ Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.}
 \item{niter}{Maximum ISIS rounds, default 10. Stops earlier when the candidate
 set repeats, since refitting that same subproblem would give the same fit.}
 
+\item{nthreads}{Positive integer OpenMP thread count for predictor screening,
+default 1. Capped at the available logical processors and predictor count.
+Builds without OpenMP use one thread. Does not change BLAS threads or
+outcome-fitting parallelism; use \code{screen.nthreads} in \code{\link[=L0glm.fit]{L0glm.fit()}}.}
+
 \item{...}{Named \code{\link[=L0glm.fit]{L0glm.fit()}} arguments for ISIS, such as \code{lambda}, \code{start},
 \code{intercept}, \code{always.include}, \code{grouped}, \code{normalize} and solver controls.
 ISIS defaults to \code{lambda="gic"}, \code{start=NULL}, \code{gamma=2}, \code{relaxed=TRUE}
@@ -65,8 +71,9 @@ meaning. Initial zero starts remain excluded, except mandatory terms.}
 }
 \value{
 A list with decreasing-score \code{indices}, \code{top_statistics}, \code{nsis},
-\code{family}, \code{link} and fitted \code{theta} for NB. With \code{return_stats=TRUE},
-\code{ranking} lists all predictor indices and \code{stats} contains \code{feature},
+\code{family}, \code{link}, fitted \code{theta} for NB, and \code{nthreads} (screening threads
+actually used). With \code{return_stats=TRUE}, \code{ranking} lists all predictor
+indices and \code{stats} contains \code{feature},
 \code{stat}, \code{sign}, \code{rank} and \code{keep}. Signs are \code{NA} for multichannel/joint
 scores. Full statistics/ranking are otherwise \code{NULL}.
 ISIS additionally returns a full-dimension \code{L0glm_fit} in \code{fit}, its sparse
@@ -107,6 +114,10 @@ use diagonal information; multinomial accumulates curvature from
 probabilities without an observation-by-category-squared array. Without
 full statistics, a bounded heap selects top predictors. Screening can miss
 weak/suppressor effects and does not certify a global L0 optimum.
+Screening threads process separate predictors with unchanged within-column
+summation order. Thread-local top-candidate heaps are merged deterministically,
+including ties in original column order. Errors and interrupts are handled on
+the main R thread; no design-sized copies are made for threading.
 
 With \code{iterative=TRUE}, add the fitted linear predictor to the original
 offset for screening, merge new candidates with current nonzero/mandatory
@@ -132,6 +143,8 @@ beta <- c(1,-1,.8,-.8,rep(0,p-4))
 y <- as.numeric(X\%*\%beta)+rnorm(n)
 screen <- sis_glm(X,y,nsis=40,return_stats=FALSE)
 screen$indices
+threaded <- sis_glm(X,y,nsis=40,return_stats=FALSE,nthreads=4)
+identical(threaded$indices,screen$indices)
 
 # Independent channels are screened jointly without signed cancellation.
 multi <- sis_glm(X,cbind(y,-y),nsis=40,return_stats=FALSE)
@@ -148,7 +161,7 @@ coef(iterated$fit)                 # sparse, all original predictor rows
 head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 
 # The same full-dimension model through the main fitting interface.
-fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10)
+fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10,screen.nthreads=4)
 fit$screening$history
 coef(fit)
 # screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.

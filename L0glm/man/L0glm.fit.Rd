@@ -37,7 +37,8 @@ L0glm.fit(
   control.family = list(),
   screen = "auto",
   nsis = NULL,
-  screen.maxit = 10L
+  screen.maxit = 10L,
+  screen.nthreads = 1L
 )
 }
 \arguments{
@@ -490,6 +491,11 @@ currently selected and mandatory rows. Ignored when screening is off.}
 \item{screen.maxit}{Maximum ISIS rounds, default 10. A repeated candidate
 set stops the search early; SIS always uses one round. This is separate
 from \code{maxit}, the inner IRLS limit. Ignored when screening is off.}
+
+\item{screen.nthreads}{Positive integer OpenMP thread count for screening,
+default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
+(outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
+Ignored when screening is off.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.
@@ -760,6 +766,7 @@ Sparse designs stay sparse and dense designs stay dense.
 
 \code{screening} records the resolved method, automatic-dispatch flag,
 batch size, candidates, retained indices, outer history and chosen round.
+It also records the number of OpenMP screening threads actually used.
 Outer stopping is distinct from the inner convergence diagnostics and does
 not certify global optimality. Screening may omit weak or suppressor effects.
 Use \code{screen="none"} to request the original full-design fitting path.

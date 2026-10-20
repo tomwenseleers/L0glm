@@ -82,8 +82,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sis_score_cpp
-List sis_score_cpp(SEXP design, List context, int nsis, bool full);
-RcppExport SEXP _L0glm_sis_score_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP) {
+List sis_score_cpp(SEXP design, List context, int nsis, bool full, int nthreads);
+RcppExport SEXP _L0glm_sis_score_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -91,7 +91,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type context(contextSEXP);
     Rcpp::traits::input_parameter< int >::type nsis(nsisSEXP);
     Rcpp::traits::input_parameter< bool >::type full(fullSEXP);
-    rcpp_result_gen = Rcpp::wrap(sis_score_cpp(design, context, nsis, full));
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sis_score_cpp(design, context, nsis, full, nthreads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -247,7 +248,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
     {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 19},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
-    {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 4},
+    {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},

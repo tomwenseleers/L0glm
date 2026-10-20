@@ -5,6 +5,8 @@ beta <- c(1,-1,.8,-.8,rep(0,p-4))
 y <- as.numeric(X%*%beta)+rnorm(n)
 screen <- sis_glm(X,y,nsis=40,return_stats=FALSE)
 screen$indices
+threaded <- sis_glm(X,y,nsis=40,return_stats=FALSE,nthreads=4)
+identical(threaded$indices,screen$indices)
 
 # Independent channels are screened jointly without signed cancellation.
 multi <- sis_glm(X,cbind(y,-y),nsis=40,return_stats=FALSE)
@@ -21,7 +23,7 @@ coef(iterated$fit)                 # sparse, all original predictor rows
 head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 
 # The same full-dimension model through the main fitting interface.
-fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10)
+fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10,screen.nthreads=4)
 fit$screening$history
 coef(fit)
 # screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.

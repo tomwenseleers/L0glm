@@ -29,6 +29,10 @@
 #' @param iterative Use offset-based iterative SIS (ISIS), default `FALSE`.
 #' @param niter Maximum ISIS rounds, default 10. Stops earlier when the candidate
 #'   set repeats, since refitting that same subproblem would give the same fit.
+#' @param nthreads Positive integer OpenMP thread count for predictor screening,
+#'   default 1. Capped at the available logical processors and predictor count.
+#'   Builds without OpenMP use one thread. Does not change BLAS threads or
+#'   outcome-fitting parallelism; use `screen.nthreads` in [L0glm.fit()].
 #' @param ... Named [L0glm.fit()] arguments for ISIS, such as `lambda`, `start`,
 #'   `intercept`, `always.include`, `grouped`, `normalize` and solver controls.
 #'   ISIS defaults to `lambda="gic"`, `start=NULL`, `gamma=2`, `relaxed=TRUE`
@@ -59,6 +63,10 @@
 #' probabilities without an observation-by-category-squared array. Without
 #' full statistics, a bounded heap selects top predictors. Screening can miss
 #' weak/suppressor effects and does not certify a global L0 optimum.
+#' Screening threads process separate predictors with unchanged within-column
+#' summation order. Thread-local top-candidate heaps are merged deterministically,
+#' including ties in original column order. Errors and interrupts are handled on
+#' the main R thread; no design-sized copies are made for threading.
 #'
 #' With `iterative=TRUE`, add the fitted linear predictor to the original
 #' offset for screening, merge new candidates with current nonzero/mandatory
@@ -76,8 +84,9 @@
 #' Its small default ISIS batch and other screened-fit defaults are documented
 #' in that function; pass `nsis` explicitly to match a standalone call exactly.
 #' @return A list with decreasing-score `indices`, `top_statistics`, `nsis`,
-#'   `family`, `link` and fitted `theta` for NB. With `return_stats=TRUE`,
-#'   `ranking` lists all predictor indices and `stats` contains `feature`,
+#'   `family`, `link`, fitted `theta` for NB, and `nthreads` (screening threads
+#'   actually used). With `return_stats=TRUE`, `ranking` lists all predictor
+#'   indices and `stats` contains `feature`,
 #'   `stat`, `sign`, `rank` and `keep`. Signs are `NA` for multichannel/joint
 #'   scores. Full statistics/ranking are otherwise `NULL`.
 #'   ISIS additionally returns a full-dimension `L0glm_fit` in `fit`, its sparse
@@ -94,7 +103,7 @@
 #' @export
 sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
                     nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE,
-                    iterative=FALSE, niter=10L, ...) {
+                    iterative=FALSE, niter=10L, nthreads=1L, ...) {
   X <- L0glm_sis_design(X)
   if (!inherits(family,"family")) family <- family()
   if (!is.logical(return_stats) || length(return_stats)!=1L || is.na(return_stats) ||
@@ -106,13 +115,14 @@ sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
   if (!is.numeric(nsis) || length(nsis)!=1L || !is.finite(nsis) ||
       nsis<1 || nsis!=floor(nsis)) stop("nsis must be a positive integer.",call.=FALSE)
   nsis <- as.integer(min(nsis,p))
+  nthreads <- L0glm_sis_threads(nthreads)
   if (iterative) {
     if (!is.null(nuisance)) stop("For ISIS, put nuisance covariates in X and use always.include.",call.=FALSE)
-    return(L0glm_isis(X,y,family,weights,offset,nsis,return_stats,nonnegative,niter,list(...)))
+    return(L0glm_isis(X,y,family,weights,offset,nsis,return_stats,nonnegative,niter,list(...),nthreads))
   }
   if (length(list(...))) stop("Additional fitting arguments require iterative=TRUE.",call.=FALSE)
   context <- L0glm_sis_context(y,family,n,weights,offset,nuisance,nonnegative)
-  result <- sis_score_cpp(X,context,nsis,return_stats)
+  result <- sis_score_cpp(X,context,nsis,return_stats,nthreads)
   ranking <- stats <- NULL
   if (return_stats) {
     ranking <- order(result$statistics,decreasing=TRUE,method="radix")
@@ -121,7 +131,14 @@ sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
   }
   list(indices=result$indices,top_statistics=result$top_statistics,
     ranking=ranking,stats=stats,nsis=length(result$indices),family=family$family,
-    link=family$link,theta=context$theta)
+    link=family$link,theta=context$theta,nthreads=result$nthreads)
+}
+
+L0glm_sis_threads <- function(nthreads) {
+  if (!is.numeric(nthreads) || length(nthreads)!=1L || !is.finite(nthreads) ||
+      nthreads<1 || nthreads!=floor(nthreads) || nthreads>.Machine$integer.max)
+    stop("Screening nthreads must be a positive integer.",call.=FALSE)
+  as.integer(nthreads)
 }
 
 L0glm_sis_design <- function(X) {

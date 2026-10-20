@@ -78,8 +78,9 @@ to obtain likelihood, deviance and information criteria, optionally including
 recovery metrics. The full original-dimension sparse coefficient matrix is
 retained in the model summary. Coefficients are point estimates; standard
 errors and Wald tests are not calculated for the selected penalized model.
-Screened fits display the screening method, number of rounds, chosen round
-and batch size; summaries retain their complete \code{screening} diagnostics.
+Screened fits display the screening method, number of rounds, chosen round,
+batch size and screening thread count; summaries retain their complete
+\code{screening} diagnostics.
 
 Convergence counts use the last recorded pass for each stage and channel,
 rather than counting intermediate grouped-selection passes as final failures.

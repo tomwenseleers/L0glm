@@ -1,11 +1,12 @@
 # Offset screening is an outer support search; every candidate fit starts afresh.
-L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options) {
+L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,nthreads=1L) {
   if (!is.numeric(niter) || length(niter)!=1L || !is.finite(niter) ||
       niter<1 || niter!=floor(niter)) stop("niter must be a positive integer.",call.=FALSE)
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) ||
       anyDuplicated(names(options)) || any(!names(options)%in%names(formals(L0glm.fit)))))
     stop("Use named L0glm.fit arguments for ISIS fitting options.",call.=FALSE)
   started <- proc.time()[["elapsed"]]
+  nthreads <- L0glm_sis_threads(nthreads);threads_used <- 1L
   kind <- L0glm_ext_kind(family);n <- nrow(X);p <- ncol(X)
   m <- if (identical(kind,"cox")) 1L else if (identical(kind,"multinomial")) family$nlp+1L else NCOL(y)
   args <- utils::modifyList(list(lambda="gic",start=NULL,relaxed=TRUE,parallelize=FALSE,
@@ -57,7 +58,8 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       active <- which(Matrix::rowSums(B!=0)>0)
       eta <- as.matrix(design[,active,drop=FALSE]%*%B[active,,drop=FALSE])+off
       screen <- sis_glm(screen_X,y,family,weights=w,offset=eta,nsis=min(nsis,length(eligible)),
-        return_stats=full,nonnegative=nonnegative)
+        return_stats=full,nonnegative=nonnegative,nthreads=nthreads)
+      threads_used <- max(threads_used,screen$nthreads)
       candidates <- sort(unique(c(selected,mandatory,eligible[screen$indices])))
     } else {screen <- NULL;candidates <- seq_len(p)}
     if (identical(candidates,previous)) {converged <- TRUE;break}
@@ -106,5 +108,5 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     screen_size=nsis,family=family$family,link=family$link,theta=fit$theta,
     fit=fit,coefficients=fit$coefficients,candidates=best$candidates,lambda=args$lambda,
     history=do.call(rbind,history),best_iteration=best$iteration,iterations=length(history),
-    converged=converged,seconds=proc.time()[["elapsed"]]-started)
+    converged=converged,seconds=proc.time()[["elapsed"]]-started,nthreads=threads_used)
 }

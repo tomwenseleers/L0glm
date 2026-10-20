@@ -2,6 +2,14 @@
 
 ## Development changes
 
+* Added OpenMP predictor-level threading to SIS/ISIS, controlled by `nthreads`
+  in `sis_glm()` or `screen.nthreads` in `L0glm.fit()` (default 1). Screening
+  concurrency is independent of BLAS and outcome fitting. Workers use read-only
+  numerical views, private reusable workspaces and private top-candidate heaps;
+  deterministic merging preserves scores, signs, rankings and ties exactly.
+  R errors/interrupts are handled on the main thread, and builds without OpenMP
+  retain a serial fallback. Returned diagnostics report the threads used.
+
 * Added `screen = "auto"`, `"SIS"`, `"ISIS"` or `"none"` to `L0glm.fit()`.
   Automatic ISIS activates for at least 10,000 eligible predictors and at least
   ten times as many predictors as observations. Screened fits default to GIC,

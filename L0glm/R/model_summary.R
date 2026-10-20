@@ -30,8 +30,9 @@
 #' recovery metrics. The full original-dimension sparse coefficient matrix is
 #' retained in the model summary. Coefficients are point estimates; standard
 #' errors and Wald tests are not calculated for the selected penalized model.
-#' Screened fits display the screening method, number of rounds, chosen round
-#' and batch size; summaries retain their complete `screening` diagnostics.
+#' Screened fits display the screening method, number of rounds, chosen round,
+#' batch size and screening thread count; summaries retain their complete
+#' `screening` diagnostics.
 #'
 #' Convergence counts use the last recorded pass for each stage and channel,
 #' rather than counting intermediate grouped-selection passes as final failures.
@@ -167,8 +168,12 @@ L0glm_print_model_info <- function(x, digits) {
   if (length(x$lambda) && !all(is.na(x$lambda)))
     cat("Lambda:", paste(format(x$lambda, digits=digits), collapse=", "), "\n")
   if (x$m > 1L && !is.null(x$grouped)) cat("Grouped selection:", x$grouped, "\n")
-  if (!is.null(x$screening)) cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d\n",
-    x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))
+  if (!is.null(x$screening)) {
+    cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d",
+      x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))
+    if (!is.null(x$screening$nthreads)) cat("   Threads:",x$screening$nthreads)
+    cat("\n")
+  }
   if (x$kind == "cox") cat("Criterion sample size (Cox):", x$nobs, "\n")
   if (is.null(x$convergence)) cat("Convergence diagnostics: unavailable\n") else {
     cat("Convergence (last pass per stage/channel):\n")

@@ -261,6 +261,10 @@
 #' @param screen.maxit Maximum ISIS rounds, default 10. A repeated candidate
 #'   set stops the search early; SIS always uses one round. This is separate
 #'   from \code{maxit}, the inner IRLS limit. Ignored when screening is off.
+#' @param screen.nthreads Positive integer OpenMP thread count for screening,
+#'   default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
+#'   (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
+#'   Ignored when screening is off.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
@@ -638,6 +642,7 @@
 #'
 #' \code{screening} records the resolved method, automatic-dispatch flag,
 #' batch size, candidates, retained indices, outer history and chosen round.
+#' It also records the number of OpenMP screening threads actually used.
 #' Outer stopping is distinct from the inner convergence diagnostics and does
 #' not certify global optimality. Screening may omit weak or suppressor effects.
 #' Use \code{screen="none"} to request the original full-design fitting path.
@@ -791,7 +796,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       control.family = list(),
                       screen        = "auto",
                       nsis          = NULL,
-                      screen.maxit  = 10L) {
+                      screen.maxit  = 10L,
+                      screen.nthreads = 1L) {
   validate_thresh(thresh)
   L0glm_normalization(normalize)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
@@ -812,11 +818,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     # Pass explicit controls; the screening helper supplies GIC, relaxed refits
     # and serial fitting when these are omitted, as in the standalone ISIS API.
     supplied <- setdiff(names(match.call())[-1L], c("X", "y", "family", "weights",
-      "offset", "nonnegative", "screen", "nsis", "screen.maxit"))
+      "offset", "nonnegative", "screen", "nsis", "screen.maxit", "screen.nthreads"))
     options <- mget(supplied, envir = environment(), inherits = FALSE)
     options$intercept <- screen_intercept
     return(L0glm_screen_fit(X, y, family, weights, offset, nonnegative,
-      screen_method, tolower(screen) == "auto", nsis, screen.maxit, options))
+      screen_method, tolower(screen) == "auto", nsis, screen.maxit, options, screen.nthreads))
   }
   if (!is.null(kind)) return(L0glm_ext_fit(
     X, y, weights, family, dispersion, start, offset, lambda,
