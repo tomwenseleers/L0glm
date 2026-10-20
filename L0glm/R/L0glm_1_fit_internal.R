@@ -197,44 +197,42 @@ L0glm.fit.internal = function(X,
     validation_track <- L0glm_validation_track(NULL, validation, value,
       list(beta = initial, dispersion = initial_dispersion, lambdas = initial_penalty), 0L)
   }
-  safeguard_ig <- family$family == "inverse.gaussian" && family$link == "log"
-  if (safeguard_ig) {
-    # The first working fit retains family$initialize. Its coefficients then
-    # provide consistent means for the subsequent penalized descent checks.
-    eta_ig <- as.numeric(offset + X %*% beta)
-    for (attempt in 0:60) {
-      if (is.finite(L0glm_ig_deviance(y, eta_ig, weights))) break
-      if (attempt == 60L)
-        stop("Cannot find finite inverse-Gaussian starting means; supply suitable start/offset values.",
-          call. = FALSE)
-      beta <- beta/2
-      eta_ig <- as.numeric(offset + X %*% beta)
+  working_model <- L0glm_working_model(family)
+  eta_previous <- as.numeric(offset + X %*% beta)
+  deviance_previous <- L0glm_irls_deviance(y, eta_previous, weights, family)
+  if (!is.finite(deviance_previous) && is.finite(L0glm_irls_deviance(y, offset, weights, family))) {
+    trial <- beta
+    for (attempt in seq_len(60L)) {
+      trial <- trial / 2
+      trial_eta <- if (all(is.finite(eta_previous)))
+        as.numeric(offset) + (eta_previous - as.numeric(offset)) / 2^attempt else
+          as.numeric(offset + X %*% trial)
+      value <- L0glm_irls_deviance(y, trial_eta, weights, family)
+      if (is.finite(value)) {
+        beta <- beta_old <- trial; eta_previous <- trial_eta; deviance_previous <- value
+        if (length(prediction_old)) prediction_old <- eta_previous - as.numeric(offset)
+        break
+      }
     }
-    beta_old <- beta
-    if (length(prediction_old)) prediction_old <- eta_ig - as.numeric(offset)
+    if (!is.finite(deviance_previous)) {
+      # A signed design can have no feasible nonzero point along the start
+      # direction, even though the offset-only model is valid.
+      beta <- beta_old <- numeric(p)
+      eta_previous <- as.numeric(offset)
+      deviance_previous <- L0glm_irls_deviance(y, eta_previous, weights, family)
+      if (length(prediction_old)) prediction_old <- numeric(nobs)
+    }
+  }
+  step_deviance <- deviance_previous
+  objective <- function(b, e) {
+    step_deviance <<- L0glm_irls_deviance(y, e, weights, family)
+    step_deviance + sum(lambdas[penalized] * (b[penalized] - prior.mean[penalized])^2)
   }
   for (iter in seq_len(maxit)) {
     iterations <- iter
     ## ---------- working response & weights ---------------------------
-    var = if (safeguard_ig) NULL else variance(mu)
-    
-    if (safeguard_ig) {
-        # For this link W = w/mu. Avoid mu^2/mu^3 and (y-mu)/mu,
-        # which can overflow even when their simplified forms are finite.
-        W.ret <- as.numeric(weights)*exp(-as.numeric(eta))
-        z.ret <- as.numeric(eta-offset)-1+as.numeric(y/mu)
-        good <- which(W.ret > 0 & is.finite(W.ret) & is.finite(z.ret))
-    } else if (family$link == "identity"){ # then use simplified formula
-        W.ret <- as.numeric(weights / var) # updated 1/variance (* weights) weights with identity link, where variance = 1 with Gaussian noise, variance = mu, mu^2 and mu^3 with Poisson, Gamma & inverse Gaussian noise
-        good <- which(W.ret > 0 & is.finite(W.ret))
-        z.ret <- y - offset # working (adjusted) response
-      } else {
-        gprime <- mu_eta(eta) # derivative of the expected values u with respect to predictions on link scale eta = d(g-1)/deta=dmu/deta
-        good <- which(weights != 0 & gprime != 0 & is.finite(weights))
-        grad <- y - mu # gradient of log-likelihood with respect to eta
-        z.ret <- eta - offset + grad / gprime # working response from the local quadratic approximation around eta
-        W.ret <- weights * as.numeric(gprime^2 / var) # updated working weights
-      }
+    working <- working_model(y, eta, mu, weights, offset)
+    W.ret <- working$weights; z.ret <- working$response; good <- working$good
     z <- z.ret[good] # subset used for fit
     W <- W.ret[good] # subset of weights used for fit
     
@@ -306,15 +304,6 @@ L0glm.fit.internal = function(X,
                         method         = method)
     
     beta[nonzero]            <- beta_sub
-    # Relative selection cutoff plus an absolute numerical floor.
-    # The final relaxed refit applies neither cutoff.
-    if (hard_threshold) {
-      magnitude <- abs(beta) * scaling
-      cutoff <- max(c(0, magnitude[setdiff(seq_len(p), always.include)])) * thresh
-      remove <- (magnitude < cutoff) | magnitude < 1E-20
-      remove[always.include] <- FALSE
-      beta[remove] <- 0
-    }
     nonzero <- beta != 0L
     nonzero[always.include] <- TRUE
     previous_active <- beta_old != 0L
@@ -336,25 +325,35 @@ L0glm.fit.internal = function(X,
         eta <- eta + intercept_column * adjustment
       }
     }
-    mu  <- linkinv(eta)    # predictions on response scale u
-    if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
-
-    if (safeguard_ig) {
-      step <- L0glm_ig_step(beta, beta_old, eta, eta_ig, y, weights,
-        lambdas, prior.mean, X, scaling, thresh, hard_threshold, always.include,
-        check_decrease = iter > 1L)
-      beta <- step$beta
-      eta_ig <- step$eta
-      eta <- matrix(eta_ig, nobs, 1L)
-      mu <- exp(eta)
-      nonzero <- beta != 0L
-      nonzero[always.include] <- TRUE
-      support_changed <- any(nonzero != previous_active)
-      if (!step$accepted) {
-        warning("Inverse-Gaussian IRLS could not find a decreasing step; retaining previous coefficients.", call.=FALSE)
-        break
+    penalized <- which(is.finite(lambdas) & lambdas > 0)
+    # Safeguard the smooth ridge update before the discrete selection cutoff.
+    # Bound clipping can itself change support; such moves need a finite model
+    # but are not required to descend along the unconstrained ridge quadratic.
+    reference <- if (iter > 1L && !support_changed) deviance_previous +
+      sum(lambdas[penalized] * (beta_old[penalized] - prior.mean[penalized])^2) else Inf
+    step <- L0glm_step(beta, beta_old, objective, as.numeric(eta), eta_previous,
+      baseline = reference)
+    if (step$accepted && hard_threshold) {
+      point <- L0glm_threshold_point(step$beta, step$eta, X, scaling, thresh, always.include)
+      if (point$changed) {
+        value <- L0glm_irls_deviance(y, point$eta, weights, family)
+        if (is.finite(value)) { step$beta <- point$beta; step$eta <- point$eta; step_deviance <- value }
       }
     }
+    beta <- step$beta
+    eta <- matrix(step$eta, nobs, 1L)
+    mu <- suppressWarnings(linkinv(eta))
+    if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
+      mu <- pmax(mu, .Machine$double.eps)
+    nonzero <- beta != 0L; nonzero[always.include] <- TRUE
+    support_changed <- any(nonzero != previous_active)
+    if (!step$accepted) {
+      if (!is.finite(deviance_previous))
+        stop("Cannot find finite IRLS means; supply feasible starts or offsets.", call. = FALSE)
+      warning("IRLS could not find a decreasing finite step; retaining previous coefficients.", call. = FALSE)
+      break
+    }
+    deviance_previous <- step_deviance
     if (estimate_dispersion && hard_threshold && support_changed) {
       if (scale_frozen) scale_restarts <- scale_restarts + 1L
       scale_frozen <- FALSE
@@ -389,13 +388,14 @@ L0glm.fit.internal = function(X,
       max(1e-12, sqrt(sum(beta^2))) else
         L0glm_coefficient_change(beta, beta_old, scaling, always.include,
           as.numeric(eta) - as.numeric(offset), prediction_old, weights)
-    if (change < tol && (!safeguard_ig || iter > 1L) &&
+    if (change < tol && iter > 1L &&
          (scale_frozen || !hard_threshold || lambda == 0 ||
           (iter >= 3L && !scale_estimable)) ) {
       converged <- TRUE
       break
     }
     beta_old <- beta
+    eta_previous <- as.numeric(eta)
     if (length(prediction_old)) prediction_old <- as.numeric(eta) - as.numeric(offset)
     
     # dev_rel_change = sqrt(sum((beta - beta_old)^2)) / sqrt(sum(beta^2)) # relative change in L2 norm of coefficient vector
@@ -412,9 +412,7 @@ L0glm.fit.internal = function(X,
     lambdas <- validation_track$best$lambdas
     eta <- as.matrix(offset + X %*% beta)
     mu <- linkinv(eta)
-    if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
-      mu <- pmax(mu, .Machine$double.eps)
-    working <- L0glm_working_model(family)(y, eta, mu, weights, offset)
+    working <- working_model(y, eta, mu, weights, offset)
     W.ret <- working$weights; z.ret <- working$response
   }
   # A relaxed fit holds scale fixed during the solves, then reports its own

@@ -59,15 +59,12 @@ L0glm_ext_cox_initial <- function(data) {
       diagnostic$iterations, diagnostic$residual), call. = FALSE)
   proposal <- pmax(proposal, data$lower)
   objective <- function(b) -2 * L0glm_ext_cox_stats(data, b)$loglik + sum(D * b^2)
-  baseline <- objective(B)
-  for (halving in 0:30) {
-    candidate <- B + (proposal - B)/2^halving
-    value <- objective(candidate)
-    if (is.finite(value) && value <= baseline) break
-  }
-  if (!is.finite(value) || value > baseline)
+  step <- L0glm_step(proposal, B, function(candidate, eta) objective(candidate),
+    maxit = 30L, rtol = 0)
+  candidate <- step$beta
+  if (!step$accepted)
     stop("No descent step for the Cox ridge initializer.", call. = FALSE)
-  diagnostic$step_halvings <- halving
+  diagnostic$step_halvings <- step$halvings
   attr(candidate, "cox.solve") <- diagnostic
   candidate
 }

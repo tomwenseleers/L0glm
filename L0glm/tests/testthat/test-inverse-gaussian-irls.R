@@ -2,22 +2,22 @@ test_that("inverse-Gaussian deviance remains stable at extreme finite means", {
   y <- c(.2, 1, 4)
   eta <- c(-2, .5, 3)
   w <- c(.5, 2, 0)
-  expect_equal(L0glm_ig_deviance(y, eta, w),
+  deviance <- function(y, eta, w) L0glm_irls_deviance(y, eta, w, inverse.gaussian("log"))
+  expect_equal(deviance(y, eta, w),
     sum(inverse.gaussian("log")$dev.resids(y, exp(eta), w)))
-  expect_equal(L0glm_ig_deviance(c(2, 3), rep(700, 2), c(1, 2)), 1/2+2/3)
-  expect_identical(L0glm_ig_deviance(y, c(-1000, 0, 0), w), Inf)
-  expect_identical(L0glm_ig_deviance(y, c(1000, 0, 0), w), Inf)
+  expect_equal(deviance(c(2, 3), rep(700, 2), c(1, 2)), 1/2+2/3)
+  expect_identical(deviance(y, c(-1000, 0, 0), w), Inf)
+  expect_identical(deviance(y, c(1000, 0, 0), w), Inf)
 })
 
 test_that("inverse-Gaussian backtracking checks the frozen penalized objective", {
-  step <- function(beta, previous, lambda) L0glm_ig_step(beta, previous,
-    eta=beta, eta_previous=previous, y=2, weights=1, lambdas=lambda,
-    prior.mean=0, X=matrix(1), scaling=1, thresh=0,
-    hard_threshold=FALSE, always.include=integer())
+  step <- function(beta, previous, lambda) L0glm_step(beta, previous,
+    eta=beta, eta_previous=previous,
+    objective=function(b, e) L0glm_irls_deviance(2, e, 1, inverse.gaussian("log")) + lambda*b^2)
   damped <- step(15, 0, 1)
   expect_true(damped$accepted)
   expect_gt(damped$halvings, 0)
-  expect_lte(L0glm_ig_deviance(2, damped$eta, 1)+damped$beta^2, .5)
+  expect_lte(L0glm_irls_deviance(2, damped$eta, 1, inverse.gaussian("log"))+damped$beta^2, .5)
   # Shrinkage can legitimately increase deviance while decreasing its sum
   # with the current ridge penalty. A deviance-only check would reject this.
   shrink <- step(0, log(2), 10)
@@ -45,13 +45,13 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
     options=list(beta_range=c(-.8, .8)), seed=21)
   solves <- halvings <- 0L
   original_solve <- lmridge
-  original_step <- L0glm_ig_step
+  original_step <- L0glm_step
   testthat::local_mocked_bindings(
     lmridge=function(...) {
       solves <<- solves+1L
       original_solve(...)
     },
-    L0glm_ig_step=function(...) {
+    L0glm_step=function(...) {
       answer <- original_step(...)
       halvings <<- halvings+answer$halvings
       answer
@@ -71,7 +71,7 @@ test_that("unpenalized inverse-Gaussian IRLS agrees with likelihood optimization
   y <- as.numeric(sim$y)
   w <- seq(.5, 1.5, length.out=length(y)); w[1:6] <- 0
   offset <- seq(-.2, .2, length.out=length(y))
-  objective <- function(beta) L0glm_ig_deviance(y, as.numeric(offset+X%*%beta), w)
+  objective <- function(beta) L0glm_irls_deviance(y, as.numeric(offset+X%*%beta), w, sim$family)
   gradient <- function(beta) {
     inv <- exp(-as.numeric(offset+X%*%beta))
     as.numeric(2*crossprod(X, w*(1-y*inv)*inv))

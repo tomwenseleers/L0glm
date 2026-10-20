@@ -21,13 +21,13 @@
   factorization. Supplied dispersions and fixed-scale families keep their
   existing behavior. Development workers load the parent's compiled DLL.
 
-* Stabilized log-link inverse Gaussian IRLS with overflow-safe working weights
-  and penalized-deviance step halving. The first working fit remains the
-  initialization; later checks freeze the current dispersion and ridge weights
-  and reuse predictor differences without repeating a ridge solve. Starting
-  exclusions, coefficient constraints and relaxed refits are preserved. Failed
-  backtracking retains the last finite fit with a warning and does not declare
-  convergence. Other family/link update paths are unchanged.
+* Shared backtracking safeguards ordinary GLMs, special families and the native
+  Poisson backend. Smooth updates on fixed support check the current
+  penalized likelihood with dispersion and ridge weights held fixed. Selection
+  cutoffs follow the smooth step; discrete bound-clipping moves retain a
+  finite-mean guard. Trial steps reuse predictors without another ridge solve.
+  Working-model and deviance kernels retain stable distribution-specific
+  arithmetic. Failed backtracking retains the last finite fit with a warning.
 
 * Added OpenMP predictor-level threading to SIS/ISIS, controlled by `nthreads`
   in `sis_glm()` or `screen.nthreads` in `L0glm.fit()` (default 1). Screening

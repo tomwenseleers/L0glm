@@ -30,6 +30,7 @@ struct FitResult {
   VectorXd lambdas;
   int iterations = 0;
   bool converged = false;
+  bool step_failed = false;
 };
 
 inline bool finite_pos(double x) {
@@ -349,6 +350,80 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   return sol;
 }
 
+inline double poisson_deviance(const VectorXd& y, const VectorXd& eta,
+                                const VectorXd& weights) {
+  const double eps = std::numeric_limits<double>::epsilon();
+  double value = 0.0;
+  for (int i = 0; i < y.size(); ++i) if (weights[i] > 0.0) {
+    if (!std::isfinite(eta[i]) || eta[i] < 0.0) return R_PosInf;
+    const double mu = std::max(eta[i], eps);
+    value += 2.0 * weights[i] * (y[i] == 0.0 ? mu : y[i] * std::log(y[i] / mu) - (y[i] - mu));
+  }
+  return value;
+}
+
+inline double ridge_objective(const VectorXd& beta, const VectorXd& center,
+                                const VectorXd& penalty) {
+  double value = 0.0;
+  for (int j = 0; j < beta.size(); ++j) if (std::isfinite(penalty[j]) && penalty[j] > 0.0)
+    value += penalty[j] * (beta[j] - center[j]) * (beta[j] - center[j]);
+  return value;
+}
+
+// Same support-aware rule as the general R loop. One solve proposes a step;
+// damping only interpolates coefficients/predictors and checks the frozen target.
+template <typename Predict>
+bool poisson_step(VectorXd& beta, const VectorXd& previous, VectorXd& eta,
+                    const VectorXd& previous_eta, const VectorXd& y, const VectorXd& weights,
+                    const VectorXd& penalty, const VectorXd& center,
+                    double& previous_deviance, bool check_decrease,
+                    const Predict& predict) {
+  const double deviance = poisson_deviance(y, eta, weights);
+  const double proposed_value = deviance + ridge_objective(beta, center, penalty);
+  if (!check_decrease && std::isfinite(proposed_value)) { previous_deviance = deviance; return true; }
+  const VectorXd old_eta = previous_eta.size() ? previous_eta : predict(previous, false);
+  const double baseline = check_decrease ? previous_deviance +
+    ridge_objective(previous, center, penalty) : R_PosInf;
+  const double limit = std::isfinite(baseline) ? baseline + 1e-10 * std::max(1.0, std::abs(baseline)) : R_PosInf;
+  if (std::isfinite(proposed_value) && proposed_value <= limit) { previous_deviance = deviance; return true; }
+  const VectorXd proposal = beta, proposed_eta = eta;
+  double fraction = 1.0;
+  for (int halving = 1; halving <= 50; ++halving) {
+    fraction *= 0.5;
+    beta = previous + fraction * (proposal - previous);
+    eta = old_eta + fraction * (proposed_eta - old_eta);
+    const double trial_deviance = poisson_deviance(y, eta, weights);
+    const double value = trial_deviance + ridge_objective(beta, center, penalty);
+    if (std::isfinite(value) && value <= limit) { previous_deviance = trial_deviance; return true; }
+  }
+  beta = previous; eta = old_eta;
+  return false;
+}
+
+// Thresholding is a discrete selection step after the smooth update. Retain
+// the smooth point if deleting tiny terms would leave the mean domain.
+template <typename Predict>
+void poisson_threshold(VectorXd& beta, VectorXd& eta, double& deviance,
+                         const VectorXd& y, const VectorXd& weights, const VectorXd& scaling,
+                         const std::vector<int>& vars, const std::vector<char>& mandatory,
+                         double thresh, const Predict& predict) {
+  double maximum = 0.0;
+  for (int j = 0; j < beta.size(); ++j) if (!mandatory[vars[j]])
+    maximum = std::max(maximum, std::abs(beta[j]) * scaling[j]);
+  VectorXd removed = VectorXd::Zero(beta.size());
+  bool any_removed = false;
+  for (int j = 0; j < beta.size(); ++j) if (!mandatory[vars[j]]) {
+    const double magnitude = std::abs(beta[j]) * scaling[j];
+    if ((magnitude < maximum * thresh || magnitude < 1e-20) && beta[j] != 0.0) {
+      removed[j] = beta[j]; beta[j] = 0.0; any_removed = true;
+    }
+  }
+  if (!any_removed) return;
+  const VectorXd trial_eta = eta - predict(removed, true);
+  const double trial_deviance = poisson_deviance(y, trial_eta, weights);
+  if (std::isfinite(trial_deviance)) { eta = trial_eta; deviance = trial_deviance; } else beta += removed;
+}
+
 template <typename Design>
 FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            const MatrixXd& prior_weights,
@@ -426,12 +501,15 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
+  VectorXd eta_previous;
+  double previous_deviance = R_PosInf;
   VectorXd prediction_old = normalize ? predict_dense(X, VectorXd::Zero(n), vars, beta) : VectorXd();
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
   int iterations = 0;
   bool converged = false;
+  bool step_failed = false;
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -465,26 +543,27 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
       beta[active[a]] = beta_sub[a];
     }
 
-    double maximum = 0.0;
-    for (int j = 0; j < q; ++j) if (!always_include[vars[j]])
-      maximum = std::max(maximum, std::abs(beta[j]) * scaling[j]);
-    const double relative_cutoff = maximum * thresh;
-    for (int j = 0; j < q; ++j) {
-      const double magnitude = std::abs(beta[j]) * scaling[j];
-      if (hard_threshold && !always_include[vars[j]] && (magnitude < relative_cutoff || magnitude < 1e-20)) {
-        beta[j] = 0.0;
-      }
-
-    }
-
     VectorXd eta = predict_dense(X, offset, vars, beta);
+    bool support_changed = false;
+    for (int j = 0; j < q; ++j) if (!always_include[vars[j]] && ((beta[j] != 0.0) != (beta_old[j] != 0.0)))
+      { support_changed = true; break; }
+    auto predict = [&](const VectorXd& b, bool zero_offset) {
+      return predict_dense(X, zero_offset ? VectorXd::Zero(n).eval() : offset, vars, b);
+    };
+    if (!poisson_step(beta, beta_old, eta, eta_previous, y, prior_w, lambdas, prior_mean,
+        previous_deviance, iter > 0 && !support_changed, predict)) {
+      step_failed = true; break;
+    }
+    if (hard_threshold) poisson_threshold(beta, eta, previous_deviance, y, prior_w,
+      scaling, vars, always_include, thresh, predict);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
-    if (rel < tol) { converged = true; break; }
+    if (rel < tol && iter > 0) { converged = true; break; }
     beta_old = beta;
+    eta_previous = eta;
     if (normalize) prediction_old = prediction;
   }
 
@@ -495,6 +574,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   out.lambdas = lambdas;
   out.iterations = iterations;
   out.converged = converged;
+  out.step_failed = step_failed;
   return out;
 }
 
@@ -556,12 +636,15 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
   VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
+  VectorXd eta_previous;
+  double previous_deviance = R_PosInf;
   VectorXd prediction_old = normalize ? predict_sparse(X, VectorXd::Zero(n), vars, beta) : VectorXd();
   VectorXd weights = VectorXd::Zero(n);
   VectorXd z = y - offset;
   VectorXd lambdas = VectorXd::Constant(q, R_PosInf);
   int iterations = 0;
   bool converged = false;
+  bool step_failed = false;
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -595,26 +678,27 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
       beta[active[a]] = beta_sub[a];
     }
 
-    double maximum = 0.0;
-    for (int j = 0; j < q; ++j) if (!always_include[vars[j]])
-      maximum = std::max(maximum, std::abs(beta[j]) * scaling[j]);
-    const double relative_cutoff = maximum * thresh;
-    for (int j = 0; j < q; ++j) {
-      const double magnitude = std::abs(beta[j]) * scaling[j];
-      if (hard_threshold && !always_include[vars[j]] && (magnitude < relative_cutoff || magnitude < 1e-20)) {
-        beta[j] = 0.0;
-      }
-
-    }
-
     VectorXd eta = predict_sparse(X, offset, vars, beta);
+    bool support_changed = false;
+    for (int j = 0; j < q; ++j) if (!always_include[vars[j]] && ((beta[j] != 0.0) != (beta_old[j] != 0.0)))
+      { support_changed = true; break; }
+    auto predict = [&](const VectorXd& b, bool zero_offset) {
+      return predict_sparse(X, zero_offset ? VectorXd::Zero(n).eval() : offset, vars, b);
+    };
+    if (!poisson_step(beta, beta_old, eta, eta_previous, y, prior_w, lambdas, prior_mean,
+        previous_deviance, iter > 0 && !support_changed, predict)) {
+      step_failed = true; break;
+    }
+    if (hard_threshold) poisson_threshold(beta, eta, previous_deviance, y, prior_w,
+      scaling, vars, always_include, thresh, predict);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
-    if (rel < tol) { converged = true; break; }
+    if (rel < tol && iter > 0) { converged = true; break; }
     beta_old = beta;
+    eta_previous = eta;
     if (normalize) prediction_old = prediction;
   }
 
@@ -625,6 +709,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   out.lambdas = lambdas;
   out.iterations = iterations;
   out.converged = converged;
+  out.step_failed = step_failed;
   return out;
 }
 
@@ -712,6 +797,7 @@ Rcpp::List fit_all_impl(const Design& X,
                           bool hard_threshold, int pass) {
     const int q = static_cast<int>(vars.size());
     std::vector<FitResult> fits(m);
+    int failed_steps = 0;
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
@@ -731,6 +817,7 @@ Rcpp::List fit_all_impl(const Design& X,
       channels.push_back(col + 1);
       iterations.push_back(fits[col].iterations);
       converged.push_back(fits[col].converged);
+      if (fits[col].step_failed) ++failed_steps;
       for (int a = 0; a < q; ++a) {
         coef(vars[a], col) = fits[col].beta[a];
         lambdas(vars[a], col) = fits[col].lambdas[a];
@@ -738,6 +825,7 @@ Rcpp::List fit_all_impl(const Design& X,
       weights_out.col(col) = fits[col].weights;
       z_out.col(col) = fits[col].z;
     }
+    if (failed_steps) Rcpp::warning("No decreasing finite Poisson step in %d channel(s); retaining previous coefficients.", failed_steps);
   };
 
   for (int iter = 0; iter < effective_group_maxit; ++iter) {

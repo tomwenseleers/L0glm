@@ -745,26 +745,35 @@ subsequent scale updates require only
 Supplying a dispersion value avoids the pilot factorization, which can be
 appreciable for very large dense designs even when the main solver is iterative.
 
-\subsection{Inverse-Gaussian numerical safeguards}{
-With the log link, the first working fit uses \code{family$initialize};
-subsequent iterations use its fitted means and backtrack coefficient updates
-when the current penalized deviance increases. During each check, dispersion
-and adaptive ridge penalties \eqn{d_j} are held fixed, with target
+\subsection{Shared numerical safeguards}{
+Ordinary GLMs start their working model with \code{family$initialize}. Each ridge solve
+proposes a coefficient update, followed by a shared backtracking check.
+Dispersion and adaptive ridge penalties \eqn{d_j} are held fixed during
+this check. For ordinary GLMs its target is
 \deqn{Q(\beta)=D(y,\mu(\beta))+
   \sum_{j:d_j<\infty}d_j(\beta_j-a_j)^2,}
-where \eqn{a_j} is \code{prior.mean}. This evaluates the current
-adaptive-ridge quadratic with its penalties held fixed.
-The unit deviance is evaluated as
-\eqn{D=\sum_i w_i(y_i/\mu_i-1)^2/y_i}, and working weights as
-\eqn{W_i=w_i/\mu_i}, avoiding intermediate overflow. Step halving reuses
-coefficient and predictor differences without another ridge factorization.
-Starting-zero exclusions, nonnegativity and the selection cutoff remain in
-force; relaxed refits still apply no hard threshold. An initial working fit
-alone cannot establish convergence. If no finite decreasing step can be
-found, the previous coefficients are retained with a warning and
-\code{converged=FALSE}. Other family/link paths retain their update rules.
-High-dispersion fits can still require a larger \code{maxit}; inspect
-\code{convergence} to check whether its stopping criterion was met.
+where \eqn{a_j} is \code{prior.mean}. Special families use their joint
+log likelihood in the corresponding fixed-penalty target.
+Smooth updates on an unchanged support must decrease this target within
+numerical tolerance. If necessary, the coefficient step is halved until
+its means are valid and its objective is finite and acceptable. Predictor
+differences are reused, without another ridge solve or factorization.
+
+Hard thresholding follows the smooth update as a discrete selection step.
+Bound clipping can also remove coefficients; these support changes require
+finite valid predictions but can increase the smooth ridge target. This
+preserves the adaptive-ridge selection path while safeguarding continuous
+refits. A threshold deletion is retained only when it leaves valid means.
+Starting-zero exclusions and coefficient bounds remain in force; relaxed
+refits apply no hard threshold. Failed backtracking retains the previous
+finite coefficients with a warning and \code{converged=FALSE}.
+
+Distribution-specific kernels provide valid parameter domains, working
+weights and stable deviance evaluations. For example, the log-link inverse
+Gaussian uses \eqn{D=\sum_i w_i(y_i/\mu_i-1)^2/y_i} and
+\eqn{W_i=w_i/\mu_i} to avoid intermediate overflow. The step-acceptance
+rule is shared across families and the compiled Poisson implementation.
+See Marschner (2011) for deviance backtracking in ordinary GLMs.
 }
 
 Fisher scoring uses the expected Hessian in each quadratic approximation.
@@ -1075,6 +1084,7 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
 \itemize{
 \item J. de Rooi & P. Eilers, \emph{Deconvolution of pulse trains with the L0 penalty}. Analytica chimica acta 705, 218-226 (2011).
 \item F. Frommlet & G. Nuel, \emph{An adaptive ridge procedure for L0 regularization}. PloS one 11, e0148620 (2016).
+\item I. Marschner, \emph{glm2: Fitting Generalized Linear Models with Convergence Problems}. The R Journal (2011). \doi{10.32614/RJ-2011-012}.
 \item Z. Liu, F. Sun & D.P. McGovern, \emph{Sparse generalized linear model with L0 approximation for feature selection and prediction with big omics data}. BioData mining 10, 1-12 (2017).
 \item L. Dai, K. Chen, Z. Sun, Z. Liu & G. Li, \emph{Broken adaptive ridge regression and its asymptotic properties}. Journal of multivariate analysis 168, 334-351 (2018).
 \item L. Dai, K. Chen & G. Li, \emph{The broken adaptive ridge procedure and its applications}. Statistica Sinica 30, 1069-1094 (2020).

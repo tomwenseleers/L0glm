@@ -187,21 +187,17 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
     attr(proposal, "cox.solve") <- NULL
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
     objective <- function(candidate) -2 * L0glm_ext_loglik(data, candidate, state) + ridge(candidate)
-    baseline <- objective(B)
-    accepted <- FALSE
-    for (halving in 0:30) {
-      candidate <- B + (proposal - B) / 2^halving
-      value <- objective(candidate)
-      if (is.finite(value) && value <= baseline + 1e-10 * max(1, abs(baseline))) {
-        accepted <- TRUE
-        break
-      }
-    }
-    if (!accepted) {
+    step <- L0glm_step(proposal, B, function(candidate, eta) objective(candidate),
+      baseline = if (any((proposal != 0) != (B != 0))) Inf else objective(B),
+      maxit = 30L, rtol = 1e-10)
+    halving <- step$halvings
+    candidate <- step$beta
+    if (!step$accepted) {
       warning("No finite descent step in ", data$kind, " IRLS iteration ", iteration, ".", call. = FALSE)
       break
     }
     if (!relaxed && lambda > 0) {
+      smooth <- candidate; allowed_smooth <- allowed
       selection <- L0glm_ext_threshold(candidate, allowed, included, thresh, grouped)
       candidate <- selection$B
       allowed <- selection$allowed
@@ -211,6 +207,10 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
           if (length(keep) < 2L) { candidate[j, ] <- 0; allowed[j, ] <- FALSE } else
             candidate[j, keep] <- candidate[j, keep] - mean(candidate[j, keep])
         }
+      }
+      if (!identical(candidate, smooth) &&
+          !is.finite(suppressWarnings(L0glm_ext_loglik(data, candidate, state)))) {
+        candidate <- smooth; allowed <- allowed_smooth
       }
     }
     nuisance_change <- 0

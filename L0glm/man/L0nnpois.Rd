@@ -452,6 +452,9 @@ The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
 observation-space system rather than a predictor-space system.
 The default penalty is `lambda = "gic"`.
+Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
+`L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
+differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required.
