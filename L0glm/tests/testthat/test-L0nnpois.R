@@ -1,7 +1,7 @@
-test_that("L0nnpois shares fitting arguments but always enforces nonnegativity", {
+test_that("L0nnpois shares ordinary fitting arguments and enforces nonnegativity", {
   expect_identical(names(formals(L0nnpois)),
                    setdiff(names(formals(L0glm.fit)), c("nonnegative", "openmp", "control.family",
-                     "screen", "nsis", "screen.maxit", "screen.nthreads")))
+                     "screen", "nsis", "screen.maxit", "screen.nthreads", "validation")))
 })
 
 test_that("L0nnpois matches L0glm.fit for dense and sparse single-channel fits", {

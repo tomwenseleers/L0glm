@@ -2,6 +2,12 @@
 
 ## Development changes
 
+* Added optional validation-based IRLS stopping for single-response Gaussian
+  identity models. Selection and relaxed passes restore their best validation
+  checkpoint, retaining its dispersion and penalties. Weighted observations,
+  offsets, coefficient constraints, starting exclusions and SIS/ISIS are
+  supported; validation diagnostics include the iteration history.
+
 * Stabilized normalized dispersion pilots near interpolation by checking the
   effective residual dimension. A weak pilot with insufficient residual
   information is retried once with moderate ridge; probe solves reuse each

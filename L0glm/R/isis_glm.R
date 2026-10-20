@@ -65,6 +65,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     if (identical(candidates,previous)) {converged <- TRUE;break}
     rows <- if (added) c(1L,candidates+1L) else candidates
     fit_args <- args
+    fit_args$validation <- L0glm_subset_validation(args$validation, rows)
     fit_args$always.include <- match(mandatory,candidates)
     for (name in c("start","prior.mean")) if (!is.null(args[[name]]) && length(args[[name]])>1L)
       fit_args[[name]] <- args[[name]][rows,,drop=FALSE]
@@ -78,9 +79,12 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     selected <- which(Matrix::rowSums(B[seq_len(p)+added,,drop=FALSE]!=0)>0)
     history[[iteration]] <- data.frame(iteration,candidates=length(candidates),selected=length(setdiff(selected,mandatory)),
       df=score$df,gic,deviance=score$deviance)
-    if (is.null(best) || is.na(gic) && is.na(best$gic) ||
-        !is.na(gic) && (is.na(best$gic) || gic<best$gic))
-      best <- list(fit=fit,coefficients=B,candidates=candidates,rows=rows,screen=screen,gic=gic,iteration=iteration)
+    criterion <- if (is.null(args$validation)) gic else L0glm_validation_loss(args$validation, B)
+    if (!is.null(args$validation)) history[[iteration]]$validation_deviance <- criterion
+    if (is.null(best) || is.na(criterion) && is.na(best$criterion) ||
+        !is.na(criterion) && (is.na(best$criterion) || criterion<best$criterion))
+      best <- list(fit=fit,coefficients=B,candidates=candidates,rows=rows,screen=screen,gic=gic,
+        criterion=criterion,iteration=iteration)
     previous <- candidates
     if (!length(eligible)) {converged <- TRUE;break}
   }

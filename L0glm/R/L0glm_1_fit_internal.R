@@ -40,7 +40,8 @@ L0glm.fit.internal = function(X,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                               verbose = FALSE,
                               hard_threshold = TRUE,
-                              preprocessing = NULL) {
+                              preprocessing = NULL,
+                              validation = NULL) {
 
   ## 1. sanity checks ---------------------------------------------------------
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
@@ -91,6 +92,7 @@ L0glm.fit.internal = function(X,
       args$dispersion <- if (estimate_dispersion && !is.null(dispersion)) -dispersion else dispersion
       args$always.include <- match(always.include, which(allowed))
       args$preprocessing <- L0glm_subset_preprocessing(preprocessing, which(allowed))
+      args$validation <- L0glm_subset_validation(validation, which(allowed))
       fit <- do.call(L0glm.fit.internal, args)
       coefficients <- rep(0, p)
       penalties <- rep(Inf, p)
@@ -180,6 +182,31 @@ L0glm.fit.internal = function(X,
     identical(control.solver$method, "chol") && !isTRUE(control.solver$rowaug) &&
     !issparse(X) && p <= n_positive && p <= 2000L
   gaussian_gram <- NULL
+  if (!is.null(validation)) {
+    # Selection also compares with the nuisance-only model. A relaxed refit
+    # starts from the retained selection checkpoint and may keep that fit.
+    initial <- beta
+    if (hard_threshold) {
+      initial[setdiff(seq_len(p), always.include)] <- 0
+      if (length(always.include)) {
+        U <- as.matrix(X[, always.include, drop = FALSE])
+        initial[always.include] <- clamp(as.numeric(L0glm_nuisance_solve(
+          crossprod(U, U * as.numeric(weights)),
+          crossprod(U, as.numeric(weights) * (y - offset)))),
+          lower[always.include], upper[always.include])
+      }
+    }
+    initial_penalty <- lambda * dispersion / 4 * AR.weights(initial, gamma = gamma, delta = 0, q = 0)
+    initial_penalty[initial == 0] <- Inf
+    initial_penalty[always.include] <- 0
+    value <- L0glm_validation_loss(validation, initial, centered$shift, centered$intercept)
+    validation_best <- list(beta = initial, dispersion = dispersion, lambdas = initial_penalty,
+      value = value, iteration = 0L)
+    validation_history <- list(data.frame(iteration = 0L, deviance = value,
+      selected = sum(initial != 0), dispersion = dispersion))
+    validation_stalls <- 0L
+    validation_stopped <- FALSE
+  }
   safeguard_ig <- family$family == "inverse.gaussian" && family$link == "log"
   if (safeguard_ig) {
     # The first working fit retains family$initialize. Its coefficients then
@@ -361,6 +388,21 @@ L0glm.fit.internal = function(X,
     # dev_old = dev
     # dev = sum(dev.resids(y, mu, weights)) # deviance
     
+    if (!is.null(validation)) {
+      value <- L0glm_validation_loss(validation, beta, centered$shift, centered$intercept)
+      validation_history[[length(validation_history) + 1L]] <- data.frame(
+        iteration = iter, deviance = value, selected = sum(beta != 0), dispersion = dispersion)
+      if (is.finite(value) && (!is.finite(validation_best$value) ||
+          value < validation_best$value - validation$tol * max(1, validation_best$value))) {
+        validation_best <- list(beta = beta, dispersion = dispersion, lambdas = lambdas,
+          value = value, iteration = iter)
+        validation_stalls <- 0L
+      } else validation_stalls <- validation_stalls + 1L
+      if (iter >= validation$minit && validation_stalls >= validation$patience) {
+        validation_stopped <- TRUE
+        break
+      }
+    }
     ## ----- convergence test ---------------------------------------
     change <- if (preprocessing$mode == "none") sqrt(sum((beta - beta_old)^2)) /
       max(1e-12, sqrt(sum(beta^2))) else
@@ -383,6 +425,13 @@ L0glm.fit.internal = function(X,
   # browser()
   
   ## 8. return output ------------------------------------------------
+  if (!is.null(validation)) {
+    beta <- validation_best$beta
+    dispersion <- validation_best$dispersion
+    lambdas <- validation_best$lambdas
+    eta <- as.matrix(offset + X %*% beta)
+    mu <- linkinv(eta)
+  }
   # A relaxed fit holds scale fixed during the solves, then reports its own
   # residual scale. Supplied positive dispersions remain unchanged throughout.
   if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
@@ -392,11 +441,15 @@ L0glm.fit.internal = function(X,
   }
   if (length(centered$intercept)) beta[centered$intercept] <-
     beta[centered$intercept] - sum(centered$shift * beta)
-  list(coefficients = as.numeric(beta),
+  result <- list(coefficients = as.numeric(beta),
        weights      = as.numeric(W.ret),
        dispersion   = dispersion,
        convergence  = data.frame(iterations = iterations, converged = converged,
          dispersion_updates = scale_updates, dispersion_restarts = scale_restarts),
        lambdas      = as.numeric(lambdas),
        z            = as.numeric(z.ret))
+  if (!is.null(validation)) result$validation <- list(best_iteration = validation_best$iteration,
+    iterations = iterations, stopped = validation_stopped, deviance = validation_best$value,
+    history = do.call(rbind, validation_history))
+  result
 }

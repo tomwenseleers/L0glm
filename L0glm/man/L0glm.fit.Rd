@@ -38,7 +38,8 @@ L0glm.fit(
   screen = "auto",
   nsis = NULL,
   screen.maxit = 10L,
-  screen.nthreads = 1L
+  screen.nthreads = 1L,
+  validation = NULL
 )
 }
 \arguments{
@@ -496,6 +497,14 @@ from \code{maxit}, the inner IRLS limit. Ignored when screening is off.}
 default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
 (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
 Ignored when screening is off.}
+
+\item{validation}{Optional list for validation-based early stopping in
+single-response Gaussian identity-link models. Supply \code{X} and
+\code{y} for held-out observations, with optional \code{weights} and
+\code{offset} (scalars or one value per validation row). Predictors use
+the original training columns; named columns are matched automatically.
+Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
+The default \code{NULL} fits to the usual numerical stopping criterion.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.
@@ -529,6 +538,9 @@ final iteration of \code{L0glm.fit}}
 \item{\code{screening}}{screening method, batch size, candidate/retained rows,
 outer iteration history, best round and stopping information when screening
 is used; otherwise absent (\code{NULL}).}
+\item{\code{validation}}{when requested, validation deviance and separate
+\code{selection} and \code{relaxed} diagnostics, including the best iteration,
+number of attempted iterations, stopping flag and per-iteration history.}
 \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 including recognized intercepts, in the returned coefficient matrix.}
 \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -823,6 +835,20 @@ are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
 \code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
 use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
 }
+
+\subsection{Validation-based stopping}{
+For a single Gaussian identity-link response, \code{validation=list(X=V,y=v)}
+tracks mean squared prediction error on held-out observations. With weights,
+this is weighted Gaussian deviance divided by the validation weight sum.
+After at least \code{minit} iterations, \code{patience} consecutive iterations
+without an improvement exceeding \code{tol * max(1, best_deviance)} stop the
+pass. The best checkpoint is returned, including its dispersion and penalties.
+Selection includes a nuisance-only checkpoint; relaxed refitting starts from
+the selected checkpoint and can retain it if refitting increases validation
+error. SIS/ISIS score their candidate rounds on the same validation set.
+Coefficient updates use training data only. Validation selects the stopping
+point, so use separate test observations to assess prediction performance.
+}
 }
 \examples{
 # Single-channel Poisson deconvolution: shifted copies of a known PSF.
@@ -924,6 +950,17 @@ logistic <- L0glm.fit(X, y, family=binomial(),
   weights=rep(1000, length(y)), nonnegative=TRUE,
   lambda=1e-8, parallelize=FALSE)
 as.numeric(logistic$coefficients)
+
+# Gaussian validation-based stopping: keep a separate test set for assessment.
+set.seed(42)
+X_validation <- matrix(rnorm(200*40), 200, 40)
+y_validation <- 3 + 2*X_validation[, 1] - X_validation[, 2] + rnorm(200)
+train <- 1:120
+fit_stopped <- L0glm.fit(X_validation[train, ], y_validation[train],
+  intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100,
+  validation=list(X=X_validation[-train, ], y=y_validation[-train]),
+  parallelize=FALSE)
+fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
 # Sparse special families: GIC preset fits, GIC tuning and three-fold CV.
 if (requireNamespace("mgcv", quietly=TRUE)) {
   set.seed(204)

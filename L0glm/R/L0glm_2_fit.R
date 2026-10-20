@@ -265,6 +265,13 @@
 #'   default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
 #'   (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
 #'   Ignored when screening is off.
+#' @param validation Optional list for validation-based early stopping in
+#'   single-response Gaussian identity-link models. Supply \code{X} and
+#'   \code{y} for held-out observations, with optional \code{weights} and
+#'   \code{offset} (scalars or one value per validation row). Predictors use
+#'   the original training columns; named columns are matched automatically.
+#'   Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
+#'   The default \code{NULL} fits to the usual numerical stopping criterion.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
@@ -701,6 +708,20 @@
 #' use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
 #' }
 #'
+#' \subsection{Validation-based stopping}{
+#' For a single Gaussian identity-link response, \code{validation=list(X=V,y=v)}
+#' tracks mean squared prediction error on held-out observations. With weights,
+#' this is weighted Gaussian deviance divided by the validation weight sum.
+#' After at least \code{minit} iterations, \code{patience} consecutive iterations
+#' without an improvement exceeding \code{tol * max(1, best_deviance)} stop the
+#' pass. The best checkpoint is returned, including its dispersion and penalties.
+#' Selection includes a nuisance-only checkpoint; relaxed refitting starts from
+#' the selected checkpoint and can retain it if refitting increases validation
+#' error. SIS/ISIS score their candidate rounds on the same validation set.
+#' Coefficient updates use training data only. Validation selects the stopping
+#' point, so use separate test observations to assess prediction performance.
+#' }
+#'
 #' @return An object of class \code{L0glm_fit}, with list components below.
 #' Special-family models additionally inherit from \code{L0glm_extended_fit}.
 #' Use \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()},
@@ -732,6 +753,9 @@
 #' \item{\code{screening}}{screening method, batch size, candidate/retained rows,
 #' outer iteration history, best round and stopping information when screening
 #' is used; otherwise absent (\code{NULL}).}
+#' \item{\code{validation}}{when requested, validation deviance and separate
+#' \code{selection} and \code{relaxed} diagnostics, including the best iteration,
+#' number of attempted iterations, stopping flag and per-iteration history.}
 #' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 #' including recognized intercepts, in the returned coefficient matrix.}
 #' \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -812,7 +836,9 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       screen        = "auto",
                       nsis          = NULL,
                       screen.maxit  = 10L,
-                      screen.nthreads = 1L) {
+                      screen.nthreads = 1L,
+                      validation    = NULL) {
+  validation_info <- NULL
   validate_thresh(thresh)
   L0glm_normalization(normalize)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
@@ -828,6 +854,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 
   kind <- L0glm_ext_kind(family)
   screen_intercept <- if (missing(intercept)) identical(kind, "multinomial") || family$family == "binomial" else intercept
+  if (!is.null(validation) && !inherits(validation, "L0glm_validation"))
+    validation <- L0glm_validation_context(validation, X, y, family, screen_intercept)
   screen_method <- L0glm_screen_method(screen, X, start, screen_intercept, always.include)
   if (screen_method != "none") {
     # Pass explicit controls; the screening helper supplies GIC, relaxed refits
@@ -1173,6 +1201,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               tol         = tol,
                               always.include      = always.include,
                               control.solver = control.solver,
+                              validation = validation,
                               verbose     = verbose)
     
     coefficients <- fit$coefficients
@@ -1181,6 +1210,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     weights.ret  <- fit$weights
     z            <- fit$z
     convergence <- cbind(stage = "selection", pass = 1L, channel = 1L, fit$convergence)
+    if (!is.null(validation)) validation_info <- list(selection = fit$validation)
     
     # --- relaxed - refit selected variables nearly unpenalised -------------
     if (relaxed) { 
@@ -1209,7 +1239,9 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       tol         = tol,
                                       always.include      = always.include,
                                       control.solver = control.solver,
+                                      validation = L0glm_subset_validation(validation, vars),
                                       verbose     = verbose)
+        if (!is.null(validation)) validation_info$relaxed <- fit$validation
         coefficients[]     <- 0
         lambdas[]          <- 0
         coefficients[vars] <- fit$coefficients
@@ -1242,7 +1274,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                   dimnames = list(colnames(X), if (m > 1L) colnames(y) else NULL))
   coefficients <- as(as(coefficients, "generalMatrix"), "CsparseMatrix")
   
-  structure(list(coefficients = coefficients,
+  result <- structure(list(coefficients = coefficients,
                  weights      = weights.ret,
                  prior.weights = weights,
                  offset       = offset,
@@ -1260,6 +1292,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                  z            = z,
                  X            = X,
                  y            = y), class = "L0glm_fit")
+  if (!is.null(validation)) {
+    validation_info$deviance <- L0glm_validation_loss(validation, coefficients)
+    result$validation <- validation_info
+  }
+  result
 }
 
 

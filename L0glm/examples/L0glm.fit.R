@@ -97,3 +97,14 @@ logistic <- L0glm.fit(X, y, family=binomial(),
   weights=rep(1000, length(y)), nonnegative=TRUE,
   lambda=1e-8, parallelize=FALSE)
 as.numeric(logistic$coefficients)
+
+# Gaussian validation-based stopping: keep a separate test set for assessment.
+set.seed(42)
+X_validation <- matrix(rnorm(200*40), 200, 40)
+y_validation <- 3 + 2*X_validation[, 1] - X_validation[, 2] + rnorm(200)
+train <- 1:120
+fit_stopped <- L0glm.fit(X_validation[train, ], y_validation[train],
+  intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100,
+  validation=list(X=X_validation[-train, ], y=y_validation[-train]),
+  parallelize=FALSE)
+fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
