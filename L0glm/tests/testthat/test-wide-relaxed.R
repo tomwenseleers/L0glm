@@ -47,3 +47,28 @@ test_that("wide refits use only selected columns and preserve adaptive penalties
   expect_equal(dim(coef(fit$fits$adaptive_relaxed_lasso)),c(140L,1L))
   expect_true(any(is.finite(fit$tuning$adaptive_relaxed_lasso$cv$mean)))
 })
+
+test_that("shared Gaussian CV matrices agree with explicit training subsets", {
+  skip_if_not_installed("glmnet")
+  set.seed(612)
+  X <- matrix(rnorm(60*90),60,90)
+  folds <- rep(1:3,20)
+  weights <- runif(60,.5,2)
+  offset <- runif(60,-.3,.3)
+  y <- .4+1.5*X[,1]+rnorm(60,sd=.5)+offset
+  grid <- c(3,1,.3)
+  fit <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),tune="cv",
+    lambda=grid,foldid=folds,weights=weights,offset=offset,intercept=TRUE)
+  expect_true(all(fit$timings$status=="ok"))
+  for(method in names(fit$fits)) for(k in 1:3) {
+    train <- folds!=k
+    native <- do.call(glmnet::glmnet,list(x=X[train,,drop=FALSE],
+      y=(y-offset)[train],weights=weights[train],intercept=TRUE,
+      lambda=grid,relax=method=="relaxed_lasso"))
+    if(method=="relaxed_lasso") native <- native$relaxed
+    pred <- as.matrix(cbind(1,X[!train,,drop=FALSE]) %*% rbind(native$a0,native$beta))+offset[!train]
+    expected <- colSums(weights[!train]*(pred-y[!train])^2)/sum(weights[!train])
+    expect_equal(fit$tuning[[method]]$cv$deviance[,k],expected,tolerance=1e-5,
+      ignore_attr=TRUE)
+  }
+})

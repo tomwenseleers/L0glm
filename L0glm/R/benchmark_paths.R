@@ -319,7 +319,7 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
 # design for each support. The likelihood, constraints and glmnet solver agree
 # with its native relaxed fit; the default support limit is n-3 there too.
 L0glm_benchmark_relax_gaussian <- function(fit, args, p) {
-  maxp <- if (is.null(args$maxp)) nrow(args$x)-3L else args$maxp
+  maxp <- if (is.null(args$maxp)) sum(args$weights>0)-3L else args$maxp
   keep <- which(fit$df <= maxp)
   grouped <- is.list(fit$beta)
   m <- if (grouped) length(fit$beta) else 1L

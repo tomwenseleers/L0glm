@@ -22,7 +22,8 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
   entries <- if (inherits(X, "sparseMatrix")) {
     if ("x" %in% methods::slotNames(X)) X@x else numeric()
   } else X
-  if (is.null(n) || is.null(p) || n < 3 || p < 1 || any(!is.finite(entries)))
+  finite <- !length(entries) || (is.finite(min(entries)) && is.finite(max(entries)))
+  if (is.null(n) || is.null(p) || n < 3 || p < 1 || !finite)
     stop("X must be a finite numeric design matrix with at least three rows.", call. = FALSE)
   if (length(L0glm_intercepts(X)))
     stop("Supply X without an intercept column and use intercept=TRUE.", call. = FALSE)
@@ -239,12 +240,22 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
   mass <- vapply(seq_len(K), function(k) sum(observation_mass[foldid == k]), numeric(1))
   loss <- matrix(Inf, L, K); adaptive <- vector("list", K)
   grids <- matrix(NA_real_, L, K)
+  large <- as.double(nrow(data$X))*ncol(data$X) > 1e8
+  if (large) invisible(gc())
   for (k in seq_len(K)) {
     train <- foldid != k
     d <- data
-    d$X <- data$X[train, , drop=FALSE]
-    d$design <- data$design[train, , drop=FALSE]
-    for (field in c("y", "weights", "offset")) d[[field]] <- data[[field]][train, , drop=FALSE]
+    # Gaussian glmnet weights of zero exactly omit validation rows. Sharing X
+    # avoids copying multi-gigabyte training matrices; adaptive pilots and other
+    # backends still receive physically subsetted training data.
+    shared <- data$kind == "glm" && data$family$family == "gaussian" &&
+      data$family$link == "identity" && method %in% c("lasso", "relaxed_lasso")
+    if (shared) d$weights <- data$weights * train else {
+      d$X <- data$X[train, , drop=FALSE]
+      d$design <- if (data$intercept) cbind(Intercept=1, d$X) else d$X
+      for (field in c("y", "weights", "offset")) d[[field]] <- data[[field]][train, , drop=FALSE]
+    }
+    X_valid <- if (data$kind == "cox") NULL else data$X[!train, , drop=FALSE]
     if (data$kind == "cox") {
       d$response <- L0glm_ext_cox_response(d$y, sum(train))
       d$cox.cache <- L0glm_ext_cox_cache(d$response, d$weights[, 1L])
@@ -255,6 +266,7 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
     grids[, k] <- grid
     fold_path <- L0glm_benchmark_path(method, d, grid)
     adaptive[k] <- list(fold_path$adaptive)
+    fit <- NULL
     for (j in seq_len(L)) {
       B <- fold_path$coefficients[[j]]
       if (is.null(B)) next
@@ -263,10 +275,12 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
         eta <- as.numeric(data$X %*% B) + data$offset[, 1L]
         full <- L0glm_ext_cox_eta(eta, data$response, data$weights[, 1L], data$cox.cache)$loglik
         loss[j, k] <- -2 * (full - as.numeric(stats::logLik(fit)))/mass[k]
-      } else loss[j, k] <- L0glm.metrics(fit, newdata=data$X[!train, , drop=FALSE],
+      } else loss[j, k] <- L0glm.metrics(fit, newdata=X_valid,
           y=data$y[!train, , drop=FALSE], weights=data$weights[!train, , drop=FALSE],
           offset=data$offset[!train, , drop=FALSE], mu_floor=data$mu_floor)$deviance/mass[k]
     }
+    rm(d, fold_path, fit, X_valid)
+    if (large) invisible(gc())
   }
   proportions <- mass/sum(mass)
   means <- as.numeric(loss %*% proportions)

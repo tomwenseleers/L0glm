@@ -54,6 +54,8 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
                      dimnames = list(NULL, paste0("Fold", seq_len(nfolds))))
   starts <- pilots <- preprocessing <- vector("list", nfolds)
+  large <- as.double(nrow(args$X))*ncol(args$X) > 1e8
+  if (large) invisible(gc())
   for (k in seq_len(nfolds)) {
     validation <- foldid == k
     training <- !validation
@@ -75,7 +77,9 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
       if (i == 1L) preprocessing[[k]] <- fit$preprocessing
-      eta <- as.matrix(design[validation, , drop = FALSE] %*% fit$coefficients) +
+      active <- which(Matrix::rowSums(abs(fit$coefficients)) != 0)
+      eta <- as.matrix(design[validation, active, drop = FALSE] %*%
+        fit$coefficients[active, , drop = FALSE]) +
         args$offset[validation, , drop = FALSE]
       mu <- family$linkinv(eta)
       dim(mu) <- dim(eta)
@@ -84,6 +88,8 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
       loss <- family$dev.resids(yy, mu[keep], w[keep])
       deviance[i, k] <- if (anyNA(loss)) Inf else sum(loss) / fold_weights[k]
     }
+    rm(train_args, fit, initialization)
+    if (large) invisible(gc())
   }
   proportions <- fold_weights / sum(fold_weights)
   mean_deviance <- as.numeric(deviance %*% proportions)
