@@ -296,7 +296,8 @@ benchmarks_1_4[,!colSums(is.na(benchmarks_1_4))]
 
 # L0glm.fit is the clear winner
 # TODO timings could still be improved drastically by porting to Rcpp/OpenMP, 
-# maybe make L0nnls function for gaussian case, or port the whole L0glm.fit function to Rcpp/OpenMP?
+# maybe make L0nnls Rcpp/OpenMP function for the gaussian case, 
+# or port the whole L0glm.fit function to Rcpp/OpenMP?
 
 
 
