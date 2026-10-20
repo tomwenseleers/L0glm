@@ -96,8 +96,7 @@ family dispersion.}
 \item{tune}{A case-insensitive method for model selection:
 \code{"aic"}, \code{"bic"}, \code{"gic"},
 \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
-Cross-validation minimizes mean held-out deviance. This replaces the former
-\code{IC} argument.
+Cross-validation minimizes mean held-out deviance.
 See \link{information_criteria} for formulas, guidance and references.}
 
 \item{nlambda}{Number of lambda values to use for tuning (at least 2; default 10).
@@ -145,8 +144,7 @@ use \code{set.seed()} for reproducibility.}
 
 \item{lambda_min}{Finite positive lower endpoint of the full-data lambda
 grid (default 2, the AIC preset). Set a smaller positive value to explore
-weaker regularization. This is a practical search bound, not a theoretical
-minimum for predictive optimality or a guarantee of numerical stability.
+weaker regularization or increase it to focus on sparser models.
 CV training penalties retain their training-weight scaling, so they can
 be smaller than this full-data bound. A zoomed grid can start above it.}
 
@@ -274,10 +272,9 @@ Each lambda fit is initialized independently. The preset fit is used only
 to construct the grid; its selected support is not imposed on other fits.
 A common supplied start or pilot-derived seed can be reused independently
 at every lambda, avoiding dependence on the order of the grid.
-The preset is an approximate adaptive-ridge calibration, not a guarantee
-that the chosen criterion is minimized there. In particular, unrelaxed
-estimates retain shrinkage and correlated designs need not follow the
-orthogonal Gaussian calibration.
+The preset calibrates adaptive ridge to the selected information criterion.
+Path tuning can improve its fit for correlated predictors or unrelaxed
+estimates that retain shrinkage.
 }
 \details{
 For \code{prior.mean = NULL} or an explicitly all-zero prior mean,
@@ -286,8 +283,7 @@ actual fit has no nonzero penalized coefficients, excluding an intercept
 and \code{always.include} terms. When the preset fit is nonzero, logarithmic
 bisection refines the nonzero/zero bracket to within 5\%, so a conservative
 working-model estimate does not leave a long flat tail in the plot.
-This is an algorithmic endpoint, not a
-certified bound for the exact L0 likelihood objective. For example, an
+This endpoint is determined by the fitted path. For example, an
 all-zero Poisson identity-link model with zero offset has infinite deviance
 when any observed count is positive. The default scoring floor provides
 numerical comparisons along the path; it does not change the fitted model.
@@ -310,9 +306,8 @@ With \code{start = "pilot"}, each fold constructs its own seed from its
 training rows, using training-weight-scaled pilot penalties. Full-data
 coefficients never initialize a CV training fit. A user-supplied numeric
 start is reused as supplied; the user is responsible for its provenance.
-Pilot support restriction is a heuristic and can exclude a useful feature
-missed by every pilot. It does not guarantee monotone supports or global
-minimization along the path.
+Pilot support restriction fits the union selected by the pilots. Features
+outside that union remain zero throughout the path.
 
 The fitter's penalty is on a total-likelihood scale. In each fold lambda
 is multiplied by the fraction of total prior weight in the training rows,
@@ -363,7 +358,7 @@ apply only during selection with positive lambda and are disabled during
 relaxed refits. \code{thresh = 0} retains the absolute cutoff and does not
 smooth adaptive weights.
 With \code{relaxed = TRUE}, grouped multinomial refits jointly estimate all
-category coefficients in retained predictor rows; previously zero category
+category coefficients in retained predictor rows; zero category
 entries within those rows may become nonzero. Ungrouped multinomial refits
 jointly estimate only the selected CLR entries and keep the others fixed at
 zero. Both preserve zero-sum rows: \eqn{s} admitted category entries give
@@ -384,8 +379,9 @@ CV trains theta, normalization and pilot starts using training observations
 only. Cox CV uses the difference between full-data and training partial log
 likelihood at training coefficients, divided by held-out event weight;
 this retains full risk sets. Multinomial CV uses deviance per weighted trial,
-and NB uses deviance per weighted response. The common lambda grid is chosen
-using full data and is not a nested-CV estimate of prediction error.
+and NB uses deviance per weighted response. The common lambda grid uses
+full data. An independent test set or nested CV can assess prediction error
+after tuning.
 }
 }
 \examples{
@@ -412,17 +408,14 @@ c(GIC=single_gic$lambda_best, CV=single_cv$lambda_best,
   CV_1se=single_cv$lambda_1se, GIC_preset=single_cv$lambda_preset)
 single_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
 L0glm.metrics(single_gic$fit_best, beta_true=single$beta_true)[
-  c("gic", "F1_score", "MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 L0glm.metrics(single_cv$fit_best, beta_true=single$beta_true)[
-  c("gic", "F1_score", "MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 # fit_1se is a full-data model, ready for prediction or coefficient extraction.
 fitted(single_cv$fit_1se)[1:6, , drop=FALSE]
 
-# Grouped multichannel Poisson deconvolution, keeping six abundant channels.
+# Grouped multichannel Poisson deconvolution, keeping every channel.
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
-channels <- head(order(colSums(multi$y), decreasing=TRUE), 6)
-for (name in c("y", "y_true", "beta_true"))
-  multi[[name]] <- multi[[name]][, channels, drop=FALSE]
 multi_gic <- L0glm.tune(multi$X, multi$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=multi$beta_true,
   nonnegative=TRUE, grouped=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
@@ -436,16 +429,18 @@ multi_cv <- L0glm.tune(multi$X, multi$y, family=poisson(identity),
 c(GIC=multi_gic$lambda_best, CV=multi_cv$lambda_best,
   CV_1se=multi_cv$lambda_1se, GIC_preset=multi_cv$lambda_preset)
 L0glm.metrics(multi_gic$fit_best, beta_true=multi$beta_true)[
-  c("gic", "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
 L0glm.metrics(multi_cv$fit_best, beta_true=multi$beta_true)[
-  c("gic", "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
 dim(coef(multi_cv$fit_1se))            # all original predictor rows and channels
 
 # High-dimensional Gaussian regression with 60 positive/negative effects.
-# Set p <- 1000000L for the original benchmark (X alone needs about 4 GB),
-# and set plot=FALSE in both calls to avoid drawing a million coefficient paths.
+# X alone needs about 4 GB; set p <- 20000L for a smaller example.
+\dontrun{
 n <- 500L
-p <- 20000L
+p <- 1000000L
 set.seed(123)
 X_hd <- matrix(rnorm(n*p), n, p)
 support <- sample.int(p, 60L)
@@ -457,19 +452,22 @@ y_hd <- mean_hd + rnorm(n)
 
 # Automatic ISIS screening is run independently at each lambda.
 hd_gic <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="gic",
-  nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=TRUE)
+  nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=FALSE)
 # Screening and preprocessing are recomputed within each training fold.
 set.seed(42)
 hd_cv <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="cv",
   nlambda=5, nfolds=3, coefs.true=beta_hd,
-  screen.nthreads=8, nthreads=1, plot=TRUE)
+  screen.nthreads=8, nthreads=1, plot=FALSE)
 c(GIC=hd_gic$lambda_best, CV=hd_cv$lambda_best,
   CV_1se=hd_cv$lambda_1se, GIC_preset=hd_cv$lambda_preset)
 hd_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
-L0glm.metrics(hd_gic$fit_best, beta_true=beta_hd)[c("gic", "F1_score", "MCC")]
-L0glm.metrics(hd_cv$fit_best, beta_true=beta_hd)[c("gic", "F1_score", "MCC")]
+L0glm.metrics(hd_gic$fit_best, beta_true=beta_hd)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+L0glm.metrics(hd_cv$fit_best, beta_true=beta_hd)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 hd_cv$fit_best$screening$history
 dim(coef(hd_cv$fit_1se))              # screened-out predictors remain zero rows
+}
 
 # CV plots show mean held-out deviance +/- one standard error. Vertical
 # lines mark lambda_best, lambda_1se and the full-data GIC preset.

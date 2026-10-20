@@ -18,10 +18,9 @@
 #' to construct the grid; its selected support is not imposed on other fits.
 #' A common supplied start or pilot-derived seed can be reused independently
 #' at every lambda, avoiding dependence on the order of the grid.
-#' The preset is an approximate adaptive-ridge calibration, not a guarantee
-#' that the chosen criterion is minimized there. In particular, unrelaxed
-#' estimates retain shrinkage and correlated designs need not follow the
-#' orthogonal Gaussian calibration.
+#' The preset calibrates adaptive ridge to the selected information criterion.
+#' Path tuning can improve its fit for correlated predictors or unrelaxed
+#' estimates that retain shrinkage.
 #' 
 #' @param X 
 #' A matrix of predictor variables.
@@ -88,8 +87,7 @@
 #' @param tune A case-insensitive method for model selection:
 #' \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
-#' Cross-validation minimizes mean held-out deviance. This replaces the former
-#' \code{IC} argument.
+#' Cross-validation minimizes mean held-out deviance.
 #' See \link{information_criteria} for formulas, guidance and references.
 #' @param nfolds Number of cross-validation folds (default 5), used when
 #' \code{tune = "cv"}. Must be at least 2 and no larger than the number of
@@ -111,8 +109,7 @@
 #' the reference, with each endpoint moving inward on the log scale.
 #' @param lambda_min Finite positive lower endpoint of the full-data lambda
 #' grid (default 2, the AIC preset). Set a smaller positive value to explore
-#' weaker regularization. This is a practical search bound, not a theoretical
-#' minimum for predictive optimality or a guarantee of numerical stability.
+#' weaker regularization or increase it to focus on sparser models.
 #' CV training penalties retain their training-weight scaling, so they can
 #' be smaller than this full-data bound. A zoomed grid can start above it.
 #' @param start \code{NULL} (default) automatically initializes each lambda
@@ -203,8 +200,7 @@
 #' and \code{always.include} terms. When the preset fit is nonzero, logarithmic
 #' bisection refines the nonzero/zero bracket to within 5\%, so a conservative
 #' working-model estimate does not leave a long flat tail in the plot.
-#' This is an algorithmic endpoint, not a
-#' certified bound for the exact L0 likelihood objective. For example, an
+#' This endpoint is determined by the fitted path. For example, an
 #' all-zero Poisson identity-link model with zero offset has infinite deviance
 #' when any observed count is positive. The default scoring floor provides
 #' numerical comparisons along the path; it does not change the fitted model.
@@ -227,9 +223,8 @@
 #' training rows, using training-weight-scaled pilot penalties. Full-data
 #' coefficients never initialize a CV training fit. A user-supplied numeric
 #' start is reused as supplied; the user is responsible for its provenance.
-#' Pilot support restriction is a heuristic and can exclude a useful feature
-#' missed by every pilot. It does not guarantee monotone supports or global
-#' minimization along the path.
+#' Pilot support restriction fits the union selected by the pilots. Features
+#' outside that union remain zero throughout the path.
 #'
 #' The fitter's penalty is on a total-likelihood scale. In each fold lambda
 #' is multiplied by the fraction of total prior weight in the training rows,
@@ -280,7 +275,7 @@
 #' relaxed refits. \code{thresh = 0} retains the absolute cutoff and does not
 #' smooth adaptive weights.
 #' With \code{relaxed = TRUE}, grouped multinomial refits jointly estimate all
-#' category coefficients in retained predictor rows; previously zero category
+#' category coefficients in retained predictor rows; zero category
 #' entries within those rows may become nonzero. Ungrouped multinomial refits
 #' jointly estimate only the selected CLR entries and keep the others fixed at
 #' zero. Both preserve zero-sum rows: \eqn{s} admitted category entries give
@@ -301,8 +296,9 @@
 #' only. Cox CV uses the difference between full-data and training partial log
 #' likelihood at training coefficients, divided by held-out event weight;
 #' this retains full risk sets. Multinomial CV uses deviance per weighted trial,
-#' and NB uses deviance per weighted response. The common lambda grid is chosen
-#' using full data and is not a nested-CV estimate of prediction error.
+#' and NB uses deviance per weighted response. The common lambda grid uses
+#' full data. An independent test set or nested CV can assess prediction error
+#' after tuning.
 #' }
 #'
 #' @return

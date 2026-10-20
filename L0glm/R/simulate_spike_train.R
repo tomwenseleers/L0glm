@@ -40,9 +40,9 @@
 #'   Channels are retained, including channels with zero generated signal.
 #' @param channel.sparsity Probability of a zero entry in random spectra
 #'   (`m` supplied); defaults to 0.7. Each peak retains at least one channel.
-#' @param clip Clip negative Gaussian observations to zero? Defaults to `FALSE`:
-#'   clipping produces censored data, not Gaussian noise. Numbered `simul()`
-#'   setups 1/3 explicitly enable clipping to reproduce historical benchmarks.
+#' @param clip Clip negative Gaussian observations to zero? Defaults to `FALSE`
+#'   for untruncated Gaussian noise. Clipping gives a left-censored response.
+#'   Numeric `simul()` setups 1/3 enable clipping by default.
 #' @return A list with `X`, `beta_true`, `y`, `y_true`, `eta_true`, `family`,
 #'   `weights`, `intercept`, `intercept_true`, `dispersion`, `theta`, `spectra`,
 #'   time grid `x`, and predictor-location grid `x_beta`. Means satisfy

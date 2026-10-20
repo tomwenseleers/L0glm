@@ -21,16 +21,16 @@ simul(
 }
 \arguments{
 \item{method}{Setup: \code{"deconvolution"}, \code{"normal"}, \code{"abess"}, or
-\code{"bestsubset"}. Numbered setups remain available: 1/2 are single channel
+\code{"bestsubset"}. Numeric values 1/2 select single-channel
 Gaussian/Poisson deconvolution, 3/4 are their multichannel versions, and 5
 is independent normal-design Gaussian regression.}
 
 \item{n, p}{Numbers of observations and predictors, excluding any intercept.}
 
 \item{s}{Fraction of predictor rows selected if \code{n_nonzero} is omitted.
-Numbered deconvolution setups retain their original \code{round(s*n)} rule,
+Numeric deconvolution setups use \code{round(s*n)},
 capped at \code{min(n,p)}; named setups use \code{round(s*p)}.
-Numbered setup 5 retains \code{min(10,p)} unless a nonzero count is supplied.}
+Setup 5 uses \code{min(10,p)} unless a nonzero count is supplied.}
 
 \item{sparse}{Return sparse design and coefficient matrices? \code{NULL} uses
 sparse storage for deconvolution and dense storage for Gaussian designs.
@@ -55,11 +55,11 @@ caps this number at \code{min(n,p)}. See \code{beta.type} below for weak sparsit
 \item{intercept}{\code{FALSE}/\code{NULL} omits an intercept; \code{TRUE} uses one.
 A finite numeric scalar or one value per channel/category supplies its
 value, including zero. Multinomial intercepts are centered across categories.
-For Cox this is a log baseline-hazard multiplier, not a regression intercept.}
+For Cox this multiplies the baseline hazard on the log scale.}
 
 \item{m}{Number of response channels, or multinomial/ordinal categories.
 A multinomial family object determines the category count. Numbered setups
-3/4 retain all informative library mass channels when \code{m} is omitted.
+3/4 use all informative library mass channels when \code{m} is omitted.
 Explicit \code{m>1} deconvolution uses random sparse, normalized spectra with
 exactly that many channels.}
 
@@ -89,8 +89,8 @@ Returned data and ground truth can be passed to \code{\link[=sparseglm]{sparsegl
 \strong{Deconvolution.} Options are arguments of \code{\link[=simulate_spike_train]{simulate_spike_train()}}, including
 \code{mean_beta}, \code{sd_logbeta}, \code{sd_noise}, \code{psf}, \code{thresh}, \code{theta}, \code{clip},
 \code{spectra} and \code{channel.sparsity}. Gaussian responses are untruncated by default.
-Only numbered setups 1/3 retain historical zero clipping, unless
-\code{options$clip=FALSE} is supplied. With clipping, \code{y_true} is the latent
+Numeric setups 1/3 clip negative responses to zero by default; set
+\code{options$clip=FALSE} for untruncated Gaussian noise. With clipping, \code{y_true} is the latent
 uncensored mean.
 
 \strong{Gaussian predictors.} \code{"normal"} uses independent standard normal columns
@@ -110,7 +110,7 @@ extra latent Gaussian noise or linear-predictor clipping; therefore \code{y_true
 and \code{beta_true} describe the same specified model. \code{"mgaussian"} chooses
 Gaussian multichannel data. \code{"ordinal"} generates proportional-odds data
 with ordered \code{cutpoints} (default equally spaced from -1 to 1); L0glm does
-not fit ordinal models. These are statistical setups, not upstream RNG replicas.
+not fit ordinal models.
 
 \strong{Best-subset setups.} \code{"bestsubset"} implements the \code{bestsubset::sim.xy()}
 coefficient patterns. \code{beta.type=1} places unit coefficients at equally spaced
@@ -147,7 +147,7 @@ because it does not specify a sampling distribution.
 Cox data have \eqn{H_0(t)=a t^b}: \code{baseline.rate=a}, \code{weibull.shape=b},
 both default one. Censoring is independently uniform on \verb{[0, uniform.max]},
 with default upper bound one. An intercept multiplies \code{a} by \code{exp(intercept)}.
-\code{y_true} is relative risk, not an event time; \code{event_time} contains sampled
+\code{y_true} contains relative risks; \code{event_time} contains sampled
 uncensored times. No Cox intercept row is added to \code{beta_true}. Invalid means
 for a requested link are rejected rather than clipped; choose a valid link,
 intercept and coefficients.

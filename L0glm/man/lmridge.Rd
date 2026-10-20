@@ -60,7 +60,7 @@ centered means) to shrink to zero. Nonzero values will result in a targeted
 nonzero-centered ridge regression being used instead.}
 
 \item{solver}{Character string specifying which solver to use. Options are
-\code{"eigen"}, \code{"bigGlm"} (or legacy alias \code{"glmnet"}),
+\code{"eigen"}, \code{"bigGlm"} (alias \code{"glmnet"}),
 \code{"osqp"}. Default is \code{"eigen"}.}
 
 \item{method}{Integer code specifying the method to be used within the
@@ -105,7 +105,7 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
 \describe{
   \item{\code{"eigen"}}{Uses the \code{Eigen} package to solve the ridge
   regression problem using one of several solvers (see \code{method} option).}
-  \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is accepted as a legacy alias.}
+  \item{\code{"bigGlm"}}{Uses the \code{bigGlm} function in the \code{\link[glmnet]{glmnet}} package to solve the ridge regression problem. \code{"glmnet"} is an alias.}
   \item{\code{"osqp"}}{Uses the \code{\link[osqp]{osqp}} package (Operator Splitting Quadratic Program solver) to solve the problem with constraints. Most appropriate when box or nonnegativity constraints are applied.}
 }
 

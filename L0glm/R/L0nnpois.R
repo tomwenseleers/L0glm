@@ -31,8 +31,8 @@
 #'   always uses Eigen Cholesky LLT internally, but for sparse matrices
 #'   \code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
 #'   \code{FALSE} to choose Eigen \code{NaturalOrdering} or
-#'   \code{AMDOrdering}. The default is \code{FALSE}. The legacy integer
-#'   \code{control.solver$ordering} is also accepted, with \code{1L} meaning
+#'   \code{AMDOrdering}. The default is \code{FALSE}. Integer
+#'   \code{control.solver$ordering} uses \code{1L} for
 #'   natural ordering and \code{0L} meaning AMD ordering.
 #'
 #' @return An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:

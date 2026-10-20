@@ -154,8 +154,8 @@ and \code{always.include} terms, before screening by explicit starts.
 A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
-disable penalization. Presets approximate the chosen criterion; they do
-not guarantee its global minimizer.
+disable penalization. Presets calibrate the adaptive ridge updates to
+the chosen selection criterion.
 In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
 screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.}
 
@@ -196,7 +196,7 @@ remain sparse. The training centers and scales are returned in
 \item{solver}{Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of \code{"osqp"} (osqp quadratic
 programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
-coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
+coordinate descent; alias \code{"glmnet"}) or \code{"eigen"} (one
 of the \code{RcppEigen Eigen} solvers).
 \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 and scale well to larger problems, with especially \code{"bigGlm"} being
@@ -246,7 +246,7 @@ tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
-perform per channel and fitting pass (default 25). Fits stop earlier
+perform per channel and fitting pass (default 25). Fits stop
 when the convergence criterion is met; inspect \code{convergence} to
 distinguish this from reaching the iteration cap.}
 
@@ -414,8 +414,8 @@ update has stabilized as described in Details, subject to \code{maxit}.}
 always uses Eigen Cholesky LLT internally, but for sparse matrices
 \code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
 \code{FALSE} to choose Eigen \code{NaturalOrdering} or
-\code{AMDOrdering}. The default is \code{FALSE}. The legacy integer
-\code{control.solver$ordering} is also accepted, with \code{1L} meaning
+\code{AMDOrdering}. The default is \code{FALSE}. Integer
+\code{control.solver$ordering} uses \code{1L} for
 natural ordering and \code{0L} meaning AMD ordering.}
 
 \item{verbose}{Logical indicating if the algorithm progression should be

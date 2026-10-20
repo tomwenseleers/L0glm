@@ -49,7 +49,7 @@
 #' Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
 #' sparse Cholesky LLT/LDLT use Eigen's \code{NaturalOrdering}; if
 #' \code{FALSE}, they use \code{AMDOrdering}. The default is \code{FALSE}.
-#' The legacy integer \code{ordering} argument is still accepted and takes
+#' The integer \code{ordering} argument takes
 #' precedence when supplied.
 #' @param threshold
 #' Optional threshold for Eigen SVD rank decisions. If \code{NULL}, Eigen's

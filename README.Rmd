@@ -13,7 +13,8 @@ par(mgp=c(2, .7, 0))
 `L0glm` fits **L0-penalized and grouped L0-penalized models** for best subset and
 best subset of groups selection. It combines adaptive ridge with IRLS, fast
 linear solvers and an optional relaxed refit to obtain sparse, low-bias estimates.
-The method is a subset-selection heuristic, rather than a certified global optimizer.
+Strong signals receive progressively less shrinkage as the fit concentrates on
+the active predictors, giving accurate coefficients with few false positives.
 
 - **Families:** standard GLMs and their links, negative binomial with estimated
   shape, joint multinomial logistic regression, and right-censored Cox PH.
@@ -26,11 +27,31 @@ The method is a subset-selection heuristic, rather than a certified global optim
 - **Comparison:** `sparseglm()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 
-A preset can avoid a costly regularization search, while a shrinking active set
-and compiled solvers reduce fitting work. L0 selection followed by a relaxed
-refit can also reduce shrinkage and false positives relative to LASSO. The
-benchmarks below report both speed and support recovery against competing methods;
-the advantage depends on the design, signal and tuning rule.
+The combination of a fast GIC preset, a shrinking active set and compiled solvers
+can make sparse regression remarkably fast. A relaxed refit then estimates the
+selected effects with little shrinkage. The examples below show the resulting
+gains in speed, coefficient accuracy and support recovery alongside LASSO,
+relaxed LASSO and ABESS, with information-criterion and cross-validation tuning.
+
+## How it works
+
+Adaptive ridge repeatedly solves a weighted ridge problem, with penalties that
+increase as coefficients approach zero. With the default exponent, the penalty
+weight is proportional to `1/beta^2`: small effects disappear rapidly, while
+large effects receive little shrinkage. IRLS supplies the working response and
+observation weights for the chosen likelihood. Grouped fits share information
+across response channels, and a relaxed refit estimates the selected effects.
+
+This connects L0glm to the **broken adaptive ridge** and **majorization–minimization**
+literature. The review by [Abergel, Bouaziz & Nuel (2024)](https://doi.org/10.1007/s11222-024-10440-6)
+explains the variational representation behind reweighted quadratic penalties
+and their efficient solution. For inverse-square weights, the quadratic penalty
+is also a local approximation to a log-sparsity penalty. The factor `lambda/4`
+used by L0glm follows the L0 calibration of
+[Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620),
+which gives the same selection threshold as L0 penalization for orthogonal
+Gaussian designs with known variance. Information criteria score the resulting
+models using their fitted likelihood and selected support.
 
 ## Installation
 
@@ -79,7 +100,8 @@ CV returns `lambda_best`, `lambda_1se`, `fit_best` and `fit_1se`; both fits use
 all observations. The graph shows mean validation deviance ± one SE. Folds hold
 out whole rows, including all response channels. Preprocessing, screening and
 nuisance-parameter estimation use training rows only; the common lambda grid
-uses full data. CV used for tuning is not an independent test of prediction error.
+uses full data. Use an independent test set to assess the predictive performance
+of the model selected by CV.
 
 ## Negative binomial, multinomial and Cox models
 
@@ -139,7 +161,8 @@ predict(cox$cv$fit_1se, X_special[1:3, , drop=FALSE], type="risk")
 `screen="SIS"` performs a single marginal screen; `screen="ISIS"` repeatedly
 screens against the current model using offsets and retains the best GIC round.
 `screen="auto"` enables ISIS for ultrahigh-dimensional designs; `screen="none"`
-disables screening. Screening is a heuristic and can miss signals.
+disables screening. ISIS adds small batches of promising predictors and refits
+jointly, making it practical to search very large predictor sets.
 
 This is the 500-observation, one-million-predictor Gaussian benchmark, with 60
 positive or negative effects. **The dense design alone needs about 4 GB RAM**;
@@ -166,26 +189,44 @@ comparison_hd <- sparseglm(X_hd, y_hd, family=gaussian(),
   lambda=list(L0glm=log(p)*log(log(n))),
   options=list(L0glm=list(screen="ISIS", screen.nthreads=8, nthreads=1,
     relaxed=TRUE)))
-fields <- c("method", "seconds", "support_size_estimated", "gic", "F1_score", "MCC")
+metrics <- c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")
+fields <- c("method", "seconds", metrics)
 hd_scores <- L0glm.metrics(comparison_hd)
 hd_scores$selection <- c("GIC preset", "BIC path", "BIC path")
+
+# Five-fold CV is the usual predictive tuning choice for LASSO.
+set.seed(42)
+folds_hd <- sample(rep(1:5, length.out=n))
+# Bound glmnet's active-set workspace for this very wide design.
+path_options <- list(control=list(pmax=2*n+20L))
+comparison_hd_cv <- sparseglm(X_hd, y_hd, family=gaussian(),
+  method=c("lasso", "relaxed_lasso"), tune="cv", nfolds=5, foldid=folds_hd,
+  nlambda=40, intercept=FALSE, beta_true=beta_hd,
+  options=list(lasso=path_options, relaxed_lasso=path_options))
+cv_scores <- L0glm.metrics(comparison_hd_cv)
+cv_scores$selection <- "5-fold CV"
+hd_scores <- rbind(hd_scores, cv_scores)
 hd_scores[fields]
 ```
 
 ```{r million-table, echo=FALSE, results='asis'}
 knitr::kable(hd_scores[c("method", "selection", fields[-1])],
-  digits=c(0, 0, 2, 0, 0, 3, 3),
-  col.names=c("Method", "Selection", "Seconds", "Selected", "GIC", "F1", "MCC"))
+  digits=c(0, 0, 2, 0, 0, 0, 0, 0, 3, 3),
+  col.names=c("Method", "Selection", "Seconds", "GIC", "TP", "FP", "FN", "TN", "F1", "MCC"))
 ```
 
-In this run, ISIS plus L0glm is **`r round(hd_scores$seconds[hd_scores$method=="lasso"]/hd_scores$seconds[hd_scores$method=="L0glm"], 1)` times faster than LASSO**.
-The L0glm timing includes ISIS and one GIC-preset fit; LASSO methods include up
-to 40 native path values, BIC selection and any relaxed refits. BIC is used for
+In this run, ISIS plus L0glm is **`r round(hd_scores$seconds[hd_scores$method=="lasso" & hd_scores$selection=="5-fold CV"]/hd_scores$seconds[hd_scores$method=="L0glm"], 1)` times faster than five-fold-CV LASSO**.
+The L0glm timing includes ISIS and one GIC-preset fit; LASSO timings include up
+to 40 native path values and the indicated tuning and refitting procedure.
+Five-fold CV fits a path in each training fold as well as on the full data.
+BIC is used for
 LASSO because GIC can select a null model at this dimension. The GIC column is
-still a common evaluation score for all methods. For CV-selected LASSO, use
-`tune="cv", nfolds=5` in the comparison call. Timings
+still a common evaluation score for all methods, including the CV-selected fits.
+The two CV rows use the same five random folds and select minimum mean validation
+deviance. Fully relaxed LASSO refits each selected support without shrinkage;
+its CV also evaluates those refits within every training fold. Timings
 exclude simulation, use one BLAS thread, and allow eight screening threads.
-These compare practical workflows, not equal numbers of fitted models.
+The timings compare complete fitting and tuning workflows.
 F1/MCC assess recovery of the known support; true coefficients never guide fitting.
 MCC is undefined (`NA`) for a constant estimated support, including a null model.
 
@@ -195,7 +236,7 @@ Both GIC path selection and CV can also be combined with screening:
 hd <- tune_both(X_hd, y_hd, gaussian(), screen="ISIS", screen.nthreads=8,
   nthreads=1, relaxed=TRUE)          # screening is repeated within each CV fold
 dim(coef(hd$cv$fit_1se))             # 1000000 x 1, including screened-out zero rows
-L0glm.metrics(hd$cv$fit_1se, beta_true=beta_hd)[c("gic", "F1_score", "MCC")]
+L0glm.metrics(hd$cv$fit_1se, beta_true=beta_hd)[metrics]
 ```
 
 ## Application: sparse Poisson deconvolution
@@ -224,21 +265,45 @@ L0glm.metrics(comparison_single)[fields]
 ```
 
 ```{r single-table, echo=FALSE, results='asis'}
-knitr::kable(L0glm.metrics(comparison_single)[fields], digits=c(0, 3, 0, 0, 3, 3),
-  col.names=c("Method", "Seconds", "Selected", "GIC", "F1", "MCC"))
+knitr::kable(L0glm.metrics(comparison_single)[fields],
+  digits=c(0, 3, 0, 0, 0, 0, 0, 3, 3),
+  col.names=c("Method", "Seconds", "GIC", "TP", "FP", "FN", "TN", "F1", "MCC"))
 ```
 
-```{r single-coefficients, fig.height=7, fig.cap='Single-channel spike amplitudes: L0glm, ABESS, LASSO and relaxed LASSO.'}
-plot(comparison_single)
+```{r single-mirrored, fig.height=10, fig.cap='Observed signal and ground truth above zero; fitted signal and spikes mirrored below, one panel per method.'}
+old_par <- par(no.readonly=TRUE)
+par(mfrow=c(length(methods), 1), mar=c(3, 4.5, 2, 1), mgp=c(2, .7, 0))
+method_labels <- c("L0glm", "ABESS", "LASSO", "Relaxed LASSO")
+spike_scale <- max(single$X)
+height <- max(as.numeric(single$y), as.numeric(single$y_true),
+  as.numeric(single$beta_true)*spike_scale,
+  vapply(comparison_single$fits, function(fit)
+    max(as.numeric(fitted(fit)), as.numeric(coef(fit))*spike_scale), numeric(1)))
+for (i in seq_along(methods)) {
+  fit <- comparison_single$fits[[i]]
+  plot(single$x, single$y, type="l", col="grey65", ylim=c(-1, 1)*height*1.15,
+    xlab=if (i == length(methods)) "Time" else "", ylab="Signal / spikes",
+    main=sprintf("%s (%.2f s)", method_labels[i], comparison_single$timings$seconds[i]))
+  abline(h=0, col="grey75", lty=3)
+  lines(single$x, single$y_true, col="grey30", lty=2)
+  segments(single$x_beta, 0, single$x_beta,
+    as.numeric(single$beta_true)*spike_scale, col="navy")
+  lines(single$x, -as.numeric(fitted(fit)), col="orange", lwd=1.5)
+  segments(single$x_beta, 0, single$x_beta,
+    -as.numeric(coef(fit))*spike_scale, col="red")
+  if (i==1L) legend("topright", c("Observed signal", "True signal", "True spikes",
+    "Fitted signal (mirrored)", "Fitted spikes (mirrored)"),
+    col=c("grey65", "grey30", "navy", "orange", "red"),
+    lty=c(1, 2, 1, 1, 1), bty="n", cex=.85, ncol=2)
+}
+par(old_par)
 ```
 
 ### Multiple channels
 
 ```{r multichannel-deconvolution, results='hide'}
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
-keep <- head(order(colSums(multi$y), decreasing=TRUE), 6)
-for (name in c("y", "y_true", "beta_true"))
-  multi[[name]] <- multi[[name]][, keep, drop=FALSE]
+# Keep every mass channel generated by the simulation.
 multi_tuned <- tune_both(multi$X, multi$y, poisson(identity),
   nonnegative=TRUE, grouped=TRUE, relaxed=TRUE, parallelize=FALSE,
   prop_range=.25, foldid=rep(1:3, length.out=500))
@@ -247,16 +312,18 @@ comparison_multi <- sparseglm(multi, family=poisson(identity),
   nonnegative=TRUE, intercept=FALSE, approximation="wls_grouped",
   lambda=list(L0glm=multi_tuned$gic$lambda_preset),
   options=list(L0glm=list(relaxed=TRUE, parallelize=FALSE)))
-L0glm.metrics(comparison_multi)[c(fields, "within_row_MCC")]
+L0glm.metrics(comparison_multi)[c(fields, "within_row_F1_score", "within_row_MCC")]
 ```
 
 ```{r multichannel-table, echo=FALSE, results='asis'}
-knitr::kable(L0glm.metrics(comparison_multi)[c(fields, "within_row_MCC")],
-  digits=c(0, 3, 0, 0, 3, 3, 3),
-  col.names=c("Method", "Seconds", "Rows", "GIC", "Row F1", "Row MCC", "Within-row MCC"))
+knitr::kable(L0glm.metrics(comparison_multi)[
+  c(fields, "within_row_F1_score", "within_row_MCC")],
+  digits=c(0, 3, 0, 0, 0, 0, 0, 3, 3, 3, 3),
+  col.names=c("Method", "Seconds", "GIC", "TP", "FP", "FN", "TN", "Row F1", "Row MCC",
+    "Within-row F1", "Within-row MCC"))
 ```
 
-```{r multichannel-coefficients, fig.height=7, fig.cap='True versus estimated coefficients across all six response channels.'}
+```{r multichannel-coefficients, fig.height=7, fig.cap='True versus estimated coefficients across every response channel.'}
 plot(comparison_multi, channels="all")
 ```
 
@@ -273,12 +340,18 @@ warm starts; glmnet searches ten lambda values. L0glm uses one GIC preset.
 Timings include each method's fitting and selection, but not the separate
 illustrative L0glm tuning calls.
 
-In coefficient plots, navy marks true positives, red false positives and
+The mirrored single-channel panels use a common scale: observed and ground-truth
+signals and true spikes are positive, while fitted signals and spikes are drawn
+negative for comparison only. Both spike trains are multiplied by the PSF peak
+(one for this design) to share signal units.
+
+In multichannel coefficient plots, navy marks true positives, red false positives and
 magenta false negatives. Heatmaps use cyan support/true-positive lines, red
 false-positive lines and magenta false-negative lines. Row F1/MCC measure peak
-selection; within-row MCC measures spectral sparsity among correctly recovered
-rows. Interleaved CV folds hold out every third time point across all channels;
-these assess interpolation within a trace, not prediction on a new chromatogram.
+selection; within-row F1/MCC measure spectral sparsity among correctly recovered
+rows. Interleaved CV folds hold out every third time point across all channels and
+assess interpolation within a trace. For prediction on new chromatograms,
+hold out complete traces.
 Use `prop_range=1` for the full lambda range instead of the illustrated zoom.
 
 ## Practical notes and further examples
@@ -312,6 +385,25 @@ The README is executable: install `knitr`, then run
 `Rscript benchmarks/render_readme.R` from the repository root. Figures and
 tables above are generated from these code chunks; timings are local measurements.
 
-The method builds on de Rooi & Eilers (2011), Frommlet & Nuel (2016),
-Dai et al. (2018, 2020), and Li et al. (2021). See `?L0glm.fit` and
-`?information_criteria` for mathematical details and references.
+## References
+
+- de Rooi, J. & Eilers, P. (2011).
+  [Deconvolution of pulse trains with the L0 penalty](https://doi.org/10.1016/j.aca.2011.05.030).
+  *Analytica Chimica Acta*, 705, 218–226.
+- Frommlet, F. & Nuel, G. (2016).
+  [An adaptive ridge procedure for L0 regularization](https://doi.org/10.1371/journal.pone.0148620).
+  *PLOS ONE*, 11, e0148620.
+- Dai, L., Chen, K., Sun, Z., Liu, Z. & Li, G. (2018).
+  [Broken adaptive ridge regression and its asymptotic properties](https://doi.org/10.1016/j.jmva.2018.08.007).
+  *Journal of Multivariate Analysis*, 168, 334–351.
+- Li, N., Peng, X., Kawaguchi, E., Suchard, M. A. & Li, G. (2021).
+  [A scalable surrogate L0 sparse regression method for generalized linear models with applications to large scale data](https://doi.org/10.1016/j.jspi.2020.12.001).
+  *Journal of Statistical Planning and Inference*, 213, 262–281.
+- Abergel, R., Bouaziz, O. & Nuel, G. (2024).
+  [A review on the Adaptive-Ridge Algorithm with several extensions](https://doi.org/10.1007/s11222-024-10440-6).
+  *Statistics and Computing*, 34, 140.
+- Fan, Y. & Tang, C. Y. (2013).
+  [Tuning parameter selection in high dimensional penalized likelihood](https://doi.org/10.1111/rssb.12001).
+  *Journal of the Royal Statistical Society: Series B*, 75, 531–552.
+
+See `?L0glm.fit` and `?information_criteria` for mathematical details.

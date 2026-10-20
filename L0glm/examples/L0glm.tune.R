@@ -21,17 +21,14 @@ c(GIC=single_gic$lambda_best, CV=single_cv$lambda_best,
   CV_1se=single_cv$lambda_1se, GIC_preset=single_cv$lambda_preset)
 single_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
 L0glm.metrics(single_gic$fit_best, beta_true=single$beta_true)[
-  c("gic", "F1_score", "MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 L0glm.metrics(single_cv$fit_best, beta_true=single$beta_true)[
-  c("gic", "F1_score", "MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 # fit_1se is a full-data model, ready for prediction or coefficient extraction.
 fitted(single_cv$fit_1se)[1:6, , drop=FALSE]
 
-# Grouped multichannel Poisson deconvolution, keeping six abundant channels.
+# Grouped multichannel Poisson deconvolution, keeping every channel.
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
-channels <- head(order(colSums(multi$y), decreasing=TRUE), 6)
-for (name in c("y", "y_true", "beta_true"))
-  multi[[name]] <- multi[[name]][, channels, drop=FALSE]
 multi_gic <- L0glm.tune(multi$X, multi$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=multi$beta_true,
   nonnegative=TRUE, grouped=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
@@ -45,16 +42,18 @@ multi_cv <- L0glm.tune(multi$X, multi$y, family=poisson(identity),
 c(GIC=multi_gic$lambda_best, CV=multi_cv$lambda_best,
   CV_1se=multi_cv$lambda_1se, GIC_preset=multi_cv$lambda_preset)
 L0glm.metrics(multi_gic$fit_best, beta_true=multi$beta_true)[
-  c("gic", "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
 L0glm.metrics(multi_cv$fit_best, beta_true=multi$beta_true)[
-  c("gic", "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
 dim(coef(multi_cv$fit_1se))            # all original predictor rows and channels
 
 # High-dimensional Gaussian regression with 60 positive/negative effects.
-# Set p <- 1000000L for the original benchmark (X alone needs about 4 GB),
-# and set plot=FALSE in both calls to avoid drawing a million coefficient paths.
+# X alone needs about 4 GB; set p <- 20000L for a smaller example.
+\dontrun{
 n <- 500L
-p <- 20000L
+p <- 1000000L
 set.seed(123)
 X_hd <- matrix(rnorm(n*p), n, p)
 support <- sample.int(p, 60L)
@@ -66,19 +65,22 @@ y_hd <- mean_hd + rnorm(n)
 
 # Automatic ISIS screening is run independently at each lambda.
 hd_gic <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="gic",
-  nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=TRUE)
+  nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=FALSE)
 # Screening and preprocessing are recomputed within each training fold.
 set.seed(42)
 hd_cv <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="cv",
   nlambda=5, nfolds=3, coefs.true=beta_hd,
-  screen.nthreads=8, nthreads=1, plot=TRUE)
+  screen.nthreads=8, nthreads=1, plot=FALSE)
 c(GIC=hd_gic$lambda_best, CV=hd_cv$lambda_best,
   CV_1se=hd_cv$lambda_1se, GIC_preset=hd_cv$lambda_preset)
 hd_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
-L0glm.metrics(hd_gic$fit_best, beta_true=beta_hd)[c("gic", "F1_score", "MCC")]
-L0glm.metrics(hd_cv$fit_best, beta_true=beta_hd)[c("gic", "F1_score", "MCC")]
+L0glm.metrics(hd_gic$fit_best, beta_true=beta_hd)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+L0glm.metrics(hd_cv$fit_best, beta_true=beta_hd)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 hd_cv$fit_best$screening$history
 dim(coef(hd_cv$fit_1se))              # screened-out predictors remain zero rows
+}
 
 # CV plots show mean held-out deviance +/- one standard error. Vertical
 # lines mark lambda_best, lambda_1se and the full-data GIC preset.

@@ -120,16 +120,13 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' zero and the ratios are \code{NA}. Any ratio with zero denominator is
 #' \code{NA}; MCC is \code{NA} if either binary margin is constant.
 #'
-#' Coefficient accuracy retains mean absolute error (the legacy name
-#' \code{MAD_coefs}), \code{RMSE_coefs} and \code{R2_coefs} across all
-#' entries, including mandatory terms. For compatibility,
+#' Coefficient accuracy includes mean absolute error (\code{MAD_coefs}),
+#' \code{RMSE_coefs} and \code{R2_coefs} across all entries, including mandatory terms.
 #' \code{R2_coefs} is the through-origin regression R-squared,
 #' \eqn{(\widehat\beta^T\beta^*)^2/
 #'       (\|\widehat\beta\|_2^2\|\beta^*\|_2^2)}, with matrices vectorized.
 #' It measures alignment and can equal one despite multiplicative bias;
-#' MAE and RMSE quantify absolute error. Selected-coefficient-only summaries,
-#' signed mean error, sMAPE, slope, accuracy, specificity and support-size
-#' ratio have been removed.
+#' MAE and RMSE quantify absolute error.
 #'
 #' Prediction accuracy includes `R2_weighted` and `adj_R2_weighted` for ordinary
 #' GLMs and negative binomial models. Working weights are recomputed at the

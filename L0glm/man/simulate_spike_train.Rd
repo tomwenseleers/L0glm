@@ -79,9 +79,9 @@ Channels are retained, including channels with zero generated signal.}
 \item{channel.sparsity}{Probability of a zero entry in random spectra
 (\code{m} supplied); defaults to 0.7. Each peak retains at least one channel.}
 
-\item{clip}{Clip negative Gaussian observations to zero? Defaults to \code{FALSE}:
-clipping produces censored data, not Gaussian noise. Numbered \code{simul()}
-setups 1/3 explicitly enable clipping to reproduce historical benchmarks.}
+\item{clip}{Clip negative Gaussian observations to zero? Defaults to \code{FALSE}
+for untruncated Gaussian noise. Clipping gives a left-censored response.
+Numeric \code{simul()} setups 1/3 enable clipping by default.}
 }
 \value{
 A list with \code{X}, \code{beta_true}, \code{y}, \code{y_true}, \code{eta_true}, \code{family},

@@ -196,8 +196,8 @@
 #'   A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 #'   See \link{information_criteria} for
 #'   all formulas, intended uses and references. Set \code{lambda = 0} to
-#'   disable penalization. Presets approximate the chosen criterion; they do
-#'   not guarantee its global minimizer.
+#'   disable penalization. Presets calibrate the adaptive ridge updates to
+#'   the chosen selection criterion.
 #'   In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
 #'   screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.
 #' @param intercept Logical: Whether to include an intercept term in the model.
@@ -268,7 +268,7 @@
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
-#'   coordinate descent; legacy alias \code{"glmnet"}) or \code{"eigen"} (one
+#'   coordinate descent; alias \code{"glmnet"}) or \code{"eigen"} (one
 #'   of the \code{RcppEigen Eigen} solvers).
 #'   \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 #'   and scale well to larger problems, with especially \code{"bigGlm"} being
@@ -325,7 +325,7 @@
 #'   tune per-worker threading on systems with a multithreaded BLAS.
 #'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
-#'   perform per channel and fitting pass (default 25). Fits stop earlier
+#'   perform per channel and fitting pass (default 25). Fits stop
 #'   when the convergence criterion is met; inspect \code{convergence} to
 #'   distinguish this from reaching the iteration cap.
 #' @param grouped Logical (default \code{TRUE}) choosing the unit of sparse
@@ -498,11 +498,11 @@
 #'
 #' \strong{Algorithm for univariate, single-channel data}
 #'
-#' For univariate data, the approach is inspired by earlier work on L0 penalized
+#' For univariate data, the approach builds on L0 penalized
 #' regression by de Rooi & Eilers (2011), Frommlet & Nuel (2016), Liu et al.
 #' (2017), Dai et al. (2018 & 2020) & Li et al. (2021) and is based in a simple
-#' modification of the IRLS (Iteratively Reweighed Least Squares) algorithm used
-#' to fit GLMs (cf. McCullach & Nelder 1989, Hastie & Pregibon 1992, Hardin &
+#' modification of the IRLS (Iteratively Reweighted Least Squares) algorithm used
+#' to fit GLMs (cf. McCullagh & Nelder 1989, Hastie & Pregibon 1992, Hardin &
 #' Hilbe 2007). In this algorithm, each iteration of the IRLS algorithm updates
 #' the coefficient estimates using a quadratic approximation of the log
 #' likelihood of the GLM objective. This is done using a weighted least squares
@@ -524,13 +524,30 @@
 #' \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
 #' approximate the L0 penalty objective and has been proven for the Gaussian
 #' case and under orthogonality (Frommlet & Nuel 2016), but in practice also
-#' work well to the non-orthogonal case and other noise families. In contrast to
-#' Frommlet & Nuel (2016) and the algorithms given in Liu et al. (2017) & Dai et
-#' al. (2018, 2020) (implemented in the \pkg{l0ara} package of Guo et al. 2022),
-#' however, we do not require the dispersion (variance in case of Gaussian
-#' linear models) to be known and standardized to 1, but instead allow it to be
-#' estimated and updated during the IRLS algorithm (when
-#' \code{dispersion = NULL} or a negative initial value is supplied).
+#' works well for non-orthogonal designs and other noise families.
+#' Dispersion (the variance for Gaussian models) can be fixed or estimated
+#' during IRLS using \code{dispersion = NULL} or a negative initial value.
+#'
+#' \subsection{Optimization interpretation}{
+#' Adaptive ridge uses successive quadratic penalties to promote sparsity.
+#' Abergel, Bouaziz & Nuel (2024) derive a variational representation for
+#' \eqn{L_q} penalties and explain their majorization--minimization interpretation.
+#' With \code{gamma=2}, zero ridge centers and fixed dispersion, inverse-square
+#' weights give tangent quadratic penalties for a log penalty on the current
+#' nonzero coefficients. The inequality
+#' \deqn{\log s \leq \log s_t + (s-s_t)/s_t,\qquad s,s_t>0,}
+#' with \eqn{s=b_j^2}, yields a quadratic coefficient proportional to
+#' \eqn{1/(b_j^{(t)})^2}. For grouped norms the same argument uses
+#' \eqn{s=\|b_j\|_2^2}. The exponent controls this penalty shape;
+#' \code{gamma=1} gives inverse-absolute weighting associated with an
+#' \eqn{L_1} penalty, while \code{gamma=2} gives the broken adaptive ridge rule.
+#' IRLS approximates the likelihood, and hard thresholding reduces subsequent
+#' systems to the active support. Information criteria evaluate the resulting
+#' models using their likelihood and support size. Exact surrogate minimization
+#' with a fixed likelihood and penalty gives the usual MM descent argument;
+#' the package also accommodates dispersion updates, constraints and relaxed
+#' refits as described below.
+#' }
 #'
 #' Automatic initialization uses one weak ridge fit to the initial working
 #' response, with columns scaled to unit weighted norm and ridge constant
@@ -548,7 +565,7 @@
 #' nuisance-adjusted working-response variance, one retry uses pilot ridge
 #' \code{0.1}. This guards against a nearly interpolating pilot freezing a
 #' dense fit at an extremely small dispersion. It is an initialization
-#' safeguard, not a statistical lower bound on the true dispersion.
+#' safeguard against interpolation during initialization.
 #'
 #' Starting at iteration 3, when the number \eqn{k} of active coefficients is
 #' below \eqn{0.7N}, dispersion is updated toward
@@ -565,12 +582,10 @@
 #' reports the final Pearson residual scale for estimated channels; user-supplied
 #' positive dispersions remain fixed throughout.
 #'
-#' These are inexpensive moment updates, not exact dispersion maximum likelihood
-#' for every family. The active coefficient count approximates model degrees of
-#' freedom and does not correct for selection. The pilot, permissive start and
-#' freezing safeguards are heuristics; they do not guarantee a global optimum or
-#' an unbiased noise estimate, especially in nearly interpolating models. If the
-#' active model remains too large for the update, the starting scale is retained.
+#' These inexpensive Pearson moment updates use the active coefficient count
+#' to approximate residual degrees of freedom. In nearly interpolating models,
+#' little residual information is available to estimate noise; if the active
+#' model remains too large for an update, the starting scale is retained.
 #' The pilot normally requires one factorization (two with the rare retry);
 #' subsequent scale updates require only
 #' \eqn{O(N)} arithmetic, without nested fitting or further factorizations.
@@ -584,8 +599,8 @@
 #' and adaptive ridge penalties \eqn{d_j} are held fixed, with target
 #' \deqn{Q(\beta)=D(y,\mu(\beta))+
 #'   \sum_{j:d_j<\infty}d_j(\beta_j-a_j)^2,}
-#' where \eqn{a_j} is \code{prior.mean}. This is the frozen adaptive-ridge
-#' objective, not the discontinuous original L0 selection objective.
+#' where \eqn{a_j} is \code{prior.mean}. This evaluates the current
+#' adaptive-ridge quadratic with its penalties held fixed.
 #' The unit deviance is evaluated as
 #' \eqn{D=\sum_i w_i(y_i/\mu_i-1)^2/y_i}, and working weights as
 #' \eqn{W_i=w_i/\mu_i}, avoiding intermediate overflow. Step halving reuses
@@ -596,13 +611,11 @@
 #' found, the previous coefficients are retained with a warning and
 #' \code{converged=FALSE}. Other family/link paths retain their update rules.
 #' High-dispersion fits can still require a larger \code{maxit}; inspect
-#' \code{convergence} rather than treating finite predictions as proof of
-#' convergence. This safeguard does not guarantee a global L0 optimum.
+#' \code{convergence} to check whether its stopping criterion was met.
 #' }
 #'
-#' In contrast to Frommlet & Nuel (2016) we use Fisher scoring instead of
-#' Newton-Raphson iterations (i.e. using the expected Hessian instead of the
-#' observed one). If option \code{relaxed} is set to \code{TRUE} the algorithm
+#' Fisher scoring uses the expected Hessian in each quadratic approximation.
+#' If option \code{relaxed} is set to \code{TRUE} the algorithm
 #' will refit the \code{L0glm} selected variables using a nearly unpenalized
 #' model (with \code{lambda=1E-30}) without hard thresholding. This can reduce bias and
 #' increase sensitivity. If an appropriate level of regularisation lambda is chosen,
@@ -666,9 +679,8 @@
 #' \code{screening} records the resolved method, automatic-dispatch flag,
 #' batch size, candidates, retained indices, outer history and chosen round.
 #' It also records the number of OpenMP screening threads actually used.
-#' Outer stopping is distinct from the inner convergence diagnostics and does
-#' not certify global optimality. Screening may omit weak or suppressor effects.
-#' Use \code{screen="none"} to request the original full-design fitting path.
+#' Outer stopping describes the screening search; inner convergence describes
+#' each fitted model. Use \code{screen="none"} to fit the full design directly.
 #' }
 #'
 #' \subsection{Special families}{
@@ -680,10 +692,10 @@
 #' Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
 #' sets and automatic LLT/matrix-free PCG routing. See
 #' \link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
-#' for the mathematics, examples, controls and limitations. These family loops
+#' for the mathematics, examples and controls. These family loops
 #' are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
 #' \code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
-#' retain their existing behavior.
+#' use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
 #' }
 #'
 #' @return An object of class \code{L0glm_fit}, with list components below.
@@ -706,7 +718,7 @@
 #' \item{\code{dispersion}, \code{dispersion.estimated}}{fitted dispersions
 #' and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
 #' Special families retain their nuisance-parameter information separately.}
-#' \item{\code{init.lambda}}{intial lambda.} \item{\code{lambdas}}{a vector or
+#' \item{\code{init.lambda}}{initial lambda.} \item{\code{lambdas}}{a vector or
 #' matrix with the adaptive penalties lambdas.} \item{\code{family}}{The error
 #' structure used to fit the data.}
 #' \item{\code{z}}{a vector or matrix containing the working response in the
@@ -725,8 +737,7 @@
 #' \item{\code{convergence}}{one row per channel and selection or relaxed pass,
 #' containing its stage, pass, channel, iteration count, convergence flag,
 #' number of dispersion updates and number of reactivations after a freeze.
-#' Convergence refers to the iterative stopping test, not a certificate of
-#' constrained or global optimality.}
+#' The flag records whether the iterative stopping criterion was met.}
 #'
 #' @example examples/L0glm.fit.R
 #' @example examples/L0glm.special-families.R
@@ -741,6 +752,7 @@
 #' \item L. Dai, K. Chen, Z. Sun, Z. Liu & G. Li, \emph{Broken adaptive ridge regression and its asymptotic properties}. Journal of multivariate analysis 168, 334-351 (2018).
 #' \item L. Dai, K. Chen & G. Li, \emph{The broken adaptive ridge procedure and its applications}. Statistica Sinica 30, 1069-1094 (2020).
 #' \item N. Li, X. Peng, E. Kawaguchi, M.A. Suchard & G. Li, \emph{A scalable surrogate L0 sparse regression method for generalized linear models with applications to large scale data}. Journal of Statistical Planning and Inference 213, 262-281 (2021).
+#' \item R. Abergel, O. Bouaziz & G. Nuel, \emph{A review on the Adaptive-Ridge Algorithm with several extensions}. Statistics and Computing 34, 140 (2024). \doi{10.1007/s11222-024-10440-6}.
 #' \item W. Guo, S. Ma & Z. Liu, \emph{l0ara: Sparse Generalized Linear Model with L0 Approximation for Feature Selection}. R package version 0.1.6 (2022). Available at \url{https://CRAN.R-project.org/package=l0ara}
 #' \item J.W. Hardin & J.M. Hilbe, \emph{Generalized linear models and extensions}. (Stata press, 2007).
 #' \item T.J. Hastie & D. Pregibon, \emph{Generalized linear models}. Chapter 6 of \emph{Statistical Models in S} eds J. M. Chambers and T. J. Hastie, Wadsworth & Brooks/Cole (1992).

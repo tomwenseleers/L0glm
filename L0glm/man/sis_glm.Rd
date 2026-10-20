@@ -53,7 +53,7 @@ Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.}
 
 \item{iterative}{Use offset-based iterative SIS (ISIS), default \code{FALSE}.}
 
-\item{niter}{Maximum ISIS rounds, default 10. Stops earlier when the candidate
+\item{niter}{Maximum ISIS rounds, default 10. Stops when the candidate
 set repeats, since refitting that same subproblem would give the same fit.}
 
 \item{nthreads}{Positive integer OpenMP thread count for predictor screening,

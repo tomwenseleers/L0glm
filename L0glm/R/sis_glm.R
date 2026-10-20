@@ -27,7 +27,7 @@
 #' @param nonnegative Use one-sided scores for nonnegative candidate effects.
 #'   Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.
 #' @param iterative Use offset-based iterative SIS (ISIS), default `FALSE`.
-#' @param niter Maximum ISIS rounds, default 10. Stops earlier when the candidate
+#' @param niter Maximum ISIS rounds, default 10. Stops when the candidate
 #'   set repeats, since refitting that same subproblem would give the same fit.
 #' @param nthreads Positive integer OpenMP thread count for predictor screening,
 #'   default 1. Capped at the available logical processors and predictor count.
