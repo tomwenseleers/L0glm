@@ -14,6 +14,12 @@ multi$indices
 conditional <- sis_glm(X,y,nuisance=cbind(1,X[,1]),nsis=40)
 head(conditional$stats[conditional$ranking,])
 
+# Offset-based outer ISIS; each candidate fit starts afresh.
+iterated <- sis_glm(X,y,nsis=40,iterative=TRUE,niter=10,return_stats=FALSE)
+iterated$history
+coef(iterated$fit)                 # sparse, all original predictor rows
+head(predict(iterated$fit,X[1:5,,drop=FALSE]))
+
 if (requireNamespace("mgcv",quietly=TRUE)) {
   counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)
   nb <- sis_glm(X,counts,family=mgcv::nb(),nsis=20,return_stats=FALSE)

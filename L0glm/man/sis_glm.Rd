@@ -13,7 +13,10 @@ sis_glm(
   nsis = NULL,
   return_stats = TRUE,
   nuisance = NULL,
-  nonnegative = FALSE
+  nonnegative = FALSE,
+  iterative = FALSE,
+  niter = 10L,
+  ...
 )
 }
 \arguments{
@@ -46,6 +49,19 @@ nuisance predictors. Constant Cox nuisance columns are omitted.}
 
 \item{nonnegative}{Use one-sided scores for nonnegative candidate effects.
 Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.}
+
+\item{iterative}{Use offset-based iterative SIS (ISIS), default \code{FALSE}.}
+
+\item{niter}{Maximum ISIS rounds, default 10. Stops earlier when the candidate
+set repeats, since refitting that same subproblem would give the same fit.}
+
+\item{...}{Named \code{\link[=L0glm.fit]{L0glm.fit()}} arguments for ISIS, such as \code{lambda}, \code{start},
+\code{intercept}, \code{always.include}, \code{grouped}, \code{normalize} and solver controls.
+ISIS defaults to \code{lambda="gic"}, \code{start=NULL}, \code{gamma=2}, \code{relaxed=TRUE}
+and \code{parallelize=FALSE}. Coefficient-shaped starts/prior means use the
+original predictor dimensions, optionally including an added intercept;
+they are subset internally. Scalar \code{start=1} retains its normalized-coordinate
+meaning. Initial zero starts remain excluded, except mandatory terms.}
 }
 \value{
 A list with decreasing-score \code{indices}, \code{top_statistics}, \code{nsis},
@@ -53,6 +69,15 @@ A list with decreasing-score \code{indices}, \code{top_statistics}, \code{nsis},
 \code{ranking} lists all predictor indices and \code{stats} contains \code{feature},
 \code{stat}, \code{sign}, \code{rank} and \code{keep}. Signs are \code{NA} for multichannel/joint
 scores. Full statistics/ranking are otherwise \code{NULL}.
+ISIS additionally returns a full-dimension \code{L0glm_fit} in \code{fit}, its sparse
+\code{coefficients}, the best round's \code{candidates}, resolved \code{lambda}, \code{history}
+(including GIC, deviance and support size), \code{best_iteration}, \code{iterations},
+\code{converged} and elapsed \code{seconds}. Its \code{indices} are retained nonzero or
+mandatory predictors in original column order; \code{nsis} counts these and
+\code{screen_size} records the screening batch size. Optional statistics/ranking
+describe the screen preceding the chosen fit, with \code{keep} updated to its
+retained rows. \code{top_statistics} is \code{NULL} for ISIS. The returned \code{fit}
+accepts new data with all original columns in \code{\link[stats:predict]{stats::predict()}}.
 }
 \description{
 Screen predictors using one null/nuisance fit and native column reductions,
@@ -82,6 +107,18 @@ use diagonal information; multinomial accumulates curvature from
 probabilities without an observation-by-category-squared array. Without
 full statistics, a bounded heap selects top predictors. Screening can miss
 weak/suppressor effects and does not certify a global L0 optimum.
+
+With \code{iterative=TRUE}, add the fitted linear predictor to the original
+offset for screening, merge new candidates with current nonzero/mandatory
+rows, and refit on the original responses and original offsets. Each round
+starts afresh; this does not reintroduce coefficients within an individual
+BAR fit. Preset lambda and GIC use the original selectable predictor count.
+The lowest-GIC round is returned, using the metrics scoring mean floor of
+\code{1e-8}. For quasi families without a likelihood/GIC, return the last round.
+\code{nuisance} must be \code{NULL} for ISIS: put mandatory covariates in \code{X} and pass
+\code{always.include} instead. Intercept defaults match \code{\link[=L0glm.fit]{L0glm.fit()}}.
+\code{converged} describes repetition of the outer candidate set; inner-fit
+convergence diagnostics remain in \code{fit$convergence}.
 }
 \examples{
 set.seed(1)
@@ -99,6 +136,12 @@ multi$indices
 # Conditional screening includes the specified nuisance design.
 conditional <- sis_glm(X,y,nuisance=cbind(1,X[,1]),nsis=40)
 head(conditional$stats[conditional$ranking,])
+
+# Offset-based outer ISIS; each candidate fit starts afresh.
+iterated <- sis_glm(X,y,nsis=40,iterative=TRUE,niter=10,return_stats=FALSE)
+iterated$history
+coef(iterated$fit)                 # sparse, all original predictor rows
+head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 
 if (requireNamespace("mgcv",quietly=TRUE)) {
   counts <- rnbinom(n,mu=exp(.5+.4*X[,1]),size=2)

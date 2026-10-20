@@ -26,6 +26,16 @@
 #'   nuisance predictors. Constant Cox nuisance columns are omitted.
 #' @param nonnegative Use one-sided scores for nonnegative candidate effects.
 #'   Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.
+#' @param iterative Use offset-based iterative SIS (ISIS), default `FALSE`.
+#' @param niter Maximum ISIS rounds, default 10. Stops earlier when the candidate
+#'   set repeats, since refitting that same subproblem would give the same fit.
+#' @param ... Named [L0glm.fit()] arguments for ISIS, such as `lambda`, `start`,
+#'   `intercept`, `always.include`, `grouped`, `normalize` and solver controls.
+#'   ISIS defaults to `lambda="gic"`, `start=NULL`, `gamma=2`, `relaxed=TRUE`
+#'   and `parallelize=FALSE`. Coefficient-shaped starts/prior means use the
+#'   original predictor dimensions, optionally including an added intercept;
+#'   they are subset internally. Scalar `start=1` retains its normalized-coordinate
+#'   meaning. Initial zero starts remain excluded, except mandatory terms.
 #' @details
 #' For an ordinary GLM let \eqn{s_i=v_i(y_i-\mu_i)\dot\mu_i/
 #' (\phi V(\mu_i))} and \eqn{h_i=v_i\dot\mu_i^2/(\phi V(\mu_i))}, evaluated
@@ -49,26 +59,54 @@
 #' probabilities without an observation-by-category-squared array. Without
 #' full statistics, a bounded heap selects top predictors. Screening can miss
 #' weak/suppressor effects and does not certify a global L0 optimum.
+#'
+#' With `iterative=TRUE`, add the fitted linear predictor to the original
+#' offset for screening, merge new candidates with current nonzero/mandatory
+#' rows, and refit on the original responses and original offsets. Each round
+#' starts afresh; this does not reintroduce coefficients within an individual
+#' BAR fit. Preset lambda and GIC use the original selectable predictor count.
+#' The lowest-GIC round is returned, using the metrics scoring mean floor of
+#' `1e-8`. For quasi families without a likelihood/GIC, return the last round.
+#' `nuisance` must be `NULL` for ISIS: put mandatory covariates in `X` and pass
+#' `always.include` instead. Intercept defaults match [L0glm.fit()].
+#' `converged` describes repetition of the outer candidate set; inner-fit
+#' convergence diagnostics remain in `fit$convergence`.
 #' @return A list with decreasing-score `indices`, `top_statistics`, `nsis`,
 #'   `family`, `link` and fitted `theta` for NB. With `return_stats=TRUE`,
 #'   `ranking` lists all predictor indices and `stats` contains `feature`,
 #'   `stat`, `sign`, `rank` and `keep`. Signs are `NA` for multichannel/joint
 #'   scores. Full statistics/ranking are otherwise `NULL`.
+#'   ISIS additionally returns a full-dimension `L0glm_fit` in `fit`, its sparse
+#'   `coefficients`, the best round's `candidates`, resolved `lambda`, `history`
+#'   (including GIC, deviance and support size), `best_iteration`, `iterations`,
+#'   `converged` and elapsed `seconds`. Its `indices` are retained nonzero or
+#'   mandatory predictors in original column order; `nsis` counts these and
+#'   `screen_size` records the screening batch size. Optional statistics/ranking
+#'   describe the screen preceding the chosen fit, with `keep` updated to its
+#'   retained rows. `top_statistics` is `NULL` for ISIS. The returned `fit`
+#'   accepts new data with all original columns in [stats::predict()].
 #' @seealso [L0glm.fit()]
 #' @example examples/sis_glm.R
 #' @export
 sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
-                    nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE) {
+                    nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE,
+                    iterative=FALSE, niter=10L, ...) {
   X <- L0glm_sis_design(X)
   if (!inherits(family,"family")) family <- family()
   if (!is.logical(return_stats) || length(return_stats)!=1L || is.na(return_stats) ||
-      !is.logical(nonnegative) || length(nonnegative)!=1L || is.na(nonnegative))
-    stop("return_stats and nonnegative must be TRUE or FALSE.",call.=FALSE)
+      !is.logical(nonnegative) || length(nonnegative)!=1L || is.na(nonnegative) ||
+      !is.logical(iterative) || length(iterative)!=1L || is.na(iterative))
+    stop("return_stats, nonnegative and iterative must be TRUE or FALSE.",call.=FALSE)
   n <- nrow(X);p <- ncol(X)
   if (is.null(nsis)) nsis <- max(1L,floor(n/log(max(n,3))))
   if (!is.numeric(nsis) || length(nsis)!=1L || !is.finite(nsis) ||
       nsis<1 || nsis!=floor(nsis)) stop("nsis must be a positive integer.",call.=FALSE)
   nsis <- as.integer(min(nsis,p))
+  if (iterative) {
+    if (!is.null(nuisance)) stop("For ISIS, put nuisance covariates in X and use always.include.",call.=FALSE)
+    return(L0glm_isis(X,y,family,weights,offset,nsis,return_stats,nonnegative,niter,list(...)))
+  }
+  if (length(list(...))) stop("Additional fitting arguments require iterative=TRUE.",call.=FALSE)
   context <- L0glm_sis_context(y,family,n,weights,offset,nuisance,nonnegative)
   result <- sis_score_cpp(X,context,nsis,return_stats)
   ranking <- stats <- NULL

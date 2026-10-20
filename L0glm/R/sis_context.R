@@ -110,9 +110,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
       }
       mu <- f$linkinv(eta);phi <- 1
     } else {
-      fit0 <- stats::glm.fit(N,Y[,j],weights=w[,j],offset=off[,j],family=f,
-        intercept=any(vapply(seq_len(q),function(k) all(N[,k]==1),logical(1))),
-        control=stats::glm.control(maxit=100,epsilon=1e-10))
+      fit0 <- L0glm_sis_null_fit(N,Y[,j],w[,j],off[,j],f)
       eta <- fit0$linear.predictors;mu <- fit0$fitted.values
       phi <- if (f$family%in%c("poisson","binomial") || grepl("negative binomial",f$family,ignore.case=TRUE)) 1 else
         sum(w[good,j]*(Y[good,j]-mu[good])^2/f$variance(mu[good]))/max(1,sum(good)-fit0$rank)
@@ -130,4 +128,57 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
   }
   context$inverse <- as.numeric(inverse)
   context
+}
+
+# Preserve ordinary null-fit initialization, retrying only an invalid first
+# solve. Warnings from an unsuccessful attempt do not describe the valid retry.
+L0glm_sis_null_fit <- function(N,y,w,offset,family) {
+  fit <- function(start=NULL) stats::glm.fit(N,y,weights=w,offset=offset,family=family,start=start,
+    intercept=any(vapply(seq_len(ncol(N)),function(j) all(N[,j]==1),logical(1))),
+    control=stats::glm.control(maxit=100,epsilon=1e-10))
+  messages <- character()
+  result <- tryCatch(withCallingHandlers(fit(),warning=function(w) {
+    messages <<- c(messages,conditionMessage(w));invokeRestart("muffleWarning")
+  }),error=identity)
+  # Identity-Poisson Fisher scoring can oscillate with large offsets. For its
+  # intercept-only null, solve the monotone likelihood score directly.
+  if ((inherits(result,"error") || !isTRUE(result$converged)) && ncol(N)==1L &&
+      all(N[,1L]==1) && family$link=="identity" &&
+      family$family%in%c("poisson","quasipoisson") && all(y[w>0]>=0)) {
+    good <- w>0;lower <- -min(offset[good])
+    lower <- lower+8*.Machine$double.eps*max(1,abs(lower))
+    score <- function(b) sum(w[good]*(y[good]/(offset[good]+b)-1))
+    b <- if (score(lower)<=0) lower else stats::uniroot(score,
+      c(lower,lower+max(y[good])+1),tol=1e-12)$root
+    mu <- offset+b
+    return(list(fitted.values=mu,linear.predictors=mu,rank=1L,converged=TRUE))
+  }
+  if (inherits(result,"error")) {
+    start <- L0glm_sis_null_start(N,y,w,offset,family)
+    if (is.null(start)) stop(result)
+    return(fit(start))
+  }
+  for (message in messages) warning(message,call.=FALSE)
+  result
+}
+
+# A feasible intercept start lets glm.fit step-halve when an ISIS offset is
+# large; its default first working solve can otherwise leave the mean domain.
+L0glm_sis_null_start <- function(N,y,w,offset,family) {
+  intercept <- which(vapply(seq_len(ncol(N)),function(j) all(N[,j]==1),logical(1)))
+  if (!length(intercept) || !any(offset!=0)) return(NULL)
+  mu <- stats::weighted.mean(y,w)
+  binomial <- family$family%in%c("binomial","quasibinomial")
+  if (binomial) mu <- max(.1,min(.9,mu)) else if (family$family!="gaussian" ||
+      (family$link%in%c("log","inverse") && mu==0) || (family$link=="log" && mu<0)) mu <- max(.1,mu)
+  eta <- family$linkfun(mu);shift <- eta-stats::weighted.mean(offset,w)
+  if (binomial && family$link=="identity") {
+    lower <- 1e-8-min(offset);upper <- 1-1e-8-max(offset)
+    if (lower>=upper) stop("No feasible null intercept for these identity-binomial offsets.",call.=FALSE)
+    shift <- max(lower,min(upper,shift))
+  } else if (binomial && family$link=="log") shift <- min(shift,-1e-8-max(offset)) else
+    if (!binomial && family$family!="gaussian" && family$link%in%c("identity","inverse","sqrt","1/mu^2"))
+      shift <- max(shift,eta-min(offset))
+  start <- rep(0,ncol(N));start[intercept[1L]] <- shift
+  start
 }
