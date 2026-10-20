@@ -705,31 +705,7 @@
 #' Convergence refers to the iterative stopping test, not a certificate of
 #' constrained or global optimality.}
 #'
-#' @examples
-#' x <- seq(-1, 1, length.out = 30)
-#' X <- matrix(x, ncol = 1)
-#'
-#' # Nonnegativity includes the Gaussian intercept.
-#' constrained <- L0glm.fit(X, -2 + 3 * x, family = gaussian(),
-#'   intercept = TRUE, nonnegative = TRUE, lambda = 1e-8,
-#'   dispersion = 1, parallelize = FALSE)
-#' as.numeric(constrained$coefficients)
-#'
-#' # Estimate Gaussian variance from an automatic or user-supplied start.
-#' set.seed(1)
-#' y_gaussian <- 2 * x + rnorm(length(x), sd = 0.5)
-#' automatic <- L0glm.fit(X, y_gaussian, family = gaussian(),
-#'   lambda = "gic", dispersion = NULL, maxit = 100, parallelize = FALSE)
-#' initialized <- L0glm.fit(X, y_gaussian, family = gaussian(),
-#'   lambda = "gic", dispersion = -0.25, maxit = 100, parallelize = FALSE)
-#' # dispersion = 0.25 instead keeps the variance fixed at 0.25.
-#'
-#' # A binomial intercept may remain negative with a nonnegative slope.
-#' y <- round(1000 * plogis(-2 + x)) / 1000
-#' logistic <- L0glm.fit(X, y, family = binomial(),
-#'   weights = rep(1000, length(y)), nonnegative = TRUE,
-#'   lambda = 1e-8, parallelize = FALSE)
-#' as.numeric(logistic$coefficients)
+#' @example examples/L0glm.fit.R
 #'
 #' @author Tom Wenseleers, Laura Lanzas & Christophe Vanderaa
 #'
