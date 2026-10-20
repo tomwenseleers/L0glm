@@ -294,6 +294,9 @@ Use `prop_range=1` for the full lambda range instead of the illustrated zoom.
 - `sparseglm(method="all")` includes installed compatible methods; unsupported
   explicitly requested combinations retain explanatory status rows. Estimated-theta
   NB comparisons are not yet implemented; use `L0glm.fit()`/`L0glm.tune()` directly.
+- `simul()` generates single/multichannel deconvolution and Gaussian-design
+  problems, including ABESS and best-subset setups, with configurable families,
+  sparsity and intercepts; see the [simulation examples](L0glm/examples/simul.R).
 
 See the [fit examples](L0glm/examples/L0glm.fit.R),
 [tuning examples](L0glm/examples/L0glm.tune.R),

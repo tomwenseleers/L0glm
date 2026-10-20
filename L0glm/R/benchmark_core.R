@@ -57,6 +57,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     warning("nonnegative is ignored for multinomial CLR models.", call.=FALSE)
     nonnegative <- FALSE
   }
+  if (is.null(intercept)) intercept <- sim$intercept
   if (is.null(intercept)) intercept <- kind != "cox" &&
     (!nonnegative || family$family %in% c("binomial", "quasibinomial"))
   if (!is.logical(intercept) || length(intercept) != 1 || is.na(intercept))

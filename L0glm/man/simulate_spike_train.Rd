@@ -2,7 +2,7 @@
 % Please edit documentation in R/simulate_spike_train.R
 \name{simulate_spike_train}
 \alias{simulate_spike_train}
-\title{Simulate a single or multichannel spike train convoluted by a given peak shape function (PSF)}
+\title{Simulate a blurred single or multichannel spike train}
 \usage{
 simulate_spike_train(
   n = 100,
@@ -10,88 +10,93 @@ simulate_spike_train(
   k = 10,
   mean_beta = 10000,
   sd_logbeta = 1,
-  family = c("poisson", "gaussian"),
+  family = "poisson",
   sd_noise = 10,
-  psf = function(x, u, w = 2.5) exp(((x - u)^2)/(-2 * (w^2))),
+  psf = function(x, u, w = 2.5) exp((x - u)^2/(-2 * w^2)),
   thresh = 1e-05,
   sparse = TRUE,
   multichannel = FALSE,
   seed = 123,
-  Plot = FALSE
+  Plot = FALSE,
+  intercept = FALSE,
+  theta = NULL,
+  m = NULL,
+  spectra = NULL,
+  channel.sparsity = 0.7,
+  clip = FALSE
 )
 }
 \arguments{
-\item{n}{Number of observations (time points of the response signal).}
+\item{n, p}{Numbers of time points and predictor locations; \code{p>n} allows
+superresolution. The design excludes any intercept column.}
 
-\item{p}{Number of features (shifted copies of the blur kernel). Defaults to
-\code{n}. A situation with \code{p > n} implies that superresolution
-deconvolution will be used.}
+\item{k}{Number of peaks, capped at \code{min(n,p)}.}
 
-\item{k}{Number of non-zero coefficients. Smaller values imply greater
-sparsity in the coefficients. Values larger than the number of possible
-spike locations are capped at \code{min(n, p)}.}
+\item{mean_beta}{Median total peak height (the log-normal scale parameter).}
 
-\item{mean_beta}{The non-zero coefficients are drawn from a log-normal
-distribution with mean \code{mean_beta} and standard deviation (on a log
-scale) of \code{sd_logbeta}.}
+\item{sd_logbeta}{Standard deviation of log peak heights. Heights follow
+\code{exp(rnorm(k, log(mean_beta), sd_logbeta))}; their arithmetic expectation is
+\code{mean_beta*exp(sd_logbeta^2/2)}.}
 
-\item{sd_logbeta}{The non-zero coefficients are drawn from a log-normal
-distribution with mean \code{mean_beta} and standard deviation (on a log
-scale) of \code{sd_logbeta}.}
+\item{family}{\code{"poisson"}, \code{"gaussian"}, \code{"nb"} or \code{"negative.binomial"},
+or a corresponding family object with an identity link. NB family objects
+are supplied by \code{mgcv::nb(link="identity")}.}
 
-\item{family}{Noise model - currently \code{"poisson"} or \code{"gaussian"}
-are supported, with \code{"poisson"} default.}
+\item{sd_noise}{Gaussian noise standard deviation, one value or one per channel.}
 
-\item{sd_noise}{Standard deviation of the noise when
-\code{family="gaussian"}.}
+\item{psf}{Function of time \code{x} and peak location \code{u}. The default Gaussian
+has height one and width 2.5. Values must be finite and nonnegative.}
 
-\item{psf}{Point spread function to use to blur spike signal with. Should be
-a function with as first two expected arguments \code{x} (time) and
-\code{u} (the mode of the peak). Defaults to a Gaussian psf
-\code{function(x, u, w=2.5) exp(((x-u)^2)/(-2*(w^2)))}.}
+\item{thresh}{PSF entries smaller than this nonnegative cutoff are zeroed.}
 
-\item{thresh}{XXX.}
+\item{sparse}{Return a sparse design/coefficient matrix? Defaults to \code{TRUE}.
+The sparse design is constructed directly without a dense \code{n} by \code{p} copy.}
 
-\item{sparse}{XXX.}
+\item{multichannel}{Generate multiple spectral channels? With \code{m=NULL}, use
+the package's \link{simulated_spectra} library, retaining informative channels.}
 
-\item{multichannel}{XXX.}
+\item{seed}{Random seed; a specified seed preserves the caller's RNG state.
+\code{NULL} uses and advances the current stream.}
 
-\item{seed}{The seed used to sample the nonzero coefficients and to generate
-the noisy response signal.}
+\item{Plot}{Plot the generated signal or multichannel heatmap?}
 
-\item{Plot}{Should the generated data be plotted?}
+\item{intercept}{\code{FALSE}/\code{NULL} omits an intercept; \code{TRUE} adds a baseline of
+one; a scalar or channel vector supplies its value, including zero. The
+corresponding row is included in \code{beta_true}, but not in \code{X}.}
+
+\item{theta}{Positive NB shape, one value or one per channel. Defaults to 10
+or the supplied family's fixed shape. NB variance is \code{mu+mu^2/theta}.}
+
+\item{m}{Explicit number of channels. Values greater than one enable
+multichannel generation using random sparse spectra, unless \code{spectra} is
+provided. \code{NULL} selects the library when \code{multichannel=TRUE}.}
+
+\item{spectra}{Optional nonnegative matrix of template spectra, with one
+spectrum per row. Rows are normalized to sum to one, then \code{k} rows are
+sampled, with replacement only if the library contains fewer than \code{k} rows.
+Channels are retained, including channels with zero generated signal.}
+
+\item{channel.sparsity}{Probability of a zero entry in random spectra
+(\code{m} supplied); defaults to 0.7. Each peak retains at least one channel.}
+
+\item{clip}{Clip negative Gaussian observations to zero? Defaults to \code{FALSE}:
+clipping produces censored data, not Gaussian noise. Numbered \code{simul()}
+setups 1/3 explicitly enable clipping to reproduce historical benchmarks.}
 }
 \value{
-Returns a list with the following elements:
-\item{\code{X}}{a \code{n} by \code{p} covariate matrix. The matrix is a banded
-matrix with time-shifted versions of the specified peak shape function
-(also known as the Point Spread Function or PSF).}
-\item{\code{beta_true}}{a vector of length \code{p} containing the true
-coefficients. This is the spike train used to generate the data, so that
-\code{y = beta_true \%*\% X + e}.}
-\item{\code{y}}{a vector of length \code{n} containing the noisy response signal
-given by \code{y = beta_true \%*\% X + e}.}
-\item{\code{y_true}}{a vector of length \code{n} containing the response signal
-given by \code{y_true = beta_true \%*\% X}.}
-\item{\code{x}}{a vector of length \code{n} containing the time points.}
-\item{\code{x_beta}}{a vector of length \code{p} containing the locations of the
-simulated spikes. Equal to \code{x} when \code{p=n}.}
+A list with \code{X}, \code{beta_true}, \code{y}, \code{y_true}, \code{eta_true}, \code{family},
+\code{weights}, \code{intercept}, \code{intercept_true}, \code{dispersion}, \code{theta}, \code{spectra},
+time grid \code{x}, and predictor-location grid \code{x_beta}. Means satisfy
+\code{y_true = X \%*\% slopes + intercept_true}. \code{beta_true} includes the intercept
+row when requested. Use \code{intercept=sim$intercept} when fitting \code{sim$X}.
+With \code{clip=TRUE}, \code{y_true} describes the latent uncensored signal.
 }
 \description{
-This function generates synthetic data consisting of a time series made of a
-spike train convoluted by a Gaussian blur kernel ("point spread function")
-with Poisson or Gaussian noise added. Data of this form are
-commonly encountered in the context of various signal deconvolution problems,
-where one would like to deconvolute an observed blurry and noisy signal with
-a known blur kernel (psf) assuming a given noise model. For example, in Gas
-chromatography/Mass spectrometry one would be interested in deconvoluting a
-chromatogram, which is a noisy version of an unknown number of superimposed
-blurred peaks, by a given measured peak shape function / blur kernel.
-The objective is to recover the underlying spike train
-(chromatogram peaks in the GC/MS example) used to generate the data by
-regressing the observed noisy signal onto a banded matrix consisting of
-shifted copies of the Gaussian kernel used to blur the true signal. The
-simulated error can be specified to be either Poisson or Gaussian.
-
-The function is used as a test case in the \pkg{L0glm} examples.
+Generate a sparse spike train blurred by a known point spread function (PSF),
+with Poisson, Gaussian or negative binomial noise. Columns of the design are
+shifted copies of the PSF. This models signal deconvolution, including GC/MS
+data with sparse mass spectra shared over time.
+}
+\seealso{
+\code{\link[=simul]{simul()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=sparseglm]{sparseglm()}}
 }

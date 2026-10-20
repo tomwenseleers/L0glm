@@ -45,7 +45,8 @@ sparseglm(
 }
 \arguments{
 \item{X}{Design matrix without an intercept column, or a list containing
-\code{X}, \code{y} and optionally \code{beta_true}, \code{family}, \code{weights} and \code{offset}.}
+\code{X}, \code{y} and optionally \code{beta_true}, \code{family}, \code{intercept}, \code{weights} and
+\code{offset}. Simulation metadata from \code{\link[=simul]{simul()}} is used unless overridden.}
 
 \item{y}{Numeric response vector or independent-channel matrix, multinomial
 factor/count matrix, or \code{survival::Surv(time,status)} for right censoring.

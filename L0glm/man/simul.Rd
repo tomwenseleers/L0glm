@@ -2,52 +2,210 @@
 % Please edit documentation in R/simulate.R
 \name{simul}
 \alias{simul}
-\title{Simulate data.}
+\title{Simulate sparse GLMs and deconvolution problems}
 \usage{
 simul(
-  method = 1,
+  method = "deconvolution",
   n = 500,
   p = 500,
   s = 0.1,
-  sparse = T,
-  options = NULL,
-  seed = 1
+  sparse = NULL,
+  options = list(),
+  seed = 1,
+  family = NULL,
+  n_nonzero = NULL,
+  intercept = FALSE,
+  m = 1L,
+  beta = NULL
 )
 }
 \arguments{
-\item{method}{A numeric value indicating the type of data to simulate. The possible values are:
-1: Single channel (single variable) data with Gaussian noise.
-2: Single channel data with Poisson noise.
-3: Multichannel data with Gaussian noise.
-4: Multichannel data with Poisson noise.
-5: Data with standard normal design matrix and Gaussian noise.}
+\item{method}{Setup: \code{"deconvolution"}, \code{"normal"}, \code{"abess"}, or
+\code{"bestsubset"}. Numbered setups remain available: 1/2 are single channel
+Gaussian/Poisson deconvolution, 3/4 are their multichannel versions, and 5
+is independent normal-design Gaussian regression.}
 
-\item{n}{A numeric value indicating the number of observations to generate.}
+\item{n, p}{Numbers of observations and predictors, excluding any intercept.}
 
-\item{p}{A numeric value indicating the number of predictors (variables) to generate.}
+\item{s}{Fraction of predictor rows selected if \code{n_nonzero} is omitted.
+Numbered deconvolution setups retain their original \code{round(s*n)} rule,
+capped at \code{min(n,p)}; named setups use \code{round(s*p)}.
+Numbered setup 5 retains \code{min(10,p)} unless a nonzero count is supplied.}
 
-\item{s}{Sparsity of true solution (proportion of total coefficients p that are nonzero).}
+\item{sparse}{Return sparse design and coefficient matrices? \code{NULL} uses
+sparse storage for deconvolution and dense storage for Gaussian designs.
+Sparse storage usually wastes memory for a fully populated Gaussian design.}
 
-\item{sparse}{Boolean indicating if the returned design matrix should be sparse (of Matrix class dsCMatrix) or dense.}
+\item{options}{Named list of setup-specific arguments; see Details.}
 
-\item{options}{A list of optional parameters to control the data generation process. This can include:
-For methods 1 to 4: \code{sd_noise} (standard deviation of the noise), 
-\code{mean_beta} (mean of the beta coefficients), \code{sd_logbeta} (standard deviation of the log-beta).
-For method 5: \code{n_nonzero} (number of nonzero coefficients), \code{beta_range} (range of the beta model coefficients), 
-\code{error_sd} (standard deviation of the error term).
-If options are \code{NULL}, default values will be used.}
+\item{seed}{Nonnegative integer seed. The caller's RNG state is restored
+on exit. \code{NULL} uses and advances the current random-number stream.}
 
-\item{seed}{Random seed.}
+\item{family}{An R GLM family object/function, or a family name. Names include
+\code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"Gamma"}, \code{"inverse.gaussian"},
+\code{"nb"}, \code{"multinomial"} and \code{"cox"}. Positive-response regression families
+default to a log link; deconvolution uses identity links. Special-family
+objects from \pkg{mgcv} are accepted. \code{NULL} uses Poisson for named
+deconvolution, Gaussian for regression, or the numbered setup's family.}
+
+\item{n_nonzero}{Number of nonzero predictor rows, excluding the intercept.
+Overrides \code{s}; a supplied \code{beta} determines its own support. Deconvolution
+caps this number at \code{min(n,p)}. See \code{beta.type} below for weak sparsity.}
+
+\item{intercept}{\code{FALSE}/\code{NULL} omits an intercept; \code{TRUE} uses one.
+A finite numeric scalar or one value per channel/category supplies its
+value, including zero. Multinomial intercepts are centered across categories.
+For Cox this is a log baseline-hazard multiplier, not a regression intercept.}
+
+\item{m}{Number of response channels, or multinomial/ordinal categories.
+A multinomial family object determines the category count. Numbered setups
+3/4 retain all informative library mass channels when \code{m} is omitted.
+Explicit \code{m>1} deconvolution uses random sparse, normalized spectra with
+exactly that many channels.}
+
+\item{beta}{Optional finite slope vector or \code{p} by \code{m} matrix, in original
+predictor units, for Gaussian-design setups. A vector is repeated across
+channels. Multinomial rows are centered to CLR coordinates. Ordinal models
+use a single slope vector shared across categories.}
 }
 \value{
-A variable containing the simulated data.
+A list with \code{X} (without an intercept column), \code{y}, \code{y_true}
+(conditional means, category probabilities, or Cox relative risks),
+\code{eta_true}, \code{beta_true} (including any identifiable intercept row),
+\code{intercept} (logical fitting flag), \code{intercept_true}, \code{family}, and \code{weights}.
+Unit weights have one shared column, so subsetting response channels does
+not require subsetting them; binomial weights contain the trial totals.
+Regression data include \code{covariance} (structure and rho), generating
+\code{dispersion}, and NB \code{theta}. With \code{nval>0}, \code{Xval}, \code{yval}, \code{yval_true},
+\code{eta_val} and \code{weightsval} describe validation data. Deconvolution also
+returns time and spike grids. Cox responses are right-censored \code{Surv} objects.
 }
 \description{
-This function simulates different types of data based on the method specified. 
-Various aspects of the data generation can be controlled using the \code{options} parameter.
+Generate blurred spike trains or regression data with Gaussian predictors.
+Returned data and ground truth can be passed to \code{\link[=sparseglm]{sparseglm()}}, or to
+\code{\link[=L0glm.fit]{L0glm.fit()}} and \code{\link[=L0glm.tune]{L0glm.tune()}} with the returned family and intercept flag.
+}
+\details{
+\strong{Deconvolution.} Options are arguments of \code{\link[=simulate_spike_train]{simulate_spike_train()}}, including
+\code{mean_beta}, \code{sd_logbeta}, \code{sd_noise}, \code{psf}, \code{thresh}, \code{theta}, \code{clip},
+\code{spectra} and \code{channel.sparsity}. Gaussian responses are untruncated by default.
+Only numbered setups 1/3 retain historical zero clipping, unless
+\code{options$clip=FALSE} is supplied. With clipping, \code{y_true} is the latent
+uncensored mean.
+
+\strong{Gaussian predictors.} \code{"normal"} uses independent standard normal columns
+and random support with uniform \code{beta_range} (default \code{c(-1,1)}). All regression
+setups accept \code{rho} and \code{correlation} (\code{"independent"}, \code{"ar1"},
+\code{"equicorrelated"}), or ABESS \code{cortype=1:3}. AR(1) covariance is
+\eqn{\Sigma_{ij}=\rho^{|i-j|}}; equicorrelation has off-diagonal entries
+\eqn{\rho}. Generation and population signal-variance calculations avoid
+allocating a \code{p} by \code{p} covariance matrix.
+
+\strong{ABESS setups.} \code{"abess"} follows predictor and coefficient distributions
+in \code{abess::generate.data()}: random support and family-specific uniform ranges
+proportional to \eqn{\sqrt{2\log(p)/n}}. \code{support.size}, \code{y.dim}, \code{class.num},
+\code{sigma}, \code{snr}, \code{weibull.shape} and \code{uniform.max} are recognized. Non-Gaussian
+responses are sampled directly from the requested family, without the source's
+extra latent Gaussian noise or linear-predictor clipping; therefore \code{y_true}
+and \code{beta_true} describe the same specified model. \code{"mgaussian"} chooses
+Gaussian multichannel data. \code{"ordinal"} generates proportional-odds data
+with ordered \code{cutpoints} (default equally spaced from -1 to 1); L0glm does
+not fit ordinal models. These are statistical setups, not upstream RNG replicas.
+
+\strong{Best-subset setups.} \code{"bestsubset"} implements the \code{bestsubset::sim.xy()}
+coefficient patterns. \code{beta.type=1} places unit coefficients at equally spaced
+locations; 2 uses the first selected rows; 3 decreases coefficients linearly
+from 10 to 0.5; 4 uses \code{c(-10,-6,-2,2,6,10)} in the first six rows (requires
+\code{p>=6}, ignoring \code{n_nonzero}); 5 uses unit coefficients in the first selected
+rows followed by \code{0.5^(1:(p-n_nonzero))}. Type 5 is weakly sparse: trailing
+coefficients are also nonzero until numerical underflow. Nonzero \code{rho}
+defaults to AR(1) here. \code{nval} (default zero) adds independent validation data
+from the same model, for any Gaussian-design setup, without changing the
+training sample. Multichannel and
+non-Gaussian outcomes extend the source's Gaussian model. For multinomial
+data the patterns multiply centered category contrasts.
+
+\strong{Noise and responses.} \code{dispersion} is a scalar or channel vector, default
+one: Gaussian variance, Gamma squared coefficient of variation, or inverse
+Gaussian dispersion. Gaussian \code{error_sd}, \code{sd_noise} or \code{sigma} specifies SD
+instead. Alternatively \code{snr} sets Gaussian variance to
+\eqn{\beta^T\Sigma\beta/\mathrm{snr}} for identity-link Gaussian models
+(defaults 10 for ABESS, 1 for bestsubset). SNR is not applied to non-Gaussian
+outcomes. \code{theta} is positive
+NB shape (default 10, or the supplied fixed family shape); conflicting fixed
+family and \code{theta} values are rejected. NB models have
+\eqn{\mathrm{Var}(Y)=\mu+\mu^2/\theta}. \code{trials} (default one) sets binomial
+or multinomial totals; \code{trialsval} optionally supplies validation totals.
+Binomial responses are proportions with trial totals
+returned as \code{weights}; multinomial responses are count matrices, or factors
+with \code{response="factor"} and one trial. Multinomial coefficients use CLR.
+Quasipoisson uses Poisson/NB draws matching \eqn{\phi\mu}; quasibinomial uses
+binomial/beta-binomial draws matching \eqn{\phi\mu(1-\mu)/\mathrm{trials}},
+requiring attainable overdispersion. Unrestricted \code{quasi()} is rejected
+because it does not specify a sampling distribution.
+
+Cox data have \eqn{H_0(t)=a t^b}: \code{baseline.rate=a}, \code{weibull.shape=b},
+both default one. Censoring is independently uniform on \verb{[0, uniform.max]},
+with default upper bound one. An intercept multiplies \code{a} by \code{exp(intercept)}.
+\code{y_true} is relative risk, not an event time; \code{event_time} contains sampled
+uncensored times. No Cox intercept row is added to \code{beta_true}. Invalid means
+for a requested link are rejected rather than clipped; choose a valid link,
+intercept and coefficients.
 }
 \examples{
-\dontrun{
-sim_data <- simul(method=1, n=500, p=500)
+# Blurred spike trains with a known PSF, sparse peaks and an optional baseline.
+single <- simul("deconvolution", n=200, p=200, n_nonzero=20,
+  family="poisson", intercept=1, seed=2)
+multi <- simul("deconvolution", n=100, p=120, n_nonzero=10,
+  family="gaussian", m=4, intercept=c(1, 2, 3, 4), seed=2,
+  options=list(mean_beta=100, sd_noise=2))
+dim(multi$beta_true)                  # 120 slopes plus an intercept, four channels
+if (requireNamespace("mgcv", quietly=TRUE)) {
+  nb_spikes <- simul("deconvolution", n=100, p=100, n_nonzero=10,
+    family="nb", m=4, intercept=1, options=list(theta=5))
 }
+
+# Standard normal predictors, arbitrary n/p, and signed sparse coefficients.
+regression <- simul("normal", n=150, p=30, n_nonzero=4, intercept=1.5,
+  options=list(beta_range=c(-2, 2), error_sd=.5), seed=10)
+fit <- L0glm.fit(regression$X, regression$y, family=regression$family,
+  intercept=regression$intercept, nonnegative=FALSE, parallelize=FALSE)
+L0glm.metrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
+
+# sparseglm reads family, intercept and coefficient truth from the simulation.
+comparison <- sparseglm(regression, method=c("L0glm", "lasso"), nlambda=5)
+L0glm.metrics(comparison)[c("method", "seconds", "gic", "F1_score", "MCC")]
+
+# ABESS-style correlated predictors and coefficient magnitudes.
+abess_data <- simul("abess", n=200, p=100, n_nonzero=5,
+  family="binomial", intercept=-1, options=list(cortype=2, rho=.5))
+
+# Best-subset pattern 3: decreasing effects, population SNR=2, validation data.
+subset_data <- simul("bestsubset", n=100, p=50, n_nonzero=5, intercept=2,
+  options=list(beta.type=3, rho=.5, snr=2, nval=50))
+subset_data$dispersion
+dim(subset_data$Xval)
+
+# Other standard links and special families use the same normal-design setup.
+probit_data <- simul("normal", n=100, p=20, n_nonzero=3,
+  family=binomial("probit"), intercept=-.5)
+gamma_data <- simul("normal", n=100, p=20, n_nonzero=3,
+  family=Gamma("log"), intercept=1, options=list(dispersion=.5))
+if (requireNamespace("mgcv", quietly=TRUE) && requireNamespace("survival", quietly=TRUE)) {
+  nb_data <- simul("normal", n=150, p=20, n_nonzero=3,
+    family=mgcv::nb(), intercept=1, options=list(theta=3))
+  multinomial_data <- simul("normal", n=150, p=20, n_nonzero=3,
+    family=mgcv::multinom(K=2), intercept=c(.3, 0, -.3))
+  cox_data <- simul("normal", n=150, p=20, n_nonzero=3,
+    family=mgcv::cox.ph(), intercept=log(2)) # doubles the baseline hazard
+  cox_data$intercept                    # FALSE: no estimable Cox intercept
+}
+}
+\references{
+ABESS source: \url{https://github.com/abess-team/abess/blob/master/R-package/R/generate.data.R}.
+Hastie, Tibshirani and Tibshirani, best-subset source:
+\url{https://github.com/ryantibs/best-subset/blob/master/bestsubset/R/sim.R}.
+}
+\seealso{
+\code{\link[=simulate_spike_train]{simulate_spike_train()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=sparseglm]{sparseglm()}}
 }

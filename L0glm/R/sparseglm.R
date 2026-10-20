@@ -9,7 +9,8 @@
 #' extract a comparison table with [L0glm.metrics()].
 #'
 #' @param X Design matrix without an intercept column, or a list containing
-#'   `X`, `y` and optionally `beta_true`, `family`, `weights` and `offset`.
+#'   `X`, `y` and optionally `beta_true`, `family`, `intercept`, `weights` and
+#'   `offset`. Simulation metadata from [simul()] is used unless overridden.
 #' @param y Numeric response vector or independent-channel matrix, multinomial
 #'   factor/count matrix, or `survival::Surv(time,status)` for right censoring.
 #'   Omit when `X` is a data list.
