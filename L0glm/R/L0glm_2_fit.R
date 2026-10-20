@@ -267,18 +267,20 @@
 #'   default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
 #'   (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
 #'   Ignored when screening is off.
-#' @param validation Optional list for validation-based early stopping in
-#'   single-response Gaussian identity-link models. Supply \code{X} and
-#'   \code{y} for held-out observations, with optional \code{weights} and
-#'   \code{offset} (scalars or one value per validation row). Predictors use
-#'   the original training columns; named columns are matched automatically.
-#'   Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
-#'   With automatic starts, \code{starts = c("default", "marginal")} compares
-#'   the default initializer with conditional marginal slopes. Choose either
-#'   string to use one initializer. An explicit \code{start} uses only that
-#'   supplied start, preserving its exclusions. \code{rule = "min"} chooses
-#'   minimum validation error; \code{rule = "1se"} chooses the sparsest
-#'   candidate within one standard error of the minimum.
+#' @param validation Optional list for validation-based IRLS stopping and
+#'   batch/start selection, supported for all families and links. Supply
+#'   \code{X} and \code{y} for held-out observations, using the same predictor
+#'   columns and response format as the training data. Named predictors are
+#'   matched automatically. Optional \code{weights} and \code{offset} accept
+#'   scalars, observation vectors or matrices following the training formats.
+#'   Controls are \code{patience = 3L}, \code{minit = 3L}, \code{tol = 1e-8},
+#'   and a scoring-only \code{mu_floor = 1e-8} for positive-mean families.
+#'   Gaussian identity models compare \code{starts = c("default", "marginal")},
+#'   with conditional marginal slopes as a second initializer; other models
+#'   use \code{starts = "default"}. An explicit \code{start} restricts the
+#'   comparison to that start and preserves its exclusions. \code{rule = "min"}
+#'   chooses minimum validation error; \code{rule = "1se"} chooses the sparsest
+#'   candidate within one empirical standard error of the minimum.
 #'   The default \code{NULL} fits to the usual numerical stopping criterion.
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
@@ -717,22 +719,31 @@
 #' }
 #'
 #' \subsection{Validation-based stopping}{
-#' For a single Gaussian identity-link response, \code{validation=list(X=V,y=v)}
-#' tracks mean squared prediction error on held-out observations. With weights,
-#' this is weighted Gaussian deviance divided by the validation weight sum.
+#' \code{validation=list(X=V,y=v)} tracks held-out deviance using a common
+#' stopping rule. Ordinary GLMs use \code{family$dev.resids}, averaged per
+#' weighted response; Gaussian identity therefore uses mean squared error.
+#' Multichannel models aggregate response-channel deviances. Multinomial models
+#' use joint deviance per weighted trial, and Cox models use partial deviance
+#' per weighted event with risk sets formed from the validation observations.
+#' For negative binomial models with estimated shape, the saturated reference
+#' is fixed at the Poisson saturated likelihood, so changing training theta
+#' cannot shift the reference between iterations. This gives a predictive
+#' log-likelihood score; a fixed theta uses ordinary NB deviance.
 #' After at least \code{minit} iterations, \code{patience} consecutive iterations
 #' without an improvement exceeding \code{tol * max(1, best_deviance)} stop the
 #' pass. The best checkpoint is returned, including its dispersion and penalties.
-#' Selection includes a nuisance-only checkpoint; relaxed refitting starts from
+#' A training-only nuisance fit supplies the initial checkpoint. Relaxed refitting starts from
 #' the selected checkpoint and can retain it if refitting increases validation
 #' error. SIS/ISIS score their candidate rounds on the same validation set.
 #' A vector \code{nsis}, with SIS/ISIS enabled, compares its batch sizes at
 #' the requested lambda. Each candidate starts afresh, and the nuisance-only
 #' model is included in the comparison. Automatic starts compare the default
-#' initializer and uncontracted conditional marginal slopes; these slopes use
-#' training data only. An explicit start restricts the comparison to that start.
+#' initializer and, for Gaussian identity models, uncontracted conditional
+#' marginal slopes. Starts use training data only. An explicit start restricts
+#' the comparison to that start.
 #' For \code{rule="1se"}, the standard error uses per-observation squared
-#' validation errors from the minimum-error candidate. Among eligible models,
+#' validation losses from the minimum-error candidate; Cox uses event
+#' contributions. Among eligible models,
 #' fewer nonzero coefficients take priority, followed by a smaller batch size.
 #' With \code{nsis=NULL}, each screened candidate uses the usual default batch.
 #' Coefficient updates use training data only. Validation selects the stopping
@@ -773,10 +784,11 @@
 #' \item{\code{validation}}{when requested, validation deviance and separate
 #' \code{selection} and \code{relaxed} diagnostics, including the best iteration,
 #' number of attempted iterations, stopping flag and per-iteration history.
+#' Multichannel ordinary models also retain pass/channel diagnostics.
 #' The \code{starts} table records each start/batch candidate's validation
 #' deviance, fitting time and nonzero count; \code{selected_start} and
 #' \code{selected_nsis} identify the returned model. \code{minimum},
-#' \code{se} and \code{rule} report the validation selection criterion.}
+#' \code{se}, \code{rule} and \code{scoring} describe the selection criterion.}
 #' \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 #' including recognized intercepts, in the returned coefficient matrix.}
 #' \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -897,12 +909,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     if (missing(intercept)) kind == "multinomial" else intercept,
     always.include, nonnegative, normalize, solver, method, nthreads, maxit,
     grouped, if (missing(relaxed)) grouped && (kind == "multinomial" || NCOL(y) > 1L && kind == "nb") else relaxed,
-    prior.mean, gamma, thresh, tol, control.solver, control.family))
+    prior.mean, gamma, thresh, tol, control.solver, control.family, validation))
 
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are
   # applied exactly once by L0nnpois.
-  if (openmp && nonnegative && identical(family$family, "poisson") &&
+  if (is.null(validation) && openmp && nonnegative && identical(family$family, "poisson") &&
       identical(family$link, "identity") && identical(solver, "eigen") &&
       isTRUE(method == 1L) &&
       (is.null(control.solver$method) || identical(control.solver$method, "chol")) &&
@@ -1094,15 +1106,18 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         if (extra) cs[1:extra] <- cs[1:extra] + 1
         split(vec, rep(seq_len(k), cs))
       }
-      make_jobs <- function(chunks, vars, start.mat) {
+      make_jobs <- function(chunks, vars, start.mat, validation_context) {
         lapply(chunks, function(cols) {
-          list(y          = y[, cols, drop = FALSE],
+          job <- list(y          = y[, cols, drop = FALSE],
                weights    = weights[, cols, drop = FALSE],
                prior.mean = prior.mean[vars, cols, drop = FALSE],
                dispersion = disp_list[cols],
                start      = if (is.null(start.mat) || length(start.mat) == 1L)
                  start.mat else start.mat[vars, cols, drop = FALSE],
                offset     = offset[, cols, drop = FALSE])
+          if (!is.null(validation_context)) job$validation <-
+            L0glm_subset_validation(validation_context, vars, cols)
+          job
         })
       }
       group_support_start <- function(coefs) {
@@ -1114,11 +1129,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 
       # Selection and relaxed refitting share dispatch, channel assembly and
       # restoration of excluded rows; only their penalty/thresholding differs.
-      fit_channels <- function(vars, start, lambda, hard_threshold = TRUE) {
+      fit_channels <- function(vars, start, lambda, hard_threshold = TRUE,
+                               validation_context = validation) {
         included <- match(always.include.start[always.include.start %in% vars], vars)
         if (do_parallel) {
           chunks <- make_chunks(seq_len(m), length(cl))
-          jobs <- make_jobs(chunks, vars, start)
+          jobs <- make_jobs(chunks, vars, start, validation_context)
           channels <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
             X = X[, vars, drop = FALSE], family = family, lambda = lambda,
             hard_threshold = hard_threshold, gamma = gamma, maxit = maxit,
@@ -1141,10 +1157,13 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
               lower = lower[vars], upper = upper[vars], maxit = maxit,
               thresh = thresh, solver = solver, method = method, tol = tol,
               always.include = included, control.solver = control.solver,
+              validation = L0glm_subset_validation(validation_context, vars, col),
               verbose = verbose)
           })
         }
         result <- L0glm_collect_channels(channels)
+        if (!is.null(validation_context) && do_parallel)
+          result$validation <- do.call(c, lapply(channels, `[[`, "validation"))
         if (length(vars) == p && identical(vars, seq_len(p))) {
           result$coefficients <- Matrix(result$coefficients, sparse = TRUE)
           result$lambdas <- Matrix(result$lambdas, sparse = TRUE)
@@ -1160,6 +1179,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         result
       }
 
+      if (!is.null(validation)) {
+        validation_track <- NULL
+        validation_passes <- list()
+        relaxed_validation <- NULL
+      }
       for (iter in seq_len(group.maxit)) {
         if (iter > 1L) {
           support <- group_support_start(fit$coefficients)
@@ -1176,19 +1200,36 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         convergence[[length(convergence) + 1L]] <-
           cbind(stage = "selection", pass = iter, channel = seq_len(m), fit$convergence)
         disp_list <- as_list(next_dispersion(fit$dispersion))
+        if (!is.null(validation)) {
+          value <- L0glm_validation_loss(validation, fit$coefficients)
+          validation_passes[[iter]] <- fit$validation
+          validation_track <- L0glm_validation_track(validation_track, validation, value,
+            list(beta = fit$coefficients, fit = fit), iter)
+          if (validation_track$stopped) break
+        }
       }
+      if (!is.null(validation)) fit <- validation_track$best$fit
 
       if (relaxed) {
         disp_list <- as_list(next_dispersion(fit$dispersion))
         support <- group_support_start(fit$coefficients)
         if (length(support$vars)) {
-          fit <- fit_channels(support$vars, support$start, 1e-30, hard_threshold = FALSE)
+          refit_validation <- validation
+          if (!is.null(refit_validation)) refit_validation$refit_baseline <- as.matrix(fit$coefficients)
+          fit <- fit_channels(support$vars, support$start, 1e-30, hard_threshold = FALSE,
+                              validation_context = refit_validation)
+          if (!is.null(validation)) relaxed_validation <- fit$validation
           convergence[[length(convergence) + 1L]] <-
             cbind(stage = "relaxed", pass = 1L, channel = seq_len(m), fit$convergence)
           disp_list <- as_list(fit$dispersion)
         } else if (verbose) warning("Relaxed fit skipped - all coeffs zero")
       }
       fit["convergence"] <- list(do.call(rbind, convergence))
+      if (!is.null(validation)) {
+        fit$validation <- list(selection = c(L0glm_validation_info(validation_track,
+          length(validation_passes)), list(passes = validation_passes)))
+        if (!is.null(relaxed_validation)) fit$validation$relaxed <- relaxed_validation
+      }
       fit
     }
 
@@ -1200,6 +1241,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     lambdas      <- res_multi$lambdas
     z            <- res_multi$z
     convergence  <- res_multi$convergence
+    if (!is.null(validation)) validation_info <- res_multi$validation
     
   } else {
     # =======================================================================
@@ -1468,12 +1510,15 @@ L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
 
 # Combine either individual channels or already combined worker chunks.
 L0glm_collect_channels <- function(fit) {
-  list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
+  result <- list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
        weights = do.call(cbind, lapply(fit, `[[`, "weights")),
        dispersion = as.numeric(unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE)),
        lambdas = do.call(cbind, lapply(fit, `[[`, "lambdas")),
        convergence = do.call(rbind, lapply(fit, `[[`, "convergence")),
        z = do.call(cbind, lapply(fit, `[[`, "z")))
+  if (length(fit) && !is.null(fit[[1L]]$validation))
+    result$validation <- lapply(fit, `[[`, "validation")
+  result
 }
 
 L0glmfun_chunk <- function(job, ...) {
@@ -1484,6 +1529,7 @@ L0glmfun_chunk <- function(job, ...) {
                   dispersion = job$dispersion,
                   start      = job$start,
                   offset     = job$offset,
+                  validation = job$validation,
                   ...)
 
   L0glm_collect_channels(fit)
@@ -1497,7 +1543,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
                      verbose = FALSE, maxit, tol, offset, always.include = 0,
                      control.solver = do.call("control.solver.gen",
                                               list(solver = solver, method = method)),
-                     hard_threshold = TRUE, preprocessing = NULL) {
+                     hard_threshold = TRUE, preprocessing = NULL, validation = NULL) {
   
   lapply(cols, function(col) {
     disp_col <- if (is.list(dispersion)) dispersion[[col]] else dispersion
@@ -1525,6 +1571,7 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       preprocessing = preprocessing,
       method       = method,
       verbose      = verbose,
+      validation = L0glm_subset_validation(validation, channels = col),
       control.solver = control.solver)
   })
 }

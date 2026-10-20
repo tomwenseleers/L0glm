@@ -163,13 +163,13 @@ test_that("validation rejects malformed inputs and unsupported families", {
   expect_error(run(list(y = d$v)), "contain X and y")
   expect_error(run(list(X = d$V[, 1:3], y = d$v)), "dimensions")
   expect_error(run(list(X = d$V, y = letters[1:70])), "numeric dimensions")
-  expect_error(run(list(X = d$V, y = d$v, weights = c(1, 2))), "one value per row")
+  expect_error(run(list(X = d$V, y = d$v, weights = c(1, 2))), "incompatible dimensions")
   expect_error(run(list(X = d$V, y = d$v, weights = 0)), "Invalid validation")
   expect_error(run(list(X = d$V, y = d$v, patience = 0)), "positive integers")
   expect_error(run(list(X = d$V, y = d$v, tol = "a")), "tol must")
   expect_error(run(list(X = d$V, y = d$v, unknown = 1)), "named validation")
   expect_error(L0glm.fit(d$X, abs(d$y), family = poisson(identity),
-    validation = list(X = d$V, y = d$v)), "Gaussian")
+    validation = list(X = d$V, y = d$v)), "nonnegative")
   expect_error(L0glm.fit(d$X, cbind(d$y, d$y),
-    validation = list(X = d$V, y = d$v)), "one Gaussian")
+    validation = list(X = d$V, y = d$v)), "dimensions")
 })

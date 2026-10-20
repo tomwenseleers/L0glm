@@ -168,6 +168,15 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
   converged <- FALSE
   history <- list()
   included <- data$included
+  validation <- args$validation
+  if (!is.null(validation)) {
+    initial <- if (relaxed) B else L0glm_ext_working_coefficients(data, validation$baseline)
+    initial_state <- if (relaxed) state else validation$baseline_state
+    value <- L0glm_validation_loss(validation, L0glm_ext_original_coefficients(data, initial),
+      state = initial_state)
+    validation_track <- L0glm_validation_track(NULL, validation, value,
+      list(beta = initial, allowed = allowed, state = initial_state), 0L)
+  }
   for (iteration in seq_len(maxit)) {
     D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped, gamma)
     proposal <- switch(data$kind,
@@ -224,19 +233,33 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
       history[[iteration]]$inner_iterations <- solve$iterations
       history[[iteration]]$inner_residual <- solve$residual
     }
+    if (!is.null(validation)) {
+      value <- L0glm_validation_loss(validation, L0glm_ext_original_coefficients(data, B), state = state)
+      history[[iteration]]$validation_deviance <- value
+      validation_track <- L0glm_validation_track(validation_track, validation, value,
+        list(beta = B, allowed = allowed, state = state), iteration)
+      if (validation_track$stopped) break
+    }
     if (max(slope_change, prediction_change) < tol && nuisance_change < data$control$theta.tol) {
       converged <- TRUE
       break
     }
   }
-  list(B = B, allowed = allowed, state = state, converged = converged,
+  if (!is.null(validation)) {
+    B <- validation_track$best$beta
+    allowed <- validation_track$best$allowed
+    state <- validation_track$best$state
+  }
+  result <- list(B = B, allowed = allowed, state = state, converged = converged,
        iterations = iteration, history = if (length(history)) do.call(rbind, history) else data.frame())
+  if (!is.null(validation)) result$validation <- L0glm_validation_info(validation_track, iteration)
+  result
 }
 
 L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lambda,
                            intercept, always.include, nonnegative, normalize, solver,
                            method, nthreads, maxit, grouped, relaxed, prior.mean,
-                           gamma, thresh, tol, control.solver, control.family) {
+                           gamma, thresh, tol, control.solver, control.family, validation = NULL) {
   if (!is.numeric(maxit) || length(maxit) != 1L || maxit < 1 || !is.finite(maxit) ||
       !is.numeric(tol) || length(tol) != 1L || tol <= 0 || !is.finite(tol))
     stop("maxit and tol must be finite positive scalars.", call. = FALSE)
@@ -247,7 +270,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   data <- L0glm_ext_prepare(X, y, family, weights, offset, intercept, always.include,
                             nonnegative, normalize, start, prior.mean, control.family)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))
-  args <- list(solver = solver, method = method, control.solver = control.solver)
+  args <- list(solver = solver, method = method, control.solver = control.solver, validation = validation)
   if (data$kind == "cox" && data$control$cox == "pcg" &&
       (solver != "eigen" || any(data$lower > -1e100)))
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)

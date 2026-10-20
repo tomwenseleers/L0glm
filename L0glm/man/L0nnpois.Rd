@@ -30,7 +30,8 @@ L0nnpois(
   thresh = 1e-05,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-  verbose = FALSE
+  verbose = FALSE,
+  validation = NULL
 )
 }
 \arguments{
@@ -420,6 +421,11 @@ natural ordering and \code{0L} meaning AMD ordering.}
 
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}
+
+\item{validation}{Optional held-out data and stopping controls as in
+\code{L0glm.fit()}. With validation enabled, fitting uses the shared R
+IRLS implementation; \code{ncores} then controls R outcome workers.
+The default \code{NULL} uses the native OpenMP implementation.}
 }
 \value{
 An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:

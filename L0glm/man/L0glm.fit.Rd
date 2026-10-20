@@ -500,18 +500,20 @@ default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
 (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
 Ignored when screening is off.}
 
-\item{validation}{Optional list for validation-based early stopping in
-single-response Gaussian identity-link models. Supply \code{X} and
-\code{y} for held-out observations, with optional \code{weights} and
-\code{offset} (scalars or one value per validation row). Predictors use
-the original training columns; named columns are matched automatically.
-Controls are \code{patience = 3L}, \code{minit = 3L}, and \code{tol = 1e-8}.
-With automatic starts, \code{starts = c("default", "marginal")} compares
-the default initializer with conditional marginal slopes. Choose either
-string to use one initializer. An explicit \code{start} uses only that
-supplied start, preserving its exclusions. \code{rule = "min"} chooses
-minimum validation error; \code{rule = "1se"} chooses the sparsest
-candidate within one standard error of the minimum.
+\item{validation}{Optional list for validation-based IRLS stopping and
+batch/start selection, supported for all families and links. Supply
+\code{X} and \code{y} for held-out observations, using the same predictor
+columns and response format as the training data. Named predictors are
+matched automatically. Optional \code{weights} and \code{offset} accept
+scalars, observation vectors or matrices following the training formats.
+Controls are \code{patience = 3L}, \code{minit = 3L}, \code{tol = 1e-8},
+and a scoring-only \code{mu_floor = 1e-8} for positive-mean families.
+Gaussian identity models compare \code{starts = c("default", "marginal")},
+with conditional marginal slopes as a second initializer; other models
+use \code{starts = "default"}. An explicit \code{start} restricts the
+comparison to that start and preserves its exclusions. \code{rule = "min"}
+chooses minimum validation error; \code{rule = "1se"} chooses the sparsest
+candidate within one empirical standard error of the minimum.
 The default \code{NULL} fits to the usual numerical stopping criterion.}
 }
 \value{
@@ -549,10 +551,11 @@ is used; otherwise absent (\code{NULL}).}
 \item{\code{validation}}{when requested, validation deviance and separate
 \code{selection} and \code{relaxed} diagnostics, including the best iteration,
 number of attempted iterations, stopping flag and per-iteration history.
+Multichannel ordinary models also retain pass/channel diagnostics.
 The \code{starts} table records each start/batch candidate's validation
 deviance, fitting time and nonzero count; \code{selected_start} and
 \code{selected_nsis} identify the returned model. \code{minimum},
-\code{se} and \code{rule} report the validation selection criterion.}
+\code{se}, \code{rule} and \code{scoring} describe the selection criterion.}
 \item{\code{always.include}}{indices of unpenalized mandatory coefficients,
 including recognized intercepts, in the returned coefficient matrix.}
 \item{\code{preprocessing}}{training column centers and scales, resolved
@@ -849,22 +852,31 @@ use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
 }
 
 \subsection{Validation-based stopping}{
-For a single Gaussian identity-link response, \code{validation=list(X=V,y=v)}
-tracks mean squared prediction error on held-out observations. With weights,
-this is weighted Gaussian deviance divided by the validation weight sum.
+\code{validation=list(X=V,y=v)} tracks held-out deviance using a common
+stopping rule. Ordinary GLMs use \code{family$dev.resids}, averaged per
+weighted response; Gaussian identity therefore uses mean squared error.
+Multichannel models aggregate response-channel deviances. Multinomial models
+use joint deviance per weighted trial, and Cox models use partial deviance
+per weighted event with risk sets formed from the validation observations.
+For negative binomial models with estimated shape, the saturated reference
+is fixed at the Poisson saturated likelihood, so changing training theta
+cannot shift the reference between iterations. This gives a predictive
+log-likelihood score; a fixed theta uses ordinary NB deviance.
 After at least \code{minit} iterations, \code{patience} consecutive iterations
 without an improvement exceeding \code{tol * max(1, best_deviance)} stop the
 pass. The best checkpoint is returned, including its dispersion and penalties.
-Selection includes a nuisance-only checkpoint; relaxed refitting starts from
+A training-only nuisance fit supplies the initial checkpoint. Relaxed refitting starts from
 the selected checkpoint and can retain it if refitting increases validation
 error. SIS/ISIS score their candidate rounds on the same validation set.
 A vector \code{nsis}, with SIS/ISIS enabled, compares its batch sizes at
 the requested lambda. Each candidate starts afresh, and the nuisance-only
 model is included in the comparison. Automatic starts compare the default
-initializer and uncontracted conditional marginal slopes; these slopes use
-training data only. An explicit start restricts the comparison to that start.
+initializer and, for Gaussian identity models, uncontracted conditional
+marginal slopes. Starts use training data only. An explicit start restricts
+the comparison to that start.
 For \code{rule="1se"}, the standard error uses per-observation squared
-validation errors from the minimum-error candidate. Among eligible models,
+validation losses from the minimum-error candidate; Cox uses event
+contributions. Among eligible models,
 fewer nonzero coefficients take priority, followed by a smaller batch size.
 With \code{nsis=NULL}, each screened candidate uses the usual default batch.
 Coefficient updates use training data only. Validation selects the stopping

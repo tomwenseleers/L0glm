@@ -14,10 +14,21 @@ L0glm_ext_loglik <- function(data, B, state) {
   sum(data$weights[, 1L] * (constant + rowSums(ifelse(data$y == 0, 0, data$y * probability$logp))))
 }
 
-L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, args) {
-  beta <- result$B / data$preprocessing$scale
+L0glm_ext_original_coefficients <- function(data, B) {
+  beta <- B / data$preprocessing$scale
   if (length(data$shifted_intercept)) beta[data$shifted_intercept, ] <-
     beta[data$shifted_intercept, ] - as.numeric(crossprod(data$shift, beta))
+  beta
+}
+
+L0glm_ext_working_coefficients <- function(data, beta) {
+  if (length(data$shifted_intercept)) beta[data$shifted_intercept, ] <-
+    beta[data$shifted_intercept, ] + as.numeric(crossprod(data$shift, beta))
+  beta * data$preprocessing$scale
+}
+
+L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, args) {
+  beta <- L0glm_ext_original_coefficients(data, result$B)
   rownames(beta) <- colnames(data$X)
   colnames(beta) <- if (data$kind == "multinomial") data$response$levels else
     if (data$kind == "cox") "linear_predictor" else colnames(data$y)
@@ -46,6 +57,10 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     answer$cox.cache <- data$cox.cache
     answer$initialization <- data$initialization
     answer$baseline <- L0glm_ext_cox_baseline(answer)
+  }
+  if (!is.null(args$validation)) {
+    answer$validation <- lapply(passes, `[[`, "validation")
+    answer$validation$deviance <- L0glm_validation_loss(args$validation, beta, state = result$state)
   }
   answer$metrics <- L0glm.metrics(answer, mu_floor = 0)
   answer$objective <- answer$metrics$objective

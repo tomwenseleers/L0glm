@@ -8,11 +8,12 @@
   timings, validation errors and selected batch/start; retained models share
   one original design matrix. `nsis=NULL` keeps the GIC-based ISIS batch size.
 
-* Added optional validation-based IRLS stopping for single-response Gaussian
-  identity models. Selection and relaxed passes restore their best validation
-  checkpoint, retaining its dispersion and penalties. Weighted observations,
-  offsets, coefficient constraints, starting exclusions and SIS/ISIS are
-  supported; validation diagnostics include the iteration history.
+* Optional validation-based stopping supports all ordinary GLM families and
+  links, multichannel responses, negative binomial, multinomial and Cox models.
+  Selection and relaxed passes restore their best validation checkpoint,
+  including nuisance parameters. Weighted observations, offsets, coefficient
+  constraints, starting exclusions and SIS/ISIS are supported. Diagnostics
+  report held-out deviance, iteration histories and candidate timings.
 
 * Stabilized normalized dispersion pilots near interpolation by checking the
   effective residual dimension. A weak pilot with insufficient residual

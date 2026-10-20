@@ -17,6 +17,10 @@
 #' if coefficients of either sign are required.
 #'
 #' @inheritParams L0glm.fit
+#' @param validation Optional held-out data and stopping controls as in
+#'   \code{L0glm.fit()}. With validation enabled, fitting uses the shared R
+#'   IRLS implementation; \code{ncores} then controls R outcome workers.
+#'   The default \code{NULL} uses the native OpenMP implementation.
 #' @param dispersion Poisson dispersion is fixed at 1. Accepts \code{NULL}
 #'   or 1; other finite nonzero numeric values are ignored with a warning.
 #'   Negative values cannot request dispersion estimation for this family.
@@ -77,7 +81,8 @@ L0nnpois <- function(X,
                      thresh         = 1e-5,
                      tol           = 1e-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
-                     verbose       = FALSE) {
+                     verbose       = FALSE,
+                     validation    = NULL) {
   validate_thresh(thresh)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
@@ -93,6 +98,13 @@ L0nnpois <- function(X,
             "solver and method were ignored.", call. = FALSE)
   }
   dispersion <- L0glm_dispersion(dispersion, family, NCOL(y))
+  if (!is.null(validation)) {
+    args <- mget(names(match.call())[-1L], envir = environment(), inherits = FALSE)
+    args$family <- family; args$lambda <- lambda; args$intercept <- intercept
+    args$nonnegative <- TRUE; args$openmp <- FALSE
+    args$solver <- "eigen"; args$method <- 1L
+    return(do.call(L0glm.fit, args))
+  }
   if (!is.null(nthreads) && verbose) {
     message("L0nnpois uses ncores for OpenMP outcome-level threading; nthreads is ignored.")
   }
