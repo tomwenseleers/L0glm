@@ -625,6 +625,8 @@
 #' numerical tolerance. If necessary, the coefficient step is halved until
 #' its means are valid and its objective is finite and acceptable. Predictor
 #' differences are reused, without another ridge solve or factorization.
+#' A feasible backtracking anchor leaves the requested first-step penalty
+#' weights and coefficient eligibility intact.
 #'
 #' Hard thresholding follows the smooth update as a discrete selection step.
 #' Bound clipping can also remove coefficients; these support changes require

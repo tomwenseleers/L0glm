@@ -198,6 +198,7 @@ L0glm.fit.internal = function(X,
       list(beta = initial, dispersion = initial_dispersion, lambdas = initial_penalty), 0L)
   }
   working_model <- L0glm_working_model(family)
+  step_start <- beta
   eta_previous <- as.numeric(offset + X %*% beta)
   deviance_previous <- L0glm_irls_deviance(y, eta_previous, weights, family)
   if (!is.finite(deviance_previous) && is.finite(L0glm_irls_deviance(y, offset, weights, family))) {
@@ -209,18 +210,16 @@ L0glm.fit.internal = function(X,
           as.numeric(offset + X %*% trial)
       value <- L0glm_irls_deviance(y, trial_eta, weights, family)
       if (is.finite(value)) {
-        beta <- beta_old <- trial; eta_previous <- trial_eta; deviance_previous <- value
-        if (length(prediction_old)) prediction_old <- eta_previous - as.numeric(offset)
+        step_start <- trial; eta_previous <- trial_eta; deviance_previous <- value
         break
       }
     }
     if (!is.finite(deviance_previous)) {
       # A signed design can have no feasible nonzero point along the start
       # direction, even though the offset-only model is valid.
-      beta <- beta_old <- numeric(p)
+      step_start <- numeric(p)
       eta_previous <- as.numeric(offset)
       deviance_previous <- L0glm_irls_deviance(y, eta_previous, weights, family)
-      if (length(prediction_old)) prediction_old <- numeric(nobs)
     }
   }
   step_deviance <- deviance_previous
@@ -331,7 +330,8 @@ L0glm.fit.internal = function(X,
     # but are not required to descend along the unconstrained ridge quadratic.
     reference <- if (iter > 1L && !support_changed) deviance_previous +
       sum(lambdas[penalized] * (beta_old[penalized] - prior.mean[penalized])^2) else Inf
-    step <- L0glm_step(beta, beta_old, objective, as.numeric(eta), eta_previous,
+    step <- L0glm_step(beta, if (iter == 1L) step_start else beta_old,
+      objective, as.numeric(eta), eta_previous,
       baseline = reference)
     if (step$accepted && hard_threshold) {
       point <- L0glm_threshold_point(step$beta, step$eta, X, scaling, thresh, always.include)

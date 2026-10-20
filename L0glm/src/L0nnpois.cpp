@@ -381,7 +381,12 @@ bool poisson_step(VectorXd& beta, const VectorXd& previous, VectorXd& eta,
   const double deviance = poisson_deviance(y, eta, weights);
   const double proposed_value = deviance + ridge_objective(beta, center, penalty);
   if (!check_decrease && std::isfinite(proposed_value)) { previous_deviance = deviance; return true; }
-  const VectorXd old_eta = previous_eta.size() ? previous_eta : predict(previous, false);
+  VectorXd anchor = previous;
+  VectorXd old_eta = previous_eta.size() ? previous_eta : predict(previous, false);
+  if (!std::isfinite(previous_deviance) && !std::isfinite(poisson_deviance(y, old_eta, weights))) {
+    const VectorXd null_eta = predict(VectorXd::Zero(beta.size()), false);
+    if (std::isfinite(poisson_deviance(y, null_eta, weights))) { anchor.setZero(); old_eta = null_eta; }
+  }
   const double baseline = check_decrease ? previous_deviance +
     ridge_objective(previous, center, penalty) : R_PosInf;
   const double limit = std::isfinite(baseline) ? baseline + 1e-10 * std::max(1.0, std::abs(baseline)) : R_PosInf;
@@ -390,13 +395,13 @@ bool poisson_step(VectorXd& beta, const VectorXd& previous, VectorXd& eta,
   double fraction = 1.0;
   for (int halving = 1; halving <= 50; ++halving) {
     fraction *= 0.5;
-    beta = previous + fraction * (proposal - previous);
+    beta = anchor + fraction * (proposal - anchor);
     eta = old_eta + fraction * (proposed_eta - old_eta);
     const double trial_deviance = poisson_deviance(y, eta, weights);
     const double value = trial_deviance + ridge_objective(beta, center, penalty);
     if (std::isfinite(value) && value <= limit) { previous_deviance = trial_deviance; return true; }
   }
-  beta = previous; eta = old_eta;
+  beta = anchor; eta = old_eta;
   return false;
 }
 

@@ -45,10 +45,11 @@ test_that("first and discrete-support proposals still require finite valid means
 
 test_that("an infeasible starting direction can retain the valid null model", {
   X <- matrix(c(1, 0, -1, 1, 0), ncol = 1L)
-  fit <- L0glm.fit.internal(X, c(1, 2, 3, 4, 5), start = 1,
-    family = poisson("identity"))
+  expect_warning(fit <- L0glm.fit.internal(X, c(1, 2, 3, 4, 5), start = 1,
+    family = poisson("identity")), "retaining previous")
   expect_equal(fit$coefficients, 0)
   expect_true(all(is.finite(fit$weights)))
+  expect_false(fit$convergence$converged)
 })
 
 test_that("special-family selection retains tiny terms needed for valid means", {
@@ -58,4 +59,26 @@ test_that("special-family selection retains tiny terms needed for valid means", 
     start = 1, normalize = "none", nonnegative = TRUE, lambda = .001, thresh = .5)
   expect_true(all(fitted(fit) > 0))
   expect_true(is.finite(as.numeric(logLik(fit))))
+})
+
+test_that("feasible first solves retain eligible terms from an invalid start", {
+  X <- matrix(c(1, -2, 1, 1, 1, 2), ncol = 2L, byrow = TRUE)
+  y <- c(3, 6, 7)
+  args <- list(X = X, y = y, family = poisson("identity"), start = 1,
+    normalize = "none", nonnegative = TRUE, lambda = 1e-4,
+    relaxed = FALSE, parallelize = FALSE)
+  a <- do.call(L0glm.fit, c(args, list(openmp = FALSE)))
+  b <- do.call(L0glm.fit, c(args, list(openmp = TRUE)))
+  expect_true(all(coef(a) > 0))
+  expect_true(all(fitted(a) > 0))
+  expect_equal(coef(a), coef(b), tolerance = 1e-7)
+  expect_lt(max(abs(fitted(a) - y)), .01)
+})
+
+test_that("native infeasible starts retain a finite anchor with a warning", {
+  X <- matrix(c(1, 0, -1, 1, 0), ncol = 1L)
+  expect_warning(fit <- L0nnpois(X, c(1, 2, 3, 4, 5), start = 1,
+    normalize = "none", lambda = .01, relaxed = FALSE, parallelize = FALSE))
+  expect_equal(as.numeric(coef(fit)), 0)
+  expect_false(fit$convergence$converged)
 })

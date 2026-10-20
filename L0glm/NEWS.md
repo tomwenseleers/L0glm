@@ -28,6 +28,8 @@
   finite-mean guard. Trial steps reuse predictors without another ridge solve.
   Working-model and deviance kernels retain stable distribution-specific
   arithmetic. Failed backtracking retains the last finite fit with a warning.
+  Feasibility anchors preserve the first-step penalties and eligible terms
+  when the supplied starting predictor is outside the mean domain.
 
 * Added OpenMP predictor-level threading to SIS/ISIS, controlled by `nthreads`
   in `sis_glm()` or `screen.nthreads` in `L0glm.fit()` (default 1). Screening

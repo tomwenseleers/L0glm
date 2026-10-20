@@ -340,9 +340,9 @@ test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solv
   # Ensure the function runs without errors
   expect_false(inherits(result1, "error"), "Function should handle start = NULL without errors.")
   
-  # Case 2: start is not NULL, nonzero depends on start
+  # Case 2: the selected signed column has no feasible nonzero Poisson mean.
   start <- c(0, 1, 0)  # Example start vector
-  result2 <- tryCatch(
+  expect_warning(result2 <- tryCatch(
     {
       L0glm.fit.internal(
         X = X,
@@ -353,7 +353,7 @@ test_that("L0glm.fit.internal evaluates nonzero correctly and handles ridge solv
       )
     },
     error = function(e) e
-  )
+  ), "retaining previous")
   
   # Ensure the function runs without errors
   expect_false(inherits(result2, "error"), "Function should handle non-NULL start without errors.")
