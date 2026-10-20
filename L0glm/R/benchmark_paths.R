@@ -282,6 +282,8 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     type.multinomial=if (grouped) "grouped" else "ungrouped", cox.ties="breslow")
   if (kind == "cox") args$intercept <- NULL
   args <- utils::modifyList(args, options, keep.null=TRUE)
+  active_refits <- relaxed && gaussian && p > n
+  if (active_refits) args$relax <- FALSE
   if (is.null(grid)) {
     ratio <- args$lambda.min.ratio
     if (is.null(ratio)) ratio <- if (n < ncol(X)) .01 else 1e-4
@@ -299,6 +301,8 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     args$lambda <- exp(seq(log(lambda_max), log(lambda_max) + log(ratio), length.out=data$nlambda))
   }
   fit <- do.call(glmnet::glmnet, args)
+  if (active_refits)
+    return(L0glm_benchmark_align(L0glm_benchmark_relax_gaussian(fit, args, p), grid))
   if (relaxed) fit <- fit$relaxed
   if (is.null(fit)) stop("Backend did not return a relaxed path.", call.=FALSE)
   coefficients <- lapply(seq_along(fit$lambda), function(j) {
@@ -309,4 +313,44 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     add_intercept(B, a)
   })
   L0glm_benchmark_align(list(grid=fit$lambda, coefficients=coefficients), grid)
+}
+
+# Refit selected columns so wide Gaussian relaxation never copies the entire
+# design for each support. The likelihood, constraints and glmnet solver agree
+# with its native relaxed fit; the default support limit is n-3 there too.
+L0glm_benchmark_relax_gaussian <- function(fit, args, p) {
+  maxp <- if (is.null(args$maxp)) nrow(args$x)-3L else args$maxp
+  keep <- which(fit$df <= maxp)
+  grouped <- is.list(fit$beta)
+  m <- if (grouped) length(fit$beta) else 1L
+  cache <- new.env(parent=emptyenv())
+  coefficients <- lapply(keep, function(j) {
+    B <- if (grouped) do.call(cbind, lapply(fit$beta, function(z) z[, j, drop=FALSE])) else
+      fit$beta[, j, drop=FALSE]
+    S <- which(Matrix::rowSums(abs(B)) > 0)
+    key <- paste0("support:", paste(S, collapse=","))
+    if (exists(key, cache, inherits=FALSE)) return(get(key, cache, inherits=FALSE))
+    if (length(S)) {
+      refit <- args
+      refit$x <- args$x[, S, drop=FALSE]
+      padded <- length(S)==1L
+      if (padded) refit$x <- cbind(refit$x, 0)
+      for (field in c("penalty.factor", "lower.limits", "upper.limits")) {
+        z <- args[[field]]
+        if (length(z) == p) z <- z[S]
+        if (padded && field=="penalty.factor") z <- c(z, 1)
+        refit[[field]] <- z
+      }
+      refit$lambda <- 0; refit$relax <- FALSE; refit$exclude <- NULL
+      z <- do.call(glmnet::glmnet, refit)
+      B[,] <- 0
+      B[S, ] <- if (grouped) do.call(cbind, lapply(z$beta, function(b) b[seq_along(S), 1L])) else
+        z$beta[seq_along(S), 1L]
+      a <- if (grouped) z$a0[, 1L] else z$a0[1L]
+    } else a <- if (grouped) fit$a0[, j] else fit$a0[j]
+    answer <- if (args$intercept) rbind(a, B) else B
+    assign(key, answer, cache)
+    answer
+  })
+  list(grid=fit$lambda[keep], coefficients=coefficients)
 }
