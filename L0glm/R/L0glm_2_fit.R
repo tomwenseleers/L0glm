@@ -561,11 +561,14 @@
 #' With preprocessing enabled, mandatory terms are profiled out and column
 #' information is conditional on them, preserving changes of predictor origin
 #' when an unrestricted intercept is present.
-#' If this weak pilot estimates a variance below \code{1e-6} times the
-#' nuisance-adjusted working-response variance, one retry uses pilot ridge
-#' \code{0.1}. This guards against a nearly interpolating pilot freezing a
-#' dense fit at an extremely small dispersion. It is an initialization
-#' safeguard against interpolation during initialization.
+#' The normalized pilot also checks the effective number of residual
+#' directions, \eqn{\nu=\operatorname{tr}(R^2)^2/\operatorname{tr}(R^4)},
+#' with \eqn{R=I-H}. If \eqn{\nu<\min(10,(N-q)/5)}, where \eqn{q} is the
+#' rank of the mandatory terms, or the estimated variance is below
+#' \code{1e-6} times the nuisance-adjusted working-response variance, one
+#' retry uses pilot ridge \code{0.1}. This stabilizes initialization near
+#' interpolation. The probes reuse the same factorization, and ordinary
+#' pilots pass a trace bound without additional solves.
 #'
 #' Starting at iteration 3, when the number \eqn{k} of active coefficients is
 #' below \eqn{0.7N}, dispersion is updated toward
@@ -1393,7 +1396,8 @@ L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
   if (isTRUE(is_dev_package) && !is.null(package_path) &&
       nzchar(package_path) && file.exists(file.path(package_path, "DESCRIPTION")) &&
       requireNamespace("pkgload", quietly = TRUE)) {
-    pkgload::load_all(package_path, quiet = TRUE)
+    # The parent has already built the DLL; workers only load it.
+    pkgload::load_all(package_path, quiet = TRUE, compile = FALSE)
   } else if (!("L0glm" %in% loadedNamespaces())) {
     requireNamespace("L0glm", quietly = TRUE)
   }

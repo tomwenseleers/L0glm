@@ -2,6 +2,12 @@
 
 ## Development changes
 
+* Stabilized normalized dispersion pilots near interpolation by checking the
+  effective residual dimension. A weak pilot with insufficient residual
+  information is retried once with moderate ridge; probe solves reuse each
+  factorization. Supplied dispersions and fixed-scale families keep their
+  existing behavior. Development workers load the parent's compiled DLL.
+
 * Stabilized log-link inverse Gaussian IRLS with overflow-safe working weights
   and penalized-deviance step halving. The first working fit remains the
   initialization; later checks freeze the current dispersion and ridge weights

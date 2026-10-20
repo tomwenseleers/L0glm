@@ -128,43 +128,56 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
              matrix(sample(c(-1, 1), nrow(A) * 4L, replace = TRUE), nrow(A)))
   if (length(free)) B <- B - U %*%
     L0glm_nuisance_solve(G, Matrix::crossprod(U, B))
-  solve_factor <- function(K, rhs) {
+  make_solve <- function(K) {
     if (inherits(K, "sparseMatrix")) {
       factor <- Matrix::Cholesky(Matrix::forceSymmetric(K), LDL = FALSE)
-      Matrix::solve(factor, rhs, system = "A")
+      function(rhs) Matrix::solve(factor, rhs, system = "A")
     } else {
       factor <- chol(as.matrix(K))
-      backsolve(factor, forwardsolve(t(factor), as.matrix(rhs)))
+      function(rhs) backsolve(factor, forwardsolve(t(factor), as.matrix(rhs)))
     }
   }
+  target <- min(10, (nrow(A) - length(free)) / 5)
   pilot_scale <- function(tau) {
     if (!ncol(A)) {
-      residual <- B
+      residual_operator <- identity
     } else if (ncol(A) > nrow(A)) {
       K <- Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau)
-      solution <- solve_factor(K, cbind(B, U))
-      residual <- solution[, seq_len(ncol(B)), drop = FALSE]
-      if (length(free)) {
-        inverse_U <- solution[, ncol(B) + seq_along(free), drop = FALSE]
-        residual <- residual - inverse_U %*% L0glm_nuisance_solve(
-          Matrix::crossprod(U, inverse_U), Matrix::crossprod(U, residual))
+      solve <- make_solve(K)
+      inverse_U <- if (length(free)) solve(U) else NULL
+      residual_operator <- function(rhs) {
+        value <- solve(rhs)
+        if (length(free)) value <- value - inverse_U %*% L0glm_nuisance_solve(
+          Matrix::crossprod(U, inverse_U), Matrix::crossprod(U, value))
+        tau * value
       }
-      residual <- tau * residual
     } else {
       design <- cbind(U, A)
       K <- L0glm_pilot_gram(design, c(rep(0, length(free)), rep(tau, ncol(A))))
-      solution <- solve_factor(K, Matrix::crossprod(design, B))
-      residual <- B - design %*% solution
+      solve <- make_solve(K)
+      residual_operator <- function(rhs) rhs - design %*% solve(Matrix::crossprod(design, rhs))
     }
-    df <- mean(Matrix::colSums(residual[, -1L, drop = FALSE]^2))
-    if (is.finite(df) && df > 0) sum(residual[, 1L]^2) / df else NA_real_
+    residual <- residual_operator(B)
+    df2 <- mean(Matrix::colSums(residual[, -1L, drop = FALSE]^2))
+    # For R = I-H, nu = tr(R^2)^2 / tr(R^4) measures the number of
+    # independent residual directions. Since 0 <= R <= I, nu >= tr(R^2):
+    # ordinary pilots pass this cheap bound without any additional solves.
+    effective_df <- df2
+    if (!is.finite(df2) || df2 < target) {
+      repeated <- residual_operator(residual[, -1L, drop = FALSE])
+      df4 <- mean(Matrix::colSums(repeated^2))
+      effective_df <- if (is.finite(df4) && df4 > 0) df2^2 / df4 else 0
+    }
+    list(phi = if (is.finite(df2) && df2 > 0) sum(residual[, 1L]^2) / df2 else NA_real_,
+         effective_df = effective_df)
   }
-  phi <- pilot_scale(1e-6)
+  value <- pilot_scale(1e-6)
   null_scale <- sum(B[, 1L]^2) / max(1, nrow(A) - length(free))
-  # A virtually interpolating weak pilot can lock selection into a dense fit
-  # before Pearson scale is estimable. Retry once with a moderate pilot ridge;
-  # ordinary fits retain the weak pilot, and no main-model loop is added.
-  if (!is.finite(phi) || phi < 1e-6 * null_scale) phi <- pilot_scale(0.1)
+  # Near interpolation, a few residual directions can give a very noisy scale
+  # even when its magnitude appears plausible. Retry once with moderate ridge.
+  if (!is.finite(value$phi) || value$phi < 1e-6 * null_scale || value$effective_df < target)
+    value <- pilot_scale(0.1)
+  phi <- value$phi
   reference <- max(1, preset.lambda("gic", p = max(1, p), n = nrow(X)), na.rm = TRUE)
   if (!is.finite(phi) || phi <= 0) phi <- .Machine$double.eps
   max(.Machine$double.xmin, phi / reference)
