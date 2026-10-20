@@ -706,6 +706,7 @@
 #' constrained or global optimality.}
 #'
 #' @example examples/L0glm.fit.R
+#' @example examples/L0glm.special-families.R
 #'
 #' @author Tom Wenseleers, Laura Lanzas & Christophe Vanderaa
 #'

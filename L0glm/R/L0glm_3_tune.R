@@ -350,6 +350,7 @@
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
 #'
 #' @example examples/L0glm.tune.R
+#' @example examples/L0glm.special-families.R
 #'
 #' @export
 L0glm.tune <- function(X, y,
