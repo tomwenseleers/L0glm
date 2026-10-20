@@ -348,7 +348,9 @@
 #' penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
 #' full-data fits, not individual fold models. Also contains each fold's
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
-#' 
+#'
+#' @example examples/L0glm.tune.R
+#'
 #' @export
 L0glm.tune <- function(X, y,
                        family,
