@@ -2,6 +2,10 @@
 
 ## Development changes
 
+* A pkgdown documentation website brings together getting-started tutorials,
+  special-family examples, tuning, screening, algorithmic foundations and
+  reproducible benchmarks, with a new hex logo and searchable function reference.
+
 * `L0nnpois()` now evaluates held-out deviance and restores validation
   checkpoints directly in C++. Grouped and independent multichannel fits
   retain OpenMP, with one shared validation design. Selection and relaxed

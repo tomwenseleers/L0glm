@@ -1,0 +1,235 @@
+---
+title: "The L0glm algorithm and its foundations"
+description: "From sparse likelihoods to adaptive quadratic updates, grouped selection and scalable solvers."
+output: rmarkdown::html_document
+---
+
+## A sparse likelihood target
+
+Let \(\ell(\beta,\psi)\) denote a model's log likelihood, including known
+observation weights and offsets, and let \(\psi\) collect distribution parameters
+such as a dispersion or negative-binomial shape. For one response, L0 selection
+targets
+
+\[
+\mathcal I_\lambda(\beta,\psi)
+=-2\ell(\beta,\psi)+\lambda\sum_{j\in\mathcal P}\mathbf1\{\beta_j\ne0\},
+\]
+
+where \(\mathcal P\) contains selectable predictors. Intercepts and
+`always.include` terms are unpenalized during coefficient fitting.
+For a coefficient matrix \(B\), independent selection counts nonzero entries;
+grouped selection instead targets active predictor rows,
+
+\[
+\|B\|_{2,0}=\sum_{j\in\mathcal P}\mathbf1\{\|B_{j\cdot}\|_2>0\}.
+\]
+
+This objective favours a compact support without the persistent linear shrinkage
+of an L1 penalty. The optional relaxed refit estimates effects on the selected
+support with negligible ridge penalization.
+
+## IRLS with adaptive ridge
+
+For an ordinary GLM write \(\eta_i=x_i^\top\beta+o_i\),
+\(\mu_i=g^{-1}(\eta_i)\), variance function \(V(\mu_i)\), prior observation
+weight \(a_i\), and dispersion \(\phi\). At iteration \(t\), IRLS supplies
+
+\[
+W_{ii}^{(t)}=a_i\frac{\{d\mu_i/d\eta_i\}^2}{V(\mu_i)},\qquad
+z_i^{(t)}=\eta_i^{(t)}-o_i+
+\frac{y_i-\mu_i^{(t)}}{d\mu_i/d\eta_i}.
+\]
+
+L0glm replaces the ordinary least-squares update with weighted ridge:
+
+\[
+\beta^{(t+1)}\approx\arg\min_b
+\left\|W^{1/2}(z-Xb)\right\|_2^2+
+\sum_j\Lambda_j^{(t)}(b_j-c_j)^2,
+\qquad
+\Lambda_j^{(t)}=\frac{\lambda\phi}{4|\beta_j^{(t)}|^\gamma}.
+\]
+
+The default is \(\gamma=2\) and zero ridge center \(c_j=0\).
+Mandatory terms have \(\Lambda_j=0\). As a coefficient shrinks, its adaptive
+penalty increases rapidly. Strong coefficients receive progressively less shrinkage.
+The design remains dense or sparse through the appropriate solver path.
+
+The core iteration is:
+
+1. Initialize from training data or supplied coefficients.
+2. Update the GLM working response, observation weights and adaptive penalties.
+3. Solve on the active support, respecting the selected solver's constraints.
+4. Check the smooth step and apply the selection cutoff.
+5. Repeat until convergence, the iteration limit or validation stopping.
+6. Optionally refit the selected support and report likelihood and recovery metrics.
+
+For identity-link Poisson models, \(z=y-o\) and \(W_{ii}=a_i/\mu_i\).
+This specialization is implemented in native C++ with OpenMP across response channels.
+
+## Why reweighted quadratics promote sparsity
+
+Adaptive ridge has several equivalent optimization interpretations.
+[Abergel, Bouaziz & Nuel (2024)](https://doi.org/10.1007/s11222-024-10440-6)
+develop the variational, majorization–minimization and local-approximation views.
+Two useful identities make the connection explicit.
+
+For \(0<q<2\),
+
+\[
+|b|^q=\inf_{a>0}\left\{\frac q2ab^2+
+\left(1-\frac q2\right)a^{-q/(2-q)}\right\}.
+\]
+
+For nonzero \(b\), the minimizing auxiliary weight is
+\(a=|b|^{q-2}\). Substituting this value gives \(|b|^q\), while fixing the
+auxiliary weights produces a weighted quadratic problem. This explains the
+alternation between penalty weights and ridge solves.
+
+For the inverse-square rule, let \(s=b^2\). Concavity of the logarithm gives
+
+\[
+\log s\leq\log s_t+\frac{s-s_t}{s_t},\qquad s,s_t>0.
+\]
+
+The tangent is exact at \(s=s_t\) and has quadratic coefficient \(1/b_t^2\).
+With a positive smoothing scale \(\delta\), the corresponding tangent weight
+is \(1/(b_t^2+\delta^2)\) for \(\log(b^2+\delta^2)\).
+A normalized smooth log penalty approaches a nonzero indicator as \(\delta\)
+decreases. L0glm uses unsmoothed weights on the active support and explicitly
+removes numerically small coefficients.
+
+With fixed support, fixed distribution parameters and exact minimization of a
+tangent majorizer, the usual MM inequality gives
+
+\[
+F(b_{t+1})\leq Q(b_{t+1}\mid b_t)
+\leq Q(b_t\mid b_t)=F(b_t).
+\]
+
+IRLS supplies a local likelihood approximation. L0glm checks the frozen-penalty
+smooth step by backtracking where needed, then thresholds the accepted
+coefficients. Dispersion updates, changing supports and relaxed refits form the
+surrounding sparse-model search. The reported information criterion evaluates
+the likelihood and parameter count of the returned model.
+
+## The factor of one quarter
+
+The calibration comes from the orthogonal Gaussian analysis of
+[Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620).
+It can also be seen directly. Let \(s_j=x_j^\top x_j\), known variance
+\(\phi\), and least-squares coefficient \(\widehat b_j\). Exact L0 selection
+keeps predictor \(j\) when
+
+\[
+\frac{s_j\widehat b_j^2}{\phi}>\lambda.
+\]
+
+The inverse-square ridge iteration is
+
+\[
+b_{t+1}=\frac{s_j\widehat b_j}
+{s_j+\lambda\phi/(4b_t^2)}.
+\]
+
+A nonzero fixed point therefore satisfies
+
+\[
+b^2-\widehat b_jb+\frac{\lambda\phi}{4s_j}=0.
+\]
+
+Its discriminant is nonnegative exactly when
+\(s_j\widehat b_j^2/\phi\geq\lambda\): the same selection boundary.
+The relaxed fit removes the remaining ridge shrinkage. Orthogonality gives
+this exact threshold calculation; for general designs L0glm performs an
+efficient search for a sparse solution.
+
+## Thresholds and starts
+
+During selection the default rule removes coefficients satisfying
+
+\[
+|b_j|<\max_k|b_k|\,\texttt{thresh}
+\quad\text{or}\quad |b_j|<10^{-20},
+\qquad\texttt{thresh}=10^{-5}.
+\]
+
+Thresholding uses the solver's normalized coefficient coordinates where scaling
+is enabled. A zero coefficient has an infinite adaptive penalty and remains
+excluded from that selection pass. This shrinking active set saves substantial
+work. Final relaxed refitting applies no hard cutoff. Explicit zero starts
+restrict eligible coefficients in advance, with mandatory terms retained.
+
+Default initialization is training-based. Estimated dispersions use a permissive
+ridge pilot and bounded updates, with inexpensive random-sign probes to guard
+against an almost-interpolating pilot. Positive supplied dispersions are held
+fixed; negative values initialize further estimation at their absolute value.
+
+## Grouped and special-family updates
+
+Ordinary multichannel GLMs fit channels on a shared support and repeat
+shared-support selection passes. Row starts use a signed mean-absolute
+magnitude for signed models, avoiding cancellation across channels; nonnegative
+models use arithmetic row averages. Relaxed grouped fitting admits the eligible
+channel coefficients within each selected row.
+
+Multinomial regression uses a joint likelihood, zero-sum CLR output and joint
+quadratic updates. Grouped penalties act on class-symmetric row norms; ungrouped
+selection acts on individual CLR entries. Negative-binomial fits update the
+shape parameter alongside coefficient fitting. Cox fits use a quadratic
+approximation to the Breslow partial likelihood, with cached risk sets and
+matrix-free Hessian-vector products for larger active systems.
+
+## Scaling the linear algebra
+
+Weighted ridge has the normal equations
+
+\[
+(X^TWX+D)b=X^TWz+Dc.
+\]
+
+For wide systems with positive diagonal \(D\), the Woodbury identity gives
+
+\[
+b=c+D^{-1}X^T(W^{-1}+XD^{-1}X^T)^{-1}(z-Xc),
+\]
+
+factoring an observation-space system instead of a predictor-space system.
+Zero-weight observations are omitted and unpenalized terms are profiled out.
+Dense direct-Gram and sparse augmentation/factorization paths exploit the
+appropriate storage. Required solver-boundary conversions retain formal
+constraints for OSQP; the native Poisson backend shares designs across threads.
+
+For ultrahigh dimensions, SIS or offset-based ISIS adds another level of
+dimension reduction. Compiled screening ranks candidates, and joint refitting
+updates the support in small batches. This follows the screening ideas of
+[Fan & Lv (2008)](https://doi.org/10.1111/j.1467-9868.2008.00674.x) and
+[Fan, Samworth & Wu (2009)](https://www.jmlr.org/papers/v10/fan09a.html).
+
+## Information criteria and validation
+
+The GIC preset is \(\lambda=\log p\log\log n\), motivated by
+[Fan & Tang (2013)](https://doi.org/10.1111/rssb.12001).
+`L0glm.tune()` can instead select candidate fits by an IC or held-out deviance.
+CV returns both the minimum-deviance and one-SE full-data models.
+
+Reported `GIC()` uses the model's parameter dimension: ordinary multichannel
+models count coefficient entries, and grouped multinomial rows contribute
+\(K-1\) parameters. A row-count grouped target and a parameter-count reported
+criterion therefore have distinct complexity terms. The
+[criterion reference](../reference/model_criteria.html) records the conventions.
+Validation can also select the best IRLS checkpoint, including its fitted
+distribution parameters and penalties.
+
+## References
+
+* de Rooi, J. & Eilers, P. (2011). [Deconvolution of pulse trains with the L0 penalty](https://doi.org/10.1016/j.aca.2011.05.030). *Analytica Chimica Acta*, 705, 218–226.
+* Frommlet, F. & Nuel, G. (2016). [An adaptive ridge procedure for L0 regularization](https://doi.org/10.1371/journal.pone.0148620). *PLOS ONE*, 11, e0148620.
+* Dai, L., Chen, K., Sun, Z., Liu, Z. & Li, G. (2018). [Broken adaptive ridge regression and its asymptotic properties](https://doi.org/10.1016/j.jmva.2018.08.007). *Journal of Multivariate Analysis*, 168, 334–351.
+* Li, N., Peng, X., Kawaguchi, E., Suchard, M. A. & Li, G. (2021). [A scalable surrogate L0 sparse regression method for generalized linear models with applications to large scale data](https://doi.org/10.1016/j.jspi.2020.12.001). *Journal of Statistical Planning and Inference*, 213, 262–281.
+* Kawaguchi, E. S., Suchard, M. A., Liu, Z. & Li, G. (2020). [A surrogate L0 sparse Cox's regression with applications to sparse high-dimensional massive sample size time-to-event data](https://doi.org/10.1002/sim.8438). *Statistics in Medicine*, 39, 675–686.
+* Abergel, R., Bouaziz, O. & Nuel, G. (2024). [A review on the Adaptive-Ridge Algorithm with several extensions](https://doi.org/10.1007/s11222-024-10440-6). *Statistics and Computing*, 34, 140.
+* Fan, Y. & Tang, C. Y. (2013). [Tuning parameter selection in high dimensional penalized likelihood](https://doi.org/10.1111/rssb.12001). *JRSS B*, 75, 531–552.
+* Fan, J. & Lv, J. (2008). [Sure independence screening for ultrahigh dimensional feature space](https://doi.org/10.1111/j.1467-9868.2008.00674.x). *JRSS B*, 70, 849–911.
+* Fan, J., Samworth, R. & Wu, Y. (2009). [Ultrahigh dimensional feature selection: beyond the linear model](https://www.jmlr.org/papers/v10/fan09a.html). *JMLR*, 10, 2013–2038.

@@ -1,0 +1,7 @@
+bibentry("Manual",
+  title = "L0glm: Fast Sparse Regression for Generalized Linear Models",
+  author = c(person("Tom", "Wenseleers"), person("Laura", "Lanzas"),
+    person("Christophe", "Vanderaa")),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  url = "https://tomwenseleers.github.io/L0glm/")

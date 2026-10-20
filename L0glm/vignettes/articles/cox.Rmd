@@ -1,0 +1,66 @@
+---
+title: "Sparse Cox proportional hazards models"
+description: "Right-censored survival data with adaptive ridge and scalable risk-set calculations."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+The Cox model describes the hazard as
+
+\[
+h(t\mid x_i)=h_0(t)\exp(x_i^\top\beta).
+\]
+
+Use `survival::Surv(time, status)` with `mgcv::cox.ph()`. Status is one for
+an observed event and zero for right censoring. The baseline hazard absorbs an
+intercept, so the coefficient model has no separate intercept.
+
+## Fit sparse survival effects
+
+```{r fit}
+set.seed(23)
+X <- matrix(rnorm(400*25), 400, 25)
+event <- rexp(400, exp(.9*X[, 2]-.7*X[, 9]))
+censor <- rexp(400, .3)
+y <- survival::Surv(pmin(event, censor), event <= censor)
+
+fit <- L0glm.fit(X, y, family=mgcv::cox.ph(),
+  lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+fit
+predict(fit, X[1:5, ], type="risk")
+```
+
+Risk predictions are relative hazards `exp(X %*% beta + offset)`.
+The implementation uses the Breslow treatment of tied event times.
+
+## Tune by GIC or cross-validation
+
+```{r tuning, eval=FALSE}
+gic <- L0glm.tune(X, y, family=mgcv::cox.ph(), tune="gic",
+  nlambda=10, relaxed=TRUE, maxit=100)
+cv <- L0glm.tune(X, y, family=mgcv::cox.ph(), tune="cv",
+  nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
+```
+
+Cox CV uses partial-likelihood subtraction with the full risk sets.
+The [Cox help page](../reference/L0glm_cox.html) includes the likelihood,
+quadratic approximation and a reproducible `glmnet` comparison based on its
+[Coxnet example](https://glmnet.stanford.edu/articles/Coxnet.html).
+
+## Scaling the quadratic updates
+
+Event ordering and tied-risk-set bookkeeping are cached. Small dense active
+systems use Cholesky LLT. Larger systems use matrix-free preconditioned conjugate
+gradients: Hessian-vector products avoid constructing the full predictor Hessian.
+The initializer also has a matrix-free ridge path. Control these choices through
+`control.family`; the default selects an appropriate path automatically.
+
+Broken adaptive ridge for scalable Cox regression is developed by
+[Kawaguchi et al. (2020)](https://doi.org/10.1002/sim.8438).
+The [algorithm article](algorithm.html) explains how the package combines
+quadratic likelihood updates with adaptive penalties.

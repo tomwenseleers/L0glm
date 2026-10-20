@@ -1,0 +1,58 @@
+name: Build and deploy pkgdown
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'L0glm/**'
+      - 'benchmarks/plots/readme/**'
+      - '.github/workflows/pkgdown.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MAKEFLAGS: '-j2'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: L0glm
+          dependencies: '"hard"'
+          extra-packages: local::.
+          needs: website
+      - name: Build pkgdown site and evaluate tutorials
+        run: Rscript L0glm/pkgdown/build.R
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+  deploy:
+    if: vars.PAGES_ENABLED == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Publish site
+        id: deployment
+        uses: actions/deploy-pages@v4

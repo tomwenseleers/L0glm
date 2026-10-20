@@ -28,7 +28,14 @@ Imports: Matrix,
 LinkingTo: Rcpp, RcppEigen
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
 Description: Fits L0-norm penalized or group-L0 penalized generalized linear models
-             for best subset selection and best subset of group selection.
+             for best subset selection and best subset of groups selection.
+             Supports ordinary GLMs, negative binomial, multinomial and Cox
+             models, dense and sparse designs, multichannel responses,
+             observation weights, offsets and nonnegative constraints.
+             Combines adaptive ridge and IRLS with fast solvers, SIS/ISIS
+             screening, information criteria and cross-validation.
+URL: https://tomwenseleers.github.io/L0glm/, https://github.com/tomwenseleers/L0glm
+BugReports: https://github.com/tomwenseleers/L0glm/issues
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
@@ -36,13 +43,17 @@ Suggests:
     ALS,
     MASS,
     mgcv,
+    knitr,
     nnet,
     ncvreg,
     ordinis,
     pkgload,
+    pkgdown,
+    rmarkdown,
     SIS,
     survival,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.1
 Remotes: jaredhuling/ordinis
+Config/Needs/website: pkgdown, knitr, rmarkdown, mgcv, survival, magick

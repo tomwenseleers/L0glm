@@ -1,0 +1,99 @@
+---
+title: "Get started with L0glm"
+description: "Fit sparse models, make predictions and measure support recovery."
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get started with L0glm}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE,
+  fig.width=8, fig.height=4.5, dpi=144)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+L0glm fits sparse generalized linear models using adaptive ridge and IRLS.
+The same interface covers ordinary GLMs, negative binomial counts, joint
+multinomial classification and Cox survival models. Coefficients are returned
+on the original predictor scale in a sparse matrix.
+
+## Install
+
+```{r install, eval=FALSE}
+install.packages("remotes")
+remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")
+```
+
+The source package lives in the repository's `L0glm/` directory.
+Windows source installation requires [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
+Special families use `mgcv`; Cox responses use `survival`.
+
+## Fit a sparse model
+
+Here two predictors carry the signal among thirty candidates.
+
+```{r fit}
+set.seed(7)
+X <- matrix(rnorm(400 * 30), 400, 30)
+beta <- numeric(30)
+beta[c(1, 8)] <- c(2, -1.5)
+y <- as.numeric(X %*% beta) + rnorm(400)
+
+fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
+fit
+```
+
+`lambda="gic"` sets a penalty of `log(p) * log(log(n))` on the
+minus-twice-log-likelihood scale. `relaxed=TRUE` refits the selected support
+with negligible ridge penalization, giving the selected effects little shrinkage.
+
+```{r recovery}
+L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+```
+
+True coefficients are supplied only to calculate recovery metrics; fitting uses `X` and `y`.
+
+## Predict and inspect
+
+```{r predict}
+predict(fit, X[1:5, , drop=FALSE])
+head(as.matrix(coef(fit)), 10)
+c(logLik=as.numeric(logLik(fit)), AIC=AIC(fit), BIC=BIC(fit), GIC=GIC(fit))
+```
+
+`summary(fit)` adds a compact coefficient display and convergence diagnostics.
+`fitted(fit)` returns fitted means for the training observations.
+For new data, `predict()` applies the model in the original predictor coordinates.
+
+## Change the family
+
+```{r binomial}
+set.seed(8)
+y_binary <- rbinom(400, 1, plogis(.3 + X[, 1] - X[, 8]))
+binary <- L0glm.fit(X, y_binary, family=binomial(),
+  lambda="gic", relaxed=TRUE, maxit=100)
+predict(binary, X[1:5, ], type="response")
+```
+
+Standard family objects and links work as in `stats::glm()`. Add an intercept
+with `intercept=TRUE`; binomial and multinomial fits include one by default.
+See the [negative binomial](negative-binomial.html),
+[multinomial](multinomial.html) and [Cox](cox.html) tutorials for their response formats.
+
+## Choose a workflow
+
+| Task | Main function |
+|---|---|
+| One fast preset fit | `L0glm.fit(..., lambda="gic")` |
+| Tune a penalty using an information criterion | `L0glm.tune(..., tune="gic")` |
+| Cross-validate prediction deviance | `L0glm.tune(..., tune="cv", nfolds=5)` |
+| Compare sparse regression methods | `sparseglm()` |
+| Score predictions and support recovery | `L0glm.metrics()` |
+| Screen an ultrahigh-dimensional design | `L0glm.fit(..., screen="ISIS")` |
+
+Continue with [model selection](selection.html),
+[weights and validation stopping](controls.html), or the
+[million-predictor example](high-dimensional.html).

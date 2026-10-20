@@ -10,3 +10,5 @@ Paper
 ^[^/]+[.]tar[.]gz$
 ^src/.*[.](o|so|dll|rds)$
 ^vignettes$
+^_pkgdown[.]yml$
+^pkgdown$

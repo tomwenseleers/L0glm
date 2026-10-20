@@ -1,0 +1,107 @@
+url: https://tomwenseleers.github.io/L0glm/
+title: L0glm
+llm-docs: false
+repo:
+  url:
+    home: https://github.com/tomwenseleers/L0glm/
+    source: https://github.com/tomwenseleers/L0glm/blob/master/L0glm/
+    issue: https://github.com/tomwenseleers/L0glm/issues
+    user: https://github.com/
+destination: ../docs
+template:
+  bootstrap: 5
+  theme: github-dark
+  bslib:
+    bg: "#fcfdfd"
+    fg: "#203047"
+    primary: "#087e83"
+    secondary: "#dbe9ef"
+    base_font: "system-ui"
+    heading_font: "system-ui"
+    code_font: "ui-monospace"
+    border-radius: 0.6rem
+    navbar-bg: "#081629"
+    navbar-dark-color: "#d7edf3"
+  opengraph:
+    image:
+      src: man/figures/logo.png
+      alt: L0glm hex logo with a sparse signal and fitted curve
+home:
+  title: Fast sparse regression across generalized linear models
+  description: >
+    Fast L0 and grouped L0 regression for GLMs, negative binomial,
+    multinomial and Cox models. Sparse or dense data, SIS/ISIS screening,
+    cross-validation, native OpenMP and reproducible benchmarks in R.
+  sidebar:
+    structure: [links, citation, authors, license]
+navbar:
+  bg: dark
+  type: dark
+  structure:
+    left: [intro, tutorials, algorithm, performance, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/L0glm.html
+    tutorials:
+      text: Tutorials
+      menu:
+        - text: Model selection and cross-validation
+          href: articles/selection.html
+        - text: Weights, constraints and validation
+          href: articles/controls.html
+        - text: "---"
+        - text: Negative binomial
+          href: articles/negative-binomial.html
+        - text: Multinomial
+          href: articles/multinomial.html
+        - text: Cox proportional hazards
+          href: articles/cox.html
+        - text: "---"
+        - text: Single and multichannel deconvolution
+          href: articles/deconvolution.html
+        - text: A million predictors with SIS / ISIS
+          href: articles/high-dimensional.html
+    algorithm:
+      text: Algorithm & theory
+      href: articles/algorithm.html
+    performance:
+      text: Benchmarks
+      href: articles/performance.html
+    github:
+      icon: fab fa-github
+      href: https://github.com/tomwenseleers/L0glm
+      aria-label: Source code on GitHub
+articles:
+  - title: Get started
+    contents: [L0glm, articles/selection, articles/controls]
+  - title: Model families
+    contents: [articles/negative-binomial, articles/multinomial, articles/cox]
+  - title: Applications and scale
+    contents: [articles/deconvolution, articles/high-dimensional]
+  - title: Algorithms and evidence
+    contents: [articles/algorithm, articles/performance]
+reference:
+  - title: Fit, tune and compare sparse models
+    contents: [L0glm.fit, L0glm.tune, L0nnpois, sparseglm, L0glm.metrics]
+  - title: Predictions, summaries and information criteria
+    contents: [model_predictions, model_summary, model_criteria, information_criteria]
+  - title: Special families
+    contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
+  - title: Screening, simulations and solvers
+    contents: [sis_glm, simul, simulate_spike_train, simulate_GCMS, lmridge, control.solver.gen]
+  - title: Deconvolution and signal processing
+    contents: [L0glm_sparse_deco, L0glm_blind_deco, L0glm_deco_estkernel, convmatrix, convkernel, estimate_psf_from_std, log_conc_smooth]
+  - title: Visualization, clustering and factorization
+    contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist, L0BestRankGNMF]
+  - title: Example data
+    contents: [GCMS_data1, GCMS_data2, simulated_spectra]
+  - title: Likelihood adapters
+    contents: [logLik.glmnet, logLik.L0Learn, logLik.L0glm_extended_fit]
+footer:
+  structure:
+    left: developed_by
+    right: [built_with, source]
+  components:
+    source: "[Source & issues](https://github.com/tomwenseleers/L0glm) · GPL ≥ 2"

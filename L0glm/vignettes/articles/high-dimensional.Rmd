@@ -1,0 +1,90 @@
+---
+title: "A million predictors with SIS and ISIS"
+description: "Fast screening and sparse joint refitting for ultrahigh-dimensional data."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+Screening first reduces a huge predictor set to promising candidates; adaptive
+ridge then performs joint selection and estimation. The two stages complement
+each other particularly well when the underlying signal is sparse.
+
+## SIS or ISIS in one call
+
+`screen="SIS"` performs one marginal screen. `screen="ISIS"` repeats screening
+against the current model, incorporating its predictions as offsets, and keeps
+the best joint-fitting round. `screen="auto"` enables ISIS for ultrahigh-dimensional
+designs. `screen="none"` fits the supplied design directly.
+
+```{r quick}
+set.seed(31)
+X <- matrix(rnorm(250*5000), 250, 5000)
+beta <- numeric(5000); beta[c(5, 50, 500)] <- c(2, -1.5, 1)
+y <- as.numeric(X %*% beta) + rnorm(250)
+fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
+  screen="ISIS", screen.nthreads=2L, relaxed=TRUE)
+L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+```
+
+`nsis` controls a SIS retained set or an ISIS batch. The default ISIS batch is
+GIC-based. A small batch lets joint fitting remove false positives as the search
+progresses. Screening is implemented in Rcpp with OpenMP and supports ordinary
+GLMs, negative binomial, multinomial and Cox models.
+
+`fit$screening` records selected predictors, screening rounds, elapsed time and
+thread use. Coefficients always have the original dimensions, with zeros for
+predictors excluded by screening.
+
+## The million-variable example
+
+This simulation has 500 observations, one million standard-normal predictors
+and 60 nonzero effects of either sign. The dense design occupies about 4 GB.
+
+```{r million, eval=FALSE}
+n <- 500L
+p <- 1000000L
+set.seed(123)
+X <- matrix(rnorm(n*p), n, p)
+active <- sample.int(p, 60L)
+beta <- numeric(p)
+beta[active] <- runif(60L, -.8, .8)
+set.seed(1)
+y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
+
+fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
+  screen="ISIS", screen.nthreads=8L, nthreads=1L,
+  intercept=FALSE, relaxed=TRUE)
+L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+```
+
+The complete fitting workflow took **3.16 s** in the documented run, recovering
+40 true effects with 3 false positives. Five-fold-CV LASSO took **123.13 s**,
+recovering 17 true effects with 50 false positives. The
+[benchmark article](performance.html#one-million-predictors) reports all methods,
+including relaxed LASSO, together with their tuning settings.
+
+## GIC tuning and cross-validation
+
+```{r tuning, eval=FALSE}
+gic <- L0glm.tune(X, y, family=gaussian(), screen="ISIS",
+  screen.nthreads=8L, tune="gic", nlambda=10, relaxed=TRUE)
+cv <- L0glm.tune(X, y, family=gaussian(), screen="ISIS",
+  screen.nthreads=8L, tune="cv", nfolds=5, nlambda=10, relaxed=TRUE)
+```
+
+Each fold screens its training observations independently. Validation can also
+compare a batch grid, for example `nsis=c(2L, 5L, 10L)` with
+`validation=list(X=V, y=v)`, while retaining the default GIC batch when `nsis=NULL`.
+
+## Background
+
+SIS was introduced by [Fan & Lv (2008)](https://doi.org/10.1111/j.1467-9868.2008.00674.x).
+The general likelihood-based ISIS framework is developed by
+[Fan, Samworth & Wu (2009)](https://www.jmlr.org/papers/v10/fan09a.html).
+L0glm uses an offset-based screen followed by joint sparse refitting; exact
+controls are documented in [`sis_glm()`](../reference/sis_glm.html).

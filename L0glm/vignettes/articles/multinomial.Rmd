@@ -1,0 +1,73 @@
+---
+title: "Sparse multinomial classification"
+description: "Joint class probabilities, CLR coefficients and grouped predictor selection."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+For `K` categories the joint multinomial model uses the softmax probabilities
+
+\[
+\pi_{ik}=\frac{\exp(\eta_{ik})}{\sum_{h=1}^K\exp(\eta_{ih})}.
+\]
+
+`mgcv::multinom(K-1)` selects this family. The response can be a factor or a
+matrix of category counts. Count rows may contain multiple trials.
+
+## Fit and predict probabilities
+
+```{r fit}
+set.seed(22)
+X <- matrix(rnorm(400*20), 400, 20)
+eta <- cbind(1.2*X[, 1], -X[, 1]+X[, 5], -X[, 5])
+prob <- exp(eta-apply(eta, 1, max)); prob <- prob/rowSums(prob)
+y <- factor(vapply(seq_len(nrow(X)), function(i)
+  sample.int(3, 1, prob=prob[i, ]), integer(1)), levels=1:3)
+
+fit <- L0glm.fit(X, y, family=mgcv::multinom(K=2),
+  lambda="gic", grouped=TRUE, relaxed=TRUE, maxit=150, tol=1e-8)
+predict(fit, X[1:5, ], type="response")
+```
+
+## Interpret CLR coefficients
+
+Adding the same constant to every class predictor leaves softmax probabilities
+unchanged. L0glm reports centered-log-ratio (CLR) coefficients, with each row
+summing to zero. A positive coefficient increases that category's log probability
+relative to the geometric mean of category probabilities.
+
+```{r clr}
+coef(fit)[1:6, , drop=FALSE]
+max(abs(rowSums(as.matrix(coef(fit)))))
+```
+
+`grouped=TRUE` selects whole predictor rows using class-symmetric row norms;
+the model is fitted jointly. `grouped=FALSE` promotes sparsity in individual
+displayed CLR entries, subject to their zero-sum constraint. Grouped relaxed
+refitting admits all class coefficients in selected rows; ungrouped refitting
+retains the selected CLR-entry pattern.
+
+Explicit starting matrices are CLR-centered. Rows that are zero in every
+channel are excluded in advance, with zero rows restored in the original output
+dimensions; mandatory rows remain eligible. Scalar `start=1` centers to zero
+in CLR space and does not lock out every predictor.
+
+## Tune the grouped model
+
+```{r tuning, eval=FALSE}
+gic <- L0glm.tune(X, y, family=mgcv::multinom(2), tune="gic",
+  nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
+cv <- L0glm.tune(X, y, family=mgcv::multinom(2), tune="cv",
+  nfolds=5, nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
+predict(cv$fit_1se, X[1:5, ], type="response")
+```
+
+The [multinomial reference](../reference/L0glm_multinomial.html) gives the
+joint IRLS equations and parameter counts. See also
+[`mgcv::multinom()`](https://stat.ethz.ch/R-manual/R-devel/library/mgcv/html/multinom.html)
+for the family constructor.

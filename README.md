@@ -1,6 +1,8 @@
 <!-- README.md is generated from README.Rmd. Run Rscript benchmarks/render_readme.R. -->
 
-# L0glm: fast sparse regression for generalized linear models
+# L0glm: fast sparse regression for generalized linear models <img src="L0glm/man/figures/logo.png" align="right" width="135" alt="L0glm hex logo" />
+
+[Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) · [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
 
 `L0glm` fits **L0-penalized and grouped L0-penalized models** for best subset and
 best subset of groups selection. It combines adaptive ridge with IRLS, fast

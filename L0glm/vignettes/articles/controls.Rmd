@@ -1,0 +1,112 @@
+---
+title: "Weights, constraints and validation stopping"
+description: "Observation weights, offsets, starts, scaling, dispersion and native OpenMP checkpoints."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+## Observation weights and offsets
+
+`weights` describes observation contributions; `offset` supplies a known
+contribution on the linear-predictor scale. Ordinary multichannel models accept
+shared observation vectors or channel-specific matrices. Scalar weights and offsets
+are expanded across observations and channels.
+
+```{r weights}
+set.seed(11)
+X <- matrix(rnorm(300*12), 300, 12)
+offset <- rep(log(2), 300)
+y <- rpois(300, exp(.5 + .8*X[, 1] + offset))
+fit <- L0glm.fit(X, y, family=poisson("log"), intercept=TRUE,
+  weights=seq(.8, 1.2, length.out=300), offset=offset,
+  lambda="gic", relaxed=TRUE, maxit=100)
+predict(fit, X[1:3, ], offset=offset[1:3])
+```
+
+Multinomial models use observation weights with category-vector offsets.
+Cox uses observation weights and one predictor offset per observation.
+See the family tutorials for details.
+
+## Nonnegative coefficients and mandatory terms
+
+Set `nonnegative=TRUE` for a nonnegative fit. Intercepts are constrained too,
+except that binomial and quasibinomial intercepts remain unrestricted.
+`always.include` identifies predictor columns that remain eligible and unpenalized;
+an added intercept is also unpenalized.
+
+Eigen solvers clip negative coefficient proposals. OSQP and the constrained
+`bigGlm` option solve their supported constrained ridge subproblems directly.
+The native `L0nnpois()` backend specializes in nonnegative identity-link Poisson models.
+
+## Starts and normalization
+
+`start=NULL` uses a training-data ridge initializer. Scalar `start=1` initializes
+ones in the normalized coefficient coordinates. Other explicit coefficient
+vectors and matrices are interpreted on the original scale.
+
+Explicit zero starts exclude the corresponding coefficients; rows that are
+zero across all channels are omitted from the solves. Intercepts and
+`always.include` terms remain eligible. Returned coefficients retain the
+original dimensions. For multinomial models, starts are CLR-centered and
+all-zero starting rows are excluded.
+
+`normalize="auto"` uses RMS scaling for signed regression and preserves
+the scale of a fully nonnegative design with a constrained intercept. An
+unrestricted intercept permits implicit centering without densifying a sparse
+matrix. Other choices are `"none"`, `"l2"`, `"rms"` and `"sd"`.
+RMS scaling gives centered columns L2 norm \(\sqrt n\) when centering is used.
+All coefficients are transformed back to the original scale.
+
+## Dispersion
+
+| `dispersion` | Behaviour for families with an estimated scale |
+|---|---|
+| `NULL` | Initialize and estimate the dispersion |
+| A positive value | Keep the supplied value fixed |
+| A negative value | Start at its absolute value, then estimate it |
+
+Poisson and binomial dispersion is fixed at one. Negative-binomial shape uses
+`mgcv::nb(theta=...)`; see its [tutorial](negative-binomial.html).
+
+## Held-out early stopping
+
+Validation selects a checkpoint during fitting. It is particularly useful when
+prediction favours a point before the final sparse-selection iteration.
+Coefficient updates continue to use training observations only.
+
+```{r validation}
+sim <- simul(n=300L, p=300L, n_nonzero=20L, m=4L, seed=7L)
+set.seed(8)
+v <- matrix(rpois(length(sim$y_true), sim$y_true), 300L, 4L)
+
+validated <- L0nnpois(sim$X, sim$y, lambda="gic", ncores=2L,
+  validation=list(X=sim$X, y=v, patience=3L, minit=3L))
+validated$validation$deviance
+validated$validation$selection$history
+```
+
+Here validation counts are an independent repeat measurement of the same latent
+signals. In another application, pass a separate design and response.
+
+The native Poisson backend scores validation deviance in C++, shares the design
+across OpenMP workers and restores each channel's best checkpoint. Grouped
+selection also retains the best shared-support pass. Relaxed refitting can keep
+its initial selected coefficients when subsequent steps increase validation loss.
+
+The default controls are `patience=3L`, `minit=3L` and `tol=1e-8`.
+An improvement must exceed `tol * max(1, best_deviance)` to reset patience.
+Validation weights and offsets follow the response formats; `mu_floor=1e-8`
+is used only for positive-mean validation scoring. Diagnostics include
+`selection`, `relaxed`, iteration histories and the selected start/batch candidate.
+
+The same interface works through `L0glm.fit()` for all supported families.
+`validation$rule="1se"` selects a simpler candidate within one empirical
+standard error of the best candidate. Gaussian identity fits can compare default
+and conditional marginal starts; an explicit `start` fixes that choice.
+
+Use a separate test set to assess the model after selecting its stopping point.

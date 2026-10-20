@@ -1,0 +1,54 @@
+---
+title: "Sparse negative binomial regression"
+description: "Overdispersed counts with a fixed or estimated NB2 shape parameter."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+options(width=90, digits=3)
+```
+
+For overdispersed counts the NB2 model has
+
+\[
+E(Y_i)=\mu_i,\qquad \operatorname{Var}(Y_i)=\mu_i+\mu_i^2/\theta.
+\]
+
+The Poisson limit is approached as `theta` increases. `mgcv::nb()` estimates
+theta alongside the coefficients; `mgcv::nb(theta=2)` keeps it fixed.
+The default link is log.
+
+## Fit counts with a sparse signal
+
+```{r fit}
+set.seed(21)
+X <- matrix(rnorm(350*20), 350, 20)
+mu <- exp(.4 + X[, 2] - .8*X[, 7])
+y <- rnbinom(350, mu=mu, size=2)
+fit <- L0glm.fit(X, y, family=mgcv::nb(), intercept=TRUE,
+  lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+fit
+fit$theta
+predict(fit, X[1:5, ], type="response")
+```
+
+For multichannel counts, supply an observation-by-channel matrix. `grouped=TRUE`
+selects predictor rows jointly; `relaxed=TRUE` refits eligible coefficients in the
+selected rows. Shapes may be estimated separately by channel.
+
+## Tune by GIC or CV
+
+```{r tuning, eval=FALSE}
+gic <- L0glm.tune(X, y, family=mgcv::nb(), intercept=TRUE,
+  tune="gic", nlambda=10, relaxed=TRUE, maxit=100)
+cv <- L0glm.tune(X, y, family=mgcv::nb(), intercept=TRUE,
+  tune="cv", nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
+predict(cv$fit_1se, X[1:5, ])
+```
+
+Each training fold estimates its own theta. Observation weights and offsets
+are supported. The [negative-binomial reference](../reference/L0glm_negative_binomial.html)
+details the likelihood and shape updates. The family convention follows
+[`mgcv::nb()`](https://stat.ethz.ch/R-manual/R-devel/library/mgcv/html/negbin.html).
