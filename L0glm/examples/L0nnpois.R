@@ -58,6 +58,15 @@ system.time(fit.sc <- L0nnpois(
 
 sum(fit.sc$coefficients != 0)
 
+## Native validation stopping with an independent repeat measurement.
+small <- simul(n = 300L, p = 300L, n_nonzero = 20L, m = 4L, seed = 7L)
+set.seed(8)
+y.validation <- matrix(rpois(length(small$y_true), small$y_true), 300L, 4L)
+validated <- L0nnpois(small$X, small$y, lambda = "gic", ncores = 2L,
+  validation = list(X = small$X, y = y.validation, patience = 3L))
+validated$validation$deviance
+validated$validation$selection$history
+
 ## Compare with the general R path for a single channel:
 system.time(fit.sc <- L0glm.fit(
   X = sim.pois.mc$X,

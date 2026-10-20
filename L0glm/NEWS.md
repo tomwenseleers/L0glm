@@ -2,6 +2,12 @@
 
 ## Development changes
 
+* `L0nnpois()` now evaluates held-out deviance and restores validation
+  checkpoints directly in C++. Grouped and independent multichannel fits
+  retain OpenMP, with one shared validation design. Selection and relaxed
+  refitting use the same patience rule, support exclusions and weighted
+  scoring as `L0glm.fit()`. Candidate timing avoids forced garbage collections.
+
 * Validation can compare an `nsis` grid and default or conditional marginal
   starts, selecting minimum error or a sparse model within one SE of it.
   Explicit starts retain their zero exclusions. Candidate diagnostics include

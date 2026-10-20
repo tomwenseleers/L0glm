@@ -21,9 +21,9 @@
 #'
 #' @inheritParams L0glm.fit
 #' @param validation Optional held-out data and stopping controls as in
-#'   \code{L0glm.fit()}. With validation enabled, fitting uses the shared R
-#'   IRLS implementation; \code{ncores} then controls R outcome workers.
-#'   The default \code{NULL} uses the native OpenMP implementation.
+#'   \code{L0glm.fit()}. Held-out deviance is scored directly in C++,
+#'   retaining OpenMP threading across channels and restoring the best selection
+#'   or relaxed-refit checkpoint. Validation predictors are shared across threads.
 #' @param dispersion Poisson dispersion is fixed at 1. Accepts \code{NULL}
 #'   or 1; other finite nonzero numeric values are ignored with a warning.
 #'   Negative values cannot request dispersion estimation for this family.
@@ -101,10 +101,10 @@ L0nnpois <- function(X,
             "solver and method were ignored.", call. = FALSE)
   }
   dispersion <- L0glm_dispersion(dispersion, family, NCOL(y))
-  if (!is.null(validation)) {
+  if (!is.null(validation) && !inherits(validation, "L0glm_validation")) {
     args <- mget(names(match.call())[-1L], envir = environment(), inherits = FALSE)
     args$family <- family; args$lambda <- lambda; args$intercept <- intercept
-    args$nonnegative <- TRUE; args$openmp <- FALSE
+    args$nonnegative <- TRUE; args$openmp <- TRUE
     args$solver <- "eigen"; args$method <- 1L
     return(do.call(L0glm.fit, args))
   }
@@ -162,6 +162,7 @@ L0nnpois <- function(X,
   if (is.null(weights)) {
     weights <- matrix(1, n, m)
   } else {
+    if (length(weights) == 1L) weights <- rep(as.numeric(weights), n)
     weights <- as.matrix(weights)
     storage.mode(weights) <- "double"
     if (nrow(weights) != n) {
@@ -178,6 +179,7 @@ L0nnpois <- function(X,
   if (is.null(offset)) {
     offset <- matrix(0, n, m)
   } else {
+    if (length(offset) == 1L) offset <- rep(as.numeric(offset), n)
     offset <- as.matrix(offset)
     storage.mode(offset) <- "double"
     if (nrow(offset) != n) {
@@ -253,18 +255,22 @@ L0nnpois <- function(X,
     ncores <- 1L
   }
 
+  if (!is.null(validation)) {
+    validation$X <- if (inherits(validation$X, "sparseMatrix"))
+      methods::as(validation$X, "dgCMatrix") else as.matrix(validation$X)
+  }
   if (issparse) {
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
-      natural_ordering)
+      natural_ordering, validation)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), gamma, thresh, tol, ncores,
-      natural_ordering)
+      natural_ordering, validation)
   }
 
   coefficients <- fit$coefficients
@@ -295,7 +301,7 @@ L0nnpois <- function(X,
   }
   coefficients <- methods::as(methods::as(coefficients, "generalMatrix"), "CsparseMatrix")
 
-  structure(list(coefficients = coefficients,
+  result <- structure(list(coefficients = coefficients,
        weights      = weights.ret,
        prior.weights = weights,
        offset       = offset,
@@ -313,4 +319,9 @@ L0nnpois <- function(X,
        z            = z,
        X            = if (issparse) X else Matrix::Matrix(X, sparse = FALSE),
        y            = y), class = "L0glm_fit")
+  if (!is.null(validation)) {
+    result$validation <- fit$validation
+    result$validation$deviance <- L0glm_validation_loss(validation, coefficients)
+  }
+  result
 }

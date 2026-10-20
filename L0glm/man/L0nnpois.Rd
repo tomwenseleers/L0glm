@@ -423,9 +423,9 @@ natural ordering and \code{0L} meaning AMD ordering.}
 printed to the console.}
 
 \item{validation}{Optional held-out data and stopping controls as in
-\code{L0glm.fit()}. With validation enabled, fitting uses the shared R
-IRLS implementation; \code{ncores} then controls R outcome workers.
-The default \code{NULL} uses the native OpenMP implementation.}
+\code{L0glm.fit()}. Held-out deviance is scored directly in C++,
+retaining OpenMP threading across channels and restoring the best selection
+or relaxed-refit checkpoint. Validation predictors are shared across threads.}
 }
 \value{
 An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:
@@ -519,6 +519,15 @@ system.time(fit.sc <- L0nnpois(
 # with n <- p <- 10000 and npeaks <- 1000 0.13s on my machine
 
 sum(fit.sc$coefficients != 0)
+
+## Native validation stopping with an independent repeat measurement.
+small <- simul(n = 300L, p = 300L, n_nonzero = 20L, m = 4L, seed = 7L)
+set.seed(8)
+y.validation <- matrix(rpois(length(small$y_true), small$y_true), 300L, 4L)
+validated <- L0nnpois(small$X, small$y, lambda = "gic", ncores = 2L,
+  validation = list(X = small$X, y = y.validation, patience = 3L))
+validated$validation$deviance
+validated$validation$selection$history
 
 ## Compare with the general R path for a single channel:
 system.time(fit.sc <- L0glm.fit(

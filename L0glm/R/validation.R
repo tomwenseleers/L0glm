@@ -207,7 +207,7 @@ L0glm_validated_fit <- function(args) {
     stop('Validation rule must be "min" or "1se".', call. = FALSE)
   models <- diagnostics <- list()
   add <- function(fit_args, key, start) {
-    elapsed <- system.time(fit <- do.call(L0glm.fit, fit_args))[["elapsed"]]
+    elapsed <- system.time(fit <- do.call(L0glm.fit, fit_args), gcFirst = FALSE)[["elapsed"]]
     diagnostics[[key]] <<- data.frame(start = start,
       nsis = if (is.null(fit$screening)) NA_real_ else fit$screening$screen_size,
       validation_deviance = L0glm_validation_loss(context, coef(fit), state = list(theta = fit$theta)),

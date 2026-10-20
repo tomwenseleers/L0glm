@@ -318,6 +318,7 @@
 #' @param openmp Logical; defaults to \code{TRUE}. For nonnegative
 #'   identity-link Poisson fits with \code{solver="eigen"} and
 #'   \code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
+#'   Validation-based stopping is supported directly by this backend.
 #'   Other families, links and solvers use the general R fitting path.
 #'   Set \code{FALSE} to use that path explicitly. Solver controls requesting
 #'   another factorization or \code{rowaug=FALSE} also retain the R path.
@@ -926,7 +927,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are
   # applied exactly once by L0nnpois.
-  if (is.null(validation) && openmp && nonnegative && identical(family$family, "poisson") &&
+  if (openmp && nonnegative && identical(family$family, "poisson") &&
       identical(family$link, "identity") && identical(solver, "eigen") &&
       isTRUE(method == 1L) &&
       (is.null(control.solver$method) || identical(control.solver$method, "chol")) &&
@@ -941,7 +942,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       maxit = maxit, grouped = grouped, group.maxit = group.maxit,
       relaxed = relaxed, prior.mean = prior.mean,
       gamma = gamma, thresh = thresh, tol = tol,
-      control.solver = control.solver, verbose = verbose
+      control.solver = control.solver, verbose = verbose, validation = validation
     ))
   }
 

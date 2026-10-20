@@ -13,6 +13,7 @@
 #include <numeric>
 #include <vector>
 #include "ridge_profile.h"
+#include "poisson_validation.h"
 
 namespace {
 
@@ -31,6 +32,7 @@ struct FitResult {
   int iterations = 0;
   bool converged = false;
   bool step_failed = false;
+  PoissonValidationTrace validation;
 };
 
 inline bool finite_pos(double x) {
@@ -446,7 +448,8 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            double thresh,
                            double tol,
                            bool natural_ordering,
-                           bool hard_threshold);
+                           bool hard_threshold,
+                           const PoissonValidation* validation);
 
 template <>
 FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
@@ -466,7 +469,8 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            double thresh,
                                            double tol,
                                            bool natural_ordering,
-                                           bool hard_threshold) {
+                                           bool hard_threshold,
+                                           const PoissonValidation* validation) {
   (void) natural_ordering;
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
@@ -515,6 +519,8 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   int iterations = 0;
   bool converged = false;
   bool step_failed = false;
+  PoissonCheckpoint checkpoint;
+  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda, gamma);
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -563,6 +569,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
       scaling, vars, always_include, thresh, predict);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
+    if (validation && checkpoint.update(*validation, beta, lambdas, vars, channel, iter + 1)) break;
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
@@ -572,7 +579,13 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     if (normalize) prediction_old = prediction;
   }
 
+  if (validation) {
+    beta = checkpoint.beta; lambdas = checkpoint.lambdas;
+    const VectorXd restored = predict_dense(X, offset, vars, beta);
+    for (int i = 0; i < n; ++i) weights[i] = prior_w[i] == 0.0 ? 0.0 : prior_w[i] / restored[i];
+  }
   FitResult out;
+  out.validation = checkpoint.trace;
   out.beta = beta;
   out.weights = weights;
   out.z = z;
@@ -602,7 +615,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     double thresh,
     double tol,
     bool natural_ordering,
-    bool hard_threshold) {
+    bool hard_threshold,
+                                           const PoissonValidation* validation) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   const double eps = std::numeric_limits<double>::epsilon();
@@ -650,6 +664,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   int iterations = 0;
   bool converged = false;
   bool step_failed = false;
+  PoissonCheckpoint checkpoint;
+  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda, gamma);
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -698,6 +714,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
       scaling, vars, always_include, thresh, predict);
     for (int i = 0; i < n; ++i) mu[i] = std::max(eta[i], eps);
 
+    if (validation && checkpoint.update(*validation, beta, lambdas, vars, channel, iter + 1)) break;
     const VectorXd prediction = normalize ? (eta - offset).eval() : VectorXd();
     const double rel = coefficient_change(beta, beta_old, scaling, vars, always_include,
                                           prediction, prediction_old, prior_w, normalize);
@@ -707,7 +724,13 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     if (normalize) prediction_old = prediction;
   }
 
+  if (validation) {
+    beta = checkpoint.beta; lambdas = checkpoint.lambdas;
+    const VectorXd restored = predict_sparse(X, offset, vars, beta);
+    for (int i = 0; i < n; ++i) weights[i] = prior_w[i] == 0.0 ? 0.0 : prior_w[i] / restored[i];
+  }
   FitResult out;
+  out.validation = checkpoint.trace;
   out.beta = beta;
   out.weights = weights;
   out.z = z;
@@ -737,10 +760,17 @@ Rcpp::List fit_all_impl(const Design& X,
                         double thresh,
                         double tol,
                         int nthreads,
-                        bool natural_ordering) {
+                        bool natural_ordering,
+                        Rcpp::Nullable<Rcpp::List> validation_r) {
   const int n = X.rows();
   const int p = X.cols();
   const int m = Ymap.cols();
+  PoissonValidation validation_data(validation_r);
+  const PoissonValidation* validation = validation_data.enabled ? &validation_data : NULL;
+  PoissonValidationTrace group_trace;
+  Rcpp::List validation_passes, relaxed_validation;
+  MatrixXd best_coef, best_lambdas, best_weights, best_z;
+  double pass_loss = 0.0;
 
   MatrixXd Y = Ymap;
   MatrixXd prior_weights = Wmap;
@@ -803,6 +833,8 @@ Rcpp::List fit_all_impl(const Design& X,
     const int q = static_cast<int>(vars.size());
     std::vector<FitResult> fits(m);
     int failed_steps = 0;
+    Rcpp::List channel_validation(m);
+    pass_loss = 0.0;
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
@@ -811,7 +843,7 @@ Rcpp::List fit_all_impl(const Design& X,
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, scaling, maxit,
-        gamma, thresh, tol, natural_ordering, hard_threshold);
+        gamma, thresh, tol, natural_ordering, hard_threshold, validation);
     }
 
     coef.setZero();
@@ -827,8 +859,17 @@ Rcpp::List fit_all_impl(const Design& X,
         coef(vars[a], col) = fits[col].beta[a];
         lambdas(vars[a], col) = fits[col].lambdas[a];
       }
+      if (validation) {
+        channel_validation[col] = fits[col].validation.info(fits[col].iterations);
+        if (validation_data.mass[col] > 0.0)
+          pass_loss += validation_data.mass[col] * fits[col].validation.best;
+      }
       weights_out.col(col) = fits[col].weights;
       z_out.col(col) = fits[col].z;
+    }
+    if (validation) {
+      if (hard_threshold) validation_passes.push_back(channel_validation);
+      else relaxed_validation = channel_validation;
     }
     if (failed_steps) Rcpp::warning("No decreasing finite Poisson step in %d channel(s); retaining previous coefficients.", failed_steps);
   };
@@ -841,8 +882,19 @@ Rcpp::List fit_all_impl(const Design& X,
       start_ptr = &start_current;
     }
     fit_for_vars(lambda, start_ptr, true, iter + 1);
+    if (validation) {
+      if (group_trace.update(validation_data, pass_loss / validation_data.mass.sum(),
+                             (coef.array() != 0.0).count(), iter + 1)) {
+        best_coef = coef; best_lambdas = lambdas; best_weights = weights_out; best_z = z_out;
+      }
+      if (group_trace.stopped) break;
+    }
   }
 
+  if (validation) {
+    coef = best_coef; lambdas = best_lambdas; weights_out = best_weights; z_out = best_z;
+    validation_data.baseline = coef;
+  }
   if (relaxed) {
     group_support_start(coef, vars, start_current, always_include);
     preserve_start_mask();
@@ -852,7 +904,7 @@ Rcpp::List fit_all_impl(const Design& X,
   }
 
   Rcpp::NumericVector dispersion(m, 1.0);
-  return Rcpp::List::create(
+  Rcpp::List result = Rcpp::List::create(
     Rcpp::Named("coefficients") = coef,
     Rcpp::Named("weights") = weights_out,
     Rcpp::Named("dispersion") = dispersion,
@@ -871,6 +923,18 @@ Rcpp::List fit_all_impl(const Design& X,
       false,
 #endif
     Rcpp::Named("nthreads") = threads);
+  if (validation) {
+    Rcpp::List selection;
+    if (m == 1) selection = Rcpp::as<Rcpp::List>(validation_passes[0])[0];
+    else {
+      selection = group_trace.info(validation_passes.size(), false);
+      selection["passes"] = validation_passes;
+    }
+    Rcpp::List info = Rcpp::List::create(Rcpp::Named("selection") = selection);
+    if (relaxed_validation.size()) info["relaxed"] = m == 1 ? relaxed_validation[0] : Rcpp::wrap(relaxed_validation);
+    result["validation"] = info;
+  }
+  return result;
 }
 
 }  // namespace
@@ -894,11 +958,12 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               double thresh,
                               double tol,
                               int nthreads,
-                              bool natural_ordering) {
+                              bool natural_ordering,
+                              Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
-    thresh, tol, nthreads, natural_ordering);
+    thresh, tol, nthreads, natural_ordering, validation);
 }
 
 // [[Rcpp::export]]
@@ -920,9 +985,10 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                double thresh,
                                double tol,
                                int nthreads,
-                               bool natural_ordering) {
+                               bool natural_ordering,
+                              Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
-    thresh, tol, nthreads, natural_ordering);
+    thresh, tol, nthreads, natural_ordering, validation);
 }

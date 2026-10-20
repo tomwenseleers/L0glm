@@ -457,6 +457,7 @@ printed to the console.}
 \item{openmp}{Logical; defaults to \code{TRUE}. For nonnegative
 identity-link Poisson fits with \code{solver="eigen"} and
 \code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
+Validation-based stopping is supported directly by this backend.
 Other families, links and solvers use the general R fitting path.
 Set \code{FALSE} to use that path explicitly. Solver controls requesting
 another factorization or \code{rowaug=FALSE} also retain the R path.
