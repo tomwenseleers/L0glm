@@ -2,6 +2,14 @@
 
 ## Development changes
 
+* Stabilized log-link inverse Gaussian IRLS with overflow-safe working weights
+  and penalized-deviance step halving. The first working fit remains the
+  initialization; later checks freeze the current dispersion and ridge weights
+  and reuse predictor differences without repeating a ridge solve. Starting
+  exclusions, coefficient constraints and relaxed refits are preserved. Failed
+  backtracking retains the last finite fit with a warning and does not declare
+  convergence. Other family/link update paths are unchanged.
+
 * Added OpenMP predictor-level threading to SIS/ISIS, controlled by `nthreads`
   in `sis_glm()` or `screen.nthreads` in `L0glm.fit()` (default 1). Screening
   concurrency is independent of BLAS and outcome fitting. Workers use read-only

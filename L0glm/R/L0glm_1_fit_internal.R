@@ -180,12 +180,34 @@ L0glm.fit.internal = function(X,
     identical(control.solver$method, "chol") && !isTRUE(control.solver$rowaug) &&
     !issparse(X) && p <= n_positive && p <= 2000L
   gaussian_gram <- NULL
+  safeguard_ig <- family$family == "inverse.gaussian" && family$link == "log"
+  if (safeguard_ig) {
+    # The first working fit retains family$initialize. Its coefficients then
+    # provide consistent means for the subsequent penalized descent checks.
+    eta_ig <- as.numeric(offset + X %*% beta)
+    for (attempt in 0:60) {
+      if (is.finite(L0glm_ig_deviance(y, eta_ig, weights))) break
+      if (attempt == 60L)
+        stop("Cannot find finite inverse-Gaussian starting means; supply suitable start/offset values.",
+          call. = FALSE)
+      beta <- beta/2
+      eta_ig <- as.numeric(offset + X %*% beta)
+    }
+    beta_old <- beta
+    if (length(prediction_old)) prediction_old <- eta_ig - as.numeric(offset)
+  }
   for (iter in seq_len(maxit)) {
     iterations <- iter
     ## ---------- working response & weights ---------------------------
-    var = variance(mu) # variance in function of the mean u
+    var = if (safeguard_ig) NULL else variance(mu)
     
-    if (family$link == "identity"){ # then use simplified formula
+    if (safeguard_ig) {
+        # For this link W = w/mu. Avoid mu^2/mu^3 and (y-mu)/mu,
+        # which can overflow even when their simplified forms are finite.
+        W.ret <- as.numeric(weights)*exp(-as.numeric(eta))
+        z.ret <- as.numeric(eta-offset)-1+as.numeric(y/mu)
+        good <- which(W.ret > 0 & is.finite(W.ret) & is.finite(z.ret))
+    } else if (family$link == "identity"){ # then use simplified formula
         W.ret <- as.numeric(weights / var) # updated 1/variance (* weights) weights with identity link, where variance = 1 with Gaussian noise, variance = mu, mu^2 and mu^3 with Poisson, Gamma & inverse Gaussian noise
         good <- which(W.ret > 0 & is.finite(W.ret))
         z.ret <- y - offset # working (adjusted) response
@@ -281,11 +303,6 @@ L0glm.fit.internal = function(X,
     previous_active <- beta_old != 0L
     previous_active[always.include] <- TRUE
     support_changed <- any(nonzero != previous_active)
-    if (estimate_dispersion && hard_threshold && support_changed) {
-      if (scale_frozen) scale_restarts <- scale_restarts + 1L
-      scale_frozen <- FALSE
-      scale_stable <- 0L
-    }
     
     ## ----- update mu and eta --------------------------------------
     # A dense matrix-vector product avoids copying most columns when the
@@ -295,7 +312,7 @@ L0glm.fit.internal = function(X,
     eta <- as.matrix(offset + prediction)
     if (length(free_intercept)) {
       information <- sum(W * intercept_column[good]^2)
-      if (information > 0) {
+      if (is.finite(information) && information > 0) {
         adjustment <- sum(W * intercept_column[good] *
           (as.numeric(z) - as.numeric(eta - offset)[good])) / information
         beta[free_intercept] <- beta[free_intercept] + adjustment
@@ -304,6 +321,28 @@ L0glm.fit.internal = function(X,
     }
     mu  <- linkinv(eta)    # predictions on response scale u
     if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian")) mu <- pmax(mu, .Machine$double.eps) # to avoid log(0)
+
+    if (safeguard_ig) {
+      step <- L0glm_ig_step(beta, beta_old, eta, eta_ig, y, weights,
+        lambdas, prior.mean, X, scaling, thresh, hard_threshold, always.include,
+        check_decrease = iter > 1L)
+      beta <- step$beta
+      eta_ig <- step$eta
+      eta <- matrix(eta_ig, nobs, 1L)
+      mu <- exp(eta)
+      nonzero <- beta != 0L
+      nonzero[always.include] <- TRUE
+      support_changed <- any(nonzero != previous_active)
+      if (!step$accepted) {
+        warning("Inverse-Gaussian IRLS could not find a decreasing step; retaining previous coefficients.", call.=FALSE)
+        break
+      }
+    }
+    if (estimate_dispersion && hard_threshold && support_changed) {
+      if (scale_frozen) scale_restarts <- scale_restarts + 1L
+      scale_frozen <- FALSE
+      scale_stable <- 0L
+    }
     
     ## ----- bounded Pearson scale update, without another fit ------
     scale_estimable <- sum(nonzero) < 0.7 * n_positive
@@ -327,7 +366,7 @@ L0glm.fit.internal = function(X,
       max(1e-12, sqrt(sum(beta^2))) else
         L0glm_coefficient_change(beta, beta_old, scaling, always.include,
           as.numeric(eta) - as.numeric(offset), prediction_old, weights)
-    if (change < tol &&
+    if (change < tol && (!safeguard_ig || iter > 1L) &&
          (scale_frozen || !hard_threshold || lambda == 0 ||
           (iter >= 3L && !scale_estimable)) ) {
       converged <- TRUE

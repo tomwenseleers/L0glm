@@ -701,6 +701,29 @@ subsequent scale updates require only
 Supplying a dispersion value avoids the pilot factorization, which can be
 appreciable for very large dense designs even when the main solver is iterative.
 
+\subsection{Inverse-Gaussian numerical safeguards}{
+With the log link, the first working fit uses \code{family$initialize};
+subsequent iterations use its fitted means and backtrack coefficient updates
+when the current penalized deviance increases. During each check, dispersion
+and adaptive ridge penalties \eqn{d_j} are held fixed, with target
+\deqn{Q(\beta)=D(y,\mu(\beta))+
+  \sum_{j:d_j<\infty}d_j(\beta_j-a_j)^2,}
+where \eqn{a_j} is \code{prior.mean}. This is the frozen adaptive-ridge
+objective, not the discontinuous original L0 selection objective.
+The unit deviance is evaluated as
+\eqn{D=\sum_i w_i(y_i/\mu_i-1)^2/y_i}, and working weights as
+\eqn{W_i=w_i/\mu_i}, avoiding intermediate overflow. Step halving reuses
+coefficient and predictor differences without another ridge factorization.
+Starting-zero exclusions, nonnegativity and the selection cutoff remain in
+force; relaxed refits still apply no hard threshold. An initial working fit
+alone cannot establish convergence. If no finite decreasing step can be
+found, the previous coefficients are retained with a warning and
+\code{converged=FALSE}. Other family/link paths retain their update rules.
+High-dispersion fits can still require a larger \code{maxit}; inspect
+\code{convergence} rather than treating finite predictions as proof of
+convergence. This safeguard does not guarantee a global L0 optimum.
+}
+
 In contrast to Frommlet & Nuel (2016) we use Fisher scoring instead of
 Newton-Raphson iterations (i.e. using the expected Hessian instead of the
 observed one). If option \code{relaxed} is set to \code{TRUE} the algorithm
