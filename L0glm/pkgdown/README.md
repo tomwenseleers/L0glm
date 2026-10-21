@@ -17,7 +17,8 @@ build does not allocate that large design.
 * `vignettes/` contains tutorials and the algorithm/theory article.
 * `man/figures/logo.png` is the source hex logo.
 
-The GitHub Actions workflow builds the site on pushes to `master`. Its deployment
-job is enabled with the repository variable `PAGES_ENABLED=true` after GitHub
-Pages has been enabled for the chosen publication repository. Pages currently
-requires a public repository or a GitHub plan supporting private-repository Pages.
+The website is published at <https://tomwenseleers.github.io/L0glm/>.
+The GitHub Actions workflow builds and publishes it on pushes to `master`.
+GitHub Pages uses the Actions deployment source, with the repository variable
+`PAGES_ENABLED=true`. KaTeX renders mathematical notation in tutorials and help
+pages.

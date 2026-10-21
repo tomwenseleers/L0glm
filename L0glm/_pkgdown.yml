@@ -10,6 +10,7 @@ repo:
 destination: ../docs
 template:
   bootstrap: 5
+  math-rendering: katex
   theme: github-dark
   bslib:
     bg: "#fcfdfd"
