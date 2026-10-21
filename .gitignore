@@ -9,7 +9,6 @@ L0glm.Rcheck
 # Local Codex diagnostics, experiments, and build artifacts.
 /codex_sandbox/
 
-# Generated pkgdown output and copied website assets.
-/docs/
+# Copied website build assets.
 /L0glm/pkgdown/assets/*.png
 /L0glm/pkgdown/assets/*.ico
