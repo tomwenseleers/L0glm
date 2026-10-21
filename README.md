@@ -1,6 +1,12 @@
 <!-- README.md is generated from README.Rmd. Run Rscript benchmarks/render_readme.R. -->
 
-# L0glm: fast sparse regression for generalized linear models <img src="L0glm/man/figures/logo.png" align="right" width="135" alt="L0glm hex logo" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="L0glm/man/figures/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="L0glm/man/figures/logo-light.svg">
+  <img src="L0glm/man/figures/logo-light.svg" align="right" width="135" alt="L0glm hex logo with selected coefficient rows across response channels">
+</picture>
+
+# L0glm: fast sparse regression for generalized linear models
 
 [Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) · [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
 

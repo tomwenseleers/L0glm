@@ -8,7 +8,7 @@
 <div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
 <p class="l0-hero-note">R · Dense & sparse designs · Single & multiple responses</p>
 </div>
-<img class="l0-hero-logo" src="logo.png" alt="L0glm: a sparse signal and fitted curve inside a navy hexagon" width="240" height="240">
+<img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280">
 </div>
 
 <div class="l0-stat-grid">

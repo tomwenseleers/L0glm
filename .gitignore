@@ -12,3 +12,4 @@ L0glm.Rcheck
 # Copied website build assets.
 /L0glm/pkgdown/assets/*.png
 /L0glm/pkgdown/assets/*.ico
+/L0glm/pkgdown/assets/*.svg

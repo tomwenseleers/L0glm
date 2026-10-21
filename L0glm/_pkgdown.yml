@@ -26,7 +26,7 @@ template:
   opengraph:
     image:
       src: man/figures/logo.png
-      alt: L0glm hex logo with a sparse signal and fitted curve
+      alt: L0glm hex logo with selected coefficient rows across response channels
 home:
   strip_header: true
   title: Fast sparse regression across generalized linear models

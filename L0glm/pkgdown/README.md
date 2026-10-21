@@ -15,7 +15,8 @@ build does not allocate that large design.
 * `pkgdown/index.md` provides the home page.
 * `pkgdown/extra.css` contains the visual theme.
 * `vignettes/` contains tutorials and the algorithm/theory article.
-* `man/figures/logo.png` is the source hex logo.
+* `man/figures/` contains the primary logo and its light and dark variants.
+* `pkgdown/build_favicons.R` regenerates browser and app icons from the logo.
 
 The website is published at <https://tomwenseleers.github.io/L0glm/>.
 The GitHub Actions workflow builds and publishes it on pushes to `master`.
