@@ -124,9 +124,9 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
   data
 }
 
-L0glm_ext_penalty <- function(B, allowed, included, lambda, grouped, gamma) {
+L0glm_ext_penalty <- function(B, allowed, included, lambda, grouped) {
   denominator <- if (grouped && ncol(B) > 1L)
-    matrix(rowSums(B^2)^(gamma/2), nrow(B), ncol(B)) else abs(B)^gamma
+    matrix(rowSums(B^2), nrow(B), ncol(B)) else B^2
   D <- if (lambda == 0) matrix(0, nrow(B), ncol(B)) else lambda / (4 * denominator)
   D[!allowed] <- Inf
   D[included, ] <- 0
@@ -163,7 +163,7 @@ L0glm_ext_ridge <- function(X, y, w, D, start, lower, prior, args) {
   beta
 }
 
-L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
+L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
                            thresh, maxit, tol, args, relaxed = FALSE) {
   converged <- FALSE
   history <- list()
@@ -178,7 +178,7 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
       list(beta = initial, allowed = allowed, state = initial_state), 0L)
   }
   for (iteration in seq_len(maxit)) {
-    D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped, gamma)
+    D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped)
     proposal <- switch(data$kind,
       nb = L0glm_ext_nb_working(data, B, D, state, args),
       cox = L0glm_ext_cox_working(data, B, D, state, args),
@@ -259,7 +259,7 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped, gamma,
 L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lambda,
                            intercept, always.include, nonnegative, normalize, solver,
                            method, nthreads, maxit, grouped, relaxed, prior.mean,
-                           gamma, thresh, tol, control.solver, control.family, validation = NULL) {
+                           thresh, tol, control.solver, control.family, validation = NULL) {
   if (!is.numeric(maxit) || length(maxit) != 1L || maxit < 1 || !is.finite(maxit) ||
       !is.numeric(tol) || length(tol) != 1L || tol <= 0 || !is.finite(tol))
     stop("maxit and tol must be finite positive scalars.", call. = FALSE)
@@ -300,7 +300,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
       B <- B - rowMeans(B)
     }
   }
-  selection <- L0glm_ext_pass(data, B, data$allowed, state, lambda, grouped, gamma,
+  selection <- L0glm_ext_pass(data, B, data$allowed, state, lambda, grouped,
                               thresh, as.integer(maxit), tol, args)
   result <- selection
   passes <- list(selection = selection)
@@ -309,7 +309,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
     active <- active & data$allowed
     active[data$included, ] <- TRUE
     result <- L0glm_ext_pass(data, selection$B, active, selection$state, 0,
-                              grouped, gamma, 0, as.integer(maxit), tol, args, TRUE)
+                              grouped, 0, as.integer(maxit), tol, args, TRUE)
     passes$relaxed <- result
   }
   L0glm_ext_result(data, result, passes, lambda, grouped, relaxed, args)

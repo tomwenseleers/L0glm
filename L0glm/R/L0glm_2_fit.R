@@ -240,7 +240,7 @@
 #'   vector/matrix starts retain their input units; numeric scalar \code{start=1}
 #'   is the normalized-coordinate shorthand described above. Non-\code{"none"} modes also use
 #'   these scales for automatic initialization, thresholding and convergence.
-#'   With \code{gamma = 2}, automatic signed fits are therefore invariant to
+#'   Automatic signed fits are therefore invariant to
 #'   changes of predictor units, up to numerical precision. Sparse designs
 #'   remain sparse. The training centers and scales are returned in
 #'   \code{preprocessing}; predictions use the original columns directly.
@@ -440,26 +440,6 @@
 #'   shrunk toward their targets. For special families, the final relaxed refit
 #'   removes the ridge penalty on retained support, so these centers no longer
 #'   exert shrinkage during that refit.
-#' @param gamma Scalar exponent in the unsmoothed adaptive ridge weights,
-#'   default \code{2}, as in Frommlet & Nuel (2016). Weights use coefficients
-#'   in normalized working coordinates, denoted by \eqn{b}, relative to zero
-#'   rather than deviations from \code{prior.mean}. Ordinary single-channel
-#'   updates use \eqn{D_j=(\lambda/4)\phi/|b_j|^\gamma}, with scale dispersion
-#'   \eqn{\phi}. For special families, scale dispersion is one:
-#'   \itemize{
-#'   \item Grouped multichannel NB and grouped multinomial models use
-#'   \eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}, shared across the row.
-#'   For multinomial models, \eqn{b_j} contains all \code{K+1} CLR category
-#'   coefficients; positive and negative category effects cannot cancel in this
-#'   norm. The default \code{gamma = 2} uses the sum of squared row coefficients.
-#'   \item Ungrouped NB and multinomial models use
-#'   \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for individual channel or CLR
-#'   category entries. Cox and single-channel NB use the same scalar rule.
-#'   }
-#'   Mandatory terms have zero ridge penalty; excluded coefficients remain
-#'   excluded. This argument changes adaptive weighting, not the hard cutoff
-#'   specified by \code{thresh}. Special-family relaxed refits use
-#'   \code{lambda = 0}, so \code{gamma} imposes no shrinkage during that pass.
 #' @param thresh Finite nonnegative scalar, default \code{1e-5}, controlling
 #'   hard thresholding during selection. Cutoffs use normalized working
 #'   coefficients \eqn{b}; for selectable slopes,
@@ -531,12 +511,12 @@
 #' intercept, if included):
 #' \deqn{\Lambda = (1/4)\lambda\sigma^2 w}
 #' with adaptive penalty weights
-#' \deqn{w = 1 / |\beta|^\gamma}
+#' \deqn{w = 1 / |\beta|^2}
 #' where \eqn{\beta} are the coefficient estimates
 #' in each iteration. During selection, the relative cutoff and absolute
 #' numerical floor specified by \code{thresh} remove coefficients from later solves.
-#' The final relaxed refit does not apply this hard cutoff. As in Frommlet
-#' & Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
+#' The final relaxed refit does not apply this hard cutoff. The inverse-square
+#' weights follow Frommlet & Nuel (2016). Nonnegativity
 #' constraints are natively supported if the \code{bigGlm} or
 #' the \code{osqp} solver is used, or are obtained via clipping if the
 #' \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
@@ -546,19 +526,32 @@
 #' Dispersion (the variance for Gaussian models) can be fixed or estimated
 #' during IRLS using \code{dispersion = NULL} or a negative initial value.
 #'
+#' \subsection{Adaptive ridge weights}{
+#' The exponent is fixed at two. Weights use normalized working coefficients
+#' \eqn{b} relative to zero. Ordinary single-channel ridge diagonals are
+#' \eqn{D_j=(\lambda/4)\phi/|b_j|^2}, with scale dispersion \eqn{\phi}.
+#' Special families have scale dispersion one. Grouped multichannel NB and
+#' multinomial fits use \eqn{D_{jc}=\lambda/(4\|b_j\|_2^2)}, shared across
+#' each row. For multinomial models the norm includes all \code{K+1} CLR
+#' category coefficients. Ungrouped NB and multinomial fits use
+#' \eqn{D_{jc}=\lambda/(4|b_{jc}|^2)}; Cox and single-channel NB use the
+#' same scalar rule. Mandatory terms have zero ridge penalty and excluded
+#' coefficients remain excluded. Hard thresholding is controlled separately
+#' by \code{thresh}. Special-family relaxed refits use \code{lambda = 0}.
+#' }
+#'
 #' \subsection{Optimization interpretation}{
 #' Adaptive ridge uses successive quadratic penalties to promote sparsity.
 #' Abergel, Bouaziz & Nuel (2024) derive a variational representation for
 #' \eqn{L_q} penalties and explain their majorization--minimization interpretation.
-#' With \code{gamma=2}, zero ridge centers and fixed dispersion, inverse-square
+#' With zero ridge centers and fixed dispersion, inverse-square
 #' weights give tangent quadratic penalties for a log penalty on the current
 #' nonzero coefficients. The inequality
 #' \deqn{\log s \leq \log s_t + (s-s_t)/s_t,\qquad s,s_t>0,}
 #' with \eqn{s=b_j^2}, yields a quadratic coefficient proportional to
 #' \eqn{1/(b_j^{(t)})^2}. For grouped norms the same argument uses
-#' \eqn{s=\|b_j\|_2^2}. The exponent controls this penalty shape;
-#' \code{gamma=1} gives inverse-absolute weighting associated with an
-#' \eqn{L_1} penalty, while \code{gamma=2} gives the broken adaptive ridge rule.
+#' \eqn{s=\|b_j\|_2^2}. These inverse-square weights give the broken
+#' adaptive ridge rule.
 #' IRLS approximates the likelihood, and hard thresholding reduces subsequent
 #' systems to the active support. Information criteria evaluate the resulting
 #' models using their likelihood and support size. Exact surrogate minimization
@@ -872,7 +865,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       group.maxit   = 6,
                       relaxed       = grouped & NCOL(y)>1,
                       prior.mean    = NULL,
-                      gamma         = 2,
                       thresh         = 1e-5,
                       tol           = 1e-10,
                       control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -922,7 +914,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     if (missing(intercept)) kind == "multinomial" else intercept,
     always.include, nonnegative, normalize, solver, method, nthreads, maxit,
     grouped, if (missing(relaxed)) grouped && (kind == "multinomial" || NCOL(y) > 1L && kind == "nb") else relaxed,
-    prior.mean, gamma, thresh, tol, control.solver, control.family, validation))
+    prior.mean, thresh, tol, control.solver, control.family, validation))
 
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are
@@ -941,7 +933,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       parallelize = parallelize, ncores = ncores, nthreads = nthreads,
       maxit = maxit, grouped = grouped, group.maxit = group.maxit,
       relaxed = relaxed, prior.mean = prior.mean,
-      gamma = gamma, thresh = thresh, tol = tol,
+      thresh = thresh, tol = tol,
       control.solver = control.solver, verbose = verbose, validation = validation
     ))
   }
@@ -1150,7 +1142,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           jobs <- make_jobs(chunks, vars, start, validation_context)
           channels <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
             X = X[, vars, drop = FALSE], family = family, lambda = lambda,
-            hard_threshold = hard_threshold, gamma = gamma, maxit = maxit,
+            hard_threshold = hard_threshold, maxit = maxit,
             tol = tol, always.include = included, thresh = thresh,
             solver = solver, lower = lower[vars], upper = upper[vars],
             method = method, normalize = normalize,
@@ -1160,7 +1152,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
           channels <- lapply(seq_len(m), function(col) {
             L0glm.fit.internal(X = X[, vars, drop = FALSE],
               y = y[, col, drop = FALSE], weights = weights[, col],
-              family = family, lambda = lambda, gamma = gamma,
+              family = family, lambda = lambda,
               hard_threshold = hard_threshold, normalize = normalize,
               preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
               offset = offset[, col], prior.mean = prior.mean[vars, col],
@@ -1273,7 +1265,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                               upper       = upper,
                               lambda      = lambda,
                               prior.mean  = prior.mean,
-                              gamma       = gamma,
                               thresh       = thresh,
                               solver      = solver,
                               method      = method,
@@ -1311,7 +1302,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       lambda      = 1e-30,
                                       hard_threshold = FALSE,
                                       prior.mean  = prior.mean[vars],
-                                      gamma       = gamma,
                                       thresh       = thresh,
                                       solver      = solver,
                                       method      = method,
@@ -1548,7 +1538,7 @@ L0glmfun_chunk <- function(job, ...) {
   L0glm_collect_channels(fit)
 }
 
-L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
+L0glmfun <- function(cols, lambda, thresh, solver, method,
                      normalize,
                      X, y, family,
                      prior.mean = NULL, weights = NULL, dispersion = NULL,
@@ -1566,7 +1556,6 @@ L0glmfun <- function(cols, lambda, gamma, thresh, solver, method,
       weights      = as.vector(weights[, col]),
       family       = family,
       lambda       = lambda,
-      gamma        = gamma,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
       start        = if (is.null(start) || length(start) == 1L)
         start else start[, col, drop = FALSE],

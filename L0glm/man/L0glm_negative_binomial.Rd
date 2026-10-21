@@ -40,7 +40,7 @@ not shape or dispersion. Nonzero targets cannot reactivate coefficients excluded
 by explicit zero starts; excluded entries remain zero in the original sparse
 output dimensions. Unpenalized mandatory terms are unaffected by their targets,
 and the final relaxed refit removes the ridge penalty on retained support.
-For the default \code{gamma=2}, a selectable coefficient has
+A selectable coefficient has the inverse-square adaptive ridge diagonal
 \eqn{D_j=\lambda/(4\beta_j^2)}. Grouped selection instead shares
 \eqn{D_{jc}=\lambda/(4\sum_h\beta_{jh}^2)} across channels.
 Mandatory terms, including intercepts, have zero penalty.

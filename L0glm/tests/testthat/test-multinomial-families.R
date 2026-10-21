@@ -26,7 +26,7 @@ test_that("coupled multinomial IRLS handles count matrices and agrees with multi
 
 test_that("multinomial grouped penalties do not cancel opposite signs", {
   B <- rbind(c(1, -1), c(.5, .5), c(0, 0))
-  D <- L0glm_ext_penalty(B, matrix(TRUE, 3, 2), integer(), 8, TRUE, 2)
+  D <- L0glm_ext_penalty(B, matrix(TRUE, 3, 2), integer(), 8, TRUE)
   expect_equal(D[1, ], c(1, 1))
   expect_equal(D[2, ], c(4, 4))
   expect_true(all(is.infinite(D[3, ])))

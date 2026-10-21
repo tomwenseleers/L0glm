@@ -163,7 +163,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, # historically LSCG was twice as fast as Cholesky LLT here
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 
@@ -370,7 +369,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 
@@ -580,7 +578,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 
@@ -781,7 +778,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 
@@ -983,7 +979,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # coef(glm_invgaus), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)),
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 

@@ -110,8 +110,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y,
                                           verbose = T,
                                           thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 20,
-                                          tol = 1E-5,
-                                          gamma = gamma 
+                                          tol = 1E-5
 )) 
 # glmnet: 6s with n=500 and p=50000, but runs out of memory with n=500 & p=1000000; biglasso or picasso would be good alternative
 # eigen: 4.4s, 4.0s, 3.3s, 3.1, 4.4s, 4.5s, 3.4s, 3.8s for solvers 1 to 8  with n=500 & p=500000
@@ -173,8 +172,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          relaxed = FALSE,
                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                          maxit = 20,
-                         tol = 1E-5,
-                         gamma = gamma
+                         tol = 1E-5
   )$coefficients/scaling
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -577,7 +575,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, # historically LSCG was twice as fast as Cholesky LLT here
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   )$coefficients 

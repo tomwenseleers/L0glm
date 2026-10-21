@@ -80,7 +80,6 @@ L0nnpois <- function(X,
                      group.maxit   = 6,
                      relaxed       = grouped & NCOL(y) > 1,
                      prior.mean    = NULL,
-                     gamma         = 2,
                      thresh         = 1e-5,
                      tol           = 1e-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -267,13 +266,13 @@ L0nnpois <- function(X,
     fit <- L0nnpois_sparse_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), gamma, thresh, tol, ncores,
+      as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation)
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
-      as.integer(maxit), gamma, thresh, tol, ncores,
+      as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation)
   }
 

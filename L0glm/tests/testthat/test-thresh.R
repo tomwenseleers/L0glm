@@ -80,7 +80,7 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
 
 test_that("R and native penalties are unsmoothed and cutoffs respect coefficient signs", {
   args <- list(X=diag(3),y=c(2,3,4),family=poisson(identity),start=c(1,2,3),lambda=4,
-               thresh=0.25,gamma=2,maxit=1,
+               thresh=0.25,maxit=1,
                grouped=FALSE,relaxed=FALSE,parallelize=FALSE)
   native <- do.call(L0nnpois,args)
   general <- do.call(L0glm.fit,c(args,list(nonnegative=TRUE,openmp=FALSE)))

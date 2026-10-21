@@ -53,7 +53,6 @@ system.time(L0glm.out_preset <- L0glm.fit(X, y,
                                start = rep(50, ncol(sim$X)), # NULL, # rep(50, ncol(sim$X)), # 10-100 works best, coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp & glmnet better than eigen for very small lambda values)
                                maxit = 200,
-                               gamma = 2,
                                method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                thresh = 1E-5
 )) # 0.02s for n=p=100, 0.04s for n=p=500, 0.25s for n=p=10000
@@ -111,7 +110,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 1L,
                              # maxit = 200,
-                             # gamma = 2, 
                              thresh = 1E-5,
                              relaxed = FALSE
                              ) 
@@ -419,7 +417,6 @@ system.time(fit_MCP <- ordinis(X, y,
                            # tol = 1E-100,
                            # maxit.irls = 1000,
                            # tol.irls = 1E-100,
-                           # gamma = 1.1, # ifelse(penalty == "scad", 3.7, 1.4),
                            alpha = 1))  # ie no elastic net
 # 12.25s for n=p=500, XXs for n=p=10000
 plot(fit_MCP)
@@ -725,7 +722,6 @@ gamma <- 2
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
   
-  # gamma = 2
   start = L0glm.out_preset_coefs # *scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
   # start = warmstart*start + (1-warmstart)*rep(sd(start)^(1/gamma), ncol(X))
   

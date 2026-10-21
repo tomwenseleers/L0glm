@@ -81,12 +81,12 @@ struct PoissonCheckpoint {
   Eigen::VectorXd beta, lambdas;
 
   void initialize(const PoissonValidation& v, const std::vector<int>& vars,
-                  const std::vector<char>& mandatory, int channel, double lambda, double gamma) {
+                  const std::vector<char>& mandatory, int channel, double lambda) {
     beta.resize(vars.size()); lambdas.resize(vars.size());
     for (int j = 0; j < beta.size(); ++j) {
       beta[j] = v.baseline(vars[j], channel);
       lambdas[j] = mandatory[vars[j]] ? 0.0 : beta[j] == 0.0 ?
-        std::numeric_limits<double>::infinity() : lambda / 4.0 / std::pow(std::abs(beta[j]), gamma);
+        std::numeric_limits<double>::infinity() : lambda / 4.0 / (beta[j] * beta[j]);
     }
     trace.update(v, v.loss(beta, vars, channel), (beta.array() != 0.0).count(), 0);
   }

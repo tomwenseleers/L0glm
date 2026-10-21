@@ -444,7 +444,6 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            int normalize,
                            const VectorXd& scaling_full,
                            int maxit,
-                           double gamma,
                            double thresh,
                            double tol,
                            bool natural_ordering,
@@ -465,7 +464,6 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            int normalize,
                                            const VectorXd& scaling_full,
                                            int maxit,
-                                           double gamma,
                                            double thresh,
                                            double tol,
                                            bool natural_ordering,
@@ -520,7 +518,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   bool converged = false;
   bool step_failed = false;
   PoissonCheckpoint checkpoint;
-  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda, gamma);
+  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda);
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -532,7 +530,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
 
     for (int j = 0; j < q; ++j) {
       lambdas[j] = always_include[vars[j]] ? 0.0 : (beta[j] == 0.0) ? R_PosInf :
-        (lambda / 4.0) / std::pow(std::abs(beta[j]), gamma);
+        (lambda / 4.0) / (beta[j] * beta[j]);
     }
 
     std::vector<int> active = active_positions(beta, vars, always_include);
@@ -611,7 +609,6 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     int normalize,
     const VectorXd& scaling_full,
     int maxit,
-    double gamma,
     double thresh,
     double tol,
     bool natural_ordering,
@@ -665,7 +662,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   bool converged = false;
   bool step_failed = false;
   PoissonCheckpoint checkpoint;
-  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda, gamma);
+  if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda);
 
   for (int iter = 0; iter < maxit; ++iter) {
     iterations = iter + 1;
@@ -677,7 +674,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
     for (int j = 0; j < q; ++j) {
       lambdas[j] = always_include[vars[j]] ? 0.0 : (beta[j] == 0.0) ? R_PosInf :
-        (lambda / 4.0) / std::pow(std::abs(beta[j]), gamma);
+        (lambda / 4.0) / (beta[j] * beta[j]);
     }
 
     std::vector<int> active = active_positions(beta, vars, always_include);
@@ -756,7 +753,6 @@ Rcpp::List fit_all_impl(const Design& X,
                         bool relaxed,
                         int group_maxit,
                         int maxit,
-                        double gamma,
                         double thresh,
                         double tol,
                         int nthreads,
@@ -843,7 +839,7 @@ Rcpp::List fit_all_impl(const Design& X,
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, scaling, maxit,
-        gamma, thresh, tol, natural_ordering, hard_threshold, validation);
+        thresh, tol, natural_ordering, hard_threshold, validation);
     }
 
     coef.setZero();
@@ -954,7 +950,6 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               bool relaxed,
                               int group_maxit,
                               int maxit,
-                              double gamma,
                               double thresh,
                               double tol,
                               int nthreads,
@@ -962,7 +957,7 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
+    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
     thresh, tol, nthreads, natural_ordering, validation);
 }
 
@@ -981,7 +976,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                bool relaxed,
                                int group_maxit,
                                int maxit,
-                               double gamma,
                                double thresh,
                                double tol,
                                int nthreads,
@@ -989,6 +983,6 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                               Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
-    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, gamma,
+    lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
     thresh, tol, nthreads, natural_ordering, validation);
 }

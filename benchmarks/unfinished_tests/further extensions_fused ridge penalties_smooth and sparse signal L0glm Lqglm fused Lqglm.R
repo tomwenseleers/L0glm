@@ -185,7 +185,6 @@ system.time(L0glmfit <- L0glm.fit( X=as(Matrix(X, sparse=T), "generalMatrix"), y
   solver = "glmnet", # note: solver osqp & glmnet recommended here - eigen often fails
   maxit = 1, # just doing single iteration here & using 4x higher lambda, doing more iters made solution worse
   dispersion = 1, # use dispersion=1 if poisson weights are provided
-  gamma = 2,
   # tol = 0.1,
   method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
   thresh = 1
@@ -332,7 +331,6 @@ system.time(L0glmfit_fused <- L0glm.fit(# X=X, y=y,
                                           solver = "eigen", # note: solver osqp & glmnet recommended here - eigen often fails
                                           maxit = 20, # 
                                           dispersion = 1, # use dispersion=1 if poisson weights are provided
-                                          gamma = 2,
                                           # tol = 0.1,
                                           method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
                                           thresh = 1
@@ -423,7 +421,6 @@ system.time(L0glmfit_fused_ad <- L0glm.fit(# X=X, y=y,
   solver = "eigen", # note: solver osqp & glmnet recommended here - eigen often fails
   maxit = 20, # 
   dispersion = 1, # use dispersion=1 if poisson weights are provided
-  gamma = 2,
   # tol = 0.1,
   method = 1L, # 0.27s for n=p=10000 with Eigen Cholesky solvers, 0.61s with CG, 1.27s with LSCG, 219s with QR (historical timings), 4.8s for n=p=10000 with osqp solver, 2s for n=p=10000 with glmnet solver
   thresh = 1

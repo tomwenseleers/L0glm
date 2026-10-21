@@ -66,10 +66,10 @@ test_that("explicit fitting controls and all starting-zero exclusions survive sc
   prior <- matrix(0,41,2);prior[5,] <- 100
   fit <- L0glm.fit(X,Y,screen="ISIS",nsis=15,screen.maxit=2,intercept=TRUE,
     start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
-    lambda=3,relaxed=FALSE,normalize="none",gamma=2.1,maxit=5,tol=1e-6)
+    lambda=3,relaxed=FALSE,normalize="none",maxit=5,tol=1e-6)
   expected <- sis_glm(X,Y,nsis=15,iterative=TRUE,niter=2,return_stats=FALSE,intercept=TRUE,
     start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
-    lambda=3,relaxed=FALSE,normalize="none",gamma=2.1,maxit=5,tol=1e-6)
+    lambda=3,relaxed=FALSE,normalize="none",maxit=5,tol=1e-6)
   expect_equal(coef(fit),coef(expected$fit),tolerance=1e-10)
   expect_true(all(coef(fit)[5,]==0));expect_equal(coef(fit)[6,1],0)
   expect_false(4L%in%fit$screening$candidates);expect_true(7L%in%fit$screening$candidates)

@@ -179,8 +179,7 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
                                   # dispersion = disp,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                   method = 1L, # Cholesky
-                                  thresh = 1E-5,
-                                  gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
+                                  thresh = 1E-5
     )  # 
     sum(L0glmfit_updated$coefficients!=0) # 8
     beta_start = rep(0, ncol(X))
@@ -209,7 +208,6 @@ timing_SISL0glm
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                         method = 1L, # Cholesky
 #                                         thresh = 1E-5,
-#                                         gamma = 2.1
 # ))  # 0.09s
 
 beta_final = beta_start # rep(0, ncol(X))
@@ -334,8 +332,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                   # dispersion = disp,
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                   method = 1L, # Cholesky
-                                  thresh = 1E-5,
-                                  gamma = 2 # .1 # taking gamma slightly higher than 2 for p>>n case
+                                  thresh = 1E-5
     )  # 
     sum(L0glmfit_updated$coefficients!=0) # 8
     beta_start = rep(0, ncol(X))
@@ -364,7 +361,6 @@ timing_SISL0glm
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                         method = 1L, # Cholesky
 #                                         thresh = 1E-5,
-#                                         gamma = 2.1
 # ))  # 0.09s
 
 # beta_final = rep(0, ncol(X))

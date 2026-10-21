@@ -79,7 +79,6 @@ system.time(L0glm_bestfit <- L0glm.fit(X = X, # X[,beta_true_set,drop=F], # X
                           # dispersion = dispersion, 
                           solver = "glmnet", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                           method = 1L, #
-                          gamma = 2, # .1, # set it slightly above 2 for p>>n case
                           thresh = 1E-5,
                           relaxed = FALSE
 ))  # 10s
@@ -149,7 +148,6 @@ method="oracle_L0glm"
 #                                  start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
 #                                  solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                  method = 1L, # Cholesky
-#                                  gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
 #   )  # 
 #   beta_start = rep(0, ncol(X))
 #   beta_start[S] = L0glmfit_updated$coefficients
@@ -170,7 +168,6 @@ method="oracle_L0glm"
 #                               start = beta_start[S],  
 #                               solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                               method = 1L, # Cholesky
-#                               gamma = 2
 # ))  # 0.09s
 # beta_final = rep(0, ncol(X))
 # beta_final[S] = L0glmfit_final$coefficients
@@ -273,8 +270,7 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
                                 # dispersion = disp,
                                 solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                 method = 1L, # Cholesky
-                                thresh = 1E-5,
-                                gamma = 2.1 # taking gamma slightly higher than 2 for p>>n case
+                                thresh = 1E-5
   )  # 
   sum(L0glmfit_updated$coefficients!=0) # 8
   beta_start = rep(0, ncol(X))
@@ -303,7 +299,6 @@ timing_SISL0glm
 #                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
 #                                         method = 1L, # Cholesky
 #                                         thresh = 1E-5,
-#                                         gamma = 2.1
 # ))  # 0.09s
 
 beta_final = beta_start # rep(0, ncol(X))
@@ -762,7 +757,6 @@ metrics_ncvreg_SCAD
 #   lambda = lambda_preset,
 #   nonnegative = FALSE,
 #   start = rep(1, p),
-#   gamma = 2.1,
 #   normalize = FALSE,
 #   # dispersion = dispersion,
 #   solver = "eigen",

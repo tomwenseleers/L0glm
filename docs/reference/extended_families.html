@@ -109,10 +109,10 @@ fits the joint multinomial likelihood. Grouped multinomial selection instead
 counts active rows using a category-invariant CLR row norm. Its parameter-count
 IC charges K free directions per active row. Cox has one coefficient per
 predictor, so grouped and ungrouped selection coincide.</p>
-<p>For normalized working coefficients \(b\), <code>gamma</code> (default two)
-sets the unsmoothed adaptive weights:
-\(D_{jc}=\lambda/(4\|b_j\|_2^\gamma)\) for grouped multichannel NB and
-multinomial models, and \(D_{jc}=\lambda/(4|b_{jc}|^\gamma)\) for ungrouped
+<p>For normalized working coefficients \(b\), the unsmoothed adaptive
+weights use a fixed exponent of two:
+\(D_{jc}=\lambda/(4\|b_j\|_2^2)\) for grouped multichannel NB and
+multinomial models, and \(D_{jc}=\lambda/(4|b_{jc}|^2)\) for ungrouped
 or single-channel fits, including Cox. Scale dispersion is one.
 <code>thresh</code> (default <code>1e-5</code>) acts on row norms for grouped selection,
 removing whole rows, and on individual magnitudes within each response/category

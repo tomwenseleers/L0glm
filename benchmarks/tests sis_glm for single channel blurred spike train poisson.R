@@ -41,8 +41,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
                                   nonnegative = nonnegative,
                                   start = rep(1, length(S)), # if (iter==1) rep(1, length(S)) else beta_start[S], # better solution than NULL 
                                   solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                  method = 1L, # Cholesky
-                                  gamma = 2 # taking gamma slightly higher than 2 for p>>n case
+                                  method = 1L # Cholesky
     )  # 
     beta_start = rep(0, ncol(X))
     beta_start[S] = L0glmfit_updated$coefficients
@@ -62,8 +61,7 @@ system.time(L0glmfit_final <- L0glm.fit(X = X[,S,drop=F],
                                         nonnegative = nonnegative,
                                         start = beta_start[S],  
                                         solver = "eigen", # , # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
-                                        method = 1L, # Cholesky
-                                        gamma = 2
+                                        method = 1L # Cholesky
 ))  # 0.09s
 beta_final = rep(0, ncol(X))
 beta_final[S] = L0glmfit_final$coefficients

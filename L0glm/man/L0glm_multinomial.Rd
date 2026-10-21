@@ -76,14 +76,14 @@ With \code{grouped=TRUE}, the target is
   \mathbf{1}\{\|B_j\|_2>0\},}
 where \eqn{M} contains mandatory terms. In normalized working CLR coefficients
 \eqn{b}, adaptive ridge diagonals are
-\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}.
-The default \code{gamma=2} uses \eqn{\|b_j\|_2^2=\sum_h b_{jh}^2}.
+\eqn{D_{jc}=\lambda/(4\|b_j\|_2^2)}.
+The exponent is fixed at two, with \eqn{\|b_j\|_2^2=\sum_h b_{jh}^2}.
 Positive and negative class effects cannot cancel in this norm.
 Both the row penalty and the model are invariant to the choice of orthonormal
 contrast basis and to permutations of category labels.
 
 With \code{grouped=FALSE}, the charge counts nonzero displayed CLR entries,
-and \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)}. This is a different sparsity target from
+and \eqn{D_{jc}=\lambda/(4|b_{jc}|^2)}. This is a different sparsity target from
 entrywise ILR sparsity. Each active row is solved on the zero-sum plane of its
 allowed class entries; a row with fewer than two entries must be zero.
 Adaptive weights are unsmoothed and use coefficients relative to zero, not
@@ -102,7 +102,7 @@ rows with fewer than two allowed entries are zero. Mandatory rows are exempt
 and excluded from cutoff maxima. Thresholded entries or rows remain excluded
 during selection. Cutoffs use normalized working coordinates; selectable
 slopes equal original-unit coefficients times the stored column scales.
-\code{normalize="none"} gives scale one. Defaults are \code{gamma=2} and
+\code{normalize="none"} gives scale one. The default cutoff is
 \code{thresh=1e-5}. Setting \code{thresh=0} removes only the relative cutoff.
 These cutoffs apply only during selection with \code{lambda>0}.
 

@@ -35,7 +35,7 @@
 #'   outcome-fitting parallelism; use `screen.nthreads` in [L0glm.fit()].
 #' @param ... Named [L0glm.fit()] arguments for ISIS, such as `lambda`, `start`,
 #'   `intercept`, `always.include`, `grouped`, `normalize` and solver controls.
-#'   ISIS defaults to `lambda="gic"`, `start=NULL`, `gamma=2`, `relaxed=TRUE`
+#'   ISIS defaults to `lambda="gic"`, `start=NULL`, `relaxed=TRUE`
 #'   and `parallelize=FALSE`. Coefficient-shaped starts/prior means use the
 #'   original predictor dimensions, optionally including an added intercept;
 #'   they are subset internally. Scalar `start=1` retains its normalized-coordinate

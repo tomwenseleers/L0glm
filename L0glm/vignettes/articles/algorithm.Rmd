@@ -48,10 +48,10 @@ L0glm replaces the ordinary least-squares update with weighted ridge:
 \left\|W^{1/2}(z-Xb)\right\|_2^2+
 \sum_j\Lambda_j^{(t)}(b_j-c_j)^2,
 \qquad
-\Lambda_j^{(t)}=\frac{\lambda\phi}{4|\beta_j^{(t)}|^\gamma}.
+\Lambda_j^{(t)}=\frac{\lambda\phi}{4|\beta_j^{(t)}|^2}.
 \]
 
-The default is \(\gamma=2\) and zero ridge center \(c_j=0\).
+The exponent is fixed at two, with a default zero ridge center \(c_j=0\).
 Mandatory terms have \(\Lambda_j=0\). As a coefficient shrinks, its adaptive
 penalty increases rapidly. Strong coefficients receive progressively less shrinkage.
 The design remains dense or sparse through the appropriate solver path.

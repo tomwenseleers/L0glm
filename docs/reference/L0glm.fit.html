@@ -244,7 +244,6 @@ quadratic programming solver.</p>
 <span>  group.maxit <span class="op">=</span> <span class="fl">6</span>,</span>
 <span>  relaxed <span class="op">=</span> <span class="va">grouped</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">NCOL</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span>,</span>
 <span>  prior.mean <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  gamma <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  thresh <span class="op">=</span> <span class="fl">1e-05</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  control.solver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"control.solver.gen"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>solver <span class="op">=</span> <span class="va">solver</span>, method <span class="op">=</span> <span class="va">method</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -450,7 +449,7 @@ bounds are transformed consistently. Returned coefficients and explicit
 vector/matrix starts retain their input units; numeric scalar <code>start=1</code>
 is the normalized-coordinate shorthand described above. Non-<code>"none"</code> modes also use
 these scales for automatic initialization, thresholding and convergence.
-With <code>gamma = 2</code>, automatic signed fits are therefore invariant to
+Automatic signed fits are therefore invariant to
 changes of predictor units, up to numerical precision. Sparse designs
 remain sparse. The training centers and scales are returned in
 <code>preprocessing</code>; predictions use the original columns directly.</p></dd>
@@ -616,26 +615,6 @@ output. Unpenalized intercepts and <code>always.include</code> terms are not
 shrunk toward their targets. For special families, the final relaxed refit
 removes the ridge penalty on retained support, so these centers no longer
 exert shrinkage during that refit.</p></dd>
-
-
-<dt id="arg-gamma">gamma<a class="anchor" aria-label="anchor" href="#arg-gamma"></a></dt>
-<dd><p>Scalar exponent in the unsmoothed adaptive ridge weights,
-default <code>2</code>, as in Frommlet &amp; Nuel (2016). Weights use coefficients
-in normalized working coordinates, denoted by \(b\), relative to zero
-rather than deviations from <code>prior.mean</code>. Ordinary single-channel
-updates use \(D_j=(\lambda/4)\phi/|b_j|^\gamma\), with scale dispersion
-\(\phi\). For special families, scale dispersion is one:</p><ul><li><p>Grouped multichannel NB and grouped multinomial models use
-\(D_{jc}=\lambda/(4\|b_j\|_2^\gamma)\), shared across the row.
-For multinomial models, \(b_j\) contains all <code>K+1</code> CLR category
-coefficients; positive and negative category effects cannot cancel in this
-norm. The default <code>gamma = 2</code> uses the sum of squared row coefficients.</p></li>
-<li><p>Ungrouped NB and multinomial models use
-\(D_{jc}=\lambda/(4|b_{jc}|^\gamma)\) for individual channel or CLR
-category entries. Cox and single-channel NB use the same scalar rule.</p></li>
-</ul><p>Mandatory terms have zero ridge penalty; excluded coefficients remain
-excluded. This argument changes adaptive weighting, not the hard cutoff
-specified by <code>thresh</code>. Special-family relaxed refits use
-<code>lambda = 0</code>, so <code>gamma</code> imposes no shrinkage during that pass.</p></dd>
 
 
 <dt id="arg-thresh">thresh<a class="anchor" aria-label="anchor" href="#arg-thresh"></a></dt>
@@ -877,12 +856,12 @@ the following ridge penalties for the penalized terms (excluding the
 intercept, if included):
 $$\Lambda = (1/4)\lambda\sigma^2 w$$
 with adaptive penalty weights
-$$w = 1 / |\beta|^\gamma$$
+$$w = 1 / |\beta|^2$$
 where \(\beta\) are the coefficient estimates
 in each iteration. During selection, the relative cutoff and absolute
 numerical floor specified by <code>thresh</code> remove coefficients from later solves.
-The final relaxed refit does not apply this hard cutoff. As in Frommlet
-&amp; Nuel (2016), \(\gamma\) is set to a default value of 2. Nonnegativity
+The final relaxed refit does not apply this hard cutoff. The inverse-square
+weights follow Frommlet &amp; Nuel (2016). Nonnegativity
 constraints are natively supported if the <code>bigGlm</code> or
 the <code>osqp</code> solver is used, or are obtained via clipping if the
 <code>eigen</code> solvers are used. The factor of 1/4 was shown to be required to
@@ -892,19 +871,33 @@ works well for non-orthogonal designs and other noise families.
 Dispersion (the variance for Gaussian models) can be fixed or estimated
 during IRLS using <code>dispersion = NULL</code> or a negative initial value.</p>
 <div class="section">
+<h3 id="adaptive-ridge-weights">Adaptive ridge weights<a class="anchor" aria-label="anchor" href="#adaptive-ridge-weights"></a></h3>
+<p>The exponent is fixed at two. Weights use normalized working coefficients
+\(b\) relative to zero. Ordinary single-channel ridge diagonals are
+\(D_j=(\lambda/4)\phi/|b_j|^2\), with scale dispersion \(\phi\).
+Special families have scale dispersion one. Grouped multichannel NB and
+multinomial fits use \(D_{jc}=\lambda/(4\|b_j\|_2^2)\), shared across
+each row. For multinomial models the norm includes all <code>K+1</code> CLR
+category coefficients. Ungrouped NB and multinomial fits use
+\(D_{jc}=\lambda/(4|b_{jc}|^2)\); Cox and single-channel NB use the
+same scalar rule. Mandatory terms have zero ridge penalty and excluded
+coefficients remain excluded. Hard thresholding is controlled separately
+by <code>thresh</code>. Special-family relaxed refits use <code>lambda = 0</code>.</p>
+</div>
+
+<div class="section">
 <h3 id="optimization-interpretation">Optimization interpretation<a class="anchor" aria-label="anchor" href="#optimization-interpretation"></a></h3>
 <p>Adaptive ridge uses successive quadratic penalties to promote sparsity.
 Abergel, Bouaziz &amp; Nuel (2024) derive a variational representation for
 \(L_q\) penalties and explain their majorization–minimization interpretation.
-With <code>gamma=2</code>, zero ridge centers and fixed dispersion, inverse-square
+With zero ridge centers and fixed dispersion, inverse-square
 weights give tangent quadratic penalties for a log penalty on the current
 nonzero coefficients. The inequality
 $$\log s \leq \log s_t + (s-s_t)/s_t,\qquad s,s_t&gt;0,$$
 with \(s=b_j^2\), yields a quadratic coefficient proportional to
 \(1/(b_j^{(t)})^2\). For grouped norms the same argument uses
-\(s=\|b_j\|_2^2\). The exponent controls this penalty shape;
-<code>gamma=1</code> gives inverse-absolute weighting associated with an
-\(L_1\) penalty, while <code>gamma=2</code> gives the broken adaptive ridge rule.
+\(s=\|b_j\|_2^2\). These inverse-square weights give the broken
+adaptive ridge rule.
 IRLS approximates the likelihood, and hard thresholding reduces subsequent
 systems to the active support. Information criteria evaluate the resulting
 models using their likelihood and support size. Exact surrogate minimization

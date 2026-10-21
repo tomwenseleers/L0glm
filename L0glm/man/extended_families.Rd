@@ -64,10 +64,10 @@ counts active rows using a category-invariant CLR row norm. Its parameter-count
 IC charges K free directions per active row. Cox has one coefficient per
 predictor, so grouped and ungrouped selection coincide.
 
-For normalized working coefficients \eqn{b}, \code{gamma} (default two)
-sets the unsmoothed adaptive weights:
-\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)} for grouped multichannel NB and
-multinomial models, and \eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for ungrouped
+For normalized working coefficients \eqn{b}, the unsmoothed adaptive
+weights use a fixed exponent of two:
+\eqn{D_{jc}=\lambda/(4\|b_j\|_2^2)} for grouped multichannel NB and
+multinomial models, and \eqn{D_{jc}=\lambda/(4|b_{jc}|^2)} for ungrouped
 or single-channel fits, including Cox. Scale dispersion is one.
 \code{thresh} (default \code{1e-5}) acts on row norms for grouped selection,
 removing whole rows, and on individual magnitudes within each response/category

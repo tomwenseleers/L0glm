@@ -229,7 +229,6 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    solver = "eigen",
                    control.solver = control.solver,
                    # verbose = TRUE,
-                   gamma = 2,
                    thresh = 1e-10,
                    tol = 1E-4)
   # NOTE: we include X_baseline in design matrix & include those terms in always.include

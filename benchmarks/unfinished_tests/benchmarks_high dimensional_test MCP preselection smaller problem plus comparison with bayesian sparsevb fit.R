@@ -397,7 +397,6 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   prior.mean = priormean[nonzero],
   start = startcoefs[nonzero], 
   # TODO make sure that with supplied starting coefficients vars with zero coefs are efficiently removed from the start
-  gamma = 2, 
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
@@ -480,7 +479,6 @@ system.time(L0glm_gaus_presetlambda_full <- L0glm.fit(
   # prior.mean = priormean, # [nonzero],
   start = startcoefs, # [nonzero], 
   # TODO make sure that with supplied starting coefficients vars with zero coefs are efficiently removed from the start
-  gamma = 2, 
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
@@ -586,7 +584,6 @@ system.time({
                                                # dispersion = L0glm_gaus_presetlambda$dispersion, # L0glm.out_2nditeration$dispersion,
                                                solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                                method = 4L, # historically LSCG was twice as fast as Cholesky LLT for this dense case
-                                               gamma = 2, #
                                                thresh = 1E-5,
                                                relaxed = FALSE
     ))  # 
@@ -1182,7 +1179,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          # dispersion = dispersion,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
-                         # gamma = 2, 
                          thresh = 1E-5,
                          relaxed = FALSE 
   ) 
@@ -1334,8 +1330,6 @@ system.time(L0glm_gaus_presetlambda <- L0glm.fit(
   lambda = "aic", 
   nonnegative = TRUE,
   start = NULL, 
-  gamma = 1.1,
-  # gamma = 1.1, # NOTE: gamma of 1.1 here works better than 2
   normalize = FALSE, # normalize = T doesn't work yet - too sparse then
   # dispersion = dispersion,
   solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
@@ -1368,13 +1362,11 @@ L0glm.out_2nditeration <- L0glm.fit(X = X,
                                     family = gaussian(identity), 
                                     lambda = "mbic", 
                                     # no.pen = 1,
-                                    gamma = 1.1,
                                     nonnegative = TRUE,
                                     start = L0glm_gaus_presetlambda$coefficients, #, start, # 
                                     dispersion = L0glm_gaus_presetlambda$dispersion,
                                     solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                                     method = 1L, # historically LSCG was twice as fast as Cholesky LLT here
-                                    # gamma = 2, 
                                     thresh = 1E-5,
                                     relaxed = FALSE 
 ) 
@@ -1444,7 +1436,6 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           # prior.mean = start[selected], # use nonzero centered ridge regression?
                                           nonnegative = TRUE,
                                           start = start[selected], # rep(sqrt(50), ncol(X)), # NULL, # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
-                                          gamma = 2,
                                           solver = "glmnet", # note: solver osqp better than eigen for very small lambda values))
                                           method = 1L,
                                           verbose = T,
@@ -1506,8 +1497,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          relaxed = FALSE,
                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                          maxit = 20,
-                         tol = 1E-5,
-                         gamma = gamma
+                         tol = 1E-5
   )$coefficients/scaling[selected]
   coefmat[i,selected] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = coefmat[i,selected], 

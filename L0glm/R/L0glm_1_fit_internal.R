@@ -34,7 +34,6 @@ L0glm.fit.internal = function(X,
                               upper = rep(.Machine$double.xmax, ncol(X)),
                               maxit = 25,
                               prior.mean = NULL,
-                              gamma = 2,
                               thresh = 1e-5,
                               tol = 1E-10,
                               control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -190,7 +189,7 @@ L0glm.fit.internal = function(X,
     if (is.null(initial)) initial <- beta else if (length(centered$intercept))
       initial[centered$intercept] <- initial[centered$intercept] + sum(centered$shift * initial)
     initial_dispersion <- if (hard_threshold) validation$baseline_dispersion else dispersion
-    initial_penalty <- lambda * initial_dispersion / 4 * AR.weights(initial, gamma = gamma, delta = 0, q = 0)
+    initial_penalty <- lambda * initial_dispersion / 4 * AR.weights(initial, gamma = 2, delta = 0, q = 0)
     initial_penalty[initial == 0] <- Inf
     initial_penalty[always.include] <- 0
     value <- L0glm_validation_loss(validation, initial, centered$shift, centered$intercept)
@@ -238,7 +237,7 @@ L0glm.fit.internal = function(X,
     ## ---------- adaptive ridge penalties ----------------------------
 
     # penalty weights & penalties for the L0 norm penalty ####
-    pen.w <- AR.weights(beta = beta, gamma = gamma, delta = 0, q = 0)
+    pen.w <- AR.weights(beta = beta, gamma = 2, delta = 0, q = 0)
 
     lambda_tilde <- lambda*dispersion/4
     lambdas <- lambda_tilde * pen.w

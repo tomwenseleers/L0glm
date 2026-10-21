@@ -195,11 +195,6 @@ multichannel ordinary GLMs and NB, and grouped multinomial models with either
 factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
 other single-channel fits. Set it explicitly to refit an ungrouped model.
 With screening enabled the default is \code{TRUE}, as in \code{L0glm.fit()}.
-\item \code{gamma}: exponent in the unsmoothed adaptive ridge weights
-(default \code{2}). Grouped multichannel NB and multinomial fits use the
-coefficient row norm raised to \code{gamma}; ungrouped fits use individual
-channel or CLR-entry magnitudes. Cox and single-channel NB use the scalar rule.
-These special families have scale dispersion one.
 \item \code{thresh}: relative hard cutoff during selection (default
 \code{1e-5}), applied to working coefficient row norms for grouped
 multichannel NB/multinomial fits and individual magnitudes for ungrouped or
@@ -343,15 +338,15 @@ Multinomial coefficient paths and seeds are CLR; all-zero starting rows
 exclude predictors, while individual category zeroes remain eligible.
 With \eqn{b} denoting normalized working coefficients, grouped NB and
 multinomial adaptive ridge weights are
-\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}; ungrouped weights are
-\eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)}. Cox uses the scalar rule.
+\eqn{D_{jc}=\lambda/(4\|b_j\|_2^2)}; ungrouped weights are
+\eqn{D_{jc}=\lambda/(4|b_{jc}|^2)}. Cox uses the scalar rule.
 Grouped hard thresholding compares each row norm with \code{thresh} times
 the largest selectable row norm or the absolute floor \code{1e-20}; it does
 not threshold individual entries within retained rows. Ungrouped multinomial
 thresholding compares individual CLR magnitudes within each category column,
 then recenters surviving entries within their allowed set. Excluded entries
 stay zero, and rows with fewer than two allowed entries are zero. Mandatory
-terms are excluded from cutoff maxima. The same \code{gamma} and \code{thresh}
+terms are excluded from cutoff maxima. Inverse-square weights and the same \code{thresh}
 are used in full-data candidates, pilot selection fits and CV training fits;
 each fit computes its own training normalization. Special-family cutoffs
 apply only during selection with positive lambda and are disabled during

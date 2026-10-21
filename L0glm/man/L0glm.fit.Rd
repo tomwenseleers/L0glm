@@ -28,7 +28,6 @@ L0glm.fit(
   group.maxit = 6,
   relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
-  gamma = 2,
   thresh = 1e-05,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -217,7 +216,7 @@ bounds are transformed consistently. Returned coefficients and explicit
 vector/matrix starts retain their input units; numeric scalar \code{start=1}
 is the normalized-coordinate shorthand described above. Non-\code{"none"} modes also use
 these scales for automatic initialization, thresholding and convergence.
-With \code{gamma = 2}, automatic signed fits are therefore invariant to
+Automatic signed fits are therefore invariant to
 changes of predictor units, up to numerical precision. Sparse designs
 remain sparse. The training centers and scales are returned in
 \code{preprocessing}; predictions use the original columns directly.}
@@ -379,27 +378,6 @@ output. Unpenalized intercepts and \code{always.include} terms are not
 shrunk toward their targets. For special families, the final relaxed refit
 removes the ridge penalty on retained support, so these centers no longer
 exert shrinkage during that refit.}
-
-\item{gamma}{Scalar exponent in the unsmoothed adaptive ridge weights,
-default \code{2}, as in Frommlet & Nuel (2016). Weights use coefficients
-in normalized working coordinates, denoted by \eqn{b}, relative to zero
-rather than deviations from \code{prior.mean}. Ordinary single-channel
-updates use \eqn{D_j=(\lambda/4)\phi/|b_j|^\gamma}, with scale dispersion
-\eqn{\phi}. For special families, scale dispersion is one:
-\itemize{
-\item Grouped multichannel NB and grouped multinomial models use
-\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}, shared across the row.
-For multinomial models, \eqn{b_j} contains all \code{K+1} CLR category
-coefficients; positive and negative category effects cannot cancel in this
-norm. The default \code{gamma = 2} uses the sum of squared row coefficients.
-\item Ungrouped NB and multinomial models use
-\eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for individual channel or CLR
-category entries. Cox and single-channel NB use the same scalar rule.
-}
-Mandatory terms have zero ridge penalty; excluded coefficients remain
-excluded. This argument changes adaptive weighting, not the hard cutoff
-specified by \code{thresh}. Special-family relaxed refits use
-\code{lambda = 0}, so \code{gamma} imposes no shrinkage during that pass.}
 
 \item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
 hard thresholding during selection. Cutoffs use normalized working
@@ -664,12 +642,12 @@ the following ridge penalties for the penalized terms (excluding the
 intercept, if included):
 \deqn{\Lambda = (1/4)\lambda\sigma^2 w}
 with adaptive penalty weights
-\deqn{w = 1 / |\beta|^\gamma}
+\deqn{w = 1 / |\beta|^2}
 where \eqn{\beta} are the coefficient estimates
 in each iteration. During selection, the relative cutoff and absolute
 numerical floor specified by \code{thresh} remove coefficients from later solves.
-The final relaxed refit does not apply this hard cutoff. As in Frommlet
-& Nuel (2016), \eqn{\gamma} is set to a default value of 2. Nonnegativity
+The final relaxed refit does not apply this hard cutoff. The inverse-square
+weights follow Frommlet & Nuel (2016). Nonnegativity
 constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
 \code{eigen} solvers are used. The factor of 1/4 was shown to be required to
@@ -679,19 +657,32 @@ works well for non-orthogonal designs and other noise families.
 Dispersion (the variance for Gaussian models) can be fixed or estimated
 during IRLS using \code{dispersion = NULL} or a negative initial value.
 
+\subsection{Adaptive ridge weights}{
+The exponent is fixed at two. Weights use normalized working coefficients
+\eqn{b} relative to zero. Ordinary single-channel ridge diagonals are
+\eqn{D_j=(\lambda/4)\phi/|b_j|^2}, with scale dispersion \eqn{\phi}.
+Special families have scale dispersion one. Grouped multichannel NB and
+multinomial fits use \eqn{D_{jc}=\lambda/(4\|b_j\|_2^2)}, shared across
+each row. For multinomial models the norm includes all \code{K+1} CLR
+category coefficients. Ungrouped NB and multinomial fits use
+\eqn{D_{jc}=\lambda/(4|b_{jc}|^2)}; Cox and single-channel NB use the
+same scalar rule. Mandatory terms have zero ridge penalty and excluded
+coefficients remain excluded. Hard thresholding is controlled separately
+by \code{thresh}. Special-family relaxed refits use \code{lambda = 0}.
+}
+
 \subsection{Optimization interpretation}{
 Adaptive ridge uses successive quadratic penalties to promote sparsity.
 Abergel, Bouaziz & Nuel (2024) derive a variational representation for
 \eqn{L_q} penalties and explain their majorization--minimization interpretation.
-With \code{gamma=2}, zero ridge centers and fixed dispersion, inverse-square
+With zero ridge centers and fixed dispersion, inverse-square
 weights give tangent quadratic penalties for a log penalty on the current
 nonzero coefficients. The inequality
 \deqn{\log s \leq \log s_t + (s-s_t)/s_t,\qquad s,s_t>0,}
 with \eqn{s=b_j^2}, yields a quadratic coefficient proportional to
 \eqn{1/(b_j^{(t)})^2}. For grouped norms the same argument uses
-\eqn{s=\|b_j\|_2^2}. The exponent controls this penalty shape;
-\code{gamma=1} gives inverse-absolute weighting associated with an
-\eqn{L_1} penalty, while \code{gamma=2} gives the broken adaptive ridge rule.
+\eqn{s=\|b_j\|_2^2}. These inverse-square weights give the broken
+adaptive ridge rule.
 IRLS approximates the likelihood, and hard thresholding reduces subsequent
 systems to the active support. Information criteria evaluate the resulting
 models using their likelihood and support size. Exact surrogate minimization

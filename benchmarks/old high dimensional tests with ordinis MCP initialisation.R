@@ -180,7 +180,6 @@ system.time(res_nonzero <- L0glm.fit(x[,nonzero,drop=F], y,
                                      # always.include=1:p,
                                      # normalize=TRUE,
                                      # dispersion=disp_est,
-                                     gamma=2, # using 2.15 works to eliminate false pos, but a bit ad hoc
                                      solver="eigen", 
                                      method=4L # LSCG, fastest for large dense
 )) # 0.06s - TODO kick out zero coefs from model from the start in L0glm

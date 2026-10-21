@@ -315,7 +315,6 @@ image(matrix(reconstruction_nnls^3,
 system.time(reconstruction_L0glm_osqp <- L0glm.fit(
   X = A, y = y,
   start = rep(1, ncol(A)),
-  gamma = 1, # 1 worked better than 2 here
   family = gaussian(link="identity"), 
   lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,
@@ -330,7 +329,6 @@ image(matrix(reconstruction_L0glm_osqp^3,
 system.time(reconstruction_L0glm_LSCG <- L0glm.fit(
   X = A, y = y,
   start = rep(1, ncol(A)),
-  gamma = 1, # 1 worked better than 2 here
   family = gaussian(link="identity"), 
   lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,

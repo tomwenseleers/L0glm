@@ -26,7 +26,6 @@ L0nnpois(
   group.maxit = 6,
   relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
-  gamma = 2,
   thresh = 1e-05,
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
@@ -189,7 +188,7 @@ bounds are transformed consistently. Returned coefficients and explicit
 vector/matrix starts retain their input units; numeric scalar \code{start=1}
 is the normalized-coordinate shorthand described above. Non-\code{"none"} modes also use
 these scales for automatic initialization, thresholding and convergence.
-With \code{gamma = 2}, automatic signed fits are therefore invariant to
+Automatic signed fits are therefore invariant to
 changes of predictor units, up to numerical precision. Sparse designs
 remain sparse. The training centers and scales are returned in
 \code{preprocessing}; predictions use the original columns directly.}
@@ -348,27 +347,6 @@ output. Unpenalized intercepts and \code{always.include} terms are not
 shrunk toward their targets. For special families, the final relaxed refit
 removes the ridge penalty on retained support, so these centers no longer
 exert shrinkage during that refit.}
-
-\item{gamma}{Scalar exponent in the unsmoothed adaptive ridge weights,
-default \code{2}, as in Frommlet & Nuel (2016). Weights use coefficients
-in normalized working coordinates, denoted by \eqn{b}, relative to zero
-rather than deviations from \code{prior.mean}. Ordinary single-channel
-updates use \eqn{D_j=(\lambda/4)\phi/|b_j|^\gamma}, with scale dispersion
-\eqn{\phi}. For special families, scale dispersion is one:
-\itemize{
-\item Grouped multichannel NB and grouped multinomial models use
-\eqn{D_{jc}=\lambda/(4\|b_j\|_2^\gamma)}, shared across the row.
-For multinomial models, \eqn{b_j} contains all \code{K+1} CLR category
-coefficients; positive and negative category effects cannot cancel in this
-norm. The default \code{gamma = 2} uses the sum of squared row coefficients.
-\item Ungrouped NB and multinomial models use
-\eqn{D_{jc}=\lambda/(4|b_{jc}|^\gamma)} for individual channel or CLR
-category entries. Cox and single-channel NB use the same scalar rule.
-}
-Mandatory terms have zero ridge penalty; excluded coefficients remain
-excluded. This argument changes adaptive weighting, not the hard cutoff
-specified by \code{thresh}. Special-family relaxed refits use
-\code{lambda = 0}, so \code{gamma} imposes no shrinkage during that pass.}
 
 \item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
 hard thresholding during selection. Cutoffs use normalized working

@@ -63,7 +63,7 @@ outcome-fitting parallelism; use \code{screen.nthreads} in \code{\link[=L0glm.fi
 
 \item{...}{Named \code{\link[=L0glm.fit]{L0glm.fit()}} arguments for ISIS, such as \code{lambda}, \code{start},
 \code{intercept}, \code{always.include}, \code{grouped}, \code{normalize} and solver controls.
-ISIS defaults to \code{lambda="gic"}, \code{start=NULL}, \code{gamma=2}, \code{relaxed=TRUE}
+ISIS defaults to \code{lambda="gic"}, \code{start=NULL}, \code{relaxed=TRUE}
 and \code{parallelize=FALSE}. Coefficient-shaped starts/prior means use the
 original predictor dimensions, optionally including an added intercept;
 they are subset internally. Scalar \code{start=1} retains its normalized-coordinate

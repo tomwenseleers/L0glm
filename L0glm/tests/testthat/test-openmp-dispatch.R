@@ -9,11 +9,12 @@ test_that("eligible L0glm.fit calls forward all fitting controls to L0nnpois", {
     always.include = 2L, normalize = TRUE, solver = "eigen", method = 1L,
     parallelize = TRUE, ncores = 2L, nthreads = 1L,
     maxit = 12L, grouped = FALSE, group.maxit = 3L, relaxed = TRUE,
-    prior.mean = matrix(0.2, 3, 2), gamma = 1.8,
+    prior.mean = matrix(0.2, 3, 2),
     thresh = 1e-6, tol = 1e-8,
     control.solver = list(NaturalOrdering = TRUE), verbose = TRUE, validation = NULL
   )
   fit <- do.call(L0glm.fit, args)
+  expect_setequal(names(fit$args), setdiff(names(args), "nonnegative"))
   expect_equal(fit$args, args[names(fit$args)])
 })
 
