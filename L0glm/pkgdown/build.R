@@ -12,5 +12,12 @@ for (i in seq_along(figures)) file.copy(file.path(package, "../benchmarks/plots/
   file.path(assets, names[i]), overwrite = TRUE)
 pkgdown::build_site(package, examples = FALSE, install = FALSE,
   new_process = FALSE, preview = FALSE, quiet = FALSE)
+destination <- pkgdown::as_pkgdown(package)$dst_path
+# Remove the automatic home header after logo insertion, without freeing nodes.
+home <- file.path(destination, "index.html")
+html <- xml2::read_html(home)
+xml2::xml_remove(xml2::xml_find_all(html, ".//main//div[@class='page-header']"), free = FALSE)
+xml2::write_html(html, home)
+pkgdown::build_search(package)
 file.copy(file.path(package, "pkgdown/extra.css"),
-  file.path(pkgdown::as_pkgdown(package)$dst_path, "extra.css"), overwrite = TRUE)
+  file.path(destination, "extra.css"), overwrite = TRUE)

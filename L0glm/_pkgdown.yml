@@ -28,7 +28,7 @@ template:
       src: man/figures/logo.png
       alt: L0glm hex logo with selected coefficient rows across response channels
 home:
-  strip_header: true
+  strip_header: false # Removed after logo insertion in pkgdown/build.R.
   title: Fast sparse regression across generalized linear models
   description: >
     Fast L0 and grouped L0 regression for GLMs, negative binomial,
