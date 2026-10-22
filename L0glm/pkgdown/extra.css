@@ -32,6 +32,13 @@ math[display="block"] { max-width:100%; overflow-x:auto; padding:.4rem 0; }
 .table thead th { color:#19374a; border-bottom:2px solid #21a6a6; background:#edf7f7; }
 .table td,.table th { padding:.65rem .75rem; }
 .table tbody tr:hover { background:#f0f9f9; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(1) { width:26%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(2) { width:15%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(3),
+.template-home #application-sparse-deconvolution ~ table col:nth-child(6),
+.template-home #application-sparse-deconvolution ~ table col:nth-child(7) { width:13%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(4),
+.template-home #application-sparse-deconvolution ~ table col:nth-child(5) { width:10%; }
 img { max-width:100%; height:auto; }
 .caption,figcaption { font-size:.88rem; color:var(--l0-muted); }
 .l0-hero { display:flex; align-items:center; gap:1.5rem; position:relative; overflow:hidden; margin:.5rem 0 1.5rem; padding:2.6rem 2.5rem; border-radius:22px; background:radial-gradient(ellipse at 95% 10%,#103d55 0%,transparent 60%),linear-gradient(130deg,#07182b,#101c37); color:#f7fdff; }

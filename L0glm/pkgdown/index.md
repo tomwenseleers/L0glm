@@ -14,7 +14,7 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictors"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
 <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a>
@@ -37,7 +37,9 @@ where it matters, producing sparse models with excellent support recovery.
 
 ## Fit a sparse model
 
-Sixty nonzero effects among **one million predictors**, fitted in one call.
+Sixty nonzero effects among **one million predictors**, fitted in one simple
+call in about **3 seconds**, with **40 out of 60 successfully recovered** and
+just **3 false positives**:
 
 ```r
 library(L0glm)
@@ -62,52 +64,48 @@ L0glm.metrics(fit, beta_true=beta)[
 | 3.49 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
 <!-- END million-metrics -->
 
-<!-- BEGIN million-confusion -->
-| Ground truth | Selected | Excluded |
-|---|---:|---:|
-| Nonzero effects | 40 TP | 20 FN |
-| Zero effects | 3 FP | 999937 TN |
-<!-- END million-confusion -->
+Recovered coefficients show near-zero bias:
 
-![True versus estimated coefficients in the million-predictor default fit.](million-coefficients.png)
+<img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%">
 
 Install with `remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")`.
 The dense design occupies about 4 GB. The [getting-started guide](articles/L0glm.html)
 explains the example and prediction methods.
 
-### Tuning when you need it
-
-The preset often already gives an excellent sparse model. Detailed tuning over
-a lambda grid is also supported; in this example it selects exactly the preset.
-
-```r
-tuned <- L0glm.tune(X, y, family=gaussian(), tune="gic",
-  nlambda=10L, prop_range=.25, coefs.true=beta, plot=TRUE)
-```
-
-![Coefficient paths and GIC in the million-predictor example, with the selected and preset lambda coinciding.](million-path.png)
-
-Use `tune="cv", nfolds=5L` for five-fold validation. See
-[model selection](articles/selection.html) for a 100-signal example and the
-one-standard-error rule.
-
-## Example: sparse deconvolution
+## Application: sparse deconvolution
 
 In **GC/MS analysis**, overlapping chromatographic peaks have distinct mass
 spectra. Recovering their peak times and spectra together is a natural application
 of grouped L₀ regression. This Poisson simulation has **10,000 observations,
 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels**.
 
-L0glm recovers **944 of 1,000 true peaks with just 11 false positives**. It also
-recovers the sparse mass spectra accurately, with a within-row F1 of **0.909**.
-The comparison uses the same Poisson GIC to select and score every method.
+By regressing the observed signal on a design matrix consisting of shifted
+copies of the peak-shape function (the point spread function), L0glm recovers
+the underlying peaks and their mass spectra.
+
+<!-- BEGIN multi-speed -->
+L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+<!-- END multi-speed -->
+It also recovers the sparse mass spectra accurately, with a within-row F1 of
+**0.909**. A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
+the competing methods select lambda from a ten-value grid using GIC or
+five-fold cross-validation.
+
+```r
+multi <- simul(method=4L, n=10000L, p=10000L,
+  n_nonzero=1000L, seed=2L)
+fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
+  lambda="gic", nonnegative=TRUE, ncores=4L)
+```
 
 <!-- BEGIN multi-home -->
-| Method | Seconds | TP | FP | F1 | MCC |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| L0glm | 34.14 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | 244.87 | 980 | 860 | 0.690 | 0.685 |
-| Relaxed group LASSO | 906.34 | 909 | 309 | 0.820 | 0.802 |
+| Method | Selection | Seconds | TP | FP | F1 | MCC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| L0glm | GIC preset | 9.63 | 944 | 11 | 0.966 | 0.962 |
+| Group LASSO | GIC path | 244.87 | 980 | 860 | 0.690 | 0.685 |
+| Relaxed group LASSO | GIC path | 906.34 | 909 | 309 | 0.820 | 0.802 |
+| Group LASSO | 5-fold CV | 813.42 | 998 | 4242 | 0.320 | 0.316 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 962 | 502 | 0.781 | 0.769 |
 <!-- END multi-home -->
 
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](deconvolution-multi-large.png)
@@ -119,8 +117,8 @@ this benchmark.
 ![True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.](deconvolution-multi-home-coefficients.png)
 
 L0glm fits the Poisson model directly. The group-LASSO methods use a
-weighted-Gaussian approximation with shared observation weights; their timings
-include a ten-value tuning path. [Explore the deconvolution examples and full
+weighted-Gaussian approximation with shared observation weights; CV uses four
+parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](articles/deconvolution.html)
 
 ## Choose a starting point

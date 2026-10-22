@@ -11,7 +11,9 @@ website_plot_examples <- function(cases=c("million", "single", "multi", "selecti
     force(code)
     message("Rendered ", name)
   }
-  labels <- c(L0glm="L0glm",lasso="LASSO",relaxed_lasso="Relaxed LASSO")
+  labels <- c(L0glm="L0glm (GIC preset)",
+    lasso_gic="LASSO (GIC)",relaxed_lasso_gic="Relaxed LASSO (GIC)",
+    lasso_cv="LASSO (5-fold CV)",relaxed_lasso_cv="Relaxed LASSO (5-fold CV)")
   for (case in cases) {
     if (case == "million") {
       s <- readRDS(file.path(cache,"million-summary.rds"))
@@ -26,7 +28,9 @@ website_plot_examples <- function(cases=c("million", "single", "multi", "selecti
       scores <- read.csv(file.path(output,paste0(case,"-metrics.csv")))
       best_other <- which.max(replace(scores$MCC,scores$method=="L0glm",-Inf))
       panel_labels <- labels
-      if (case == "multi") panel_labels[c("lasso","relaxed_lasso")] <- c("Group LASSO","Relaxed group LASSO")
+      if (case == "multi") panel_labels <- sub("^group", "Group",
+        sub("LASSO", "group LASSO", panel_labels, fixed=TRUE))
+      stopifnot(!anyNA(panel_labels[names(z$fits)]))
       names(z$fits) <- unname(panel_labels[names(z$fits)])
       if (case == "single") {
         draw("deconvolution-single-large",1700,1300,{
@@ -34,12 +38,20 @@ website_plot_examples <- function(cases=c("million", "single", "multi", "selecti
           observed <- as.numeric(z$data$y)
           truth <- as.numeric(z$beta_true)
           true_mean <- as.numeric(z$data$X %*% z$beta_true)
+          shown <- seq_len(max(1L, floor(length(observed)/10L)))
+          limit <- max(observed[shown], truth[shown], true_mean[shown])
           for (i in c(1L,best_other)) {
             estimate <- as.numeric(coef(z$fits[[i]]))
             mean <- as.numeric(z$data$X %*% estimate)
-            limit <- max(observed,truth,estimate,mean,true_mean)
+            limit <- max(limit, estimate[shown], mean[shown])
+          }
+          limit <- 1.15*limit
+          for (i in c(1L,best_other)) {
+            estimate <- as.numeric(coef(z$fits[[i]]))
+            mean <- as.numeric(z$data$X %*% estimate)
             graphics::plot(seq_along(observed),observed,type="l",col="grey65",
-              ylim=c(-limit,limit),xlab="Time index",ylab="Signal and spikes",
+              xlim=range(shown),xaxs="i",ylim=c(-limit,limit),
+              xlab="Time index (first 10% of observations)",ylab="Signal and spikes",
               main=sprintf("%s (%.3g s)",names(z$fits)[i],z$timings$seconds[i]))
             graphics::lines(true_mean,col="#173e65",lwd=.8)
             graphics::lines(truth,type="h",col="navy",lwd=.7)
@@ -56,8 +68,8 @@ website_plot_examples <- function(cases=c("million", "single", "multi", "selecti
       } else {
         draw("deconvolution-multi-large",1700,1800,
           plot(z,type="heatmap",which=c(1L,best_other)))
-        draw("deconvolution-multi-coefficients-large",1100,1800,
-          plot(z,which=1:3,channels="all"))
+        draw("deconvolution-multi-coefficients-large",1200,2600,
+          plot(z,which=seq_along(z$fits),channels="all"))
         draw("deconvolution-multi-home-coefficients",1200,1300,
           plot(z,which=c(1L,best_other),channels="all"))
       }

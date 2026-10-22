@@ -95,7 +95,7 @@ benchmark</a>. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/R
 benchmark</a> also reproduces the million-predictor LASSO
 comparisons.</p>
 <div class="section level2">
-<h2 id="one-million-predictors">One million predictors<a class="anchor" aria-label="anchor" href="#one-million-predictors"></a>
+<h2 id="one-million-predictor-example">One million predictor example<a class="anchor" aria-label="anchor" href="#one-million-predictor-example"></a>
 </h2>
 <p>The design has 500 observations, one million standard-normal
 predictors and 60 nonzero coefficients of either sign. L0glm uses
@@ -190,9 +190,10 @@ tuned by BIC or five-fold CV.</p>
 </tbody>
 </table>
 <div class="figure">
-<img src="performance_files/figure-html/million-plot-1.png" class="r-plt" alt="Complete-workflow timings and false positives in the million-predictor example. L0glm uses a GIC preset; both LASSO methods use five-fold CV." width="1440"><p class="caption">
-Complete-workflow timings and false positives in the million-predictor
-example. L0glm uses a GIC preset; both LASSO methods use five-fold CV.
+<img src="performance_files/figure-html/million-plot-1.png" class="r-plt" alt="Fast fitting and selection, higher sensitivity and fewer false positives in the million-predictor example. L0glm uses a GIC preset; both LASSO methods use five-fold CV. There are 60 true effects." width="1920"><p class="caption">
+Fast fitting and selection, higher sensitivity and fewer false positives
+in the million-predictor example. L0glm uses a GIC preset; both LASSO
+methods use five-fold CV. There are 60 true effects.
 </p>
 </div>
 <p>In this simulation L0glm is <strong>35 times faster than five-fold-CV
@@ -220,18 +221,20 @@ is evaluated using the original Poisson likelihood and a common GIC.</p>
 <!-- BEGIN single-metrics -->
 <table class="table">
 <colgroup>
-<col width="8%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="7%">
+<col width="7%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th>Method</th>
+<th>Selection</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -244,7 +247,8 @@ is evaluated using the original Poisson likelihood and a common GIC.</p>
 <tbody>
 <tr class="odd">
 <td>L0glm</td>
-<td align="right">0.22</td>
+<td>GIC preset</td>
+<td align="right">0.20</td>
 <td align="right">102682</td>
 <td align="right">845</td>
 <td align="right">154</td>
@@ -255,6 +259,7 @@ is evaluated using the original Poisson likelihood and a common GIC.</p>
 </tr>
 <tr class="even">
 <td>LASSO</td>
+<td>GIC path</td>
 <td align="right">0.40</td>
 <td align="right">145904</td>
 <td align="right">950</td>
@@ -266,6 +271,7 @@ is evaluated using the original Poisson likelihood and a common GIC.</p>
 </tr>
 <tr class="odd">
 <td>Relaxed LASSO</td>
+<td>GIC path</td>
 <td align="right">0.64</td>
 <td align="right">122083</td>
 <td align="right">905</td>
@@ -275,13 +281,39 @@ is evaluated using the original Poisson likelihood and a common GIC.</p>
 <td align="right">0.623</td>
 <td align="right">0.607</td>
 </tr>
+<tr class="even">
+<td>LASSO</td>
+<td>5-fold CV</td>
+<td align="right">4.83</td>
+<td align="right">146234</td>
+<td align="right">951</td>
+<td align="right">2146</td>
+<td align="right">49</td>
+<td align="right">6854</td>
+<td align="right">0.464</td>
+<td align="right">0.462</td>
+</tr>
+<tr class="odd">
+<td>Relaxed LASSO</td>
+<td>5-fold CV</td>
+<td align="right">6.70</td>
+<td align="right">133122</td>
+<td align="right">920</td>
+<td align="right">1523</td>
+<td align="right">80</td>
+<td align="right">7477</td>
+<td align="right">0.534</td>
+<td align="right">0.524</td>
+</tr>
 </tbody>
 </table>
 <!-- END single-metrics --><p>L0glm uses one GIC preset with a relaxed refit. LASSO and relaxed
-LASSO search ten explicit lambda values using a weighted-Gaussian
-approximation with observation weights <code>1/(y+0.1)</code>. ABESS is
-omitted from this large example. The <a href="deconvolution.html">deconvolution tutorial</a> shows mirrored
-signals and true-versus-estimated coefficient plots.</p>
+LASSO search ten explicit lambda values using GIC or five-fold CV, with
+a weighted-Gaussian approximation and observation weights
+<code>1/(y+0.1)</code>. CV selects glmnet’s minimum weighted prediction
+error using four parallel workers. ABESS is omitted from this large
+example. The <a href="deconvolution.html">deconvolution tutorial</a>
+shows mirrored signals and true-versus-estimated coefficient plots.</p>
 </div>
 <div class="section level2">
 <h2 id="multichannel-deconvolution">Multichannel deconvolution<a class="anchor" aria-label="anchor" href="#multichannel-deconvolution"></a>
@@ -295,19 +327,21 @@ coefficients describe the mass spectra.</p>
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="6%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
+<col width="6%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
 </colgroup>
 <thead><tr class="header">
 <th>Method</th>
+<th>Selection</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -322,7 +356,8 @@ coefficients describe the mass spectra.</p>
 <tbody>
 <tr class="odd">
 <td>L0glm</td>
-<td align="right">34.14</td>
+<td>GIC preset</td>
+<td align="right">9.63</td>
 <td align="right">5615963</td>
 <td align="right">944</td>
 <td align="right">11</td>
@@ -335,6 +370,7 @@ coefficients describe the mass spectra.</p>
 </tr>
 <tr class="even">
 <td>Group LASSO</td>
+<td>GIC path</td>
 <td align="right">244.87</td>
 <td align="right">7413616</td>
 <td align="right">980</td>
@@ -348,6 +384,7 @@ coefficients describe the mass spectra.</p>
 </tr>
 <tr class="odd">
 <td>Relaxed group LASSO</td>
+<td>GIC path</td>
 <td align="right">906.34</td>
 <td align="right">6138687</td>
 <td align="right">909</td>
@@ -359,16 +396,49 @@ coefficients describe the mass spectra.</p>
 <td align="right">0.853</td>
 <td align="right">0.782</td>
 </tr>
+<tr class="even">
+<td>Group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">813.42</td>
+<td align="right">9639345</td>
+<td align="right">998</td>
+<td align="right">4242</td>
+<td align="right">2</td>
+<td align="right">4758</td>
+<td align="right">0.320</td>
+<td align="right">0.316</td>
+<td align="right">0.886</td>
+<td align="right">0.830</td>
+</tr>
+<tr class="odd">
+<td>Relaxed group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">3199.62</td>
+<td align="right">6198648</td>
+<td align="right">962</td>
+<td align="right">502</td>
+<td align="right">38</td>
+<td align="right">8498</td>
+<td align="right">0.781</td>
+<td align="right">0.769</td>
+<td align="right">0.856</td>
+<td align="right">0.785</td>
+</tr>
 </tbody>
 </table>
 <!-- END multi-metrics --><p>Row F1 and MCC measure peak recovery. Within-row F1 and MCC assess
 spectral sparsity among correctly recovered true-positive peaks. L0glm
 uses the full Poisson likelihood with channel-specific working weights.
 Grouped glmnet uses shared row weights <code>1/(rowMeans(y)+0.1)</code>
-for its labelled Gaussian approximation. It searches ten lambda values,
-with each candidate evaluated using the original Poisson likelihood.
-Timings include fitting, tuning and candidate scoring; L0glm uses eight
-outcome-fitting threads.</p>
+for its labelled Gaussian approximation. GIC selection scores ten lambda
+values using the original Poisson likelihood; five-fold CV selects the
+minimum weighted prediction error on the same lambda grid. Fully relaxed
+fits use <code>gamma=0</code>. L0glm uses <code>lambda="gic"</code> and
+four outcome-fitting threads; CV uses four parallel workers. Timings
+include the complete fitting and selection workflow, including worker
+startup for CV. The preset time is the median of three runs with
+matching coefficients. Simulation and final metric reporting are
+excluded.</p>
 <p>The <a href="deconvolution.html">deconvolution tutorial</a> stacks
 observed data, ground truth and fitted coefficient heatmaps, and shows
 all-channel coefficient comparisons in a single column.</p>
@@ -471,11 +541,17 @@ benchmark</a>: detailed signal examples and alternative methods.</li>
 <a href="../reference/sparseglm.html"><code>sparseglm()</code></a>:
 use the same comparison framework on your own data.</li>
 </ul>
-<p>Timings measure complete workflows on a Windows workstation with
-OpenBLAS and will vary with hardware and tuning choices. F1 and MCC
-evaluate the known simulated support; it is never used to select models.
-Likelihood floors and approximation labels are explicit in the benchmark
-source.</p>
+<p>The benchmarks were run on an <strong>HP ZBook Fury 17.3-inch G8
+Mobile Workstation</strong> with an <strong>11th-generation Intel Core
+i9-11950H at 2.60 GHz</strong>, <strong>8 physical cores and 16 logical
+cores</strong>, running Windows and R 4.5.0 with OpenBLAS. BLAS uses one
+thread. Screening in the million-predictor example uses eight physical
+cores. Multichannel deconvolution uses four outcome-fitting threads, and
+deconvolution CV uses four parallel workers. Single-channel fits use one
+fitting thread. Timings will vary with hardware and tuning choices. F1
+and MCC evaluate the known simulated support; it is never used to select
+models. Likelihood floors and approximation labels are explicit in the
+benchmark source.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

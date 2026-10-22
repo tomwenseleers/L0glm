@@ -87,7 +87,7 @@ L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", 
 The default fit recovers 40 true effects with 3 false positives. Screening uses
 all detected physical cores by default (eight on this workstation). Five-fold-CV LASSO took **123.13 s**,
 recovering 17 true effects with 50 false positives. The
-[benchmark article](performance.html#one-million-predictors) reports all methods,
+[benchmark article](performance.html#one-million-predictor-example) reports all methods,
 including relaxed LASSO, together with their tuning settings.
 
 ## GIC tuning and cross-validation

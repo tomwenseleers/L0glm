@@ -21,8 +21,29 @@ time is the median of three runs; all three return identical coefficients.
 Screening uses the physical cores (eight on this workstation), with one BLAS
 thread. Deconvolution has 10,000 observations, 10,000 predictors and 1,000 true
 peaks; the multichannel simulation retains all 226 informative mass channels.
-All methods use the same Poisson GIC for selection and scoring. The L0glm row
-uses one preset fit with a relaxed refit; glmnet uses ten lambda values.
+L0glm uses a direct `L0glm.fit(..., lambda="gic", relaxed=TRUE,
+parallelize=TRUE, ncores=4L)` call. Its time is the median of three runs
+returning matching coefficients. GIC-tuned LASSO and fully relaxed LASSO
+search ten lambda values, scoring each using the original Poisson likelihood.
+The five-fold CV comparisons use native `cv.glmnet`, the same ten-value lambda
+grid and common random folds, with four parallel workers. CV minimizes weighted
+Gaussian prediction error. Every selected model is also scored using Poisson GIC.
+CV timings include worker startup and the full-data fit. Simulation and final
+metric reporting are excluded. The multichannel glmnet approximation uses
+shared row weights `1/(rowMeans(y)+0.1)` and `family="mgaussian"`.
+Fully relaxed models use `gamma=0`.
+
+`benchmark_website_deconvolution.R` runs these five workflows, starting from
+the same simulated data. Per-method checkpoints allow interrupted runs to
+resume. The `*-preset-timings.csv` files retain every preset timing, and
+`*-folds.csv` records the five-fold partition, and `*-tuning.csv` records all
+candidate scores and the selected path values. The mirrored single-channel
+signal panels show the first 1,000 time points; coefficient comparisons retain
+all 10,000 predictors and all 226 multichannel outcomes.
+
+Hardware: HP ZBook Fury 17.3-inch G8 Mobile Workstation, 11th-generation Intel
+Core i9-11950H at 2.60 GHz, 8 physical cores and 16 logical cores. Benchmarks use
+Windows and R 4.5.0 with OpenBLAS and one BLAS thread.
 
 The million-predictor LASSO and relaxed-LASSO comparison is reproduced by
 `README.Rmd`, including common random five-fold CV folds. Those CV results use

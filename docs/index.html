@@ -97,7 +97,7 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictors"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a> <!-- END multi-stat --></p>
 </div>
 <div class="section level2">
 <h2 id="sparse-learning-across-a-wide-range-of-models">Sparse learning across a wide range of models<a class="anchor" aria-label="anchor" href="#sparse-learning-across-a-wide-range-of-models"></a>
@@ -145,7 +145,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="section level2">
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
-<p>Sixty nonzero effects among <strong>one million predictors</strong>, fitted in one call.</p>
+<p>Sixty nonzero effects among <strong>one million predictors</strong>, fitted in one simple call in about <strong>3 seconds</strong>, with <strong>40 out of 60 successfully recovered</strong> and just <strong>3 false positives</strong>:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
@@ -184,51 +184,36 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td align="right">0.787</td>
 </tr></tbody>
 </table>
-<!-- END million-metrics --><!-- BEGIN million-confusion --><table class="table">
-<thead><tr>
-<th>Ground truth</th>
-<th align="right">Selected</th>
-<th align="right">Excluded</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>Nonzero effects</td>
-<td align="right">40 TP</td>
-<td align="right">20 FN</td>
-</tr>
-<tr>
-<td>Zero effects</td>
-<td align="right">3 FP</td>
-<td align="right">999937 TN</td>
-</tr>
-</tbody>
-</table>
-<!-- END million-confusion --><div class="float">
-<img src="million-coefficients.png" alt="True versus estimated coefficients in the million-predictor default fit."><div class="figcaption">True versus estimated coefficients in the million-predictor default fit.</div>
-</div>
+<!-- END million-metrics --><p>Recovered coefficients show near-zero bias:</p>
+<p><img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%"></p>
 <p>Install with <code>remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")</code>. The dense design occupies about 4 GB. The <a href="articles/L0glm.html">getting-started guide</a> explains the example and prediction methods.</p>
-<div class="section level3">
-<h3 id="tuning-when-you-need-it">Tuning when you need it<a class="anchor" aria-label="anchor" href="#tuning-when-you-need-it"></a>
-</h3>
-<p>The preset often already gives an excellent sparse model. Detailed tuning over a lambda grid is also supported; in this example it selects exactly the preset.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
-<span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<div class="float">
-<img src="million-path.png" alt="Coefficient paths and GIC in the million-predictor example, with the selected and preset lambda coinciding."><div class="figcaption">Coefficient paths and GIC in the million-predictor example, with the selected and preset lambda coinciding.</div>
-</div>
-<p>Use <code>tune="cv", nfolds=5L</code> for five-fold validation. See <a href="articles/selection.html">model selection</a> for a 100-signal example and the one-standard-error rule.</p>
-</div>
 </div>
 <div class="section level2">
-<h2 id="example-sparse-deconvolution">Example: sparse deconvolution<a class="anchor" aria-label="anchor" href="#example-sparse-deconvolution"></a>
+<h2 id="application-sparse-deconvolution">Application: sparse deconvolution<a class="anchor" aria-label="anchor" href="#application-sparse-deconvolution"></a>
 </h2>
 <p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped L₀ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
-<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong>. It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. The comparison uses the same Poisson GIC to select and score every method.</p>
+<p>By regressing the observed signal on a design matrix consisting of shifted copies of the peak-shape function (the point spread function), L0glm recovers the underlying peaks and their mass spectra.</p>
+<!-- BEGIN multi-speed -->
+<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong> in <strong>9.63 seconds</strong>: <strong>25× faster than GIC-tuned group LASSO</strong> and <strong>332× faster than relaxed group LASSO tuned by five-fold CV</strong> in this comparison. <!-- END multi-speed --> It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. A direct <code><a href="reference/L0glm.fit.html">L0glm.fit()</a></code> call uses <code>lambda="gic"</code> and four cores; the competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
+<span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span><span class="op">)</span></span></code></pre></div>
 <!-- BEGIN multi-home -->
 <table class="table">
+<colgroup>
+<col width="11%">
+<col width="11%">
+<col width="15%">
+<col width="15%">
+<col width="15%">
+<col width="15%">
+<col width="15%">
+</colgroup>
 <thead><tr>
 <th>Method</th>
+<th>Selection</th>
 <th align="right">Seconds</th>
 <th align="right">TP</th>
 <th align="right">FP</th>
@@ -238,7 +223,8 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tbody>
 <tr>
 <td>L0glm</td>
-<td align="right">34.14</td>
+<td>GIC preset</td>
+<td align="right">9.63</td>
 <td align="right">944</td>
 <td align="right">11</td>
 <td align="right">0.966</td>
@@ -246,6 +232,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 </tr>
 <tr>
 <td>Group LASSO</td>
+<td>GIC path</td>
 <td align="right">244.87</td>
 <td align="right">980</td>
 <td align="right">860</td>
@@ -254,11 +241,30 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 </tr>
 <tr>
 <td>Relaxed group LASSO</td>
+<td>GIC path</td>
 <td align="right">906.34</td>
 <td align="right">909</td>
 <td align="right">309</td>
 <td align="right">0.820</td>
 <td align="right">0.802</td>
+</tr>
+<tr>
+<td>Group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">813.42</td>
+<td align="right">998</td>
+<td align="right">4242</td>
+<td align="right">0.320</td>
+<td align="right">0.316</td>
+</tr>
+<tr>
+<td>Relaxed group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">3199.62</td>
+<td align="right">962</td>
+<td align="right">502</td>
+<td align="right">0.781</td>
+<td align="right">0.769</td>
 </tr>
 </tbody>
 </table>
@@ -269,7 +275,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="float">
 <img src="deconvolution-multi-home-coefficients.png" alt="True versus estimated coefficients across all channels for L0glm and relaxed group LASSO."><div class="figcaption">True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.</div>
 </div>
-<p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; their timings include a ten-value tuning path. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
+<p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-starting-point">Choose a starting point<a class="anchor" aria-label="anchor" href="#choose-a-starting-point"></a>

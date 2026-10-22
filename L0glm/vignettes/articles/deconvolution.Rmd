@@ -4,9 +4,10 @@ description: "Recover overlapping peaks from noisy signals, including multichann
 output: rmarkdown::html_document
 ---
 
-In deconvolution, a design matrix contains shifted copies of a point-spread
-function. Sparse coefficients represent sharp events, while the measured
-signal is blurred and noisy. For nonnegative Poisson intensities,
+In deconvolution, a design matrix contains shifted copies of the peak-shape
+function, also called the point spread function. Sparse coefficients represent
+sharp events, while the measured signal is blurred and noisy. For nonnegative
+Poisson intensities,
 
 \[
 Y_i\sim\operatorname{Poisson}\{(X\beta)_i\},\qquad\beta\geq0.
@@ -15,6 +16,9 @@ Y_i\sim\operatorname{Poisson}\{(X\beta)_i\},\qquad\beta\geq0.
 The following examples each have **10,000 observations, 10,000 candidate peak
 locations and 1,000 true peaks**. L0glm fits the Poisson likelihood directly;
 the native OpenMP backend shares the sparse convolution design across channels.
+L0glm uses the GIC preset. Competing LASSO methods use ten lambda values,
+selected by GIC or native five-fold CV with weighted prediction error.
+See [benchmark hardware and timing conventions](performance.html#reproduce-and-extend).
 
 ## Single channel deconvolution
 
@@ -22,35 +26,47 @@ the native OpenMP backend shares the sparse convolution design across channels.
 library(L0glm)
 single <- simul(method=2L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
-comparison <- sparseglm(single, family=poisson("identity"),
-  method=c("L0glm", "lasso", "relaxed_lasso"),
-  tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE,
-  approximation="wls", lambda=list(L0glm=log(10000)*log(log(10000))),
-  options=list(L0glm=list(relaxed=TRUE)))
-L0glm.metrics(comparison)[c("method", "seconds", "gic", "TP", "FP", "FN", "TN",
+system.time(fit <- L0glm.fit(single$X, single$y, family=poisson("identity"),
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, relaxed=TRUE,
+  parallelize=TRUE, ncores=4L))
+L0glm.metrics(fit, beta_true=single$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC")]
 ```
 
+<!-- BEGIN single-speed -->
+L0glm recovers **845 of 1,000 true peaks with just 154 false positives** in **0.20 seconds**: **2× faster than GIC-tuned LASSO** and **34× faster than relaxed LASSO tuned by five-fold CV** in this comparison.
+<!-- END single-speed -->
+
 <!-- BEGIN single-metrics -->
-| Method | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | 0.22 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
-| LASSO | 0.40 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
-| Relaxed LASSO | 0.64 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
+| Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| L0glm | GIC preset | 0.20 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
+| LASSO | GIC path | 0.40 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
+| Relaxed LASSO | GIC path | 0.64 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
+| LASSO | 5-fold CV | 4.83 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
+| Relaxed LASSO | 5-fold CV | 6.70 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
 <!-- END single-metrics -->
 
-The observed and true signal are shown above zero; fitted signals and estimated
-spikes are mirrored below in red. The panels compare L0glm with the strongest
-competing method in this example, ranked by support MCC.
+The table compares the GIC-preset fit with LASSO and fully relaxed LASSO,
+each selected by GIC or five-fold CV over the same ten-value lambda grid.
+The GIC comparison is available through `sparseglm()`:
 
-<img src="../deconvolution-single-large.png" alt="Realistic single-channel Poisson deconvolution: observed and true signal above, fitted signal and spikes mirrored below in red." width="100%">
-
-The coefficient comparison shows estimation accuracy and the additional
-coefficients selected by the competing method. Each common `(0,0)` is plotted once.
-
-```{r single-coefficients, eval=FALSE}
-plot(comparison, which=c(1L, 3L))
+```{r single-comparison, eval=FALSE}
+gic <- sparseglm(single, family=poisson("identity"),
+  method=c("lasso", "relaxed_lasso"), tune="gic", nlambda=10L,
+  nonnegative=TRUE, intercept=FALSE, approximation="wls")
 ```
+
+The observed and true signal are shown above zero; fitted signals and estimated
+spikes are mirrored below in red. These panels zoom into the **first 1,000 time
+points**, using the same vertical scale for both methods. They compare L0glm
+with the strongest competing method in this example, ranked by support MCC.
+
+<img src="../deconvolution-single-large.png" alt="First 1,000 time points of single-channel Poisson deconvolution: observed and true signal above, fitted signal and spikes mirrored below in red." width="100%">
+
+The coefficient comparison retains **all 10,000 predictors** and shows estimation
+accuracy and the additional coefficients selected by the competing method.
+Each common `(0,0)` is plotted once.
 
 <img src="../deconvolution-single-coefficients-large.png" alt="True versus estimated single-channel coefficients for L0glm and relaxed LASSO." width="100%">
 
@@ -68,30 +84,47 @@ spectral library. No channels are discarded for fitting or plotting.
 ```{r multi, eval=FALSE}
 multi <- simul(method=4L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
-comparison_multi <- sparseglm(multi, family=poisson("identity"),
-  method=c("L0glm", "lasso", "relaxed_lasso"),
-  tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE,
-  approximation="wls_grouped",
-  lambda=list(L0glm=log(10000)*log(log(10000))),
-  options=list(L0glm=list(relaxed=TRUE, ncores=8L)))
-L0glm.metrics(comparison_multi)[c("method", "seconds", "gic", "TP", "FP", "FN", "TN",
+system.time(fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, grouped=TRUE, relaxed=TRUE,
+  parallelize=TRUE, ncores=4L))
+L0glm.metrics(fit_multi, beta_true=multi$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 ```
 
+<!-- BEGIN multi-speed -->
+L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+<!-- END multi-speed -->
+
 <!-- BEGIN multi-metrics -->
-| Method | Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Within-row F1 | Within-row MCC |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | 34.14 | 5615963 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.909 | 0.864 |
-| Group LASSO | 244.87 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
-| Relaxed group LASSO | 906.34 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
+| Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Within-row F1 | Within-row MCC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| L0glm | GIC preset | 9.63 | 5615963 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.909 | 0.864 |
+| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
+| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
+| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 2 | 4758 | 0.320 | 0.316 | 0.886 | 0.830 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
 <!-- END multi-metrics -->
 
 Row F1 and MCC measure recovery of peak times. Within-row F1 and MCC measure
 mass-spectrum sparsity among correctly recovered true-positive peaks.
 Group LASSO and relaxed group LASSO use glmnet's grouped Gaussian approximation, with shared
-row weights `1/(rowMeans(y)+0.1)`; every model is evaluated using the original
-Poisson likelihood and the same GIC. Each glmnet path has ten lambda values.
-Relaxed group LASSO refits the selected shared row support with `gamma=0`.
+row weights `1/(rowMeans(y)+0.1)`; every selected model is evaluated using the
+original Poisson likelihood and the same GIC. Each glmnet path has ten lambda
+values. Relaxed group LASSO refits the selected shared row support with `gamma=0`.
+Native `cv.glmnet()` selects the minimum weighted prediction error using five
+common random folds and four parallel workers. L0glm uses a single GIC preset
+with four outcome-fitting threads. CV timings include worker startup and
+the full-data refit; simulation and final metric reporting are excluded.
+The L0glm time is the median of three fits with matching coefficients.
+
+```{r multi-comparison, eval=FALSE}
+gic_multi <- sparseglm(multi, family=poisson("identity"),
+  method=c("lasso", "relaxed_lasso"), tune="gic", nlambda=10L,
+  nonnegative=TRUE, intercept=FALSE, approximation="wls_grouped")
+```
+
+The [benchmark source](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R)
+reproduces both selection rules, the timings and every reported metric.
 
 ### Correlated peaks and group LASSO
 
@@ -127,18 +160,13 @@ have their own intensity scale. Cyan overlays mark true support or true
 positives, red marks false positives and magenta marks false negatives. Legends
 also give the counts. Every channel is retained.
 
-```{r multi-plots, eval=FALSE}
-plot(comparison_multi, type="heatmap", which=c(1L, 3L))
-plot(comparison_multi, type="coefs", which=1:3, channels="all")
-```
-
 <img src="../deconvolution-multi-large.png" alt="All 226 channels: observed GC/MS data, true peak spectra, L0glm estimates and the strongest competing fit, with cyan/red/magenta support overlays." width="100%">
 
 Multichannel true-versus-estimated coefficient panels use a single column.
 Blue points are correctly recovered nonzero coefficients, red points are false
 positives and magenta points are false negatives.
 
-<img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for L0glm, group LASSO and relaxed group LASSO across all mass channels." width="100%">
+<img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for GIC-preset L0glm and GIC- or CV-tuned group LASSO and relaxed group LASSO across all mass channels." width="100%">
 
 ## Tune or use native validation
 

@@ -1337,8 +1337,8 @@ b_{\rm ISIS}&amp;=\max\left\{1,\ \operatorname{round}
 <p>capped at the available predictor count. Standalone
 <code><a href="../reference/sis_glm.html">sis_glm()</a></code> defaults to <span class="math inline">\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}</span>.
 An explicit <code>nsis</code> overrides these sizes. Automatic screening
-enables ISIS when the number of eligible selectable predictors is at
-least <span class="math inline">\max(10000,10n)</span>.</p>
+enables ISIS when the number of eligible selectable predictors exceeds
+<span class="math inline">10n</span>, where <span class="math inline">n</span> is the number of observations.</p>
 <p>GIC comparison uses the <strong>original</strong> <span class="math inline">p</span> and the fitted parameter count, including
 estimated distribution parameters where appropriate. For a grouped
 multinomial fit, an active row contributes <span class="math inline">C-1</span> free category directions; for ordinary

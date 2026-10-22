@@ -86,17 +86,20 @@
 
     
     
-<p>In deconvolution, a design matrix contains shifted copies of a
-point-spread function. Sparse coefficients represent sharp events, while
-the measured signal is blurred and noisy. For nonnegative Poisson
-intensities,</p>
+<p>In deconvolution, a design matrix contains shifted copies of the
+peak-shape function, also called the point spread function. Sparse
+coefficients represent sharp events, while the measured signal is
+blurred and noisy. For nonnegative Poisson intensities,</p>
 <p><span class="math display">
 Y_i\sim\operatorname{Poisson}\{(X\beta)_i\},\qquad\beta\geq0.
 </span></p>
 <p>The following examples each have <strong>10,000 observations, 10,000
 candidate peak locations and 1,000 true peaks</strong>. L0glm fits the
 Poisson likelihood directly; the native OpenMP backend shares the sparse
-convolution design across channels.</p>
+convolution design across channels. L0glm uses the GIC preset. Competing
+LASSO methods use ten lambda values, selected by GIC or native five-fold
+CV with weighted prediction error. See <a href="performance.html#reproduce-and-extend">benchmark hardware and
+timing conventions</a>.</p>
 <div class="section level2">
 <h2 id="single-channel-deconvolution">Single channel deconvolution<a class="anchor" aria-label="anchor" href="#single-channel-deconvolution"></a>
 </h2>
@@ -104,28 +107,34 @@ convolution design across channels.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
 <span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">single</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
-<span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>,</span>
-<span>  approximation<span class="op">=</span><span class="st">"wls"</span>, lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"seconds"</span>, <span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">single</span><span class="op">$</span><span class="va">X</span>, <span class="va">single</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">single</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
 <span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<!-- BEGIN single-speed -->
+<p>L0glm recovers <strong>845 of 1,000 true peaks with just 154 false
+positives</strong> in <strong>0.20 seconds</strong>: <strong>2× faster
+than GIC-tuned LASSO</strong> and <strong>34× faster than relaxed LASSO
+tuned by five-fold CV</strong> in this comparison.
+<!-- END single-speed --></p>
 <!-- BEGIN single-metrics -->
 <table class="table">
 <colgroup>
-<col width="8%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="7%">
+<col width="7%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
 </colgroup>
 <thead><tr class="header">
 <th>Method</th>
+<th>Selection</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -138,7 +147,8 @@ convolution design across channels.</p>
 <tbody>
 <tr class="odd">
 <td>L0glm</td>
-<td align="right">0.22</td>
+<td>GIC preset</td>
+<td align="right">0.20</td>
 <td align="right">102682</td>
 <td align="right">845</td>
 <td align="right">154</td>
@@ -149,6 +159,7 @@ convolution design across channels.</p>
 </tr>
 <tr class="even">
 <td>LASSO</td>
+<td>GIC path</td>
 <td align="right">0.40</td>
 <td align="right">145904</td>
 <td align="right">950</td>
@@ -160,6 +171,7 @@ convolution design across channels.</p>
 </tr>
 <tr class="odd">
 <td>Relaxed LASSO</td>
+<td>GIC path</td>
 <td align="right">0.64</td>
 <td align="right">122083</td>
 <td align="right">905</td>
@@ -169,18 +181,50 @@ convolution design across channels.</p>
 <td align="right">0.623</td>
 <td align="right">0.607</td>
 </tr>
+<tr class="even">
+<td>LASSO</td>
+<td>5-fold CV</td>
+<td align="right">4.83</td>
+<td align="right">146234</td>
+<td align="right">951</td>
+<td align="right">2146</td>
+<td align="right">49</td>
+<td align="right">6854</td>
+<td align="right">0.464</td>
+<td align="right">0.462</td>
+</tr>
+<tr class="odd">
+<td>Relaxed LASSO</td>
+<td>5-fold CV</td>
+<td align="right">6.70</td>
+<td align="right">133122</td>
+<td align="right">920</td>
+<td align="right">1523</td>
+<td align="right">80</td>
+<td align="right">7477</td>
+<td align="right">0.534</td>
+<td align="right">0.524</td>
+</tr>
 </tbody>
 </table>
-<!-- END single-metrics --><p>The observed and true signal are shown above zero; fitted signals and
-estimated spikes are mirrored below in red. The panels compare L0glm
-with the strongest competing method in this example, ranked by support
-MCC.</p>
-<p><img src="../deconvolution-single-large.png" alt="Realistic single-channel Poisson deconvolution: observed and true signal above, fitted signal and spikes mirrored below in red." width="100%"></p>
-<p>The coefficient comparison shows estimation accuracy and the
-additional coefficients selected by the competing method. Each common
-<code>(0,0)</code> is plotted once.</p>
+<!-- END single-metrics --><p>The table compares the GIC-preset fit with LASSO and fully relaxed
+LASSO, each selected by GIC or five-fold CV over the same ten-value
+lambda grid. The GIC comparison is available through
+<code><a href="../reference/sparseglm.html">sparseglm()</a></code>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">single</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>,</span>
+<span>  nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>, approximation<span class="op">=</span><span class="st">"wls"</span><span class="op">)</span></span></code></pre></div>
+<p>The observed and true signal are shown above zero; fitted signals and
+estimated spikes are mirrored below in red. These panels zoom into the
+<strong>first 1,000 time points</strong>, using the same vertical scale
+for both methods. They compare L0glm with the strongest competing method
+in this example, ranked by support MCC.</p>
+<p><img src="../deconvolution-single-large.png" alt="First 1,000 time points of single-channel Poisson deconvolution: observed and true signal above, fitted signal and spikes mirrored below in red." width="100%"></p>
+<p>The coefficient comparison retains <strong>all 10,000
+predictors</strong> and shows estimation accuracy and the additional
+coefficients selected by the competing method. Each common
+<code>(0,0)</code> is plotted once.</p>
 <p><img src="../deconvolution-single-coefficients-large.png" alt="True versus estimated single-channel coefficients for L0glm and relaxed LASSO." width="100%"></p>
 </div>
 <div class="section level2">
@@ -198,31 +242,36 @@ discarded for fitting or plotting.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
 <span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="va">comparison_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">multi</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
-<span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>,</span>
-<span>  approximation<span class="op">=</span><span class="st">"wls_grouped"</span>,</span>
-<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">8L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison_multi</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"seconds"</span>, <span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit_multi</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
 <span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>, <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<!-- BEGIN multi-speed -->
+<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false
+positives</strong> in <strong>9.63 seconds</strong>: <strong>25× faster
+than GIC-tuned group LASSO</strong> and <strong>332× faster than relaxed
+group LASSO tuned by five-fold CV</strong> in this comparison.
+<!-- END multi-speed --></p>
 <!-- BEGIN multi-metrics -->
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="6%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
-<col width="9%">
+<col width="6%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
+<col width="8%">
 </colgroup>
 <thead><tr class="header">
 <th>Method</th>
+<th>Selection</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -237,7 +286,8 @@ discarded for fitting or plotting.</p>
 <tbody>
 <tr class="odd">
 <td>L0glm</td>
-<td align="right">34.14</td>
+<td>GIC preset</td>
+<td align="right">9.63</td>
 <td align="right">5615963</td>
 <td align="right">944</td>
 <td align="right">11</td>
@@ -250,6 +300,7 @@ discarded for fitting or plotting.</p>
 </tr>
 <tr class="even">
 <td>Group LASSO</td>
+<td>GIC path</td>
 <td align="right">244.87</td>
 <td align="right">7413616</td>
 <td align="right">980</td>
@@ -263,6 +314,7 @@ discarded for fitting or plotting.</p>
 </tr>
 <tr class="odd">
 <td>Relaxed group LASSO</td>
+<td>GIC path</td>
 <td align="right">906.34</td>
 <td align="right">6138687</td>
 <td align="right">909</td>
@@ -274,15 +326,56 @@ discarded for fitting or plotting.</p>
 <td align="right">0.853</td>
 <td align="right">0.782</td>
 </tr>
+<tr class="even">
+<td>Group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">813.42</td>
+<td align="right">9639345</td>
+<td align="right">998</td>
+<td align="right">4242</td>
+<td align="right">2</td>
+<td align="right">4758</td>
+<td align="right">0.320</td>
+<td align="right">0.316</td>
+<td align="right">0.886</td>
+<td align="right">0.830</td>
+</tr>
+<tr class="odd">
+<td>Relaxed group LASSO</td>
+<td>5-fold CV</td>
+<td align="right">3199.62</td>
+<td align="right">6198648</td>
+<td align="right">962</td>
+<td align="right">502</td>
+<td align="right">38</td>
+<td align="right">8498</td>
+<td align="right">0.781</td>
+<td align="right">0.769</td>
+<td align="right">0.856</td>
+<td align="right">0.785</td>
+</tr>
 </tbody>
 </table>
 <!-- END multi-metrics --><p>Row F1 and MCC measure recovery of peak times. Within-row F1 and MCC
 measure mass-spectrum sparsity among correctly recovered true-positive
 peaks. Group LASSO and relaxed group LASSO use glmnet’s grouped Gaussian
 approximation, with shared row weights <code>1/(rowMeans(y)+0.1)</code>;
-every model is evaluated using the original Poisson likelihood and the
-same GIC. Each glmnet path has ten lambda values. Relaxed group LASSO
-refits the selected shared row support with <code>gamma=0</code>.</p>
+every selected model is evaluated using the original Poisson likelihood
+and the same GIC. Each glmnet path has ten lambda values. Relaxed group
+LASSO refits the selected shared row support with <code>gamma=0</code>.
+Native <code>cv.glmnet()</code> selects the minimum weighted prediction
+error using five common random folds and four parallel workers. L0glm
+uses a single GIC preset with four outcome-fitting threads. CV timings
+include worker startup and the full-data refit; simulation and final
+metric reporting are excluded. The L0glm time is the median of three
+fits with matching coefficients.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gic_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">multi</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>,</span>
+<span>  nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>, approximation<span class="op">=</span><span class="st">"wls_grouped"</span><span class="op">)</span></span></code></pre></div>
+<p>The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R" class="external-link">benchmark
+source</a> reproduces both selection rules, the timings and every
+reported metric.</p>
 <div class="section level3">
 <h3 id="correlated-peaks-and-group-lasso">Correlated peaks and group LASSO<a class="anchor" aria-label="anchor" href="#correlated-peaks-and-group-lasso"></a>
 </h3>
@@ -317,14 +410,11 @@ page. Coefficient panels share a colour scale; observed counts have
 their own intensity scale. Cyan overlays mark true support or true
 positives, red marks false positives and magenta marks false negatives.
 Legends also give the counts. Every channel is retained.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"heatmap"</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"coefs"</span>, which<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, channels<span class="op">=</span><span class="st">"all"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="../deconvolution-multi-large.png" alt="All 226 channels: observed GC/MS data, true peak spectra, L0glm estimates and the strongest competing fit, with cyan/red/magenta support overlays." width="100%"></p>
 <p>Multichannel true-versus-estimated coefficient panels use a single
 column. Blue points are correctly recovered nonzero coefficients, red
 points are false positives and magenta points are false negatives.</p>
-<p><img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for L0glm, group LASSO and relaxed group LASSO across all mass channels." width="100%"></p>
+<p><img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for GIC-preset L0glm and GIC- or CV-tuned group LASSO and relaxed group LASSO across all mass channels." width="100%"></p>
 </div>
 </div>
 <div class="section level2">

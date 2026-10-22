@@ -49,33 +49,9 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
         row.names=FALSE)
       rm(X, y, fit, path, B, beta); gc()
     } else if (case %in% c("single", "multi")) {
-      sim <- simul(method=if (case == "single") 2L else 4L,
-        n=10000L, p=10000L, n_nonzero=1000L, seed=2L)
-      message(case, ": ", nrow(sim$X), " rows, ", ncol(sim$X),
-        " predictors, ", ncol(as.matrix(sim$y)), " channels")
-      pieces <- lapply(c("L0glm", "lasso", "relaxed_lasso"), function(method) {
-        destination <- file.path(cache, paste0(case, "-", method, ".rds"))
-        if (file.exists(destination)) return(readRDS(destination))
-        message("Fitting ", case, "/", method, " at ", Sys.time())
-        result <- sparseglm(sim, family=poisson("identity"), method=method,
-          tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE,
-          approximation=if (case == "single") "wls" else "wls_grouped",
-          lambda=list(L0glm=log(ncol(sim$X))*log(log(nrow(sim$X)))),
-          options=list(L0glm=list(relaxed=TRUE, ncores=8L)))
-        stopifnot(all(result$timings$status == "ok"))
-        saveRDS(result, destination)
-        message("Finished ", case, "/", method, ": ", result$timings$seconds, " s")
-        result
-      })
-      result <- pieces[[1L]]
-      result$fits <- do.call(c, lapply(pieces, `[[`, "fits"))
-      result$tuning <- do.call(c, lapply(pieces, `[[`, "tuning"))
-      result$timings <- do.call(rbind, lapply(pieces, `[[`, "timings"))
-      scores <- L0glm.metrics(result)
-      write.csv(scores, file.path(output, paste0(case, "-metrics.csv")), row.names=FALSE)
-      saveRDS(result, file.path(cache, paste0(case, "-comparison.rds")))
-      print(scores[c("method", "seconds", "TP", "FP", "FN", "F1_score", "MCC")])
-      rm(sim, result, scores, pieces); gc()
+      source("benchmarks/benchmark_website_deconvolution.R", local=TRUE)
+      website_deconvolution(case, ncores=4L, cache=cache, output=output)
+      gc()
     } else if (case == "selection") {
       sim <- simul("normal", n=1000L, p=5000L, n_nonzero=100L, seed=42L,
         options=list(beta_range=c(-2, 2)))

@@ -91,13 +91,23 @@ Screening</strong> and <strong>ISIS</strong> for <strong>Iterative Sure
 Independence Screening</strong>. These methods rapidly prescreen the
 most promising predictors, after which L0glm performs joint sparse
 selection and estimation. This combination gives excellent stability in
-high dimensional examples and scales well to very large predictor
-sets.</p>
+high dimensional examples and scales well to very large predictor sets.
+SIS was introduced by <a href="https://doi.org/10.1111/j.1467-9868.2008.00674.x" class="external-link">Fan &amp; Lv
+(2008)</a>, and <a href="https://www.jmlr.org/papers/v10/fan09a.html" class="external-link">Fan, Samworth &amp;
+Wu (2009)</a> developed the general likelihood-based ISIS framework.
+L0glm uses an offset-based screen followed by joint sparse refitting;
+the controls are documented in <a href="../reference/sis_glm.html"><code>sis_glm()</code></a>.</p>
 <p>ISIS is enabled by default for ultrahigh-dimensional models through
-<code>screen="auto"</code>. The automatic rule applies when there are at
-least 10,000 eligible predictors and at least ten times as many
-predictors as observations. It keeps the full fitting interface while
-concentrating joint fitting on a small, informative candidate set.</p>
+<code>screen="auto"</code>. Let <span class="math inline">n</span> be
+the number of observations and <span class="math inline">p_{\mathrm{eligible}}</span> the number of eligible
+predictors. Automatic ISIS is enabled when</p>
+<p><span class="math display">
+p_{\mathrm{eligible}}&gt;10n.
+</span></p>
+<p>Screening keeps the full fitting interface while concentrating joint
+fitting on a small, informative candidate set. Use
+<code>screen="ISIS"</code> to request it explicitly at any design
+size.</p>
 <div class="section level2">
 <h2 id="sis-or-isis-in-one-call">SIS or ISIS in one call<a class="anchor" aria-label="anchor" href="#sis-or-isis-in-one-call"></a>
 </h2>
@@ -130,7 +140,7 @@ available. Coefficients always have the original dimensions, with zeros
 for predictors excluded by screening.</p>
 </div>
 <div class="section level2">
-<h2 id="the-million-variable-example">The million-variable example<a class="anchor" aria-label="anchor" href="#the-million-variable-example"></a>
+<h2 id="a-million-variable-example">A million-variable example<a class="anchor" aria-label="anchor" href="#a-million-variable-example"></a>
 </h2>
 <p>This simulation has 500 observations, one million standard-normal
 predictors and 60 nonzero effects of either sign. The dense design
@@ -153,9 +163,9 @@ occupies about 4 GB.</p>
 <p>The default fit recovers 40 true effects with 3 false positives.
 Screening uses all detected physical cores by default (eight on this
 workstation). Five-fold-CV LASSO took <strong>123.13 s</strong>,
-recovering 17 true effects with 50 false positives. The <a href="performance.html#one-million-predictors">benchmark article</a>
-reports all methods, including relaxed LASSO, together with their tuning
-settings.</p>
+recovering 17 true effects with 50 false positives. The <a href="performance.html#one-million-predictor-example">benchmark
+article</a> reports all methods, including relaxed LASSO, together with
+their tuning settings.</p>
 </div>
 <div class="section level2">
 <h2 id="gic-tuning-and-cross-validation">GIC tuning and cross-validation<a class="anchor" aria-label="anchor" href="#gic-tuning-and-cross-validation"></a>
@@ -170,15 +180,6 @@ can also compare a batch grid, for example
 <code>nsis=c(2L, 5L, 10L)</code> with
 <code>validation=list(X=V, y=v)</code>, while retaining the default GIC
 batch when <code>nsis=NULL</code>.</p>
-</div>
-<div class="section level2">
-<h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
-</h2>
-<p>SIS was introduced by <a href="https://doi.org/10.1111/j.1467-9868.2008.00674.x" class="external-link">Fan &amp; Lv
-(2008)</a>. The general likelihood-based ISIS framework is developed by
-<a href="https://www.jmlr.org/papers/v10/fan09a.html" class="external-link">Fan, Samworth
-&amp; Wu (2009)</a>. L0glm uses an offset-based screen followed by joint
-sparse refitting; exact controls are documented in <a href="../reference/sis_glm.html"><code>sis_glm()</code></a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
