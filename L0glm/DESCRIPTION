@@ -1,14 +1,16 @@
 Package: L0glm
 Type: Package
 Title: L0-Norm or Group-L0 Norm Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
-Version: 0.2.1.9001
-Date: 2026-06-16
+Version: 0.1.0
+Date: 2026-10-22
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
     	     email = "tom.wenseleers@kuleuven.be"),
     	     person("Laura", "Lanzas", role = c("aut"),
   	       email = "lauralanzasiolsina@gmail.com"),
   	       person("Christophe", "Vanderaa", role = c("aut"),
-  	       email = "christophe.vanderaa@kuleuven.be"))
+           email = "christophe.vanderaa@kuleuven.be"),
+           person("Niamh", "Callinan Keenan", role = "ctb",
+             comment = "Unit tests developed as part of her master's thesis"))
 Depends: R (>= 3.5.0)
 Imports: Matrix,
          Rcpp,

@@ -36,6 +36,9 @@ home:
     cross-validation, native OpenMP and reproducible benchmarks in R.
   sidebar:
     structure: [links, citation, authors, license]
+authors:
+  sidebar:
+    roles: [aut, cre, ctb]
 navbar:
   bg: dark
   type: dark

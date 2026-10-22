@@ -82,3 +82,24 @@ on [Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620),
 [Li et al. (2021)](https://doi.org/10.1016/j.jspi.2020.12.001) and
 [Abergel, Bouaziz & Nuel (2024)](https://doi.org/10.1007/s11222-024-10440-6).
 It also explains screening, grouped selection and likelihood-based scoring.
+
+## Citation
+
+An article describing the methods implemented in L0glm is in preparation.
+If you use the package before the article is formally published, we would
+appreciate a citation to the package:
+
+Wenseleers T, Lanzas L, Vanderaa C (2026).
+*L0glm: Fast Sparse Regression for Generalized Linear Models*.
+R package version 0.1.0,
+<https://tomwenseleers.github.io/L0glm/>.
+
+The [Authors and Citation page](authors.html#citation) also provides the
+citation in BibTeX format.
+
+## Acknowledgements
+
+OpenAI Codex, using GPT-6 Astra and GPT-6.1 Sol, was used to optimize and
+refactor code and help draft the documentation. The key ideas and methodological
+decisions are the authors' own, and the authors take full responsibility for the
+work presented here.

@@ -1,6 +1,6 @@
-# L0glm 0.2.1
+# L0glm 0.1.0
 
-## Development changes
+## Initial version
 
 * A pkgdown documentation website brings together getting-started tutorials,
   special-family examples, tuning, screening, algorithmic foundations and
