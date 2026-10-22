@@ -6,7 +6,7 @@ L0glm_screen_method <- function(screen, X, start, intercept, always.include) {
   mode <- tolower(screen)
   if (mode != "auto") return(if (mode == "none") mode else toupper(mode))
   n <- nrow(X); p <- ncol(X)
-  if (is.null(n) || is.null(p) || p < max(10000L, 10 * n)) return("none")
+  if (is.null(n) || is.null(p) || p <= 10 * n) return("none")
   eligible <- rep(TRUE, p)
   if (!is.null(start)) {
     if (!(is.numeric(start) || inherits(start, "dMatrix"))) return("none")
@@ -20,7 +20,7 @@ L0glm_screen_method <- function(screen, X, start, intercept, always.include) {
     }
   }
   eligible[L0glm_mandatory(X, always.include)] <- FALSE
-  if (sum(eligible) >= max(10000L, 10 * n)) "ISIS" else "none"
+  if (sum(eligible) > 10 * n) "ISIS" else "none"
 }
 
 L0glm_screen_fit <- function(X, y, family, weights, offset, nonnegative,

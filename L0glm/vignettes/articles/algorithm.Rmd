@@ -1151,7 +1151,7 @@ b_{\rm ISIS}&=\max\left\{1,\ \operatorname{round}
 capped at the available predictor count. Standalone `sis_glm()` defaults to
 \(\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}\). An explicit `nsis`
 overrides these sizes. Automatic screening enables ISIS when the number of
-eligible selectable predictors is at least \(\max(10000,10n)\).
+eligible selectable predictors exceeds \(10n\), where \(n\) is the number of observations.
 
 GIC comparison uses the **original** \(p\) and the fitted parameter count,
 including estimated distribution parameters where appropriate. For a grouped

@@ -26,7 +26,7 @@ test_that("screened fits match standalone SIS/ISIS with usable original dimensio
 })
 
 test_that("screened defaults reproduce the small-batch GIC relaxed workflow", {
-  set.seed(2611);n <- 80L;p <- 10000L;X <- matrix(rnorm(n*p),n,p)
+  set.seed(2611);n <- 80L;p <- 1000L;X <- matrix(rnorm(n*p),n,p)
   y <- X[,1]*2-X[,2]*2+rnorm(n)
   auto <- L0glm.fit(X,y)
   expect_identical(auto$screening$method,"ISIS");expect_true(auto$screening$automatic)
@@ -45,18 +45,23 @@ test_that("screened defaults reproduce the small-batch GIC relaxed workflow", {
 test_that("auto uses eligible rows and does not screen ordinary designs or masked small problems", {
   set.seed(2612);X <- matrix(rnorm(80*15),80,15);y <- rnorm(80)
   expect_identical(L0glm.fit(X,y),L0glm.fit(X,y,screen="none"))
-  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,20,9999,sparse=TRUE),NULL,FALSE,NULL),"none")
-  A <- Matrix::Matrix(0,1000,10000,sparse=TRUE)
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,20,9999,sparse=TRUE),NULL,FALSE,NULL),"ISIS")
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,20,200,sparse=TRUE),NULL,FALSE,NULL),"none")
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,5,51,sparse=TRUE),NULL,FALSE,NULL),"ISIS")
+  A <- Matrix::Matrix(0,20,201,sparse=TRUE)
   expect_identical(L0glm_screen_method("auto",A,NULL,FALSE,NULL),"ISIS")
   expect_identical(L0glm_screen_method("auto",A,NULL,FALSE,1),"none")
   expect_identical(L0glm_screen_method("auto",A,0,FALSE,NULL),"none")
-  start <- matrix(1,10000,2);start[1,] <- 0
+  start <- matrix(1,201,2);start[1,] <- 0
   expect_identical(L0glm_screen_method("auto",A,start,FALSE,NULL),"none")
   start[,2] <- -1;start[1,] <- c(1,-1)
   expect_identical(L0glm_screen_method("auto",A,start,FALSE,NULL),"ISIS")
   expect_identical(L0glm_screen_method("auto",A,Matrix::Matrix(start,sparse=TRUE),FALSE,NULL),"ISIS")
-  expect_identical(L0glm_screen_method("auto",A,NULL,FALSE,1:9999),"none")
+  expect_identical(L0glm_screen_method("auto",A,NULL,FALSE,1:200),"none")
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,1000,10000,sparse=TRUE),NULL,FALSE,NULL),"none")
   expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,1001,10000,sparse=TRUE),NULL,FALSE,NULL),"none")
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,10000,10000,sparse=TRUE),NULL,FALSE,NULL),"none")
+  expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,500,1000000,sparse=TRUE),NULL,FALSE,NULL),"ISIS")
 })
 
 test_that("explicit fitting controls and all starting-zero exclusions survive screening", {

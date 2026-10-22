@@ -246,8 +246,8 @@
 #'   \code{preprocessing}; predictions use the original columns directly.
 #' @param screen Screening strategy in \code{L0glm.fit()}: \code{"auto"}
 #'   (default), \code{"none"}, \code{"SIS"} or \code{"ISIS"}, ignoring case.
-#'   Auto uses ISIS only when at least 10,000 eligible predictors remain and
-#'   their number is at least ten times the number of observations. Mandatory
+#'   Auto enables ISIS when the number of eligible predictors exceeds ten
+#'   times the number of observations. Mandatory
 #'   terms and rows excluded by explicit zero starts do not count toward this
 #'   trigger. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
 #'   SIS screens once; ISIS repeatedly screens using the fitted predictor as
