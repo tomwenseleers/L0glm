@@ -1,0 +1,5 @@
+method,tune,seconds,gic,TP,FP,FN,TN,F1_score,MCC
+lasso_bic,BIC path,22.75,14789,23,612,37,999328,0.066,0.118
+relaxed_lasso_bic,BIC path,21.42,10588,21,453,39,999487,0.079,0.124
+lasso_cv,5-fold CV,123.13,4309,17,50,43,999890,0.268,0.268
+relaxed_lasso_cv,5-fold CV,91.76,7413,20,252,40,999688,0.120,0.156

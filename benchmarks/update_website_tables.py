@@ -1,11 +1,12 @@
-"""Publish measured website tables after benchmark_website_examples.R finishes."""
+"""Publish the same measured benchmark tables in the website and README."""
 import csv
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "benchmarks/plots/website"
-LABELS = {"L0glm": "L0glm", "lasso_gic": "LASSO", "relaxed_lasso_gic": "Relaxed LASSO",
+LABELS = {"L0glm": "L0glm", "lasso_bic": "LASSO", "relaxed_lasso_bic": "Relaxed LASSO",
+          "lasso_gic": "LASSO", "relaxed_lasso_gic": "Relaxed LASSO",
           "lasso_cv": "LASSO", "relaxed_lasso_cv": "Relaxed LASSO"}
 
 def rows(name):
@@ -25,23 +26,30 @@ def value(row, field):
         return f"{x:.3f}"
     return f"{x:.0f}"
 
-def table(data, fields):
+def table(data, fields, bold_first=False):
     names = {"method": "Method", "tune": "Selection", "seconds": "Seconds", "gic": "GIC",
              "F1_score": "F1", "within_row_F1_score": "Within-row F1",
              "within_row_MCC": "Within-row MCC"}
     lines = ["| " + " | ".join(names.get(f, f) for f in fields) + " |",
              "| " + " | ".join("---" if f in {"method", "tune"} else "---:" for f in fields) + " |"]
-    lines += ["| " + " | ".join(value(row, f) for f in fields) + " |" for row in data]
+    for i, row in enumerate(data):
+        values = [value(row, f) for f in fields]
+        if bold_first and i == 0:
+            values = [f"**{v}**" for v in values]
+        lines.append("| " + " | ".join(values) + " |")
     return "\n".join(lines)
 
 million = rows("million-metrics.csv")[0]
+million_lasso = rows("million-lasso-metrics.csv")
+million_display = [{**million, "method": "L0glm + ISIS", "tune": "GIC preset"}] + million_lasso
+million_cv = {row["method"]: row for row in million_lasso if row["tune"] == "5-fold CV"}
 single = rows("single-metrics.csv")
 multi = rows("multi-metrics.csv")
 selection = rows("selection-comparison.csv")
 multi_by_method = {row["method"]: row for row in multi}
 multi_relaxed_ratio = float(multi_by_method["relaxed_lasso_gic"]["seconds"]) / float(multi_by_method["L0glm"]["seconds"])
 fields = ["method", "tune", "seconds", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]
-ratio = 123.13 / float(million["seconds"])
+ratio = float(million_cv["lasso_cv"]["seconds"]) / float(million["seconds"])
 def group_label(raw):
     label = LABELS[raw].replace("LASSO", "group LASSO")
     return label[0].upper() + label[1:]
@@ -64,6 +72,8 @@ def deconvolution_speed(data, grouped=False):
 
 
 content = {
+    "million-comparison": table(million_display, fields, bold_first=True),
+    "million-speed": f'L0glm is **{ratio:.0f}× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.',
     "million-metrics": table([million], fields[2:]),
     "million-confusion": "| Ground truth | Selected | Excluded |\n|---|---:|---:|\n"
         f"| Nonzero effects | {million['TP']} TP | {million['FN']} FN |\n"
@@ -77,7 +87,7 @@ content = {
     "speed-stat": f'<a href="articles/performance.html#one-million-predictor-example"><strong>{ratio:.0f}× faster</strong><span>than five-fold-CV LASSO in that example</span></a>',
     "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>{multi_relaxed_ratio:.0f}× faster</b> than relaxed group LASSO</span></a>',
 }
-paths = [ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
+paths = [ROOT/"README.Rmd", ROOT/"README.md", ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))
 for path in paths:
     text = original = path.read_text(encoding="utf-8")
@@ -85,11 +95,10 @@ for path in paths:
         pattern = re.compile(r"(<!-- BEGIN " + re.escape(key) + r" -->).*?(<!-- END " + re.escape(key) + r" -->)", re.S)
         text = pattern.sub(lambda m: m[1] + "\n" + replacement + "\n" + m[2], text)
     if path.name == "performance.Rmd":
-        line = (f'| **L0glm + ISIS** | GIC preset | **{float(million["seconds"]):.2f}** | **{float(million["gic"]):.0f}** | '
-                f'**{million["TP"]}** | **{million["FP"]}** | {million["FN"]} | {million["TN"]} | '
-                f'**{float(million["F1_score"]):.3f}** | **{float(million["MCC"]):.3f}** |')
-        text = re.sub(r"^\| \*\*L0glm \+ ISIS.*$", lambda _: line, text, flags=re.M)
-        text = re.sub(r"seconds <- c\([^\n]+", f'seconds <- c({float(million["seconds"]):.2f}, 123.13, 91.76)', text)
+        compared = [million, million_cv["lasso_cv"], million_cv["relaxed_lasso_cv"]]
+        text = re.sub(r"seconds <- c\([^\n]+", 'seconds <- c(' + ', '.join(f'{float(row["seconds"]):.2f}' for row in compared) + ')', text)
+        for field in ("TP", "FP"):
+            text = re.sub(rf'{field.lower()} <- c\([^\n]+', field.lower() + ' <- c(' + ', '.join(row[field] for row in compared) + ')', text)
         text = re.sub(r"\*\*\d+ times faster than five-fold-CV LASSO\*\*", f'**{ratio:.0f} times faster than five-fold-CV LASSO**', text)
     if text != original:
         path.write_text(text, encoding="utf-8")

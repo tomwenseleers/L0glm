@@ -9,8 +9,10 @@ source("benchmarks/plot_website_examples.R")
 website_plot_examples()
 ```
 
-Then run `python benchmarks/update_website_tables.py` and
-`Rscript L0glm/pkgdown/build.R` to publish the tables and build the site.
+Then run `Rscript benchmarks/render_readme.R` and
+`Rscript L0glm/pkgdown/build.R` to publish the same tables in the README and website.
+The README renderer runs `python benchmarks/update_website_tables.py` and reuses
+the published figures; it does not rerun the large fitting comparisons.
 The fitting function also accepts a subset of cases, for example
 `website_fit_examples("million")`. Cached deconvolution fits are reused;
 remove the corresponding RDS files from `codex_sandbox/website_large_examples`
@@ -46,7 +48,9 @@ Core i9-11950H at 2.60 GHz, 8 physical cores and 16 logical cores. Benchmarks us
 Windows and R 4.5.0 with OpenBLAS and one BLAS thread.
 
 The million-predictor LASSO and relaxed-LASSO comparison is reproduced by
-`README.Rmd`, including common random five-fold CV folds. Those CV results use
+`Rscript benchmarks/benchmark_million_lasso.R`, including common random five-fold
+CV folds. Its published results are stored in `million-lasso-metrics.csv`; the
+GIC-preset L0glm result comes from `million-metrics.csv`. Those CV results use
 the package's common-scoring fold loop. Standalone `cv.glmnet` calls use
 `benchmarks/cv_glmnet_parallel.R`, which manages a parallel backend and requires
 `doParallel`. It limits simultaneous copies of large dense designs by default.
