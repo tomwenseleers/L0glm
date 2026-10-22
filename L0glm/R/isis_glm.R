@@ -1,5 +1,5 @@
 # Offset screening is an outer support search; every candidate fit starts afresh.
-L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,nthreads=1L) {
+L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,nthreads=NULL) {
   if (!is.numeric(niter) || length(niter)!=1L || !is.finite(niter) ||
       niter<1 || niter!=floor(niter)) stop("niter must be a positive integer.",call.=FALSE)
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) ||

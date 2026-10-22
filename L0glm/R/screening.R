@@ -24,7 +24,7 @@ L0glm_screen_method <- function(screen, X, start, intercept, always.include) {
 }
 
 L0glm_screen_fit <- function(X, y, family, weights, offset, nonnegative,
-                            method, automatic, nsis, niter, options, nthreads=1L) {
+                            method, automatic, nsis, niter, options, nthreads=NULL) {
   X <- L0glm_sis_design(X)
   if (is.null(nsis)) {
     n <- nrow(X); p <- L0glm_predictor_count(X, options$intercept, options$always.include)

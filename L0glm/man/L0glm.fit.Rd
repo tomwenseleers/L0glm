@@ -37,7 +37,7 @@ L0glm.fit(
   screen = "auto",
   nsis = NULL,
   screen.maxit = 10L,
-  screen.nthreads = 1L,
+  screen.nthreads = NULL,
   validation = NULL
 )
 }
@@ -474,8 +474,9 @@ validation error; \code{NULL} retains the GIC-based ISIS default.}
 set stops the search early; SIS always uses one round. This is separate
 from \code{maxit}, the inner IRLS limit. Ignored when screening is off.}
 
-\item{screen.nthreads}{Positive integer OpenMP thread count for screening,
-default 1. Independent of \code{nthreads} (BLAS) and \code{ncores}
+\item{screen.nthreads}{Positive integer OpenMP thread count for screening.
+\code{NULL} (default) uses the number of physical cores, falling back to
+one if detection is unavailable. Independent of \code{nthreads} (BLAS) and \code{ncores}
 (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
 Ignored when screening is off.}
 

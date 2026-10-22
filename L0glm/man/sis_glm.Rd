@@ -16,7 +16,7 @@ sis_glm(
   nonnegative = FALSE,
   iterative = FALSE,
   niter = 10L,
-  nthreads = 1L,
+  nthreads = NULL,
   ...
 )
 }
@@ -57,7 +57,8 @@ Nuisance terms remain unrestricted. Ignored for multinomial CLR effects.}
 set repeats, since refitting that same subproblem would give the same fit.}
 
 \item{nthreads}{Positive integer OpenMP thread count for predictor screening,
-default 1. Capped at the available logical processors and predictor count.
+\code{NULL} (default) uses the physical core count, falling back to one if
+detection is unavailable. Capped at logical processors and predictor count.
 Builds without OpenMP use one thread. Does not change BLAS threads or
 outcome-fitting parallelism; use \code{screen.nthreads} in \code{\link[=L0glm.fit]{L0glm.fit()}}.}
 

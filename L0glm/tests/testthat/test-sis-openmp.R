@@ -63,7 +63,7 @@ test_that("public SIS/ISIS threading preserves results and does not alter BLAS s
 
 test_that("threaded screening reports errors on the main thread and validates counts", {
   set.seed(2713);X <- matrix(rnorm(40*20),40,20);y <- rnorm(40)
-  for (bad in list(0,-1,1.2,NA,Inf,"4",c(1,2),NULL,TRUE,1e15)) {
+  for (bad in list(0,-1,1.2,NA,Inf,"4",c(1,2),TRUE,1e15)) {
     expect_error(sis_glm(X,y,nthreads=bad),"nthreads must be a positive integer")
     expect_error(L0glm.fit(X,y,screen="SIS",screen.nthreads=bad),"nthreads must be a positive integer")
   }
@@ -78,4 +78,33 @@ test_that("threaded screening reports errors on the main thread and validates co
   expect_error(sis_score_cpp(X,context,5L,FALSE,0L),"nthreads must be positive")
   small <- sis_score_cpp(X[,1:2],context,2L,FALSE,8L)
   expect_lte(small$nthreads,2L)
+})
+
+test_that("screening defaults to physical cores with a serial fallback", {
+  testthat::local_mocked_bindings(L0glm_detect_physical_cores=function() 8L)
+  expect_identical(L0glm_sis_threads(NULL),8L)
+  expect_identical(L0glm_sis_threads(2L),2L)
+  testthat::local_mocked_bindings(L0glm_detect_physical_cores=function() NA_integer_)
+  expect_identical(L0glm_sis_threads(NULL),1L)
+  expect_null(formals(L0glm.fit)$screen.nthreads)
+  expect_null(formals(sis_glm)$nthreads)
+})
+
+test_that("automatic thread counts preserve default and explicitly screened fits", {
+  set.seed(2714)
+  X <- matrix(rnorm(80*120),80,120); y <- X[,1]+rnorm(80)
+  for (family in list(gaussian(),poisson(),binomial(),mgcv::nb(),mgcv::multinom(2),mgcv::cox.ph())) {
+    kind <- L0glm_ext_kind(family)
+    response <- if (identical(kind,"multinomial")) factor(sample(letters[1:3],80,TRUE)) else
+      if (identical(kind,"cox")) survival::Surv(rexp(80),rbinom(80,1,.7)) else
+        if (identical(kind,"nb")) rnbinom(80,mu=2,size=2) else
+          switch(family$family,gaussian=y,poisson=rpois(80,2),binomial=rbinom(80,1,.5))
+    serial <- sis_glm(X,response,family=family,nthreads=1L)
+    automatic <- sis_glm(X,response,family=family)
+    expect_identical(automatic[names(automatic)!="nthreads"],serial[names(serial)!="nthreads"])
+  }
+  serial <- L0glm.fit(X,y,screen="ISIS",nsis=5,screen.maxit=2,screen.nthreads=1L)
+  automatic <- L0glm.fit(X,y,screen="ISIS",nsis=5,screen.maxit=2)
+  expect_identical(coef(automatic),coef(serial))
+  expect_identical(automatic$screening$history,serial$screening$history)
 })

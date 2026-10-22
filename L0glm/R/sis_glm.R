@@ -30,7 +30,8 @@
 #' @param niter Maximum ISIS rounds, default 10. Stops when the candidate
 #'   set repeats, since refitting that same subproblem would give the same fit.
 #' @param nthreads Positive integer OpenMP thread count for predictor screening,
-#'   default 1. Capped at the available logical processors and predictor count.
+#'   `NULL` (default) uses the physical core count, falling back to one if
+#'   detection is unavailable. Capped at logical processors and predictor count.
 #'   Builds without OpenMP use one thread. Does not change BLAS threads or
 #'   outcome-fitting parallelism; use `screen.nthreads` in [L0glm.fit()].
 #' @param ... Named [L0glm.fit()] arguments for ISIS, such as `lambda`, `start`,
@@ -103,7 +104,7 @@
 #' @export
 sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
                     nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE,
-                    iterative=FALSE, niter=10L, nthreads=1L, ...) {
+                    iterative=FALSE, niter=10L, nthreads=NULL, ...) {
   X <- L0glm_sis_design(X)
   if (!inherits(family,"family")) family <- family()
   if (!is.logical(return_stats) || length(return_stats)!=1L || is.na(return_stats) ||
@@ -135,6 +136,10 @@ sis_glm <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
 }
 
 L0glm_sis_threads <- function(nthreads) {
+  if (is.null(nthreads)) {
+    nthreads <- L0glm_detect_physical_cores()
+    if (is.na(nthreads) || nthreads < 1L) nthreads <- 1L
+  }
   if (!is.numeric(nthreads) || length(nthreads)!=1L || !is.finite(nthreads) ||
       nthreads<1 || nthreads!=floor(nthreads) || nthreads>.Machine$integer.max)
     stop("Screening nthreads must be a positive integer.",call.=FALSE)
