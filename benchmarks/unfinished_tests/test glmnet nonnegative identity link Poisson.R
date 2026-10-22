@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # TEST NONNEGATIVE IDENTITY LINK POISSON GLM glmnet, L0glm, abess ####
 
 # Load required packages
@@ -14,7 +15,7 @@ beta <- c(0, as.vector(sim$beta_true)) # intercept is zero
 
 # 1. fit nonnegative identity link Poisson LASSO model ####
 # Cross-validation to select the best lambda
-system.time(cvfit1 <- cv.glmnet(X, Y, alpha=1, family = poisson("identity"), lower.limits = 0, intercept=T))
+system.time(cvfit1 <- cv_glmnet_parallel(X, Y, alpha=1, family = poisson("identity"), lower.limits = 0, intercept=T))
 # 69s
 plot(cvfit1)
 optlambda1 <- cvfit1$lambda.min
@@ -35,7 +36,7 @@ table(beta!=0, coefs1!=0)
 
 # 2. fit nonnegative weighted least square LASSO model approximating nonnegative identity link Poisson LASSO ####
 # Cross-validation to select the best lambda
-system.time(cvfit2 <- cv.glmnet(X, Y, alpha=1, 
+system.time(cvfit2 <- cv_glmnet_parallel(X, Y, alpha=1,
                    family = "gaussian",
                    weights = 1/(Y+0.1), # approx 1/variance weights for identity link Poisson
                    lower.limits = 0, intercept=T))
@@ -62,7 +63,7 @@ plot(coefs2, beta)
 
 # 3. fit nonnegative identity link Poisson relaxed LASSO model ####
 # Cross-validation to select the best lambda
-system.time(cvfit3 <- cv.glmnet(X, Y, alpha=1, 
+system.time(cvfit3 <- cv_glmnet_parallel(X, Y, alpha=1,
                                 gamma=c(0, 0.25, 0.5, 0.75, 1), relax=T,  # using relaxed LASSO here
                                 family = poisson(link="identity"),
                                 lower.limits = 0, intercept=T))
@@ -93,7 +94,7 @@ plot(coefs3, beta)
 
 # 4. fit nonnegative weighted least square relaxed LASSO model approximating nonnegative identity link Poisson relaxed LASSO ####
 # Cross-validation to select the best lambda
-system.time(cvfit4 <- cv.glmnet(X, Y, alpha=1, 
+system.time(cvfit4 <- cv_glmnet_parallel(X, Y, alpha=1,
                                 gamma=c(0, 0.25, 0.5, 0.75, 1), relax=T,  # using relaxed LASSO here
                                 family = "gaussian",
                                 weights = 1/(Y+0.1), # approx 1/variance weights for identity link Poisson

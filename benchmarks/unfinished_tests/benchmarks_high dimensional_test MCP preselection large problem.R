@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # Test high dimensional variable selection - here I use MCP as a pre-screen on a large problem and then fit an L0glm on the pre-selected subset to remove some false positives & also test an adaptive L0glm algorithm ####
 
 # fix to set working package repository when using Microsoft R Open with Intel MKL
@@ -49,7 +50,7 @@ family = gaussian(identity)
 # 1.1 LASSO fit using glmnet or biglasso TO PRE-SCREEN VARIABLES - WORSE THAN MCP SO NOT USED ####
 
 library(glmnet)
-system.time(glmnet_cvfit <- cv.glmnet(x = X, y = y, nfolds = 5,
+system.time(glmnet_cvfit <- cv_glmnet_parallel(x = X, y = y, nfolds = 5,
                                       intercept=F, alpha=0.9)) # 188s
 plot(glmnet_cvfit)
 bestlambda1 <- glmnet_cvfit$lambda.min #

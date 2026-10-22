@@ -32,6 +32,7 @@ library(ordinis)
 
 ```{r, echo=T, results='asis'}
 
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 NOBS <- 5000   # N=500
 NP <- 500     #500 candidate features
 pr <- 0.1     #500 features are Bernoulli with prob.=1/10
@@ -135,7 +136,7 @@ for(i in 1:simu){
   
   ## Shi make sure the coefficients are estimated from the whole sample, not from cross-validation - YES NOW THAT WAS NOT CORRECT - COEFS WERE NOT ESTIMATED FROM WHOLE DATASET
   
-  cv.glmmod <- cv.glmnet(X, y1, alpha=1, family=c("binomial"),type.measure="deviance",intercept=T)
+  cv.glmmod <- cv_glmnet_parallel(X, y1, alpha=1, family=c("binomial"),type.measure="deviance",intercept=T)
   # deviance is the most sensitive method so let's go with that
     # plot(cv.glmmod)
   # FIXED: estimate coefficients from whole dataset & only use CV to determine optimal lambda

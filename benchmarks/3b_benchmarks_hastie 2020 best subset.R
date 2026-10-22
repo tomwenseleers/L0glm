@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # TEST L0GLM FOR HASTIE ET AL 2020 PROBLEMS IN BEST SUBSET PACKAGE ####
 
 library(remotes)
@@ -959,7 +960,7 @@ metrics_L0Learn
 # 1.6 LASSO FIT using glmnet ####
 
 library(glmnet)
-timing_cvglmnet = system.time(glmnet_cvfit <- cv.glmnet(x = X, y = y, 
+timing_cvglmnet = system.time(glmnet_cvfit <- cv_glmnet_parallel(x = X, y = y,
                                                         nfolds = 5,
                                                         intercept=F, 
                                                         nlambda=10,
@@ -1063,7 +1064,7 @@ metrics_LASSO_CV
 # see https://cran.r-project.org/web/packages/glmnet/vignettes/relax.pdf
 
 library(glmnet)
-timing_cvglmnetrelaxed = system.time(glmnet_cvfitrelaxed <- cv.glmnet(x = X, y = y, 
+timing_cvglmnetrelaxed = system.time(glmnet_cvfitrelaxed <- cv_glmnet_parallel(x = X, y = y,
                                                                       nfolds = 5,
                                                         intercept=F, 
                                                         alpha = 1,

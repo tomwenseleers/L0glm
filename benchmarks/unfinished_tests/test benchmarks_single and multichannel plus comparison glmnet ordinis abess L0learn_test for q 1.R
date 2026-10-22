@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # Minimal tests of L0glm package plus comparison of solution quality to that returned by ordinis, abess & L0Learn ####
 
 library(remotes)
@@ -1888,7 +1889,7 @@ metrics_abess
 ### 2.2.3 Comparison with glmnet nonnegative mgaussian multivariate group LASSO fit #### 
 
 library(glmnet)
-system.time(cvfit <- cv.glmnet(X, 
+system.time(cvfit <- cv_glmnet_parallel(X,
                                y, 
                                alpha = 1,  # lasso
                                family = "mgaussian", 

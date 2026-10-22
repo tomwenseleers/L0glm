@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # TEST MULTITASK FEATURE SELECTION METHODS IN glmnet, scikitlearn (MultiTaskLasso=multivariate group LASSO) & mutar ####
 # library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
@@ -106,7 +107,7 @@ cor(as.vector(sim$beta_true), as.vector(beta_relaxedgroupL0)) # 0.9839155
 
 # MULTICHANNEL DECONVOLUTION USING nonnegative group LASSO with glmnet ####
 library(glmnet)
-system.time(cvfit <- cv.glmnet(X, 
+system.time(cvfit <- cv_glmnet_parallel(X,
                                Y, 
                                # weights = 1/(rowSums(Y)+0.1), # does not allow weights to be passed as a matrix, i.e. 1/(Y+0.1)
                                alpha = 1,  # lasso

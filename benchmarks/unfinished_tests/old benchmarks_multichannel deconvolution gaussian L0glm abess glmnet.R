@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 # library(remotes)
 # remotes::install_github("tomwenseleers/L0glm/L0glm")
 # library(L0glm)
@@ -371,7 +372,7 @@ abline(h=length(true_support_set), col="blue")
 
 # determine optimal lambda in nonnegative group LASSO
 library(glmnet)
-system.time(cvfit <- cv.glmnet(X, 
+system.time(cvfit <- cv_glmnet_parallel(X,
                                Y, 
                                alpha = 1,  # lasso
                                family = "mgaussian",  # for group LASSO

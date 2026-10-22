@@ -1,3 +1,4 @@
+source(if (file.exists("benchmarks/cv_glmnet_parallel.R")) "benchmarks/cv_glmnet_parallel.R" else "../benchmarks/cv_glmnet_parallel.R")
 load(file.path(path, "envSmall2 1.RData"))
 path = "~/Github/L0glm/benchmarks/SNP_test_lloyd"
 
@@ -235,7 +236,7 @@ library(glmnet)
 set.seed(1)
 # determine optimal lambda
 alpha = 1 # 1, ie LASSO, gave best performance 
-lassocvfit = cv.glmnet(x=X2, 
+lassocvfit = cv_glmnet_parallel(x=X2,
                        y=logY, 
                        intercept = T,
                        lower.limits = c(rep(0,num_pcs), rep(0,ncol(X))), # for nonnegativity constraints (possible given that we coded strain with lowest trait value as reference strain)
@@ -333,7 +334,7 @@ graph2ppt(file=file.path(path, "1_1_LASSO model.pptx"), width=5, height=4)
 library(glmnet)
 set.seed(1)
 # determine optimal lambda
-relaxedlassocvfit = cv.glmnet(x=X2,
+relaxedlassocvfit = cv_glmnet_parallel(x=X2,
                               y=logY,
                               intercept = T,
                               lower.limits = c(rep(0,num_pcs), rep(0,ncol(X))), # for nonnegativity constraints (possible given that we coded strain with lowest trait value as reference strain)
