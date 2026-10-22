@@ -103,7 +103,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y,
                                     nonnegative = TRUE,
                                     solver = "eigen",
                                     method = 1L)) 
-# 2.16s
+# 0.26s
 
 # The L0glm candidate uses the fastest Eigen Cholesky LLT solver and a lambda GIC preset; 
 # other methods share GIC scoring. glmnet uses 10 lambda values. 
@@ -166,7 +166,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
-# openmp 16s, 99s with parallelize = FALSE, 38s with parallelize = TRUE and ncores = 4
+# openmp 6.57s, 99s with parallelize = FALSE, 38s with parallelize = TRUE and ncores = 4
 
 # L0glm fits the exact grouped Poisson model. glmnet uses a
 # labelled Gaussian approximation with shared row weights 1/(rowMeans(y)+0.1).
