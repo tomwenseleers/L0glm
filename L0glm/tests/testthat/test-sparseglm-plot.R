@@ -4,7 +4,7 @@ sparseglm_plot_fixture <- function() {
   model <- function(B) structure(list(coefficients=B),class="L0glm_fit")
   structure(list(fits=list(first=model(beta),second=model(truth),missing=NULL),
     beta_true=truth,timings=data.frame(seconds=c(1.2,2.3,NA_real_)),
-    data=list(intercept=FALSE)),class="sparseglm")
+    data=list(intercept=FALSE,y=as.matrix(truth)+.25)),class="sparseglm")
 }
 
 with_plot_device <- function(code) {
@@ -45,14 +45,17 @@ test_that("row mean plots retain support classification before signed cancellati
 test_that("method selection preserves requested order and graphics state", {
   object <- sparseglm_plot_fixture()
   titles <- character()
+  layouts <- list()
   testthat::local_mocked_bindings(plot.default=function(x,y,...) {
     titles <<- c(titles,list(...)$main)
+    layouts[[length(layouts)+1L]] <<- graphics::par("mfrow")
     graphics::plot.new()
   }, .package="graphics")
   with_plot_device({
     original <- graphics::par("mfrow")
     expect_identical(plot(object,which=c(2,1),channels="mean"),object)
     expect_equal(titles,c("second (2.3 s)","first (1.2 s)"))
+    expect_equal(layouts[[1L]],c(2L,1L))
     expect_equal(graphics::par("mfrow"),original)
     expect_warning(plot(object,which=c(3,1)),"missing")
     for (which in list(0,4,1.5,NA_real_,Inf,TRUE))
@@ -67,10 +70,28 @@ test_that("method selection preserves requested order and graphics state", {
       fit$coefficients <- fit$coefficients[,1,drop=FALSE];fit
     })
     expect_error(plot(single,type="heatmap"),"multichannel")
+    plot(object,which=c(1,2,1))
+    expect_equal(tail(layouts,1L)[[1L]],c(3L,1L))
   })
 })
 
-test_that("heatmaps use two rows per method, common scales and correct support lines", {
+test_that("million-predictor paths draw only varying paths and one zero", {
+  B <- Matrix::sparseMatrix(i=c(2L,999999L),j=c(1L,1L),x=c(2,-3),
+    dims=c(1000000L,1L))
+  object <- list(coefficients=list(B,B/2),always.include=integer(),
+    metrics=data.frame(lambda=c(20,2),support_size_estimated=c(2,2),gic=c(5,6)),
+    tune="gic",lambda_best=20,lambda_preset=20,lambda_max=20)
+  plotted <- NULL
+  testthat::local_mocked_bindings(matplot=function(x,y,...) {
+    plotted <<- y
+    graphics::plot(x,range(y),type="n")
+  }, .package="graphics")
+  with_plot_device(L0glm_plot_tuning(object))
+  expect_equal(dim(plotted),c(2L,3L))
+  expect_equal(sort(colSums(abs(plotted))),c(0,3,4.5))
+})
+
+test_that("heatmaps stack responses, truth and methods with correct support lines", {
   object <- sparseglm_plot_fixture()
   calls <- lines <- list()
   testthat::local_mocked_bindings(plotmat=function(M,...) {
@@ -82,26 +103,30 @@ test_that("heatmaps use two rows per method, common scales and correct support l
   }, .package="graphics")
   with_plot_device({
     plot(object,type="heatmap")
-    expect_equal(length(calls),2L)
-    expect_equal(vapply(calls,`[[`,character(1),"main"),c("Ground truth","first (1.2 s)"))
-    expect_equal(calls[[1L]]$layout,c(2L,1L))
-    expect_equal(calls[[1L]]$zlim,calls[[2L]]$zlim)
+    expect_equal(length(calls),3L)
+    expect_equal(vapply(calls,`[[`,character(1),"main"),c("Observed data","Ground truth","first (1.2 s)"))
+    expect_equal(calls[[1L]]$M,object$data$y,ignore_attr=TRUE)
+    expect_equal(calls[[1L]]$layout,c(3L,1L))
+    expect_equal(calls[[2L]]$zlim,calls[[3L]]$zlim)
     expect_equal(lines[[1L]]$v,c(1,2,4))
     expect_equal(lines[[2L]]$v,c(1,4))
     expect_equal(lines[[3L]]$v,3)
     expect_equal(lines[[4L]]$v,2)
     expect_equal(vapply(lines,`[[`,character(1),"col"),
-      grDevices::adjustcolor(c("cyan","cyan","red","magenta"),alpha.f=.4))
+      grDevices::adjustcolor(c("cyan","cyan","red","magenta"),alpha.f=.8))
     calls <- lines <- list()
     plot(object,type="heatmap",which=c(2,1),maxresolution=2)
     expect_equal(vapply(calls,`[[`,character(1),"main"),
-      c("Ground truth","second (2.3 s)","Ground truth","first (1.2 s)"))
+      c("Observed data","Ground truth","second (2.3 s)","first (1.2 s)"))
+    expect_equal(calls[[1L]]$layout,c(4L,1L))
+    expect_equal(calls[[2L]]$zlim,calls[[4L]]$zlim)
     expect_equal(lines[[1L]]$v,1+(c(1,2,4)-1)/4)
     # An added intercept is not a time-index row of the images.
     object$data$intercept <- TRUE
     calls <- lines <- list()
     plot(object,type="heatmap",which=1)
-    expect_equal(nrow(calls[[1L]]$M),4L)
+    expect_equal(nrow(calls[[1L]]$M),5L)
+    expect_equal(nrow(calls[[2L]]$M),4L)
     expect_equal(lines[[1L]]$v,c(1,3))
   })
 })

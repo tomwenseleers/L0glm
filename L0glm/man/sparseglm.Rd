@@ -163,12 +163,14 @@ Defaults to all available methods for `type="coefs"` and method 1 for
 selected methods are skipped with a warning.}
 
 \item{type}{`"coefs"` for coefficient comparisons, or `"heatmap"` for
-multichannel ground-truth and estimated coefficient images. Each selected
-heatmap method occupies a separate page with two rows. Heatmaps require
+multichannel images stacked on one page: observed responses (when stored),
+ground-truth coefficients and each selected method. Heatmaps require
 `beta_true` and omit an automatically added intercept row. Cyan lines show
-true support above, and TP below; FP are red and FN magenta. Lines are
-semitransparent. Both images use the same colour scale; signed coefficients
-use a diverging palette. Support is determined before image downscaling.}
+true support and TP; FP are red and FN magenta. High-contrast semitransparent
+overlays and legends give the support counts. Coefficient images share a
+colour scale; the observed responses have their own intensity scale.
+Signed data use a diverging palette. Support is determined before image
+downscaling. Multichannel coefficient comparisons use one column of panels.}
 
 \item{channels}{`"all"` for individual coefficient entries or `"mean"` for
 row means in coefficient plots. Row-mean colours use support across the

@@ -9,6 +9,14 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   xlim <- rev(range(x))
   beta <- object$coefficients[[1L]]
   selectable <- setdiff(seq_len(nrow(beta)), object$always.include)
+  truth_rows <- selectable
+  # A zero path needs one line, even for a million-predictor fit.
+  visible <- sort(unique(unlist(lapply(object$coefficients, function(B) {
+    entries <- L0glm_plot_nonzero(B)
+    (entries - 1L) %% nrow(B) + 1L
+  }))))
+  zero <- setdiff(selectable, visible)[1L]
+  selectable <- sort(c(intersect(selectable, visible), zero[!is.na(zero)]))
   multichannel <- ncol(beta) > 1L
   multinomial <- identical(object$kind, "multinomial")
   contrast_count <- if (multinomial) ncol(beta) else 1L
@@ -17,7 +25,7 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   coefmat <- t(matrix(vapply(object$coefficients, path,
                              numeric(length(selectable) * contrast_count)),
                       nrow = length(selectable) * contrast_count))
-  colors <- grDevices::hcl(h = (15 + 137.508 * (rep(seq_along(selectable), contrast_count) - 1)) %% 360,
+  colors <- grDevices::hcl(h = (15 + 137.508 * (rep(selectable, contrast_count) - 1)) %% 360,
                           c = 70, l = 50)
 
   # Support is discrete: label the nearest evaluated model, never interpolate
@@ -55,9 +63,9 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   if (has_preset)
     graphics::abline(v = log10(object$lambda_preset), col = "red", lty = 3)
   if (!is.null(coefs.true)) {
-    if (multinomial) coefs.true <- as.numeric((coefs.true - rowMeans(coefs.true))[selectable, , drop = FALSE]) else {
+    if (multinomial) coefs.true <- as.numeric((coefs.true - rowMeans(coefs.true))[truth_rows, , drop = FALSE]) else {
       if (multichannel) coefs.true <- Matrix::rowMeans(coefs.true)
-      coefs.true <- coefs.true[selectable]
+      coefs.true <- coefs.true[truth_rows]
     }
     graphics::abline(h = as.vector(coefs.true[coefs.true != 0]),
                      col = scales::alpha("blue", 0.1))

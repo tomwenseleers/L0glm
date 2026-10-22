@@ -75,7 +75,7 @@ plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, 
   lines(x,-transf(y), col = "grey40")
   lines(transf(a.true), type = "h", col = "red", lwd = 2)
   lines(x, -transf(a.fit), type="h", col="blue", lwd = 2)
-  lines(x, -transf(fitted), col="orange2", lwd = 1)
+  lines(x, -transf(fitted), col="red", lwd = 1)
   if(!is.null(inference)){
     # Change color of significant covariates
     sign <- inference$p.value < 0.05
@@ -85,12 +85,12 @@ plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, 
     segments(x0 = x-0.35, x1 = x+0.35, y0 = -transf(inference$CI.lower), y1 = -transf(inference$CI.lower), col = "grey40")
     segments(x0 = x-0.35, x1 = x+0.35, y0 = -transf(inference$CI.upper), y1 = -transf(inference$CI.upper), col = "grey40")
     # Legend
-    legend("topleft", lty = c(1,1,0,0,0), col = c("grey40", "orange2", "red", "blue", "green2"),
+    legend("topleft", lty = c(1,1,0,0,0), col = c("grey40", "red", "red", "blue", "green2"),
            pch = c("", "", "|", "|", "|"),
            legend = c("Input signal", "Fitted signal", "Ground truth",
                       "Non significant estimates (p-value >= 0.05)", "Significant estimates (p-value < 0.05)"))
   } else {
-    legend("topleft", lty = c(1,1,0,0), col = c("grey40", "orange2", "red", "blue"),
+    legend("topleft", lty = c(1,1,0,0), col = c("grey40", "red", "red", "blue"),
            pch = c("", "", "|", "|"),
            legend = c("Input signal", "Fitted signal", "Ground truth",
                       "L0glm estimates"))
