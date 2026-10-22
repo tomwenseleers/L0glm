@@ -561,6 +561,23 @@
 #' refits as described below.
 #' }
 #'
+#' \subsection{Hierarchical Bayesian and ARD interpretation}{
+#' A ridge update is a conditional maximum a posteriori (MAP) estimate under
+#' Gaussian coefficient priors. With the default zero ridge center, the
+#' inverse-square update corresponds to prior precision
+#' \eqn{\alpha_j=\lambda/(4\beta_j^2)} in the solver's coefficient coordinates;
+#' its ridge coefficient is \eqn{\phi\alpha_j} for GLM dispersion \eqn{\phi}.
+#' The prior remains zero-centered and skeptical: small fitted effects receive
+#' concentrated priors and strong effects receive wider priors. The next IRLS
+#' step updates the coefficient mode using a local quadratic likelihood.
+#' This gives a plug-in empirical-Bayes-style connection to automatic relevance
+#' determination (ARD), with shared precisions providing a group-ARD view.
+#' Evidence-maximizing ARD also accounts for posterior uncertainty; the adaptive
+#' ridge rule here updates scales from coefficient point estimates. The ridge
+#' center stays fixed; \code{prior.mean} specifies its value.
+#' See Tipping (2001) and the Algorithm and theory vignette for this connection.
+#' }
+#'
 #' Automatic initialization uses one weak ridge fit to the initial working
 #' response, with columns scaled to unit weighted norm and ridge constant
 #' \code{1e-6}. Four reproducible random-sign probes share this factorization
@@ -812,6 +829,7 @@
 #'
 #' @references
 #' \itemize{
+#' \item M.E. Tipping, \emph{Sparse Bayesian Learning and the Relevance Vector Machine}. Journal of Machine Learning Research 1, 211-244 (2001). \url{https://www.jmlr.org/papers/v1/tipping01a.html}.
 #' \item J. de Rooi & P. Eilers, \emph{Deconvolution of pulse trains with the L0 penalty}. Analytica chimica acta 705, 218-226 (2011).
 #' \item F. Frommlet & G. Nuel, \emph{An adaptive ridge procedure for L0 regularization}. PloS one 11, e0148620 (2016).
 #' \item I. Marschner, \emph{glm2: Fitting Generalized Linear Models with Convergence Problems}. The R Journal (2011). \doi{10.32614/RJ-2011-012}.
