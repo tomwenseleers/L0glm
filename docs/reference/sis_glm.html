@@ -30,7 +30,7 @@ dense and sparse matrices stay sparse."><meta property="og:image" content="https
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -71,7 +71,7 @@ dense and sparse matrices stay sparse.</p>
 <span>  nonnegative <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  iterative <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  niter <span class="op">=</span> <span class="fl">10L</span>,</span>
-<span>  nthreads <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  nthreads <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -139,7 +139,8 @@ set repeats, since refitting that same subproblem would give the same fit.</p></
 
 <dt id="arg-nthreads">nthreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
 <dd><p>Positive integer OpenMP thread count for predictor screening,
-default 1. Capped at the available logical processors and predictor count.
+<code>NULL</code> (default) uses the physical core count, falling back to one if
+detection is unavailable. Capped at logical processors and predictor count.
 Builds without OpenMP use one thread. Does not change BLAS threads or
 outcome-fitting parallelism; use <code>screen.nthreads</code> in <code><a href="L0glm.fit.html">L0glm.fit()</a></code>.</p></dd>
 

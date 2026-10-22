@@ -1,5 +1,5 @@
 ---
-title: "A million predictors with SIS and ISIS"
+title: "SIS / ISIS screening for high dimensional models"
 description: "Fast screening and sparse joint refitting for ultrahigh-dimensional data."
 output: rmarkdown::html_document
 ---
@@ -10,9 +10,17 @@ library(L0glm)
 options(width=90, digits=3)
 ```
 
-Screening first reduces a huge predictor set to promising candidates; adaptive
-ridge then performs joint selection and estimation. The two stages complement
-each other particularly well when the underlying signal is sparse.
+**SIS** stands for **Sure Independence Screening** and **ISIS** for
+**Iterative Sure Independence Screening**. These methods rapidly prescreen the
+most promising predictors, after which L0glm performs joint sparse selection
+and estimation. This combination gives excellent stability in high dimensional
+examples and scales well to very large predictor sets.
+
+ISIS is enabled by default for ultrahigh-dimensional models through
+`screen="auto"`. The automatic rule applies when there are at least 10,000
+eligible predictors and at least ten times as many predictors as observations.
+It keeps the full fitting interface while concentrating joint fitting on a
+small, informative candidate set.
 
 ## SIS or ISIS in one call
 
@@ -37,7 +45,9 @@ progresses. Screening is implemented in Rcpp with OpenMP and supports ordinary
 GLMs, negative binomial, multinomial and Cox models.
 
 `fit$screening` records selected predictors, screening rounds, elapsed time and
-thread use. Coefficients always have the original dimensions, with zeros for
+thread use. By default screening uses all physical cores, with one thread as
+the fallback when detection is unavailable. Explicit `screen.nthreads` values
+remain available. Coefficients always have the original dimensions, with zeros for
 predictors excluded by screening.
 
 ## The million-variable example
@@ -62,8 +72,8 @@ fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
 L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
-The complete fitting workflow took **3.16 s** in the documented run, recovering
-40 true effects with 3 false positives. Five-fold-CV LASSO took **123.13 s**,
+The default fit recovers 40 true effects with 3 false positives. Screening uses
+all detected physical cores by default (eight on this workstation). Five-fold-CV LASSO took **123.13 s**,
 recovering 17 true effects with 50 false positives. The
 [benchmark article](performance.html#one-million-predictors) reports all methods,
 including relaxed LASSO, together with their tuning settings.

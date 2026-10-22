@@ -52,7 +52,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="active nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -89,6 +89,84 @@
 <p>The sections below explain the main ideas. The <a href="#algorithm-appendix">mathematical pseudocode appendix</a> gives
 the complete fitting routines, including initialization,
 distribution-parameter updates and SIS/ISIS screening.</p>
+<div class="section level2">
+<h2 id="foundations-and-developments-in-l0glm">Foundations and developments in L0glm<a class="anchor" aria-label="anchor" href="#foundations-and-developments-in-l0glm"></a>
+</h2>
+<p>Adaptive ridge and broken adaptive ridge provide the foundation for
+this work. <a href="https://doi.org/10.1371/journal.pone.0148620" class="external-link">Frommlet &amp; Nuel
+(2016)</a> establish the L0 calibration used here; <a href="https://doi.org/10.1016/j.jmva.2018.08.007" class="external-link">Dai et al. (2018)</a>
+and <a href="https://doi.org/10.1016/j.jspi.2020.12.001" class="external-link">Li et
+al. (2021)</a> develop BAR and scalable GLM extensions. The variational
+and MM identities below are established results reviewed by <a href="https://doi.org/10.1007/s11222-024-10440-6" class="external-link">Abergel, Bouaziz &amp;
+Nuel (2024)</a>. The likelihood scores, information matrices, IRLS
+linearizations and Woodbury identity are standard statistical and
+linear-algebra tools.</p>
+<p>The present work brings these ideas together and develops the
+following adaptations, whose complete computations are given in the
+appendix.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Component</th>
+<th>Foundation</th>
+<th>Development in L0glm</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Automatic regularization and scale</td>
+<td>GIC of <a href="https://doi.org/10.1111/rssb.12001" class="external-link">Fan &amp; Tang
+(2013)</a>, with adaptive-ridge calibration</td>
+<td>Scale-aware initialization, bounded dispersion updates and a common
+penalty convention across families</td>
+</tr>
+<tr class="even">
+<td>Negative binomial</td>
+<td>Standard NB2 likelihood and shape estimation</td>
+<td>Adaptive-ridge IRLS coupled to safeguarded log-shape updates, with
+independent or grouped channels</td>
+</tr>
+<tr class="odd">
+<td>Multinomial</td>
+<td>Joint softmax likelihood and its quadratic approximation</td>
+<td>Class-symmetric CLR output, invariant grouped penalties, entrywise
+CLR selection and contrast-space ridge solves</td>
+</tr>
+<tr class="even">
+<td>Cox PH</td>
+<td>BAR Cox regression of <a href="https://doi.org/10.1002/sim.8438" class="external-link">Kawaguchi et al. (2020)</a>
+</td>
+<td>Cached weighted Breslow risk sets, exact matrix-free curvature
+products, a matrix-free ridge initializer and direct/PCG dispatch</td>
+</tr>
+<tr class="odd">
+<td>Screening</td>
+<td>SIS of <a href="https://doi.org/10.1111/j.1467-9868.2008.00674.x" class="external-link">Fan &amp; Lv
+(2008)</a> and likelihood ISIS of <a href="https://www.jmlr.org/papers/v10/fan09a.html" class="external-link">Fan, Samworth &amp;
+Wu (2009)</a>
+</td>
+<td>Family-aware efficient-score screening, OpenMP implementation and an
+offset-based ISIS/L0glm pipeline</td>
+</tr>
+<tr class="even">
+<td>Deconvolution</td>
+<td>L0 pulse-train deconvolution of <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
+(2011)</a>
+</td>
+<td>Automatic regularization, Poisson and negative-binomial noise
+models, and shared-support multichannel extensions</td>
+</tr>
+</tbody>
+</table>
+<p>These algorithmic adaptations and their application to multichannel
+GC/MS peak recovery form part of the methods article in preparation. The
+Gaussian orthogonal-design calculation below is attributed to its
+source; the appendix then derives the family-specific updates used in
+this implementation.</p>
+</div>
 <div class="section level2">
 <h2 id="a-sparse-likelihood-target">A sparse likelihood target<a class="anchor" aria-label="anchor" href="#a-sparse-likelihood-target"></a>
 </h2>
@@ -192,6 +270,69 @@ the accepted coefficients. Dispersion updates, changing supports and
 relaxed refits form the surrounding sparse-model search. The reported
 information criterion evaluates the likelihood and parameter count of
 the returned model.</p>
+</div>
+<div class="section level2">
+<h2 id="a-hierarchical-bayesian-and-ard-view">A hierarchical Bayesian and ARD view<a class="anchor" aria-label="anchor" href="#a-hierarchical-bayesian-and-ard-view"></a>
+</h2>
+<p>Adaptive ridge also has a useful hierarchical Bayesian
+interpretation. A ridge step is a conditional maximum a posteriori (MAP)
+estimate under Gaussian priors. In the solver’s coefficient coordinates,
+write</p>
+<p><span class="math display">
+\beta_j\mid\alpha_j\sim N(0,\alpha_j^{-1}),\qquad
+-2\log p(\beta\mid\alpha)=\sum_j\alpha_j\beta_j^2+\text{constant}.
+</span></p>
+<p>For a GLM dispersion <span class="math inline">\phi</span>,
+multiplying the local negative twice log likelihood by <span class="math inline">\phi</span> gives the ridge system above with <span class="math inline">\Lambda_j=\phi\alpha_j</span>. The inverse-square
+update corresponds to</p>
+<p><span class="math display">
+\alpha_j^{(t)}=\frac{\lambda}{4|\beta_j^{(t)}|^2},\qquad
+\operatorname{Var}(\beta_j\mid\alpha_j^{(t)})
+=\frac{4|\beta_j^{(t)}|^2}{\lambda}.
+</span></p>
+<p>Thus the default prior remains <strong>zero-centered and
+skeptical</strong>: small fitted effects receive increasingly
+concentrated priors around zero, while strong effects receive wider
+priors. Each IRLS step updates the coefficient mode using a local
+quadratic likelihood; the next adaptive step updates the prior scale
+from that mode. The prior mean stays fixed. A supplied
+<code>prior.mean</code> changes the ridge center.</p>
+<p>This is closely related to <strong>automatic relevance determination
+(ARD)</strong> and sparse Bayesian learning: each predictor has its own
+prior precision, and an irrelevant predictor is removed as that
+precision grows. A shared precision across a coefficient block gives the
+corresponding group-ARD interpretation. <a href="https://www.jmlr.org/papers/v1/tipping01a.html" class="external-link">Tipping (2001)</a>
+develops the sparse Bayesian learning framework using Gaussian
+coefficient priors with learned precisions.</p>
+<p>The update used here is a <strong>plug-in empirical-Bayes-style scale
+update</strong> based on coefficient point estimates.
+Evidence-maximizing ARD also uses posterior uncertainty. For example, an
+EM variance update in a simple Gaussian hierarchy contains <span class="math inline">E(\beta_j^2\mid y)=\widehat\beta_j^2+
+\operatorname{Var}(\beta_j\mid y)</span>; the inverse-square rule uses
+the fitted coefficient magnitude. The IC calibration sets the
+proportionality constant, and hard thresholding implements the limiting
+concentration at zero. The relaxed refit then estimates the retained
+effects with negligible shrinkage.</p>
+<div class="section level3">
+<h3 id="one-hierarchical-construction">One hierarchical construction<a class="anchor" aria-label="anchor" href="#one-hierarchical-construction"></a>
+</h3>
+<p>The inverse-square rule can be obtained as the zero-rate limit of a
+conditional MAP update. For independent priors <span class="math inline">\alpha_j\sim\operatorname{Gamma}(a,b)</span>, with
+shape <span class="math inline">a&gt;1/2</span> and rate <span class="math inline">b&gt;0</span>, the conditional log density is</p>
+<p><span class="math display">
+\log p(\alpha_j\mid\beta_j)
+=\left(a-\tfrac12\right)\log\alpha_j
+-\left(b+\tfrac12\beta_j^2\right)\alpha_j+\text{constant}.
+</span></p>
+<p>Its mode is <span class="math inline">(2a-1)/(\beta_j^2+2b)</span>.
+Choosing <span class="math inline">a=1/2+\lambda/8</span> gives <span class="math inline">\alpha_j=\lambda/\{4(\beta_j^2+2b)\}</span>, which
+approaches the implemented active-set rule as <span class="math inline">b\downarrow0</span>. The rate-zero limit has an
+improper hyperprior; a positive rate yields a smoothed inverse-square
+update. L0glm uses the unsmoothed rule on retained coefficients and
+prunes small coefficients explicitly. This construction explains the
+hierarchical connection while preserving the package’s
+likelihood-and-information-criterion formulation.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="the-factor-of-one-quarter">The factor of one quarter<a class="anchor" aria-label="anchor" href="#the-factor-of-one-quarter"></a>
@@ -1282,6 +1423,9 @@ size time-to-event data</a>. <em>Statistics in Medicine</em>, 39,
 <li>Abergel, R., Bouaziz, O. &amp; Nuel, G. (2024). <a href="https://doi.org/10.1007/s11222-024-10440-6" class="external-link">A review on the
 Adaptive-Ridge Algorithm with several extensions</a>. <em>Statistics and
 Computing</em>, 34, 140.</li>
+<li>Tipping, M. E. (2001). <a href="https://www.jmlr.org/papers/v1/tipping01a.html" class="external-link">Sparse Bayesian
+Learning and the Relevance Vector Machine</a>. <em>Journal of Machine
+Learning Research</em>, 1, 211–244.</li>
 <li>Fan, Y. &amp; Tang, C. Y. (2013). <a href="https://doi.org/10.1111/rssb.12001" class="external-link">Tuning parameter selection in
 high dimensional penalized likelihood</a>. <em>JRSS B</em>, 75,
 531–552.</li>

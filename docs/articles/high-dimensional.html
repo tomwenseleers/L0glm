@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>A million predictors with SIS and ISIS • L0glm</title>
+<title>SIS / ISIS screening for high dimensional models • L0glm</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="A million predictors with SIS and ISIS">
+<meta property="og:title" content="SIS / ISIS screening for high dimensional models">
 <meta name="description" content="Fast screening and sparse joint refitting for ultrahigh-dimensional data.">
 <meta property="og:description" content="Fast screening and sparse joint refitting for ultrahigh-dimensional data.">
 <meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png">
@@ -52,7 +52,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -77,7 +77,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>A million predictors with SIS and ISIS</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>SIS / ISIS screening for high dimensional models</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/high-dimensional.Rmd" class="external-link"><code>vignettes/articles/high-dimensional.Rmd</code></a></small>
@@ -86,10 +86,18 @@
 
     
     
-<p>Screening first reduces a huge predictor set to promising candidates;
-adaptive ridge then performs joint selection and estimation. The two
-stages complement each other particularly well when the underlying
-signal is sparse.</p>
+<p><strong>SIS</strong> stands for <strong>Sure Independence
+Screening</strong> and <strong>ISIS</strong> for <strong>Iterative Sure
+Independence Screening</strong>. These methods rapidly prescreen the
+most promising predictors, after which L0glm performs joint sparse
+selection and estimation. This combination gives excellent stability in
+high dimensional examples and scales well to very large predictor
+sets.</p>
+<p>ISIS is enabled by default for ultrahigh-dimensional models through
+<code>screen="auto"</code>. The automatic rule applies when there are at
+least 10,000 eligible predictors and at least ten times as many
+predictors as observations. It keeps the full fitting interface while
+concentrating joint fitting on a small, informative candidate set.</p>
 <div class="section level2">
 <h2 id="sis-or-isis-in-one-call">SIS or ISIS in one call<a class="anchor" aria-label="anchor" href="#sis-or-isis-in-one-call"></a>
 </h2>
@@ -115,9 +123,11 @@ false positives as the search progresses. Screening is implemented in
 Rcpp with OpenMP and supports ordinary GLMs, negative binomial,
 multinomial and Cox models.</p>
 <p><code>fit$screening</code> records selected predictors, screening
-rounds, elapsed time and thread use. Coefficients always have the
-original dimensions, with zeros for predictors excluded by
-screening.</p>
+rounds, elapsed time and thread use. By default screening uses all
+physical cores, with one thread as the fallback when detection is
+unavailable. Explicit <code>screen.nthreads</code> values remain
+available. Coefficients always have the original dimensions, with zeros
+for predictors excluded by screening.</p>
 </div>
 <div class="section level2">
 <h2 id="the-million-variable-example">The million-variable example<a class="anchor" aria-label="anchor" href="#the-million-variable-example"></a>
@@ -140,10 +150,10 @@ occupies about 4 GB.</p>
 <span>  screen<span class="op">=</span><span class="st">"ISIS"</span>, screen.nthreads<span class="op">=</span><span class="fl">8L</span>, nthreads<span class="op">=</span><span class="fl">1L</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">FALSE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p>The complete fitting workflow took <strong>3.16 s</strong> in the
-documented run, recovering 40 true effects with 3 false positives.
-Five-fold-CV LASSO took <strong>123.13 s</strong>, recovering 17 true
-effects with 50 false positives. The <a href="performance.html#one-million-predictors">benchmark article</a>
+<p>The default fit recovers 40 true effects with 3 false positives.
+Screening uses all detected physical cores by default (eight on this
+workstation). Five-fold-CV LASSO took <strong>123.13 s</strong>,
+recovering 17 true effects with 50 false positives. The <a href="performance.html#one-million-predictors">benchmark article</a>
 reports all methods, including relaxed LASSO, together with their tuning
 settings.</p>
 </div>

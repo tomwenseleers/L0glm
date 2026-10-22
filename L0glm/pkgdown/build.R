@@ -10,6 +10,9 @@ names <- c("deconvolution-single.png", "deconvolution-multi-l0glm.png",
   "deconvolution-multi-lasso.png", "deconvolution-coefficients.png")
 for (i in seq_along(figures)) file.copy(file.path(package, "../benchmarks/plots/readme", figures[i]),
   file.path(assets, names[i]), overwrite = TRUE)
+website_figures <- file.path(package, "../benchmarks/plots/website")
+file.copy(list.files(website_figures, pattern="\\.png$", full.names=TRUE),
+  assets, overwrite=TRUE)
 pkgdown::build_site(package, examples = FALSE, install = FALSE,
   new_process = FALSE, preview = FALSE, quiet = FALSE)
 destination <- pkgdown::as_pkgdown(package)$dst_path

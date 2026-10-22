@@ -54,7 +54,7 @@
     <li><a class="dropdown-item" href="articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -97,7 +97,7 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in the high-dimensional example</span></a> <a href="articles/performance.html#one-million-predictors"><strong>39× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <a href="articles/performance.html#multichannel-deconvolution"><strong>25 / 25</strong><span>true rows recovered, with zero false positives</span></a></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictors"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a> <!-- END multi-stat --></p>
 </div>
 <div class="section level2">
 <h2 id="sparse-learning-across-a-wide-range-of-models">Sparse learning across a wide range of models<a class="anchor" aria-label="anchor" href="#sparse-learning-across-a-wide-range-of-models"></a>
@@ -143,31 +143,133 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 </div>
 </div>
 <div class="section level2">
-<h2 id="a-sparse-model-in-a-few-lines">A sparse model in a few lines<a class="anchor" aria-label="anchor" href="#a-sparse-model-in-a-few-lines"></a>
+<h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
+<p>Sixty nonzero effects among <strong>one million predictors</strong>, fitted in one call.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"tomwenseleers/L0glm"</span>, subdir <span class="op">=</span> <span class="st">"L0glm"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">*</span><span class="va">p</span><span class="op">)</span>, <span class="va">n</span>, <span class="va">p</span><span class="op">)</span></span>
+<span><span class="va">active</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">60L</span><span class="op">)</span></span>
+<span><span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="va">beta</span><span class="op">[</span><span class="va">active</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">60L</span>, <span class="op">-</span><span class="fl">.8</span>, <span class="fl">.8</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span>, <span class="va">active</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span><span class="op">[</span><span class="va">active</span><span class="op">]</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
-<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">400</span> <span class="op">*</span> <span class="fl">30</span><span class="op">)</span>, <span class="fl">400</span>, <span class="fl">30</span><span class="op">)</span></span>
-<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1.5</span> <span class="op">*</span> <span class="va">X</span><span class="op">[</span>, <span class="fl">8</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">400</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  lambda <span class="op">=</span> <span class="st">"gic"</span>, relaxed <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p>On Windows, source installation uses <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>. The <a href="articles/L0glm.html">getting-started guide</a> covers fitting, prediction and metrics.</p>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<!-- BEGIN million-metrics -->
+<table class="table">
+<thead><tr>
+<th align="right">Seconds</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">FN</th>
+<th align="right">TN</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+</tr></thead>
+<tbody><tr>
+<td align="right">3.49</td>
+<td align="right">2583</td>
+<td align="right">40</td>
+<td align="right">3</td>
+<td align="right">20</td>
+<td align="right">999937</td>
+<td align="right">0.777</td>
+<td align="right">0.787</td>
+</tr></tbody>
+</table>
+<!-- END million-metrics --><!-- BEGIN million-confusion --><table class="table">
+<thead><tr>
+<th>Ground truth</th>
+<th align="right">Selected</th>
+<th align="right">Excluded</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Nonzero effects</td>
+<td align="right">40 TP</td>
+<td align="right">20 FN</td>
+</tr>
+<tr>
+<td>Zero effects</td>
+<td align="right">3 FP</td>
+<td align="right">999937 TN</td>
+</tr>
+</tbody>
+</table>
+<!-- END million-confusion --><div class="float">
+<img src="million-coefficients.png" alt="True versus estimated coefficients in the million-predictor default fit."><div class="figcaption">True versus estimated coefficients in the million-predictor default fit.</div>
+</div>
+<p>Install with <code>remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")</code>. The dense design occupies about 4 GB. The <a href="articles/L0glm.html">getting-started guide</a> explains the example and prediction methods.</p>
+<div class="section level3">
+<h3 id="tuning-when-you-need-it">Tuning when you need it<a class="anchor" aria-label="anchor" href="#tuning-when-you-need-it"></a>
+</h3>
+<p>The preset often already gives an excellent sparse model. Detailed tuning over a lambda grid is also supported; in this example it selects exactly the preset.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
+<span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<div class="float">
+<img src="million-path.png" alt="Coefficient paths and GIC in the million-predictor example, with the selected and preset lambda coinciding."><div class="figcaption">Coefficient paths and GIC in the million-predictor example, with the selected and preset lambda coinciding.</div>
+</div>
+<p>Use <code>tune="cv", nfolds=5L</code> for five-fold validation. See <a href="articles/selection.html">model selection</a> for a 100-signal example and the one-standard-error rule.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="see-the-difference">See the difference<a class="anchor" aria-label="anchor" href="#see-the-difference"></a>
+<h2 id="example-sparse-deconvolution">Example: sparse deconvolution<a class="anchor" aria-label="anchor" href="#example-sparse-deconvolution"></a>
 </h2>
-<p>Poisson spike-train deconvolution is one application: recover sharp events from a blurred, noisy signal. The same fitting machinery also handles sparse classification, overdispersed counts and survival outcomes.</p>
-<div class="float">
-<img src="deconvolution-single.png" alt="Observed and true signals above, mirrored fitted signals and estimated spikes below, with separate panels for L0glm, ABESS, LASSO and relaxed LASSO."><div class="figcaption">Observed and true signals above, mirrored fitted signals and estimated spikes below, with separate panels for L0glm, ABESS, LASSO and relaxed LASSO.</div>
+<p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped L₀ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
+<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong>. It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. The comparison uses the same Poisson GIC to select and score every method.</p>
+<!-- BEGIN multi-home -->
+<table class="table">
+<thead><tr>
+<th>Method</th>
+<th align="right">Seconds</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>L0glm</td>
+<td align="right">34.14</td>
+<td align="right">944</td>
+<td align="right">11</td>
+<td align="right">0.966</td>
+<td align="right">0.962</td>
+</tr>
+<tr>
+<td>Group LASSO</td>
+<td align="right">244.87</td>
+<td align="right">980</td>
+<td align="right">860</td>
+<td align="right">0.690</td>
+<td align="right">0.685</td>
+</tr>
+<tr>
+<td>Relaxed group LASSO</td>
+<td align="right">906.34</td>
+<td align="right">909</td>
+<td align="right">309</td>
+<td align="right">0.820</td>
+<td align="right">0.802</td>
+</tr>
+</tbody>
+</table>
+<!-- END multi-home --><div class="float">
+<img src="deconvolution-multi-large.png" alt="Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives."><div class="figcaption">Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.</div>
 </div>
-<p><a href="articles/deconvolution.html">Explore single and multichannel deconvolution →</a></p>
+<p>The coefficient comparison shows how closely L0glm recovers the individual mass-spectral intensities. Relaxed group LASSO is the strongest alternative in this benchmark.</p>
+<div class="float">
+<img src="deconvolution-multi-home-coefficients.png" alt="True versus estimated coefficients across all channels for L0glm and relaxed group LASSO."><div class="figcaption">True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.</div>
+</div>
+<p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; their timings include a ten-value tuning path. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-starting-point">Choose a starting point<a class="anchor" aria-label="anchor" href="#choose-a-starting-point"></a>
@@ -218,7 +320,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="section level2">
 <h2 id="foundations">Foundations<a class="anchor" aria-label="anchor" href="#foundations"></a>
 </h2>
-<p>The method builds on adaptive ridge and broken adaptive ridge, with an IRLS implementation for generalized linear models. The <a href="articles/algorithm.html">algorithm article</a> develops the quadratic updates and their connection to sparse penalties, drawing on <a href="https://doi.org/10.1371/journal.pone.0148620" class="external-link">Frommlet &amp; Nuel (2016)</a>, <a href="https://doi.org/10.1016/j.jspi.2020.12.001" class="external-link">Li et al. (2021)</a> and <a href="https://doi.org/10.1007/s11222-024-10440-6" class="external-link">Abergel, Bouaziz &amp; Nuel (2024)</a>. It also explains screening, grouped selection and likelihood-based scoring.</p>
+<p>The method builds on adaptive ridge and broken adaptive ridge, with an IRLS implementation for generalized linear models. The <a href="articles/algorithm.html">algorithm article</a> develops the quadratic updates and their connection to sparse penalties, drawing on <a href="https://doi.org/10.1371/journal.pone.0148620" class="external-link">Frommlet &amp; Nuel (2016)</a>, <a href="https://doi.org/10.1016/j.jspi.2020.12.001" class="external-link">Li et al. (2021)</a> and <a href="https://doi.org/10.1007/s11222-024-10440-6" class="external-link">Abergel, Bouaziz &amp; Nuel (2024)</a>. It also explains screening, grouped selection and likelihood-based scoring. The adaptive updates also have a <a href="articles/algorithm.html#a-hierarchical-bayesian-and-ard-view">hierarchical Bayesian and automatic relevance determination (ARD) interpretation</a>: each ridge step estimates a Gaussian-prior MAP, then the prior scales adapt to the fitted effects. Zero-centered skeptical priors tighten around small effects and relax around strong ones.</p>
 </div>
 <div class="section level2">
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>

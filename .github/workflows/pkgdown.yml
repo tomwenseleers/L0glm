@@ -6,6 +6,7 @@ on:
     paths:
       - 'L0glm/**'
       - 'benchmarks/plots/readme/**'
+      - 'benchmarks/plots/website/**'
       - '.github/workflows/pkgdown.yml'
   workflow_dispatch:
 

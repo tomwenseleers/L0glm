@@ -4,14 +4,16 @@ description: "GIC presets, information-criterion paths, five-fold CV and the one
 output: rmarkdown::html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE,
-  fig.width=9, fig.height=4.8, dpi=144)
+The example below has **1,000 observations, 5,000 predictors and 100 nonzero
+coefficients of either sign**. It shows a rich coefficient path while retaining
+a genuinely sparse underlying model.
+
+```{r design, eval=FALSE}
 library(L0glm)
-options(width=95, digits=3)
-set.seed(42)
-X <- matrix(rnorm(250 * 16), 250, 16)
-y <- rbinom(250, 1, plogis(.2 + 1.4*X[, 2] - X[, 6]))
+sim <- simul("normal", n=1000L, p=5000L, n_nonzero=100L, seed=42L,
+  options=list(beta_range=c(-2, 2)))
+X <- sim$X
+y <- sim$y
 ```
 
 ## A preset or a tuned path
@@ -25,9 +27,8 @@ For a single response the sparse-selection target is
 A preset is often a very effective starting point. Searching a path lets the
 data choose among the candidate sparse models.
 
-```{r preset}
-fit <- L0glm.fit(X, y, family=binomial(), lambda="gic",
-  relaxed=TRUE, maxit=100)
+```{r preset, eval=FALSE}
+fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
 ```
 
 | Preset | Penalty per selected coefficient |
@@ -43,11 +44,26 @@ The [information-criterion reference](../reference/information_criteria.html)
 gives the parameter-count conventions and literature, including
 [Fan & Tang's GIC](https://doi.org/10.1111/rssb.12001).
 
-```{r gic}
-gic <- L0glm.tune(X, y, family=binomial(), tune="gic", nlambda=8,
-  relaxed=TRUE, maxit=100, plot=FALSE, printbest=FALSE)
+```{r gic, eval=FALSE}
+gic <- L0glm.tune(X, y, family=gaussian(), tune="gic", nlambda=10L,
+  prop_range=.25, relaxed=TRUE, coefs.true=sim$beta_true, plot=TRUE)
 c(lambda_best=gic$lambda_best, lambda_preset=gic$lambda_preset)
 ```
+
+<img src="../selection-gic.png" alt="One hundred signal coefficients: regularization paths and GIC around the preset." width="100%">
+
+The grid focuses on the preset. Use `prop_range=1` to explore the full numerical
+range. The preset often already gives an excellent model, so detailed path
+tuning can be reserved for cases where it offers a useful improvement.
+
+<!-- BEGIN selection-metrics -->
+| Method | GIC | TP | FP | FN | TN | F1 | MCC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| GIC preset | 5744 | 65 | 0 | 35 | 4900 | 0.788 | 0.803 |
+| Tuned GIC | 5536 | 70 | 0 | 30 | 4900 | 0.824 | 0.834 |
+| CV minimum | 5539 | 71 | 0 | 29 | 4900 | 0.830 | 0.840 |
+| CV one-SE | 5744 | 65 | 0 | 35 | 4900 | 0.788 | 0.803 |
+<!-- END selection-metrics -->
 
 ## Five-fold cross-validation
 
@@ -55,21 +71,23 @@ CV selects the penalty with the lowest mean held-out deviance. Whole rows are
 held out, including all response channels. Preprocessing, screening and estimated
 distribution parameters use the training observations in each fold.
 
-```{r cv, fig.cap="Coefficient paths and five-fold validation deviance, with minimum, one-SE and preset penalties."}
+```{r cv, eval=FALSE}
 set.seed(10)
 folds <- sample(rep(1:5, length.out=nrow(X)))
-cv <- L0glm.tune(X, y, family=binomial(), tune="cv",
-  nlambda=8, nfolds=5, foldid=folds, relaxed=TRUE, maxit=100,
-  plot=TRUE, printbest=FALSE)
+cv <- L0glm.tune(X, y, family=gaussian(), tune="cv", nfolds=5L,
+  nlambda=10L, prop_range=.25, foldid=folds, relaxed=TRUE,
+  coefs.true=sim$beta_true, plot=TRUE)
 ```
+
+<img src="../selection-cv.png" alt="Coefficient paths for a sparse 5,000-predictor Gaussian model and five-fold validation deviance with standard-error bars." width="100%">
 
 The curves use a reversed `log10(lambda)` axis: strong regularization is on the
 left, and support sizes appear above the panels. CV error bars show one standard error.
 
-```{r selected}
+```{r selected, eval=FALSE}
 c(lambda_best=cv$lambda_best, lambda_1se=cv$lambda_1se,
   lambda_preset=cv$lambda_preset)
-predict(cv$fit_1se, X[1:5, ], type="response")
+predict(cv$fit_1se, X[1:5, , drop=FALSE], type="response")
 ```
 
 `fit_best` and `fit_1se` are full-data fits. The one-SE rule chooses the largest
@@ -86,7 +104,7 @@ folds <- rep(1:5, length.out=nrow(X))[order(rep(1:5, length.out=nrow(X)))]
 
 # Venetian blind: odd and even observations alternate
 folds <- rep(1:2, length.out=nrow(X))
-cv <- L0glm.tune(X, y, family=binomial(), tune="cv",
+cv <- L0glm.tune(X, y, family=gaussian(), tune="cv",
   foldid=folds, nlambda=10, relaxed=TRUE)
 ```
 
@@ -99,7 +117,7 @@ will be used. Reserve an independent test set when measuring final predictive ac
 LASSO, relaxed LASSO, adaptive variants, MCP and SCAD where supported.
 
 ```{r compare, eval=FALSE}
-comparison <- sparseglm(X, y, family=binomial(),
+comparison <- sparseglm(X, y, family=gaussian(),
   method=c("L0glm", "abess", "lasso", "relaxed_lasso"),
   tune="cv", nfolds=5, foldid=sample(rep(1:5, length.out=nrow(X))), nlambda=10)
 L0glm.metrics(comparison)

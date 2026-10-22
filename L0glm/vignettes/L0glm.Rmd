@@ -1,6 +1,6 @@
 ---
 title: "Get started with L0glm"
-description: "Fit sparse models, make predictions and measure support recovery."
+description: "Fit large sparse models, inspect recovery and tune a regularization path."
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Get started with L0glm}
@@ -9,91 +9,116 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE,
-  fig.width=8, fig.height=4.5, dpi=144)
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
 library(L0glm)
-options(width=90, digits=3)
+options(width=95, digits=3)
 ```
 
 L0glm fits sparse generalized linear models using adaptive ridge and IRLS.
 The same interface covers ordinary GLMs, negative binomial counts, joint
-multinomial classification and Cox survival models. Coefficients are returned
-on the original predictor scale in a sparse matrix.
+multinomial classification and Cox survival models. Dense and sparse designs,
+multiple responses and very large predictor sets share one fitting interface.
 
 ## Install
 
 ```{r install, eval=FALSE}
 install.packages("remotes")
 remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")
+library(L0glm)
 ```
 
-The source package lives in the repository's `L0glm/` directory.
 Windows source installation requires [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
-Special families use `mgcv`; Cox responses use `survival`.
 
 ## Fit a sparse model
 
-Here two predictors carry the signal among thirty candidates.
+Here 60 positive or negative effects are hidden among **one million predictors**
+with 500 observations. A single call fits the model using the package defaults.
+The dense design occupies about 4 GB; data generation is excluded from the fitting time.
 
-```{r fit}
-set.seed(7)
-X <- matrix(rnorm(400 * 30), 400, 30)
-beta <- numeric(30)
-beta[c(1, 8)] <- c(2, -1.5)
-y <- as.numeric(X %*% beta) + rnorm(400)
+```{r million, eval=FALSE}
+set.seed(123)
+n <- 500L
+p <- 1000000L
+X <- matrix(rnorm(n*p), n, p)
+active <- sample.int(p, 60L)
+beta <- numeric(p)
+beta[active] <- runif(60L, -.8, .8)
+set.seed(1)
+y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
-fit
+system.time(fit <- L0glm.fit(X, y, family=gaussian()))
+L0glm.metrics(fit, beta_true=beta)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
-`lambda="gic"` sets a penalty of `log(p) * log(log(n))` on the
-minus-twice-log-likelihood scale. `relaxed=TRUE` refits the selected support
-with negligible ridge penalization, giving the selected effects little shrinkage.
+<!-- BEGIN million-metrics -->
+| Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3.49 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
+<!-- END million-metrics -->
 
-```{r recovery}
-L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+The corresponding support confusion matrix is:
+
+<!-- BEGIN million-confusion -->
+| Ground truth | Selected | Excluded |
+|---|---:|---:|
+| Nonzero effects | 40 TP | 20 FN |
+| Zero effects | 3 FP | 999937 TN |
+<!-- END million-confusion -->
+
+<img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%">
+
+The true coefficients are used to evaluate recovery. Fitting uses only `X` and
+`y`. Returned coefficients retain all one million rows in a sparse matrix.
+The default automatic screening uses the available physical cores; set
+`screen.nthreads=1L` for serial screening.
+
+## Tune a regularization path
+
+The preset already gives a strong sparse model. Detailed tuning is available
+when desired, and often selects a value close to the preset. In this example,
+the best value over the displayed ten-value GIC grid is exactly the preset.
+
+```{r path, eval=FALSE}
+tuned <- L0glm.tune(X, y, family=gaussian(), tune="gic",
+  nlambda=10L, prop_range=.25, coefs.true=beta, plot=TRUE)
+c(lambda_best=tuned$lambda_best, lambda_preset=tuned$lambda_preset)
 ```
 
-True coefficients are supplied only to calculate recovery metrics; fitting uses `X` and `y`.
+<img src="../million-path.png" alt="Coefficient paths and GIC for the million-predictor example; the best lambda equals the preset." width="100%">
+
+The graph uses a reversed `log10(lambda)` axis, with strong regularization on
+the left and support sizes above the panels. `prop_range=.25` focuses on the
+preset; use `prop_range=1` to explore the full numerical path.
+For five-fold cross-validation use `tune="cv", nfolds=5L`. See
+[model selection and cross-validation](selection.html) for a larger signal-rich
+example, confidence bars and the one-standard-error model.
 
 ## Predict and inspect
 
-```{r predict}
+```{r predict, eval=FALSE}
 predict(fit, X[1:5, , drop=FALSE])
-head(as.matrix(coef(fit)), 10)
+summary(fit)
 c(logLik=as.numeric(logLik(fit)), AIC=AIC(fit), BIC=BIC(fit), GIC=GIC(fit))
+predict(tuned$fit_best, X[1:5, , drop=FALSE])
 ```
 
-`summary(fit)` adds a compact coefficient display and convergence diagnostics.
-`fitted(fit)` returns fitted means for the training observations.
-For new data, `predict()` applies the model in the original predictor coordinates.
-
-## Change the family
-
-```{r binomial}
-set.seed(8)
-y_binary <- rbinom(400, 1, plogis(.3 + X[, 1] - X[, 8]))
-binary <- L0glm.fit(X, y_binary, family=binomial(),
-  lambda="gic", relaxed=TRUE, maxit=100)
-predict(binary, X[1:5, ], type="response")
-```
-
-Standard family objects and links work as in `stats::glm()`. Add an intercept
-with `intercept=TRUE`; binomial and multinomial fits include one by default.
-See the [negative binomial](negative-binomial.html),
-[multinomial](multinomial.html) and [Cox](cox.html) tutorials for their response formats.
+`fitted(fit)` returns fitted means for the training observations; `predict()`
+applies the model in the original predictor coordinates.
 
 ## Choose a workflow
 
 | Task | Main function |
 |---|---|
-| One fast preset fit | `L0glm.fit(..., lambda="gic")` |
-| Tune a penalty using an information criterion | `L0glm.tune(..., tune="gic")` |
+| One fast preset fit | `L0glm.fit(X, y, family=...)` |
+| Tune an information criterion | `L0glm.tune(..., tune="gic")` |
 | Cross-validate prediction deviance | `L0glm.tune(..., tune="cv", nfolds=5)` |
 | Compare sparse regression methods | `sparseglm()` |
 | Score predictions and support recovery | `L0glm.metrics()` |
-| Screen an ultrahigh-dimensional design | `L0glm.fit(..., screen="ISIS")` |
+| Control high dimensional prescreening | `screen="auto"`, `"SIS"` or `"ISIS"` |
 
-Continue with [model selection](selection.html),
-[weights and validation stopping](controls.html), or the
-[million-predictor example](high-dimensional.html).
+Continue with [SIS / ISIS screening](high-dimensional.html),
+[single and multichannel deconvolution](deconvolution.html),
+[weights and validation](controls.html), or the
+[negative binomial](negative-binomial.html), [multinomial](multinomial.html)
+and [Cox](cox.html) examples.

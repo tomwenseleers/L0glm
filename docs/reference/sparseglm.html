@@ -32,7 +32,7 @@ extract a comparison table with L0glm.metrics()."><meta property="og:image" cont
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -280,12 +280,15 @@ selected methods are skipped with a warning.</p></dd>
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p>`"coefs"` for coefficient comparisons, or `"heatmap"` for
-multichannel ground-truth and estimated coefficient images. Each selected
-heatmap method occupies a separate page with two rows. Heatmaps require
+multichannel images stacked on one page: observed responses (when stored),
+ground-truth coefficients and each selected method. Heatmaps require
 `beta_true` and omit an automatically added intercept row. Cyan lines show
-true support above, and TP below; FP are red and FN magenta. Lines are
-semitransparent. Both images use the same colour scale; signed coefficients
-use a diverging palette. Support is determined before image downscaling.</p></dd>
+true support and TP; FP are red and FN magenta. High-contrast semitransparent
+overlays and legends give the support counts. Coefficient images share a
+colour scale; the observed responses have their own intensity scale.
+Overlay opacity adapts to support density to preserve the image intensities.
+Signed data use a diverging palette. Support is determined before image
+downscaling. Multichannel coefficient comparisons use one column of panels.</p></dd>
 
 
 <dt id="arg-channels">channels<a class="anchor" aria-label="anchor" href="#arg-channels"></a></dt>

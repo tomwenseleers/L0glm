@@ -18,8 +18,8 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <meta property="og:title" content="Poisson spike-train deconvolution">
-<meta name="description" content="Recover sharp events from blurred signals, including grouped multichannel data.">
-<meta property="og:description" content="Recover sharp events from blurred signals, including grouped multichannel data.">
+<meta name="description" content="Recover overlapping peaks from noisy signals, including multichannel GC/MS data.">
+<meta property="og:description" content="Recover overlapping peaks from noisy signals, including multichannel GC/MS data.">
 <meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png">
 <meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels">
 </head>
@@ -52,7 +52,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -86,92 +86,264 @@
 
     
     
-<p>In deconvolution the design contains shifted copies of a point-spread
-function. Coefficients represent sharp events, while the observed signal
-is blurred and noisy. For nonnegative Poisson intensities this is an
-identity-link GLM:</p>
+<p>In deconvolution, a design matrix contains shifted copies of a
+point-spread function. Sparse coefficients represent sharp events, while
+the measured signal is blurred and noisy. For nonnegative Poisson
+intensities,</p>
 <p><span class="math display">
 Y_i\sim\operatorname{Poisson}\{(X\beta)_i\},\qquad\beta\geq0.
 </span></p>
-<p>L0glm fits this likelihood directly. Its native
-<code><a href="../reference/L0nnpois.html">L0nnpois()</a></code> backend keeps sparse convolution matrices sparse
-and shares them across multichannel OpenMP fits.</p>
+<p>The following examples each have <strong>10,000 observations, 10,000
+candidate peak locations and 1,000 true peaks</strong>. L0glm fits the
+Poisson likelihood directly; the native OpenMP backend shares the sparse
+convolution design across channels.</p>
 <div class="section level2">
-<h2 id="single-channel">Single channel<a class="anchor" aria-label="anchor" href="#single-channel"></a>
+<h2 id="single-channel-deconvolution">Single channel deconvolution<a class="anchor" aria-label="anchor" href="#single-channel-deconvolution"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2</span>, n<span class="op">=</span><span class="fl">500L</span>, p<span class="op">=</span><span class="fl">500L</span>, s<span class="op">=</span><span class="fl">.1</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">single</span><span class="op">$</span><span class="va">X</span>, <span class="va">single</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  nonnegative<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">single</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    gic TP FP FN  TN F1_score   MCC</span></span>
-<span><span class="co">#&gt; 1 4824 43  5  7 445    0.878 0.864</span></span></code></pre></div>
-<p>Compare with alternative methods using one common scoring
-interface:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">single</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"abess"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
+<span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
+<span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">single</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>,</span>
-<span>  approximation<span class="op">=</span><span class="st">"wls"</span>, support.size<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">100L</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="va">fit</span><span class="op">$</span><span class="va">init.lambda</span><span class="op">)</span>, options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The published example below puts the observed and true signal above
-zero and mirrors each method’s fitted signal and spikes below it.
-Separate panels make false positives and missed events easy to see.</p>
-<p><img src="../deconvolution-single.png" alt="Observed and true signal above, mirrored fitted signals and spikes below, separately for L0glm, ABESS, LASSO and relaxed LASSO." width="100%"></p>
+<span>  approximation<span class="op">=</span><span class="st">"wls"</span>, lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"seconds"</span>, <span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
+<span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<!-- BEGIN single-metrics -->
+<table class="table">
+<colgroup>
+<col width="8%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+<col width="11%">
+</colgroup>
+<thead><tr class="header">
+<th>Method</th>
+<th align="right">Seconds</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">FN</th>
+<th align="right">TN</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>L0glm</td>
+<td align="right">0.22</td>
+<td align="right">102682</td>
+<td align="right">845</td>
+<td align="right">154</td>
+<td align="right">155</td>
+<td align="right">8846</td>
+<td align="right">0.845</td>
+<td align="right">0.828</td>
+</tr>
+<tr class="even">
+<td>LASSO</td>
+<td align="right">0.40</td>
+<td align="right">145904</td>
+<td align="right">950</td>
+<td align="right">2096</td>
+<td align="right">50</td>
+<td align="right">6904</td>
+<td align="right">0.470</td>
+<td align="right">0.467</td>
+</tr>
+<tr class="odd">
+<td>Relaxed LASSO</td>
+<td align="right">0.64</td>
+<td align="right">122083</td>
+<td align="right">905</td>
+<td align="right">999</td>
+<td align="right">95</td>
+<td align="right">8001</td>
+<td align="right">0.623</td>
+<td align="right">0.607</td>
+</tr>
+</tbody>
+</table>
+<!-- END single-metrics --><p>The observed and true signal are shown above zero; fitted signals and
+estimated spikes are mirrored below in red. The panels compare L0glm
+with the strongest competing method in this example, ranked by support
+MCC.</p>
+<p><img src="../deconvolution-single-large.png" alt="Realistic single-channel Poisson deconvolution: observed and true signal above, fitted signal and spikes mirrored below in red." width="100%"></p>
+<p>The coefficient comparison shows estimation accuracy and the
+additional coefficients selected by the competing method. Each common
+<code>(0,0)</code> is plotted once.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><img src="../deconvolution-single-coefficients-large.png" alt="True versus estimated single-channel coefficients for L0glm and relaxed LASSO." width="100%"></p>
 </div>
 <div class="section level2">
-<h2 id="multichannel-row-selection">Multichannel row selection<a class="anchor" aria-label="anchor" href="#multichannel-row-selection"></a>
+<h2 id="multichannel-deconvolution">Multichannel deconvolution<a class="anchor" aria-label="anchor" href="#multichannel-deconvolution"></a>
 </h2>
-<p>For several response channels, shared event times correspond to
-active rows of the coefficient matrix. Within each recovered row,
-channel coefficients describe the event’s spectrum.</p>
+<p><strong>Gas chromatography–mass spectrometry (GC/MS)</strong>
+provides a natural application: compounds with overlapping
+chromatographic peaks contribute counts across many mass-to-charge
+channels. Peak locations are shared across channels, while each compound
+has its own sparse mass spectrum. A grouped Poisson model recovers the
+peak locations and the corresponding spectra together.</p>
+<p>The simulation retains <strong>all 226 informative mass
+channels</strong> generated from the spectral library. No channels are
+discarded for fitting or plotting.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4</span>, n<span class="op">=</span><span class="fl">500L</span>, p<span class="op">=</span><span class="fl">500L</span>, s<span class="op">=</span><span class="fl">.05</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="co"># Retain all mass channels generated by the simulation.</span></span>
-<span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  nonnegative<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit_multi</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
-<span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>, <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;      gic TP FP FN  TN F1_score MCC within_row_F1_score within_row_MCC</span></span>
-<span><span class="co">#&gt; 1 118549 25  0  0 475        1   1               0.946          0.913</span></span></code></pre></div>
-<p>Row F1 and MCC assess event-time recovery. Within-row F1 and MCC
-assess the sparsity of channel coefficients among correctly recovered
-true-positive rows.</p>
-<p><code><a href="../reference/sparseglm.html">plot.sparseglm()</a></code> can show all coefficients, row averages
-or heatmaps. Choose methods using <code>which</code>; heatmaps display
-one ground-truth/estimate pair per method.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">comparison_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">multi</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"abess"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
+<span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="va">comparison_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">multi</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, intercept<span class="op">=</span><span class="cn">FALSE</span>,</span>
-<span>  approximation<span class="op">=</span><span class="st">"wls_grouped"</span>, support.size<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">50L</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="va">fit_multi</span><span class="op">$</span><span class="va">init.lambda</span><span class="op">)</span>, options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"heatmap"</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"coefs"</span>, which<span class="op">=</span><span class="fl">1</span>, channels<span class="op">=</span><span class="st">"mean"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="../deconvolution-multi-l0glm.png" alt="Ground truth and estimated multichannel coefficients for L0glm, with all channels shown." width="100%"></p>
-<p><img src="../deconvolution-multi-lasso.png" alt="Ground truth and estimated multichannel coefficients for LASSO, with all channels shown." width="100%"></p>
-<p>Cyan lines identify true-positive event rows, red lines false
-positives, and magenta lines false negatives. The <a href="performance.html">benchmark tables</a> include the complete
-comparison and the scoring conventions.</p>
-<p><img src="../deconvolution-coefficients.png" alt="True versus estimated coefficients across every response channel, in separate panels for each method." width="100%"></p>
+<span>  approximation<span class="op">=</span><span class="st">"wls_grouped"</span>,</span>
+<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10000</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">8L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison_multi</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"seconds"</span>, <span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
+<span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>, <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<!-- BEGIN multi-metrics -->
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="6%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+</colgroup>
+<thead><tr class="header">
+<th>Method</th>
+<th align="right">Seconds</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">FN</th>
+<th align="right">TN</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+<th align="right">Within-row F1</th>
+<th align="right">Within-row MCC</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>L0glm</td>
+<td align="right">34.14</td>
+<td align="right">5615963</td>
+<td align="right">944</td>
+<td align="right">11</td>
+<td align="right">56</td>
+<td align="right">8989</td>
+<td align="right">0.966</td>
+<td align="right">0.962</td>
+<td align="right">0.909</td>
+<td align="right">0.864</td>
+</tr>
+<tr class="even">
+<td>Group LASSO</td>
+<td align="right">244.87</td>
+<td align="right">7413616</td>
+<td align="right">980</td>
+<td align="right">860</td>
+<td align="right">20</td>
+<td align="right">8140</td>
+<td align="right">0.690</td>
+<td align="right">0.685</td>
+<td align="right">0.842</td>
+<td align="right">0.768</td>
+</tr>
+<tr class="odd">
+<td>Relaxed group LASSO</td>
+<td align="right">906.34</td>
+<td align="right">6138687</td>
+<td align="right">909</td>
+<td align="right">309</td>
+<td align="right">91</td>
+<td align="right">8691</td>
+<td align="right">0.820</td>
+<td align="right">0.802</td>
+<td align="right">0.853</td>
+<td align="right">0.782</td>
+</tr>
+</tbody>
+</table>
+<!-- END multi-metrics --><p>Row F1 and MCC measure recovery of peak times. Within-row F1 and MCC
+measure mass-spectrum sparsity among correctly recovered true-positive
+peaks. Group LASSO and relaxed group LASSO use glmnet’s grouped Gaussian
+approximation, with shared row weights <code>1/(rowMeans(y)+0.1)</code>;
+every model is evaluated using the original Poisson likelihood and the
+same GIC. Each glmnet path has ten lambda values. Relaxed group LASSO
+refits the selected shared row support with <code>gamma=0</code>.</p>
+<div class="section level3">
+<h3 id="correlated-peaks-and-group-lasso">Correlated peaks and group LASSO<a class="anchor" aria-label="anchor" href="#correlated-peaks-and-group-lasso"></a>
+</h3>
+<p>Shifted copies of the point-spread function are strongly correlated.
+For this design, the standard group-LASSO irrepresentability diagnostic
+is <strong>20.54</strong>, well above the bound of one. This helps
+explain why group LASSO can retain many neighbouring peak locations even
+while reconstructing the observed signal well. L0glm’s direct support
+penalty gives a much cleaner separation of the peaks.</p>
+<p>To compute the diagnostic, let <span class="math inline">A</span> be
+the shared-row-weighted design with columns scaled to unit norm, <span class="math inline">S</span> the true row support and <span class="math inline">U_{j\cdot}=B^*_{j\cdot}/\|B^*_{j\cdot}\|_2</span>.
+We evaluate</p>
+<p><span class="math display">
+\max_{j\notin S}\left\|
+A_j^\top A_S(A_S^\top A_S)^{-1}U_S
+\right\|_2.
+</span></p>
+<p>The standard group-LASSO selection conditions require this quantity
+to be at most one, with a strict inequality giving a sufficient
+condition under the assumptions in <a href="https://www.jmlr.org/papers/v9/bach08b.html" class="external-link">Bach (2008)</a>. This
+diagnostic concerns the unconstrained weighted-Gaussian group model; the
+benchmark additionally uses nonnegativity constraints and Poisson
+scoring. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/check_group_irrepresentability.R" class="external-link">diagnostic
+script</a> gives the calculation and numerical solve check.</p>
+</div>
+<div class="section level3">
+<h3 id="compare-the-recovered-signals-and-spectra">Compare the recovered signals and spectra<a class="anchor" aria-label="anchor" href="#compare-the-recovered-signals-and-spectra"></a>
+</h3>
+<p>Heatmaps stack the <strong>observed data</strong>,
+<strong>ground-truth coefficients</strong> and selected methods on one
+page. Coefficient panels share a colour scale; observed counts have
+their own intensity scale. Cyan overlays mark true support or true
+positives, red marks false positives and magenta marks false negatives.
+Legends also give the counts. Every channel is retained.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"heatmap"</span>, which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison_multi</span>, type<span class="op">=</span><span class="st">"coefs"</span>, which<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, channels<span class="op">=</span><span class="st">"all"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="../deconvolution-multi-large.png" alt="All 226 channels: observed GC/MS data, true peak spectra, L0glm estimates and the strongest competing fit, with cyan/red/magenta support overlays." width="100%"></p>
+<p>Multichannel true-versus-estimated coefficient panels use a single
+column. Blue points are correctly recovered nonzero coefficients, red
+points are false positives and magenta points are false negatives.</p>
+<p><img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for L0glm, group LASSO and relaxed group LASSO across all mass channels." width="100%"></p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="tune-or-use-native-validation">Tune or use native validation<a class="anchor" aria-label="anchor" href="#tune-or-use-native-validation"></a>
 </h2>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>  tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5</span>, nlambda<span class="op">=</span><span class="fl">10</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span>  tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5L</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>For held-out checkpoint stopping, supply
-<code>validation=list(X=V, y=v)</code>; OpenMP remains available through
-the native backend. See the <a href="controls.html#held-out-early-stopping">validation example</a>.</p>
-<p>The L0 deconvolution idea is developed by <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
-(2011)</a>. <code><a href="../reference/simul.html">simul()</a></code> also supports Gaussian or
-negative-binomial noise for blurred spike trains.</p>
+<code>validation=list(X=V, y=v)</code>. OpenMP remains available through
+the native backend. See the <a href="controls.html#held-out-early-stopping">validation example</a> and
+the full <a href="performance.html">benchmark tables</a>.</p>
+<p>The L0 deconvolution idea was inspired by work by <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
+(2011)</a>. Our methods for automatically setting regularization, the
+extensions to Poisson or negative-binomial noise, and the multichannel
+shared-support extensions are new developments of the present work.
+<code><a href="../reference/simul.html">simul()</a></code> supports all three noise models.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

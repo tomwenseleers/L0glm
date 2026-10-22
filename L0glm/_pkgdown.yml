@@ -66,7 +66,7 @@ navbar:
         - text: "---"
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
-        - text: A million predictors with SIS / ISIS
+        - text: SIS / ISIS screening for high dimensional models
           href: articles/high-dimensional.html
     algorithm:
       text: Algorithm & theory

@@ -140,7 +140,7 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">A million predictors with SIS / ISIS</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -253,7 +253,7 @@ quadratic programming solver.</p>
 <span>  screen <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  nsis <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  screen.maxit <span class="op">=</span> <span class="fl">10L</span>,</span>
-<span>  screen.nthreads <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  screen.nthreads <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  validation <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -728,8 +728,9 @@ from <code>maxit</code>, the inner IRLS limit. Ignored when screening is off.</p
 
 
 <dt id="arg-screen-nthreads">screen.nthreads<a class="anchor" aria-label="anchor" href="#arg-screen-nthreads"></a></dt>
-<dd><p>Positive integer OpenMP thread count for screening,
-default 1. Independent of <code>nthreads</code> (BLAS) and <code>ncores</code>
+<dd><p>Positive integer OpenMP thread count for screening.
+<code>NULL</code> (default) uses the number of physical cores, falling back to
+one if detection is unavailable. Independent of <code>nthreads</code> (BLAS) and <code>ncores</code>
 (outcome fitting). See <code><a href="sis_glm.html">sis_glm</a></code> for caps and serial fallback.
 Ignored when screening is off.</p></dd>
 
@@ -904,6 +905,24 @@ models using their likelihood and support size. Exact surrogate minimization
 with a fixed likelihood and penalty gives the usual MM descent argument;
 the package also accommodates dispersion updates, constraints and relaxed
 refits as described below.</p>
+</div>
+
+<div class="section">
+<h3 id="hierarchical-bayesian-and-ard-interpretation">Hierarchical Bayesian and ARD interpretation<a class="anchor" aria-label="anchor" href="#hierarchical-bayesian-and-ard-interpretation"></a></h3>
+<p>A ridge update is a conditional maximum a posteriori (MAP) estimate under
+Gaussian coefficient priors. With the default zero ridge center, the
+inverse-square update corresponds to prior precision
+\(\alpha_j=\lambda/(4\beta_j^2)\) in the solver's coefficient coordinates;
+its ridge coefficient is \(\phi\alpha_j\) for GLM dispersion \(\phi\).
+The prior remains zero-centered and skeptical: small fitted effects receive
+concentrated priors and strong effects receive wider priors. The next IRLS
+step updates the coefficient mode using a local quadratic likelihood.
+This gives a plug-in empirical-Bayes-style connection to automatic relevance
+determination (ARD), with shared precisions providing a group-ARD view.
+Evidence-maximizing ARD also accounts for posterior uncertainty; the adaptive
+ridge rule here updates scales from coefficient point estimates. The ridge
+center stays fixed; <code>prior.mean</code> specifies its value.
+See Tipping (2001) and the Algorithm and theory vignette for this connection.</p>
 </div>
 
 <p>Automatic initialization uses one weak ridge fit to the initial working
@@ -1099,7 +1118,8 @@ point, so use separate test observations to assess prediction performance.</p>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
 
-<ul><li><p>J. de Rooi &amp; P. Eilers, <em>Deconvolution of pulse trains with the L0 penalty</em>. Analytica chimica acta 705, 218-226 (2011).</p></li>
+<ul><li><p>M.E. Tipping, <em>Sparse Bayesian Learning and the Relevance Vector Machine</em>. Journal of Machine Learning Research 1, 211-244 (2001). <a href="https://www.jmlr.org/papers/v1/tipping01a.html" class="external-link">https://www.jmlr.org/papers/v1/tipping01a.html</a>.</p></li>
+<li><p>J. de Rooi &amp; P. Eilers, <em>Deconvolution of pulse trains with the L0 penalty</em>. Analytica chimica acta 705, 218-226 (2011).</p></li>
 <li><p>F. Frommlet &amp; G. Nuel, <em>An adaptive ridge procedure for L0 regularization</em>. PloS one 11, e0148620 (2016).</p></li>
 <li><p>I. Marschner, <em>glm2: Fitting Generalized Linear Models with Convergence Problems</em>. The R Journal (2011). <a href="https://doi.org/10.32614/RJ-2011-012" class="external-link">doi:10.32614/RJ-2011-012</a>
 .</p></li>

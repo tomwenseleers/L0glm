@@ -1,0 +1,3 @@
+"condition","maximum","rows_exceeding_one","relative_solve_residual","n","p","channels","true_rows"
+"standard_group_condition",20.5441678279645,1980,5.29242531495519e-13,10000,10000,226,1000
+"positive_part_diagnostic",13.6612992121001,1767,5.29242531495519e-13,10000,10000,226,1000
