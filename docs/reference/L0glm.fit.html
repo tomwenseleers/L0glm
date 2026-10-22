@@ -464,10 +464,16 @@ of the <code>RcppEigen Eigen</code> solvers).
 <code>"osqp"</code> and <code>"bigGlm"</code> support nonnegativity constraints
 and scale well to larger problems, with especially <code>"bigGlm"</code> being
 suitable for very large problems. The <code>"eigen"</code> solvers apply
-nonnegativity constraints via clipping, which in combination with the ridge
-penalties in practice work almost as well, and some of those solvers are
-often among the fastest (especially <code>method</code> <code>1L</code>, Cholesky
-LLT, for PSF-like sparse deconvolution problems).</p></dd>
+nonnegativity constraints by clamping negative proposals to zero.
+This works well in practice when the true active effects are positive and
+regularization is well chosen, for example <code>lambda="gic"</code>:
+ridge shrinkage stabilizes the updates and often keeps those effects
+positive. In the package's deconvolution solver benchmarks, Eigen
+Cholesky LLT generally gives better support recovery and coefficient
+accuracy than the formally constrained alternatives, together with much
+faster fits. See the
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">measured solver comparisons</a>.
+Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
@@ -702,10 +708,11 @@ not matrix-free Cox products. See the dedicated family help pages.</p></dd>
 <dt id="arg-screen">screen<a class="anchor" aria-label="anchor" href="#arg-screen"></a></dt>
 <dd><p>Screening strategy in <code>L0glm.fit()</code>: <code>"auto"</code>
 (default), <code>"none"</code>, <code>"SIS"</code> or <code>"ISIS"</code>, ignoring case.
-Auto enables ISIS when the number of eligible predictors exceeds ten
-times the number of observations. Mandatory
-terms and rows excluded by explicit zero starts do not count toward this
-trigger. Explicit SIS/ISIS works at any size; <code>"none"</code> disables it.
+Auto enables ISIS exactly when \(p_{\mathrm{eligible}}&gt;10n\), where
+\(n\) is the number of rows of <code>X</code>. The eligible count excludes
+mandatory terms and predictors excluded by explicit zero starts in every
+response channel. No separate minimum sample size or predictor count is
+imposed. Explicit SIS/ISIS works at any size; <code>"none"</code> disables it.
 SIS screens once; ISIS repeatedly screens using the fitted predictor as
 an offset and refits the original response on the expanded candidate set.
 See Screening under Details and <code><a href="sis_glm.html">sis_glm</a></code>.</p></dd>
@@ -1219,7 +1226,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y_hd</span> <span class="op">&lt;-</span> <span class="va">mean_hd</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># screen="auto" activates ISIS for this ultra-wide design. Screened fits</span></span>
+<span><span class="co"># screen="auto" activates ISIS exactly when p_eligible &gt; 10*n. Screened fits</span></span>
 <span><span class="co"># default to the original-p GIC preset and a relaxed refit.</span></span>
 <span><span class="co"># Screening threads are independent of BLAS threads (nthreads).</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_hd</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>

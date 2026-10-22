@@ -246,6 +246,13 @@ predictor coordinates.</p>
 </tr>
 </tbody>
 </table>
+<p>The default <code>screen="auto"</code> enables ISIS exactly when
+<code>p_eligible &gt; 10*n</code>. Here <code>n</code> is the number of
+training rows, and <code>p_eligible</code> excludes mandatory terms and
+predictors excluded by zero starts in every response channel.
+<code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> applies this rule independently within each
+full-data or CV training fit, without a separate minimum sample size or
+predictor count.</p>
 <p>Continue with <a href="high-dimensional.html">SIS / ISIS
 screening</a>, <a href="deconvolution.html">single and multichannel
 deconvolution</a>, <a href="controls.html">weights and validation</a>,

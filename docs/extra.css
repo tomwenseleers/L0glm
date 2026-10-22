@@ -1,5 +1,7 @@
 :root { --l0-ink:#0a1930; --l0-teal:#087e83; --l0-cyan:#43e7ec; --l0-muted:#53647b; }
 body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.7; }
+/* Sans-serif code faces preserve indentation and aligned printed output. */
+pre,code,kbd,samp { font-family:"Cascadia Code",Consolas,"DejaVu Sans Mono","Liberation Mono",monospace; }
 .navbar { box-shadow:0 3px 18px #06162a17; padding-block:.85rem; }
 .navbar-brand { font-weight:800; font-size:1.5rem; letter-spacing:-.06em; }
 .navbar .nav-link { font-size:.91rem; font-weight:600; }
@@ -32,13 +34,14 @@ math[display="block"] { max-width:100%; overflow-x:auto; padding:.4rem 0; }
 .table thead th { color:#19374a; border-bottom:2px solid #21a6a6; background:#edf7f7; }
 .table td,.table th { padding:.65rem .75rem; }
 .table tbody tr:hover { background:#f0f9f9; }
-.template-home #application-sparse-deconvolution ~ table col:nth-child(1) { width:26%; }
-.template-home #application-sparse-deconvolution ~ table col:nth-child(2) { width:15%; }
-.template-home #application-sparse-deconvolution ~ table col:nth-child(3),
-.template-home #application-sparse-deconvolution ~ table col:nth-child(6),
-.template-home #application-sparse-deconvolution ~ table col:nth-child(7) { width:13%; }
-.template-home #application-sparse-deconvolution ~ table col:nth-child(4),
-.template-home #application-sparse-deconvolution ~ table col:nth-child(5) { width:10%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(1) { width:23%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(2) { width:14%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(3) { width:12%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(4) { width:13%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(5),
+.template-home #application-sparse-deconvolution ~ table col:nth-child(6) { width:9%; }
+.template-home #application-sparse-deconvolution ~ table col:nth-child(7),
+.template-home #application-sparse-deconvolution ~ table col:nth-child(8) { width:10%; }
 img { max-width:100%; height:auto; }
 .caption,figcaption { font-size:.88rem; color:var(--l0-muted); }
 .l0-hero { display:flex; align-items:center; gap:1.5rem; position:relative; overflow:hidden; margin:.5rem 0 1.5rem; padding:2.6rem 2.5rem; border-radius:22px; background:radial-gradient(ellipse at 95% 10%,#103d55 0%,transparent 60%),linear-gradient(130deg,#07182b,#101c37); color:#f7fdff; }

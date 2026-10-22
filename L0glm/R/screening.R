@@ -1,4 +1,4 @@
-# Only sufficiently wide eligible designs change the default fitting path.
+# Automatic ISIS: p_eligible > 10 * n, after starting masks and mandatory terms.
 L0glm_screen_method <- function(screen, X, start, intercept, always.include) {
   if (!is.character(screen) || length(screen) != 1L || is.na(screen) ||
       !tolower(screen) %in% c("auto", "none", "sis", "isis"))

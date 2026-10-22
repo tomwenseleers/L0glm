@@ -180,6 +180,11 @@ initialize the next fit.}
 \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
 the screening strategy, candidate batch size, outer iteration limit and
 OpenMP screening thread count from \code{L0glm.fit()}.
+The default \code{screen="auto"} enables ISIS exactly when
+\eqn{p_{\mathrm{eligible}}>10n}. Here \eqn{n} is the number of training
+rows in the current fit, and the eligible count excludes mandatory terms
+and predictors excluded by explicit zero starts in every response channel.
+No separate minimum sample size or predictor count is imposed.
 Screening is recomputed inside each full-data or CV training fit; validation
 responses never determine its candidates. \code{screen="none"} disables it.
 \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
@@ -445,7 +450,8 @@ mean_hd <- as.numeric(X_hd[, support, drop=FALSE] \%*\% beta_hd[support])
 set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
-# Automatic ISIS screening is run independently at each lambda.
+# screen="auto" applies p_eligible > 10*n independently at each lambda,
+# with n equal to the training row count, including within each CV fold.
 hd_gic <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="gic",
   nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=FALSE)
 # Screening and preprocessing are recomputed within each training fold.

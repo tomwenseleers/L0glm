@@ -54,7 +54,7 @@
 <li>Negative binomial regression with estimated shape, joint multinomial regression in centered log-ratio coordinates, and Cox proportional hazards models.</li>
 <li>Single and multichannel fitting, grouped predictor-row selection, and relaxed refitting for accurate coefficient estimates on the selected support.</li>
 <li>Dense and sparse matrices, tall and wide designs, fast Eigen solvers and a native OpenMP backend for nonnegative identity-link Poisson models.</li>
-<li>Sure Independence Screening (SIS) and Iterative Sure Independence Screening (ISIS), with compiled OpenMP screening and automatic ISIS for ultrahigh dimensions. Screening uses physical cores by default, with explicit thread-count overrides.</li>
+<li>Sure Independence Screening (SIS) and Iterative Sure Independence Screening (ISIS), with compiled OpenMP screening and automatic ISIS when <code>p_eligible &gt; 10*n</code>, excluding mandatory terms and predictors excluded by zero starts in every response channel. The same rule uses the training row count in each <code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> fit. Screening uses physical cores by default, with explicit thread-count overrides.</li>
 <li>Observation weights, offsets, intercepts, mandatory predictors, normalization, starting values, nonnegativity constraints and validation-based early stopping.</li>
 <li>Information-criterion presets and lambda-path tuning, five-fold cross-validation, one-standard-error models and coefficient-path plots.</li>
 <li>

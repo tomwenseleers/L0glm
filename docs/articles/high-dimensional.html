@@ -100,10 +100,14 @@ the controls are documented in <a href="../reference/sis_glm.html"><code>sis_glm
 <p>ISIS is enabled by default for ultrahigh-dimensional models through
 <code>screen="auto"</code>. Let <span class="math inline">n</span> be
 the number of observations and <span class="math inline">p_{\mathrm{eligible}}</span> the number of eligible
-predictors. Automatic ISIS is enabled when</p>
+predictors, excluding mandatory terms and predictors excluded by zero
+starts in every response channel. Automatic ISIS is enabled when</p>
 <p><span class="math display">
 p_{\mathrm{eligible}}&gt;10n.
 </span></p>
+<p>The same rule applies in <code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code>, independently for
+each full-data or CV training fit, using its training row count. There
+is no separate minimum sample size or predictor count.</p>
 <p>Screening keeps the full fitting interface while concentrating joint
 fitting on a small, informative candidate set. Use
 <code>screen="ISIS"</code> to request it explicitly at any design
@@ -160,9 +164,10 @@ occupies about 4 GB.</p>
 <span>  screen<span class="op">=</span><span class="st">"ISIS"</span>, screen.nthreads<span class="op">=</span><span class="fl">8L</span>, nthreads<span class="op">=</span><span class="fl">1L</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">FALSE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p>The default fit recovers 40 true effects with 3 false positives.
-Screening uses all detected physical cores by default (eight on this
-workstation). Five-fold-CV LASSO took <strong>123.13 s</strong>,
+<p>The default L0glm fit with ISIS screening recovers <strong>40 true
+effects with only 3 false positives</strong>. It finished in just
+<strong>3.49 s</strong> using all eight physical cores (the default). By
+comparison, five-fold-CV LASSO took <strong>123.13 s</strong>,
 recovering 17 true effects with 50 false positives. The <a href="performance.html#one-million-predictor-example">benchmark
 article</a> reports all methods, including relaxed LASSO, together with
 their tuning settings.</p>

@@ -86,9 +86,234 @@
 
     
     
-<p>The sections below explain the main ideas. The <a href="#algorithm-appendix">mathematical pseudocode appendix</a> gives
+<div class="section level2">
+<h2 id="generalized-linear-models">Generalized linear models<a class="anchor" aria-label="anchor" href="#generalized-linear-models"></a>
+</h2>
+<p>A generalized linear model (GLM) specifies a response distribution, a
+linear predictor and a link relating that predictor to the conditional
+mean. For the standard exponential dispersion families, a unit-weight
+observation has density or probability mass function</p>
+<p><span class="math display">
+f(y_i;\theta_i,\phi)=
+\exp\left\{\frac{y_i\theta_i-b(\theta_i)}{\phi}+c(y_i,\phi)\right\},
+</span></p>
+<p>with</p>
+<p><span class="math display">
+\mu_i=E(Y_i\mid x_i)=b'(\theta_i),\qquad
+\operatorname{Var}(Y_i\mid x_i)=\phi V(\mu_i),\qquad
+V(\mu_i)=b''(\theta_i).
+</span></p>
+<p>Here <span class="math inline">\theta_i</span> is the natural
+parameter and <span class="math inline">\phi</span> the dispersion. The
+regression model is</p>
+<p><span class="math display">
+\eta_i=x_i^\top\beta+o_i=g(\mu_i),\qquad
+\mu_i=h(\eta_i),\qquad h=g^{-1},
+</span></p>
+<p>where <span class="math inline">o_i</span> is a known offset. The
+link acts on the conditional mean. For a canonical link, <span class="math inline">\eta_i=\theta_i</span>.</p>
+<table class="table">
+<thead><tr class="header">
+<th>Family</th>
+<th>Variance function <span class="math inline">V(\mu)</span>
+</th>
+<th>Dispersion <span class="math inline">\phi</span>
+</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Gaussian</td>
+<td><span class="math inline">1</span></td>
+<td><span class="math inline">\sigma^2</span></td>
+</tr>
+<tr class="even">
+<td>Poisson</td>
+<td><span class="math inline">\mu</span></td>
+<td><span class="math inline">1</span></td>
+</tr>
+<tr class="odd">
+<td>Bernoulli</td>
+<td><span class="math inline">\mu(1-\mu)</span></td>
+<td><span class="math inline">1</span></td>
+</tr>
+<tr class="even">
+<td>Gamma</td>
+<td><span class="math inline">\mu^2</span></td>
+<td>Estimated or supplied</td>
+</tr>
+<tr class="odd">
+<td>Inverse Gaussian</td>
+<td><span class="math inline">\mu^3</span></td>
+<td>Estimated or supplied</td>
+</tr>
+</tbody>
+</table>
+<p>For binomial proportions, trial totals enter as observation weights.
+Standard references are <a href="https://www.routledge.com/Generalized-Linear-Models-Second-Edition/McCullagh-%20Nelder/p/book/9780412317606" class="external-link">McCullagh
+&amp; Nelder (1989), <em>Generalized Linear Models</em>, 2nd edition</a>
+and <a href="https://www.stata-press.com/books/generalized-linear-models-and-extensions/" class="external-link">Hardin
+&amp; Hilbe (2018), <em>Generalized Linear Models and Extensions</em>,
+4th edition, Chapter 3</a>. The <a href="https://bwlewis.github.io/GLM/" class="external-link">illustrated IRLS account by Kane
+&amp; Lewis</a> connects these equations to R code and linear
+solvers.</p>
+</div>
+<div class="section level2">
+<h2 id="ordinary-glm-fitting-by-irls">Ordinary GLM fitting by IRLS<a class="anchor" aria-label="anchor" href="#ordinary-glm-fitting-by-irls"></a>
+</h2>
+<p><strong>Iteratively reweighted least squares (IRLS)</strong> fits a
+GLM through a sequence of weighted least-squares problems. Let <span class="math inline">a_i</span> be a known prior/case observation weight,
+and put <span class="math inline">d_i^{(t)}=h'(\eta_i^{(t)})=d\mu_i/d\eta_i</span>.
+Each iteration forms the offset-adjusted working response and
+weights</p>
+<p><span class="math display">
+\begin{aligned}
+z_i^{(t)}
+&amp;=\eta_i^{(t)}-o_i+\frac{y_i-\mu_i^{(t)}}{d_i^{(t)}},\\
+W_{ii}^{(t)}
+&amp;=a_i\frac{\{d_i^{(t)}\}^2}{V(\mu_i^{(t)})}.
+\end{aligned}
+</span></p>
+<p>Here the working response has the known offset subtracted, so the
+least-squares solve uses <span class="math inline">Xb</span> directly.
+R’s <code>family$linkinv()</code>, <code>family$mu.eta()</code> and
+<code>family$variance()</code> supply <span class="math inline">h</span>, <span class="math inline">h'</span>
+and <span class="math inline">V</span>, respectively. See <a href="https://stat.ethz.ch/R-manual/R-devel/library/stats/html/family.html" class="external-link">R’s
+family-object reference</a>.</p>
+<div class="section level4 l0-algorithm">
+<h4 id="ordinary-glm-irls">Ordinary GLM IRLS<a class="anchor" aria-label="anchor" href="#ordinary-glm-irls"></a>
+</h4>
+<p><strong>Input:</strong> design <span class="math inline">X</span>,
+response <span class="math inline">y</span>, family/link, observation
+weights <span class="math inline">a</span>, offset <span class="math inline">o</span>, a convergence tolerance and an iteration
+limit.</p>
+<ol style="list-style-type: decimal">
+<li>Initialize valid means <span class="math inline">\mu^{(0)}</span>
+from the family’s initialization rule and set <span class="math inline">\eta^{(0)}=g(\mu^{(0)})</span>. When coefficient
+starts are supplied, instead use <span class="math inline">\eta^{(0)}=X\beta^{(0)}+o</span> and check the
+implied means.</li>
+<li>
+<strong>For</strong> <span class="math inline">t=0,1,\ldots</span>,
+calculate <span class="math inline">d^{(t)},z^{(t)},W^{(t)}</span>
+above.</li>
+<li>Solve the weighted least-squares problem <span class="math display">
+\beta^{(t+1)}=\arg\min_b
+\left\|W_t^{1/2}(z_t-Xb)\right\|_2^2.
+</span> Its normal equations are <span class="math display">
+(X^\top W_tX)\beta^{(t+1)}=X^\top W_tz_t.
+</span>
+</li>
+<li>Update <span class="math inline">\eta^{(t+1)}=X\beta^{(t+1)}+o</span> and <span class="math inline">\mu^{(t+1)}=h(\eta^{(t+1)})</span>. Stop when the
+deviance or the available successive coefficient vectors change by less
+than the chosen tolerance, or when the iteration limit is reached.</li>
+</ol>
+</div>
+<p>A numerical solver obtains the least-squares solution without
+explicitly inverting the matrix. Practical implementations add domain
+checks and can shorten an unstable full step by backtracking or step
+halving. For Gaussian data with an identity link, <span class="math inline">z=y-o</span> and <span class="math inline">W=\operatorname{diag}(a)</span>, so the unpenalized
+coefficient fit reduces to weighted linear regression.</p>
+<p>IRLS is <strong>Fisher scoring</strong>, using expected information.
+For the weighted likelihood its score with respect to the linear
+predictor is</p>
+<p><span class="math display">
+\frac{\partial\ell}{\partial\eta_i}
+=\frac{a_i}{\phi}
+  \frac{(y_i-\mu_i)h'(\eta_i)}{V(\mu_i)},
+\qquad
+I_\beta=\frac1\phi X^\top WX.
+</span></p>
+<p>The corresponding quadratic approximation to negative twice log
+likelihood has the form</p>
+<p><span class="math display">
+Q_t(b)=C_t+\frac1\phi\left\|W_t^{1/2}(z_t-Xb)\right\|_2^2.
+</span></p>
+<p>The common factor <span class="math inline">1/\phi</span> cancels
+from an unpenalized coefficient solve. It matters when a coefficient
+penalty is added. The key modification in L0glm is to replace the
+weighted least-squares solve by <strong>weighted ridge regression with
+adaptive penalties</strong>, as follows.</p>
+<p>L0glm uses this approach to approximate <strong>best subset
+selection</strong> and <strong>best subset of groups (BSGS)
+selection</strong>, combining sparse support penalties with the
+likelihood appropriate to each model family. The <a href="#algorithm-appendix">mathematical pseudocode appendix</a> gives
 the complete fitting routines, including initialization,
 distribution-parameter updates and SIS/ISIS screening.</p>
+</div>
+<div class="section level2">
+<h2 id="a-sparse-likelihood-target">A sparse likelihood target<a class="anchor" aria-label="anchor" href="#a-sparse-likelihood-target"></a>
+</h2>
+<p>Let <span class="math inline">\ell(\beta,\psi)</span> denote a
+model’s log likelihood, including known observation weights and offsets,
+and let <span class="math inline">\psi</span> collect distribution
+parameters such as a dispersion or negative-binomial shape. For one
+response, L0 selection targets</p>
+<p><span class="math display">
+\mathcal I_\lambda(\beta,\psi)
+=-2\ell(\beta,\psi)+\lambda\sum_{j\in\mathcal P}\mathbf1\{\beta_j\ne0\},
+</span></p>
+<p>where <span class="math inline">\mathcal P</span> contains selectable
+predictors. Intercepts and <code>always.include</code> terms are
+unpenalized during coefficient fitting. This is the penalized form of
+best subset selection: lambda controls the trade-off between likelihood
+and the number of selected predictors. For a coefficient matrix <span class="math inline">B</span>, independent selection counts nonzero
+entries; grouped selection treats each predictor row across response
+channels as a group. Best subset of groups (BSGS) selection then
+targets</p>
+<p><span class="math display">
+\mathcal I_\lambda(B,\psi)=-2\ell(B,\psi)+\lambda\|B\|_{2,0}.
+</span></p>
+<p>The group count is</p>
+<p><span class="math display">
+\|B\|_{2,0}=\sum_{j\in\mathcal P}\mathbf1\{\|B_{j\cdot}\|_2&gt;0\}.
+</span></p>
+<p>This objective favours a compact support without the persistent
+linear shrinkage of an L1 penalty. The optional relaxed refit estimates
+effects on the selected support with negligible ridge penalization.</p>
+</div>
+<div class="section level2">
+<h2 id="irls-with-adaptive-ridge">IRLS with adaptive ridge<a class="anchor" aria-label="anchor" href="#irls-with-adaptive-ridge"></a>
+</h2>
+<p>Using the same GLM working response and observation weights, L0glm
+replaces the ordinary coefficient update with adaptive weighted
+ridge:</p>
+<p><span class="math display">
+\beta^{(t+1)}\approx\arg\min_b
+\left\|W^{1/2}(z-Xb)\right\|_2^2+
+\sum_j\Lambda_j^{(t)}(b_j-c_j)^2,
+\qquad
+\Lambda_j^{(t)}=\frac{\lambda\phi}{4|\beta_j^{(t)}|^2}.
+</span></p>
+<p>For an unconstrained update, put <span class="math inline">D_t=\operatorname{diag}(\Lambda_j^{(t)})</span> and
+solve</p>
+<p><span class="math display">
+(X^\top W_tX+D_t)\beta^{(t+1)}=X^\top W_tz_t+D_tc.
+</span></p>
+<p>Multiplying the likelihood-scale quadratic by <span class="math inline">\phi</span> puts the solve on a weighted
+least-squares scale, giving the dispersion factor in <span class="math inline">\Lambda_j</span>. The factor <span class="math inline">1/4</span> calibrates the inverse-square adaptive
+ridge update to the L0 selection threshold, giving a useful
+information-criterion preset. The <a href="#the-factor-of-one-quarter">calibration calculation</a> below
+shows this first for orthogonal Gaussian models and then for the frozen
+IRLS quadratics.</p>
+<p>The exponent is fixed at two, with a default zero ridge center <span class="math inline">c_j=0</span>. Mandatory terms have <span class="math inline">\Lambda_j=0</span>. As a coefficient shrinks, its
+adaptive penalty increases rapidly. Strong coefficients receive
+progressively less shrinkage. The design remains dense or sparse through
+the appropriate solver path.</p>
+<p>The core iteration is:</p>
+<ol style="list-style-type: decimal">
+<li>Initialize from training data or supplied coefficients.</li>
+<li>Update the GLM working response, observation weights and adaptive
+penalties.</li>
+<li>Solve on the active support, respecting the selected solver’s
+constraints.</li>
+<li>Check the smooth step and apply the selection cutoff.</li>
+<li>Repeat until convergence, the iteration limit or validation
+stopping.</li>
+<li>Optionally refit the selected support and report likelihood and
+recovery metrics.</li>
+</ol>
+<p>For identity-link Poisson models, <span class="math inline">z=y-o</span> and <span class="math inline">W_{ii}=a_i/\mu_i</span>. This specialization is
+implemented in native C++ with OpenMP across response channels.</p>
+</div>
 <div class="section level2">
 <h2 id="foundations-and-developments-in-l0glm">Foundations and developments in L0glm<a class="anchor" aria-label="anchor" href="#foundations-and-developments-in-l0glm"></a>
 </h2>
@@ -166,67 +391,6 @@ GC/MS peak recovery form part of the methods article in preparation. The
 Gaussian orthogonal-design calculation below is attributed to its
 source; the appendix then derives the family-specific updates used in
 this implementation.</p>
-</div>
-<div class="section level2">
-<h2 id="a-sparse-likelihood-target">A sparse likelihood target<a class="anchor" aria-label="anchor" href="#a-sparse-likelihood-target"></a>
-</h2>
-<p>Let <span class="math inline">\ell(\beta,\psi)</span> denote a
-model’s log likelihood, including known observation weights and offsets,
-and let <span class="math inline">\psi</span> collect distribution
-parameters such as a dispersion or negative-binomial shape. For one
-response, L0 selection targets</p>
-<p><span class="math display">
-\mathcal I_\lambda(\beta,\psi)
-=-2\ell(\beta,\psi)+\lambda\sum_{j\in\mathcal P}\mathbf1\{\beta_j\ne0\},
-</span></p>
-<p>where <span class="math inline">\mathcal P</span> contains selectable
-predictors. Intercepts and <code>always.include</code> terms are
-unpenalized during coefficient fitting. For a coefficient matrix <span class="math inline">B</span>, independent selection counts nonzero
-entries; grouped selection instead targets active predictor rows,</p>
-<p><span class="math display">
-\|B\|_{2,0}=\sum_{j\in\mathcal P}\mathbf1\{\|B_{j\cdot}\|_2&gt;0\}.
-</span></p>
-<p>This objective favours a compact support without the persistent
-linear shrinkage of an L1 penalty. The optional relaxed refit estimates
-effects on the selected support with negligible ridge penalization.</p>
-</div>
-<div class="section level2">
-<h2 id="irls-with-adaptive-ridge">IRLS with adaptive ridge<a class="anchor" aria-label="anchor" href="#irls-with-adaptive-ridge"></a>
-</h2>
-<p>For an ordinary GLM write <span class="math inline">\eta_i=x_i^\top\beta+o_i</span>, <span class="math inline">\mu_i=g^{-1}(\eta_i)</span>, variance function <span class="math inline">V(\mu_i)</span>, prior observation weight <span class="math inline">a_i</span>, and dispersion <span class="math inline">\phi</span>. At iteration <span class="math inline">t</span>, IRLS supplies</p>
-<p><span class="math display">
-W_{ii}^{(t)}=a_i\frac{\{d\mu_i/d\eta_i\}^2}{V(\mu_i)},\qquad
-z_i^{(t)}=\eta_i^{(t)}-o_i+
-\frac{y_i-\mu_i^{(t)}}{d\mu_i/d\eta_i}.
-</span></p>
-<p>L0glm replaces the ordinary least-squares update with weighted
-ridge:</p>
-<p><span class="math display">
-\beta^{(t+1)}\approx\arg\min_b
-\left\|W^{1/2}(z-Xb)\right\|_2^2+
-\sum_j\Lambda_j^{(t)}(b_j-c_j)^2,
-\qquad
-\Lambda_j^{(t)}=\frac{\lambda\phi}{4|\beta_j^{(t)}|^2}.
-</span></p>
-<p>The exponent is fixed at two, with a default zero ridge center <span class="math inline">c_j=0</span>. Mandatory terms have <span class="math inline">\Lambda_j=0</span>. As a coefficient shrinks, its
-adaptive penalty increases rapidly. Strong coefficients receive
-progressively less shrinkage. The design remains dense or sparse through
-the appropriate solver path.</p>
-<p>The core iteration is:</p>
-<ol style="list-style-type: decimal">
-<li>Initialize from training data or supplied coefficients.</li>
-<li>Update the GLM working response, observation weights and adaptive
-penalties.</li>
-<li>Solve on the active support, respecting the selected solver’s
-constraints.</li>
-<li>Check the smooth step and apply the selection cutoff.</li>
-<li>Repeat until convergence, the iteration limit or validation
-stopping.</li>
-<li>Optionally refit the selected support and report likelihood and
-recovery metrics.</li>
-</ol>
-<p>For identity-link Poisson models, <span class="math inline">z=y-o</span> and <span class="math inline">W_{ii}=a_i/\mu_i</span>. This specialization is
-implemented in native C++ with OpenMP across response channels.</p>
 </div>
 <div class="section level2">
 <h2 id="why-reweighted-quadratics-promote-sparsity">Why reweighted quadratics promote sparsity<a class="anchor" aria-label="anchor" href="#why-reweighted-quadratics-promote-sparsity"></a>
@@ -564,10 +728,19 @@ omits an intercept.</li>
 (Z^T WZ+D)\widetilde b=Z^TWz+Dc.
 </span></p>
 <p>Eigen solves this system and clips to the specified bounds. The
-constrained glmnet/<code>bigGlm</code> and OSQP backends impose bounds
-during optimization. Infinite diagonals in <span class="math inline">D</span> remove entries from the solve; mandatory
-terms have diagonal zero. Free nuisance terms can be profiled by a Schur
-complement. For a wide system, with <span class="math inline">A=W^{1/2}Z</span>, <span class="math inline">r=W^{1/2}z</span> and positive penalty
+constrained glmnet/<code>bigGlm</code> coordinate-descent and OSQP
+quadratic-programming backends impose bounds during optimization. For
+nonnegative models with positive active effects and well-chosen
+regularization, such as <code>lambda="gic"</code>, ridge shrinkage often
+keeps genuine active effects positive, and Eigen’s simple clamping works
+very well. In the package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
+solver benchmarks</a>, Eigen Cholesky LLT generally gives better support
+recovery and coefficient accuracy than the formally constrained
+alternatives, with much faster fitting.</p>
+<p>Infinite diagonals in <span class="math inline">D</span> remove
+entries from the solve; mandatory terms have diagonal zero. Free
+nuisance terms can be profiled by a Schur complement. For a wide system,
+with <span class="math inline">A=W^{1/2}Z</span>, <span class="math inline">r=W^{1/2}z</span> and positive penalty
 diagonals,</p>
 <p><span class="math display">
 \widetilde b=c+D^{-1}A^T
@@ -1296,9 +1469,16 @@ fitting controls; a batch size <span class="math inline">b</span>; one
 round for SIS or up to <code>screen.maxit=10</code> rounds for ISIS.</p>
 <ol style="list-style-type: decimal">
 <li>Build the original eligible predictor set <span class="math inline">E</span>, respecting starting-zero exclusions, and
-retain all mandatory predictors. Resolve lambda once using the original
-selectable predictor count. Initialize full-size <span class="math inline">B=0</span> and the selected set to the mandatory
-predictors.</li>
+retain the mandatory set <span class="math inline">M</span>. Define
+<span class="math inline">p_{\mathrm{eligible}}=|E\setminus M|</span>,
+counting a selectable predictor when at least one response channel
+permits it. With <code>screen="auto"</code>, use ISIS exactly when <span class="math inline">p_{\mathrm{eligible}}&gt;10n</span>; otherwise fit
+directly with the appropriate Algorithm 1–5 and return.
+<code>screen="none"</code> also fits directly; explicit SIS/ISIS
+requests apply at any design size. Here <span class="math inline">n</span> is the number of training rows in the
+current fit. Resolve lambda once using the original selectable predictor
+count. Initialize full-size <span class="math inline">B=0</span> and the
+selected set to the mandatory predictors.</li>
 <li>
 <strong>For</strong> screening round <span class="math inline">r=1,\ldots,R</span>, form the screening offset <span class="math inline">O_r=O+XB_{r-1}</span>, including any fitted
 intercept. Run Algorithm 6 on the original eligible columns with this
@@ -1336,9 +1516,12 @@ b_{\rm ISIS}&amp;=\max\left\{1,\ \operatorname{round}
 </span></p>
 <p>capped at the available predictor count. Standalone
 <code><a href="../reference/sis_glm.html">sis_glm()</a></code> defaults to <span class="math inline">\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}</span>.
-An explicit <code>nsis</code> overrides these sizes. Automatic screening
-enables ISIS when the number of eligible selectable predictors exceeds
-<span class="math inline">10n</span>, where <span class="math inline">n</span> is the number of observations.</p>
+An explicit <code>nsis</code> overrides these sizes. The automatic rule
+<span class="math inline">p_{\mathrm{eligible}}&gt;10n</span> has no
+separate minimum sample size or predictor count.
+<code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> uses the same dispatch independently for each
+full-data and CV training fit, with <span class="math inline">n</span>
+equal to that fit’s training row count.</p>
 <p>GIC comparison uses the <strong>original</strong> <span class="math inline">p</span> and the fitted parameter count, including
 estimated distribution parameters where appropriate. For a grouped
 multinomial fit, an active row contributes <span class="math inline">C-1</span> free category directions; for ordinary
@@ -1472,6 +1655,12 @@ followed directly in the source:</p>
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
+<li>McCullagh, P. &amp; Nelder, J. A. (1989). <a href="https://www.routledge.com/Generalized-Linear-Models-Second-Edition/McCullagh-%20Nelder/p/book/9780412317606" class="external-link"><em>Generalized
+Linear Models</em>, 2nd edition</a>. Chapman &amp; Hall.</li>
+<li>Hardin, J. W. &amp; Hilbe, J. M. (2018). <a href="https://www.stata-press.com/books/generalized-linear-models-and-extensions/" class="external-link"><em>Generalized
+Linear Models and Extensions</em>, 4th edition</a>. Stata Press.</li>
+<li>Kane, M. &amp; Lewis, B. W. <a href="https://bwlewis.github.io/GLM/" class="external-link"><em>Generalized linear models,
+abridged</em></a>. Online notes and R implementations.</li>
 <li>de Rooi, J. &amp; Eilers, P. (2011). <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">Deconvolution of pulse
 trains with the L0 penalty</a>. <em>Analytica Chimica Acta</em>, 705,
 218–226.</li>

@@ -38,6 +38,8 @@ million = rows("million-metrics.csv")[0]
 single = rows("single-metrics.csv")
 multi = rows("multi-metrics.csv")
 selection = rows("selection-comparison.csv")
+multi_by_method = {row["method"]: row for row in multi}
+multi_relaxed_ratio = float(multi_by_method["relaxed_lasso_gic"]["seconds"]) / float(multi_by_method["L0glm"]["seconds"])
 fields = ["method", "tune", "seconds", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]
 ratio = 123.13 / float(million["seconds"])
 def group_label(raw):
@@ -68,12 +70,12 @@ content = {
         f"| Zero effects | {million['FP']} FP | {million['TN']} TN |",
     "single-metrics": table(single, fields),
     "multi-metrics": table(multi_display, fields + ["within_row_F1_score", "within_row_MCC"]),
-    "multi-home": table(multi_display, ["method","tune","seconds","TP","FP","F1_score","MCC"]),
+    "multi-home": table(multi_display, ["method","tune","seconds","gic","TP","FP","F1_score","MCC"]),
     "single-speed": deconvolution_speed(single),
     "multi-speed": deconvolution_speed(multi, grouped=True),
     "selection-metrics": table(selection, ["method", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]),
     "speed-stat": f'<a href="articles/performance.html#one-million-predictor-example"><strong>{ratio:.0f}× faster</strong><span>than five-fold-CV LASSO in that example</span></a>',
-    "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a>',
+    "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>{multi_relaxed_ratio:.0f}× faster</b> than relaxed group LASSO</span></a>',
 }
 paths = [ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))

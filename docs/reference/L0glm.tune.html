@@ -304,6 +304,11 @@ initialize the next fit.</p></dd>
 <dd><p>Other arguments passed to <code>L0glm.fit</code>, including:</p><ul><li><p><code>screen</code>, <code>nsis</code>, <code>screen.maxit</code>, <code>screen.nthreads</code>:
 the screening strategy, candidate batch size, outer iteration limit and
 OpenMP screening thread count from <code><a href="L0glm.fit.html">L0glm.fit()</a></code>.
+The default <code>screen="auto"</code> enables ISIS exactly when
+\(p_{\mathrm{eligible}}&gt;10n\). Here \(n\) is the number of training
+rows in the current fit, and the eligible count excludes mandatory terms
+and predictors excluded by explicit zero starts in every response channel.
+No separate minimum sample size or predictor count is imposed.
 Screening is recomputed inside each full-data or CV training fit; validation
 responses never determine its candidates. <code>screen="none"</code> disables it.</p></li>
 <li><p><code>grouped</code>: <code>TRUE</code> (default) selects predictor rows across
@@ -596,7 +601,8 @@ after tuning.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y_hd</span> <span class="op">&lt;-</span> <span class="va">mean_hd</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Automatic ISIS screening is run independently at each lambda.</span></span>
+<span><span class="co"># screen="auto" applies p_eligible &gt; 10*n independently at each lambda,</span></span>
+<span><span class="co"># with n equal to the training row count, including within each CV fold.</span></span>
 <span><span class="va">hd_gic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">5</span>, coefs.true<span class="op">=</span><span class="va">beta_hd</span>, screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span>, plot<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co"># Screening and preprocessing are recomputed within each training fold.</span></span>

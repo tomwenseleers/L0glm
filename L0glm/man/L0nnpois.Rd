@@ -201,10 +201,16 @@ of the \code{RcppEigen Eigen} solvers).
 \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 and scale well to larger problems, with especially \code{"bigGlm"} being
 suitable for very large problems. The \code{"eigen"} solvers apply
-nonnegativity constraints via clipping, which in combination with the ridge
-penalties in practice work almost as well, and some of those solvers are
-often among the fastest (especially \code{method} \code{1L}, Cholesky
-LLT, for PSF-like sparse deconvolution problems).}
+nonnegativity constraints by clamping negative proposals to zero.
+This works well in practice when the true active effects are positive and
+regularization is well chosen, for example \code{lambda="gic"}:
+ridge shrinkage stabilizes the updates and often keeps those effects
+positive. In the package's deconvolution solver benchmarks, Eigen
+Cholesky LLT generally gives better support recovery and coefficient
+accuracy than the formally constrained alternatives, together with much
+faster fits. See the
+\href{https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv}{measured solver comparisons}.
+Use \code{method=1L} for Eigen Cholesky LLT.}
 
 \item{method}{When \code{solver="eigen"}, method used for the eigen solver
   (see details). It should be an integer from 1 to 6 :
@@ -434,6 +440,11 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
+The LLT update enforces this by clamping negative proposals to zero.
+With positive active effects and well-chosen regularization such as
+`lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
+See the solver discussion in [L0glm.fit()] for measured comparisons with
+the formally constrained alternatives.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required.
 }

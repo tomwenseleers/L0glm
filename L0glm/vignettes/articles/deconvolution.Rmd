@@ -4,6 +4,12 @@ description: "Recover overlapping peaks from noisy signals, including multichann
 output: rmarkdown::html_document
 ---
 
+The L0 deconvolution idea was inspired by work by
+[de Rooi & Eilers (2011)](https://doi.org/10.1016/j.aca.2011.05.030).
+Our methods for automatically setting regularization, the extensions to Poisson
+or negative-binomial noise, and the multichannel shared-support extensions are
+new developments of the present work. `simul()` supports all three noise models.
+
 In deconvolution, a design matrix contains shifted copies of the peak-shape
 function, also called the point spread function. Sparse coefficients represent
 sharp events, while the measured signal is blurred and noisy. For nonnegative
@@ -144,13 +150,24 @@ A_j^\top A_S(A_S^\top A_S)^{-1}U_S
 \right\|_2.
 \]
 
-The standard group-LASSO selection conditions require this quantity to be at
-most one, with a strict inequality giving a sufficient condition under the
-assumptions in [Bach (2008)](https://www.jmlr.org/papers/v9/bach08b.html).
-This diagnostic concerns the unconstrained weighted-Gaussian group model;
-the benchmark additionally uses nonnegativity constraints and Poisson scoring.
+For ordinary group LASSO, the corresponding population quantity must be at
+most one to achieve consistent coefficient estimation together with exact
+group-support recovery; a strict inequality gives a sufficient condition under
+the assumptions of [Bach (2008), Theorems 2–3](https://www.jmlr.org/papers/v9/bach08b.html).
+If that population condition remains violated, increasing the sample size alone
+cannot make the probability of recovering the true groups tend to one while
+also consistently estimating their coefficients, whatever regularization
+sequence is used. Strong predictor dependence can therefore remain an obstacle
+even with extremely large datasets.
+
+The value above is a fixed-design diagnostic for the unconstrained
+weighted-Gaussian group model; the benchmark additionally uses nonnegativity
+constraints and Poisson scoring.
 The [diagnostic script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/check_group_irrepresentability.R)
 gives the calculation and numerical solve check.
+
+Reference: Bach, F. R. (2008). *Consistency of the Group Lasso and Multiple
+Kernel Learning*. Journal of Machine Learning Research, **9**, 1179–1225.
 
 ### Compare the recovered signals and spectra
 
@@ -168,7 +185,12 @@ positives and magenta points are false negatives.
 
 <img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for GIC-preset L0glm and GIC- or CV-tuned group LASSO and relaxed group LASSO across all mass channels." width="100%">
 
-## Tune or use native validation
+## Regularization and tuning
+
+An automatically preset level of regularization with `lambda="gic"` typically
+provides a near-optimal sparse solution straight away. Tuning over a lambda
+grid or cross-validation remains available to refine regularization further
+or optimize out-of-sample predictive performance.
 
 ```{r tune, eval=FALSE}
 gic <- L0glm.tune(multi$X, multi$y, family=poisson("identity"),
@@ -177,13 +199,4 @@ cv <- L0glm.tune(multi$X, multi$y, family=poisson("identity"),
   tune="cv", nfolds=5L, nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
 ```
 
-For held-out checkpoint stopping, supply `validation=list(X=V, y=v)`.
-OpenMP remains available through the native backend. See the
-[validation example](controls.html#held-out-early-stopping) and the full
-[benchmark tables](performance.html).
-
-The L0 deconvolution idea was inspired by work by
-[de Rooi & Eilers (2011)](https://doi.org/10.1016/j.aca.2011.05.030).
-Our methods for automatically setting regularization, the extensions to Poisson
-or negative-binomial noise, and the multichannel shared-support extensions are
-new developments of the present work. `simul()` supports all three noise models.
+See the full [benchmark tables](performance.html) for the preset and tuned fits.

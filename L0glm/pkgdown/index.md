@@ -4,7 +4,7 @@
 <div class="l0-hero-copy">
 <p class="l0-eyebrow">SPARSE REGRESSION · GENERALIZED LINEAR MODELS</p>
 <h1>Fast variable selection.<br><span>Parsimonious models.</span></h1>
-<p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.</p>
+<p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.</p>
 <div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
 <p class="l0-hero-note">R · Dense & sparse designs · Single & multiple responses</p>
 </div>
@@ -17,7 +17,7 @@
 <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
-<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a>
+<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a>
 <!-- END multi-stat -->
 </div>
 
@@ -99,13 +99,13 @@ fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
 ```
 
 <!-- BEGIN multi-home -->
-| Method | Selection | Seconds | TP | FP | F1 | MCC |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 9.63 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | GIC path | 244.87 | 980 | 860 | 0.690 | 0.685 |
-| Relaxed group LASSO | GIC path | 906.34 | 909 | 309 | 0.820 | 0.802 |
-| Group LASSO | 5-fold CV | 813.42 | 998 | 4242 | 0.320 | 0.316 |
-| Relaxed group LASSO | 5-fold CV | 3199.62 | 962 | 502 | 0.781 | 0.769 |
+| Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| L0glm | GIC preset | 9.63 | 5615963 | 944 | 11 | 0.966 | 0.962 |
+| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 0.690 | 0.685 |
+| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 0.820 | 0.802 |
+| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 0.781 | 0.769 |
 <!-- END multi-home -->
 
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](deconvolution-multi-large.png)

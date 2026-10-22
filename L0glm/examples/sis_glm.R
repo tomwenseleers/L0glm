@@ -26,7 +26,7 @@ head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10,screen.nthreads=4)
 fit$screening$history
 coef(fit)
-# screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.
+# screen="auto" (the default) enables ISIS exactly when p_eligible > 10*n.
 # Use screen="none" to fit the full design directly.
 
 if (requireNamespace("mgcv",quietly=TRUE)) {

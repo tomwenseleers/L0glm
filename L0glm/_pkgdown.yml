@@ -19,7 +19,7 @@ template:
     secondary: "#dbe9ef"
     base_font: "system-ui"
     heading_font: "system-ui"
-    code_font: "ui-monospace"
+    code_font: "Consolas"
     border-radius: 0.6rem
     navbar-bg: "#081629"
     navbar-dark-color: "#d7edf3"

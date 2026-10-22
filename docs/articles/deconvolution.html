@@ -86,6 +86,11 @@
 
     
     
+<p>The L0 deconvolution idea was inspired by work by <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
+(2011)</a>. Our methods for automatically setting regularization, the
+extensions to Poisson or negative-binomial noise, and the multichannel
+shared-support extensions are new developments of the present work.
+<code><a href="../reference/simul.html">simul()</a></code> supports all three noise models.</p>
 <p>In deconvolution, a design matrix contains shifted copies of the
 peak-shape function, also called the point spread function. Sparse
 coefficients represent sharp events, while the measured signal is
@@ -393,13 +398,23 @@ We evaluate</p>
 A_j^\top A_S(A_S^\top A_S)^{-1}U_S
 \right\|_2.
 </span></p>
-<p>The standard group-LASSO selection conditions require this quantity
-to be at most one, with a strict inequality giving a sufficient
-condition under the assumptions in <a href="https://www.jmlr.org/papers/v9/bach08b.html" class="external-link">Bach (2008)</a>. This
-diagnostic concerns the unconstrained weighted-Gaussian group model; the
-benchmark additionally uses nonnegativity constraints and Poisson
-scoring. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/check_group_irrepresentability.R" class="external-link">diagnostic
+<p>For ordinary group LASSO, the corresponding population quantity must
+be at most one to achieve consistent coefficient estimation together
+with exact group-support recovery; a strict inequality gives a
+sufficient condition under the assumptions of <a href="https://www.jmlr.org/papers/v9/bach08b.html" class="external-link">Bach (2008), Theorems
+2–3</a>. If that population condition remains violated, increasing the
+sample size alone cannot make the probability of recovering the true
+groups tend to one while also consistently estimating their
+coefficients, whatever regularization sequence is used. Strong predictor
+dependence can therefore remain an obstacle even with extremely large
+datasets.</p>
+<p>The value above is a fixed-design diagnostic for the unconstrained
+weighted-Gaussian group model; the benchmark additionally uses
+nonnegativity constraints and Poisson scoring. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/check_group_irrepresentability.R" class="external-link">diagnostic
 script</a> gives the calculation and numerical solve check.</p>
+<p>Reference: Bach, F. R. (2008). <em>Consistency of the Group Lasso and
+Multiple Kernel Learning</em>. Journal of Machine Learning Research,
+<strong>9</strong>, 1179–1225.</p>
 </div>
 <div class="section level3">
 <h3 id="compare-the-recovered-signals-and-spectra">Compare the recovered signals and spectra<a class="anchor" aria-label="anchor" href="#compare-the-recovered-signals-and-spectra"></a>
@@ -418,22 +433,20 @@ points are false positives and magenta points are false negatives.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="tune-or-use-native-validation">Tune or use native validation<a class="anchor" aria-label="anchor" href="#tune-or-use-native-validation"></a>
+<h2 id="regularization-and-tuning">Regularization and tuning<a class="anchor" aria-label="anchor" href="#regularization-and-tuning"></a>
 </h2>
+<p>An automatically preset level of regularization with
+<code>lambda="gic"</code> typically provides a near-optimal sparse
+solution straight away. Tuning over a lambda grid or cross-validation
+remains available to refine regularization further or optimize
+out-of-sample predictive performance.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5L</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>For held-out checkpoint stopping, supply
-<code>validation=list(X=V, y=v)</code>. OpenMP remains available through
-the native backend. See the <a href="controls.html#held-out-early-stopping">validation example</a> and
-the full <a href="performance.html">benchmark tables</a>.</p>
-<p>The L0 deconvolution idea was inspired by work by <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
-(2011)</a>. Our methods for automatically setting regularization, the
-extensions to Poisson or negative-binomial noise, and the multichannel
-shared-support extensions are new developments of the present work.
-<code><a href="../reference/simul.html">simul()</a></code> supports all three noise models.</p>
+<p>See the full <a href="performance.html">benchmark tables</a> for the
+preset and tuned fits.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -213,7 +213,12 @@ it offers a useful improvement.</p>
 <p>CV selects the penalty with the lowest mean held-out deviance. Whole
 rows are held out, including all response channels. Preprocessing,
 screening and estimated distribution parameters use the training
-observations in each fold.</p>
+observations in each fold. The default <code>screen="auto"</code>
+enables ISIS exactly when <code>p_eligible &gt; 10*n</code>, using the
+training row count <code>n</code> in that fold. The eligible count
+excludes mandatory terms and predictors excluded by zero starts in every
+response channel. There is no separate minimum sample size or predictor
+count.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">folds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, length.out<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>

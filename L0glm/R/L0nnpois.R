@@ -16,6 +16,11 @@
 #' `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 #' differences and require no additional ridge solve.
 #' Every coefficient, including any intercept, is constrained to be nonnegative.
+#' The LLT update enforces this by clamping negative proposals to zero.
+#' With positive active effects and well-chosen regularization such as
+#' `lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
+#' See the solver discussion in [L0glm.fit()] for measured comparisons with
+#' the formally constrained alternatives.
 #' This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 #' if coefficients of either sign are required.
 #'

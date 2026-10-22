@@ -23,12 +23,17 @@ screen followed by joint sparse refitting; the controls are documented in
 
 ISIS is enabled by default for ultrahigh-dimensional models through
 `screen="auto"`. Let \(n\) be the number of observations and
-\(p_{\mathrm{eligible}}\) the number of eligible predictors. Automatic ISIS
+\(p_{\mathrm{eligible}}\) the number of eligible predictors, excluding mandatory
+terms and predictors excluded by zero starts in every response channel. Automatic ISIS
 is enabled when
 
 \[
 p_{\mathrm{eligible}}>10n.
 \]
+
+The same rule applies in `L0glm.tune()`, independently for each full-data or CV
+training fit, using its training row count. There is no separate minimum sample
+size or predictor count.
 
 Screening keeps the full fitting interface while concentrating joint fitting
 on a small, informative candidate set. Use `screen="ISIS"` to request it
@@ -84,8 +89,9 @@ fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
 L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
-The default fit recovers 40 true effects with 3 false positives. Screening uses
-all detected physical cores by default (eight on this workstation). Five-fold-CV LASSO took **123.13 s**,
+The default L0glm fit with ISIS screening recovers **40 true effects with only
+3 false positives**. It finished in just **3.49 s** using all eight physical
+cores (the default). By comparison, five-fold-CV LASSO took **123.13 s**,
 recovering 17 true effects with 50 false positives. The
 [benchmark article](performance.html#one-million-predictor-example) reports all methods,
 including relaxed LASSO, together with their tuning settings.

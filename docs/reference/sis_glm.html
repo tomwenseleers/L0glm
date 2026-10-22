@@ -211,7 +211,11 @@ The lowest-GIC round is returned, using the metrics scoring mean floor of
 <code>converged</code> describes repetition of the outer candidate set; inner-fit
 convergence diagnostics remain in <code>fit$convergence</code>.
 <code><a href="L0glm.fit.html">L0glm.fit()</a></code> also exposes this workflow through <code>screen="SIS"</code> or
-<code>screen="ISIS"</code>, with automatic ISIS for ultra-wide eligible designs.
+<code>screen="ISIS"</code>. Its default <code>screen="auto"</code> enables ISIS exactly when
+\(p_{\mathrm{eligible}}&gt;10n\), where \(n\) is the number of rows of <code>X</code>.
+The eligible count excludes mandatory terms and predictors excluded by
+explicit zero starts in every response channel. No separate minimum sample
+size or predictor count is imposed.
 Its small default ISIS batch and other screened-fit defaults are documented
 in that function; pass <code>nsis</code> explicitly to match a standalone call exactly.</p>
     </div>
@@ -250,7 +254,7 @@ in that function; pass <code>nsis</code> explicitly to match a standalone call e
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>,<span class="va">y</span>,screen<span class="op">=</span><span class="st">"ISIS"</span>,nsis<span class="op">=</span><span class="fl">40</span>,screen.maxit<span class="op">=</span><span class="fl">10</span>,screen.nthreads<span class="op">=</span><span class="fl">4</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">screening</span><span class="op">$</span><span class="va">history</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="co"># screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.</span></span>
+<span><span class="co"># screen="auto" (the default) enables ISIS exactly when p_eligible &gt; 10*n.</span></span>
 <span><span class="co"># Use screen="none" to fit the full design directly.</span></span>
 <span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"mgcv"</span>,quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>

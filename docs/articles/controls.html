@@ -119,10 +119,17 @@ are constrained too, except that binomial and quasibinomial intercepts
 remain unrestricted. <code>always.include</code> identifies predictor
 columns that remain eligible and unpenalized; an added intercept is also
 unpenalized.</p>
-<p>Eigen solvers clip negative coefficient proposals. OSQP and the
-constrained <code>bigGlm</code> option solve their supported constrained
-ridge subproblems directly. The native <code><a href="../reference/L0nnpois.html">L0nnpois()</a></code> backend
-specializes in nonnegative identity-link Poisson models.</p>
+<p>Eigen solvers enforce nonnegativity by clamping negative proposals to
+zero. This works well in practice when the true active effects are
+positive and the regularization level is well chosen, for example
+<code>lambda="gic"</code>. Ridge shrinkage stabilizes the updates and
+often keeps genuine active effects positive. OSQP quadratic programming
+and glmnet/<code>bigGlm</code> coordinate descent also provide formally
+constrained ridge solves. In the package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
+solver benchmarks</a>, Eigen Cholesky LLT generally gives better support
+recovery and coefficient accuracy than these alternatives, together with
+much faster fits. The native <code><a href="../reference/L0nnpois.html">L0nnpois()</a></code> backend specializes
+in nonnegative identity-link Poisson models.</p>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>

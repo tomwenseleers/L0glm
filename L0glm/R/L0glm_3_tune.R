@@ -160,6 +160,11 @@
 #' \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
 #' the screening strategy, candidate batch size, outer iteration limit and
 #' OpenMP screening thread count from \code{L0glm.fit()}.
+#' The default \code{screen="auto"} enables ISIS exactly when
+#' \eqn{p_{\mathrm{eligible}}>10n}. Here \eqn{n} is the number of training
+#' rows in the current fit, and the eligible count excludes mandatory terms
+#' and predictors excluded by explicit zero starts in every response channel.
+#' No separate minimum sample size or predictor count is imposed.
 #' Screening is recomputed inside each full-data or CV training fit; validation
 #' responses never determine its candidates. \code{screen="none"} disables it.
 #' \item \code{grouped}: \code{TRUE} (default) selects predictor rows across

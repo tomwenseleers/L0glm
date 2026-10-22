@@ -15,6 +15,11 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
+The LLT update enforces this by clamping negative proposals to zero.
+With positive active effects and well-chosen regularization such as
+`lambda=&quot;gic&quot;`, ridge shrinkage often keeps genuine active effects positive.
+See the solver discussion in [L0glm.fit()] for measured comparisons with
+the formally constrained alternatives.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required."><meta property="og:description" content="`L0nnpois()` is a fast RcppEigen/OpenMP implementation of
 [L0glm.fit()] for the nonnegative Poisson model with identity link. It shares
@@ -32,6 +37,11 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
+The LLT update enforces this by clamping negative proposals to zero.
+With positive active effects and well-chosen regularization such as
+`lambda=&quot;gic&quot;`, ridge shrinkage often keeps genuine active effects positive.
+See the solver discussion in [L0glm.fit()] for measured comparisons with
+the formally constrained alternatives.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -98,6 +108,11 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
+The LLT update enforces this by clamping negative proposals to zero.
+With positive active effects and well-chosen regularization such as
+`lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
+See the solver discussion in [L0glm.fit()] for measured comparisons with
+the formally constrained alternatives.
 This constraint cannot be disabled. Use `L0glm.fit(nonnegative = FALSE)`
 if coefficients of either sign are required.</p>
     </div>
@@ -318,10 +333,16 @@ of the <code>RcppEigen Eigen</code> solvers).
 <code>"osqp"</code> and <code>"bigGlm"</code> support nonnegativity constraints
 and scale well to larger problems, with especially <code>"bigGlm"</code> being
 suitable for very large problems. The <code>"eigen"</code> solvers apply
-nonnegativity constraints via clipping, which in combination with the ridge
-penalties in practice work almost as well, and some of those solvers are
-often among the fastest (especially <code>method</code> <code>1L</code>, Cholesky
-LLT, for PSF-like sparse deconvolution problems).</p></dd>
+nonnegativity constraints by clamping negative proposals to zero.
+This works well in practice when the true active effects are positive and
+regularization is well chosen, for example <code>lambda="gic"</code>:
+ridge shrinkage stabilizes the updates and often keeps those effects
+positive. In the package's deconvolution solver benchmarks, Eigen
+Cholesky LLT generally gives better support recovery and coefficient
+accuracy than the formally constrained alternatives, together with much
+faster fits. See the
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">measured solver comparisons</a>.
+Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>

@@ -70,6 +70,10 @@ tuning can be reserved for cases where it offers a useful improvement.
 CV selects the penalty with the lowest mean held-out deviance. Whole rows are
 held out, including all response channels. Preprocessing, screening and estimated
 distribution parameters use the training observations in each fold.
+The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`,
+using the training row count `n` in that fold. The eligible count excludes
+mandatory terms and predictors excluded by zero starts in every response
+channel. There is no separate minimum sample size or predictor count.
 
 ```{r cv, eval=FALSE}
 set.seed(10)

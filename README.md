@@ -174,9 +174,13 @@ predict(cox$cv$fit_1se, X_special[1:3, , drop=FALSE], type="risk")
 
 `screen="SIS"` performs a single marginal screen; `screen="ISIS"` repeatedly
 screens against the current model using offsets and retains the best GIC round.
-`screen="auto"` enables ISIS for ultrahigh-dimensional designs; `screen="none"`
-disables screening. ISIS adds small batches of promising predictors and refits
-jointly, making it practical to search very large predictor sets.
+`screen="auto"` (the default) enables ISIS exactly when `p_eligible > 10*n`,
+where `n = nrow(X)`. The eligible count excludes mandatory terms and predictors
+excluded by zero starts in every response channel; there is no separate minimum
+sample size or predictor count. `screen="none"` disables screening.
+`L0glm.tune()` applies the same rule independently to each full-data or CV
+training fit, using its training row count. ISIS adds small batches of promising
+predictors and refits jointly, making it practical to search very large predictor sets.
 
 This is the 500-observation, one-million-predictor Gaussian benchmark, with 60
 positive or negative effects. **The dense design alone needs about 4 GB RAM**;

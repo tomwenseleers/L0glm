@@ -39,8 +39,15 @@ except that binomial and quasibinomial intercepts remain unrestricted.
 `always.include` identifies predictor columns that remain eligible and unpenalized;
 an added intercept is also unpenalized.
 
-Eigen solvers clip negative coefficient proposals. OSQP and the constrained
-`bigGlm` option solve their supported constrained ridge subproblems directly.
+Eigen solvers enforce nonnegativity by clamping negative proposals to zero.
+This works well in practice when the true active effects are positive and the
+regularization level is well chosen, for example `lambda="gic"`. Ridge
+shrinkage stabilizes the updates and often keeps genuine active effects positive.
+OSQP quadratic programming and glmnet/`bigGlm` coordinate descent also provide
+formally constrained ridge solves. In the package's
+[deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
+Eigen Cholesky LLT generally gives better support recovery and coefficient
+accuracy than these alternatives, together with much faster fits.
 The native `L0nnpois()` backend specializes in nonnegative identity-link Poisson models.
 
 ## Starts and normalization

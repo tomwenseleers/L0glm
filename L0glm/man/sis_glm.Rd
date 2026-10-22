@@ -132,7 +132,11 @@ The lowest-GIC round is returned, using the metrics scoring mean floor of
 \code{converged} describes repetition of the outer candidate set; inner-fit
 convergence diagnostics remain in \code{fit$convergence}.
 \code{\link[=L0glm.fit]{L0glm.fit()}} also exposes this workflow through \code{screen="SIS"} or
-\code{screen="ISIS"}, with automatic ISIS for ultra-wide eligible designs.
+\code{screen="ISIS"}. Its default \code{screen="auto"} enables ISIS exactly when
+\eqn{p_{\mathrm{eligible}}>10n}, where \eqn{n} is the number of rows of \code{X}.
+The eligible count excludes mandatory terms and predictors excluded by
+explicit zero starts in every response channel. No separate minimum sample
+size or predictor count is imposed.
 Its small default ISIS batch and other screened-fit defaults are documented
 in that function; pass \code{nsis} explicitly to match a standalone call exactly.
 }
@@ -165,7 +169,7 @@ head(predict(iterated$fit,X[1:5,,drop=FALSE]))
 fit <- L0glm.fit(X,y,screen="ISIS",nsis=40,screen.maxit=10,screen.nthreads=4)
 fit$screening$history
 coef(fit)
-# screen="auto" (the default) enables ISIS only for ultra-wide eligible designs.
+# screen="auto" (the default) enables ISIS exactly when p_eligible > 10*n.
 # Use screen="none" to fit the full design directly.
 
 if (requireNamespace("mgcv",quietly=TRUE)) {

@@ -117,6 +117,12 @@ applies the model in the original predictor coordinates.
 | Score predictions and support recovery | `L0glm.metrics()` |
 | Control high dimensional prescreening | `screen="auto"`, `"SIS"` or `"ISIS"` |
 
+The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
+Here `n` is the number of training rows, and `p_eligible` excludes mandatory
+terms and predictors excluded by zero starts in every response channel.
+`L0glm.tune()` applies this rule independently within each full-data or CV
+training fit, without a separate minimum sample size or predictor count.
+
 Continue with [SIS / ISIS screening](high-dimensional.html),
 [single and multichannel deconvolution](deconvolution.html),
 [weights and validation](controls.html), or the

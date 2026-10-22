@@ -60,7 +60,7 @@ mean_hd <- as.numeric(X_hd[, support, drop=FALSE] %*% beta_hd[support])
 set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
-# screen="auto" activates ISIS for this ultra-wide design. Screened fits
+# screen="auto" activates ISIS exactly when p_eligible > 10*n. Screened fits
 # default to the original-p GIC preset and a relaxed refit.
 # Screening threads are independent of BLAS threads (nthreads).
 system.time(fit_hd <- L0glm.fit(X_hd, y_hd, screen.nthreads=8, nthreads=1))

@@ -11,7 +11,10 @@
 * Dense and sparse matrices, tall and wide designs, fast Eigen solvers and
   a native OpenMP backend for nonnegative identity-link Poisson models.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening
-  (ISIS), with compiled OpenMP screening and automatic ISIS for ultrahigh dimensions.
+  (ISIS), with compiled OpenMP screening and automatic ISIS when
+  `p_eligible > 10*n`, excluding mandatory terms and predictors excluded by
+  zero starts in every response channel. The same rule uses the training row
+  count in each `L0glm.tune()` fit.
   Screening uses physical cores by default, with explicit thread-count overrides.
 * Observation weights, offsets, intercepts, mandatory predictors, normalization,
   starting values, nonnegativity constraints and validation-based early stopping.

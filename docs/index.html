@@ -85,7 +85,7 @@ SPARSE REGRESSION · GENERALIZED LINEAR MODELS
 Fast variable selection.<br><span>Parsimonious models.</span>
 </h1>
 <p class="l0-lead">
-Fast L<sub>0</sub> and grouped L<sub>0</sub> regression. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.
+Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.
 </p>
 <div class="l0-actions">
 <a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a>
@@ -97,7 +97,7 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>true peaks recovered in multichannel GC/MS deconvolution</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a> <!-- END multi-stat --></p>
 </div>
 <div class="section level2">
 <h2 id="sparse-learning-across-a-wide-range-of-models">Sparse learning across a wide range of models<a class="anchor" aria-label="anchor" href="#sparse-learning-across-a-wide-range-of-models"></a>
@@ -201,20 +201,22 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span><span class="op">)</span></span></code></pre></div>
 <!-- BEGIN multi-home -->
-<table class="table">
+<table style="width:100%;" class="table">
 <colgroup>
-<col width="11%">
-<col width="11%">
-<col width="15%">
-<col width="15%">
-<col width="15%">
-<col width="15%">
-<col width="15%">
+<col width="10%">
+<col width="10%">
+<col width="13%">
+<col width="13%">
+<col width="13%">
+<col width="13%">
+<col width="13%">
+<col width="13%">
 </colgroup>
 <thead><tr>
 <th>Method</th>
 <th>Selection</th>
 <th align="right">Seconds</th>
+<th align="right">GIC</th>
 <th align="right">TP</th>
 <th align="right">FP</th>
 <th align="right">F1</th>
@@ -225,6 +227,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td>L0glm</td>
 <td>GIC preset</td>
 <td align="right">9.63</td>
+<td align="right">5615963</td>
 <td align="right">944</td>
 <td align="right">11</td>
 <td align="right">0.966</td>
@@ -234,6 +237,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td>Group LASSO</td>
 <td>GIC path</td>
 <td align="right">244.87</td>
+<td align="right">7413616</td>
 <td align="right">980</td>
 <td align="right">860</td>
 <td align="right">0.690</td>
@@ -243,6 +247,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td>Relaxed group LASSO</td>
 <td>GIC path</td>
 <td align="right">906.34</td>
+<td align="right">6138687</td>
 <td align="right">909</td>
 <td align="right">309</td>
 <td align="right">0.820</td>
@@ -252,6 +257,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td>Group LASSO</td>
 <td>5-fold CV</td>
 <td align="right">813.42</td>
+<td align="right">9639345</td>
 <td align="right">998</td>
 <td align="right">4242</td>
 <td align="right">0.320</td>
@@ -261,6 +267,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td>Relaxed group LASSO</td>
 <td>5-fold CV</td>
 <td align="right">3199.62</td>
+<td align="right">6198648</td>
 <td align="right">962</td>
 <td align="right">502</td>
 <td align="right">0.781</td>

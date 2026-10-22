@@ -63,7 +63,8 @@ mean_hd <- as.numeric(X_hd[, support, drop=FALSE] %*% beta_hd[support])
 set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
-# Automatic ISIS screening is run independently at each lambda.
+# screen="auto" applies p_eligible > 10*n independently at each lambda,
+# with n equal to the training row count, including within each CV fold.
 hd_gic <- L0glm.tune(X_hd, y_hd, family=gaussian(), tune="gic",
   nlambda=5, coefs.true=beta_hd, screen.nthreads=8, nthreads=1, plot=FALSE)
 # Screening and preprocessing are recomputed within each training fold.

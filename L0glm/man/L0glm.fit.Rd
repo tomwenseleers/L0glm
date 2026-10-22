@@ -229,10 +229,16 @@ of the \code{RcppEigen Eigen} solvers).
 \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 and scale well to larger problems, with especially \code{"bigGlm"} being
 suitable for very large problems. The \code{"eigen"} solvers apply
-nonnegativity constraints via clipping, which in combination with the ridge
-penalties in practice work almost as well, and some of those solvers are
-often among the fastest (especially \code{method} \code{1L}, Cholesky
-LLT, for PSF-like sparse deconvolution problems).}
+nonnegativity constraints by clamping negative proposals to zero.
+This works well in practice when the true active effects are positive and
+regularization is well chosen, for example \code{lambda="gic"}:
+ridge shrinkage stabilizes the updates and often keeps those effects
+positive. In the package's deconvolution solver benchmarks, Eigen
+Cholesky LLT generally gives better support recovery and coefficient
+accuracy than the formally constrained alternatives, together with much
+faster fits. See the
+\href{https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv}{measured solver comparisons}.
+Use \code{method=1L} for Eigen Cholesky LLT.}
 
 \item{method}{When \code{solver="eigen"}, method used for the eigen solver
   (see details). It should be an integer from 1 to 6 :
@@ -454,10 +460,11 @@ not matrix-free Cox products. See the dedicated family help pages.}
 
 \item{screen}{Screening strategy in \code{L0glm.fit()}: \code{"auto"}
 (default), \code{"none"}, \code{"SIS"} or \code{"ISIS"}, ignoring case.
-Auto enables ISIS when the number of eligible predictors exceeds ten
-times the number of observations. Mandatory
-terms and rows excluded by explicit zero starts do not count toward this
-trigger. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
+Auto enables ISIS exactly when \eqn{p_{\mathrm{eligible}}>10n}, where
+\eqn{n} is the number of rows of \code{X}. The eligible count excludes
+mandatory terms and predictors excluded by explicit zero starts in every
+response channel. No separate minimum sample size or predictor count is
+imposed. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
 SIS screens once; ISIS repeatedly screens using the fitted predictor as
 an offset and refits the original response on the expanded candidate set.
 See Screening under Details and \code{\link{sis_glm}}.}
@@ -979,7 +986,7 @@ mean_hd <- as.numeric(X_hd[, support, drop=FALSE] \%*\% beta_hd[support])
 set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
-# screen="auto" activates ISIS for this ultra-wide design. Screened fits
+# screen="auto" activates ISIS exactly when p_eligible > 10*n. Screened fits
 # default to the original-p GIC preset and a relaxed refit.
 # Screening threads are independent of BLAS threads (nthreads).
 system.time(fit_hd <- L0glm.fit(X_hd, y_hd, screen.nthreads=8, nthreads=1))

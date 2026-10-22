@@ -131,6 +131,44 @@ test_that("cross-validation screens its training rows rather than the full respo
   expect_true(all(c(60L,90L)%in%sizes));expect_true(all(sizes%in%c(60L,90L)))
 })
 
+test_that("automatic screening uses eligible predictors and each tuning fit's row count", {
+  set.seed(2617); n <- 60L; p <- 600L
+  X <- matrix(rnorm(n*p), n, p); y <- 2*X[,1]-X[,2]+rnorm(n)
+  calls <- list(); original <- L0glm_screen_method
+  local_mocked_bindings(L0glm_screen_method=function(screen,X,start,intercept,always.include) {
+    method <- original(screen,X,start,intercept,always.include)
+    if (tolower(screen)=="auto")
+      calls[[length(calls)+1L]] <<- data.frame(n=nrow(X), method=method)
+    method
+  })
+  args <- list(X=X,y=y,family=gaussian(),dispersion=1,nlambda=3,
+    nsis=3,screen.maxit=1,maxit=5,screen.nthreads=1,
+    plot=FALSE,printbest=FALSE)
+  gic <- do.call(L0glm.tune,c(args,list(tune="gic")))
+  seen <- do.call(rbind,calls)
+  expect_true(nrow(seen)>0L)
+  expect_true(all(seen$n==n & seen$method=="none"))
+  expect_null(gic$fit_best$screening)
+
+  calls <- list()
+  cv <- do.call(L0glm.tune,c(args,list(tune="cv",foldid=rep(1:3,20))))
+  seen <- do.call(rbind,calls)
+  expect_true(all(c(40L,60L)%in%seen$n))
+  expect_true(all(seen$method[seen$n==60L]=="none"))
+  expect_true(all(seen$method[seen$n==40L]=="ISIS"))
+  expect_true(all(is.finite(cv$cv$mean)))
+  expect_null(cv$fit_best$screening)
+
+  calls <- list()
+  # At most 400 eligible predictors: equality at 10*n_train keeps direct fits.
+  args$start <- c(rep(1,400),rep(0,200))
+  masked <- do.call(L0glm.tune,c(args,list(tune="cv",foldid=rep(1:3,20))))
+  seen <- do.call(rbind,calls)
+  expect_true(all(c(40L,60L)%in%seen$n))
+  expect_true(all(seen$method=="none"))
+  expect_true(all(coef(masked$fit_best)[401:600,]==0))
+})
+
 test_that("screen controls validate clearly and internal ridge pilots disable screening", {
   X <- matrix(1:150,30,5);y <- rnorm(30)
   for (choice in list(TRUE,1,NA,character(),c("SIS","none"),"invalid"))
