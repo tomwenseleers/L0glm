@@ -655,6 +655,18 @@ the \code{osqp} solver is used, or are obtained via clipping if the
 approximate the L0 penalty objective and has been proven for the Gaussian
 case and under orthogonality (Frommlet & Nuel 2016), but in practice also
 works well for non-orthogonal designs and other noise families.
+In an IRLS step, fixed working weights and dispersion give a weighted
+least-squares quadratic with curvature \eqn{h_j=x_j^T W x_j/\phi}.
+For weighted-orthogonal columns its L0 selection boundary is
+\eqn{h_j\widehat b_j^2=\lambda}; the adaptive-ridge fixed-point equation
+\eqn{b_j^2-\widehat b_j b_j+\lambda/(4h_j)=0} has the same boundary.
+Thus the quarter factor carries over directly to each working quadratic.
+Standard likelihood regularity conditions motivate this approximation
+increasingly well as sample size grows on an identifiable active model.
+Correlated predictors couple the joint support decisions. If desired,
+\code{L0glm.tune()} searches around the preset using the information criterion
+or cross-validated deviance. The Algorithm and theory vignette details the
+quadratic and large-sample arguments.
 Dispersion (the variance for Gaussian models) can be fixed or estimated
 during IRLS using \code{dispersion = NULL} or a negative initial value.
 

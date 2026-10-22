@@ -240,9 +240,88 @@ b^2-\widehat b_jb+\frac{\lambda\phi}{4s_j}=0.
 
 Its discriminant is nonnegative exactly when
 \(s_j\widehat b_j^2/\phi\geq\lambda\): the same selection boundary.
-The relaxed fit removes the remaining ridge shrinkage. Orthogonality gives
-this exact threshold calculation; for general designs L0glm performs an
-efficient search for a sparse solution.
+The relaxed fit removes the remaining ridge shrinkage. This calibration also
+works well approximately for non-orthogonal designs, as supported by the
+simulations of [Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620)
+and the examples here. If desired, `L0glm.tune()` efficiently searches a grid
+around the preset to select the regularization level more accurately for the
+data at hand, using the actual information criterion or cross-validated deviance.
+
+### Why the same factor applies to IRLS quadratics
+
+The weighted least-squares structure gives a direct motivation for using the
+same calibration across GLM families. With the working response, observation
+weights and dispersion held fixed, every IRLS subproblem has the form
+
+\[
+Q_t(b)=C_t+\frac1\phi\|W_t^{1/2}(z_t-Xb)\|_2^2.
+\]
+
+For weighted-orthogonal columns, put
+\(s_j=x_j^\top W_tx_j\), \(h_j=s_j/\phi\), and let
+\(\widehat b_{j,t}=x_j^\top W_tz_t/s_j\) be the unpenalized working
+least-squares coefficient. Profile out unpenalized nuisance terms first when
+they are present. The coordinate contribution is
+\(h_j(b_j-\widehat b_{j,t})^2\). Comparing its best nonzero value with zero
+gives the L0 rule
+
+\[
+h_j\widehat b_{j,t}^{\,2}>\lambda.
+\]
+
+The adaptive-ridge update for this same quadratic is
+
+\[
+b_{j,\mathrm{new}}=
+\frac{h_j\widehat b_{j,t}}{h_j+\lambda/(4b_{j,\mathrm{old}}^2)},\qquad
+b_j^2-\widehat b_{j,t}b_j+\frac{\lambda}{4h_j}=0.
+\]
+
+Its nonzero fixed-point boundary is again
+\(h_j\widehat b_{j,t}^{\,2}=\lambda\). The working weights and dispersion
+change the curvature \(h_j\), while the factor **one quarter stays the same**.
+This calculation holds for each frozen quadratic, whatever the family or link
+that generated its valid working quantities. The training-data initializer
+supplies the first working point; subsequent IRLS steps adapt the quadratic to
+the fitted means.
+
+For correlated columns, holding the other coefficients fixed still gives a
+one-dimensional quadratic with this calibration. Joint support decisions
+also involve the off-diagonal curvature terms. This explains both the useful
+transfer of the quarter-factor preset and the benefit of optional tuning when
+the design has strong dependence.
+
+### Large-sample likelihood justification
+
+The connection to the original likelihood becomes more accurate as its local
+quadratic approximation improves. On a regular, identifiable candidate model,
+expand around an unpenalized local likelihood maximum \(\widetilde\beta\):
+
+\[
+-2\ell(\widetilde\beta+d)
+=-2\ell(\widetilde\beta)+d^\top I_nd+R_n(d),
+\qquad I_n=-\nabla^2\ell(\widetilde\beta).
+\]
+
+If the third derivatives are bounded in norm by a constant times \(n\) in the
+neighbourhood, Taylor's theorem gives
+\(|R_n(d)|\leq Cn\|d\|^3\). With information eigenvalues of order \(n\),
+an effect at the selection boundary has scale
+\(\|d\|=O(\sqrt{\lambda/n})\), so
+
+\[
+R_n(d)=O\!\left(\frac{\lambda^{3/2}}{\sqrt n}\right).
+\]
+
+For fixed penalty this error vanishes as \(n\) grows. For a growing IC penalty,
+\(\lambda^3/n\to0\) is one sufficient condition for an absolute error tending
+to zero in this fixed-dimensional calculation. Fisher scoring uses expected
+information; under regularity, observed and expected information agree to
+first order. These arguments motivate the GLM extension on well-behaved active
+models. With growing active dimension, bounds must also control that dimension
+and the restricted information matrix. Increasing sample size improves local
+likelihood accuracy, while predictor correlations can persist. The preset and
+optional path tuning address these two aspects together.
 
 ## Thresholds and starts
 

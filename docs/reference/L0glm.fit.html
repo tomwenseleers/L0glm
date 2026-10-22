@@ -225,7 +225,7 @@ quadratic programming solver.</p>
 <span>  <span class="va">X</span>,</span>
 <span>  <span class="va">y</span>,</span>
 <span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
 <span>  dispersion <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  offset <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -869,6 +869,18 @@ the <code>osqp</code> solver is used, or are obtained via clipping if the
 approximate the L0 penalty objective and has been proven for the Gaussian
 case and under orthogonality (Frommlet &amp; Nuel 2016), but in practice also
 works well for non-orthogonal designs and other noise families.
+In an IRLS step, fixed working weights and dispersion give a weighted
+least-squares quadratic with curvature \(h_j=x_j^T W x_j/\phi\).
+For weighted-orthogonal columns its L0 selection boundary is
+\(h_j\widehat b_j^2=\lambda\); the adaptive-ridge fixed-point equation
+\(b_j^2-\widehat b_j b_j+\lambda/(4h_j)=0\) has the same boundary.
+Thus the quarter factor carries over directly to each working quadratic.
+Standard likelihood regularity conditions motivate this approximation
+increasingly well as sample size grows on an identifiable active model.
+Correlated predictors couple the joint support decisions. If desired,
+<code><a href="L0glm.tune.html">L0glm.tune()</a></code> searches around the preset using the information criterion
+or cross-validated deviance. The Algorithm and theory vignette details the
+quadratic and large-sample arguments.
 Dispersion (the variance for Gaussian models) can be fixed or estimated
 during IRLS using <code>dispersion = NULL</code> or a negative initial value.</p>
 <div class="section">
@@ -1224,7 +1236,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">x</span>, ncol<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Nonnegativity includes the Gaussian intercept.</span></span>
-<span><span class="va">constrained</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="fl">3</span><span class="op">*</span><span class="va">x</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">constrained</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="fl">3</span><span class="op">*</span><span class="va">x</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="fl">1e-8</span>,</span>
 <span>  dispersion<span class="op">=</span><span class="fl">1</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">constrained</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
@@ -1232,9 +1244,9 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Estimate Gaussian variance from an automatic or user-supplied start.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y_gaussian</span> <span class="op">&lt;-</span> <span class="fl">2</span><span class="op">*</span><span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, sd<span class="op">=</span><span class="fl">.5</span><span class="op">)</span></span>
-<span><span class="va">automatic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">automatic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="cn">NULL</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">initialized</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">initialized</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="op">-</span><span class="fl">.25</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co"># dispersion=.25 instead keeps the variance fixed at .25.</span></span>
 <span></span>
@@ -1294,7 +1306,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.9</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="fl">.7</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
 <span>    <span class="op">-</span><span class="fl">.8</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="fl">.6</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">eta</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
+<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
 <span>  <span class="va">y_multinomial</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, prob<span class="op">=</span><span class="va">probabilities</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>, levels<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span>  <span class="va">multinomial_fit</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>
