@@ -40,7 +40,7 @@ img { max-width:100%; height:auto; }
 .l0-hero > p { flex:0 0 205px; margin:0; line-height:0; }
 .l0-hero p { hyphens:none; }
 .l0-hero .l0-eyebrow { color:#70e5e7; font-size:.67rem; font-weight:750; letter-spacing:.16em; margin:0 0 1rem; }
-.l0-hero h1 { font-size:clamp(2.4rem,4vw,3.45rem); letter-spacing:-.055em; line-height:1.05; color:white; margin:0 0 1.4rem; }
+.l0-hero h1 { hyphens:none; overflow-wrap:normal; word-break:normal; font-size:clamp(2.4rem,4vw,3.45rem); letter-spacing:-.055em; line-height:1.05; color:white; margin:0 0 1.4rem; }
 .l0-hero h1 span { color:#7aefdf; }
 .l0-hero .l0-lead { font-size:1.02rem; line-height:1.65; color:#d6e5ef; max-width:37rem; }
 .l0-hero-logo { position:relative; z-index:1; width:205px; height:auto; flex-shrink:0; filter:drop-shadow(0 8px 20px #0003); }
@@ -63,6 +63,11 @@ img { max-width:100%; height:auto; }
 .l0-feature-grid p { font-size:.89rem; margin:0; line-height:1.65; }
 .l0-callout { border-left:4px solid #12a7aa; background:#eef8f8; padding:1rem 1.25rem; border-radius:0 10px 10px 0; margin:1.5rem 0; }
 .l0-callout p:last-child { margin-bottom:0; }
+.l0-algorithm { border:1px solid #d5e7eb; border-left:4px solid #12a7aa; background:#f5fafb; padding:1.15rem 1.35rem; border-radius:0 12px 12px 0; margin:1.5rem 0; }
+.l0-algorithm h4 { margin-top:0; font-size:1.08rem; }
+.l0-algorithm > :last-child { margin-bottom:0; }
+.l0-algorithm li { margin-block:.45rem; }
+.katex-display { max-width:100%; overflow-x:auto; overflow-y:hidden; padding:.3rem 0; }
 #toc { border-left:1px solid #e3ecf0; padding-left:1rem; }
 #toc .nav-link { color:#5c6b80; font-size:.86rem; }
 #toc .nav-link.active { color:#087e83; font-weight:700; }

@@ -3,7 +3,7 @@
 <div class="l0-hero">
 <div class="l0-hero-copy">
 <p class="l0-eyebrow">SPARSE REGRESSION · GENERALIZED LINEAR MODELS</p>
-<h1>Find the signal.<br><span>Keep the essentials.</span></h1>
+<h1>Fast variable selection.<br><span>Parsimonious models.</span></h1>
 <p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.</p>
 <div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
 <p class="l0-hero-note">R · Dense & sparse designs · Single & multiple responses</p>

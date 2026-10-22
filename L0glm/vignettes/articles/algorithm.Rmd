@@ -4,6 +4,10 @@ description: "From sparse likelihoods to adaptive quadratic updates, grouped sel
 output: rmarkdown::html_document
 ---
 
+The sections below explain the main ideas. The [mathematical pseudocode
+appendix](#algorithm-appendix) gives the complete fitting routines, including
+initialization, distribution-parameter updates and SIS/ISIS screening.
+
 ## A sparse likelihood target
 
 Let \(\ell(\beta,\psi)\) denote a model's log likelihood, including known
@@ -221,6 +225,830 @@ criterion therefore have distinct complexity terms. The
 [criterion reference](../reference/model_criteria.html) records the conventions.
 Validation can also select the best IRLS checkpoint, including its fitted
 distribution parameters and penalties.
+
+## Appendix: mathematical pseudocode {#algorithm-appendix}
+
+The following algorithms describe the computations used by `L0glm.fit()` and
+`L0nnpois()`. They share preprocessing, ridge solves and stopping routines.
+Here \(C\) denotes the number of multinomial categories, \(m\) the number of
+ordinary response channels, and \(q\) the number of design columns after adding
+any intercept. The selectable predictor count is \(p\).
+
+Jump to [initialization](#appendix-initialization),
+[single-channel GLMs](#appendix-glm), [multichannel GLMs](#appendix-multichannel),
+[negative binomial](#appendix-nb), [multinomial](#appendix-multinomial),
+[Cox PH](#appendix-cox), [SIS](#appendix-sis), [ISIS](#appendix-isis),
+or [validation stopping](#appendix-validation).
+
+### A.1. Coordinates, eligibility and the ridge solve {#appendix-coordinates}
+
+Write \(M\) for mandatory terms: an intercept and any `always.include` columns.
+Let \(s_j>0\) be a column scale and \(h_j\) a column shift, which may be
+represented implicitly when profiling a sparse design. In working
+coordinates,
+
+\[
+Z_{ij}=(X_{ij}-h_j)/s_j,\qquad
+b_j=s_j\beta_j,\qquad
+b_0=\beta_0+\sum_j h_j\beta_j.
+\]
+
+The intercept equation applies when a unit intercept is free. The same affine
+change of coordinates is applied to `prior.mean`, giving the ridge center
+\(c\), or \(C_0\) for a coefficient matrix. Predictions retain their original meaning:
+\(Zb+o=X\beta+o\). Output transforms the coefficients back and restores excluded
+rows and entries as zeros in the original dimensions.
+
+* `normalize="auto"` uses RMS scaling for signed fits or a free intercept,
+  and no scaling for fully nonnegative fits with a constrained intercept.
+  RMS scaling gives \(\|Z_j\|_2=\sqrt n\) for selectable columns, using centered
+  column norms when a free intercept is available. `"l2"` gives unit norm;
+  `"sd"` uses sample standard deviations; `"none"` gives \(s_j=1\).
+* Mandatory terms have scale one. Centering is enabled with normalization
+  and a free unit intercept. Sparse designs retain implicit zeros; intercept
+  profiling supplies the equivalent shift for columns whose explicit centering
+  would fill the matrix.
+* A scalar `start=1` means one in working coefficient coordinates. Other
+  numeric starts use original input units. For ordinary GLMs and NB, explicit
+  zero entries are excluded, except in mandatory terms. Multinomial starts
+  exclude rows that are zero across all categories **before** CLR centering;
+  category entries within an eligible row remain eligible.
+* `nonnegative=TRUE` constrains coefficients and any intercept to be
+  nonnegative. Binomial and quasibinomial intercepts remain free. Multinomial
+  CLR coefficients are unrestricted; Cox fitting omits an intercept.
+
+Define the reusable operation
+
+\[
+\mathcal R(Z,z,W,D,c):\quad
+(Z^T WZ+D)\widetilde b=Z^TWz+Dc.
+\]
+
+Eigen solves this system and clips to the specified bounds. The constrained
+glmnet/`bigGlm` and OSQP backends impose bounds during optimization. Infinite
+diagonals in \(D\) remove entries from the solve; mandatory terms have diagonal
+zero. Free nuisance terms can be profiled by a Schur complement. For a wide
+system, with \(A=W^{1/2}Z\), \(r=W^{1/2}z\) and positive penalty diagonals,
+
+\[
+\widetilde b=c+D^{-1}A^T
+       (I+AD^{-1}A^T)^{-1}(r-Ac).
+\]
+
+Thus the smaller coefficient or observation system is factored. Dense and
+sparse designs use their respective kernels. The normalized ordinary-GLM
+solver may store unscaled coefficients internally; dividing its original-unit
+ridge diagonal by \(s_j^2\) gives exactly the working-coordinate diagonal used
+below.
+
+Unless supplied explicitly, the main iteration controls are `maxit=25`,
+`tol=1e-10`, `thresh=1e-5` and `group.maxit=6`. Resolve character penalties
+using the selected information criterion. For GIC,
+\(\lambda=\log(p)\log\log(n_{\rm IC})\): ordinary GLMs use the number of rows,
+NB and multinomial use the number of positive-weight rows, and Cox uses the
+weighted number of events. The function defaults are `lambda=1` for
+`L0glm.fit()` and `lambda="gic"` for `L0nnpois()`.
+
+### A.2. Ordinary-family initialization and dispersion {#appendix-initialization}
+
+The ordinary GLM path evaluates `family$initialize` and obtains
+\(\mu^{\rm init}\). The family object also supplies \(g\), \(g^{-1}\),
+\(\mu'=d\mu/d\eta\), the variance function \(V\), domain checks and unit
+deviance. These are the [standard R family
+operations](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/family.html).
+For a numeric response in one channel:
+
+| Family | \(V(\mu)\) | Initial mean \(\mu_i^{\rm init}\) | Scale \(\phi\) |
+|:--|:--|:--|:--|
+| Gaussian | \(1\) | \(y_i\) | Supplied or estimated |
+| Poisson | \(\mu\) | \(y_i+0.1\) | \(1\) |
+| Binomial | \(\mu(1-\mu)\) | \((a_i y_i+0.5)/(a_i+1)\) | \(1\) |
+| Gamma | \(\mu^2\) | \(y_i>0\) | Supplied or estimated |
+| Inverse Gaussian | \(\mu^3\) | \(y_i>0\) | Supplied or estimated |
+| Quasipoisson | \(\mu\) | \(y_i+0.1\) | Supplied or estimated |
+| Quasibinomial | \(\mu(1-\mu)\) | \((a_i y_i+0.5)/(a_i+1)\) | Supplied or estimated |
+| `quasi()` | Chosen variance function | Defined by its `initialize` method | Supplied or estimated |
+
+Zero-weight binomial responses are set to zero during initialization. Other
+ordinary family objects use their own initialization expression. For a
+multichannel response, this initialization is applied to each numeric channel.
+
+Set \(\eta^{\rm init}=g(\mu^{\rm init})\), then form
+
+\[
+W_i^0=a_i\frac{\mu'(\eta_i^{\rm init})^2}{V(\mu_i^{\rm init})},
+\qquad
+z_i^0=\eta_i^{\rm init}-o_i+
+       \frac{y_i-\mu_i^{\rm init}}{\mu'(\eta_i^{\rm init})}.
+\]
+
+Identity links simplify to \(z^0=y-o\). Keep rows with finite positive
+working weight and finite working response.
+
+**Coefficient seed with normalization enabled.** Let
+\(A=(W^0)^{1/2}Z\), \(r=(W^0)^{1/2}z^0\). Put the unrestricted mandatory
+columns in \(U\), and define \(P_U=U(U^TU)^\dagger U^T\), using a
+rank-aware solve. For each column compute
+
+\[
+v_j=A_j^T(I-P_U)A_j,\quad
+t_j=A_j^T(I-P_U)r,\quad
+\rho_j=\begin{cases}0,&j\in M,\\\lambda,&j\notin M,\end{cases}
+\qquad
+b_j^0=\frac{t_j+\rho_j c_j}{v_j+\rho_j}.
+\]
+
+Uninformative columns with zero target receive zero. Set the coefficients of
+\(U\) aside while calculating the slopes, then recover them by regressing the
+remaining working response on \(U\). For Gaussian models, first rescale the
+nonfree seed by
+
+\[
+f=\frac{v^T(I-P_U)r}{v^Tv},\qquad
+v=(I-P_U)A b^0,
+\]
+
+using \(f=0\) when the denominator is zero. This calibrates its joint predicted
+magnitude. Finally clip the seed to the coefficient bounds.
+
+**Coefficient seed with `normalize="none"`.** Use the diagonal working-ridge
+seed
+
+\[
+b_j^0=\frac{\sum_i W_i^0 X_{ij}z_i^0+\lambda c_j}
+                 {\sum_i W_i^0 X_{ij}^2+\lambda}.
+\]
+
+Here the initialization ridge is applied to all columns; mandatory terms become
+unpenalized in the main iteration. For binomial/quasibinomial models with a
+unit intercept, compute each slope conditional on that intercept. With
+\(d_j=\sum_iW_i^0X_{ij}^2+\lambda\),
+\(r_j=\sum_iW_i^0X_{ij}z_i^0+\lambda c_j\) and
+\(t_j=\sum_iW_i^0X_{ij}\), replace its seed by
+\((r_j-t_jr_0/d_0)/(d_j-t_j^2/d_0)\).
+For Gaussian models multiply the whole seed by
+\(\sum_iW_i^0z_i^0(Xb^0)_i/\sum_iW_i^0(Xb^0)_i^2\), taking zero when its
+denominator vanishes. Clip to the bounds. `L0nnpois()` uses the Poisson
+identity-link specialization of these diagonal formulas.
+
+Supplied coefficient starts replace this coefficient-seeding calculation.
+The **first working response and weights still use the family's initialized
+means**. Subsequent working means come from the accepted fitted predictor.
+
+::: {.l0-algorithm}
+#### Subroutine D: initialize and update an unknown scale
+
+**Input:** the initial working model, mandatory columns, and the `dispersion`
+setting. **Output:** \(\phi\) and a flag recording whether it may be updated.
+
+1. For a fixed-scale family set \(\phi=1\), or its declared fixed scale.
+   Otherwise a positive supplied value fixes the scale. A negative supplied value starts
+   estimation at its absolute value. With `NULL`, run the following pilot.
+2. Form \(A=(W^0)^{1/2}X\) and \(r=(W^0)^{1/2}z^0\). With normalization
+   enabled, profile the mandatory block and divide informative selectable
+   columns by their conditional weighted norms. With `normalize="none"`,
+   divide all informative columns by their weighted norms. Fit a pilot with
+   ridge \(\tau=10^{-6}\), using primal or Woodbury algebra.
+3. Write \(R_\tau=I-H_\tau\) for the pilot's residual operator, including
+   nuisance profiling where applicable. Four reproducible Rademacher probes
+   \(v_\ell\), with entries \(\pm1\), share the same factorization. Estimate
+
+   \[
+   d_2=\frac14\sum_{\ell=1}^4\|R_\tau v_\ell\|^2,
+   \qquad \phi_{\rm pilot}=\frac{\|R_\tau r\|^2}{d_2}.
+   \]
+
+   The probe seed is 1701; the caller's random-number state is restored.
+4. For a normalized fit, guard the residual information. Let \(n_w\) be the
+   number of retained working rows and
+   \(d_*=\min\{10,(n_w-r_M)/5\}\), with \(r_M\) the nuisance rank.
+   If \(d_2<d_*\), also estimate
+   \(d_4=\frac14\sum_\ell\|R_\tau^2v_\ell\|^2\) and
+   \(\nu=d_2^2/d_4\). A pilot with \(d_2\ge d_*\) already passes the cheap
+   lower bound. Retry once with \(\tau=0.1\) if the scale is invalid,
+   below \(10^{-6}\) times the nuisance-only working scale, or
+   \(\nu<d_*\).
+5. Initialize permissively at
+
+   \[
+   \phi^0=\max\left\{\mathrm{DBL\_MIN},
+       \frac{\phi_{\rm pilot}}{\max(1,\lambda_{\rm GIC,ref})}\right\}.
+   \]
+
+   Replace an invalid/nonpositive pilot scale by machine epsilon first.
+   The reference GIC uses the preprocessing's selectable count and the good-row
+   count for normalized fits. Unnormalized fits use the supplied design-column
+   count and input-row count.
+   It is independent of the requested fitted lambda.
+6. Let \(n_+=\#\{i:a_i>0\}\). During selection, from iteration 3 onward,
+   update only if the number of active or mandatory coefficients satisfies
+   \(k_t<0.7n_+\). At the accepted current mean calculate
+
+   \[
+   \phi_P=\frac{\sum_{i:a_i>0}a_i(y_i-\mu_i)^2/V(\mu_i)}{n_+-k_t},
+   \qquad
+   \phi^{t+1}=\operatorname{clip}(\phi_P,\phi^t/2,2\phi^t).
+   \]
+
+   Three successive updates with unchanged support and
+   \(|\phi_P/\phi^t-1|<0.01\) freeze the scale. A support change unfreezes
+   an estimated scale. Invalid/nonpositive targets leave its value unchanged.
+7. A relaxed ordinary-GLM refit holds the current scale during its solves and
+   reports the final Pearson scale afterwards. A supplied positive scale stays
+   fixed. The same final reporting update is used for an unpenalized or empty
+   estimated-scale fit.
+:::
+
+### A.3. Single-channel ordinary GLMs {#appendix-glm}
+
+::: {.l0-algorithm}
+#### Algorithm 1: adaptive-ridge GLM on one response
+
+**Input:** \(X,y,a,o,\lambda,c,M\), bounds, an optional start and validation
+set. **Output:** original-scale coefficients, working quantities, dispersion
+and convergence diagnostics.
+
+1. Apply A.1, restrict to explicitly eligible columns, initialize
+   \(b^0\), \(\mu^{\rm init}\), \(\eta^{\rm init}\) and \(\phi^0\) by A.2.
+2. **For** \(t=0,\ldots,T-1\):
+   form the working model from the initialized means if \(t=0\), or from
+   the accepted fitted means otherwise:
+
+   \[
+   W_i^t=a_i\frac{\mu'(\eta_i^t)^2}{V(\mu_i^t)},\qquad
+   z_i^t=\eta_i^t-o_i+\frac{y_i-\mu_i^t}{\mu'(\eta_i^t)}.
+   \]
+
+   Keep finite informative rows. For an identity link use
+   \(z^t=y-o\) directly. Inverse-Gaussian log-link calculations use the
+   stable equivalents \(W_i=a_i e^{-\eta_i}\) and
+   \(z_i=\eta_i-o_i-1+y_i/\mu_i\).
+3. Set the active set to the nonzero coefficients together with \(M\), and
+   form the frozen adaptive diagonals
+
+   \[
+   D_{jj}^t=\begin{cases}
+   0,&j\in M,\\
+   \lambda\phi^t/(4(b_j^t)^2),&b_j^t\ne0,\ j\notin M,\\
+   +\infty,&b_j^t=0,\ j\notin M.
+   \end{cases}
+   \]
+
+   If there are no active terms, return the offset-only model. Otherwise
+   obtain \(\widetilde b=\mathcal R(Z,z^t,W^t,D^t,c)\). A free unit
+   intercept receives the residual weighted-least-squares correction
+   \(\sum_iW_i(z_i-(Z\widetilde b)_i)/\sum_iW_i\).
+4. Apply the smooth-step routine below. For an accepted selection step, remove
+   each nonmandatory coefficient satisfying
+
+   \[
+   |b_j|<\texttt{thresh}\max_{k\notin M}|b_k|
+       \quad\text{or}\quad |b_j|<10^{-20}.
+   \]
+
+   Keep the thresholded point when it has finite family deviance; otherwise
+   retain the accepted smooth point. Refresh \(\eta=Zb+o\) and
+   \(\mu=g^{-1}(\eta)\). Poisson, quasipoisson, Gamma and inverse-Gaussian
+   working means have a machine-epsilon lower guard.
+5. Update an estimated scale by Subroutine D. If validation is supplied,
+   score and retain the checkpoint using A.10.
+6. Stop after at least two iterations when the coefficient-change measure
+   below is less than `tol` and scale updating is complete, or when scale
+   estimation is unavailable at the current large support after iteration 3.
+   Unpenalized and relaxed passes can stop without freezing the scale.
+   Also stop at the iteration limit or the validation patience limit.
+7. If `relaxed=TRUE`, restrict to the selected terms together with \(M\),
+   start from their fitted coefficients and repeat with \(\lambda=10^{-30}\)
+   and hard thresholding disabled. Restore the original coefficient dimensions.
+:::
+
+**Smooth-step routine.** Freeze \(D\), the ridge center and current nuisance
+parameters. Let
+
+\[
+F_t(b)=d_f\{y,g^{-1}(Zb+o);a\}+
+       \sum_{j:D_{jj}<\infty}D_{jj}(b_j-c_j)^2,
+\]
+
+where \(d_f\) is the family's weighted unit deviance. After the first
+iteration, when the smooth proposal preserves support, use \(F_t(b^t)\)
+as reference; at initialization or a support-changing proposal require a finite
+trial. Try \(b^t+2^{-h}(\widetilde b-b^t)\), \(h=0,\ldots,50\), accepting
+the first finite value no larger than the reference plus
+\(10^{-10}\max(1,|F_t(b^t)|)\). Predictor interpolation reuses matrix products.
+If no trial is accepted, retain the last finite point and stop the pass.
+When needed, the initial feasible comparison point is found by halving the
+coefficient start towards a valid offset-only model, up to 60 times.
+
+**Coefficient convergence.** Without normalization use
+\(\|\beta^{t+1}-\beta^t\|_2/\max(10^{-12},\|\beta^{t+1}\|_2)\).
+With normalization use the same ratio for selectable working coefficients,
+and, when mandatory terms exist, also the prediction-change ratio
+
+\[
+\frac{\|\widehat f^{t+1}-\widehat f^t\|_a}
+ {\max\{10^{-12},\sqrt{\sum_i a_i},
+           \|\widehat f^{t+1}-\overline f_a^{t+1}\|_a\}},
+\qquad \widehat f=Zb,\quad \|v\|_a^2=\sum_i a_iv_i^2.
+\]
+
+Take the larger change. For a Gaussian identity-link dense direct solve,
+the weighted Gram matrix is cached while the active support shrinks.
+`L0nnpois()` specializes Algorithm 1 to nonnegative Poisson identity-link
+fitting: \(\phi=1\), \(W_i=a_i/\mu_i\), \(z_i=y_i-o_i\), with Eigen LLT,
+Woodbury where appropriate and OpenMP across channels.
+
+### A.4. Ordinary multichannel GLMs {#appendix-multichannel}
+
+::: {.l0-algorithm}
+#### Algorithm 2: channel fitting with shared-support passes
+
+**Input:** \(X\) and \(Y\in\mathbb R^{n\times m}\), channel weights/offsets, `grouped`
+and the controls of Algorithm 1. **Output:** a sparse \(q\times m\) coefficient
+matrix on the original scale.
+
+1. Prepare each channel's starting mask and scale state. A row is eligible
+   if any channel permits it; mandatory rows stay eligible. A shared weight or
+   offset vector is replicated across channels.
+2. If `grouped=FALSE`, run Algorithm 1 once per channel, with each channel's
+   own seed, weights and dispersion. Proceed to the optional refit.
+3. If `grouped=TRUE`, run up to `group.maxit` shared-support passes. In the
+   first pass use the supplied starts, or each channel's automatic initializer.
+   Fit the eligible channels independently by Algorithm 1, in parallel where
+   requested, and assemble \(B\).
+4. Before each further pass retain the row union
+   \(S=M\cup\{j:\exists c,\ B_{jc}\ne0\}\). For each retained row set
+
+   \[
+   r_j=\begin{cases}
+       m^{-1}\sum_c B_{jc},&\text{nonnegative fit},\\
+       \operatorname{sign}(\overline B_j)\,m^{-1}\sum_c|B_{jc}|,
+          &\text{signed fit}.
+       \end{cases}
+   \]
+
+   Pool the returned, original-unit coefficient rows. For a signed row with
+   zero arithmetic mean, take the sign of its largest absolute entry.
+   Copy \(r_j\) into every eligible channel of that row,
+   preserve the supplied zero masks, and rerun Algorithm 1 on \(S\).
+5. Pass an estimated channel dispersion to the next pass as its negative
+   value, allowing further optimization from the previous estimate. A fixed
+   channel dispersion stays positive. Validation can stop these passes and
+   restore their best checkpoint.
+6. For a relaxed refit, pool the retained rows once more and refit eligible
+   entries using \(\lambda=10^{-30}\), with thresholding disabled. Without
+   grouped selection, the one-pass row union is used for this refit as well;
+   originally excluded starting entries remain excluded. Return all \(q\) rows.
+:::
+
+The common rows and pooled starts couple the ordinary channel fits. Each inner
+adaptive diagonal still uses that channel's coefficient. Grouped NB and
+multinomial fitting below instead share a squared-row-norm diagonal within
+each IRLS iteration.
+
+### A.5. Negative binomial with estimated shape {#appendix-nb}
+
+Use `family=mgcv::nb()` with variance
+\(V(\mu)=\mu+\mu^2/\theta\). Each response channel has its own shape
+\(\theta_c\), while scale dispersion is one. The family accepts log, identity
+or square-root links. Its [shape-setting
+convention](https://stat.ethz.ch/R-manual/R-devel/library/mgcv/html/negbin.html)
+is retained: `nb()` starts an estimated shape at one; `nb(theta=-v)` starts
+at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
+
+::: {.l0-algorithm}
+#### Algorithm 3: joint coefficient and NB-shape updates
+
+1. Prepare \(Z,C_0,M\), bounds and eligible entries as in A.1. Initialize
+   each \(\theta_c\) from the family object.
+2. With `start=NULL`, begin from \(B=0\) and take one NB working-ridge
+   step with diagonal \(10^{-3}\) on selectable terms and zero on \(M\).
+   At this step calculate \(\eta=ZB+O\), \(\mu=g^{-1}(\eta)\). If a
+   channel has invalid/nonpositive means, use \(\mu_i=y_i+0.1\) and
+   \(\eta_i=g(\mu_i)\) for its working model. Supplied starts replace this
+   pilot, retaining their entrywise eligibility restrictions.
+3. **Repeat** until convergence or `maxit`:
+   recompute \(\eta,\mu\) and form, for every channel,
+
+   \[
+   W_{ic}=a_{ic}\frac{\mu'(\eta_{ic})^2}
+                            {\mu_{ic}+\mu_{ic}^2/\theta_c},
+   \qquad z_{ic}=\eta_{ic}-o_{ic}
+                     +\frac{y_{ic}-\mu_{ic}}{\mu'(\eta_{ic})}.
+   \]
+
+   Use the same positive-mean fallback when required. Set selectable
+   adaptive diagonals to
+
+   \[
+   D_{jc}=\begin{cases}
+       \lambda/(4\sum_hB_{jh}^2),&\text{grouped, }m>1,\\
+       \lambda/(4B_{jc}^2),&\text{ungrouped or single-channel}.
+       \end{cases}
+   \]
+
+   Set mandatory diagonals to zero and excluded entries to infinity.
+   At \(\lambda=0\), set all permitted diagonals directly to zero.
+   Solve each channel's working ridge problem and apply the special-family
+   acceptance and threshold rules below.
+4. Holding the accepted means fixed, take **one bounded log-shape update**
+   in each channel whose shape is estimated, using the equations below.
+5. Stop when the larger of the relative selectable-coefficient and
+   fitted-predictor changes is below `tol`, and
+   \(\max_c|\log(\theta_c^{\rm new}/\theta_c)|<10^{-6}\), or by the
+   iteration/validation limit. Special-family relative changes divide by
+   \(\max(1,\|B_{\rm new,selectable}\|_F)\) and
+   \(\max(1,\|ZB_{\rm new}\|_F)\), respectively.
+6. For `relaxed=TRUE`, set \(\lambda=0\), disable thresholding and refit.
+   Grouped refits admit eligible entries in selected rows; ungrouped refits
+   retain selected entries. Estimated shapes continue updating in the refit.
+:::
+
+**Log-shape step.** For one channel let \(a=\log\theta\), and write
+\(\psi\), \(\psi_1\) for the digamma and trigamma functions. At fixed means,
+
+\[
+\begin{aligned}
+U_\theta={}&\sum_i a_i\left[
+ \psi(y_i+\theta)-\psi(\theta)+\log\theta+1
+ -\log(\theta+\mu_i)-\frac{y_i+\theta}{\theta+\mu_i}\right],\\
+H_\theta={}&\sum_i a_i\left[
+ \psi_1(y_i+\theta)-\psi_1(\theta)+\frac1\theta
+ -\frac2{\theta+\mu_i}+\frac{y_i+\theta}{(\theta+\mu_i)^2}\right],\\
+G_a={}&\theta U_\theta,\qquad
+H_a=\theta^2H_\theta+\theta U_\theta.
+\end{aligned}
+\]
+
+Use \(d=-G_a/H_a\) when \(H_a<0\) is finite, otherwise
+\(d=\operatorname{sign}(G_a)\), and clip \(d\) to \([-1,1]\). Try
+\(a_{\rm trial}=\operatorname{clip}(a+2^{-h}d,\log10^{-6},\log10^7)\),
+up to 25 halvings. Accept the first finite NB log likelihood at least as large
+as its value at \(a\); otherwise retain \(\theta\). These bounds and the
+shape tolerance can be changed through `control.family`.
+
+**Special-family acceptance and thresholding.** NB, multinomial and Cox use
+\(-2\ell+\sum D_{jc}(B_{jc}-C_{0,jc})^2\) as the smooth-step objective, with
+distribution parameters and \(D\) frozen. Use the current objective as
+reference when the proposal preserves support, and a finite-value requirement
+when support changes; allow up to 30 halvings. Grouped NB/multinomial selection
+thresholds the **row norm** \(r_j=\|B_j\|_2\) against
+`thresh` times the largest selectable row norm and \(10^{-20}\).
+Ungrouped and single-channel selection applies the scalar rule within each
+channel. Thresholding is applied during positive-\(\lambda\) selection,
+with the smooth point retained if the thresholded likelihood is invalid.
+In a grouped pass, an eligible zero entry within a nonzero row has a finite
+shared penalty and remains available. An all-zero selectable row has infinite
+penalty during positive-\(\lambda\) selection.
+
+### A.6. Joint multinomial IRLS in CLR coordinates {#appendix-multinomial}
+
+For `mgcv::multinom(K=C-1)`, convert labels to a one-hot response matrix or use
+the supplied count matrix \(Y\). Let \(N_i=\sum_cY_{ic}\), with one case
+weight \(a_i\) per row. Store \(B\mathbf1_C=0\), center offsets and prior
+centers across categories, and compute probabilities by stable softmax:
+
+\[
+P_{ic}=\frac{\exp(\eta_{ic}-\max_h\eta_{ih})}
+                {\sum_h\exp(\eta_{ih}-\max_k\eta_{ik})},
+\qquad \eta=ZB+O.
+\]
+
+The [mgcv family](https://stat.ethz.ch/R-manual/R-devel/library/mgcv/html/multinom.html)
+specifies the category count; L0glm implements its joint fitting steps in
+class-symmetric CLR coordinates.
+
+::: {.l0-algorithm}
+#### Algorithm 4: grouped or entrywise-CLR multinomial selection
+
+1. Define eligible rows from the original supplied starts before centering.
+   Center supplied coefficient rows to CLR, preserving excluded rows as zero.
+   With `start=NULL`, all entries are eligible and \(B^0=0\).
+2. For an automatic start take one joint multinomial IRLS ridge step with
+   selectable diagonal \(10^{-3}\) and mandatory diagonal zero, from the
+   softmax probabilities at \(B=0\) and the supplied offsets.
+   For a supplied start, seed any eligible zero-norm row in a grouped fit,
+   or eligible zero entry in an ungrouped fit, from this weak-ridge step and
+   recenter. Thus scalar `start=1` centers to zero and receives the joint pilot.
+3. **Repeat:** use observations with \(a_iN_i>0\) and form the current
+   score and curvature blocks
+
+   \[
+   U_c=Z^T\{a\odot(Y_c-N\odot P_c)\},\qquad
+   H_{cd}=Z^T\operatorname{diag}
+      \{a_iN_iP_{ic}(\mathbf1\{c=d\}-P_{id})\}Z.
+   \]
+
+   Use \(D_{jc}=\lambda/(4\|B_j\|_2^2)\) for grouped selection and
+   \(D_{jc}=\lambda/(4B_{jc}^2)\) for entrywise CLR selection, with the
+   usual mandatory and excluded-entry rules.
+4. Parameterize the allowed zero-sum coefficient space by an orthonormal
+   basis \(K\), with \(v=K^T\operatorname{vec}(B)\),
+   \(u=K^T\operatorname{vec}(U)\), \(H_K=K^THK\) and
+   \(D_K=K^T\operatorname{diag}(\operatorname{vec}D)K\). Solve
+
+   \[
+   (H_K+D_K)\widetilde v=H_Kv+u+
+            K^T\operatorname{diag}(\operatorname{vec}D)\operatorname{vec}(C_0),
+   \quad \operatorname{vec}(\widetilde B)=K\widetilde v.
+   \]
+
+   Only allowed finite-penalty entries enter this equation. For shared row
+   penalties, \(K=Q\otimes I\), where \(Q^TQ=I\) and
+   \(Q^T\mathbf1=0\); its penalty stays diagonal. Entrywise selection uses
+   a separate zero-sum basis on each row's surviving categories, with ridge
+   whitening to retain diagonal-ridge kernels.
+5. Apply special-family backtracking and row-norm or entrywise thresholding.
+   Recenter surviving entries within each allowed row; a row with fewer than
+   two allowed entries becomes zero. Keep the unthresholded smooth point if
+   thresholding makes the likelihood invalid.
+6. Use the special-family coefficient/predictor convergence measures in
+   Algorithm 3, or the iteration/validation limits. For a relaxed grouped fit,
+   refit all originally eligible categories within retained rows with
+   \(\lambda=0\). An ungrouped refit keeps only selected CLR entries.
+   No hard cutoff is applied during the refit. Return full-size CLR coefficients
+   and category probabilities.
+:::
+
+The default curvature is the exact joint multinomial IRLS curvature. The
+optional `control.family=list(multinomial="bound")` uses
+\(a_iN_i I/2\) on the \(C-1\) contrast plane. Small working systems use
+coefficient-space normal equations; wide systems whiten the per-observation
+contrast curvature and use Woodbury in \(n(C-1)\) dimensions. Those wide
+curvature factorizations guard probabilities at \(10^{-12}\) and renormalize
+them. The default `max.working=2000` guards the smaller working dimension.
+
+### A.7. Cox proportional hazards {#appendix-cox}
+
+Take `Surv(time,status)`, with status \(\delta_i\in\{0,1\}\), case weights
+\(a_i\), and \(\eta_i=z_i^Tb+o_i\). At each distinct event time \(t_r\), let
+\(R_r=\{i:t_i\ge t_r\}\), \(d_r=\sum_{i:t_i=t_r}a_i\delta_i\),
+\(e_i=a_i\exp(\eta_i)\) and \(S_r=\sum_{i\in R_r}e_i\). The weighted
+Breslow log partial likelihood is
+
+\[
+\ell(b)=\sum_i a_i\delta_i\eta_i-\sum_r d_r\log S_r.
+\]
+
+`mgcv::cox.ph()` selects this family in L0glm. Its response is the explicit
+time/status pair, and `weights` remain case weights. Sorting once by decreasing
+time makes risk-set sums cumulative sums. Cache the ordering, tied-time groups,
+group endpoints and weighted event counts; recompute only the predictor-dependent
+risk quantities. Subtracting a common maximum from \(\eta\) stabilizes the
+exponentials without changing the score or partial likelihood.
+
+Define
+
+\[
+q_i=e_i\sum_{r:i\in R_r}\frac{d_r}{S_r},\quad
+u_i=a_i\delta_i-q_i,\quad
+V_\eta=\operatorname{diag}(q)-\operatorname{diag}(e)\,C\,\operatorname{diag}(e),
+\quad C_{ih}=\sum_{r:i,h\in R_r}\frac{d_r}{S_r^2}.
+\]
+
+::: {.l0-algorithm}
+#### Algorithm 5: sparse Cox fitting with direct or matrix-free ridge steps
+
+1. Omit the intercept, apply A.1, fix scale dispersion at one, and cache the
+   risk-set bookkeeping. Supplied starts retain their eligibility masks.
+2. With `start=NULL`, evaluate \(q^0,u^0\) at \(b=0\), including offsets.
+   Obtain a weak diagonal-working-curvature ridge pilot
+
+   \[
+   (Z^T\operatorname{diag}(q^0)Z+10^{-3}I)\widetilde b=Z^Tu^0.
+   \]
+
+   Use matrix-free preconditioned CG, including for this initializer. For
+   \(q>\#\{i:q_i^0>0\}\), solve its observation-space Woodbury system.
+   Clip to bounds and backtrack from zero against
+   \(-2\ell(b)+10^{-3}\|b\|^2\), allowing 30 halvings and requiring an
+   actual nonincrease. Supplied starts replace this pilot.
+3. **Repeat:** evaluate \(e,S,q,u\) and set
+   \(D_{jj}=\lambda/(4b_j^2)\) on active selectable terms, zero on \(M\),
+   and infinity on excluded terms. Solve for an increment
+
+   \[
+   (Z^TV_\eta Z+D)\Delta=Z^Tu-D(b-c),\qquad
+   \widetilde b=b+\Delta.
+   \]
+
+4. For a small dense unrestricted active system, form its information matrix
+   and use the requested direct kernel, defaulting to Eigen LLT. In automatic mode this requires \(k\le1024\),
+   \(k\le n\), \(k\le\texttt{max.working}\), and
+   \(k\times\#\{r:d_r>0\}\le10^7\). Sparse designs default to the
+   matrix-free path; `cox.llt.max` can change these cutoffs.
+5. Otherwise use preconditioned CG on the exact operator below. Use diagonal
+   preconditioning \(\operatorname{diag}(Z^T\operatorname{diag}(q)Z)+D\),
+   with a verified scaled residual tolerance of \(10^{-10}\) and at most
+   2000 CG iterations by default. Automatic mode can fall back to an eligible
+   direct system if CG fails. Coefficient bounds or a constrained solver use
+   the direct working-system path; `cox="direct"` explicitly selects it.
+6. Apply special-family backtracking and scalar thresholding. Stop using the
+   special-family convergence measure, iteration limit or validation rule.
+   For `relaxed=TRUE`, repeat on selected terms with \(\lambda=0\) and no
+   thresholding. Return the full coefficient vector; estimate baseline
+   cumulative hazard by \(\widehat H_0(t)=\sum_{r:t_r\le t}d_r/S_r\).
+:::
+
+The exact matrix-free product, requiring design products and cumulative
+risk-set passes, is
+
+\[
+\begin{aligned}
+w&=Zv,\\
+\{(Z^TV_\eta Z+D)v\}
+ &=Z^T\left[q\odot w-e\odot
+       \left\{\sum_{r:i\in R_r}\frac{d_r}{S_r^2}
+                    \sum_{h\in R_r}e_hw_h\right\}_{i=1}^n\right]+Dv.
+\end{aligned}
+\]
+
+The initializer uses \(\operatorname{diag}(q^0)\) as its inexpensive pilot
+curvature. Main CG iterations use the full partial-likelihood curvature above.
+The direct wide path can whiten the observation information and call the same
+ridge kernels. The [Cox help page](../reference/L0glm_cox.html) gives the
+partial-likelihood and prediction conventions.
+
+### A.8. Family-aware SIS {#appendix-sis}
+
+SIS ranks each candidate by its efficient score conditional on a nuisance
+model. The null fit includes the supplied offset. The default screening
+nuisance block is an intercept for ordinary, NB and multinomial responses,
+and empty for Cox; standalone `sis_glm()` also accepts a `nuisance` design.
+This screening nuisance block has its own role alongside the joint model's
+`intercept` and `always.include` terms.
+
+::: {.l0-algorithm}
+#### Algorithm 6: native efficient-score screening
+
+1. Fit the small, unpenalized nuisance model with offset \(o\). Ordinary
+   GLMs use their family initialization and nuisance GLM fit; estimate a
+   Pearson scale for a free-scale family. NB estimates/fixes its shape according
+   to the family setting. Multinomial uses a joint zero-sum nuisance fit; Cox
+   uses its weighted partial likelihood and cached risk sets.
+2. For an ordinary or NB channel form
+
+   \[
+   s_i=\frac{a_i(y_i-\mu_i)\mu'_i}{\phi V(\mu_i)},\quad
+   W_i=\frac{a_i(\mu'_i)^2}{\phi V(\mu_i)},\quad
+   G=(N^TWN)^\dagger,\quad u_N=N^Ts.
+   \]
+
+   Here \(N\) is the nuisance design, \(\phi=1\) for Poisson, binomial
+   and NB, and NB uses its fitted shape in \(V\).
+3. **For each originally eligible predictor** \(x_j\), compute
+
+   \[
+   A_j=N^TWx_j,\qquad
+   U_j=x_j^Ts-A_j^TGu_N,\qquad
+   I_j=x_j^TWx_j-A_j^TGA_j.
+   \]
+
+   Its score is \(T_j=U_j^2/I_j\). A nonnegative alternative replaces
+   \(U_j\) by \(\max(0,U_j)\). For independent response channels add their
+   channel statistics. Treat numerically uninformative directions as zero.
+4. For multinomial use the \(C-1\) joint score/information blocks from
+   Algorithm 4, project out the joint nuisance block by the same Schur
+   complement, and set \(T_j=U_j^TI_j^\dagger U_j\). For Cox use
+   \(s=u\) and the **full** observation information \(V_\eta\), so its
+   scalar statistic uses \(x_j^TV_\eta x_j\) and the corresponding nuisance
+   cross-information. Remove directions below the relative \(10^{-12}\)
+   information tolerance before taking these inverses.
+5. Keep the largest `nsis` statistics. Deterministic index tie breaking gives
+   reproducible results. OpenMP workers scan independent columns, with
+   thread-local top-set heaps; only requested full rankings store all scores.
+:::
+
+This construction makes screening invariant to nonzero rescaling of a
+predictor for a two-sided alternative; a positive rescaling also preserves the
+one-sided alternative. Finite positive information and estimable nuisance
+directions are handled by rank-aware inverses. For an intercept-only
+identity-Poisson screening model with difficult offsets, the nuisance score
+\(\sum_i a_i\{y_i/(o_i+b_0)-1\}=0\) is solved directly when required.
+
+### A.9. Combined SIS/ISIS and L0glm {#appendix-isis}
+
+::: {.l0-algorithm}
+#### Algorithm 7: offset screening followed by joint adaptive ridge
+
+**Input:** the original design, family, masks and fitting controls; a batch
+size \(b\); one round for SIS or up to `screen.maxit=10` rounds for ISIS.
+
+1. Build the original eligible predictor set \(E\), respecting starting-zero
+   exclusions, and retain all mandatory predictors. Resolve lambda once using
+   the original selectable predictor count. Initialize full-size \(B=0\)
+   and the selected set to the mandatory predictors.
+2. **For** screening round \(r=1,\ldots,R\), form the screening offset
+   \(O_r=O+XB_{r-1}\), including any fitted intercept. Run Algorithm 6 on
+   the original eligible columns with this offset and retain its top \(b\)
+   predictors, \(T_r\).
+3. Define the candidate set
+   \(C_r=S_{r-1}\cup T_r\cup M\). If it equals the preceding candidate
+   set, stop. Otherwise fit the appropriate Algorithm 1--5 on \(X_{C_r}\)
+   with the **original offset** \(O\), the resolved full-problem lambda,
+   and `screen="none"`. Each joint fit uses a fresh automatic start, or the
+   user's supplied starts restricted to these rows. Screening defaults to a
+   relaxed joint fit and serial response-channel fitting unless overridden.
+4. Expand this fit to the original coefficient dimensions, with zero rows
+   outside \(C_r\), and set \(S_r\) to its nonzero row support together
+   with the mandatory predictors. Record its likelihood, parameter dimension,
+   GIC and optional validation score.
+5. Continue ISIS rounds until the candidate set is unchanged or the round
+   limit is reached. Retain the round with smallest original-problem GIC,
+   or smallest validation loss when supplied. Return its full-size sparse
+   coefficients, support, screening history and timings.
+:::
+
+Each ISIS round scans all originally eligible predictors. A predictor omitted
+from one joint fit remains eligible for a later screening round. The current
+fitted predictor enters the next **screening** offset; every joint fit uses
+the original model offset.
+
+For `L0glm.fit()` the batch/retained-set defaults are
+
+\[
+\begin{aligned}
+b_{\rm SIS}&=\max\{1,\ 2\lfloor n/\log(\max(n,3))\rfloor\},\\
+b_{\rm ISIS}&=\max\left\{1,\ \operatorname{round}
+ \left[\frac{n}{\log(\max(p,2))\log\log(\max(n,3))}\right]\right\},
+\end{aligned}
+\]
+
+capped at the available predictor count. Standalone `sis_glm()` defaults to
+\(\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}\). An explicit `nsis`
+overrides these sizes. Automatic screening enables ISIS when the number of
+eligible selectable predictors is at least \(\max(10000,10n)\).
+
+GIC comparison uses the **original** \(p\) and the fitted parameter count,
+including estimated distribution parameters where appropriate. For a grouped
+multinomial fit, an active row contributes \(C-1\) free category directions;
+for ordinary multichannel models, nonzero channel entries contribute separate
+parameters. This follows the [reported criterion
+conventions](../reference/model_criteria.html). Screening scores themselves
+require no fit of a full \(p\)-dimensional model.
+
+### A.10. Validation checkpoints and returned quantities {#appendix-validation}
+
+When `validation` is supplied, training data alone determine initializers,
+normalization, working weights, screening statistics and ridge updates.
+First fit a mandatory-only baseline. At each accepted iteration evaluate
+held-out mean deviance and save an improved checkpoint when
+
+\[
+L_{\rm val}^{\rm new}<L_{\rm val}^{\rm best}
+ -\epsilon_{\rm val}\max\{1,|L_{\rm val}^{\rm best}|\}.
+\]
+
+Here \(\epsilon_{\rm val}\) is `validation$tol`. The defaults are tolerance
+\(10^{-8}\), minimum iteration 3 and patience 3.
+Stop when the minimum iteration has been reached and the patience count is
+exhausted. Restore the best coefficients and nuisance parameters, including
+dispersion or NB shape, plus their support/penalty state. Ordinary/native
+working quantities are refreshed at a restored checkpoint. Grouped ordinary
+models also track validation across shared-support passes. A relaxed pass can
+retain its selection checkpoint as its starting best fit.
+
+Ordinary GLMs use weighted mean unit deviance; NB with estimated shape uses
+predictive log loss relative to a fixed Poisson saturated reference; fixed-shape
+NB uses the same fixed NB saturated reference throughout. Multinomial uses
+deviance per trial and Cox partial deviance per event, computed in validation
+risk sets. Positive-mean validation scoring has a default floor of \(10^{-8}\).
+These scoring conventions keep the reference comparable while fitted
+distribution parameters change.
+
+For Gaussian identity-link validation, the default candidate starts are the
+automatic seed and an uncalibrated conditional-marginal seed. Supplied starts
+override this comparison. The marginal seed uses \(b_j=t_j/v_j\) from A.2,
+without the initialization ridge or joint Gaussian calibration, and recovers
+the mandatory coefficients from the residual weighted fit.
+An `nsis` vector adds a screening-batch grid; include
+the mandatory-only model among the candidates. Select minimum validation loss,
+or the sparsest candidate within one SE when `validation$rule="1se"`.
+For per-observation validation losses \(l_i\) and normalized response masses
+\(\omega_i\), the candidate SE is
+\(\{\sum_i\omega_i^2(l_i-\overline l)^2/(1-\sum_i\omega_i^2)\}^{1/2}\),
+taking zero when only one positive mass is available.
+`L0glm.tune(tune="cv")` wraps the same fitting routines in training folds;
+each fold computes its own initializers and screening.
+
+Returned coefficients always use the original predictor units and original
+dimensions. Model objects also retain the distribution/link, offsets, prior
+weights, normalization, selected lambda, convergence information, fitted
+distribution parameters and validation/screening diagnostics when requested.
+
+**Implementation map.** The equations above can be followed directly in the
+source:
+
+| Routine | Source |
+|:--|:--|
+| Coordinates, scaling and mandatory terms | [normalization.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/normalization.R), [mandatory.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/mandatory.R) |
+| Ordinary single-channel IRLS | [L0glm_1_fit_internal.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R) |
+| Multichannel passes and refitting | [L0glm_2_fit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R), [group_start.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/group_start.R) |
+| Coefficient seeds and dispersion pilot | [initialization.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/initialization.R), [dispersion.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/dispersion.R) |
+| Native Poisson backend | [L0nnpois.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp) |
+| Special-family passes | [families_common.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R), [family_nb.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_nb.R), [family_multinomial.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_multinomial.R), [family_cox.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox.R), [family_cox_pcg.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R) |
+| Screening and outer ISIS | [sis_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R), [sis.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp), [isis_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R), [screening.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R) |
+| Backtracking and validation | [irls.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/irls.R), [validation.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/validation.R) |
 
 ## References
 
