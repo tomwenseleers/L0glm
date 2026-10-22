@@ -109,6 +109,7 @@ L0glm_print_comparison_info <- function(family, n, p, m, tune, nfolds) {
 #'   true support and TP; FP are red and FN magenta. High-contrast semitransparent
 #'   overlays and legends give the support counts. Coefficient images share a
 #'   colour scale; the observed responses have their own intensity scale.
+#'   Overlay opacity adapts to support density to preserve the image intensities.
 #'   Signed data use a diverging palette. Support is determined before image
 #'   downscaling. Multichannel coefficient comparisons use one column of panels.
 #' @param channels `"all"` for individual coefficient entries or `"mean"` for
@@ -238,9 +239,11 @@ L0glm_plot_heatmaps <- function(betas, truth, observed, titles, intercept, dots)
   cyan <- grDevices::adjustcolor("cyan", alpha.f=.8)
   red <- grDevices::adjustcolor("red", alpha.f=.8)
   magenta <- grDevices::adjustcolor("magenta", alpha.f=.8)
+  line_colors <- grDevices::adjustcolor(c("cyan", "red", "magenta"),
+    alpha.f=min(.8, 250/max(1L, length(positive))))
   if (!is.null(observed)) draw(as.matrix(observed), "Observed data", response=TRUE)
   draw(truth, "Ground truth")
-  graphics::abline(v=position(positive), col=cyan, lwd=.8)
+  graphics::abline(v=position(positive), col=line_colors[1L], lwd=.8)
   graphics::legend("topright", sprintf("True support: %d", length(positive)), col=cyan, lty=1,
     bg=grDevices::adjustcolor("white", alpha.f=.95), cex=.75)
   for (i in seq_along(betas)) {
@@ -249,7 +252,7 @@ L0glm_plot_heatmaps <- function(betas, truth, observed, titles, intercept, dots)
       setdiff(positive, present))
     draw(betas[[i]], titles[i])
     for (j in seq_along(support)) graphics::abline(v=position(support[[j]]),
-      col=c(cyan, red, magenta)[j], lwd=.8)
+      col=line_colors[j], lwd=.8)
     graphics::legend("topright", sprintf("%s: %d", c("TP", "FP", "FN"), lengths(support)),
       col=c(cyan, red, magenta), lty=1, horiz=TRUE,
       bg=grDevices::adjustcolor("white", alpha.f=.95), cex=.75)

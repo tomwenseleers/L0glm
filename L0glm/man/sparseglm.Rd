@@ -169,6 +169,7 @@ ground-truth coefficients and each selected method. Heatmaps require
 true support and TP; FP are red and FN magenta. High-contrast semitransparent
 overlays and legends give the support counts. Coefficient images share a
 colour scale; the observed responses have their own intensity scale.
+Overlay opacity adapts to support density to preserve the image intensities.
 Signed data use a diverging palette. Support is determined before image
 downscaling. Multichannel coefficient comparisons use one column of panels.}
 

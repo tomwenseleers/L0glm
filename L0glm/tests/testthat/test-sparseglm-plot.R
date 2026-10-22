@@ -128,6 +128,15 @@ test_that("heatmaps stack responses, truth and methods with correct support line
     expect_equal(nrow(calls[[1L]]$M),5L)
     expect_equal(nrow(calls[[2L]]$M),4L)
     expect_equal(lines[[1L]]$v,c(1,3))
+    # Dense support overlays remain visible without hiding the image itself.
+    object$data$intercept <- FALSE
+    object$data$y <- NULL
+    object$beta_true <- Matrix::Matrix(1,1000,2,sparse=TRUE)
+    object$fits <- list(first=structure(list(coefficients=object$beta_true),class="L0glm_fit"))
+    calls <- lines <- list()
+    plot(object,type="heatmap")
+    expect_equal(lines[[1L]]$col,grDevices::adjustcolor("cyan",alpha.f=.25))
+    expect_length(lines[[1L]]$v,1000L)
   })
 })
 
