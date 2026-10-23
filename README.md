@@ -6,7 +6,7 @@
   <img src="L0glm/man/figures/logo-light.svg" align="right" width="135" alt="L0glm hex logo with selected coefficient rows across response channels">
 </picture>
 
-# L0glm: fast variable selection. Parsimonious models.
+# L0glm: fast sparse regression for generalized linear models.
 
 [Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) · [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
 
