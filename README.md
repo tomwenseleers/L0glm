@@ -15,6 +15,10 @@ best subset of groups selection. It combines adaptive ridge with IRLS, fast
 linear solvers and an optional relaxed refit to obtain sparse, low-bias estimates.
 Strong signals receive progressively less shrinkage as the fit concentrates on
 the active predictors, giving accurate coefficients with few false positives.
+It is highly efficient, with fitting often being one or two orders of magnitude
+faster than `glmnet` - the most widely used sparse regression framework - and
+it is shown to return solutions with far fewer false positives with similar or better
+predictive power and sensitivity than LASSO.
 
 The [Algorithm & theory guide](https://tomwenseleers.github.io/L0glm/articles/algorithm.html)
 explains the mathematics, regularization presets and full fitting algorithms.
@@ -43,8 +47,9 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 
 ## One million predictors in one call
 
-Sixty nonzero effects among **one million predictors**, fitted in one simple
-call in about **3 seconds**, with **40 out of 60 successfully recovered** and
+In this example there are sixty nonzero effects among **one million predictors**, while
+we have only 500 observations. Fitting this dataset on a laptop takes just a single
+call and a **3 seconds**, and recovers **40 out of 60 nonzero coefficients** with
 just **3 false positives**:
 
 ```r
@@ -89,8 +94,8 @@ Recovered coefficients show near-zero bias:
 The dense design occupies about 4 GB. The [getting-started guide](https://tomwenseleers.github.io/L0glm/articles/L0glm.html)
 explains the example and prediction methods.
 
-**SIS** (Sure Independence Screening) and **ISIS** (Iterative Sure Independence
-Screening) quickly identify promising predictors for joint sparse fitting.
+For high dimensional datasets like this, **ISIS** (Iterative Sure Independence
+Screening) is used to quickly iteratively add promising predictors for joint sparse fitting.
 The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
 Eligible predictors exclude mandatory terms and predictors excluded by zero
 starts in every response channel. Screening uses all physical cores by default.
@@ -106,14 +111,15 @@ of grouped L₀ regression. This Poisson simulation has **10,000 observations,
 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels**.
 
 By regressing the observed signal on a design matrix consisting of shifted
-copies of the peak-shape function (the point spread function), L0glm recovers
-the underlying peaks and their mass spectra.
+copies of the peak-shape function (or "point spread function"), L0glm recovers
+the underlying peaks and their mass spectra in a highly efficient and accurate way.
 
 <!-- BEGIN multi-speed -->
 L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
 <!-- END multi-speed -->
-It also recovers the sparse mass spectra accurately, with a within-row F1 of
-**0.909** and within-row MCC of **0.864**. A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
+It also recovers the sparse sparse mass spectra accurately, with a within-row F1 of
+**0.909** and within-row MCC (Matthews Correlation Coefficient) of **0.864**. 
+A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
 the competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
 
