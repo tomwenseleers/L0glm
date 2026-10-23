@@ -18,7 +18,8 @@ the active predictors, giving accurate coefficients with few false positives.
 It is highly efficient, with fitting often being one or two orders of magnitude
 faster than `glmnet` - the most widely used sparse regression framework - and
 it is shown to return solutions with far fewer false positives with similar or better
-predictive power and sensitivity than LASSO.
+predictive power and sensitivity than other competing methods, like LASSO, 
+adaptive LASSO, MCP or SCAD.
 
 The [Algorithm & theory guide](https://tomwenseleers.github.io/L0glm/articles/algorithm.html)
 explains the mathematics, regularization presets and full fitting algorithms.
