@@ -49,7 +49,7 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 ## One million predictors in one call
 
 In this example there are sixty nonzero effects among **one million predictors**, while
-we have only 500 observations. Fitting this dataset on a laptop takes just a single
+we have only 500 observations. Fitting this high dimensional dataset on a laptop takes just a single
 call and completes in just **3 seconds**, and recovers **40 out of 60 nonzero coefficients** with
 just **3 false positives**:
 
