@@ -148,12 +148,12 @@ fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](benchmarks/plots/website/deconvolution-multi-large.png)
 
 The coefficient comparison shows how closely L0glm recovers the individual
-mass-spectral intensities. Relaxed group LASSO is the strongest alternative in
-this benchmark.
+mass-spectral intensities. GIC tuned relaxed group LASSO is the strongest alternative in
+this benchmark, but is 94 times slower and has a 28 times higher false positive rate.
 
 ![True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.](benchmarks/plots/website/deconvolution-multi-home-coefficients.png)
 
-L0glm fits the Poisson model directly. The group-LASSO methods use a
+L0glm fits the multivariate Poisson model directly. The group-LASSO methods use a
 weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
