@@ -50,7 +50,7 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 
 In this example there are sixty nonzero effects among **one million predictors**, while
 we have only 500 observations. Fitting this dataset on a laptop takes just a single
-call and a **3 seconds**, and recovers **40 out of 60 nonzero coefficients** with
+call and completes in just **3 seconds**, and recovers **40 out of 60 nonzero coefficients** with
 just **3 false positives**:
 
 ```r
@@ -116,7 +116,11 @@ copies of the peak-shape function (or "point spread function"), L0glm recovers
 the underlying peaks and their mass spectra in a highly efficient and accurate way.
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+In this 2,26 million coefficient example, L0glm recovers **944 of 1,000 true peaks 
+with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned 
+group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** 
+in this comparison, while also boasting a much reduced false-positive rate (0.11% vs. 
+3.09% for GIC tuned relaxed group LASSO).
 <!-- END multi-speed -->
 It also recovers the sparse sparse mass spectra accurately, with a within-row F1 of
 **0.909** and within-row MCC (Matthews Correlation Coefficient) of **0.864**. 
