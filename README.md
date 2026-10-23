@@ -96,7 +96,7 @@ The dense design occupies about 4 GB. The [getting-started guide](https://tomwen
 explains the example and prediction methods.
 
 For high dimensional datasets like this, **ISIS** (Iterative Sure Independence
-Screening) is used to quickly iteratively add promising predictors for joint sparse fitting.
+Screening) is used to iteratively add promising predictors for joint sparse fitting.
 The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
 Eligible predictors exclude mandatory terms and predictors excluded by zero
 starts in every response channel. Screening uses all physical cores by default.
