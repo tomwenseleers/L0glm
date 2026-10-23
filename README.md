@@ -46,7 +46,7 @@ The source package is in `L0glm/`. Windows source installation requires
 [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
 The special-family examples use `mgcv`; Cox also uses `survival`.
 
-## One million predictors in one call
+## A one million predictor example
 
 In this example there are sixty nonzero effects among **one million predictors**, while
 we have only 500 observations. Fitting this high dimensional dataset on a laptop takes just a single
