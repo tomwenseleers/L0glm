@@ -179,6 +179,68 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// nuisance_poisson_cpp
+Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& Prior, const Eigen::Map<Eigen::MatrixXd>& Start, int maxit, double tol, int nthreads);
+RcppExport SEXP _L0glm_nuisance_poisson_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Signal(SignalSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Prior(PriorSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Start(StartSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuisance_poisson_cpp(B, Y, Signal, Prior, Start, maxit, tol, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// nuisance_poisson_deviance_cpp
+Eigen::VectorXd nuisance_poisson_deviance_cpp(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Mu, const Eigen::Map<Eigen::MatrixXd>& W, int nthreads);
+RcppExport SEXP _L0glm_nuisance_poisson_deviance_cpp(SEXP YSEXP, SEXP MuSEXP, SEXP WSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Mu(MuSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type W(WSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuisance_poisson_deviance_cpp(Y, Mu, W, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// nuisance_quadratic_cpp
+Eigen::VectorXd nuisance_quadratic_cpp(const Eigen::Map<Eigen::MatrixXd>& H, const Eigen::Map<Eigen::VectorXd>& h, Rcpp::LogicalVector constrained);
+RcppExport SEXP _L0glm_nuisance_quadratic_cpp(SEXP HSEXP, SEXP hSEXP, SEXP constrainedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type H(HSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type h(hSEXP);
+    Rcpp::traits::input_parameter< Rcpp::LogicalVector >::type constrained(constrainedSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuisance_quadratic_cpp(H, h, constrained));
+    return rcpp_result_gen;
+END_RCPP
+}
+// nuisance_gaussian_cpp
+Rcpp::List nuisance_gaussian_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& W, const Eigen::Map<Eigen::MatrixXd>& Start, Rcpp::LogicalVector constrained, int nthreads);
+RcppExport SEXP _L0glm_nuisance_gaussian_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP WSEXP, SEXP StartSEXP, SEXP constrainedSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Signal(SignalSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type W(WSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Start(StartSEXP);
+    Rcpp::traits::input_parameter< Rcpp::LogicalVector >::type constrained(constrainedSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuisance_gaussian_cpp(B, Y, Signal, W, Start, constrained, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sis_score_cpp
 List sis_score_cpp(SEXP design, List context, int nsis, bool full, int nthreads);
 RcppExport SEXP _L0glm_sis_score_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP) {
@@ -352,6 +414,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_bregman_tree_cpp", (DL_FUNC) &_L0glm_L0glm_bregman_tree_cpp, 6},
     {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
+    {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
+    {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
+    {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
+    {"_L0glm_nuisance_gaussian_cpp", (DL_FUNC) &_L0glm_nuisance_gaussian_cpp, 7},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},

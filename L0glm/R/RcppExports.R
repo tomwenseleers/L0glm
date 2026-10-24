@@ -37,6 +37,22 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
+nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {
+    .Call('_L0glm_nuisance_poisson_cpp', PACKAGE = 'L0glm', B, Y, Signal, Prior, Start, maxit, tol, nthreads)
+}
+
+nuisance_poisson_deviance_cpp <- function(Y, Mu, W, nthreads = 4L) {
+    .Call('_L0glm_nuisance_poisson_deviance_cpp', PACKAGE = 'L0glm', Y, Mu, W, nthreads)
+}
+
+nuisance_quadratic_cpp <- function(H, h, constrained) {
+    .Call('_L0glm_nuisance_quadratic_cpp', PACKAGE = 'L0glm', H, h, constrained)
+}
+
+nuisance_gaussian_cpp <- function(B, Y, Signal, W, Start, constrained, nthreads = 1L) {
+    .Call('_L0glm_nuisance_gaussian_cpp', PACKAGE = 'L0glm', B, Y, Signal, W, Start, constrained, nthreads)
+}
+
 sis_score_cpp <- function(design, context, nsis, full, nthreads = 1L) {
     .Call('_L0glm_sis_score_cpp', PACKAGE = 'L0glm', design, context, nsis, full, nthreads)
 }
