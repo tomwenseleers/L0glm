@@ -13,3 +13,8 @@ L0glm.Rcheck
 /L0glm/pkgdown/assets/*.png
 /L0glm/pkgdown/assets/*.ico
 /L0glm/pkgdown/assets/*.svg
+
+# Native build outputs are rebuilt for the target R platform.
+/L0glm/src/*.o
+/L0glm/src/*.dll
+/L0glm/src/*.so

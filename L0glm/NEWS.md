@@ -29,3 +29,6 @@
   mirrored deconvolution plots and multichannel heatmaps.
 * Reproducible simulations, large-scale examples and a documentation website with
   tutorials, measured benchmarks and a mathematical algorithm appendix.
+
+* Size-adjusted Poisson channel distances use a native OpenMP kernel with
+  packed distance storage and scalar, row or channel-specific weights.

@@ -146,7 +146,7 @@ L0glm_sis_threads <- function(nthreads) {
   }
   if (!is.numeric(nthreads) || length(nthreads)!=1L || !is.finite(nthreads) ||
       nthreads<1 || nthreads!=floor(nthreads) || nthreads>.Machine$integer.max)
-    stop("Screening nthreads must be a positive integer.",call.=FALSE)
+    stop("nthreads must be a positive integer.",call.=FALSE)
   as.integer(nthreads)
 }
 

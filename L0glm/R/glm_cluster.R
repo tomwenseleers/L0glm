@@ -1,10 +1,11 @@
 #' @name glm_cluster
+#' @md
 #' @title Hierarchical clustering and aggregation for multivariate GLM 
 #' exponential-family data
 #'
 #' @description
 #' \code{glm_cluster()} performs Ward hierarchical clustering on a
-#' deviance (Jensen-Shannon divergence) dissimilarity matrix from
+#' pooled-deviance or size-adjusted Poisson dissimilarity matrix from
 #' \code{\link{glm_dist}}, adaptively cuts the dendrogram using 
 #' (\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to 
 #' aggregate columns belonging to the same cluster.
@@ -25,17 +26,13 @@
 #' patterns in RNA-seq datasets. 
 #' 
 #' @details
-#' Clustering via \emph{Ward's minimisation of within-cluster deviance},
-#' using the \eqn{\sqrt{\mathrm{JS}}}{sqrt(JS)} divergence, is a special
-#' case of \strong{agglomerative Bregman clustering}
-#' (Telgarsky & Dasgupta 2012); the Jensen-Shannon divergence is itself a
-#' Bregman divergence for exponential-family log-likelihoods
-#' (Banerjee et al. 2005).  Because \eqn{\sqrt{\mathrm{JS}}} is a true
-#' metric (Endres & Schindelin 2003), Ward linkage yields monotone
-#' dendrograms (see Nielsen 2016, Example 3). The
-#' dendrogram height equals the cumulative increase in cluster
-#' Bregman information.
-#' 
+#' The hierarchy uses Ward's Lance--Williams recurrence on the supplied
+#' dissimilarities. For Gaussian unit deviances this has the usual
+#' sum-of-squares interpretation. General exponential-family deviances
+#' connect to Bregman information, but ordinary Ward updates need not equal
+#' the corresponding likelihood-merge costs. See [glm_dist()] for the
+#' pooled-deviance and size-adjusted Poisson definitions.
+#'
 #' \strong{Distance formulas used internally} (see \code{\link{glm_dist}}) \cr 
 #' For two columns \emph{i} and \emph{j} we write
 #' \eqn{y_{ti}}, \eqn{y_{tj}} for their values at row \emph{t} and
@@ -59,7 +56,7 @@
 #' \eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
 #' \eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} -
 #' exactly \emph{one-half} the (weighted) squared Euclidean distance, so
-#' \eqn{\sqrt{\mathrm{JS}}} is Euclidean up to the constant
+#' \eqn{\sqrt{D}} is Euclidean up to the constant
 #' \eqn{\sqrt{1/2}}.
 #'
 #' \item \strong{Poisson size-factor distance (Witten 2011)}
@@ -77,12 +74,6 @@
 #' }
 #' }
 #' 
-#' Both expressions equal \emph{twice} the Jensen-Shannon divergence
-#' between the empirical distributions of columns \emph{i} and \emph{j};
-#' taking the square-root gives a proper metric.  Ward's linkage then minimises 
-#' the increase in within-cluster Bregman information (see
-#' Telgarsky & Dasgupta 2012).
-#'
 #' Note that hierarchical clustering is feasible only for moderately large data
 #' sets; for very large matrices more scalable Bregman
 #' k-means/X-means alternatives could be considered (Banerjee et al. 2005).
@@ -144,7 +135,8 @@ glm_cluster <- function(Y,
                         family  = poisson(identity),
                         method  = if (family$family == "poisson") "poissondist" else "deviance",
                         size_fac = colSums(Y),
-                        rowbins   = 1L) {
+                        rowbins   = 1L,
+                        nthreads = NULL) {
   
   if (rowbins < 1 || rowbins != as.integer(rowbins))
     stop("`rowbins` must be a positive integer.")
@@ -168,10 +160,10 @@ glm_cluster <- function(Y,
   
   
   ## 1. distance & clustering on (possibly) row-binned matrix -------------
-  ### 1a. calculate symmetrised deviance (2 x Jensen-Shannon divergence) distance matrix 
+  ### 1a. calculate pooled unit-deviance distance matrix
   D <- glm_dist(Y_work, weights = W_work, family = family, 
                 method = method, 
-                size_fac = if (rowbins == 1L) size_fac else colSums(Y_work))
+                size_fac = size_fac, nthreads = nthreads)
   
   ### 1b. Ward clustering (uses squared distances)
   hc <- fastcluster::hclust(D, method = "ward.D")  # Ward on squared JS divergences

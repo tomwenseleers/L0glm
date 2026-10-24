@@ -1,170 +1,117 @@
-#' @name glm_dist
-#' @title Calculate dissimilarity matrix for multivariate data conforming to any GLM 
-#' exponential-family distribution
+#' Dissimilarities between scalar GLM response channels
+#' @md
 #'
 #' @description
-#' `glm_dist()` computes a column-by-column dissimilarity matrix for a
-#' dense or sparse data matrix \eqn{Y} whose columns are variables
-#' and rows are observations and whose distribution conforms to
-#' any standard GLM (generalized linear model) exponential family (e.g.
-#' Poisson, Binomial, Gaussian, Gamma, Inverse-Gaussian).
+#' Compute pairwise dissimilarities between columns of a response matrix.
+#' `method="poissondist"` uses Witten's size-adjusted, smoothed Poisson
+#' likelihood gain with a native OpenMP kernel. `method="deviance"` pools
+#' each pair at its precision-weighted mean and sums their unit deviances.
 #'
-#' Two flavours are implemented:
-#' \itemize{
-#'   \item \strong{Symmetrised unit deviance}
-#'         (\code{method = "deviance"}, default) -
-#'         equal to \emph{two} times the Jensen-Shannon divergence for any
-#'         exponential-family distributed data.  
-#'         For the Gaussian(identity) family this becomes
-#'         one half of the weighted squared Euclidean distance.
-#'         Observation-level precision weights (e.g. Binomial totals,
-#'         1/variance for Gaussian) can be taken into account.
+#' @param Y Finite numeric observations-by-channels matrix. Sparse matrices
+#'   are accepted; response calculations use a dense matrix internally.
+#' @param weights Nonnegative case/precision weights: a scalar, a vector with
+#'   one entry per observation, or an observations-by-channels matrix.
+#'   `NULL` uses unit weights. Binomial observations are proportions and
+#'   weights give the trial totals.
+#' @param family Scalar GLM family object, default `poisson(identity)`.
+#'   Response values must lie in the family's mean/deviance domain.
+#' @param method `"deviance"` (default) or `"poissondist"`.
+#' @param size_fac Nonnegative channel size factors for `"poissondist"`,
+#'   default `colSums(Y)`. A zero factor is allowed for an uninformative
+#'   zero-count channel. Counts remain on their original scale.
+#' @param nthreads Number of native worker threads. `NULL` uses the detected
+#'   physical cores; `1L` requests serial execution. Results have the same
+#'   within-pair summation order at every thread count.
 #'
-#'   \item \strong{Poisson size-factor distance}
-#'         (\code{method = "poissondist"}) -
-#'         Witten (2011) distance that divides each column by its
-#'         size factor before computing the symmetrised Poisson deviance,
-#'         treating global scale differences as nuisance.
-#'         Numerically identical to
-#'         \code{PoiClaClu::PoissonDistance(t(Y), type = "mle",
-#'         transform = FALSE)$dd} but computed much faster.
-#' }
 #' @details
-#' \itemize{
-#'        \item \strong{Symmetrised unit deviance}
-#'                     (\code{method = "deviance"}, default)\cr
-#' For two columns *i* and *j* let
-#' \deqn{\mu_t^{(i,j)} \;=\;
-#'       \frac{w_{ti} y_{ti} + w_{tj} y_{tj}}
-#'            {w_{ti} + w_{tj}}}{
-#'       \mu = (w_i y_i + w_j y_j)/(w_i + w_j)}
-#' be the precision-weighted mean at row *t*.  With
-#' \eqn{d(y,\mu,w)} the unit deviance returned by
-#' \code{family\$dev.resids}, the distance is
-#' \deqn{D_{ij}^{(\mathrm{dev})}
-#'       = \sum_t \bigl[d(y_{ti},\mu_t^{(i,j)},w_{ti})
-#'                     + d(y_{tj},\mu_t^{(i,j)},w_{tj})\bigr].}
-#' For the Gaussian(identity) family
-#' \eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
-#' \eqn{D_{ij}^{(\mathrm{dev})}= \tfrac12\;
-#'       \Vert y_{\bullet i}-y_{\bullet j}\Vert_2^2}, i.e. **one half of
-#' the squared Euclidean distance** (so its square-root equals Euclidean
-#' distance up to \eqn{\sqrt{1/2}}).
+#' For channels \eqn{a,b}, the pooled-deviance dissimilarity is
+#' \deqn{D_{ab}=\sum_i\{d(y_{ia},\bar\mu_i,w_{ia})+
+#' d(y_{ib},\bar\mu_i,w_{ib})\},\qquad
+#' \bar\mu_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}{w_{ia}+w_{ib}}.}
+#' Rows with zero total weight contribute zero. For a regular scalar
+#' exponential family with convex mean potential \eqn{F},
+#' \eqn{d(y,\mu,w)=2w B_F(y,\mu)}. The pooled loss is twice a weighted
+#' Jensen gap. This connects the dissimilarity to exponential-family
+#' likelihood and Bregman clustering (Banerjee et al., 2005).
+#' For Gaussian observations with unit weights it is
+#' \eqn{\tfrac12\sum_i(y_{ia}-y_{ib})^2}.
+#' A generic pooled unit deviance is a dissimilarity; distributional
+#' Jensen--Shannon terminology and a universal metric claim do not apply.
 #'
-#'      \item \strong{Poisson size-factor distance (Witten 2011)}
-#'                   (\code{method = "poissondist"})\cr
-#' With column size factors
-#' \eqn{s_i = \mathrm{size\_fac}[i]}, row totals
-#' \eqn{c_t = y_{ti}+y_{tj}}, and a Gamma-Poisson smoothing constant
-#' \eqn{\beta} (default 1), define
-#' \deqn{n_{ti} = \frac{s_i c_t}{s_i+s_j},\qquad
-#'       d_i = \frac{y_{ti}+\beta}{n_{ti}+\beta}}
-#' and analogously for *j*.  The Witten (2011) distance is
-#' \deqn{D_{ij}^{(\mathrm{pois})}
-#'       = \sum_t\!\bigl[n_{ti}+n_{tj}
-#'       - n_{ti}d_i-n_{tj}d_j
-#'       + y_{ti}\log d_i + y_{tj}\log d_j\bigr].}
-#' Setting \code{size_fac = rowSums(Y)} yields the
-#' row-wise variant identical to
-#' \code{PoiClaClu::PoissonDistance(x,\dots)} without transposing *x*.
-#' }
+#' For the Poisson method let \eqn{s_a,s_b} be the size factors and define
+#' \deqn{c_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}
+#' {w_{ia}s_a+w_{ib}s_b},\quad m_{ia}=s_a c_i,\quad
+#' r_{ia}=\frac{w_{ia}y_{ia}+1}{w_{ia}m_{ia}+1}.}
+#' The contribution for channel \eqn{a} is
+#' \eqn{w_{ia}\{m_{ia}-m_{ia}r_{ia}+y_{ia}\log r_{ia}\}},
+#' with the analogous contribution for \eqn{b}. Unit weights recover
+#' Witten's Gamma(1,1)-smoothed likelihood-gain formula. The weighted version
+#' applies the same smoothing to the weighted count and expected count.
+#' Zero-weight and zero-exposure terms contribute zero. Common rescaling of
+#' all size factors leaves the model unchanged.
 #'
-#' Both distances are twice the Jensen-Shannon divergence of the
-#' corresponding exponential-family distributions; for Gaussian this
-#' again equals \eqn{\tfrac12\Vert\Delta\Vert_2^2}.
-#'
-#' @param Y  A numeric matrix (`nrow(Y)` observations x `ncol(Y)` variables).
-#'           Sparse `Matrix::dgCMatrix` is accepted. Proportion data should
-#'           be provided in case of binomial data.
-#' @param weights  Optional `nrow(Y) x ncol(Y)` matrix of precision
-#'   weights (e.g. total counts for Binomial, `1/var` for Gaussian).
-#'   Only used with `method = "deviance"`.
-#' @param family  A **stats** family object (default
-#'   `poisson(identity)`).
-#' @param method  `"deviance"` or `"poissondist"` (default for family `poisson(identity)`).
-#' @param size_fac  Size factors used for method `"poissondist"` (default colSums(Y),
-#'                  should be changed to rowSums(Y) if t(Y) is analysed to cluster
-#'                  rows rather than columns).
-#'
-#' @return An object of class **dist**.
-#'
+#' @return A labelled `dist` object in packed lower-triangular storage.
 #' @references
-#' Witten, D. M. (2011). 
-#' \emph{Classification and Clustering of Sequencing Data 
-#' using a Poisson Model.} 
-#' Annals of Applied Statistics 5(4): 2493-2518.
+#' Witten, D. M. (2011). Classification and Clustering of Sequencing Data
+#' using a Poisson Model. Annals of Applied Statistics 5(4), 2493--2518.
+#' \doi{10.1214/11-AOAS493}.
 #'
+#' Banerjee, A., Merugu, S., Dhillon, I. S. and Ghosh, J. (2005).
+#' Clustering with Bregman Divergences. JMLR 6, 1705--1749.
+#' \url{https://jmlr.org/papers/v6/banerjee05b.html}.
+#' @seealso [glm_cluster()]
 #' @example examples/glm_dist.R
 #' @export
-#' @author
-#' Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
-#' Laboratory of Socioecology and Social Evolution, KU Leuven \\
-#' \url{https://bio.kuleuven.be/eeb/tw/research} \\
-#' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
-glm_dist <- function(Y,
-                     weights = NULL,
-                     family  = poisson(identity),
-                     method  = c("deviance", "poissondist"),
-                     size_fac = colSums(Y)) {
-  
-  method <- match.arg(method)
-  Y <- as.matrix(Y)                       # ensure matrix
-  n <- nrow(Y); p <- ncol(Y)
-  
-  ## ----------------------------------------------------------------------------
-  ## 1.  Jensen-Shannon divergence calculated from the symmetrised unit deviance 
-  ## ----------------------------------------------------------------------------
-  if (method == "deviance") {
-    D <- matrix(0, p, p)
-    devfun <- family$dev.resids
-    
-    if (is.null(weights)) {
-      for (j in 2:p) for (i in 1:(j - 1)) {
-        mu <- 0.5 * (Y[, i] + Y[, j])
-        D[i, j] <- D[j, i] <-
-          sum(devfun(Y[, i], mu, 1) +
-                devfun(Y[, j], mu, 1))
-      }
-    } else {
-      W <- as.matrix(weights)
-      for (j in 2:p) for (i in 1:(j - 1)) {
-        wi <- W[, i]; wj <- W[, j]
-        yi <- Y[, i]; yj <- Y[, j]
-        mu <- (wi * yi + wj * yj) / (wi + wj)
-        D[i, j] <- D[j, i] <-
-          sum(devfun(yi, mu, wi) +
-                devfun(yj, mu, wj))
-      }
-    }
-    return(as.dist(D))
+ glm_dist <- function(Y, weights=NULL, family=poisson(identity),
+                      method=c("deviance","poissondist"),
+                      size_fac=colSums(Y), nthreads=NULL) {
+  method<-match.arg(method)
+  Y<-L0glm_cluster_matrix(Y)
+  w<-L0glm_cluster_weights(weights,nrow(Y),ncol(Y))
+  threads<-L0glm_sis_threads(nthreads)
+  if (method=="poissondist") {
+    s<-L0glm_cluster_sizes(size_fac,Y,w)
+    values<-L0glm_poissondist_cpp(Y,w,s,threads)
+    return(structure(values,Size=ncol(Y),Labels=colnames(Y),Diag=FALSE,
+      Upper=FALSE,method="poissondist",class="dist"))
   }
-  
-  ## ----------------------------------------------------------------------------
-  ## 2.  Poisson size-factor distance (Witten 2011)                     
-  ## ----------------------------------------------------------------------------
-  if (method == "poissondist") {
-    beta <- 1L   # default of PoiClaClu::PoissonDistance , here hard coded
-    D <- matrix(0, p, p)
-    
-    for (j in 2:p) {
-      yj <- Y[, j]; sj <- size_fac[j]
-      for (i in 1:(j - 1)) {
-        yi <- Y[, i]; si <- size_fac[i]
-        
-        cvec <- yi + yj
-        if (all(cvec == 0)) { D[i, j] <- 0; next }
-        
-        n_i <- si / (si + sj) * cvec
-        n_j <- sj / (si + sj) * cvec
-        
-        di <- (yi + beta) / (n_i + beta)
-        dj <- (yj + beta) / (n_j + beta)
-        
-        D[i, j] <- D[j, i] <-
-          sum(cvec - n_i * di - n_j * dj +
-                yi * log(di) + yj * log(dj))
-      }
-    }
-    return(as.dist(D))
+  if (!inherits(family,"family")) family<-family()
+  if (!is.function(family$dev.resids)) stop("family needs scalar unit deviances.",call.=FALSE)
+  W<-matrix(w,nrow(Y),ncol(Y))
+  D<-matrix(0,ncol(Y),ncol(Y),dimnames=list(colnames(Y),colnames(Y)))
+  if(ncol(Y)>1L) for(j in 2:ncol(Y)) for(i in seq_len(j-1L)) {
+    total<-W[,i]+W[,j];good<-total>0
+    if(!any(good)) next
+    mu<-(W[good,i]*Y[good,i]+W[good,j]*Y[good,j])/total[good]
+    value<-sum(family$dev.resids(Y[good,i],mu,W[good,i])+
+      family$dev.resids(Y[good,j],mu,W[good,j]))
+    if(!is.finite(value) || value< -1e-10) stop("The family returned invalid unit deviances.",call.=FALSE)
+    D[i,j]<-D[j,i]<-max(0,value)
   }
+  as.dist(D)
+}
+
+L0glm_cluster_matrix<-function(Y) {
+  Y<-as.matrix(Y)
+  if(!(is.numeric(Y)||is.logical(Y)) || !nrow(Y) || !ncol(Y) || any(!is.finite(Y)))
+    stop("Y must be a finite, nonempty numeric matrix.",call.=FALSE)
+  if(!is.double(Y)) storage.mode(Y)<-"double"
+  Y
+}
+L0glm_cluster_weights<-function(weights,n,m) {
+  if(is.null(weights)) return(1)
+  if(!(is.numeric(weights)||inherits(weights,"Matrix"))) stop("weights must be numeric.",call.=FALSE)
+  if(!is.null(dim(weights)) && !identical(as.integer(dim(weights)),c(n,m)) &&
+      !identical(as.integer(dim(weights)),c(n,1L))) stop("weights have incompatible dimensions.",call.=FALSE)
+  w<-as.numeric(weights)
+  if(!length(w)%in%c(1L,n,n*m) || any(!is.finite(w)|w<0))
+    stop("weights must be finite, nonnegative and match Y.",call.=FALSE)
+  w
+}
+L0glm_cluster_sizes<-function(size_fac,Y,w) {
+  if(!is.numeric(size_fac) || length(size_fac)!=ncol(Y) || any(!is.finite(size_fac)|size_fac<0))
+    stop("size_fac needs one finite nonnegative value per channel.",call.=FALSE)
+  if(any(size_fac==0) && any(size_fac==0 & colSums(Y*matrix(w,nrow(Y),ncol(Y)))>0))
+    stop("A positive-count channel needs a positive size factor.",call.=FALSE)
+  as.numeric(size_fac)
 }

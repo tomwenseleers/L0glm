@@ -3,7 +3,7 @@
 \name{glm_cluster}
 \alias{glm_cluster}
 \alias{glm_aggregate}
-\title{Hierarchical clustering and aggregation for multivariate GLM 
+\title{Hierarchical clustering and aggregation for multivariate GLM
 exponential-family data}
 \usage{
 glm_cluster(
@@ -12,28 +12,29 @@ glm_cluster(
   family = poisson(identity),
   method = if (family$family == "poisson") "poissondist" else "deviance",
   size_fac = colSums(Y),
-  rowbins = 1L
+  rowbins = 1L,
+  nthreads = NULL
 )
 
 glm_aggregate(Y, weights = NULL, family = poisson(identity), clusterids)
 }
 \arguments{
-\item{Y}{A numeric matrix (`nrow(Y)` observations x `ncol(Y)` variables).
-Sparse `Matrix::dgCMatrix` is accepted. Proportion data should
-be provided in case of binomial data.}
+\item{Y}{Finite numeric observations-by-channels matrix. Sparse matrices
+are accepted; response calculations use a dense matrix internally.}
 
-\item{weights}{Optional `nrow(Y) x ncol(Y)` matrix of precision
-weights (e.g. total counts for Binomial, `1/var` for Gaussian).
-Only used with `method = "deviance"`.}
+\item{weights}{Nonnegative case/precision weights: a scalar, a vector with
+one entry per observation, or an observations-by-channels matrix.
+\code{NULL} uses unit weights. Binomial observations are proportions and
+weights give the trial totals.}
 
-\item{family}{A **stats** family object (default
-`poisson(identity)`).}
+\item{family}{Scalar GLM family object, default \code{poisson(identity)}.
+Response values must lie in the family's mean/deviance domain.}
 
-\item{method}{`"deviance"` or `"poissondist"` (default for family `poisson(identity)`).}
+\item{method}{\code{"deviance"} (default) or \code{"poissondist"}.}
 
-\item{size_fac}{Size factors used for method `"poissondist"` (default colSums(Y),
-should be changed to rowSums(Y) if t(Y) is analysed to cluster
-rows rather than columns).}
+\item{size_fac}{Nonnegative channel size factors for \code{"poissondist"},
+default \code{colSums(Y)}. A zero factor is allowed for an uninformative
+zero-count channel. Counts remain on their original scale.}
 
 \item{rowbins}{Positive integer.  If \code{rowbins > 1} the
 function first aggregates every \code{rowbins} successive rows
@@ -42,64 +43,64 @@ clustering; clusters are inferred on the binned matrix, but the
 final \code{Y_agg} is computed from the original (unbinned) data.
 Default \code{rowbins = 1} skips this step.}
 
+\item{nthreads}{Number of native worker threads. \code{NULL} uses the detected
+physical cores; \code{1L} requests serial execution. Results have the same
+within-pair summation order at every thread count.}
+
 \item{clusterids}{Integer vector of cluster labels (length =
 \code{ncol(Y)}); required by \code{glm_aggregate()}, returned by
 \code{glm_cluster()}.}
 }
 \value{
-A list   
+A list
 \describe{
-  \item{D}{\code{dist} object returned by \code{glm_dist()}}
-  \item{hc}{\code{hclust} object (using method Ward.D)}
-  \item{clusterids}{integer vector with cluster ID memberships returned by 
-                    \code{cutreeDynamic()}}
-  \item{Y_agg}{matrix with per-cluster aggregated columns (summed for poisson 
-               and binomial, averaged within clusters for the other families)}
-  \item{weights_agg}{aggregated weights (NULL if \code{weights=NULL})}
+\item{D}{\code{dist} object returned by \code{glm_dist()}}
+\item{hc}{\code{hclust} object (using method Ward.D)}
+\item{clusterids}{integer vector with cluster ID memberships returned by
+\code{cutreeDynamic()}}
+\item{Y_agg}{matrix with per-cluster aggregated columns (summed for poisson
+and binomial, averaged within clusters for the other families)}
+\item{weights_agg}{aggregated weights (NULL if \code{weights=NULL})}
 }
 }
 \description{
 \code{glm_cluster()} performs Ward hierarchical clustering on a
-deviance (Jensen-Shannon divergence) dissimilarity matrix from
-\code{\link{glm_dist}}, adaptively cuts the dendrogram using 
-(\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to 
+pooled-deviance or size-adjusted Poisson dissimilarity matrix from
+\code{\link{glm_dist}}, adaptively cuts the dendrogram using
+(\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to
 aggregate columns belonging to the same cluster.
 
 \code{glm_aggregate()} can also be called directly when you already
 have a vector of cluster memberships and want to reuse it across
 multiple datasets.
 
-This function can be used for clustering or as a feature-grouping 
+This function can be used for clustering or as a feature-grouping
 dimensionality-reduction technique for
-multivariate GLM data conforming to any exponential-family distribution 
-(e.g. Poisson, Binomial, Gaussian, Gamma, Inverse-Gaussian). 
-For aggregation, we use summation for count families and weighted or 
-unweighted means for the other distributions. 
+multivariate GLM data conforming to any exponential-family distribution
+(e.g. Poisson, Binomial, Gaussian, Gamma, Inverse-Gaussian).
+For aggregation, we use summation for count families and weighted or
+unweighted means for the other distributions.
 
-Applications, among others, include grouping correlated mass traces in 
-GC/MS datasets or clustering genes with correlated gene-expression 
+Applications, among others, include grouping correlated mass traces in
+GC/MS datasets or clustering genes with correlated gene-expression
 patterns in RNA-seq datasets.
 }
 \details{
-Clustering via \emph{Ward's minimisation of within-cluster deviance},
-using the \eqn{\sqrt{\mathrm{JS}}}{sqrt(JS)} divergence, is a special
-case of \strong{agglomerative Bregman clustering}
-(Telgarsky & Dasgupta 2012); the Jensen-Shannon divergence is itself a
-Bregman divergence for exponential-family log-likelihoods
-(Banerjee et al. 2005).  Because \eqn{\sqrt{\mathrm{JS}}} is a true
-metric (Endres & Schindelin 2003), Ward linkage yields monotone
-dendrograms (see Nielsen 2016, Example 3). The
-dendrogram height equals the cumulative increase in cluster
-Bregman information.
+The hierarchy uses Ward's Lance--Williams recurrence on the supplied
+dissimilarities. For Gaussian unit deviances this has the usual
+sum-of-squares interpretation. General exponential-family deviances
+connect to Bregman information, but ordinary Ward updates need not equal
+the corresponding likelihood-merge costs. See \code{\link[=glm_dist]{glm_dist()}} for the
+pooled-deviance and size-adjusted Poisson definitions.
 
-\strong{Distance formulas used internally} (see \code{\link{glm_dist}}) \cr 
+\strong{Distance formulas used internally} (see \code{\link{glm_dist}}) \cr
 For two columns \emph{i} and \emph{j} we write
 \eqn{y_{ti}}, \eqn{y_{tj}} for their values at row \emph{t} and
 \eqn{w_{ti}}, \eqn{w_{tj}} for optional precision weights.
 
 \itemize{
 \item \strong{Symmetrised unit deviance}
-                    (\code{method = "deviance"}, default)\cr
+(\code{method = "deviance"}, default)\cr
 \deqn{
   D_{ij}^{\text{dev}} \;=\;
   \sum_t
@@ -115,11 +116,11 @@ where \eqn{d(y,\mu,w)} is the unit deviance returned by
 \eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
 \eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} -
 exactly \emph{one-half} the (weighted) squared Euclidean distance, so
-\eqn{\sqrt{\mathrm{JS}}} is Euclidean up to the constant
+\eqn{\sqrt{D}} is Euclidean up to the constant
 \eqn{\sqrt{1/2}}.
 
 \item \strong{Poisson size-factor distance (Witten 2011)}
-                  (\code{method = "poissondist"})\cr
+(\code{method = "poissondist"})\cr
 With column size factors \eqn{s_i}, row totals
 \eqn{c_t=y_{ti}+y_{tj}} and smoothing \eqn{\beta} (default 1):
 \deqn{
@@ -132,12 +133,6 @@ With column size factors \eqn{s_i}, row totals
                     y_{ti}\log d_i + y_{tj}\log d_j \Bigr].
 }
 }
-
-Both expressions equal \emph{twice} the Jensen-Shannon divergence
-between the empirical distributions of columns \emph{i} and \emph{j};
-taking the square-root gives a proper metric.  Ward's linkage then minimises 
-the increase in within-cluster Bregman information (see
-Telgarsky & Dasgupta 2012).
 
 Note that hierarchical clustering is feasible only for moderately large data
 sets; for very large matrices more scalable Bregman
@@ -153,7 +148,7 @@ k-means/X-means alternatives could be considered (Banerjee et al. 2005).
 data(GCMS_data2)                        # GC/MS beer-volatile window
 Y <- GCMS_data2                         # 1764 scans x 518 m/z traces
 
-##--- 1. Ward-Bregman clustering with Poisson size-factor distance ---
+##--- 1. Ward clustering with Poisson size-factor distance ---
 ## We bin every 5 successive scans to speed up the distance calculation
 out_pois <- glm_cluster(Y,
                         family   = poisson(identity),
@@ -168,7 +163,7 @@ matplot(out_pois$Y_agg ^ 0.2, type = "l", lty = 1,
                      "Witten Poisson distance, rowbins = 5",
                      sep = "\n"))
 
-##--- 2. Same with symmetrised deviance (Jensen-Shannon) ---
+##--- 2. Same with pooled unit deviance ---
 out_js  <- glm_cluster(Y,
                        family   = poisson(identity),
                        method   = "deviance",
@@ -179,19 +174,19 @@ matplot(out_js$Y_agg ^ 0.2, type = "l", lty = 1,
         xlab = "Scan index",
         ylab = "Cluster intensity ^ 0.2",
         main = paste("518 m/z traces collapsed into 5 clusters",
-                     "Jensen-Shannon deviance, rowbins = 5",
+                     "Pooled unit deviance, rowbins = 5",
                      sep = "\n"))
 }
 }
 \references{
-Telgarsky, M. & Dasgupta, S. (2012).  
-\emph{Agglomerative Bregman Clustering}.  
+Telgarsky, M. & Dasgupta, S. (2012).
+\emph{Agglomerative Bregman Clustering}.
 Proceedings of the 29th International Conference on Machine Learning, 59-66. \cr
-Banerjee, A., Merugu, S., Dhillon, I., & Ghosh, J. (2005).  
-\emph{Clustering with Bregman Divergences}.  
+Banerjee, A., Merugu, S., Dhillon, I., & Ghosh, J. (2005).
+\emph{Clustering with Bregman Divergences}.
 Journal of Machine Learning Research, 6, 1705-1749. \cr
-Endres, D. M. & Schindelin, J. E. (2003).  
-\emph{A New Metric for Probability Distributions}.  
+Endres, D. M. & Schindelin, J. E. (2003).
+\emph{A New Metric for Probability Distributions}.
 IEEE Transactions on Information Theory, 49(7), 1858-1860. \cr
 \emph{Hierarchical Clustering}.
 In: Nielsen, F., Barbaresco, F. (eds.)
@@ -199,9 +194,9 @@ In: Nielsen, F., Barbaresco, F. (eds.)
 Lecture Notes in Computer Science 10589,
 pp. 369-395. Springer, Cham.
 \doi{10.1007/978-3-319-21903-5_8} \cr
-Witten, D. M. (2011). 
-\emph{Classification and Clustering of Sequencing Data 
-using a Poisson Model.} 
+Witten, D. M. (2011).
+\emph{Classification and Clustering of Sequencing Data
+using a Poisson Model.}
 Annals of Applied Statistics 5(4): 2493-2518.
 }
 \author{

@@ -17,6 +17,10 @@ boundary_sparse_cpp <- function(X, y, weights, beta, eta, lower, family, nonnega
     .Call('_L0glm_boundary_sparse_cpp', PACKAGE = 'L0glm', X, y, weights, beta, eta, lower, family, nonnegative_components)
 }
 
+L0glm_poissondist_cpp <- function(y, weights, size_fac, nthreads = 1L) {
+    .Call('_L0glm_L0glm_poissondist_cpp', PACKAGE = 'L0glm', y, weights, size_fac, nthreads)
+}
+
 L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
