@@ -20,6 +20,9 @@ inline SparseMatrix<double> row_gram(const SparseMatrix<double>& Z) {
   return Z * Z.transpose();
 }
 
+inline void drop_exact_zeros(MatrixXd&) {}
+inline void drop_exact_zeros(SparseMatrix<double>& Z) { Z.prune(0.0); }
+
 inline bool solve_system(const MatrixXd& A, const MatrixXd& b,
                           MatrixXd& x, bool) {
   Eigen::LLT<MatrixXd> solver(A);
@@ -59,6 +62,9 @@ bool ridge_dual(const Design& X, const VectorXd& y, const VectorXd& penalty,
   }
   const int q = free.size();
   Design Z = X * invsqrt.asDiagonal();
+  // Zero-penalty nuisance columns have zero scale here. Retained sparse
+  // entries would create structural fill in the observation-space Gram.
+  drop_exact_zeros(Z);
   Design A = row_gram(Z);
   if (penalized) for (int i = 0; i < n; ++i) A.coeffRef(i, i) += 1.0;
   MatrixXd rhs(n, q + 1), U(n, q), solution;

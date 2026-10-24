@@ -74,3 +74,43 @@ test_that("GIC counts the original selectable pool despite intercepts and masks"
   expect_equal(met$support_size_estimated, 0)
   expect_equal(met$gic, -2 * met$loglik + preset.lambda("gic", 6, 40) * 2)
 })
+
+test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", {
+  n <- 60L
+  psf <- convmatrix(c(0.2, 1, 0.2), n)
+  X <- as(cbind(Intercept = 1, psf), "dgCMatrix")
+  X@x[seq.int(2L, n, by = 4L)] <- 0
+  penalty <- c(0, rep(2, n))
+  y <- seq_len(n) %% 7
+  original <- eigen_ridge_solve
+  seen <- NULL
+  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration) {
+    seen <<- A
+    original(A, b, start, control, iteration)
+  })
+  beta <- eigen_ridge_dual(X, y, penalty, rep(0, ncol(X)),
+                          control.solver.gen("eigen", 1L), 1L)
+  expect_s4_class(seen, "sparseMatrix")
+  expect_lt(length(seen@x), 6L * n)
+  expect_false(any(seen@x == 0))
+  G <- as.matrix(crossprod(X)) + diag(penalty)
+  reference <- solve(G, as.numeric(crossprod(X, y)))
+  expect_equal(beta, as.numeric(reference), tolerance = 1e-10)
+})
+
+test_that("native wide sparse nuisance fits preserve dense and threaded results", {
+  set.seed(1663)
+  n <- 50L
+  X <- as(cbind(Intercept = 1, convmatrix(c(.2, 1, .2), n)), "dgCMatrix")
+  X@x[seq.int(2L, n, by = 5L)] <- 0
+  Y <- matrix(rpois(n * 3L, 5), n, 3L)
+  opt <- list(y = Y, lambda = 2, start = 1, maxit = 1L, grouped = FALSE,
+              relaxed = FALSE, thresh = 0, parallelize = FALSE)
+  sparse <- do.call(L0nnpois, c(list(X = X), opt))
+  dense <- do.call(L0nnpois, c(list(X = as.matrix(X)), opt))
+  expect_equal(as.matrix(sparse$coefficients), as.matrix(dense$coefficients), tolerance = 1e-9)
+  opt$parallelize <- TRUE
+  opt$ncores <- 2L
+  threaded <- do.call(L0nnpois, c(list(X = X), opt))
+  expect_identical(sparse$coefficients, threaded$coefficients)
+})

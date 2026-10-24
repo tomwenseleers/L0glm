@@ -777,7 +777,7 @@ Rcpp::List fit_all_impl(const Design& X,
   MatrixXd start_full;
   bool has_start = start_nullable.isNotNull();
   if (has_start) {
-    Rcpp::NumericMatrix sr(start_nullable);
+    Rcpp::NumericMatrix sr(start_nullable.get());
     start_full = Rcpp::as<Map<MatrixXd> >(sr);
   }
 

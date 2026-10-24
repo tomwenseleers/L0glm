@@ -407,6 +407,7 @@ eigen_ridge_dual <- function(Xw, yw, lambdas, prior.mean, control, iteration) {
   center <- if (penalized) prior.mean else rep(0, p)
   center[free] <- 0
   Z <- Xw %*% Matrix::Diagonal(x = invsqrt)
+  if (issparse(Z)) Z <- Matrix::drop0(Z, tol = 0)
   A <- Matrix::tcrossprod(Z)
   if (penalized) diag(A) <- diag(A) + 1
   U <- Xw[, free, drop = FALSE]

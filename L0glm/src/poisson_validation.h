@@ -13,7 +13,7 @@ struct PoissonValidation {
 
   explicit PoissonValidation(Rcpp::Nullable<Rcpp::List> supplied) {
     if (supplied.isNull()) return;
-    Rcpp::List v(supplied);
+    Rcpp::List v(supplied.get());
     enabled = true;
     SEXP design = v["X"];
     sparse = Rf_isS4(design) && Rcpp::S4(design).hasSlot("i");
