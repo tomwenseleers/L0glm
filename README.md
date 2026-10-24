@@ -17,7 +17,7 @@ Strong signals receive progressively less shrinkage as the fit concentrates on
 the active predictors, giving accurate coefficients with few false positives.
 It is highly efficient, with fitting often being one or two orders of magnitude
 faster than `glmnet` - the most widely used sparse regression framework - and
-it is shown to return solutions with far fewer false positives with similar or better
+it is shown to return solutions with far fewer false positives, with similar or better
 predictive power and sensitivity than other competing sparse regression methods, like 
 LASSO, adaptive LASSO, relaxed LASSO, MCP or SCAD. For most problems, performance
 in terms of speed and quality of the solution obtained is also superior to that
@@ -26,8 +26,10 @@ of other packages aimed at best subset selection, such as abess and L0Learn.
 The [Algorithm & theory guide](https://tomwenseleers.github.io/L0glm/articles/algorithm.html)
 explains the mathematics, regularization presets and full fitting algorithms.
 
-- **Families:** standard GLMs and their links, negative binomial with estimated
-  shape, joint multinomial logistic regression, and right-censored Cox PH.
+- **Families:** standard GLMs (gaussian, poisson, binomial, gamma, inverse gaussian,
+  quasibinomial, quasipoisson) and their links, negative binomial with estimated
+  shape, joint multinomial logistic regression, and right-censored Cox proportional
+  hazard.
 - **Data:** dense or sparse, tall or wide designs; single or multiple responses;
   grouped row selection; SIS/ISIS screening for ultrahigh dimensions.
 - **Controls:** observation weights, offsets, unpenalized terms, starting values,
