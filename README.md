@@ -29,7 +29,7 @@ explains the mathematics, regularization presets and full fitting algorithms.
 - **Families:** standard GLMs (gaussian, poisson, binomial, gamma, inverse gaussian,
   quasibinomial, quasipoisson) and their links, negative binomial with estimated
   shape, joint multinomial logistic regression, and right-censored Cox proportional
-  hazard.
+  hazards.
 - **Data:** dense or sparse, tall or wide designs; single or multiple responses;
   grouped row selection; SIS/ISIS screening for ultrahigh dimensions.
 - **Controls:** observation weights, offsets, unpenalized terms, starting values,
