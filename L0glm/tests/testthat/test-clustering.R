@@ -60,3 +60,150 @@ test_that("pooled deviance retains its scalar-family definition",{
   expect_length(glm_dist(Y[,1,drop=FALSE],method="deviance"),0)
   expect_equal(as.numeric(glm_dist(Y,weights=0,method="deviance")),0)
 })
+
+
+cluster_loss_reference<-function(Y,group,family,w=1,s=rep(1,ncol(Y))) {
+  W<-matrix(w,nrow(Y),ncol(Y));loss<-0
+  for(g in unique(group)) {
+    js<-which(group==g);mass<-rowSums(sweep(W[,js,drop=FALSE],2,s[js],"*"))
+    mu<-rowSums(W[,js,drop=FALSE]*Y[,js,drop=FALSE])/pmax(mass,1e-300)
+    for(j in js) {good<-W[,j]>0;means<-s[j]*mu[good]
+      terms<-family$dev.resids(Y[good,j],means,W[good,j]);terms[Y[good,j]==means]<-0
+      loss<-loss+sum(terms)
+    }
+  }
+  loss
+}
+
+test_that("native scalar unit deviances agree with the family functions",{
+  set.seed(715)
+  families<-list(gaussian(),poisson(),binomial(),Gamma(),inverse.gaussian(),MASS::negative.binomial(2))
+  for(f in families) {
+    Y<-switch(tolower(f$family),gaussian=matrix(rnorm(55),11),
+      poisson=matrix(rpois(55,3),11),binomial=matrix(rbinom(55,1,.4),11),
+      matrix(rexp(55)+.2,11))
+    if(grepl("negative",f$family,ignore.case=TRUE)) Y<-matrix(rnbinom(55,mu=4,size=2),11)
+    for(w in list(1,runif(11),matrix(runif(55),11))) {
+      W<-matrix(w,11,5);D<-matrix(0,5,5)
+      for(j in 2:5) for(i in seq_len(j-1L)) {
+        mu<-(W[,i]*Y[,i]+W[,j]*Y[,j])/(W[,i]+W[,j])
+        a<-f$dev.resids(Y[,i],mu,W[,i]);b<-f$dev.resids(Y[,j],mu,W[,j])
+        a[Y[,i]==mu]<-0;b[Y[,j]==mu]<-0
+        D[i,j]<-D[j,i]<-sum(a+b)
+      }
+      native<-glm_dist(Y,weights=w,family=f,method="deviance",nthreads=1)
+      expect_equal(as.numeric(native),as.numeric(as.dist(D)),tolerance=1e-11)
+      expect_identical(native,glm_dist(Y,weights=w,family=f,method="deviance",nthreads=4))
+    }
+  }
+})
+
+test_that("Bregman merges minimise the actual pooled-deviance increase",{
+  set.seed(913)
+  families<-list(gaussian(),poisson(),binomial(),Gamma(),inverse.gaussian(),MASS::negative.binomial(3))
+  for(f in families) {
+    Y<-matrix(rexp(36)+.2,6,6)
+    if(f$family=="gaussian") Y<-matrix(rnorm(36),6,6)
+    if(f$family=="poisson"||grepl("Negative",f$family)) Y<-matrix(rpois(36,4),6,6)
+    if(f$family=="binomial") Y<-matrix(rbinom(36,1,.5),6,6)
+    W<-matrix(runif(36,.3,2),6,6)
+    sizes<-if(f$family=="poisson") runif(6,.4,2) else rep(1,6)
+    method<-if(f$family=="poisson") "poissondist" else "deviance"
+    out<-glm_cluster(Y,weights=W,family=f,method=method,size_fac=sizes,
+      linkage="bregman",k=1L,nthreads=1L)
+    groups<-setNames(lapply(1:6,identity),as.character(-(1:6)))
+    for(step in 1:5) {
+      before<-vapply(groups,function(js) cluster_loss_reference(Y[,js,drop=FALSE],rep(1,length(js)),f,W[,js,drop=FALSE],sizes[js]),numeric(1))
+      pairs<-combn(seq_along(groups),2)
+      costs<-apply(pairs,2,function(ab) {
+        js<-unlist(groups[ab]);cluster_loss_reference(Y[,js,drop=FALSE],rep(1,length(js)),f,W[,js,drop=FALSE],sizes[js])-sum(before[ab])
+      })
+      merge<-as.character(out$hc$merge[step,]);js<-unlist(groups[merge])
+      actual<-cluster_loss_reference(Y[,js,drop=FALSE],rep(1,length(js)),f,W[,js,drop=FALSE],sizes[js])-sum(before[match(merge,names(groups))])
+      expect_equal(actual,min(costs),tolerance=1e-10)
+      expect_equal(out$hc$height[step],actual,tolerance=1e-10)
+      groups[merge]<-NULL;groups[[as.character(step)]]<-js
+    }
+    expect_equal(sort(out$hc$order),1:6)
+    four<-glm_cluster(Y,weights=W,family=f,method=method,size_fac=sizes,
+      linkage="bregman",k=1L,nthreads=4L)
+    expect_identical(out$hc$merge,four$hc$merge);expect_identical(out$hc$height,four$hc$height)
+  }
+})
+
+test_that("Gaussian Bregman hierarchy agrees with squared-Euclidean Ward",{
+  set.seed(1);Y<-matrix(rnorm(63),9,7)
+  out<-glm_cluster(Y,family=gaussian(),k=3L,nthreads=2L)
+  ward<-hclust(dist(t(Y))^2/2,method="ward.D")
+  expect_equal(out$hc$height,ward$height,tolerance=1e-12)
+  for(k in 1:7) {
+    a<-cutree(out$hc,k=k);b<-cutree(ward,k=k)
+    expect_equal(outer(a,a,"=="),outer(b,b,"=="),ignore_attr=TRUE)
+  }
+})
+
+test_that("Poisson cut criteria score a common original-channel likelihood",{
+  set.seed(16);Y<-matrix(rpois(80*7,3),80,7);s<-runif(7,1,3)
+  for(linkage in c("ward","bregman")) {
+    fit<-glm_cluster(Y,size_fac=s,linkage=linkage,k.max=5L,nthreads=2L)
+    for(j in seq_len(nrow(fit$history))) {
+      k<-fit$history$k[j];g<-cutree(fit$hc,k=k);counts<-tabulate(g)
+      loss<-cluster_loss_reference(Y,g,poisson(),s=s)
+      score<-loss-2*sum(counts*log(counts/7))+log(80)*log(log(80))*(80*k+k-1L)
+      expect_equal(fit$history$deviance[j],loss,tolerance=1e-10)
+      expect_equal(fit$history$IC[j],score,tolerance=1e-10)
+    }
+    expect_equal(max(fit$clusterids),fit$history$k[which.min(fit$history$IC)])
+  }
+  binned<-glm_cluster(Y,size_fac=s,rowbins=4L,k=3L)
+  expect_identical(binned$size_fac,s)
+  expect_identical(binned$D,glm_dist(rowsum(Y,rep(1:20,each=4)),method="poissondist",size_fac=s))
+  expect_equal(dim(binned$Y_agg),c(80L,3L))
+})
+
+test_that("aggregation retains correct Poisson weights and Gaussian precisions",{
+  Y<-matrix(1:24,6,4);g<-c(10L,10L,20L,20L);w<-seq_len(6)
+  a<-glm_aggregate(Y,weights=w,family=poisson(),clusterids=g)
+  expect_equal(unname(a$Y_agg),cbind(Y[,1]+Y[,2],Y[,3]+Y[,4]))
+  expect_equal(unname(a$weights_agg),unname(cbind(w,w)))
+  expect_null(glm_aggregate(Y,family=poisson(),clusterids=g)$weights_agg)
+  expect_error(glm_aggregate(Y,weights=matrix(1:24,6,4),family=poisson(),clusterids=g),"shared")
+  b<-glm_aggregate(Y,family=gaussian(),clusterids=g)
+  expect_equal(unname(b$Y_agg),cbind(rowMeans(Y[,1:2]),rowMeans(Y[,3:4])))
+  expect_equal(unname(b$weights_agg),matrix(2,6,2))
+  c<-glm_aggregate(Y%%2,family=binomial(),clusterids=g)
+  expect_true(all(c$Y_agg>=0 & c$Y_agg<=1));expect_equal(unname(c$weights_agg),matrix(2,6,2))
+  one<-glm_cluster(Y[,1,drop=FALSE],k.max=32L)
+  expect_equal(one$clusterids,1L);expect_null(one$hc)
+  expect_equal(unname(one$Y_agg),Y[,1,drop=FALSE])
+  expect_error(glm_cluster(Y,rowbins=1.2),"integers")
+  expect_error(glm_cluster(Y,family=gaussian(),rowbins=2),"Poisson")
+  expect_error(glm_cluster(Y,dispersion=2),"dispersion")
+  expect_error(glm_cluster(Y,k=5),"integers")
+})
+
+
+test_that("clustering remains available when weighted counts cannot be aggregated",{
+  Y<-matrix(1:24,6,4);w<-matrix(seq_len(24),6,4)
+  cl<-glm_cluster(Y,weights=w,linkage="bregman",k=2L)
+  expect_length(cl$clusterids,4L);expect_null(cl$Y_agg)
+  expect_match(cl$aggregation_note,"weights differ")
+  normal<-glm_cluster(Y,family=gaussian(),dispersion=c(1,2,3,4),k=1)
+  W<-matrix(rep(1/c(1,2,3,4),each=6),6,4)
+  expect_equal(unname(normal$Y_agg),matrix(rowSums(Y*W)/rowSums(W),6,1))
+  expect_equal(unname(normal$weights_agg),matrix(rowSums(W),6,1))
+})
+
+
+test_that("quasi and custom families retain working-deviance clustering",{
+  set.seed(51);Y<-matrix(rpois(200,4),20,10)
+  q<-glm_cluster(Y,family=quasipoisson())
+  expect_equal(length(q$clusterids),10L);expect_identical(q$linkage,"ward")
+  expect_equal(as.numeric(glm_dist(Y,family=quasipoisson())),as.numeric(glm_dist(Y,family=poisson())),tolerance=1e-12)
+  expect_error(glm_cluster(Y,family=quasipoisson(),criterion="gic"),"likelihood IC")
+  fixed<-glm_cluster(Y,family=quasipoisson(),linkage="bregman",k=2)
+  expect_true(all(is.na(fixed$history$IC)));expect_equal(max(fixed$clusterids),2)
+  custom<-gaussian();custom$family<-"custom scalar"
+  z<-glm_cluster(Y,family=custom,k=3)
+  expect_equal(max(z$clusterids),3L);expect_identical(z$linkage,"ward")
+})

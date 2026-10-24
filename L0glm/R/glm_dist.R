@@ -28,7 +28,10 @@
 #' \deqn{D_{ab}=\sum_i\{d(y_{ia},\bar\mu_i,w_{ia})+
 #' d(y_{ib},\bar\mu_i,w_{ib})\},\qquad
 #' \bar\mu_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}{w_{ia}+w_{ib}}.}
-#' Rows with zero total weight contribute zero. For a regular scalar
+#' Native pooled-deviance kernels cover Gaussian, Poisson, binomial, Gamma,
+#' inverse Gaussian and fixed-shape NB families; custom scalar families use
+#' their R `dev.resids` function. NB shape is taken from the family object
+#' and held fixed. Rows with zero total weight contribute zero. For a regular scalar
 #' exponential family with convex mean potential \eqn{F},
 #' \eqn{d(y,\mu,w)=2w B_F(y,\mu)}. The pooled loss is twice a weighted
 #' Jensen gap. This connects the dissimilarity to exponential-family
@@ -77,6 +80,12 @@
   }
   if (!inherits(family,"family")) family<-family()
   if (!is.function(family$dev.resids)) stop("family needs scalar unit deviances.",call.=FALSE)
+  info<-L0glm_cluster_family(family)
+  if(info$id>0L) {
+    values<-L0glm_deviance_dist_cpp(Y,w,info$id,info$theta,threads)
+    return(structure(values,Size=ncol(Y),Labels=colnames(Y),Diag=FALSE,
+      Upper=FALSE,method="deviance",class="dist"))
+  }
   W<-matrix(w,nrow(Y),ncol(Y))
   D<-matrix(0,ncol(Y),ncol(Y),dimnames=list(colnames(Y),colnames(Y)))
   if(ncol(Y)>1L) for(j in 2:ncol(Y)) for(i in seq_len(j-1L)) {
@@ -114,4 +123,21 @@ L0glm_cluster_sizes<-function(size_fac,Y,w) {
   if(any(size_fac==0) && any(size_fac==0 & colSums(Y*matrix(w,nrow(Y),ncol(Y)))>0))
     stop("A positive-count channel needs a positive size factor.",call.=FALSE)
   as.numeric(size_fac)
+}
+
+L0glm_cluster_family<-function(family) {
+  name<-tolower(family$family)
+  if(grepl("cox|multinom",name)) stop("Clustering requires independent scalar response families.",call.=FALSE)
+  id<-match(name,c("poisson","gaussian","binomial","gamma","inverse.gaussian"),nomatch=0L)
+  if(name=="quasipoisson") id<-1L
+  if(name=="quasibinomial") id<-3L
+  theta<-1
+  if(grepl("^negative binomial",name)) {
+    theta<-if(is.function(family$getTheta)) family$getTheta(TRUE) else
+      get0(".Theta",envir=environment(family$variance),inherits=FALSE)
+    if(!is.numeric(theta)||length(theta)!=1L||!is.finite(theta)||theta<=0)
+      stop("Negative-binomial clustering needs a fixed positive shape in family.",call.=FALSE)
+    id<-6L
+  }
+  list(id=id,theta=theta,likelihood=id>0L&&!grepl("^quasi",name))
 }

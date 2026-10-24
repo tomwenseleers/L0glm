@@ -119,6 +119,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// L0glm_deviance_dist_cpp
+NumericVector L0glm_deviance_dist_cpp(NumericMatrix y, NumericVector weights, int family, double theta, int nthreads);
+RcppExport SEXP _L0glm_L0glm_deviance_dist_cpp(SEXP ySEXP, SEXP weightsSEXP, SEXP familySEXP, SEXP thetaSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_deviance_dist_cpp(y, weights, family, theta, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// L0glm_bregman_tree_cpp
+List L0glm_bregman_tree_cpp(NumericMatrix y, NumericVector weights, NumericVector sizes, int family, double theta, int nthreads);
+RcppExport SEXP _L0glm_L0glm_bregman_tree_cpp(SEXP ySEXP, SEXP weightsSEXP, SEXP sizesSEXP, SEXP familySEXP, SEXP thetaSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sizes(sizesSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_bregman_tree_cpp(y, weights, sizes, family, theta, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// L0glm_cluster_profile_cpp
+List L0glm_cluster_profile_cpp(NumericMatrix y, NumericVector weights, NumericVector sizes, IntegerMatrix labels, int family, double theta, int nthreads);
+RcppExport SEXP _L0glm_L0glm_cluster_profile_cpp(SEXP ySEXP, SEXP weightsSEXP, SEXP sizesSEXP, SEXP labelsSEXP, SEXP familySEXP, SEXP thetaSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sizes(sizesSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_cluster_profile_cpp(y, weights, sizes, labels, family, theta, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // L0glm_column_moments_cpp
 Rcpp::List L0glm_column_moments_cpp(SEXP X, Rcpp::Nullable<Rcpp::NumericVector> weights);
 RcppExport SEXP _L0glm_L0glm_column_moments_cpp(SEXP XSEXP, SEXP weightsSEXP) {
@@ -300,6 +348,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_boundary_dense_cpp", (DL_FUNC) &_L0glm_boundary_dense_cpp, 8},
     {"_L0glm_boundary_sparse_cpp", (DL_FUNC) &_L0glm_boundary_sparse_cpp, 8},
     {"_L0glm_L0glm_poissondist_cpp", (DL_FUNC) &_L0glm_L0glm_poissondist_cpp, 4},
+    {"_L0glm_L0glm_deviance_dist_cpp", (DL_FUNC) &_L0glm_L0glm_deviance_dist_cpp, 5},
+    {"_L0glm_L0glm_bregman_tree_cpp", (DL_FUNC) &_L0glm_L0glm_bregman_tree_cpp, 6},
+    {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},

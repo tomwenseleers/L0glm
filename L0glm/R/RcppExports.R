@@ -21,6 +21,18 @@ L0glm_poissondist_cpp <- function(y, weights, size_fac, nthreads = 1L) {
     .Call('_L0glm_L0glm_poissondist_cpp', PACKAGE = 'L0glm', y, weights, size_fac, nthreads)
 }
 
+L0glm_deviance_dist_cpp <- function(y, weights, family, theta, nthreads = 1L) {
+    .Call('_L0glm_L0glm_deviance_dist_cpp', PACKAGE = 'L0glm', y, weights, family, theta, nthreads)
+}
+
+L0glm_bregman_tree_cpp <- function(y, weights, sizes, family, theta, nthreads = 1L) {
+    .Call('_L0glm_L0glm_bregman_tree_cpp', PACKAGE = 'L0glm', y, weights, sizes, family, theta, nthreads)
+}
+
+L0glm_cluster_profile_cpp <- function(y, weights, sizes, labels, family, theta, nthreads = 1L) {
+    .Call('_L0glm_L0glm_cluster_profile_cpp', PACKAGE = 'L0glm', y, weights, sizes, labels, family, theta, nthreads)
+}
+
 L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }

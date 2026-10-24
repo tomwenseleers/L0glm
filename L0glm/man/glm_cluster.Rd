@@ -3,8 +3,7 @@
 \name{glm_cluster}
 \alias{glm_cluster}
 \alias{glm_aggregate}
-\title{Hierarchical clustering and aggregation for multivariate GLM
-exponential-family data}
+\title{Likelihood-based clustering and aggregation of GLM response channels}
 \usage{
 glm_cluster(
   Y,
@@ -13,7 +12,12 @@ glm_cluster(
   method = if (family$family == "poisson") "poissondist" else "deviance",
   size_fac = colSums(Y),
   rowbins = 1L,
-  nthreads = NULL
+  nthreads = NULL,
+  linkage = NULL,
+  criterion = NULL,
+  k = NULL,
+  k.max = 32L,
+  dispersion = 1
 )
 
 glm_aggregate(Y, weights = NULL, family = poisson(identity), clusterids)
@@ -36,172 +40,144 @@ Response values must lie in the family's mean/deviance domain.}
 default \code{colSums(Y)}. A zero factor is allowed for an uninformative
 zero-count channel. Counts remain on their original scale.}
 
-\item{rowbins}{Positive integer.  If \code{rowbins > 1} the
-function first aggregates every \code{rowbins} successive rows
-(time points, samples) to speed up distance computation and
-clustering; clusters are inferred on the binned matrix, but the
-final \code{Y_agg} is computed from the original (unbinned) data.
-Default \code{rowbins = 1} skips this step.}
+\item{rowbins}{Positive integer, default \code{1L}. Values above one sum adjacent
+rows for clustering only; use this acceleration for ordered Poisson scans
+with unit weights. Returned aggregates retain every original row.}
 
 \item{nthreads}{Number of native worker threads. \code{NULL} uses the detected
 physical cores; \code{1L} requests serial execution. Results have the same
 within-pair summation order at every thread count.}
 
-\item{clusterids}{Integer vector of cluster labels (length =
-\code{ncol(Y)}); required by \code{glm_aggregate()}, returned by
-\code{glm_cluster()}.}
+\item{linkage}{\code{"ward"} or \code{"bregman"}. The size-adjusted Poisson distance
+defaults to the validated Ward hierarchy. Other scalar-family deviances
+default to Bregman likelihood merges.}
+
+\item{criterion}{\code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"}, \code{"mbic"},
+or \code{"dynamic"} for dynamicTreeCut on a Ward hierarchy. Quasi/custom
+families default to dynamic cutting because likelihood ICs are unavailable. Supplying \code{k}
+requests that fixed number of groups.}
+
+\item{k}{Optional fixed number of groups, between one and \code{ncol(Y)}.}
+
+\item{k.max}{Largest number of groups considered by criterion selection,
+default \code{32L}, capped at \code{ncol(Y)}.}
+
+\item{dispersion}{Known positive scalar or per-channel dispersion for
+Gaussian, Gamma and inverse Gaussian clustering. Default \code{1} gives unit
+dispersion. It scales clustering precision and is held fixed across cuts.
+Poisson and binomial use dispersion one; NB uses its fixed family shape.}
+
+\item{clusterids}{One positive integer label per channel. Labels need not be
+consecutive; \code{glm_aggregate()} puts groups in increasing label order.}
 }
 \value{
-A list
-\describe{
-\item{D}{\code{dist} object returned by \code{glm_dist()}}
-\item{hc}{\code{hclust} object (using method Ward.D)}
-\item{clusterids}{integer vector with cluster ID memberships returned by
-\code{cutreeDynamic()}}
-\item{Y_agg}{matrix with per-cluster aggregated columns (summed for poisson
-and binomial, averaged within clusters for the other families)}
-\item{weights_agg}{aggregated weights (NULL if \code{weights=NULL})}
-}
+\code{glm_cluster()} returns a list with \code{D} (packed distances for Ward),
+\code{hc} (hierarchy; \code{NULL} for one channel), \code{clusterids}, \code{Y_agg},
+\code{weights_agg}, \code{history} (cut losses, degrees of freedom and criterion),
+\code{centres} on the clustering row grid, \code{size_fac}, \code{linkage}, \code{criterion}
+and \code{rowbins}. Incompatible count weights give \code{Y_agg=NULL} and an
+explanatory \code{aggregation_note}; clustering itself remains available.
+\code{glm_aggregate()} returns \code{Y_agg} and \code{weights_agg}.
 }
 \description{
-\code{glm_cluster()} performs Ward hierarchical clustering on a
-pooled-deviance or size-adjusted Poisson dissimilarity matrix from
-\code{\link{glm_dist}}, adaptively cuts the dendrogram using
-(\pkg{dynamicTreeCut}), and then calls \code{glm_aggregate()} to
-aggregate columns belonging to the same cluster.
-
-\code{glm_aggregate()} can also be called directly when you already
-have a vector of cluster memberships and want to reuse it across
-multiple datasets.
-
-This function can be used for clustering or as a feature-grouping
-dimensionality-reduction technique for
-multivariate GLM data conforming to any exponential-family distribution
-(e.g. Poisson, Binomial, Gaussian, Gamma, Inverse-Gaussian).
-For aggregation, we use summation for count families and weighted or
-unweighted means for the other distributions.
-
-Applications, among others, include grouping correlated mass traces in
-GC/MS datasets or clustering genes with correlated gene-expression
-patterns in RNA-seq datasets.
+Cluster columns of a scalar-family response matrix, select a tree cut by an
+information criterion, and aggregate the original, unbinned channels.
+Native OpenMP kernels calculate distances, Bregman merges and profile losses.
 }
 \details{
-The hierarchy uses Ward's Lance--Williams recurrence on the supplied
-dissimilarities. For Gaussian unit deviances this has the usual
-sum-of-squares interpretation. General exponential-family deviances
-connect to Bregman information, but ordinary Ward updates need not equal
-the corresponding likelihood-merge costs. See \code{\link[=glm_dist]{glm_dist()}} for the
-pooled-deviance and size-adjusted Poisson definitions.
+For a partition \eqn{\mathcal G}, the raw-mean clustering model assigns a
+free mean \eqn{\mu_{ig}} at each row \eqn{i} of group \eqn{g}. Its profile
+distortion is
+\deqn{L(\mathcal G)=\sum_g\sum_{j\in G_g}\sum_i
+     \frac{w_{ij}}{\phi_j}d(y_{ij},\widehat\mu_{ig},1),\qquad
+\widehat\mu_{ig}=\frac{\sum_{j\in G_g}w_{ij}y_{ij}/\phi_j}
+{\sum_{j\in G_g}w_{ij}/\phi_j}.}
+Bregman clustering greedily merges the pair minimising
+\eqn{L(A\cup B)-L(A)-L(B)}. The implementation retains sufficient
+statistics and a priority queue, recalculating the true likelihood-merge
+cost after each merge. This is agglomerative Bregman information loss
+(Banerjee et al., 2005; Telgarsky and Dasgupta, 2012).
 
-\strong{Distance formulas used internally} (see \code{\link{glm_dist}}) \cr
-For two columns \emph{i} and \emph{j} we write
-\eqn{y_{ti}}, \eqn{y_{tj}} for their values at row \emph{t} and
-\eqn{w_{ti}}, \eqn{w_{tj}} for optional precision weights.
+For \code{method="poissondist"}, clustering profiles global channel intensity
+using fixed size factors: \eqn{\mu_{ij}=s_j c_{ig}} and
+\eqn{\widehat c_{ig}=\sum_j w_{ij}y_{ij}/\sum_j w_{ij}s_j}.
+The Ward route uses Witten's smoothed pairwise distance followed by
+\code{fastcluster::hclust(method="ward.D")}. The Bregman route uses the
+unsmoothed Poisson likelihood-merge cost for this size-factor model.
+Ward's recurrence is exact for squared-Euclidean sum-of-squares geometry;
+general deviance dissimilarities give a computational Ward hierarchy.
+Both routes score their candidate cuts under the specified profile model.
 
-\itemize{
-\item \strong{Symmetrised unit deviance}
-(\code{method = "deviance"}, default)\cr
-\deqn{
-  D_{ij}^{\text{dev}} \;=\;
-  \sum_t
-    \Bigl[ d\!\bigl(y_{ti},\;\bar\mu_t,\;w_{ti}\bigr) \;+\;
-           d\!\bigl(y_{tj},\;\bar\mu_t,\;w_{tj}\bigr) \Bigr], \qquad
-  \bar\mu_t \;=\;
-  \frac{w_{ti}y_{ti}+w_{tj}y_{tj}}{w_{ti}+w_{tj}},
-}{
-  D = Sigma_t [ d(y_i,mu_bar,w_i)+d(y_j,mu_bar,w_j) ],  mu_bar = (w_i y_i + w_j y_j)/(w_i+w_j)
-}
-where \eqn{d(y,\mu,w)} is the unit deviance returned by
-\code{family$dev.resids(y, mu, w)}. For the Gaussian(identity) family
-\eqn{d(y,\mu,w)=w(y-\mu)^2}, hence
-\eqn{D_{ij}^{\text{dev}}=\tfrac12\sum_t w_t(y_{ti}-y_{tj})^2} -
-exactly \emph{one-half} the (weighted) squared Euclidean distance, so
-\eqn{\sqrt{D}} is Euclidean up to the constant
-\eqn{\sqrt{1/2}}.
+For each candidate cut the criterion is
+\deqn{L(\mathcal G)-2\sum_g m_g\log(m_g/m)+c(n,n)q_{\mathcal G}.}
+Here \eqn{m_g} is the number of channels in group \eqn{g}, the second term
+is the fitted classification-mixture allocation loss, and
+\eqn{q_{\mathcal G}} counts informative row/group means plus \eqn{K-1}
+mixing proportions. \eqn{c} is the package IC penalty and \eqn{n} is the
+original number of rows (at least three for scoring). The saturated
+likelihood constant is common to all cuts and omitted. For GIC,
+\eqn{c(n,n)=\log(n)\log\log(n)}. This selects a cut within the fitted
+hierarchy; the regression likelihood and predictor count used by
+\code{\link[=L0glm.fit]{L0glm.fit()}} are separate. Dispersion and NB shape are fixed here rather
+than re-estimated at every cut. Gaussian/Gamma/inverse Gaussian dispersion
+should be supplied when its known scale differs from one.
 
-\item \strong{Poisson size-factor distance (Witten 2011)}
-(\code{method = "poissondist"})\cr
-With column size factors \eqn{s_i}, row totals
-\eqn{c_t=y_{ti}+y_{tj}} and smoothing \eqn{\beta} (default 1):
-\deqn{
-  n_{ti}= \frac{s_i\,c_t}{s_i+s_j}, \qquad
-  d_i   = \frac{y_{ti}+\beta}{n_{ti}+\beta}
-}
-\deqn{
-  D_{ij}^{\mathrm{pois}} =
-    \sum_t \Bigl[ n_{ti}+n_{tj} - n_{ti}d_i-n_{tj}d_j +
-                    y_{ti}\log d_i + y_{tj}\log d_j \Bigr].
-}
-}
+Native scalar kernels support Gaussian, Poisson, binomial proportions,
+Gamma, inverse Gaussian and fixed-shape negative binomial families. Joint
+multinomial and Cox responses have different likelihood structures.
+Quasipoisson and quasibinomial have native working-deviance kernels and
+support fixed cuts or Ward/dynamic cutting.
+Custom scalar unit deviances remain available through \code{\link[=glm_dist]{glm_dist()}} and
+the Ward/dynamic route.
 
-Note that hierarchical clustering is feasible only for moderately large data
-sets; for very large matrices more scalable Bregman
-k-means/X-means alternatives could be considered (Banerjee et al. 2005).
+Aggregation summarises the original columns. Poisson counts and their
+means add. Shared Poisson case weights stay unchanged; differing weights
+within a group cannot be combined into one exact weighted Poisson model.
+Gaussian means use precision-weighted averaging and summed precisions,
+including the supplied dispersion in those precisions.
+Binomial proportions use trial-weighted proportions. For Gamma, inverse
+Gaussian and NB, the returned summaries do not generally have the same
+fitted GLM family/link/dispersion. Clustering support therefore does not
+imply that automatic response aggregation is valid for every GLM.
 }
 \section{Functions}{
 \itemize{
-\item \code{glm_aggregate()}: Aggregate columns of \eqn{Y} over given cluster IDs.
+\item \code{glm_aggregate()}: Summarise the original channels using supplied groups.
 
 }}
 \examples{
+# Native likelihood clustering of response channels
+set.seed(12)
+Y <- matrix(rpois(120*12, rep(c(2, 12), each=120*6)), 120, 12)
+cl <- glm_cluster(Y, k.max=6L, nthreads=2L)
+cl$history
+cl$clusterids
+dim(cl$Y_agg)
+
+# A fixed-variance Gaussian example uses exact Bregman likelihood merges.
+Z <- cbind(matrix(rnorm(60*5, -2, .5),60),
+           matrix(rnorm(60*5,  2, .5),60))
+normal <- glm_cluster(Z, family=gaussian(), dispersion=.25, k.max=5L)
+normal$clusterids
+
 \donttest{
-data(GCMS_data2)                        # GC/MS beer-volatile window
-Y <- GCMS_data2                         # 1764 scans x 518 m/z traces
-
-##--- 1. Ward clustering with Poisson size-factor distance ---
-## We bin every 5 successive scans to speed up the distance calculation
-out_pois <- glm_cluster(Y,
-                        family   = poisson(identity),
-                        method   = "poissondist",
-                        rowbins  = 5)
-
-dim(out_pois$Y_agg)                    # 1764 scans x 4 trace-clusters
-matplot(out_pois$Y_agg ^ 0.2, type = "l", lty = 1,
-        xlab = "Scan index",
-        ylab = "Cluster intensity ^ 0.2",
-        main = paste("518 m/z traces collapsed into 4 clusters",
-                     "Witten Poisson distance, rowbins = 5",
-                     sep = "\n"))
-
-##--- 2. Same with pooled unit deviance ---
-out_js  <- glm_cluster(Y,
-                       family   = poisson(identity),
-                       method   = "deviance",
-                       rowbins  = 5)
-
-dim(out_js$Y_agg)                      # 1764 scans x 5 trace-clusters
-matplot(out_js$Y_agg ^ 0.2, type = "l", lty = 1,
-        xlab = "Scan index",
-        ylab = "Cluster intensity ^ 0.2",
-        main = paste("518 m/z traces collapsed into 5 clusters",
-                     "Pooled unit deviance, rowbins = 5",
-                     sep = "\n"))
+data(GCMS_data2)
+Y <- as.matrix(GCMS_data2)
+# Ordered scans allow coarsening for the clustering stage.
+ward <- glm_cluster(Y, method="poissondist", linkage="ward",
+                    size_fac=colSums(Y), rowbins=5L, k.max=32L)
+bregman <- glm_cluster(Y, method="poissondist", linkage="bregman",
+                       size_fac=colSums(Y), rowbins=5L, k.max=32L)
+matplot(ward$Y_agg^.2,type="l",lty=1,xlab="Scan",ylab="Summed intensity ^ 0.2")
 }
 }
 \references{
-Telgarsky, M. & Dasgupta, S. (2012).
-\emph{Agglomerative Bregman Clustering}.
-Proceedings of the 29th International Conference on Machine Learning, 59-66. \cr
-Banerjee, A., Merugu, S., Dhillon, I., & Ghosh, J. (2005).
-\emph{Clustering with Bregman Divergences}.
-Journal of Machine Learning Research, 6, 1705-1749. \cr
-Endres, D. M. & Schindelin, J. E. (2003).
-\emph{A New Metric for Probability Distributions}.
-IEEE Transactions on Information Theory, 49(7), 1858-1860. \cr
-\emph{Hierarchical Clustering}.
-In: Nielsen, F., Barbaresco, F. (eds.)
-\emph{Geometric Theory of Information},
-Lecture Notes in Computer Science 10589,
-pp. 369-395. Springer, Cham.
-\doi{10.1007/978-3-319-21903-5_8} \cr
-Witten, D. M. (2011).
-\emph{Classification and Clustering of Sequencing Data
-using a Poisson Model.}
-Annals of Applied Statistics 5(4): 2493-2518.
-}
-\author{
-Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\
-Laboratory of Socioecology and Social Evolution, KU Leuven \\
-\url{https://bio.kuleuven.be/eeb/tw/research} \\
-ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
+Banerjee, A. et al. (2005). Clustering with Bregman Divergences.
+JMLR 6, 1705--1749. \url{https://jmlr.org/papers/v6/banerjee05b.html}.
+
+Telgarsky, M. and Dasgupta, S. (2012). Agglomerative Bregman Clustering.
+ICML. \url{https://icml.cc/2012/papers/758.pdf}.
+
+Witten, D. M. (2011). Classification and Clustering of Sequencing Data
+using a Poisson Model. AOAS 5(4), 2493--2518. \doi{10.1214/11-AOAS493}.
 }

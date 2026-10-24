@@ -32,3 +32,7 @@
 
 * Size-adjusted Poisson channel distances use a native OpenMP kernel with
   packed distance storage and scalar, row or channel-specific weights.
+
+* Native scalar-family deviance and Bregman clustering use explicit pooled
+  likelihood merge costs, IC-scored tree cuts and dispersion-aware precision.
+  Poisson aggregation preserves shared case weights.

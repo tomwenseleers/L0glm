@@ -49,7 +49,10 @@ For channels \eqn{a,b}, the pooled-deviance dissimilarity is
 \deqn{D_{ab}=\sum_i\{d(y_{ia},\bar\mu_i,w_{ia})+
 d(y_{ib},\bar\mu_i,w_{ib})\},\qquad
 \bar\mu_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}{w_{ia}+w_{ib}}.}
-Rows with zero total weight contribute zero. For a regular scalar
+Native pooled-deviance kernels cover Gaussian, Poisson, binomial, Gamma,
+inverse Gaussian and fixed-shape NB families; custom scalar families use
+their R \code{dev.resids} function. NB shape is taken from the family object
+and held fixed. Rows with zero total weight contribute zero. For a regular scalar
 exponential family with convex mean potential \eqn{F},
 \eqn{d(y,\mu,w)=2w B_F(y,\mu)}. The pooled loss is twice a weighted
 Jensen gap. This connects the dissimilarity to exponential-family
