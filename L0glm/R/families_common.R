@@ -312,5 +312,9 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
                               grouped, 0, as.integer(maxit), tol, args, TRUE)
     passes$relaxed <- result
   }
+  if (relaxed && nonnegative) {
+    result <- L0glm_ext_boundary(data,result,validation)
+    passes$relaxed <- result
+  }
   L0glm_ext_result(data, result, passes, lambda, grouped, relaxed, args)
 }

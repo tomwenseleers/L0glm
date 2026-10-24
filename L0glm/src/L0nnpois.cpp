@@ -14,6 +14,7 @@
 #include <vector>
 #include "ridge_profile.h"
 #include "poisson_validation.h"
+#include "boundary.h"
 
 namespace {
 
@@ -899,6 +900,39 @@ Rcpp::List fit_all_impl(const Design& X,
     }
   }
 
+  if (relaxed) {
+    const VectorXd lower = VectorXd::Zero(p);
+    const bool positive_design = L0glm::boundary_nonnegative(X);
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
+#endif
+    for (int col = 0; col < m; ++col) {
+      VectorXd beta = coef.col(col), previous = beta, eta = Offset.col(col);
+      for (int j : vars) if (beta[j] != 0.0)
+        L0glm::boundary_column(X,j,[&](int i,double x) { eta[i] += x*beta[j]; });
+      int removed = L0glm::boundary_identity(X,Y.col(col),prior_weights.col(col),
+                                             beta,eta,lower,1,positive_design && (Offset.col(col).array()>=0.0).all());
+      if (removed && validation) {
+        VectorXd old_active(vars.size()), new_active(vars.size());
+        for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
+          old_active[a] = previous[vars[a]]; new_active[a] = beta[vars[a]];
+        }
+        const double old_loss = validation_data.loss(old_active,vars,col);
+        const double new_loss = validation_data.loss(new_active,vars,col);
+        if (!std::isfinite(new_loss) || new_loss > old_loss) removed = 0;
+      }
+      if (removed) {
+        coef.col(col) = beta;
+        // Rebuild the final signal: endpoint subtractions can leave roundoff
+        // at exact zero means, where inverse-variance weights are sensitive.
+        eta = Offset.col(col);
+        for (int j : vars) if (beta[j] != 0.0)
+          L0glm::boundary_column(X,j,[&](int i,double x) { eta[i] += x*beta[j]; });
+        for (int i = 0; i < n; ++i) weights_out(i,col) = prior_weights(i,col) == 0.0 ?
+          0.0 : prior_weights(i,col) / std::max(eta[i],std::numeric_limits<double>::epsilon());
+      }
+    }
+  }
   Rcpp::NumericVector dispersion(m, 1.0);
   Rcpp::List result = Rcpp::List::create(
     Rcpp::Named("coefficients") = coef,

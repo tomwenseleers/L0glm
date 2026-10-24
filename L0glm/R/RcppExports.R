@@ -9,6 +9,14 @@ L0nnpois_sparse_cpp <- function(X, y, weights, offset, prior_mean, start, always
     .Call('_L0glm_L0nnpois_sparse_cpp', PACKAGE = 'L0glm', X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation)
 }
 
+boundary_dense_cpp <- function(X, y, weights, beta, eta, lower, family, nonnegative_components = FALSE) {
+    .Call('_L0glm_boundary_dense_cpp', PACKAGE = 'L0glm', X, y, weights, beta, eta, lower, family, nonnegative_components)
+}
+
+boundary_sparse_cpp <- function(X, y, weights, beta, eta, lower, family, nonnegative_components = FALSE) {
+    .Call('_L0glm_boundary_sparse_cpp', PACKAGE = 'L0glm', X, y, weights, beta, eta, lower, family, nonnegative_components)
+}
+
 L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }

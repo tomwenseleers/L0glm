@@ -69,6 +69,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// boundary_dense_cpp
+Rcpp::List boundary_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, Eigen::VectorXd y, Eigen::VectorXd weights, Eigen::VectorXd beta, Eigen::VectorXd eta, Eigen::VectorXd lower, int family, bool nonnegative_components);
+RcppExport SEXP _L0glm_boundary_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP betaSEXP, SEXP etaSEXP, SEXP lowerSEXP, SEXP familySEXP, SEXP nonnegative_componentsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< bool >::type nonnegative_components(nonnegative_componentsSEXP);
+    rcpp_result_gen = Rcpp::wrap(boundary_dense_cpp(X, y, weights, beta, eta, lower, family, nonnegative_components));
+    return rcpp_result_gen;
+END_RCPP
+}
+// boundary_sparse_cpp
+Rcpp::List boundary_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, Eigen::VectorXd y, Eigen::VectorXd weights, Eigen::VectorXd beta, Eigen::VectorXd eta, Eigen::VectorXd lower, int family, bool nonnegative_components);
+RcppExport SEXP _L0glm_boundary_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP betaSEXP, SEXP etaSEXP, SEXP lowerSEXP, SEXP familySEXP, SEXP nonnegative_componentsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::MappedSparseMatrix<double>& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type eta(etaSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< bool >::type nonnegative_components(nonnegative_componentsSEXP);
+    rcpp_result_gen = Rcpp::wrap(boundary_sparse_cpp(X, y, weights, beta, eta, lower, family, nonnegative_components));
+    return rcpp_result_gen;
+END_RCPP
+}
 // L0glm_column_moments_cpp
 Rcpp::List L0glm_column_moments_cpp(SEXP X, Rcpp::Nullable<Rcpp::NumericVector> weights);
 RcppExport SEXP _L0glm_L0glm_column_moments_cpp(SEXP XSEXP, SEXP weightsSEXP) {
@@ -247,6 +283,8 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
     {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 19},
+    {"_L0glm_boundary_dense_cpp", (DL_FUNC) &_L0glm_boundary_dense_cpp, 8},
+    {"_L0glm_boundary_sparse_cpp", (DL_FUNC) &_L0glm_boundary_sparse_cpp, 8},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},

@@ -414,6 +414,21 @@ L0glm.fit.internal = function(X,
     working <- working_model(y, eta, mu, weights, offset)
     W.ret <- working$weights; z.ret <- working$response
   }
+  if (!hard_threshold && any(lower == 0 & beta > 0)) {
+    polished <- L0glm_boundary(X,as.numeric(y),beta,as.numeric(eta),weights,family,lower,as.numeric(offset))
+    if (polished$removed && !is.null(validation)) {
+      old_loss <- L0glm_validation_loss(validation,beta,centered$shift,centered$intercept)
+      new_loss <- L0glm_validation_loss(validation,polished$beta,centered$shift,centered$intercept)
+      if (!is.finite(new_loss) || new_loss > old_loss) polished$removed <- 0L
+    }
+    if (polished$removed) {
+      beta <- polished$beta; eta <- as.matrix(polished$eta); mu <- linkinv(eta)
+      if (family$family %in% c("poisson","quasipoisson","Gamma","inverse.gaussian"))
+        mu <- pmax(mu,.Machine$double.eps)
+      working <- working_model(y,eta,mu,weights,offset)
+      W.ret <- working$weights; z.ret <- working$response
+    }
+  }
   # A relaxed fit holds scale fixed during the solves, then reports its own
   # residual scale. Supplied positive dispersions remain unchanged throughout.
   if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {

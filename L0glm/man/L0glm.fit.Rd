@@ -339,7 +339,14 @@ zero-sum row constraints; a row with \eqn{s} admitted category entries has
 \item \code{mgcv::cox.ph()}: refit the selected log-relative-hazard
 coefficients using the Cox partial likelihood, without an intercept.
 }
-Hard thresholding is disabled during refitting. Explicit starting-value
+Hard thresholding is disabled during refitting. Relaxed nonnegative fits
+finish with a conditional boundary pass: a positive coefficient may be set
+to exactly zero when the endpoint derivative supports zero and the actual
+deviance or negative log likelihood does not increase. This uses no
+coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
+its fitted shape and Cox partial likelihood; multinomial CLR coefficients
+remain unrestricted. A validation checkpoint is retained if polishing
+would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and \code{always.include} terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
 The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,

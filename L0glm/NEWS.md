@@ -6,6 +6,10 @@
   Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.
 * Negative binomial regression with estimated shape, joint multinomial regression
   in centered log-ratio coordinates, and Cox proportional hazards models.
+* Conditional boundary polishing for relaxed nonnegative models removes
+  likelihood-supported zero coefficients without a coefficient-size cutoff.
+  Native Gaussian/Poisson kernels retain dense/sparse storage and Poisson OpenMP;
+  other GLMs, negative binomial and Cox use their family-specific objectives.
 * Single and multichannel fitting, grouped predictor-row selection, and relaxed
   refitting for accurate coefficient estimates on the selected support.
 * Dense and sparse matrices, tall and wide designs, fast Eigen solvers and
