@@ -11,7 +11,9 @@
 #' The dense solver forms weighted crossproducts using R's BLAS library.
 #' Eligible wide active systems use the Woodbury identity to factor an
 #' observation-space system rather than a predictor-space system.
-#' The default penalty is `lambda = "gic"`.
+#' The default penalty is `lambda = "gic"`. Optional `precluster=TRUE`
+#' screens summed channel groups and refines on the original responses; see
+#' [preclustering] for aggregate-only output and clustering controls.
 #' Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 #' `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 #' differences and require no additional ridge solve.
@@ -89,7 +91,17 @@ L0nnpois <- function(X,
                      tol           = 1e-10,
                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
                      verbose       = FALSE,
-                     validation    = NULL) {
+                     validation    = NULL,
+                     precluster    = FALSE,
+                     cluster.refit = TRUE,
+                     control.precluster = list()) {
+  L0glm_precluster_flags(precluster,cluster.refit)
+  if(precluster) {
+    if(!inherits(family,"family")) family<-family()
+    options<-mget(setdiff(names(formals(L0nnpois)),c("X","y")),envir=environment(),inherits=FALSE)
+    options$nonnegative<-TRUE
+    return(L0glm_precluster_fit(X,y,options,L0nnpois,names(match.call())[-1L]))
+  }
   validate_thresh(thresh)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)

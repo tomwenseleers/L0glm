@@ -36,3 +36,7 @@
 * Native scalar-family deviance and Bregman clustering use explicit pooled
   likelihood merge costs, IC-scored tree cuts and dispersion-aware precision.
   Poisson aggregation preserves shared case weights.
+
+* Optional Poisson channel preclustering screens aggregated responses and
+  refines on the original channels; aggregate-only fits retain the requested
+  penalty. Starts, weights, offsets and original predictor dimensions are preserved.

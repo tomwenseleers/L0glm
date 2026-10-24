@@ -30,7 +30,10 @@ L0nnpois(
   tol = 1e-10,
   control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
   verbose = FALSE,
-  validation = NULL
+  validation = NULL,
+  precluster = FALSE,
+  cluster.refit = TRUE,
+  control.precluster = list()
 )
 }
 \arguments{
@@ -417,6 +420,19 @@ printed to the console.}
 \code{L0glm.fit()}. Held-out deviance is scored directly in C++,
 retaining OpenMP threading across channels and restoring the best selection
 or relaxed-refit checkpoint. Validation predictors are shared across threads.}
+
+\item{precluster}{Enable response-channel preclustering, default \code{FALSE}.
+Currently supports nonnegative identity-link Poisson models. See
+\code{\link{preclustering}} for the fitting sequence and mathematical model.}
+
+\item{cluster.refit}{With preclustering, refine selection on every original
+channel (default \code{TRUE}). \code{FALSE} returns a model of summed cluster outcomes
+at the requested lambda. This is separate from \code{relaxed}.}
+
+\item{control.precluster}{Named advanced settings for clustering and
+screening. Defaults include at most 32 groups, Ward Poisson clustering,
+GIC cut selection, unit row bins and a screening factor of 0.1. See
+\code{\link{preclustering}} for all entries.}
 }
 \value{
 An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit()]:
@@ -442,7 +458,9 @@ Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
 observation-space system rather than a predictor-space system.
-The default penalty is `lambda = "gic"`.
+The default penalty is `lambda = "gic"`. Optional `precluster=TRUE`
+screens summed channel groups and refines on the original responses; see
+[preclustering] for aggregate-only output and clustering controls.
 Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.

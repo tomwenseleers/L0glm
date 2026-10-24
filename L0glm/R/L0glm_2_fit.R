@@ -377,6 +377,16 @@
 #'   }
 #'   Mandatory terms are unpenalized. Starting-value exclusions remain in force;
 #'   the returned sparse coefficient matrix keeps all original dimensions.
+#' @param precluster Enable response-channel preclustering, default \code{FALSE}.
+#'   Currently supports nonnegative identity-link Poisson models. See
+#'   \code{\link{preclustering}} for the fitting sequence and mathematical model.
+#' @param cluster.refit With preclustering, refine selection on every original
+#'   channel (default \code{TRUE}). \code{FALSE} returns a model of summed cluster outcomes
+#'   at the requested lambda. This is separate from \code{relaxed}.
+#' @param control.precluster Named advanced settings for clustering and
+#'   screening. Defaults include at most 32 groups, Ward Poisson clustering,
+#'   GIC cut selection, unit row bins and a screening factor of 0.1. See
+#'   \code{\link{preclustering}} for all entries.
 #' @param group.maxit Integer  specifying the maximum number of iterations to
 #'   perform for the group penalized fitting procedure when \code{grouped =
 #'   TRUE}. In each iteration, the columns of the response matrix \code{y} will
@@ -920,7 +930,16 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       nsis          = NULL,
                       screen.maxit  = 10L,
                       screen.nthreads = NULL,
-                      validation    = NULL) {
+                      validation    = NULL,
+                      precluster    = FALSE,
+                      cluster.refit = TRUE,
+                      control.precluster = list()) {
+  L0glm_precluster_flags(precluster,cluster.refit)
+  if(precluster) {
+    if(!inherits(family,"family")) family<-family()
+    options<-mget(setdiff(names(formals(L0glm.fit)),c("X","y")),envir=environment(),inherits=FALSE)
+    return(L0glm_precluster_fit(X,y,options,L0glm.fit,names(match.call())[-1L]))
+  }
   if (!is.null(validation) && !inherits(validation, "L0glm_validation")) {
     supplied <- names(match.call())[-1L]
     return(L0glm_validated_fit(mget(supplied, envir = environment(), inherits = FALSE)))
