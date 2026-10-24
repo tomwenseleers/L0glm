@@ -40,3 +40,6 @@
 * Optional Poisson channel preclustering screens aggregated responses and
   refines on the original channels; aggregate-only fits retain the requested
   penalty. Starts, weights, offsets and original predictor dimensions are preserved.
+* Preclustering-aware lambda paths reuse training-derived memberships while
+  estimating every model independently; cross-validation learns memberships and
+  size factors within each training fold.

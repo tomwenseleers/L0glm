@@ -89,7 +89,7 @@ articles:
     contents: [articles/algorithm, articles/performance]
 reference:
   - title: Fit, tune and compare sparse models
-    contents: [L0glm.fit, L0glm.tune, L0nnpois, sparseglm, L0glm.metrics]
+    contents: [L0glm.fit, L0glm.tune, L0nnpois, sparseglm, L0glm.metrics, preclustering]
   - title: Predictions, summaries and information criteria
     contents: [model_predictions, model_summary, model_criteria, information_criteria]
   - title: Special families

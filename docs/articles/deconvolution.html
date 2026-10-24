@@ -433,6 +433,36 @@ points are false positives and magenta points are false negatives.</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="cluster-channels-for-faster-support-selection">Cluster channels for faster support selection<a class="anchor" aria-label="anchor" href="#cluster-channels-for-faster-support-selection"></a>
+</h2>
+<p>For multichannel nonnegative Poisson models,
+<code>precluster=TRUE</code> first clusters and sums channels, selects
+promising peak locations in that reduced problem, then refines the fit
+on every original channel. <code>cluster.refit=FALSE</code> instead
+returns coefficients for the summed cluster outcomes.</p>
+<p>Both Ward and Bregman clustering use channel totals as size factors,
+<code>size_fac=colSums(Y)</code>. This accounts for differences in
+overall ion intensity while comparing the shapes of the chromatographic
+traces. The regression stages use the raw counts. Ward uses a smoothed
+Poisson dissimilarity; Bregman merges groups using their actual pooled
+Poisson likelihood loss.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">clustered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>linkage<span class="op">=</span><span class="st">"ward"</span>, rowbins<span class="op">=</span><span class="fl">5L</span>, k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">clustered</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">seconds</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">clustered</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"gic"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>, <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>Five-scan binning speeds up clustering of these ordered traces;
+fitting retains every scan. <code>linkage="bregman"</code> provides the
+alternative likelihood-based hierarchy with the same size factors. For
+CV, memberships and size factors are learned separately in each training
+fold. See <a href="../reference/preclustering.html">channel
+preclustering</a> for controls, starting values and aggregate-only
+output.</p>
+</div>
+<div class="section level2">
 <h2 id="regularization-and-tuning">Regularization and tuning<a class="anchor" aria-label="anchor" href="#regularization-and-tuning"></a>
 </h2>
 <p>An automatically preset level of regularization with
@@ -440,7 +470,7 @@ points are false positives and magenta points are false negatives.</p>
 solution straight away. Tuning over a lambda grid or cross-validation
 remains available to refine regularization further or optimize
 out-of-sample predictive performance.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>

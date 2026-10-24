@@ -140,3 +140,82 @@ test_that("working-family controls preserve channel dimensions and dispersion",{
     expect_true(all(fit$dispersion==1));expect_true(is.finite(L0glm.metrics(fit)$gic))
   }
 })
+
+
+test_that("CV learns partitions and size factors from training rows once per fold", {
+  d <- precluster_fixture(TRUE)
+  foldid <- rep(1:3, length.out=nrow(d$X))
+  seen <- list()
+  original <- glm_cluster
+  testthat::local_mocked_bindings(glm_cluster=function(Y, ...) {
+    seen[[length(seen)+1L]] <<- list(n=nrow(Y), totals=colSums(Y))
+    original(Y, ...)
+  }, .package="L0glm")
+  fit <- L0glm.tune(d$X, d$y, family=poisson(identity), offset=.2,
+    nonnegative=TRUE, precluster=TRUE, parallelize=FALSE,
+    control.precluster=list(k=4L), tune="cv", foldid=foldid,
+    nlambda=3L, prop_range=.3, plot=FALSE, printbest=FALSE)
+  expect_length(seen, 4L)
+  expect_equal(seen[[1]]$totals, colSums(d$y))
+  expect_length(fit$cv$preclustering, 3L)
+  for (k in 1:3) {
+    training <- foldid!=k
+    expect_equal(seen[[k+1L]]$n, sum(training))
+    expect_equal(seen[[k+1L]]$totals, colSums(d$y[training,]))
+    expect_equal(fit$cv$preclustering[[k]]$size_fac, unname(colSums(d$y[training,])))
+    expect_equal(length(fit$cv$preclustering[[k]]$clusterids), ncol(d$y))
+  }
+  expect_true(all(is.finite(fit$cv$mean)))
+  expect_s3_class(fit$fit_best, "L0glm_fit")
+  expect_s3_class(fit$fit_1se, "L0glm_fit")
+  direct <- L0nnpois(d$X,d$y,offset=.2,lambda=fit$lambda_best,
+    precluster=TRUE,parallelize=FALSE,control.precluster=list(k=4L))
+  expect_equal(coef(fit$fit_best),coef(direct),tolerance=0)
+  expect_equal(fit$preclustering$clusterids,direct$preclustering$clusterids)
+  expect_null(fit$start)
+
+  # Reproduce a CV score using that fold's independently initialized model.
+  k <- 2L; i <- 2L; training <- foldid!=k
+  controls <- list(clusterids=fit$cv$preclustering[[k]]$clusterids)
+  direct <- L0nnpois(d$X[training,],d$y[training,],offset=.2,
+    lambda=fit$cv$lambda_train[i,k],precluster=TRUE,parallelize=FALSE,
+    control.precluster=controls)
+  mu <- predict(direct,d$X[!training,],offset=.2)
+  expected <- sum(poisson()$dev.resids(d$y[!training,],mu,1))/length(mu)
+  expect_equal(unname(fit$cv$deviance[i,k]),expected,tolerance=1e-12)
+})
+
+test_that("IC paths reuse only memberships across independently fitted lambdas", {
+  d <- precluster_fixture()
+  calls <- 0L; original <- glm_cluster
+  testthat::local_mocked_bindings(glm_cluster=function(...) {
+    calls <<- calls+1L
+    original(...)
+  }, .package="L0glm")
+  fit <- L0glm.tune(d$X,d$y,family=poisson(identity),offset=.2,
+    nonnegative=TRUE,precluster=TRUE,parallelize=FALSE,
+    control.precluster=list(k=4L),nlambda=4L,prop_range=.4,
+    plot=FALSE,printbest=FALSE)
+  expect_equal(calls,1L)
+  for (i in seq_along(fit$lambdas)) {
+    direct <- L0nnpois(d$X,d$y,offset=.2,lambda=fit$lambdas[i],
+      precluster=TRUE,parallelize=FALSE,
+      control.precluster=list(clusterids=fit$preclustering$clusterids))
+    expect_equal(fit$coefficients[[i]],coef(direct),tolerance=0)
+  }
+  expect_null(fit$cv)
+})
+
+test_that("preclustering tuning explains unsupported response targets", {
+  d <- precluster_fixture()
+  expect_error(L0glm.tune(d$X,d$y,family=poisson(identity),
+    nonnegative=TRUE,precluster=TRUE,cluster.refit=FALSE),
+    "requires cluster.refit=TRUE")
+  expect_error(L0glm.tune(d$X,d$y,family=gaussian(),precluster=TRUE),
+    "nonnegative identity-link Poisson")
+  expect_error(L0glm.tune(d$X,d$y,family=poisson(identity),precluster=1),
+    "TRUE or FALSE")
+  if (requireNamespace("mgcv",quietly=TRUE))
+    expect_error(L0glm.tune(d$X,d$y,family=mgcv::nb(),
+      nonnegative=TRUE,precluster=TRUE), "nonnegative identity-link Poisson")
+})

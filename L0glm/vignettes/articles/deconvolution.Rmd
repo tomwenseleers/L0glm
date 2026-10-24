@@ -185,6 +185,36 @@ positives and magenta points are false negatives.
 
 <img src="../deconvolution-multi-coefficients-large.png" alt="One-column coefficient comparisons for GIC-preset L0glm and GIC- or CV-tuned group LASSO and relaxed group LASSO across all mass channels." width="100%">
 
+## Cluster channels for faster support selection
+
+For multichannel nonnegative Poisson models, `precluster=TRUE` first clusters
+and sums channels, selects promising peak locations in that reduced problem,
+then refines the fit on every original channel. `cluster.refit=FALSE` instead
+returns coefficients for the summed cluster outcomes.
+
+Both Ward and Bregman clustering use channel totals as size factors,
+`size_fac=colSums(Y)`. This accounts for differences in overall ion intensity
+while comparing the shapes of the chromatographic traces. The regression stages
+use the raw counts. Ward uses a smoothed Poisson dissimilarity; Bregman merges
+groups using their actual pooled Poisson likelihood loss.
+
+```{r precluster, eval=FALSE}
+clustered <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
+  lambda="gic", nonnegative=TRUE, grouped=TRUE, relaxed=TRUE,
+  precluster=TRUE,
+  control.precluster=list(linkage="ward", rowbins=5L, k.max=32L))
+clustered$preclustering$seconds
+L0glm.metrics(clustered, beta_true=multi$beta_true)[c(
+  "gic", "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
+```
+
+Five-scan binning speeds up clustering of these ordered traces; fitting retains
+every scan. `linkage="bregman"` provides the alternative likelihood-based
+hierarchy with the same size factors. For CV, memberships and size factors are
+learned separately in each training fold. See
+[channel preclustering](../reference/preclustering.html) for controls, starting
+values and aggregate-only output.
+
 ## Regularization and tuning
 
 An automatically preset level of regularization with `lambda="gic"` typically

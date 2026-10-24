@@ -54,6 +54,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
                      dimnames = list(NULL, paste0("Fold", seq_len(nfolds))))
   starts <- pilots <- preprocessing <- vector("list", nfolds)
+  preclustering <- if (isTRUE(args$precluster)) vector("list", nfolds) else NULL
   large <- as.double(nrow(args$X))*ncol(args$X) > 1e8
   if (large) invisible(gc())
   for (k in seq_len(nfolds)) {
@@ -76,7 +77,11 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
       fit <- tryCatch(do.call(L0glm.fit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
-      if (i == 1L) preprocessing[[k]] <- fit$preprocessing
+      if (i == 1L) {
+        preprocessing[[k]] <- fit$preprocessing
+        if (!is.null(preclustering)) preclustering[[k]] <- fit$preclustering
+        train_args <- L0glm_precluster_reuse(train_args, fit)
+      }
       active <- which(Matrix::rowSums(abs(fit$coefficients)) != 0)
       eta <- as.matrix(design[validation, active, drop = FALSE] %*%
         fit$coefficients[active, , drop = FALSE]) +
@@ -99,8 +104,10 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     centered <- sweep(deviance[finite, , drop = FALSE], 1L, mean_deviance[finite], "-")
     se[finite] <- sqrt(as.numeric(centered^2 %*% proportions) / (nfolds - 1L))
   }
-  list(lambda = lambdas, mean = mean_deviance, se = se, deviance = deviance,
+  result <- list(lambda = lambdas, mean = mean_deviance, se = se, deviance = deviance,
        foldid = foldid, nfolds = nfolds, fold_weights = fold_weights,
        starts = starts, pilots = pilots, preprocessing = preprocessing,
        lambda_train = fold_lambdas)
+  if (!is.null(preclustering)) result$preclustering <- preclustering
+  result
 }

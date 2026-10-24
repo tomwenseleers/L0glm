@@ -1,6 +1,7 @@
 #' Predictions and fitted values from sparse regression models
 #'
 #' @name model_predictions
+#' @importFrom stats fitted
 #' @md
 #' @description
 #' S3 prediction methods for [L0glm.fit()], [L0nnpois()] and [sparseglm()],

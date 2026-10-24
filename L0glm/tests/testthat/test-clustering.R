@@ -207,3 +207,15 @@ test_that("quasi and custom families retain working-deviance clustering",{
   z<-glm_cluster(Y,family=custom,k=3)
   expect_equal(max(z$clusterids),3L);expect_identical(z$linkage,"ward")
 })
+
+test_that("both Poisson linkages remove pure intensity differences using size factors", {
+  Y <- outer(c(0,1,3,8,2),c(1,4,12))
+  for (linkage in c("ward","bregman")) {
+    cl <- glm_cluster(Y,method="poissondist",linkage=linkage,
+      size_fac=colSums(Y),k=1L,nthreads=1L)
+    raw <- glm_cluster(Y,method="deviance",linkage=linkage,k=1L,nthreads=1L)
+    expect_equal(cl$history$deviance,0,tolerance=1e-10)
+    expect_gt(raw$history$deviance,0)
+    expect_equal(cl$Y_agg,matrix(rowSums(Y),ncol=1),ignore_attr=TRUE)
+  }
+})

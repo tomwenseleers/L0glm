@@ -167,6 +167,12 @@
 #' No separate minimum sample size or predictor count is imposed.
 #' Screening is recomputed inside each full-data or CV training fit; validation
 #' responses never determine its candidates. \code{screen="none"} disables it.
+#' \item \code{precluster}, \code{cluster.refit}, \code{control.precluster}:
+#' optional Poisson channel aggregation followed by original-channel refinement;
+#' see \code{\link{preclustering}}. Tuning requires \code{cluster.refit=TRUE}.
+#' A partition is computed once for the full-data path and separately for each
+#' CV training fold. Only memberships are shared across lambda fits; candidate
+#' supports and coefficients are fitted independently at every lambda.
 #' \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
 #' response channels or multinomial categories; \code{FALSE} selects individual
 #' channel coefficients or CLR category entries. Multinomial fitting always uses
@@ -223,6 +229,10 @@
 #' training rows, using training-weight-scaled pilot penalties. Full-data
 #' coefficients never initialize a CV training fit. A user-supplied numeric
 #' start is reused as supplied; the user is responsible for its provenance.
+#' Automatic channel preclustering likewise uses each fold's training responses
+#' and training column totals as size factors. Externally supplied
+#' \code{control.precluster$clusterids} or \code{size_fac} are reused as supplied;
+#' the user controls their provenance.
 #' Pilot support restriction fits the union selected by the pilots. Features
 #' outside that union remain zero throughout the path.
 #'
@@ -345,6 +355,10 @@
 #' full-data fits, not individual fold models. Also contains each fold's
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
 #'
+#' When channel preclustering is requested, \code{preclustering} retains the
+#' full-data partition and cut diagnostics, and \code{cv$preclustering} retains
+#' the corresponding training-only diagnostics for every fold.
+#'
 #' @example examples/L0glm.tune.R
 #' @example examples/L0glm.special-families.R
 #'
@@ -373,12 +387,21 @@ L0glm.tune <- function(X, y,
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
+  dots <- list(...)
+  precluster <- if ("precluster" %in% names(dots)) dots$precluster else FALSE
+  cluster.refit <- if ("cluster.refit" %in% names(dots)) dots$cluster.refit else TRUE
+  L0glm_precluster_flags(precluster, cluster.refit)
+  if (precluster && (!identical(family$family, "poisson") ||
+      !identical(family$link, "identity") || !isTRUE(dots$nonnegative)))
+    stop("precluster currently supports nonnegative identity-link Poisson fits.", call. = FALSE)
+  if (precluster && !cluster.refit)
+    stop("L0glm.tune requires cluster.refit=TRUE. To tune cluster outcomes, first use glm_aggregate and pass its response directly.", call. = FALSE)
   if (!is.null(L0glm_ext_kind(family))) return(L0glm_ext_tune(
     X, y, family, if (missing(weights)) NULL else weights,
     if (missing(offset)) NULL else offset, dispersion, tune, nlambda, prop_range,
     coefs.true, printbest, plot, mu_floor,
     if (missing(nfolds) && !is.null(foldid)) NULL else nfolds,
-    foldid, lambda_min, start, list(...)))
+    foldid, lambda_min, start, dots))
   if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
       nlambda < 2 || nlambda != as.integer(nlambda))
     stop("nlambda must be an integer of at least 2.", call. = FALSE)
@@ -391,7 +414,6 @@ L0glm.tune <- function(X, y,
   if (!is.numeric(mu_floor) || length(mu_floor) != 1L ||
       !is.finite(mu_floor) || mu_floor < 0)
     stop("mu_floor must be a finite nonnegative number.", call. = FALSE)
-  dots <- list(...)
   if ("IC" %in% names(dots))
     stop("IC was renamed to tune in L0glm.tune; use tune = \"gic\" or tune = \"cv\".",
          call. = FALSE)
@@ -428,6 +450,8 @@ L0glm.tune <- function(X, y,
   args$start <- initialization$start
   fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
   preset_fit <- fit_lambda(lambda_reference)
+  # Reuse memberships only: every lambda still estimates its own support.
+  args <- L0glm_precluster_reuse(args, preset_fit)
   included <- preset_fit$always.include
   penalized <- setdiff(seq_len(ncol(preset_fit$X)), included)
   is_zero <- function(fit) all(fit$coefficients[penalized, , drop = FALSE] == 0)
@@ -582,6 +606,7 @@ L0glm.tune <- function(X, y,
        fit_best     = fit_best,
        fit_1se      = fit_1se,
        cv           = cv)
+  if (precluster) result$preclustering <- preset_fit$preclustering
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result
 }

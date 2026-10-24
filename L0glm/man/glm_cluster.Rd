@@ -37,7 +37,10 @@ Response values must lie in the family's mean/deviance domain.}
 \item{method}{\code{"deviance"} (default) or \code{"poissondist"}.}
 
 \item{size_fac}{Nonnegative channel size factors for \code{"poissondist"},
-default \code{colSums(Y)}. A zero factor is allowed for an uninformative
+default \code{colSums(Y)}. The same factors apply to both Ward and Bregman
+clustering when \code{method="poissondist"}; \code{method="deviance"} uses raw
+channel means. Supplying \code{rep(1,ncol(Y))} disables size adjustment.
+A zero factor is allowed for an uninformative
 zero-count channel. Counts remain on their original scale.}
 
 \item{rowbins}{Positive integer, default \code{1L}. Values above one sum adjacent
@@ -49,7 +52,7 @@ physical cores; \code{1L} requests serial execution. Results have the same
 within-pair summation order at every thread count.}
 
 \item{linkage}{\code{"ward"} or \code{"bregman"}. The size-adjusted Poisson distance
-defaults to the validated Ward hierarchy. Other scalar-family deviances
+defaults to the Ward hierarchy. Other scalar-family deviances
 default to Bregman likelihood merges.}
 
 \item{criterion}{\code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"}, \code{"mbic"},
@@ -107,6 +110,9 @@ unsmoothed Poisson likelihood-merge cost for this size-factor model.
 Ward's recurrence is exact for squared-Euclidean sum-of-squares geometry;
 general deviance dissimilarities give a computational Ward hierarchy.
 Both routes score their candidate cuts under the specified profile model.
+Thus the same size factors adjust both linkages. The factors are nuisance
+exposures used to compare profile shapes; the regression stages continue
+to use raw counts, and the returned aggregates sum those raw counts.
 
 For each candidate cut the criterion is
 \deqn{L(\mathcal G)-2\sum_g m_g\log(m_g/m)+c(n,n)q_{\mathcal G}.}

@@ -28,7 +28,10 @@ Response values must lie in the family's mean/deviance domain.}
 \item{method}{\code{"deviance"} (default) or \code{"poissondist"}.}
 
 \item{size_fac}{Nonnegative channel size factors for \code{"poissondist"},
-default \code{colSums(Y)}. A zero factor is allowed for an uninformative
+default \code{colSums(Y)}. The same factors apply to both Ward and Bregman
+clustering when \code{method="poissondist"}; \code{method="deviance"} uses raw
+channel means. Supplying \code{rep(1,ncol(Y))} disables size adjustment.
+A zero factor is allowed for an uninformative
 zero-count channel. Counts remain on their original scale.}
 
 \item{nthreads}{Number of native worker threads. \code{NULL} uses the detected

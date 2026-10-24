@@ -225,7 +225,7 @@ quadratic programming solver.</p>
 <span>  <span class="va">X</span>,</span>
 <span>  <span class="va">y</span>,</span>
 <span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
 <span>  dispersion <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  offset <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -254,7 +254,10 @@ quadratic programming solver.</p>
 <span>  nsis <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  screen.maxit <span class="op">=</span> <span class="fl">10L</span>,</span>
 <span>  screen.nthreads <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  validation <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  validation <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  precluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cluster.refit <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  control.precluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -577,7 +580,14 @@ zero-sum row constraints; a row with \(s\) admitted category entries has
 \(s-1\) free directions. No new predictor rows are introduced.</p></li>
 <li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: refit the selected log-relative-hazard
 coefficients using the Cox partial likelihood, without an intercept.</p></li>
-</ul><p>Hard thresholding is disabled during refitting. Explicit starting-value
+</ul><p>Hard thresholding is disabled during refitting. Relaxed nonnegative fits
+finish with a conditional boundary pass: a positive coefficient may be set
+to exactly zero when the endpoint derivative supports zero and the actual
+deviance or negative log likelihood does not increase. This uses no
+coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
+its fitted shape and Cox partial likelihood; multinomial CLR coefficients
+remain unrestricted. A validation checkpoint is retained if polishing
+would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and <code>always.include</code> terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
 The default is <code>TRUE</code> for grouped multichannel ordinary GLMs and NB,
@@ -758,6 +768,25 @@ comparison to that start and preserves its exclusions. <code>rule = "min"</code>
 chooses minimum validation error; <code>rule = "1se"</code> chooses the sparsest
 candidate within one empirical standard error of the minimum.
 The default <code>NULL</code> fits to the usual numerical stopping criterion.</p></dd>
+
+
+<dt id="arg-precluster">precluster<a class="anchor" aria-label="anchor" href="#arg-precluster"></a></dt>
+<dd><p>Enable response-channel preclustering, default <code>FALSE</code>.
+Currently supports nonnegative identity-link Poisson models. See
+<code><a href="preclustering.html">preclustering</a></code> for the fitting sequence and mathematical model.</p></dd>
+
+
+<dt id="arg-cluster-refit">cluster.refit<a class="anchor" aria-label="anchor" href="#arg-cluster-refit"></a></dt>
+<dd><p>With preclustering, refine selection on every original
+channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of summed cluster outcomes
+at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
+
+
+<dt id="arg-control-precluster">control.precluster<a class="anchor" aria-label="anchor" href="#arg-control-precluster"></a></dt>
+<dd><p>Named advanced settings for clustering and
+screening. Defaults include at most 32 groups, Ward Poisson clustering,
+GIC cut selection, unit row bins and a screening factor of 0.1. See
+<code><a href="preclustering.html">preclustering</a></code> for all entries.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -1212,6 +1241,20 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>  main<span class="op">=</span><span class="st">"Estimated multichannel coefficients"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">old_par</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Precluster into at most 32 channel groups, select on their summed counts,</span></span>
+<span><span class="co"># then refine and return coefficients for every original mass channel.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_multi_clustered</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>,</span>
+<span>  family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  precluster<span class="op">=</span><span class="cn">TRUE</span>, cluster.refit<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit_multi_clustered</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">clusters</span></span>
+<span><span class="va">fit_multi_clustered</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">seconds</span></span>
+<span><span class="fu"><a href="L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit_multi_clustered</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>,</span>
+<span>    <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_multi_clustered</span><span class="op">)</span><span class="op">)</span>         <span class="co"># all original predictors and channels</span></span>
+<span></span>
 <span><span class="co"># High-dimensional Gaussian regression with positive and negative effects.</span></span>
 <span><span class="co"># Run manually: the dense design alone occupies about 4 GB.</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
@@ -1243,7 +1286,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">x</span>, ncol<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Nonnegativity includes the Gaussian intercept.</span></span>
-<span><span class="va">constrained</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="fl">3</span><span class="op">*</span><span class="va">x</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">constrained</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="fl">3</span><span class="op">*</span><span class="va">x</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="fl">1e-8</span>,</span>
 <span>  dispersion<span class="op">=</span><span class="fl">1</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">constrained</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
@@ -1251,9 +1294,9 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Estimate Gaussian variance from an automatic or user-supplied start.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y_gaussian</span> <span class="op">&lt;-</span> <span class="fl">2</span><span class="op">*</span><span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, sd<span class="op">=</span><span class="fl">.5</span><span class="op">)</span></span>
-<span><span class="va">automatic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">automatic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="cn">NULL</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">initialized</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">initialized</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="op">-</span><span class="fl">.25</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co"># dispersion=.25 instead keeps the variance fixed at .25.</span></span>
 <span></span>
@@ -1313,7 +1356,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.9</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="fl">.7</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
 <span>    <span class="op">-</span><span class="fl">.8</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="fl">.6</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">eta</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
+<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
 <span>  <span class="va">y_multinomial</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, prob<span class="op">=</span><span class="va">probabilities</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>, levels<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span>  <span class="va">multinomial_fit</span> <span class="op">&lt;-</span> <span class="fu">L0glm.fit</span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>

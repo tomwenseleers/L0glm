@@ -995,6 +995,20 @@ plotmat(coef(fit_multi), xlab="Spike location", ylab="Channel",
   main="Estimated multichannel coefficients")
 par(old_par)
 
+# Precluster into at most 32 channel groups, select on their summed counts,
+# then refine and return coefficients for every original mass channel.
+system.time(fit_multi_clustered <- L0glm.fit(multi$X, multi$y,
+  family=poisson(identity), lambda="gic", nonnegative=TRUE,
+  grouped=TRUE, relaxed=TRUE, parallelize=TRUE, ncores=4L,
+  precluster=TRUE, cluster.refit=TRUE,
+  control.precluster=list(k.max=32L, rowbins=5L)))
+fit_multi_clustered$preclustering$clusters
+fit_multi_clustered$preclustering$seconds
+L0glm.metrics(fit_multi_clustered, beta_true=multi$beta_true)[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
+dim(coef(fit_multi_clustered))         # all original predictors and channels
+
 # High-dimensional Gaussian regression with positive and negative effects.
 # Run manually: the dense design alone occupies about 4 GB.
 \dontrun{

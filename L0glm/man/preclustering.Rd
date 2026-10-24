@@ -6,7 +6,7 @@
 \description{
 \code{L0glm.fit(precluster=TRUE)} and \code{L0nnpois(precluster=TRUE)} cluster and sum
 response channels, screen predictors on the reduced responses, then refine
-the sparse fit on every original channel. The first implementation targets
+the sparse fit on every original channel. The workflow supports
 nonnegative identity-link Poisson models. Standalone \code{\link[=glm_cluster]{glm_cluster()}} also
 supports scalar-family Bregman/deviance clustering.
 }
@@ -31,7 +31,7 @@ Starting zeroes remain excluded in their original channels; compulsory
 terms remain eligible. Coefficients always retain the original predictor
 dimensions, with excluded rows zero. Shared observation weights remain
 unchanged; offsets and coefficient prior centres are summed across groups.
-The initial implementation requires weights shared across channels.
+This workflow requires weights shared across channels.
 
 With \code{cluster.refit=FALSE}, the returned model fits summed cluster outcomes
 at the requested \code{lambda}. Its coefficients/predictions have one column per
@@ -53,6 +53,14 @@ Clustering uses training response profiles. Observation offsets are carried
 into the aggregated and original regression stages. Validation uses the
 original channels for original-channel refinement; aggregate-only validation
 uses the same training-derived membership with summed responses/offsets.
+\code{\link[=L0glm.tune]{L0glm.tune()}} supports original-channel refinement, learning a partition
+once on the full data and separately in each CV training fold. Training
+column totals determine size factors in that fold. Partitions are reused
+across lambda values; selection coefficients are initialized independently.
+Externally supplied \code{clusterids} or \code{size_fac} are reused as provided.
+To tune an aggregate-only model, call \code{\link[=glm_aggregate]{glm_aggregate()}} first and tune its
+returned responses directly.
+
 The workflow does not add a background basis or change compulsory terms.
 Smooth-background modelling is a separate choice of the supplied design.
 

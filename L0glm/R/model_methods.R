@@ -1,6 +1,7 @@
 #' Likelihood, information criteria and coefficients of an L0glm fit
 #'
 #' @name model_criteria
+#' @importFrom stats nobs
 #' @md
 #' @description
 #' Extract the fitted log likelihood, parameter-count information criteria,

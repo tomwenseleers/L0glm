@@ -17,7 +17,10 @@
 #'   Response values must lie in the family's mean/deviance domain.
 #' @param method `"deviance"` (default) or `"poissondist"`.
 #' @param size_fac Nonnegative channel size factors for `"poissondist"`,
-#'   default `colSums(Y)`. A zero factor is allowed for an uninformative
+#'   default `colSums(Y)`. The same factors apply to both Ward and Bregman
+#'   clustering when `method="poissondist"`; `method="deviance"` uses raw
+#'   channel means. Supplying `rep(1,ncol(Y))` disables size adjustment.
+#'   A zero factor is allowed for an uninformative
 #'   zero-count channel. Counts remain on their original scale.
 #' @param nthreads Number of native worker threads. `NULL` uses the detected
 #'   physical cores; `1L` requests serial execution. Results have the same

@@ -11,7 +11,7 @@
 #'   rows for clustering only; use this acceleration for ordered Poisson scans
 #'   with unit weights. Returned aggregates retain every original row.
 #' @param linkage `"ward"` or `"bregman"`. The size-adjusted Poisson distance
-#'   defaults to the validated Ward hierarchy. Other scalar-family deviances
+#'   defaults to the Ward hierarchy. Other scalar-family deviances
 #'   default to Bregman likelihood merges.
 #' @param criterion `"gic"` (default), `"aic"`, `"bic"`, `"ebic"`, `"mbic"`,
 #'   or `"dynamic"` for dynamicTreeCut on a Ward hierarchy. Quasi/custom
@@ -50,6 +50,9 @@
 #' Ward's recurrence is exact for squared-Euclidean sum-of-squares geometry;
 #' general deviance dissimilarities give a computational Ward hierarchy.
 #' Both routes score their candidate cuts under the specified profile model.
+#' Thus the same size factors adjust both linkages. The factors are nuisance
+#' exposures used to compare profile shapes; the regression stages continue
+#' to use raw counts, and the returned aggregates sum those raw counts.
 #'
 #' For each candidate cut the criterion is
 #' \deqn{L(\mathcal G)-2\sum_g m_g\log(m_g/m)+c(n,n)q_{\mathcal G}.}

@@ -10,7 +10,9 @@ Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
 observation-space system rather than a predictor-space system.
-The default penalty is `lambda = &quot;gic&quot;`.
+The default penalty is `lambda = &quot;gic&quot;`. Optional `precluster=TRUE`
+screens summed channel groups and refines on the original responses; see
+[preclustering] for aggregate-only output and clustering controls.
 Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
@@ -32,7 +34,9 @@ Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
 observation-space system rather than a predictor-space system.
-The default penalty is `lambda = &quot;gic&quot;`.
+The default penalty is `lambda = &quot;gic&quot;`. Optional `precluster=TRUE`
+screens summed channel groups and refines on the original responses; see
+[preclustering] for aggregate-only output and clustering controls.
 Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
@@ -103,7 +107,9 @@ Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
 observation-space system rather than a predictor-space system.
-The default penalty is `lambda = "gic"`.
+The default penalty is `lambda = "gic"`. Optional `precluster=TRUE`
+screens summed channel groups and refines on the original responses; see
+[preclustering] for aggregate-only output and clustering controls.
 Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
@@ -145,7 +151,10 @@ if coefficients of either sign are required.</p>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  control.solver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"control.solver.gen"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>solver <span class="op">=</span> <span class="va">solver</span>, method <span class="op">=</span> <span class="va">method</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  validation <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  validation <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  precluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cluster.refit <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  control.precluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -443,7 +452,14 @@ zero-sum row constraints; a row with \(s\) admitted category entries has
 \(s-1\) free directions. No new predictor rows are introduced.</p></li>
 <li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: refit the selected log-relative-hazard
 coefficients using the Cox partial likelihood, without an intercept.</p></li>
-</ul><p>Hard thresholding is disabled during refitting. Explicit starting-value
+</ul><p>Hard thresholding is disabled during refitting. Relaxed nonnegative fits
+finish with a conditional boundary pass: a positive coefficient may be set
+to exactly zero when the endpoint derivative supports zero and the actual
+deviance or negative log likelihood does not increase. This uses no
+coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
+its fitted shape and Cox partial likelihood; multinomial CLR coefficients
+remain unrestricted. A validation checkpoint is retained if polishing
+would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and <code>always.include</code> terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
 The default is <code>TRUE</code> for grouped multichannel ordinary GLMs and NB,
@@ -551,6 +567,25 @@ printed to the console.</p></dd>
 <code><a href="L0glm.fit.html">L0glm.fit()</a></code>. Held-out deviance is scored directly in C++,
 retaining OpenMP threading across channels and restoring the best selection
 or relaxed-refit checkpoint. Validation predictors are shared across threads.</p></dd>
+
+
+<dt id="arg-precluster">precluster<a class="anchor" aria-label="anchor" href="#arg-precluster"></a></dt>
+<dd><p>Enable response-channel preclustering, default <code>FALSE</code>.
+Currently supports nonnegative identity-link Poisson models. See
+<code><a href="preclustering.html">preclustering</a></code> for the fitting sequence and mathematical model.</p></dd>
+
+
+<dt id="arg-cluster-refit">cluster.refit<a class="anchor" aria-label="anchor" href="#arg-cluster-refit"></a></dt>
+<dd><p>With preclustering, refine selection on every original
+channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of summed cluster outcomes
+at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
+
+
+<dt id="arg-control-precluster">control.precluster<a class="anchor" aria-label="anchor" href="#arg-control-precluster"></a></dt>
+<dd><p>Named advanced settings for clustering and
+screening. Defaults include at most 32 groups, Ward Poisson clustering,
+GIC cut selection, unit row bins and a screening factor of 0.1. See
+<code><a href="preclustering.html">preclustering</a></code> for all entries.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -311,6 +311,12 @@ and predictors excluded by explicit zero starts in every response channel.
 No separate minimum sample size or predictor count is imposed.
 Screening is recomputed inside each full-data or CV training fit; validation
 responses never determine its candidates. <code>screen="none"</code> disables it.</p></li>
+<li><p><code>precluster</code>, <code>cluster.refit</code>, <code>control.precluster</code>:
+optional Poisson channel aggregation followed by original-channel refinement;
+see <code><a href="preclustering.html">preclustering</a></code>. Tuning requires <code>cluster.refit=TRUE</code>.
+A partition is computed once for the full-data path and separately for each
+CV training fold. Only memberships are shared across lambda fits; candidate
+supports and coefficients are fitted independently at every lambda.</p></li>
 <li><p><code>grouped</code>: <code>TRUE</code> (default) selects predictor rows across
 response channels or multinomial categories; <code>FALSE</code> selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses
@@ -424,7 +430,11 @@ penalties <code>lambda_train</code>. <code>fit_best</code>, <code>fit_1se</code>
 full-data fits, not individual fold models. Also contains each fold's
 <code>starts</code>, <code>pilots</code> and training <code>preprocessing</code>.</p></dd>
 
-</dl></div>
+
+</dl><p>When channel preclustering is requested, <code>preclustering</code> retains the
+full-data partition and cut diagnostics, and <code>cv$preclustering</code> retains
+the corresponding training-only diagnostics for every fold.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>For <code>prior.mean = NULL</code> or an explicitly all-zero prior mean,
@@ -455,6 +465,10 @@ With <code>start = "pilot"</code>, each fold constructs its own seed from its
 training rows, using training-weight-scaled pilot penalties. Full-data
 coefficients never initialize a CV training fit. A user-supplied numeric
 start is reused as supplied; the user is responsible for its provenance.
+Automatic channel preclustering likewise uses each fold's training responses
+and training column totals as size factors. Externally supplied
+<code>control.precluster$clusterids</code> or <code>size_fac</code> are reused as supplied;
+the user controls their provenance.
 Pilot support restriction fits the union selected by the pilots. Features
 outside that union remain zero throughout the path.</p>
 <p>The fitter's penalty is on a total-likelihood scale. In each fold lambda
@@ -603,11 +617,11 @@ after tuning.</p>
 <span></span>
 <span><span class="co"># screen="auto" applies p_eligible &gt; 10*n independently at each lambda,</span></span>
 <span><span class="co"># with n equal to the training row count, including within each CV fold.</span></span>
-<span><span class="va">hd_gic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
+<span><span class="va">hd_gic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">5</span>, coefs.true<span class="op">=</span><span class="va">beta_hd</span>, screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span>, plot<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co"># Screening and preprocessing are recomputed within each training fold.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">hd_cv</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
+<span><span class="va">hd_cv</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">5</span>, nfolds<span class="op">=</span><span class="fl">3</span>, coefs.true<span class="op">=</span><span class="va">beta_hd</span>,</span>
 <span>  screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span>, plot<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GIC<span class="op">=</span><span class="va">hd_gic</span><span class="op">$</span><span class="va">lambda_best</span>, CV<span class="op">=</span><span class="va">hd_cv</span><span class="op">$</span><span class="va">lambda_best</span>,</span>
@@ -653,7 +667,7 @@ after tuning.</p>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.9</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="fl">.7</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
 <span>    <span class="op">-</span><span class="fl">.8</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="fl">.6</span><span class="op">*</span><span class="va">X_special</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">eta</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
+<span>  <span class="va">probabilities</span> <span class="op">&lt;-</span> <span class="va">probabilities</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">probabilities</span><span class="op">)</span></span>
 <span>  <span class="va">y_multinomial</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, prob<span class="op">=</span><span class="va">probabilities</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>, levels<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span>  <span class="va">multinomial_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>

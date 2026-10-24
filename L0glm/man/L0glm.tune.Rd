@@ -187,6 +187,12 @@ and predictors excluded by explicit zero starts in every response channel.
 No separate minimum sample size or predictor count is imposed.
 Screening is recomputed inside each full-data or CV training fit; validation
 responses never determine its candidates. \code{screen="none"} disables it.
+\item \code{precluster}, \code{cluster.refit}, \code{control.precluster}:
+optional Poisson channel aggregation followed by original-channel refinement;
+see \code{\link{preclustering}}. Tuning requires \code{cluster.refit=TRUE}.
+A partition is computed once for the full-data path and separately for each
+CV training fold. Only memberships are shared across lambda fits; candidate
+supports and coefficients are fitted independently at every lambda.
 \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
 response channels or multinomial categories; \code{FALSE} selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses
@@ -257,6 +263,10 @@ matrix, \code{foldid}, \code{nfolds}, \code{fold_weights}, and the training
 penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
 full-data fits, not individual fold models. Also contains each fold's
 \code{starts}, \code{pilots} and training \code{preprocessing}.}
+
+When channel preclustering is requested, \code{preclustering} retains the
+full-data partition and cut diagnostics, and \code{cv$preclustering} retains
+the corresponding training-only diagnostics for every fold.
 }
 \description{
 Tunes the lambda parameter for the \code{\link{L0glm.fit}} 
@@ -306,6 +316,10 @@ With \code{start = "pilot"}, each fold constructs its own seed from its
 training rows, using training-weight-scaled pilot penalties. Full-data
 coefficients never initialize a CV training fit. A user-supplied numeric
 start is reused as supplied; the user is responsible for its provenance.
+Automatic channel preclustering likewise uses each fold's training responses
+and training column totals as size factors. Externally supplied
+\code{control.precluster$clusterids} or \code{size_fac} are reused as supplied;
+the user controls their provenance.
 Pilot support restriction fits the union selected by the pilots. Features
 outside that union remain zero throughout the path.
 
