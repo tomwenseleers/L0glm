@@ -173,7 +173,9 @@ Coefficients with
 a name that includes \code{"Intercept"} in their name are always included. 
 Use \code{NULL} or 0 to request no additional mandatory terms;
 recognized intercepts remain mandatory. If `intercept = TRUE`, the first column (intercept) will
-always be estimated and included in the model.}
+always be estimated and included in the model. Indices refer to columns
+of the supplied `X`. Nonnegative compulsory terms are refined in a small
+constrained block; see [compulsory_terms] for smooth-background modelling.}
 
 \item{normalize}{Preprocessing convention: \code{"auto"} (default) uses
 \code{"rms"} for signed fits or a free intercept, and \code{"none"} for
@@ -465,7 +467,9 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
-The LLT update enforces this by clamping negative proposals to zero.
+The LLT sparse-selection update clamps negative proposals to zero.
+Unpenalized intercepts and `always.include` terms are refined using a small
+constrained Poisson solve; see [compulsory_terms].
 With positive active effects and well-chosen regularization such as
 `lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
 See the solver discussion in [L0glm.fit()] for measured comparisons with
@@ -498,6 +502,19 @@ system.time(fit.mc <- L0nnpois(
 
 dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
+
+## A six-coefficient nonnegative spline background, refined on every channel.
+B <- splines::bs(seq(0, 1, length.out=n), df=6, intercept=TRUE)
+set.seed(3)
+alpha <- outer(c(2, 5, 3, 7, 4, 2), rep(1, ncol(sim.pois.mc$y)))
+Y_background <- sim.pois.mc$y + matrix(rpois(length(sim.pois.mc$y), B \%*\% alpha),
+  n, ncol(sim.pois.mc$y))
+compulsory <- p + seq_len(ncol(B))
+fit_background <- L0nnpois(cbind(sim.pois.mc$X, Matrix::Matrix(B, sparse=TRUE)),
+  Y_background, always.include=compulsory, lambda="gic", ncores=4L,
+  precluster=TRUE, control.precluster=list(k.max=32L, rowbins=5L))
+background_hat <- B \%*\% as.matrix(coef(fit_background)[compulsory, , drop=FALSE])
+fit_background$nuisance$seconds
 
 \dontrun{
 ## Compare with the general R fitting path (process-based parallelism):

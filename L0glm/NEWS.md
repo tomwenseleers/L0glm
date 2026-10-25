@@ -20,6 +20,10 @@
   zero starts in every response channel. The same rule uses the training row
   count in each `L0glm.tune()` fit.
   Screening uses physical cores by default, with explicit thread-count overrides.
+* Small constrained solves for nonnegative compulsory terms and smooth spline
+  backgrounds, alternating with sparse selection on the original channels.
+  Gaussian, Poisson, other scalar GLMs and negative-binomial/Cox fits retain
+  their distribution-specific likelihoods, dispersion and validation controls.
 * Observation weights, offsets, intercepts, mandatory predictors, normalization,
   starting values, nonnegativity constraints and validation-based early stopping.
 * Information-criterion presets and lambda-path tuning, five-fold cross-validation,

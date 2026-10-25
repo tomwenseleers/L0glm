@@ -62,7 +62,9 @@ To tune an aggregate-only model, call \code{\link[=glm_aggregate]{glm_aggregate(
 returned responses directly.
 
 The workflow does not add a background basis or change compulsory terms.
-Smooth-background modelling is a separate choice of the supplied design.
+Include a low-df B-spline basis through \code{always.include} for a smooth
+background. Its nonnegative coefficients are refined separately from the
+selected peaks on the original channels; see \link{compulsory_terms}.
 
 The returned ordinary \code{L0glm_fit} gains \code{preclustering}: memberships,
 channel names, candidates, screening coefficients, actual penalties,

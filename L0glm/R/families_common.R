@@ -275,6 +275,11 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
       (solver != "eigen" || any(data$lower > -1e100)))
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)
   state <- if (data$kind == "nb") list(theta = data$response$theta, estimated = data$response$estimated) else list()
+  if(data$kind=="nb" && !is.null(control.solver$.theta.start)) {
+    theta <- control.solver$.theta.start
+    if(length(theta)!=data$m || any(!is.finite(theta)|theta<=0)) stop("Invalid NB nuisance starting shape.")
+    state$theta <- as.numeric(theta)
+  }
   B <- data$B
   if (!data$explicit) {
     D <- matrix(1e-3, data$p, data$m)

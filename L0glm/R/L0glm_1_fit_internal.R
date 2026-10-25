@@ -59,6 +59,7 @@ L0glm.fit.internal = function(X,
   dispersion <- L0glm_dispersion(dispersion, family)
   estimate_dispersion <- is.null(dispersion) || dispersion < 0
   if (!is.null(dispersion)) dispersion <- abs(dispersion)
+  offset_df <- if(is.null(control.solver$.nuisance.df)) 0L else control.solver$.nuisance.df
   scale_stable <- 0L
   scale_frozen <- !estimate_dispersion
   scale_updates <- 0L
@@ -360,9 +361,9 @@ L0glm.fit.internal = function(X,
     }
     
     ## ----- bounded Pearson scale update, without another fit ------
-    scale_estimable <- sum(nonzero) < 0.7 * n_positive
+    scale_estimable <- sum(nonzero)+offset_df < 0.7 * n_positive
     if (!scale_frozen && hard_threshold && iter >= 3L && scale_estimable) {
-      target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero))
+      target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero)+offset_df)
       if (is.finite(target) && target > 0) {
         stable <- !support_changed && abs(target / dispersion - 1) < 0.01
         scale_stable <- if (stable) scale_stable + 1L else 0L
@@ -433,7 +434,7 @@ L0glm.fit.internal = function(X,
   # residual scale. Supplied positive dispersions remain unchanged throughout.
   if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
     target <- L0glm_pearson_scale(y, mu, weights, family,
-                                 sum(beta != 0) + sum(beta[always.include] == 0))
+                                 sum(beta != 0) + sum(beta[always.include] == 0)+offset_df)
     if (is.finite(target) && target > 0) dispersion <- target
   }
   if (length(centered$intercept)) beta[centered$intercept] <-

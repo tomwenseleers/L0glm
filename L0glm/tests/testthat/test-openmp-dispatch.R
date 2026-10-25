@@ -11,7 +11,8 @@ test_that("eligible L0glm.fit calls forward all fitting controls to L0nnpois", {
     maxit = 12L, grouped = FALSE, group.maxit = 3L, relaxed = TRUE,
     prior.mean = matrix(0.2, 3, 2),
     thresh = 1e-6, tol = 1e-8,
-    control.solver = list(NaturalOrdering = TRUE), verbose = TRUE, validation = NULL
+    # Test the primitive backend dispatch independently of nuisance orchestration.
+    control.solver = list(NaturalOrdering = TRUE, .nuisance = FALSE), verbose = TRUE, validation = NULL
   )
   fit <- do.call(L0glm.fit, args)
   expect_setequal(names(fit$args), setdiff(names(args), "nonnegative"))

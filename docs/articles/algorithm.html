@@ -1580,6 +1580,45 @@ original dimensions. Model objects also retain the distribution/link,
 offsets, prior weights, normalization, selected lambda, convergence
 information, fitted distribution parameters and validation/screening
 diagnostics when requested.</p>
+</div>
+<div class="section level3">
+<h3 id="nonnegative-compulsory-terms-and-spline-backgrounds">Nonnegative compulsory terms and spline backgrounds<a class="anchor" aria-label="anchor" href="#nonnegative-compulsory-terms-and-spline-backgrounds"></a>
+</h3>
+<p>Separate the unpenalized block from the sparse slopes, <span class="math display">
+\eta_j=X\beta_j+B\alpha_j+o_j,\qquad\alpha_j\in\mathcal C_j.
+</span> Here <span class="math inline">\mathcal C_j</span> imposes
+nonnegativity on compulsory terms, with the usual unrestricted binomial
+intercept. Conditional on <span class="math inline">\beta_j</span>,
+solve the small constrained likelihood problem for <span class="math inline">\alpha_j</span>. An active-set quadratic solver uses
+exact Gaussian curvature, observed Poisson curvature for nonnegative
+identity-link signals, or a safeguarded Fisher-scoring quadratic for
+other scalar GLMs. Cox uses its partial-likelihood score and
+information. Negative-binomial shape updates remain conditional on the
+current fitted means.</p>
+<p>The outer procedure is:</p>
+<ol style="list-style-type: decimal">
+<li>Initialize a full model. For automatic starts in positive-mean
+identity models, a nonnegative partition-of-unity spline basis is
+initialized through a constant fit, then expanded into its spline
+coefficients.</li>
+<li>Solve the small compulsory block, keeping the sparse signal
+fixed.</li>
+<li>Refit candidate slopes with <span class="math inline">B\alpha</span>
+included in the link-scale offset, using the original penalty and
+predictor universe. Use two grouped passes unless
+<code>group.maxit</code> is supplied.</li>
+<li>Accept an update when the original-data likelihood plus complexity
+improves; validation stopping uses held-out deviance instead. Repeat at
+most twice and finish with a compulsory-block polish.</li>
+</ol>
+<p>Compulsory parameters are included in dispersion degrees of freedom
+even when their contribution is temporarily represented as a fixed
+offset. Explicit zero starts continue to exclude selectable
+coefficients. A one-iteration ridge pilot (<code>maxit=1</code>) retains
+its single-pass definition. Preclustering supplies Poisson candidates;
+all outer scores and final coefficients use the original channels. See
+<a href="../reference/compulsory_terms.html">compulsory terms</a> for
+details.</p>
 <p><strong>Implementation map.</strong> The equations above can be
 followed directly in the source:</p>
 <table class="table">
@@ -1618,10 +1657,17 @@ followed directly in the source:</p>
 </td>
 </tr>
 <tr class="odd">
+<td align="left">Constrained compulsory blocks</td>
+<td align="left">
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/nuisance.R" class="external-link">nuisance.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/nuisance.cpp" class="external-link">nuisance.cpp</a>
+</td>
+</tr>
+<tr class="even">
 <td align="left">Native Poisson backend</td>
 <td align="left"><a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp" class="external-link">L0nnpois.cpp</a></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Special-family passes</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R" class="external-link">families_common.R</a>,
@@ -1631,7 +1677,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R" class="external-link">family_cox_pcg.R</a>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Screening and outer ISIS</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R" class="external-link">sis_context.R</a>,
@@ -1640,7 +1686,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R" class="external-link">screening.R</a>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Backtracking and validation</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/irls.R" class="external-link">irls.R</a>,

@@ -60,6 +60,29 @@ L0glm.metrics(fit_multi_clustered, beta_true=multi$beta_true)[
     "within_row_F1_score", "within_row_MCC")]
 dim(coef(fit_multi_clustered))         # all original predictors and channels
 
+# A smooth nonnegative background: append a low-df spline basis and keep
+# those columns unpenalized. Poisson backgrounds add directly to the signal.
+B <- splines::bs(seq(0, 1, length.out=nrow(multi$X)), df=6, intercept=TRUE)
+alpha <- outer(c(2, 5, 3, 7, 4, 2), seq(.5, 1.5, length.out=ncol(multi$y)))
+set.seed(3)
+Y_background <- multi$y + matrix(rpois(length(multi$y), B %*% alpha),
+  nrow(multi$y), ncol(multi$y))
+X_background <- cbind(multi$X, Matrix::Matrix(B, sparse=TRUE))
+compulsory <- ncol(multi$X) + seq_len(ncol(B))
+fit_background <- L0glm.fit(X_background, Y_background,
+  family=poisson(identity), lambda="gic", nonnegative=TRUE,
+  always.include=compulsory, grouped=TRUE, relaxed=TRUE,
+  precluster=TRUE, ncores=4L,
+  control.precluster=list(k.max=32L, rowbins=5L))
+background_hat <- B %*% as.matrix(coef(fit_background)[compulsory, , drop=FALSE])
+# Every original mass channel is retained in both the peak and background fit.
+dim(coef(fit_background))
+fit_background$nuisance$seconds
+L0glm.metrics(fit_background,
+  beta_true=rbind(multi$beta_true, Matrix::Matrix(alpha, sparse=TRUE)))[
+  c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
+    "within_row_F1_score", "within_row_MCC")]
+
 # High-dimensional Gaussian regression with positive and negative effects.
 # Run manually: the dense design alone occupies about 4 GB.
 \dontrun{

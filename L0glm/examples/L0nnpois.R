@@ -23,6 +23,19 @@ system.time(fit.mc <- L0nnpois(
 dim(fit.mc$coefficients)
 sum(fit.mc$coefficients != 0)
 
+## A six-coefficient nonnegative spline background, refined on every channel.
+B <- splines::bs(seq(0, 1, length.out=n), df=6, intercept=TRUE)
+set.seed(3)
+alpha <- outer(c(2, 5, 3, 7, 4, 2), rep(1, ncol(sim.pois.mc$y)))
+Y_background <- sim.pois.mc$y + matrix(rpois(length(sim.pois.mc$y), B %*% alpha),
+  n, ncol(sim.pois.mc$y))
+compulsory <- p + seq_len(ncol(B))
+fit_background <- L0nnpois(cbind(sim.pois.mc$X, Matrix::Matrix(B, sparse=TRUE)),
+  Y_background, always.include=compulsory, lambda="gic", ncores=4L,
+  precluster=TRUE, control.precluster=list(k.max=32L, rowbins=5L))
+background_hat <- B %*% as.matrix(coef(fit_background)[compulsory, , drop=FALSE])
+fit_background$nuisance$seconds
+
 \dontrun{
 ## Compare with the general R fitting path (process-based parallelism):
 system.time(fit.mc <- L0glm.fit(

@@ -1366,6 +1366,40 @@ dimensions. Model objects also retain the distribution/link, offsets, prior
 weights, normalization, selected lambda, convergence information, fitted
 distribution parameters and validation/screening diagnostics when requested.
 
+### Nonnegative compulsory terms and spline backgrounds
+
+Separate the unpenalized block from the sparse slopes,
+\[
+\eta_j=X\beta_j+B\alpha_j+o_j,\qquad\alpha_j\in\mathcal C_j.
+\]
+Here \(\mathcal C_j\) imposes nonnegativity on compulsory terms, with the
+usual unrestricted binomial intercept. Conditional on \(\beta_j\), solve the
+small constrained likelihood problem for \(\alpha_j\). An active-set quadratic
+solver uses exact Gaussian curvature, observed Poisson curvature for
+nonnegative identity-link signals, or a safeguarded Fisher-scoring quadratic
+for other scalar GLMs. Cox uses its partial-likelihood score and information.
+Negative-binomial shape updates remain conditional on the current fitted means.
+
+The outer procedure is:
+
+1. Initialize a full model. For automatic starts in positive-mean identity
+   models, a nonnegative partition-of-unity spline basis is initialized through
+   a constant fit, then expanded into its spline coefficients.
+2. Solve the small compulsory block, keeping the sparse signal fixed.
+3. Refit candidate slopes with \(B\alpha\) included in the link-scale offset,
+   using the original penalty and predictor universe. Use two grouped passes
+   unless `group.maxit` is supplied.
+4. Accept an update when the original-data likelihood plus complexity improves;
+   validation stopping uses held-out deviance instead. Repeat at most twice and
+   finish with a compulsory-block polish.
+
+Compulsory parameters are included in dispersion degrees of freedom even when
+their contribution is temporarily represented as a fixed offset. Explicit
+zero starts continue to exclude selectable coefficients. A one-iteration ridge
+pilot (`maxit=1`) retains its single-pass definition. Preclustering supplies
+Poisson candidates; all outer scores and final coefficients use the original
+channels. See [compulsory terms](../reference/compulsory_terms.html) for details.
+
 **Implementation map.** The equations above can be followed directly in the
 source:
 
@@ -1375,6 +1409,7 @@ source:
 | Ordinary single-channel IRLS | [L0glm_1_fit_internal.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R) |
 | Multichannel passes and refitting | [L0glm_2_fit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R), [group_start.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/group_start.R) |
 | Coefficient seeds and dispersion pilot | [initialization.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/initialization.R), [dispersion.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/dispersion.R) |
+| Constrained compulsory blocks | [nuisance.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/nuisance.R), [nuisance.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/nuisance.cpp) |
 | Native Poisson backend | [L0nnpois.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp) |
 | Special-family passes | [families_common.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R), [family_nb.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_nb.R), [family_multinomial.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_multinomial.R), [family_cox.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox.R), [family_cox_pcg.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R) |
 | Screening and outer ISIS | [sis_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R), [sis.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp), [isis_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R), [screening.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R) |

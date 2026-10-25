@@ -317,6 +317,9 @@ see <code><a href="preclustering.html">preclustering</a></code>. Tuning requires
 A partition is computed once for the full-data path and separately for each
 CV training fold. Only memberships are shared across lambda fits; candidate
 supports and coefficients are fitted independently at every lambda.</p></li>
+<li><p><code>always.include</code>: unpenalized columns, including optional smooth
+background bases. Nonnegative fits refine these in a constrained conditional
+block independently within each training fit; see <code><a href="compulsory_terms.html">compulsory_terms</a></code>.</p></li>
 <li><p><code>grouped</code>: <code>TRUE</code> (default) selects predictor rows across
 response channels or multinomial categories; <code>FALSE</code> selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses

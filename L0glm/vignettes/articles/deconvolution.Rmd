@@ -215,6 +215,33 @@ learned separately in each training fold. See
 [channel preclustering](../reference/preclustering.html) for controls, starting
 values and aggregate-only output.
 
+## A smooth nonnegative background
+
+For a full chromatogram, add a low-df B-spline basis to describe the slowly
+varying background. Keeping these columns in `always.include` leaves them
+unpenalized. L0glm alternates a small constrained background solve with sparse
+peak fitting, using every original mass channel. For Poisson identity models,
+the spline contribution is directly additive in signal units.
+
+```{r spline-background, eval=FALSE}
+B <- splines::bs(seq(0, 1, length.out=nrow(multi$X)), df=6, intercept=TRUE)
+Z <- cbind(multi$X, Matrix::Matrix(B, sparse=TRUE))
+compulsory <- ncol(multi$X) + seq_len(ncol(B))
+background_fit <- L0glm.fit(Z, multi$y, family=poisson("identity"),
+  lambda="gic", nonnegative=TRUE, always.include=compulsory,
+  grouped=TRUE, relaxed=TRUE, precluster=TRUE,
+  control.precluster=list(k.max=32L, rowbins=5L))
+background <- B %*% as.matrix(coef(background_fit)[compulsory, , drop=FALSE])
+peak_coefficients <- coef(background_fit)[seq_len(ncol(multi$X)), , drop=FALSE]
+background_fit$nuisance$seconds
+```
+
+The same compulsory-block approach supports Gaussian and negative-binomial
+models and other scalar GLM links. The background is additive on the chosen
+link scale. Automatic channel aggregation remains specific to nonnegative
+identity-link Poisson models. See [compulsory terms and backgrounds](../reference/compulsory_terms.html)
+for the equations, constraints and initialization.
+
 ## Regularization and tuning
 
 An automatically preset level of regularization with `lambda="gic"` typically

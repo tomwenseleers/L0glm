@@ -463,6 +463,32 @@ preclustering</a> for controls, starting values and aggregate-only
 output.</p>
 </div>
 <div class="section level2">
+<h2 id="a-smooth-nonnegative-background">A smooth nonnegative background<a class="anchor" aria-label="anchor" href="#a-smooth-nonnegative-background"></a>
+</h2>
+<p>For a full chromatogram, add a low-df B-spline basis to describe the
+slowly varying background. Keeping these columns in
+<code>always.include</code> leaves them unpenalized. L0glm alternates a
+small constrained background solve with sparse peak fitting, using every
+original mass channel. For Poisson identity models, the spline
+contribution is directly additive in signal units.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fu">splines</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/splines/bs.html" class="external-link">bs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, length.out<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span><span class="op">)</span><span class="op">)</span>, df<span class="op">=</span><span class="fl">6</span>, intercept<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/Matrix.html" class="external-link">Matrix</a></span><span class="op">(</span><span class="va">B</span>, sparse<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">compulsory</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">B</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">background_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">Z</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, always.include<span class="op">=</span><span class="va">compulsory</span>,</span>
+<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">background</span> <span class="op">&lt;-</span> <span class="va">B</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">background_fit</span><span class="op">)</span><span class="op">[</span><span class="va">compulsory</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">peak_coefficients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">background_fit</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span><span class="op">)</span><span class="op">)</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="va">background_fit</span><span class="op">$</span><span class="va">nuisance</span><span class="op">$</span><span class="va">seconds</span></span></code></pre></div>
+<p>The same compulsory-block approach supports Gaussian and
+negative-binomial models and other scalar GLM links. The background is
+additive on the chosen link scale. Automatic channel aggregation remains
+specific to nonnegative identity-link Poisson models. See <a href="../reference/compulsory_terms.html">compulsory terms and
+backgrounds</a> for the equations, constraints and initialization.</p>
+</div>
+<div class="section level2">
 <h2 id="regularization-and-tuning">Regularization and tuning<a class="anchor" aria-label="anchor" href="#regularization-and-tuning"></a>
 </h2>
 <p>An automatically preset level of regularization with
@@ -470,7 +496,7 @@ output.</p>
 solution straight away. Tuning over a lambda grid or cross-validation
 remains available to refine regularization further or optimize
 out-of-sample predictive performance.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>,</span>

@@ -173,6 +173,9 @@
 #' A partition is computed once for the full-data path and separately for each
 #' CV training fold. Only memberships are shared across lambda fits; candidate
 #' supports and coefficients are fitted independently at every lambda.
+#' \item \code{always.include}: unpenalized columns, including optional smooth
+#' background bases. Nonnegative fits refine these in a constrained conditional
+#' block independently within each training fit; see \code{\link{compulsory_terms}}.
 #' \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
 #' response channels or multinomial categories; \code{FALSE} selects individual
 #' channel coefficients or CLR category entries. Multinomial fitting always uses

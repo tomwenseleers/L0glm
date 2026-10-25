@@ -215,7 +215,9 @@
 #'   a name that includes \code{"Intercept"} in their name are always included. 
 #'   Use \code{NULL} or 0 to request no additional mandatory terms;
 #'   recognized intercepts remain mandatory. If `intercept = TRUE`, the first column (intercept) will
-#'   always be estimated and included in the model.
+#'   always be estimated and included in the model. Indices refer to columns
+#'   of the supplied `X`. Nonnegative compulsory terms are refined in a small
+#'   constrained block; see [compulsory_terms] for smooth-background modelling.
 #' @param nonnegative A single logical value. If \code{TRUE}, all coefficients,
 #'   including any intercept and \code{always.include} terms, must be
 #'   nonnegative. For binomial and quasibinomial models only, intercept columns
@@ -224,6 +226,8 @@
 #'   coefficients may have either sign. Defaults to \code{FALSE} in
 #'   \code{L0glm.fit()}. The specialized \code{L0nnpois()} function always
 #'   enforces nonnegativity and has no \code{nonnegative} argument.
+#'   Unpenalized terms use a constrained conditional solve, while selectable
+#'   coefficients use the chosen ridge solver. See [compulsory_terms].
 #' @param normalize Preprocessing convention: \code{"auto"} (default) uses
 #'   \code{"rms"} for signed fits or a free intercept, and \code{"none"} for
 #'   fully nonnegative fits. Other choices are \code{FALSE} or \code{"none"},
@@ -935,6 +939,33 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       cluster.refit = TRUE,
                       control.precluster = list()) {
   L0glm_precluster_flags(precluster,cluster.refit)
+  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
+    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
+  nuisance <- isTRUE(nonnegative) && isTRUE(maxit>1L) && !isFALSE(control.solver$.nuisance)
+  if(nuisance) {
+    if(is.data.frame(X)) X <- as.matrix(X)
+    if(!inherits(family,"family")) family <- family()
+    if(identical(L0glm_ext_kind(family),"cox") && isTRUE(intercept)) {
+      warning("A Cox intercept is not identifiable; intercept was omitted.",call.=FALSE)
+      intercept <- FALSE
+    }
+    nuisance <- isTRUE(intercept) || length(always.include)>0L || length(L0glm_intercepts(X))>0L
+    if(!nuisance) control.solver$.nuisance <- FALSE
+  }
+  if (nuisance && (!precluster || cluster.refit)) {
+    if(!inherits(family,"family")) family <- family()
+    if(!identical(L0glm_ext_kind(family),"multinomial") &&
+       !(family$family %in% c("binomial","quasibinomial") && !length(always.include))) {
+      supplied <- names(match.call())[-1L]
+      if(!is.null(validation) && !inherits(validation,"L0glm_validation")) {
+        args <- mget(supplied,envir=environment(),inherits=FALSE)
+        args$family <- family
+        return(L0glm_validated_fit(args))
+      }
+      options <- mget(setdiff(names(formals(L0glm.fit)),c("X","y")),envir=environment(),inherits=FALSE)
+      return(L0glm_nuisance_fit(X,y,options,L0glm.fit,supplied))
+    }
+  }
   if(precluster) {
     if(!inherits(family,"family")) family<-family()
     options<-mget(setdiff(names(formals(L0glm.fit)),c("X","y")),envir=environment(),inherits=FALSE)
@@ -947,8 +978,6 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   validation_info <- NULL
   validate_thresh(thresh)
   L0glm_normalization(normalize)
-  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
-    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
   
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
@@ -1352,6 +1381,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       vars <- sort(unique(c(which(coefficients != 0), always.include.start)))
       if (length(vars)) {
         always.include <- match(always.include.start[always.include.start %in% vars], vars)
+        refit_validation <- L0glm_subset_validation(validation, vars)
+        if(!is.null(refit_validation)) refit_validation$refit_baseline <- matrix(coefficients[vars],ncol=1L)
         fit     <- L0glm.fit.internal(X          = X[, vars, drop = FALSE],
                                       y          = y,
                                       weights    = weights,
@@ -1373,7 +1404,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                                       tol         = tol,
                                       always.include      = always.include,
                                       control.solver = control.solver,
-                                      validation = L0glm_subset_validation(validation, vars),
+                                      validation = refit_validation,
                                       verbose     = verbose)
         if (!is.null(validation)) validation_info$relaxed <- fit$validation
         coefficients[]     <- 0

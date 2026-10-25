@@ -17,7 +17,9 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
-The LLT update enforces this by clamping negative proposals to zero.
+The LLT sparse-selection update clamps negative proposals to zero.
+Unpenalized intercepts and `always.include` terms are refined using a small
+constrained Poisson solve; see [compulsory_terms].
 With positive active effects and well-chosen regularization such as
 `lambda=&quot;gic&quot;`, ridge shrinkage often keeps genuine active effects positive.
 See the solver discussion in [L0glm.fit()] for measured comparisons with
@@ -41,7 +43,9 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
-The LLT update enforces this by clamping negative proposals to zero.
+The LLT sparse-selection update clamps negative proposals to zero.
+Unpenalized intercepts and `always.include` terms are refined using a small
+constrained Poisson solve; see [compulsory_terms].
 With positive active effects and well-chosen regularization such as
 `lambda=&quot;gic&quot;`, ridge shrinkage often keeps genuine active effects positive.
 See the solver discussion in [L0glm.fit()] for measured comparisons with
@@ -114,7 +118,9 @@ Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
 `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 differences and require no additional ridge solve.
 Every coefficient, including any intercept, is constrained to be nonnegative.
-The LLT update enforces this by clamping negative proposals to zero.
+The LLT sparse-selection update clamps negative proposals to zero.
+Unpenalized intercepts and `always.include` terms are refined using a small
+constrained Poisson solve; see [compulsory_terms].
 With positive active effects and well-chosen regularization such as
 `lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
 See the solver discussion in [L0glm.fit()] for measured comparisons with
@@ -307,7 +313,9 @@ Coefficients with
 a name that includes <code>"Intercept"</code> in their name are always included.
 Use <code>NULL</code> or 0 to request no additional mandatory terms;
 recognized intercepts remain mandatory. If `intercept = TRUE`, the first column (intercept) will
-always be estimated and included in the model.</p></dd>
+always be estimated and included in the model. Indices refer to columns
+of the supplied `X`. Nonnegative compulsory terms are refined in a small
+constrained block; see [compulsory_terms] for smooth-background modelling.</p></dd>
 
 
 <dt id="arg-normalize">normalize<a class="anchor" aria-label="anchor" href="#arg-normalize"></a></dt>
@@ -633,6 +641,19 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## A six-coefficient nonnegative spline background, refined on every channel.</span></span>
+<span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fu">splines</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/splines/bs.html" class="external-link">bs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, length.out<span class="op">=</span><span class="va">n</span><span class="op">)</span>, df<span class="op">=</span><span class="fl">6</span>, intercept<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span>
+<span><span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">5</span>, <span class="fl">3</span>, <span class="fl">7</span>, <span class="fl">4</span>, <span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">Y_background</span> <span class="op">&lt;-</span> <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span><span class="op">)</span>, <span class="va">B</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">alpha</span><span class="op">)</span>,</span>
+<span>  <span class="va">n</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">compulsory</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">B</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit_background</span> <span class="op">&lt;-</span> <span class="fu">L0nnpois</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">X</span>, <span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/Matrix.html" class="external-link">Matrix</a></span><span class="op">(</span><span class="va">B</span>, sparse<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="va">Y_background</span>, always.include<span class="op">=</span><span class="va">compulsory</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  precluster<span class="op">=</span><span class="cn">TRUE</span>, control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">background_hat</span> <span class="op">&lt;-</span> <span class="va">B</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_background</span><span class="op">)</span><span class="op">[</span><span class="va">compulsory</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">fit_background</span><span class="op">$</span><span class="va">nuisance</span><span class="op">$</span><span class="va">seconds</span></span>
 <span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
 <span><span class="co">## Compare with the general R fitting path (process-based parallelism):</span></span>

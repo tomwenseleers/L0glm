@@ -60,7 +60,9 @@
 #' returned responses directly.
 #'
 #' The workflow does not add a background basis or change compulsory terms.
-#' Smooth-background modelling is a separate choice of the supplied design.
+#' Include a low-df B-spline basis through `always.include` for a smooth
+#' background. Its nonnegative coefficients are refined separately from the
+#' selected peaks on the original channels; see [compulsory_terms].
 #'
 #' The returned ordinary `L0glm_fit` gains `preclustering`: memberships,
 #' channel names, candidates, screening coefficients, actual penalties,

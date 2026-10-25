@@ -112,7 +112,9 @@ Externally supplied <code>clusterids</code> or <code>size_fac</code> are reused 
 To tune an aggregate-only model, call <code><a href="glm_cluster.html">glm_aggregate()</a></code> first and tune its
 returned responses directly.</p>
 <p>The workflow does not add a background basis or change compulsory terms.
-Smooth-background modelling is a separate choice of the supplied design.</p>
+Include a low-df B-spline basis through <code>always.include</code> for a smooth
+background. Its nonnegative coefficients are refined separately from the
+selected peaks on the original channels; see <a href="compulsory_terms.html">compulsory_terms</a>.</p>
 <p>The returned ordinary <code>L0glm_fit</code> gains <code>preclustering</code>: memberships,
 channel names, candidates, screening coefficients, actual penalties,
 initialization, clustering settings, cut history and phase timings.

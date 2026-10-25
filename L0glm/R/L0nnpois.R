@@ -18,7 +18,9 @@
 #' `L0glm.fit()`, followed by the selection cutoff. Trial steps reuse predictor
 #' differences and require no additional ridge solve.
 #' Every coefficient, including any intercept, is constrained to be nonnegative.
-#' The LLT update enforces this by clamping negative proposals to zero.
+#' The LLT sparse-selection update clamps negative proposals to zero.
+#' Unpenalized intercepts and `always.include` terms are refined using a small
+#' constrained Poisson solve; see [compulsory_terms].
 #' With positive active effects and well-chosen regularization such as
 #' `lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
 #' See the solver discussion in [L0glm.fit()] for measured comparisons with
@@ -96,6 +98,31 @@ L0nnpois <- function(X,
                      cluster.refit = TRUE,
                      control.precluster = list()) {
   L0glm_precluster_flags(precluster,cluster.refit)
+  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
+    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
+  nuisance <- isTRUE(maxit>1L) && !isFALSE(control.solver$.nuisance)
+  if(nuisance) {
+    if(is.data.frame(X)) X <- as.matrix(X)
+    if(!inherits(family,"family")) family <- family()
+    nuisance <- isTRUE(intercept) || length(always.include)>0L || length(L0glm_intercepts(X))>0L
+    if(!nuisance) control.solver$.nuisance <- FALSE
+  }
+  if (nuisance && (!precluster || cluster.refit)) {
+    if(!inherits(family,"family")) family <- family()
+    if(!identical(L0glm_ext_kind(family),"multinomial") &&
+       !(family$family %in% c("binomial","quasibinomial") && !length(always.include))) {
+      supplied <- names(match.call())[-1L]
+      if(!is.null(validation) && !inherits(validation,"L0glm_validation")) {
+        args <- mget(supplied,envir=environment(),inherits=FALSE)
+        args$family <- family
+        args$nonnegative <- TRUE; args$openmp <- TRUE; args$screen <- "none"
+        return(L0glm_validated_fit(args))
+      }
+      options <- mget(setdiff(names(formals(L0nnpois)),c("X","y")),envir=environment(),inherits=FALSE)
+      options$nonnegative <- TRUE
+      return(L0glm_nuisance_fit(X,y,options,L0nnpois,supplied))
+    }
+  }
   if(precluster) {
     if(!inherits(family,"family")) family<-family()
     options<-mget(setdiff(names(formals(L0nnpois)),c("X","y")),envir=environment(),inherits=FALSE)
@@ -103,8 +130,6 @@ L0nnpois <- function(X,
     return(L0glm_precluster_fit(X,y,options,L0nnpois,names(match.call())[-1L]))
   }
   validate_thresh(thresh)
-  if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
-    stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
   normalization <- L0glm_normalization(normalize, nonnegative = TRUE)
   normalization_code <- match(normalization, c("none", "l2", "rms", "sd")) - 1L
   if (!inherits(family, "family")) family <- family()
