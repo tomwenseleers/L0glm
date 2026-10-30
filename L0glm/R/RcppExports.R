@@ -97,3 +97,35 @@ solve_dense_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
     .Call('_L0glm_solve_dense_CG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
+spolo_state_cpp <- function(y, mu) {
+    .Call('_L0glm_spolo_state_cpp', PACKAGE = 'L0glm', y, mu)
+}
+
+spolo_local_cpp <- function(handle, left, right) {
+    .Call('_L0glm_spolo_local_cpp', PACKAGE = 'L0glm', handle, left, right)
+}
+
+spolo_commit_cpp <- function(handle, left, mu) {
+    invisible(.Call('_L0glm_spolo_commit_cpp', PACKAGE = 'L0glm', handle, left, mu))
+}
+
+spolo_mean_cpp <- function(handle) {
+    .Call('_L0glm_spolo_mean_cpp', PACKAGE = 'L0glm', handle)
+}
+
+spolo_delta_cpp <- function(y, old_mu, new_mu) {
+    .Call('_L0glm_spolo_delta_cpp', PACKAGE = 'L0glm', y, old_mu, new_mu)
+}
+
+spolo_spectral_cpp <- function(y, mean, profiles, spectra, sweeps = 1L, nthreads = 1L, maxit = 25L, tol = 1e-7) {
+    .Call('_L0glm_spolo_spectral_cpp', PACKAGE = 'L0glm', y, mean, profiles, spectra, sweeps, nthreads, maxit, tol)
+}
+
+spolo_connected_cpp <- function(spectra, area, center, lo, hi, anchor, radius) {
+    .Call('_L0glm_spolo_connected_cpp', PACKAGE = 'L0glm', spectra, area, center, lo, hi, anchor, radius)
+}
+
+spolo_extract_cpp <- function(spectra, area, center, fraction = .1, pure_radius = .005, nthreads = 1L) {
+    .Call('_L0glm_spolo_extract_cpp', PACKAGE = 'L0glm', spectra, area, center, fraction, pure_radius, nthreads)
+}
+

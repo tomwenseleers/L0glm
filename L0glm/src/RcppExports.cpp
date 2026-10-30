@@ -403,6 +403,118 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// spolo_state_cpp
+SEXP spolo_state_cpp(NumericMatrix y, NumericMatrix mu);
+RcppExport SEXP _L0glm_spolo_state_cpp(SEXP ySEXP, SEXP muSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_state_cpp(y, mu));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_local_cpp
+List spolo_local_cpp(SEXP handle, int left, int right);
+RcppExport SEXP _L0glm_spolo_local_cpp(SEXP handleSEXP, SEXP leftSEXP, SEXP rightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
+    Rcpp::traits::input_parameter< int >::type left(leftSEXP);
+    Rcpp::traits::input_parameter< int >::type right(rightSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_local_cpp(handle, left, right));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_commit_cpp
+void spolo_commit_cpp(SEXP handle, int left, NumericMatrix mu);
+RcppExport SEXP _L0glm_spolo_commit_cpp(SEXP handleSEXP, SEXP leftSEXP, SEXP muSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
+    Rcpp::traits::input_parameter< int >::type left(leftSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    spolo_commit_cpp(handle, left, mu);
+    return R_NilValue;
+END_RCPP
+}
+// spolo_mean_cpp
+NumericMatrix spolo_mean_cpp(SEXP handle);
+RcppExport SEXP _L0glm_spolo_mean_cpp(SEXP handleSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_mean_cpp(handle));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_delta_cpp
+double spolo_delta_cpp(NumericMatrix y, NumericMatrix old_mu, NumericMatrix new_mu);
+RcppExport SEXP _L0glm_spolo_delta_cpp(SEXP ySEXP, SEXP old_muSEXP, SEXP new_muSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type old_mu(old_muSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type new_mu(new_muSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_delta_cpp(y, old_mu, new_mu));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_spectral_cpp
+List spolo_spectral_cpp(NumericMatrix y, NumericMatrix mean, SEXP profiles, NumericMatrix spectra, int sweeps, int nthreads, int maxit, double tol);
+RcppExport SEXP _L0glm_spolo_spectral_cpp(SEXP ySEXP, SEXP meanSEXP, SEXP profilesSEXP, SEXP spectraSEXP, SEXP sweepsSEXP, SEXP nthreadsSEXP, SEXP maxitSEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type profiles(profilesSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type spectra(spectraSEXP);
+    Rcpp::traits::input_parameter< int >::type sweeps(sweepsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_spectral_cpp(y, mean, profiles, spectra, sweeps, nthreads, maxit, tol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_connected_cpp
+IntegerVector spolo_connected_cpp(NumericMatrix spectra, NumericVector area, NumericVector center, IntegerVector lo, IntegerVector hi, int anchor, double radius);
+RcppExport SEXP _L0glm_spolo_connected_cpp(SEXP spectraSEXP, SEXP areaSEXP, SEXP centerSEXP, SEXP loSEXP, SEXP hiSEXP, SEXP anchorSEXP, SEXP radiusSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type spectra(spectraSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type area(areaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type center(centerSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type lo(loSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type hi(hiSEXP);
+    Rcpp::traits::input_parameter< int >::type anchor(anchorSEXP);
+    Rcpp::traits::input_parameter< double >::type radius(radiusSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_connected_cpp(spectra, area, center, lo, hi, anchor, radius));
+    return rcpp_result_gen;
+END_RCPP
+}
+// spolo_extract_cpp
+List spolo_extract_cpp(NumericMatrix spectra, NumericVector area, NumericVector center, double fraction, double pure_radius, int nthreads);
+RcppExport SEXP _L0glm_spolo_extract_cpp(SEXP spectraSEXP, SEXP areaSEXP, SEXP centerSEXP, SEXP fractionSEXP, SEXP pure_radiusSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type spectra(spectraSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type area(areaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type center(centerSEXP);
+    Rcpp::traits::input_parameter< double >::type fraction(fractionSEXP);
+    Rcpp::traits::input_parameter< double >::type pure_radius(pure_radiusSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(spolo_extract_cpp(spectra, area, center, fraction, pure_radius, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
@@ -429,6 +541,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_dense_LSCG", (DL_FUNC) &_L0glm_solve_dense_LSCG, 6},
     {"_L0glm_solve_sparse_CG", (DL_FUNC) &_L0glm_solve_sparse_CG, 6},
     {"_L0glm_solve_dense_CG", (DL_FUNC) &_L0glm_solve_dense_CG, 6},
+    {"_L0glm_spolo_state_cpp", (DL_FUNC) &_L0glm_spolo_state_cpp, 2},
+    {"_L0glm_spolo_local_cpp", (DL_FUNC) &_L0glm_spolo_local_cpp, 3},
+    {"_L0glm_spolo_commit_cpp", (DL_FUNC) &_L0glm_spolo_commit_cpp, 3},
+    {"_L0glm_spolo_mean_cpp", (DL_FUNC) &_L0glm_spolo_mean_cpp, 1},
+    {"_L0glm_spolo_delta_cpp", (DL_FUNC) &_L0glm_spolo_delta_cpp, 3},
+    {"_L0glm_spolo_spectral_cpp", (DL_FUNC) &_L0glm_spolo_spectral_cpp, 8},
+    {"_L0glm_spolo_connected_cpp", (DL_FUNC) &_L0glm_spolo_connected_cpp, 7},
+    {"_L0glm_spolo_extract_cpp", (DL_FUNC) &_L0glm_spolo_extract_cpp, 6},
     {NULL, NULL, 0}
 };
 

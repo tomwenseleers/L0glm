@@ -2,6 +2,10 @@
 
 ## Initial version
 
+* Sparse Poisson log-concave NMF (`spoloconmf`) recovers elution profiles and
+  spectra using local Poisson updates and fast spectral fusion, with a
+  compound-count criterion, unpenalized spline backgrounds and native OpenMP.
+
 * Fast sparse generalized linear models with adaptive ridge and IRLS, including
   Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.
 * Negative binomial regression with estimated shape, joint multinomial regression
