@@ -1,46 +1,24 @@
-# Private SPoLoCoNMF numerical helpers.
-# Local Poisson updates and no-fit spectral fusion.
+# Hard log-concavity projection, shared by PSF calibration and NMF.
 spolo_lc <- function(h, min_relative = 1e-12) {
-    h <- pmax(as.numeric(h), max(h) * min_relative)
-    h <- h/sum(h)
-    n <- length(h)
-    if (n < 3L) 
-        return(list(h = h, gap = 0))
-    y <- log(h)
-    stack <- integer(n)
-    top <- 0L
-    for (i in seq_len(n)) {
-        top <- top + 1L
-        stack[top] <- i
-        while (top >= 3L) {
-            a <- stack[top - 2L]
-            b <- stack[top - 1L]
-            c <- stack[top]
-            if ((y[b] - y[a])/(b - a) >= (y[c] - y[b])/(c - b)) 
-                break
-            stack[top - 1L] <- c
-            top <- top - 1L
-        }
-    }
-    knots <- stack[seq_len(top)]
-    out <- exp(approx(knots, y[knots], xout = seq_len(n))$y)
-    list(h = out/sum(out), gap = max(0, sum(out) - 1))
+  slcn_logconcave_cpp(as.numeric(h), min_relative)
 }
 
-spolo_initial <- function(d, ncores = 8L) {
-    p <- ncol(d$X)
-    q <- ncol(d$B)
-    design <- if (q) cbind(d$X, if (inherits(d$X, "sparseMatrix")) Matrix::Matrix(d$B, sparse = TRUE) else d$B) else d$X
-    seconds <- system.time(fit <- L0glm.fit(design, d$Y, family = poisson(identity), 
-        lambda = d$lambda, nonnegative = TRUE, intercept = FALSE, always.include = p + seq_len(q), relaxed = TRUE, 
-        ncores = ncores))[["elapsed"]]
-    beta <- as.matrix(coef(fit))
-    keep <- which(rowSums(beta[seq_len(p), , drop = FALSE]) > 0)
-    H <- d$X[, keep, drop = FALSE]
-    S <- beta[keep, , drop = FALSE]
-    alpha <- beta[p + seq_len(q), , drop = FALSE]
-    list(H = H, S = S, alpha = alpha, mu = as.matrix(H %*% S) + d$B %*% alpha, seconds = seconds, source_ids = keep)
-}
+
+slcn_context <- function(Y, B, spec, W, offset, ncores, censor) {
+  spolo_lc <- spolo_lc
+  ctx <- new.env(parent = emptyenv())
+  ctx$Y <- Y;ctx$B <- B;ctx$W <- as.numeric(W);ctx$offset <- offset
+  ctx$spec <- spec;ctx$n <- nrow(Y);ctx$m <- ncol(Y);ctx$censor <- censor;ctx$threads <- ncores
+  ctx$background_fit <- function(y, fixed, alpha) {
+    W <- matrix(rep_len(ctx$W, length(y)), nrow(y), ncol(y))
+    if (ctx$spec$kind == 0L) return(nuisance_gaussian_cpp(B, y, fixed,
+      W, alpha, rep(1L, ncol(B)), as.integer(ncores)))
+    if (ctx$spec$kind %in% 1:2) return(nuisance_poisson_cpp(B, y, pmax(fixed, 0), W, alpha,
+      40L, 1e-8, as.integer(ncores)))
+    slcn_background(y, pmax(fixed, 0), B, alpha, ctx$spec$kind,
+      ctx$spec$dispersion, ctx$spec$theta, ctx$W, as.integer(ncores), censor = ctx$censor)
+  }
+
 
 spolo_state <- function(model, d, lambda_rank) {
     st <- new.env(parent = emptyenv())
@@ -100,66 +78,7 @@ spolo_spectral <- function(st, ncores = 8L) {
     }
 }
 
-spolo_background <- function(st, d, ncores = 8L) {
-    if (!ncol(st$B)) return(invisible(NULL))
-    old <- spolo_mean_cpp(st$handle)
-    fixed <- pmax(old - st$B %*% st$alpha, 0)
-    fit <- L0glm.fit(st$B, d$Y, family = poisson(identity), offset = fixed, start = st$alpha, lambda = 0, 
-        always.include = seq_len(ncol(st$B)), nonnegative = TRUE, intercept = FALSE, grouped = FALSE, 
-        relaxed = FALSE, ncores = ncores, maxit = 10L)
-    alpha <- as.matrix(coef(fit))
-    mu <- fixed + st$B %*% alpha
-    delta <- spolo_delta_cpp(d$Y, old, mu)
-    ok <- is.finite(delta) && delta <= 1e-07
-    if (ok) {
-        spolo_commit_cpp(st$handle, 1L, mu)
-        st$alpha <- alpha
-    }
-    st$fit_calls["background"] <- st$fit_calls["background"] + 1L
-    spolo_record(st, "background", delta, ok)
-}
 
-spolo_profile <- function(st, j, prior_strength = 0, ncores = 8L, pad = 3L) {
-    s <- st$T[, j]
-    if (sum(s) <= 0) 
-        return(invisible(FALSE))
-    left <- max(1L, st$lo[j] - pad)
-    right <- min(st$n, st$hi[j] + pad)
-    n <- right - left + 1L
-    h <- numeric(n)
-    h[seq.int(st$lo[j], st$hi[j]) - left + 1L] <- st$h[[j]]
-    a <- spolo_local_cpp(st$handle, left, right)
-    R <- pmax(a$mu - h %o% s, 0)
-    fit <- L0glm.fit(matrix(s, ncol = 1L), t(a$Y), family = poisson(identity), offset = t(R), start = matrix(pmax(h, 
-        max(h) * 1e-08), nrow = 1L), prior.mean = if (prior_strength > 0) 
-        matrix(h, nrow = 1L)
-    else NULL, lambda = prior_strength, nonnegative = TRUE, intercept = FALSE, normalize = "none", grouped = FALSE, 
-        relaxed = FALSE, maxit = 4L, thresh = 0, tol = 1e-07, ncores = ncores, control.solver = list(.nuisance = FALSE))
-    st$fit_calls["profile"] <- st$fit_calls["profile"] + 1L
-    raw <- as.numeric(coef(fit))
-    total <- sum(raw)
-    if (!is.finite(total) || total <= 0) 
-        return(invisible(FALSE))
-    shape <- spolo_lc(raw)
-    hnew <- shape$h
-    snew <- s * total
-    next_mu <- R + hnew %o% snew
-    polished <- spolo_spectral_cpp(a$Y, next_mu, matrix(hnew, ncol = 1L), matrix(snew, ncol = 1L), 1L, 
-        ncores)
-    delta <- spolo_delta_cpp(a$Y, a$mu, polished$mu) - if (sum(polished$S) == 0) 
-        st$lambda
-    else 0
-    ok <- is.finite(delta) && delta < -1e-06
-    if (ok) {
-        spolo_commit_cpp(st$handle, left, polished$mu)
-        st$lo[j] <- left
-        st$hi[j] <- right
-        st$h[[j]] <- hnew
-        st$T[, j] <- polished$S[, 1L]
-    }
-    spolo_record(st, "profile", delta, ok, j)
-    invisible(ok)
-}
 
 spolo_js <- function(p, q) {
     a <- (p + q)/2
@@ -479,19 +398,6 @@ spolo_broad_polish <- function(model, d, ncores = 8L, prior_strength = 0) {
     out
 }
 
-spolo_spectral_polish <- function(model, d, ncores = 8L, sweeps = 8L) {
-    t0 <- proc.time()[["elapsed"]]
-    a <- spolo_spectral_cpp(d$Y, model$mu, model$H, t(model$S), sweeps, ncores)
-    out <- model
-    out$S <- t(a$S)
-    out$mu <- a$mu
-    keep <- rowSums(out$S) > 0
-    out$H <- out$H[, keep, drop = FALSE]
-    out$S <- out$S[keep, , drop = FALSE]
-    out$seconds <- proc.time()[["elapsed"]] - t0
-    out
-}
-
 spolo_sweep <- function(model, d, cycles, ncores = 8L) {
     t0 <- proc.time()[["elapsed"]]
     st <- spolo_state(model, d, d$lambda_rank)
@@ -512,3 +418,75 @@ spolo_sweep <- function(model, d, cycles, ncores = 8L) {
     out
 }
 
+
+  first <- function(y) if (is.null(attr(y, "row_start"))) 0L else as.integer(attr(y, "row_start")) - 1L
+  spolo_state_cpp <- slcn_state
+  spolo_local_cpp <- slcn_local
+  spolo_commit_cpp <- slcn_commit
+  spolo_mean_cpp <- slcn_mean
+  spolo_delta_cpp <- function(y, old_mu, new_mu) slcn_delta(y, old_mu, new_mu,
+    ctx$spec$kind, ctx$spec$dispersion, ctx$spec$theta, ctx$W, ctx$n, first(y), ctx$censor)
+  spolo_spectral_cpp <- function(y, mean, profiles, spectra, sweeps = 4L, nthreads = ncores,
+                                    maxit = 12L, tol = 1e-8) {
+    if (!inherits(profiles, "dgCMatrix")) profiles <- as(Matrix(profiles, sparse = TRUE), "dgCMatrix")
+    if (ctx$spec$kind == 0L && ncol(profiles) <= 32L && nrow(profiles) <= 2000L) {
+      signal <- pmax(mean - as.matrix(profiles %*% t(spectra)), 0)
+      weights <- if (length(ctx$W) == 1L) matrix(ctx$W, nrow(y), ncol(y)) else
+        matrix(ctx$W, ctx$n, ctx$m)[first(y) + seq_len(nrow(y)), , drop = FALSE]
+      a <- nuisance_gaussian_cpp(as.matrix(profiles), y, signal,
+        weights, t(spectra), rep(1L, ncol(profiles)), as.integer(nthreads))
+      fitted <- signal + a$background
+      delta <- spolo_delta_cpp(y, mean, fitted)
+      if (is.finite(delta) && delta <= 1e-7)
+        return(list(mu = fitted, S = t(a$coefficients), change = delta, kkt = a$kkt))
+    }
+    slcn_spectral(y, mean, profiles, spectra, ctx$spec$kind,
+      ctx$spec$dispersion, ctx$spec$theta, ctx$W, ctx$n, first(y),
+      as.integer(sweeps), as.integer(nthreads), as.integer(maxit), tol, ctx$censor)
+  }
+  spolo_background <- function(st, d, ncores = 8L) {
+    if (!ncol(st$B)) return(invisible(NULL))
+    old <- spolo_mean_cpp(st$handle)
+    fixed <- pmax(old - st$B %*% st$alpha, 0)
+    fit <- ctx$background_fit(d$Y, fixed, st$alpha)
+    fit <- list(mu = fixed + fit$background, S = t(fit$coefficients))
+    delta <- spolo_delta_cpp(d$Y, old, fit$mu)
+    ok <- is.finite(delta) && delta <= 1e-7
+    if (ok) {spolo_commit_cpp(st$handle, 1L, fit$mu);st$alpha <- t(fit$S)}
+    st$fit_calls["background"] <- st$fit_calls["background"] + 1L
+    spolo_record(st, "background", delta, ok)
+  }
+  spolo_profile <- function(st, j, prior_strength = 0, ncores = 8L, pad = 3L) {
+    s <- st$T[, j];if (sum(s) <= 0) return(invisible(FALSE))
+    left <- max(1L, st$lo[j] - pad);right <- min(st$n, st$hi[j] + pad)
+    h <- numeric(right - left + 1L);h[seq.int(st$lo[j], st$hi[j]) - left + 1L] <- st$h[[j]]
+    a <- spolo_local_cpp(st$handle, left, right)
+    residual <- pmax(a$mu - h %o% s, 0)
+    if (ctx$spec$kind == 1L) {
+      W <- if (length(ctx$W)==1L) matrix(ctx$W,length(h),length(s)) else
+        matrix(ctx$W,ctx$n,ctx$m)[left:right,,drop=FALSE]
+      fit <- L0glm.fit(matrix(s,ncol=1L),t(a$Y),family=poisson("identity"),
+        weights=t(W),offset=t(residual),start=matrix(pmax(h,max(h)*1e-8),nrow=1L),
+        prior.mean=if(prior_strength>0) matrix(h,nrow=1L) else NULL,
+        lambda=prior_strength,nonnegative=TRUE,intercept=FALSE,normalize="none",
+        grouped=FALSE,relaxed=FALSE,maxit=4L,thresh=0,tol=1e-7,ncores=ncores,
+        control.solver=list(.nuisance=FALSE))
+      raw <- as.numeric(coef(fit));st$fit_calls["profile"] <- st$fit_calls["profile"]+1L
+    } else raw <- slcn_profile(a$Y, a$mu, h, s, ctx$spec$kind,
+        ctx$spec$dispersion, ctx$spec$theta, ctx$W, ctx$n, left - 1L,
+        8L, as.integer(ncores), ctx$censor, prior_strength)
+    total <- sum(raw)
+    if (!is.finite(total) || total <= 0) return(invisible(FALSE))
+    shape <- spolo_lc(raw)$h;next_s <- s * total
+    candidate_mu <- residual + shape %o% next_s
+    polished <- spolo_spectral_cpp(a$Y, candidate_mu, matrix(shape, ncol = 1L), matrix(next_s, ncol = 1L),
+      if(ctx$spec$kind==1L) 1L else 2L, ncores)
+    delta <- spolo_delta_cpp(a$Y, a$mu, polished$mu) - if(sum(polished$S)==0) st$lambda else 0
+    ok <- is.finite(delta) && delta < -1e-6
+    if (ok) {spolo_commit_cpp(st$handle, left, polished$mu);st$lo[j] <- left;st$hi[j] <- right;
+      st$h[[j]] <- shape;st$T[, j] <- polished$S[, 1L]}
+    spolo_record(st, "profile", delta, ok, j)
+    invisible(ok)
+  }
+  list(engine = environment(), context = ctx)
+}

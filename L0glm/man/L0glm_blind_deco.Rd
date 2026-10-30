@@ -340,7 +340,7 @@ dim(multi$a_hat)
 multi$deviance
 
 # Estimate smoothly varying PSFs in ten overlapping windows.
-# The returned X can also be supplied to spoloconmf().
+# The returned X can also be supplied to splogconNMF().
 varying <- L0glm_blind_deco(y, family = poisson(identity), kernel_est = g0,
                            baseline = "bspline", nknots = 8L,
                            nwindows = 10L, maxiter = 6L)

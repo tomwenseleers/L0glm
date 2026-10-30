@@ -15,6 +15,8 @@
 #' @param family `"poisson"`, `"gaussian"`, `"nb"` or `"negative.binomial"`,
 #'   or a corresponding family object with an identity link. NB family objects
 #'   are supplied by `mgcv::nb(link="identity")`.
+#'   Identity-link [signal_families] objects also support fixed-parameter NB1,
+#'   common-scale Gamma and censored Gamma noise.
 #' @param sd_noise Gaussian noise standard deviation, one value or one per channel.
 #' @param psf Function of time `x` and peak location `u`. The default Gaussian
 #'   has height one and width 2.5. Values must be finite and nonnegative.
@@ -80,8 +82,8 @@ simulate_spike_train <- function(n=100, p=n, k=10, mean_beta=10000, sd_logbeta=1
   }
   if (is.function(family)) family <- family()
   spec <- L0glm_sim_family(family, 1L, list())
-  if (!spec$kind %in% c("gaussian", "poisson", "nb") || family$link != "identity")
-    stop("Deconvolution requires Gaussian, Poisson or NB with an identity link.", call.=FALSE)
+  if ((!spec$kind %in% c("gaussian", "poisson", "nb") && is.null(family$scalar)) || family$link != "identity")
+    stop("Deconvolution requires a supported noise family with an identity link.", call.=FALSE)
   restore <- L0glm_sim_seed(seed); on.exit(restore(), add=TRUE)
   x <- seq_len(n); x_beta <- seq(1, n, length.out=p)
   u <- sample.int(p, k)

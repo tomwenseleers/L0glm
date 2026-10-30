@@ -452,82 +452,188 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// spolo_state_cpp
-SEXP spolo_state_cpp(NumericMatrix y, NumericMatrix mu);
-RcppExport SEXP _L0glm_spolo_state_cpp(SEXP ySEXP, SEXP muSEXP) {
+// slcn_state
+SEXP slcn_state(NumericMatrix y, NumericMatrix mu);
+RcppExport SEXP _L0glm_slcn_state(SEXP ySEXP, SEXP muSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    rcpp_result_gen = Rcpp::wrap(spolo_state_cpp(y, mu));
+    rcpp_result_gen = Rcpp::wrap(slcn_state(y, mu));
     return rcpp_result_gen;
 END_RCPP
 }
-// spolo_local_cpp
-List spolo_local_cpp(SEXP handle, int left, int right);
-RcppExport SEXP _L0glm_spolo_local_cpp(SEXP handleSEXP, SEXP leftSEXP, SEXP rightSEXP) {
+// slcn_local
+List slcn_local(SEXP handle, int left, int right);
+RcppExport SEXP _L0glm_slcn_local(SEXP handleSEXP, SEXP leftSEXP, SEXP rightSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
     Rcpp::traits::input_parameter< int >::type left(leftSEXP);
     Rcpp::traits::input_parameter< int >::type right(rightSEXP);
-    rcpp_result_gen = Rcpp::wrap(spolo_local_cpp(handle, left, right));
+    rcpp_result_gen = Rcpp::wrap(slcn_local(handle, left, right));
     return rcpp_result_gen;
 END_RCPP
 }
-// spolo_commit_cpp
-void spolo_commit_cpp(SEXP handle, int left, NumericMatrix mu);
-RcppExport SEXP _L0glm_spolo_commit_cpp(SEXP handleSEXP, SEXP leftSEXP, SEXP muSEXP) {
+// slcn_commit
+void slcn_commit(SEXP handle, int left, NumericMatrix mu);
+RcppExport SEXP _L0glm_slcn_commit(SEXP handleSEXP, SEXP leftSEXP, SEXP muSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
     Rcpp::traits::input_parameter< int >::type left(leftSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
-    spolo_commit_cpp(handle, left, mu);
+    slcn_commit(handle, left, mu);
     return R_NilValue;
 END_RCPP
 }
-// spolo_mean_cpp
-NumericMatrix spolo_mean_cpp(SEXP handle);
-RcppExport SEXP _L0glm_spolo_mean_cpp(SEXP handleSEXP) {
+// slcn_mean
+NumericMatrix slcn_mean(SEXP handle);
+RcppExport SEXP _L0glm_slcn_mean(SEXP handleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< SEXP >::type handle(handleSEXP);
-    rcpp_result_gen = Rcpp::wrap(spolo_mean_cpp(handle));
+    rcpp_result_gen = Rcpp::wrap(slcn_mean(handle));
     return rcpp_result_gen;
 END_RCPP
 }
-// spolo_delta_cpp
-double spolo_delta_cpp(NumericMatrix y, NumericMatrix old_mu, NumericMatrix new_mu);
-RcppExport SEXP _L0glm_spolo_delta_cpp(SEXP ySEXP, SEXP old_muSEXP, SEXP new_muSEXP) {
+// slcn_delta
+double slcn_delta(NumericMatrix y, NumericMatrix old, NumericMatrix next_mu, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, double censor);
+RcppExport SEXP _L0glm_slcn_delta(SEXP ySEXP, SEXP oldSEXP, SEXP next_muSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP censorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type old_mu(old_muSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type new_mu(new_muSEXP);
-    rcpp_result_gen = Rcpp::wrap(spolo_delta_cpp(y, old_mu, new_mu));
+    Rcpp::traits::input_parameter< NumericMatrix >::type old(oldSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type next_mu(next_muSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type full_n(full_nSEXP);
+    Rcpp::traits::input_parameter< int >::type first(firstSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_delta(y, old, next_mu, family, phi, theta, weights, full_n, first, censor));
     return rcpp_result_gen;
 END_RCPP
 }
-// spolo_spectral_cpp
-List spolo_spectral_cpp(NumericMatrix y, NumericMatrix mean, SEXP profiles, NumericMatrix spectra, int sweeps, int nthreads, int maxit, double tol);
-RcppExport SEXP _L0glm_spolo_spectral_cpp(SEXP ySEXP, SEXP meanSEXP, SEXP profilesSEXP, SEXP spectraSEXP, SEXP sweepsSEXP, SEXP nthreadsSEXP, SEXP maxitSEXP, SEXP tolSEXP) {
+// slcn_loglik
+double slcn_loglik(NumericMatrix y, NumericMatrix mu, int family, NumericVector phi, NumericVector theta, NumericVector weights, int nthreads, double censor);
+RcppExport SEXP _L0glm_slcn_loglik(SEXP ySEXP, SEXP muSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP nthreadsSEXP, SEXP censorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_loglik(y, mu, family, phi, theta, weights, nthreads, censor));
+    return rcpp_result_gen;
+END_RCPP
+}
+// slcn_spectral
+List slcn_spectral(NumericMatrix y, NumericMatrix mean, S4 design, NumericMatrix spectra, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, int sweeps, int nthreads, int maxit, double tol, double censor, bool keep_zeros);
+RcppExport SEXP _L0glm_slcn_spectral(SEXP ySEXP, SEXP meanSEXP, SEXP designSEXP, SEXP spectraSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP sweepsSEXP, SEXP nthreadsSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP censorSEXP, SEXP keep_zerosSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type mean(meanSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type profiles(profilesSEXP);
+    Rcpp::traits::input_parameter< S4 >::type design(designSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type spectra(spectraSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type full_n(full_nSEXP);
+    Rcpp::traits::input_parameter< int >::type first(firstSEXP);
     Rcpp::traits::input_parameter< int >::type sweeps(sweepsSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
-    rcpp_result_gen = Rcpp::wrap(spolo_spectral_cpp(y, mean, profiles, spectra, sweeps, nthreads, maxit, tol));
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< bool >::type keep_zeros(keep_zerosSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_spectral(y, mean, design, spectra, family, phi, theta, weights, full_n, first, sweeps, nthreads, maxit, tol, censor, keep_zeros));
+    return rcpp_result_gen;
+END_RCPP
+}
+// slcn_profile
+NumericVector slcn_profile(NumericMatrix y, NumericMatrix mean, NumericVector old, NumericVector spectrum, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, int maxit, int nthreads, double censor, double ridge);
+RcppExport SEXP _L0glm_slcn_profile(SEXP ySEXP, SEXP meanSEXP, SEXP oldSEXP, SEXP spectrumSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP maxitSEXP, SEXP nthreadsSEXP, SEXP censorSEXP, SEXP ridgeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type old(oldSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type spectrum(spectrumSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type full_n(full_nSEXP);
+    Rcpp::traits::input_parameter< int >::type first(firstSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< double >::type ridge(ridgeSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_profile(y, mean, old, spectrum, family, phi, theta, weights, full_n, first, maxit, nthreads, censor, ridge));
+    return rcpp_result_gen;
+END_RCPP
+}
+// slcn_nb_score
+NumericVector slcn_nb_score(NumericMatrix y, NumericMatrix mu, double theta, NumericVector weights, int nthreads);
+RcppExport SEXP _L0glm_slcn_nb_score(SEXP ySEXP, SEXP muSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_nb_score(y, mu, theta, weights, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// slcn_background
+List slcn_background(NumericMatrix y, NumericMatrix signal, NumericMatrix basis, NumericMatrix start, int family, NumericVector phi, NumericVector theta, NumericVector weights, int nthreads, int maxit, double tol, double censor);
+RcppExport SEXP _L0glm_slcn_background(SEXP ySEXP, SEXP signalSEXP, SEXP basisSEXP, SEXP startSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP nthreadsSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP censorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type signal(signalSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type basis(basisSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type start(startSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_background(y, signal, basis, start, family, phi, theta, weights, nthreads, maxit, tol, censor));
+    return rcpp_result_gen;
+END_RCPP
+}
+// slcn_logconcave_cpp
+List slcn_logconcave_cpp(NumericVector profile, double min_relative);
+RcppExport SEXP _L0glm_slcn_logconcave_cpp(SEXP profileSEXP, SEXP min_relativeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type profile(profileSEXP);
+    Rcpp::traits::input_parameter< double >::type min_relative(min_relativeSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_logconcave_cpp(profile, min_relative));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -564,6 +670,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// difference_scale_cpp
+Rcpp::List difference_scale_cpp(Rcpp::NumericMatrix residual, Rcpp::NumericMatrix variance, Rcpp::NumericMatrix level, Rcpp::LogicalMatrix eligible, Rcpp::NumericVector coefficient, double minimum_mean, int nthreads);
+RcppExport SEXP _L0glm_difference_scale_cpp(SEXP residualSEXP, SEXP varianceSEXP, SEXP levelSEXP, SEXP eligibleSEXP, SEXP coefficientSEXP, SEXP minimum_meanSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type residual(residualSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type variance(varianceSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type level(levelSEXP);
+    Rcpp::traits::input_parameter< Rcpp::LogicalMatrix >::type eligible(eligibleSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type coefficient(coefficientSEXP);
+    Rcpp::traits::input_parameter< double >::type minimum_mean(minimum_meanSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(difference_scale_cpp(residual, variance, level, eligible, coefficient, minimum_mean, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
@@ -593,14 +716,20 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_dense_LSCG", (DL_FUNC) &_L0glm_solve_dense_LSCG, 6},
     {"_L0glm_solve_sparse_CG", (DL_FUNC) &_L0glm_solve_sparse_CG, 6},
     {"_L0glm_solve_dense_CG", (DL_FUNC) &_L0glm_solve_dense_CG, 6},
-    {"_L0glm_spolo_state_cpp", (DL_FUNC) &_L0glm_spolo_state_cpp, 2},
-    {"_L0glm_spolo_local_cpp", (DL_FUNC) &_L0glm_spolo_local_cpp, 3},
-    {"_L0glm_spolo_commit_cpp", (DL_FUNC) &_L0glm_spolo_commit_cpp, 3},
-    {"_L0glm_spolo_mean_cpp", (DL_FUNC) &_L0glm_spolo_mean_cpp, 1},
-    {"_L0glm_spolo_delta_cpp", (DL_FUNC) &_L0glm_spolo_delta_cpp, 3},
-    {"_L0glm_spolo_spectral_cpp", (DL_FUNC) &_L0glm_spolo_spectral_cpp, 8},
+    {"_L0glm_slcn_state", (DL_FUNC) &_L0glm_slcn_state, 2},
+    {"_L0glm_slcn_local", (DL_FUNC) &_L0glm_slcn_local, 3},
+    {"_L0glm_slcn_commit", (DL_FUNC) &_L0glm_slcn_commit, 3},
+    {"_L0glm_slcn_mean", (DL_FUNC) &_L0glm_slcn_mean, 1},
+    {"_L0glm_slcn_delta", (DL_FUNC) &_L0glm_slcn_delta, 10},
+    {"_L0glm_slcn_loglik", (DL_FUNC) &_L0glm_slcn_loglik, 8},
+    {"_L0glm_slcn_spectral", (DL_FUNC) &_L0glm_slcn_spectral, 16},
+    {"_L0glm_slcn_profile", (DL_FUNC) &_L0glm_slcn_profile, 14},
+    {"_L0glm_slcn_nb_score", (DL_FUNC) &_L0glm_slcn_nb_score, 5},
+    {"_L0glm_slcn_background", (DL_FUNC) &_L0glm_slcn_background, 12},
+    {"_L0glm_slcn_logconcave_cpp", (DL_FUNC) &_L0glm_slcn_logconcave_cpp, 2},
     {"_L0glm_spolo_connected_cpp", (DL_FUNC) &_L0glm_spolo_connected_cpp, 7},
     {"_L0glm_spolo_extract_cpp", (DL_FUNC) &_L0glm_spolo_extract_cpp, 6},
+    {"_L0glm_difference_scale_cpp", (DL_FUNC) &_L0glm_difference_scale_cpp, 7},
     {NULL, NULL, 0}
 };
 

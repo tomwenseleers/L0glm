@@ -16,6 +16,8 @@ test_that("signal-family densities and scores match the specified distributions"
   expect_equal(nb1(1.000001)$log_density(y,mu),dnbinom(y,size=mu/1e-6,mu=mu,log=TRUE),tolerance=1e-8)
   expect_error(nb1(.5),"noise parameter")
   expect_error(Gamma_scale(-1),"noise parameter")
+  expect_identical(nb1(3,identity)$link,"identity")
+  expect_identical(Gamma_scale(2,log)$link,"log")
 })
 
 test_that("the exact family scores fit, screen, tune and validate", {
@@ -76,4 +78,15 @@ test_that("quasipoisson scores return scaled likelihood kernels", {
   expect_equal(as.numeric(logLik(z)),sum(dpois(y,as.numeric(fitted(z)),log=TRUE))/3,tolerance=1e-8)
   expect_true(attr(logLik(z),"quasi"))
   expect_true(is.finite(GIC(z)))
+})
+
+test_that("signal families simulate both regression and blurred multichannel data", {
+  for(f in list(nb1(3),Gamma_scale(2,censor=.5),Gamma_censored(.3))) {
+    a <- simul("normal",n=60,p=5,n_nonzero=2,family=f,intercept=TRUE,m=2L)
+    expect_equal(dim(a$y),c(60L,2L));expect_true(f$validate_response(a$y))
+    f <- switch(f$scalar$kind-3L,Gamma_censored(.3,"identity"),nb1(3,"identity"),
+      Gamma_scale(2,"identity",censor=.5))
+    b <- simul("deconvolution",n=100,p=100,n_nonzero=5,m=3L,family=f)
+    expect_equal(dim(b$y),c(100L,3L));expect_true(f$validate_response(b$y))
+  }
 })

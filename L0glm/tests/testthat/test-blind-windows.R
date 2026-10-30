@@ -67,7 +67,7 @@ test_that("window fits learn varying PSFs and refit every original channel", {
   expect_gt(f1(fit$a_hat), f1(shared$a_hat))
   expect_lt(fit$deviance, shared$deviance)
   # The design is ready for the log-concave compound-fusion workflow.
-  expect_error(spoloconmf(fit$X, Y, background = matrix(1, n, 1), ncores = 1L,
+  expect_error(splogconNMF(fit$X, Y, background = matrix(1, n, 1), ncores = 1L,
     control = list(broad_repeats = 0L, full_sweeps = 0L, final_polishes = 0L)), NA)
 })
 

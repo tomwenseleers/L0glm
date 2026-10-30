@@ -1,0 +1,185 @@
+---
+title: "Sparse log-concave NMF"
+description: "Recover compound profiles and spectra with local likelihood updates and a parsimonious rank."
+output: rmarkdown::html_document
+---
+
+`splogconNMF()` extends sparse deconvolution to compounds whose profiles are
+broader or more asymmetric than the point spread function. It combines an
+initial grouped `L0glm.fit()` with fast spectral fusion and local constrained
+updates. Every compound has a nonnegative spectrum and a log-concave elution
+profile. A low-dimensional spline basis absorbs the smooth background.
+
+```r
+fit <- splogconNMF(X, Y, background = B, family = poisson("identity"),
+                  precluster = 32L)
+fit$rank                  # number of compounds
+fit$H                     # sparse, unit-sum profiles
+coef(fit)                 # spectra in every original channel
+fitted(fit)               # profiles x spectra + background + offset
+GIC(fit)
+```
+
+For experimental GC/MS intensities, `family=quasipoisson("identity")` allows
+extra variation through one pooled temporal dispersion estimate. Gaussian,
+negative-binomial and Gamma likelihoods are also available. The help page
+[`?splogconNMF`](../reference/splogconNMF.html) gives all arguments and examples.
+
+## Model and criterion
+
+For scans \(i\), channels \(j\) and compounds \(r\),
+
+\[
+\mu_{ij}=\sum_{r=1}^K H_{ir}S_{rj}+(BA)_{ij}+O_{ij},\qquad H,S,A\geq0.
+\]
+
+The columns of \(H\) have unit sum, contiguous support and
+\(\Delta^2\log H_{\cdot r}\leq0\). Spectra \(S\) therefore have the
+interpretation of integrated channel intensities. The objective is
+
+\[
+J=-2\sum_{ij}w_{ij}\ell(y_{ij};\mu_{ij},\nu)+\lambda_R K,
+\qquad \lambda_R=m\kappa\lambda_{IC}.
+\]
+
+Here \(m\) is the original channel count, \(\nu\) contains pooled noise
+parameters and \(\kappa=1\) for independent observations. Numeric `lambda`
+specifies the total compound penalty before the optional covariance adjustment.
+Background coefficients and profile complexity have no additional penalty.
+The reported IC methods use the compound-count convention \(mK\), plus any
+estimated shared noise parameters.
+
+## Local quadratic updates
+
+For a coefficient \(b\geq0\), keep the rest of the signal in an offset
+\(r_i\) and write \(\mu_i=r_i+x_i b\). With negative log-likelihood score
+\(g_i\) and positive working curvature \(I_i\), propose
+
+\[
+b^+=\max\left\{0,b-\frac{\sum_i w_i x_i g_i}
+{\sum_i w_i x_i^2 I_i}\right\}.
+\]
+
+Actual-loss backtracking and a zero-boundary check complete each scalar solve.
+The Poisson branch uses a faster bracketed likelihood solve. Its score
+\(\sum_iw_ix_i(1-y_i/\mu_i)\) is monotone, and its nonnegative root is bounded
+above by \(\sum_iw_iy_i/\sum_iw_ix_i\). Channels are independent conditional on
+the profiles, allowing deterministic OpenMP parallelism.
+
+Poisson profile proposals use four warm native IRLS steps. In a full profile
+sweep, the preceding profile supplies the ridge centre, with adaptive local
+weights proportional to the inverse squared current ordinate. This stabilizes
+low-intensity tails. The tether generates proposals; acceptance is evaluated
+against the full likelihood-and-compound-count criterion above.
+
+| Noise model | Variance | Negative log-likelihood score in the mean |
+|:--|:--|:--|
+| Gaussian | \(\phi\) | \((\mu-y)/\phi\) |
+| Poisson | \(\mu\) | \(1-y/\mu\) |
+| Quasipoisson | \(\phi\mu\) | \((1-y/\mu)/\phi\) |
+| NB2 | \(\mu+\mu^2/\theta\) | \(\theta(\mu-y)/\{\mu(\mu+\theta)\}\) |
+| Gamma | \(\phi\mu^2\) | \((\mu-y)/(\phi\mu^2)\) |
+| NB1 | \(\phi\mu\) | \(\{\psi(a)-\psi(a+y)+\log\phi\}/(\phi-1)\), \(a=\mu/(\phi-1)\) |
+| Common-scale Gamma | \(b_0\mu\) | \(\{\psi(\mu/b_0)+\log b_0-\log y\}/b_0\) |
+
+The final two models use the exact distributions documented in
+[`signal_families`](../reference/signal_families.html). Their observed positive
+curvatures are differences of trigamma functions for NB1 and
+\(\psi_1(\mu/b_0)/b_0^2\) for common-scale Gamma. The latter is convex in the
+mean; the NB1 curvature is nonnegative because trigamma decreases on the
+positive real line.
+
+## Censored Gamma intensities
+
+Recorded zeros may represent intensities below a detection limit \(d\), whose
+contribution is \(\log P(Y<d;\mu)\). Positive observations contribute their
+ordinary density. For standard Gamma, set \(a=1/\phi\),
+\(z=d/(\phi\mu)\); its negative log-CDF derivative is
+
+\[
+g(\mu)=\frac{z^a e^{-z}}{\Gamma(a)P(a,z)\mu}.
+\]
+
+For common-scale Gamma, \(z=d/b_0\) stays fixed and \(a=\mu/b_0\) changes.
+The convergent incomplete-Gamma series
+
+\[
+P(a,z)=\frac{e^{-z}z^a}{\Gamma(a+1)}
+\left\{1+\sum_{k\geq1}\frac{z^k}{(a+1)\cdots(a+k)}\right\}
+\]
+
+provides its shape derivative when \(z\) is small. The general branch uses the
+Gamma CDF and a numerical shape derivative. Both branches are checked against
+the actual censored likelihood. The default detection limit is 0.5 intensity
+units and can be changed through `control$censor`.
+
+## Fusion, aggregation and rank selection
+
+1. Obtain a variance-matched grouped deconvolution start, retaining the spline
+   background as compulsory unpenalized terms.
+2. Compare normalized spectra by Jensen--Shannon information loss. Propose
+   fusions when their elution profiles overlap and their combined profile can
+   be made log-concave. Clustering itself performs no regression fits.
+3. Refine each proposal locally, holding all outside contributions fixed.
+   Overlapping spectra and the candidate profile can adjust together.
+4. Accept a rank change when
+   \(-2(\ell_{new}-\ell_{old})+\lambda_R(K_{new}-K_{old})\leq0\).
+5. Update broad profiles, smooth background coefficients and spectra, followed
+   by final boundary checks and rank pruning.
+
+Log concavity is enforced by a least concave majorant of the log profile,
+followed by normalization. Every complete accepted stage decreases the actual
+criterion, within numerical tolerance. `history` and `ledger_error` make this
+property directly checkable.
+
+With `precluster=32L`, the initial workflow uses at most 32 aggregated outcome
+groups. Size factors `colSums(pmax(Y,0))` account for different total ion
+intensities. Final refinement returns to every original channel. Independent
+NB1 variables sharing \(p=1/\phi\) are closed under sums, because their
+probability-generating functions multiply as
+
+\[
+\prod_j\left\{\frac{p}{1-(1-p)t}\right\}^{\mu_j/(\phi-1)}
+=\left\{\frac{p}{1-(1-p)t}\right\}^{\sum_j\mu_j/(\phi-1)}.
+\]
+
+The same property holds for common-scale Gamma latent signals, through
+\(\prod_j(1+b_0t)^{-\mu_j/b_0}=(1+b_0t)^{-\sum_j\mu_j/b_0}\).
+Standard NB2 and Gamma use moment matching in the reduced problem. Censoring
+or different channel weights also give working aggregate approximations;
+final scoring always uses the original responses and their specified model.
+
+## Temporal variation
+
+High-order differences suppress the slowly varying mean. With
+\(a_k=(-1)^k{r\choose k}\) and stationary covariance \(c_h\),
+
+\[
+\frac{\operatorname{Var}(\Delta^r e)}{{2r\choose r}}
+=c_0+2\sum_{h=1}^r(-1)^h
+\frac{{2r\choose r+h}}{{2r\choose r}}c_h.
+\]
+
+The identity follows by expanding the variance and using
+\(\sum_k a_k a_{k+h}=(-1)^h{2r\choose r+h}\). With lag-one covariance this
+reduces to \(c_0-2r c_1/(r+1)\). Fourth and eighth differences estimate the
+marginal variance and lag-one covariance. The optional penalty multiplier
+\(\kappa=1+2\widehat\rho_1\) approximates the local information loss for
+smooth directions, while the marginal scale stays in the component likelihood.
+This is a scalar working covariance adjustment. Composite-likelihood theory
+relates the broader correction to \(\operatorname{tr}(JH^{-1})\), where \(H\)
+is sensitivity and \(J\) is score covariance (Varin, Reid & Firth, 2011).
+
+## References
+
+Banerjee, A. et al. (2005). [Clustering with Bregman divergences.](https://jmlr.org/papers/v6/banerjee05b.html)
+
+Witten, D. M. (2011). [Classification and clustering of sequencing data using a Poisson model.](https://doi.org/10.1214/11-AOAS493)
+
+Varin, C., Reid, N. & Firth, D. (2011). [An overview of composite likelihood methods.](https://www3.stat.sinica.edu.tw/statistica/oldpdf/A21n11.pdf)
+
+The likelihood distributions follow the R [negative-binomial](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/NegBinomial.html)
+and [Gamma](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/GammaDist.html)
+parameterizations. The compound-count criterion, local log-concave fusion and
+their integration with L0glm's grouped initialization are developments of this
+package.

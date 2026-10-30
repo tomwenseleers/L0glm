@@ -1,5 +1,8 @@
 # Check capabilities before fitting, also used to expand method="all".
 L0glm_benchmark_setup <- function(method, data) {
+  if (method != "L0glm" && !is.null(data$family$scalar))
+    L0glm_benchmark_unavailable(paste(method,
+      "has no adapter for this exact signal-family likelihood; use method='L0glm'."))
   kind <- data$kind
   if (kind != "glm" && method == "L0Learn")
     L0glm_benchmark_unavailable("L0Learn has no native Cox or multinomial loss.")

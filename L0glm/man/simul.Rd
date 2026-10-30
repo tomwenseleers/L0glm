@@ -46,7 +46,9 @@ on exit. \code{NULL} uses and advances the current random-number stream.}
 \code{"nb"}, \code{"multinomial"} and \code{"cox"}. Positive-response regression families
 default to a log link; deconvolution uses identity links. Special-family
 objects from \pkg{mgcv} are accepted. \code{NULL} uses Poisson for named
-deconvolution, Gaussian for regression, or the numbered setup's family.}
+deconvolution, Gaussian for regression, or the numbered setup's family.
+\link{signal_families} objects use their fixed NB1 or Gamma noise parameters;
+their Gamma detection limits are applied when drawing observations.}
 
 \item{n_nonzero}{Number of nonzero predictor rows, excluding the intercept.
 Overrides \code{s}; a supplied \code{beta} determines its own support. Deconvolution

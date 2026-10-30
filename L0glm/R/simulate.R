@@ -26,6 +26,8 @@
 #'   default to a log link; deconvolution uses identity links. Special-family
 #'   objects from \pkg{mgcv} are accepted. `NULL` uses Poisson for named
 #'   deconvolution, Gaussian for regression, or the numbered setup's family.
+#'   [signal_families] objects use their fixed NB1 or Gamma noise parameters;
+#'   their Gamma detection limits are applied when drawing observations.
 #' @param n_nonzero Number of nonzero predictor rows, excluding the intercept.
 #'   Overrides `s`; a supplied `beta` determines its own support. Deconvolution
 #'   caps this number at `min(n,p)`. See `beta.type` below for weak sparsity.
@@ -192,6 +194,8 @@ simul <- function(method = "deconvolution", n = 500, p = 500, s = 0.1,
   if (kind == "multinomial") B <- B-rowMeans(B)
   constant <- L0glm_sim_intercept(intercept, q, kind)
   phi <- L0glm_sim_parameter(options$dispersion, q, 1, "dispersion", zero=kind == "gaussian")
+  if(is.list(family) && !is.null(family$scalar) && any(phi!=1))
+    stop("Specify the fixed noise parameter in the signal-family constructor.",call.=FALSE)
   if (kind %in% c("poisson", "binomial", "nb", "multinomial", "cox", "ordinal") && any(phi != 1))
     stop("This family has fixed dispersion=1; choose a quasi-family or NB for overdispersion.", call.=FALSE)
   if (kind == "gaussian") {
@@ -312,7 +316,8 @@ L0glm_sim_family <- function(family, m, options, default_m=FALSE) {
   }
   m <- L0glm_sim_integer(m, "m", if (kind %in% c("multinomial", "ordinal")) 2 else 1)
   if (!kind %in% c("gaussian", "binomial", "poisson", "Gamma", "inverse.gaussian",
-      "quasipoisson", "quasibinomial", "nb", "multinomial", "cox", "ordinal"))
+      "quasipoisson", "quasibinomial", "nb", "multinomial", "cox", "ordinal",
+      "NB1", "Gamma_scale", "Gamma_censored"))
     stop("This family does not specify a supported sampling distribution.", call.=FALSE)
   if (kind == "cox" && m != 1L) stop("Cox has one event-time response; use m=1.", call.=FALSE)
   list(family=family, kind=kind, m=m)
@@ -432,11 +437,15 @@ L0glm_sim_response <- function(eta, family, kind, phi, theta, options) {
     valid <- all(is.finite(mu)) && if (kind %in% c("poisson", "quasipoisson", "nb")) all(mu >= 0) else
       if (kind %in% c("Gamma", "inverse.gaussian")) all(mu > 0) else
         if (kind %in% c("binomial", "quasibinomial")) all(mu >= 0 & mu <= 1) else TRUE
+    if (!is.null(family$scalar)) valid <- family$validmu(mu)
     if (!valid) stop("Invalid means for this family/link; change beta, intercept or link. Means are not clipped.", call.=FALSE)
   }
   if (any(!is.finite(mu))) stop("Non-finite simulation means.", call.=FALSE)
   weights <- matrix(1, n, 1L)
-  if (kind %in% c("multinomial", "ordinal")) {
+  if (is.list(family) && is.function(family$random)) {
+    y <- matrix(family$random(mu),n,m)
+    if(!family$validate_response(y)) stop("Response generation underflowed; use a Gamma detection limit.",call.=FALSE)
+  } else if (kind %in% c("multinomial", "ordinal")) {
     trials <- L0glm_sim_parameter(options$trials, n, 1, "trials")
     if (any(trials != floor(trials))) stop("trials must be positive integers.", call.=FALSE)
     y <- t(vapply(seq_len(n), function(i) as.numeric(stats::rmultinom(1L, trials[i], mu[i, ])), numeric(ncol(mu))))

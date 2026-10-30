@@ -40,7 +40,9 @@ superresolution. The design excludes any intercept column.}
 
 \item{family}{\code{"poisson"}, \code{"gaussian"}, \code{"nb"} or \code{"negative.binomial"},
 or a corresponding family object with an identity link. NB family objects
-are supplied by \code{mgcv::nb(link="identity")}.}
+are supplied by \code{mgcv::nb(link="identity")}.
+Identity-link \link{signal_families} objects also support fixed-parameter NB1,
+common-scale Gamma and censored Gamma noise.}
 
 \item{sd_noise}{Gaussian noise standard deviation, one value or one per channel.}
 

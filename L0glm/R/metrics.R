@@ -84,10 +84,12 @@ L0glm_prediction_metrics <- function(y, mu, weights, family, beta, mandatory=int
       weight_mu <- pmax(weight_mu, .Machine$double.eps)
     # Boundary count means must not receive machine-epsilon inverse-variance
     # weights. Stabilize the weight calculation, never the fitted residuals.
-    if (count) weight_mu <- pmax(weight_mu, r2_mu_floor)
+    if (count || !is.null(f$scalar)) weight_mu <- pmax(weight_mu, r2_mu_floor)
     derivative <- f$mu.eta(f$linkfun(weight_mu))
     variance <- f$variance(weight_mu)
     value <- weights[keep, j] * derivative^2/variance
+    if (is.function(f$score)) value <- weights[keep,j]*derivative^2*
+      f$score(y[keep,j],weight_mu)[,2L]
     value[variance == 0 & derivative == 0] <- 0
     if (any(!is.finite(value) | value < 0)) return(result)
     working[keep, j] <- value

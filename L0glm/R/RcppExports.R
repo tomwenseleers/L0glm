@@ -109,28 +109,48 @@ solve_dense_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
     .Call('_L0glm_solve_dense_CG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
-spolo_state_cpp <- function(y, mu) {
-    .Call('_L0glm_spolo_state_cpp', PACKAGE = 'L0glm', y, mu)
+slcn_state <- function(y, mu) {
+    .Call('_L0glm_slcn_state', PACKAGE = 'L0glm', y, mu)
 }
 
-spolo_local_cpp <- function(handle, left, right) {
-    .Call('_L0glm_spolo_local_cpp', PACKAGE = 'L0glm', handle, left, right)
+slcn_local <- function(handle, left, right) {
+    .Call('_L0glm_slcn_local', PACKAGE = 'L0glm', handle, left, right)
 }
 
-spolo_commit_cpp <- function(handle, left, mu) {
-    invisible(.Call('_L0glm_spolo_commit_cpp', PACKAGE = 'L0glm', handle, left, mu))
+slcn_commit <- function(handle, left, mu) {
+    invisible(.Call('_L0glm_slcn_commit', PACKAGE = 'L0glm', handle, left, mu))
 }
 
-spolo_mean_cpp <- function(handle) {
-    .Call('_L0glm_spolo_mean_cpp', PACKAGE = 'L0glm', handle)
+slcn_mean <- function(handle) {
+    .Call('_L0glm_slcn_mean', PACKAGE = 'L0glm', handle)
 }
 
-spolo_delta_cpp <- function(y, old_mu, new_mu) {
-    .Call('_L0glm_spolo_delta_cpp', PACKAGE = 'L0glm', y, old_mu, new_mu)
+slcn_delta <- function(y, old, next_mu, family, phi, theta, weights, full_n, first = 0L, censor = .5) {
+    .Call('_L0glm_slcn_delta', PACKAGE = 'L0glm', y, old, next_mu, family, phi, theta, weights, full_n, first, censor)
 }
 
-spolo_spectral_cpp <- function(y, mean, profiles, spectra, sweeps = 1L, nthreads = 1L, maxit = 25L, tol = 1e-7) {
-    .Call('_L0glm_spolo_spectral_cpp', PACKAGE = 'L0glm', y, mean, profiles, spectra, sweeps, nthreads, maxit, tol)
+slcn_loglik <- function(y, mu, family, phi, theta, weights, nthreads = 1L, censor = .5) {
+    .Call('_L0glm_slcn_loglik', PACKAGE = 'L0glm', y, mu, family, phi, theta, weights, nthreads, censor)
+}
+
+slcn_spectral <- function(y, mean, design, spectra, family, phi, theta, weights, full_n, first = 0L, sweeps = 4L, nthreads = 1L, maxit = 12L, tol = 1e-8, censor = .5, keep_zeros = FALSE) {
+    .Call('_L0glm_slcn_spectral', PACKAGE = 'L0glm', y, mean, design, spectra, family, phi, theta, weights, full_n, first, sweeps, nthreads, maxit, tol, censor, keep_zeros)
+}
+
+slcn_profile <- function(y, mean, old, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 8L, nthreads = 1L, censor = .5, ridge = 0) {
+    .Call('_L0glm_slcn_profile', PACKAGE = 'L0glm', y, mean, old, spectrum, family, phi, theta, weights, full_n, first, maxit, nthreads, censor, ridge)
+}
+
+slcn_nb_score <- function(y, mu, theta, weights, nthreads = 1L) {
+    .Call('_L0glm_slcn_nb_score', PACKAGE = 'L0glm', y, mu, theta, weights, nthreads)
+}
+
+slcn_background <- function(y, signal, basis, start, family, phi, theta, weights, nthreads = 1L, maxit = 40L, tol = 1e-8, censor = .5) {
+    .Call('_L0glm_slcn_background', PACKAGE = 'L0glm', y, signal, basis, start, family, phi, theta, weights, nthreads, maxit, tol, censor)
+}
+
+slcn_logconcave_cpp <- function(profile, min_relative = 1e-12) {
+    .Call('_L0glm_slcn_logconcave_cpp', PACKAGE = 'L0glm', profile, min_relative)
 }
 
 spolo_connected_cpp <- function(spectra, area, center, lo, hi, anchor, radius) {
@@ -139,5 +159,9 @@ spolo_connected_cpp <- function(spectra, area, center, lo, hi, anchor, radius) {
 
 spolo_extract_cpp <- function(spectra, area, center, fraction = .1, pure_radius = .005, nthreads = 1L) {
     .Call('_L0glm_spolo_extract_cpp', PACKAGE = 'L0glm', spectra, area, center, fraction, pure_radius, nthreads)
+}
+
+difference_scale_cpp <- function(residual, variance, level, eligible, coefficient, minimum_mean, nthreads) {
+    .Call('_L0glm_difference_scale_cpp', PACKAGE = 'L0glm', residual, variance, level, eligible, coefficient, minimum_mean, nthreads)
 }
 

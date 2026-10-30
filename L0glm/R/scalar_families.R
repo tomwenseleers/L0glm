@@ -4,6 +4,8 @@
 #' [L0glm.fit()], [L0glm.tune()], [sis_glm()] and [glm_cluster()]. These adapters
 #' supply the likelihood score and positive quadratic curvature to the shared
 #' IRLS loop, with its usual selection, line search and relaxed refitting.
+#' These adapters are intended for L0glm's score-based IRLS. External fitting
+#' engines need to implement their likelihood scores to fit the same models.
 #'
 #' @param dispersion Known variance-to-mean ratio for `nb1()` (at least one),
 #'   or known Gamma dispersion for `Gamma_censored()` (strictly positive).
@@ -66,19 +68,25 @@ NULL
 #' @rdname signal_families
 #' @export
 nb1 <- function(dispersion = 1, link = "log") {
-  L0glm_scalar_family(5L, dispersion, link, 0, "NB1")
+  L0glm_scalar_family(5L, dispersion, L0glm_scalar_link(link,substitute(link)), 0, "NB1")
 }
 
 #' @rdname signal_families
 #' @export
 Gamma_scale <- function(scale = 1, link = "log", censor = 0) {
-  L0glm_scalar_family(6L, scale, link, censor, "Gamma_scale")
+  L0glm_scalar_family(6L, scale, L0glm_scalar_link(link,substitute(link)), censor, "Gamma_scale")
 }
 
 #' @rdname signal_families
 #' @export
 Gamma_censored <- function(dispersion = 1, link = "log", censor = 0.5) {
-  L0glm_scalar_family(4L, dispersion, link, censor, "Gamma_censored")
+  L0glm_scalar_family(4L, dispersion, L0glm_scalar_link(link,substitute(link)), censor, "Gamma_censored")
+}
+
+L0glm_scalar_link <- function(value, expression) {
+  if (is.symbol(expression) && as.character(expression) %in%
+      c("identity","log","sqrt","inverse","logit","probit","cloglog","cauchit"))
+    as.character(expression) else value
 }
 
 L0glm_scalar_family <- function(kind, parameter, link, censor, name) {
@@ -107,5 +115,16 @@ L0glm_scalar_family <- function(kind, parameter, link, censor, name) {
       valideta = function(eta) all(is.finite(eta)), dispersion = 1,
       scalar = list(kind = kind, parameter = parameter, censor = censor),
       score = function(y, mu) terms(y, mu)[, 2:3, drop = FALSE],
-      log_density = function(y, mu) terms(y, mu)[, 1L], validate_response = valid)), class = "family")
+      log_density = function(y, mu) terms(y, mu)[, 1L], validate_response = valid,
+      random = function(mu) {
+        mu <- as.numeric(mu)
+        live <- which(mu>0); y <- numeric(length(mu))
+        y[live] <- if(kind==5L) {
+          if(parameter==1) stats::rpois(length(live),mu[live]) else
+            stats::rnbinom(length(live),mu=mu[live],size=mu[live]/(parameter-1))
+        } else if(kind==6L) stats::rgamma(length(live),shape=mu[live]/parameter,scale=parameter) else
+          stats::rgamma(length(live),shape=1/parameter,scale=mu[live]*parameter)
+        if(kind!=5L && censor>0) y[y<censor] <- 0
+        y
+      })), class = "family")
 }

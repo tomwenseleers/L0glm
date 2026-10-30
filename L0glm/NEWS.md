@@ -2,9 +2,11 @@
 
 ## Initial version
 
-* Sparse Poisson log-concave NMF (`spoloconmf`) recovers elution profiles and
-  spectra using local Poisson updates and fast spectral fusion, with a
-  compound-count criterion, unpenalized spline backgrounds and native OpenMP.
+* Sparse log-concave NMF (`splogconNMF`) recovers elution profiles and spectra
+  with local native updates, spectral fusion and OpenMP. Supported noise models
+  include Gaussian, Poisson, quasipoisson, NB1/NB2 and both Gamma parameterizations,
+  with a compound-count criterion, unpenalized spline backgrounds, temporal
+  noise calibration and optional channel preclustering followed by full refitting.
 * Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
   returns the corresponding sparse design as `X` for downstream deconvolution.
   Standard calibration uses full local peak windows and automatic PSF support;

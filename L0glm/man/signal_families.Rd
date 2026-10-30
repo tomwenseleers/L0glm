@@ -35,6 +35,8 @@ Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models for
 [L0glm.fit()], [L0glm.tune()], [sis_glm()] and [glm_cluster()]. These adapters
 supply the likelihood score and positive quadratic curvature to the shared
 IRLS loop, with its usual selection, line search and relaxed refitting.
+These adapters are intended for L0glm's score-based IRLS. External fitting
+engines need to implement their likelihood scores to fit the same models.
 }
 \details{
 For NB1, with \eqn{\phi>1},
