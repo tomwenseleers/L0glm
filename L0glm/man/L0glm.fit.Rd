@@ -1199,6 +1199,10 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
 \item P. McCullagh & J.A. Nelder, \emph{Generalized Linear Models}. London: Chapman and Hall (1989).
 }
 }
+\seealso{
+\link{signal_families} for fixed-parameter NB1, common-scale Gamma
+  and censored Gamma models with exact likelihood scores.
+}
 \author{
 Tom Wenseleers, Laura Lanzas & Christophe Vanderaa
 

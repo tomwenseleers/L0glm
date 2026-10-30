@@ -43,6 +43,10 @@
 #' \eqn{\tfrac12\sum_i(y_{ia}-y_{ib})^2}.
 #' A generic pooled unit deviance is a dissimilarity; distributional
 #' Jensen--Shannon terminology and a universal metric claim do not apply.
+#' [nb1()], [Gamma_scale()] and [Gamma_censored()] use the exact likelihood
+#' ratio between separate fitted means and a shared fitted mean. Their native
+#' scalar optimizer accounts for censoring and the specified fixed noise
+#' parameter. The fitted means need not equal the raw observations.
 #'
 #' For the Poisson method let \eqn{s_a,s_b} be the size factors and define
 #' \deqn{c_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}
@@ -84,6 +88,12 @@
   if (!inherits(family,"family")) family<-family()
   if (!is.function(family$dev.resids)) stop("family needs scalar unit deviances.",call.=FALSE)
   info<-L0glm_cluster_family(family)
+  if (!is.null(info$scalar)) {
+    s<-info$scalar
+    values<-L0glm_scalar_dist_cpp(Y,w,s$kind,s$parameter,s$censor,threads)
+    return(structure(values,Size=ncol(Y),Labels=colnames(Y),Diag=FALSE,
+      Upper=FALSE,method="likelihood ratio",class="dist"))
+  }
   if(info$id>0L) {
     values<-L0glm_deviance_dist_cpp(Y,w,info$id,info$theta,threads)
     return(structure(values,Size=ncol(Y),Labels=colnames(Y),Diag=FALSE,
@@ -129,6 +139,7 @@ L0glm_cluster_sizes<-function(size_fac,Y,w) {
 }
 
 L0glm_cluster_family<-function(family) {
+  if (!is.null(family$scalar)) return(list(id=0L,theta=1,likelihood=TRUE,scalar=family$scalar))
   name<-tolower(family$family)
   if(grepl("cox|multinom",name)) stop("Clustering requires independent scalar response families.",call.=FALSE)
   id<-match(name,c("poisson","gaussian","binomial","gamma","inverse.gaussian"),nomatch=0L)
@@ -142,5 +153,5 @@ L0glm_cluster_family<-function(family) {
       stop("Negative-binomial clustering needs a fixed positive shape in family.",call.=FALSE)
     id<-6L
   }
-  list(id=id,theta=theta,likelihood=id>0L&&!grepl("^quasi",name))
+  list(id=id,theta=theta,likelihood=id>0L&&name!="quasibinomial")
 }

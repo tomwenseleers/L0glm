@@ -42,7 +42,7 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
   keep <- which(weights > 0)
   deviance <- sum(family$dev.resids(as.vector(y), as.vector(mu), as.vector(weights))[keep])
   deviance_true <- NA_real_
-  if (!is.null(beta_true)) {
+  if (!is.null(beta_true) && is.null(family$scalar)) {
     truth <- L0glm_metric_coefficients(beta_true, nrow(beta), m)
     mu_true <- predict_mean(truth)
     deviance_true <- sum(family$dev.resids(as.vector(mu_true), as.vector(mu), as.vector(weights))[keep])

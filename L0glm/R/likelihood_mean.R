@@ -5,6 +5,13 @@ L0glm_loglik_mean <- function(y, mu, weights, family, dispersion=NULL) {
     keep_j <- weights[, j] > 0 & is.finite(weights[, j])
     yy <- y[keep_j, j]; mm <- mu[keep_j, j]; ww <- weights[keep_j, j]
     if (!length(yy)) return(0)
+    if (is.function(family$log_density)) return(-2 * sum(ww * family$log_density(yy, mm)))
+    if (family$family == "quasipoisson") {
+      scale <- if (is.null(dispersion)) sum(ww * (yy-mm)^2 / pmax(mm, .Machine$double.eps)) /
+        max(1, length(yy)-1L) else abs(dispersion[j])
+      kernel <- ifelse(yy == 0, 0, yy * log(mm)) - mm - lgamma(yy + 1)
+      return(-2 * sum(ww * kernel) / max(scale, .Machine$double.eps))
+    }
     phi <- if (is.null(dispersion) || free_scale[j]) NULL else dispersion[j]
     if (family$family == "gaussian") {
       rss <- sum(ww * (yy - mm)^2)

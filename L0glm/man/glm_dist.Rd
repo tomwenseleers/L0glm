@@ -64,6 +64,10 @@ For Gaussian observations with unit weights it is
 \eqn{\tfrac12\sum_i(y_{ia}-y_{ib})^2}.
 A generic pooled unit deviance is a dissimilarity; distributional
 Jensen--Shannon terminology and a universal metric claim do not apply.
+\code{\link[=nb1]{nb1()}}, \code{\link[=Gamma_scale]{Gamma_scale()}} and \code{\link[=Gamma_censored]{Gamma_censored()}} use the exact likelihood
+ratio between separate fitted means and a shared fitted mean. Their native
+scalar optimizer accounts for censoring and the specified fixed noise
+parameter. The fitted means need not equal the raw observations.
 
 For the Poisson method let \eqn{s_a,s_b} be the size factors and define
 \deqn{c_i=\frac{w_{ia}y_{ia}+w_{ib}y_{ib}}

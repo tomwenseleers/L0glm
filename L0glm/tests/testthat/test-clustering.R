@@ -200,9 +200,9 @@ test_that("quasi and custom families retain working-deviance clustering",{
   q<-glm_cluster(Y,family=quasipoisson())
   expect_equal(length(q$clusterids),10L);expect_identical(q$linkage,"ward")
   expect_equal(as.numeric(glm_dist(Y,family=quasipoisson())),as.numeric(glm_dist(Y,family=poisson())),tolerance=1e-12)
-  expect_error(glm_cluster(Y,family=quasipoisson(),criterion="gic"),"likelihood IC")
+  expect_true(all(is.finite(glm_cluster(Y,family=quasipoisson(),criterion="gic",dispersion=3)$history$IC)))
   fixed<-glm_cluster(Y,family=quasipoisson(),linkage="bregman",k=2)
-  expect_true(all(is.na(fixed$history$IC)));expect_equal(max(fixed$clusterids),2)
+  expect_true(all(is.finite(fixed$history$IC)));expect_equal(max(fixed$clusterids),2)
   custom<-gaussian();custom$family<-"custom scalar"
   z<-glm_cluster(Y,family=custom,k=3)
   expect_equal(max(z$clusterids),3L);expect_identical(z$linkage,"ward")

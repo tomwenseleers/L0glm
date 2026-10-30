@@ -643,7 +643,11 @@ init_coefs = function( X,
   varg = family$variance(mu) # variance
   if (length(lambda) == 1) lambda = rep(lambda, ncol(X))
   
-  if (family$link == "identity") {
+  if (is.function(family$score)) {
+    working <- L0glm_working_model(family)(y, as.numeric(eta), mu, weights, offset)
+    W.ret <- working$weights; z.ret <- working$response; good <- working$good
+    W <- W.ret[good]; z <- z.ret[good]
+  } else if (family$link == "identity") {
     # simplified formula and faster than formula in else statement
     W <- W.ret <- as.vector(weights / varg) # 1/variance (* weights) with identity link, where variance = 1 with Gaussian noise, variance = mu with Poisson noise, variance = mu^2 with Gamma noise
     good = which(!is.na(W) & !(W == 0) & !is.infinite(W)) # valid rows # (gprime != 0)

@@ -11,11 +11,12 @@
 #'   rows for clustering only; use this acceleration for ordered Poisson scans
 #'   with unit weights. Returned aggregates retain every original row.
 #' @param linkage `"ward"` or `"bregman"`. The size-adjusted Poisson distance
-#'   defaults to the Ward hierarchy. Other scalar-family deviances
-#'   default to Bregman likelihood merges.
+#'   defaults to the Ward hierarchy. Regular scalar GLM likelihoods default
+#'   to Bregman merges; [signal_families] use Ward likelihood-ratio distances.
 #' @param criterion `"gic"` (default), `"aic"`, `"bic"`, `"ebic"`, `"mbic"`,
-#'   or `"dynamic"` for dynamicTreeCut on a Ward hierarchy. Quasi/custom
-#'   families default to dynamic cutting because likelihood ICs are unavailable. Supplying `k`
+#'   or `"dynamic"` for dynamicTreeCut on a Ward hierarchy. Quasibinomial and
+#'   custom unit-deviance families default to dynamic cutting. For quasipoisson,
+#'   supply a common dispersion to obtain quasi-information criteria. Supplying `k`
 #'   requests that fixed number of groups.
 #' @param k Optional fixed number of groups, between one and `ncol(Y)`.
 #' @param k.max Largest number of groups considered by criterion selection,
@@ -75,6 +76,10 @@
 #' support fixed cuts or Ward/dynamic cutting.
 #' Custom scalar unit deviances remain available through [glm_dist()] and
 #' the Ward/dynamic route.
+#' NB1, common-scale Gamma and censored Gamma use the fixed-parameter exact
+#' likelihoods in [signal_families]. Their pooled means are optimized with a
+#' native scalar score solve, and the saturated reference uses separate
+#' optimized means. They support Ward clustering with IC, fixed or dynamic cuts.
 #'
 #' Aggregation summarises the original columns. Poisson counts and their
 #' means add. Shared Poisson case weights stay unchanged; differing weights
@@ -104,6 +109,8 @@
 #' Witten, D. M. (2011). Classification and Clustering of Sequencing Data
 #' using a Poisson Model. AOAS 5(4), 2493--2518. \doi{10.1214/11-AOAS493}.
 #' @example examples/glm_cluster.R
+#' @seealso [signal_families] for NB1, common-scale Gamma and censored Gamma
+#'   clustering with exact likelihood-ratio distances and a Ward hierarchy.
 #' @importFrom fastcluster hclust
 #' @importFrom dynamicTreeCut cutreeDynamic
 #' @export
@@ -114,7 +121,7 @@
   Y<-L0glm_cluster_matrix(Y);n<-nrow(Y);m<-ncol(Y)
   if(!inherits(family,"family")) family<-family()
   method<-match.arg(method,c("deviance","poissondist"));info<-L0glm_cluster_family(family)
-  if(is.null(linkage)) linkage<-if(method=="poissondist"||!info$likelihood) "ward" else "bregman"
+  if(is.null(linkage)) linkage<-if(method=="poissondist"||!info$likelihood||!is.null(info$scalar)||grepl("^quasi",family$family)) "ward" else "bregman"
   if(is.null(criterion)) criterion<-if(info$likelihood) "gic" else "dynamic"
   linkage<-match.arg(linkage,c("ward","bregman"))
   criterion<-match.arg(tolower(criterion),c("gic","bic","aic","ebic","mbic","dynamic"))
@@ -127,17 +134,24 @@
   if(method=="poissondist" && info$id!=1L) stop("poissondist clustering requires a Poisson family.",call.=FALSE)
   if(!is.numeric(dispersion)||!length(dispersion)%in%c(1L,m)||any(!is.finite(dispersion)|dispersion<=0))
     stop("dispersion must be positive and scalar or per-channel.",call.=FALSE)
-  if(info$likelihood&&info$id%in%c(1L,3L,6L)&&any(dispersion!=1)) stop("This family has fixed dispersion one.",call.=FALSE)
-  if(info$id==0L && (linkage!="ward"||criterion!="dynamic") && is.null(k))
+  if(info$likelihood&&info$id%in%c(1L,3L,6L)&&family$family!="quasipoisson"&&any(dispersion!=1)) stop("This family has fixed dispersion one.",call.=FALSE)
+  if(info$id==0L && is.null(info$scalar) && (linkage!="ward"||criterion!="dynamic") && is.null(k))
     stop("This scalar family supports Ward clustering with a fixed or dynamic cut.",call.=FALSE)
   if(info$id==0L && linkage=="bregman") stop("No native Bregman kernel for this scalar family.",call.=FALSE)
+  if(!is.null(info$scalar)&&any(dispersion!=1)) stop("Pass the fixed noise parameter in the family constructor.",call.=FALSE)
+  profile<-function(labels) {
+    if(is.null(info$scalar)) return(L0glm_cluster_profile_cpp(work,precision,sizes,labels,info$id,info$theta,threads))
+    s<-info$scalar
+    L0glm_scalar_profile_cpp(work,precision,labels,s$kind,s$parameter,s$censor,threads)
+  }
   sizes<-if(method=="poissondist") L0glm_cluster_sizes(size_fac,Y,w) else rep(1,m)
   work<-Y;precision<-if(length(dispersion)==1L) w/dispersion else
     as.numeric(sweep(matrix(w,n,m),2L,dispersion,"/"))
   if(rowbins>1L) {
     if(info$id!=1L||any(w!=1)) stop("Row binning requires Poisson data with unit weights.",call.=FALSE)
+    if(length(dispersion)!=1L) stop("Row binning requires a common dispersion.",call.=FALSE)
     bins<-rep(seq_len(ceiling(n/rowbins)),each=rowbins,length.out=n)
-    work<-rowsum(Y,bins,reorder=FALSE);precision<-1
+    work<-rowsum(Y,bins,reorder=FALSE);precision<-1/dispersion
   }
   D<-hc<-NULL
   if(m>1L) {
@@ -158,8 +172,8 @@
   } else {
     ks<-if(m==1L) 1L else if(!is.null(k)) as.integer(k) else seq_len(min(k.max,m))
     labels<-if(m==1L) matrix(1L,1L,1L) else matrix(stats::cutree(hc,k=ks),m,length(ks))
-    if(info$id>0L) {
-      loss<-L0glm_cluster_profile_cpp(work,precision,sizes,labels,info$id,info$theta,threads)
+    if(info$id>0L || !is.null(info$scalar)) {
+      loss<-profile(labels)
       mixing<-vapply(seq_along(ks),function(i) {z<-tabulate(labels[,i]);-2*sum(z*log(z/m))},numeric(1))
       df<-loss$df+ks-1L;penalty<-if(criterion=="dynamic") "gic" else criterion
       score<-if(info$likelihood) get.IC(-(loss$deviance+mixing)/2,max(3,n),max(2,n),df)[[penalty]] else rep(NA_real_,length(ks))
@@ -168,9 +182,9 @@
     } else best<-1L
     group<-labels[,best]
   }
-  if(info$id>0L) centres<-L0glm_cluster_profile_cpp(work,precision,sizes,matrix(as.integer(group),m,1L),info$id,info$theta,threads)$centres
+  if(info$id>0L || !is.null(info$scalar)) centres<-profile(matrix(as.integer(group),m,1L))$centres
   compatible<-TRUE
-  if(info$id%in%c(1L,6L)&&length(w)>n) {
+  if((info$id%in%c(1L,6L)||!is.null(info$scalar))&&length(w)>n) {
     W<-matrix(w,n,m)
     compatible<-all(vapply(split(seq_len(m),group),function(js) all(W[,js,drop=FALSE]==W[,js[1L]]),logical(1)))
   }
@@ -191,7 +205,7 @@
   group<-match(clusterids,sort(unique(clusterids)));k<-max(group)
   P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,k))
   w<-L0glm_cluster_weights(weights,n,m);kind<-tolower(family$family)
-  count<-kind%in%c("poisson","quasipoisson")||grepl("^negative binomial",kind)
+  count<-kind%in%c("poisson","quasipoisson","nb1","gamma_scale")||grepl("^negative binomial",kind)
   if(count) {
     Y_agg<-as.matrix(Y%*%P);weights_agg<-NULL
     if(!is.null(weights)) {

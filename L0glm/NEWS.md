@@ -16,6 +16,10 @@
   Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.
 * Negative binomial regression with estimated shape, joint multinomial regression
   in centered log-ratio coordinates, and Cox proportional hazards models.
+* Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models, with
+  native likelihood scores, tuning, screening and likelihood-ratio clustering.
+  Quasipoisson models expose scaled log-likelihood kernels and quasi-information
+  criteria through the regular scoring methods.
 * Conditional boundary polishing for relaxed nonnegative models removes
   likelihood-supported zero coefficients without a coefficient-size cutoff.
   Native Gaussian/Poisson kernels retain dense/sparse storage and Poisson OpenMP;

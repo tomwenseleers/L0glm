@@ -11,7 +11,8 @@ L0glm_irls_deviance <- function(y, eta, weights, family) {
     mu <- pmax(mu, .Machine$double.eps)
   }
   if (is.function(family$validmu) && !isTRUE(all(family$validmu(mu)))) return(Inf)
-  terms <- if (family$family == "inverse.gaussian" && family$link == "log")
+  terms <- if (is.function(family$log_density)) -2 * weights * family$log_density(y, mu) else
+    if (family$family == "inverse.gaussian" && family$link == "log")
     weights * ((y * exp(-eta) - 1) / sqrt(y))^2 else
       suppressWarnings(family$dev.resids(y, mu, weights))
   value <- sum(terms)

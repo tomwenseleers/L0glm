@@ -40,6 +40,8 @@ L0glm_validation_context <- function(validation, X, y, family, intercept) {
     stop("Invalid validation weights or offsets.", call. = FALSE)
   if (kind == "glm") {
     name <- family$family
+    if (is.function(family$validate_response) && !family$validate_response(v))
+      stop("Validation responses lie outside the family domain.", call. = FALSE)
     if ((name %in% c("poisson", "quasipoisson") || startsWith(name, "Negative Binomial(")) && any(v < 0))
       stop("Validation responses must be nonnegative for this family.", call. = FALSE)
     if (name %in% c("Gamma", "inverse.gaussian") && any(v <= 0))

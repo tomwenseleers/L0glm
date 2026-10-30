@@ -364,6 +364,8 @@
 #'
 #' @example examples/L0glm.tune.R
 #' @example examples/L0glm.special-families.R
+#' @seealso \link{signal_families} for NB1, common-scale Gamma and censored
+#'   Gamma models supported by both information-criterion tuning and CV.
 #'
 #' @export
 L0glm.tune <- function(X, y,

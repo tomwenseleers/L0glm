@@ -241,6 +241,55 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// L0glm_scalar_terms_cpp
+NumericMatrix L0glm_scalar_terms_cpp(NumericVector y, NumericVector mu, int family, double phi, double censor, bool deviance);
+RcppExport SEXP _L0glm_L0glm_scalar_terms_cpp(SEXP ySEXP, SEXP muSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP censorSEXP, SEXP devianceSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< bool >::type deviance(devianceSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_scalar_terms_cpp(y, mu, family, phi, censor, deviance));
+    return rcpp_result_gen;
+END_RCPP
+}
+// L0glm_scalar_profile_cpp
+List L0glm_scalar_profile_cpp(NumericMatrix y, NumericVector weights, IntegerMatrix labels, int family, double phi, double censor, int nthreads);
+RcppExport SEXP _L0glm_L0glm_scalar_profile_cpp(SEXP ySEXP, SEXP weightsSEXP, SEXP labelsSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP censorSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type labels(labelsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_scalar_profile_cpp(y, weights, labels, family, phi, censor, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// L0glm_scalar_dist_cpp
+NumericVector L0glm_scalar_dist_cpp(NumericMatrix y, NumericVector weights, int family, double phi, double censor, int nthreads);
+RcppExport SEXP _L0glm_L0glm_scalar_dist_cpp(SEXP ySEXP, SEXP weightsSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP censorSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0glm_scalar_dist_cpp(y, weights, family, phi, censor, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sis_score_cpp
 List sis_score_cpp(SEXP design, List context, int nsis, bool full, int nthreads);
 RcppExport SEXP _L0glm_sis_score_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP) {
@@ -530,6 +579,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
     {"_L0glm_nuisance_gaussian_cpp", (DL_FUNC) &_L0glm_nuisance_gaussian_cpp, 7},
+    {"_L0glm_L0glm_scalar_terms_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_terms_cpp, 6},
+    {"_L0glm_L0glm_scalar_profile_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_profile_cpp, 7},
+    {"_L0glm_L0glm_scalar_dist_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_dist_cpp, 6},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},

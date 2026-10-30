@@ -53,6 +53,18 @@ nuisance_gaussian_cpp <- function(B, Y, Signal, W, Start, constrained, nthreads 
     .Call('_L0glm_nuisance_gaussian_cpp', PACKAGE = 'L0glm', B, Y, Signal, W, Start, constrained, nthreads)
 }
 
+L0glm_scalar_terms_cpp <- function(y, mu, family, phi, censor, deviance = FALSE) {
+    .Call('_L0glm_L0glm_scalar_terms_cpp', PACKAGE = 'L0glm', y, mu, family, phi, censor, deviance)
+}
+
+L0glm_scalar_profile_cpp <- function(y, weights, labels, family, phi, censor, nthreads = 1L) {
+    .Call('_L0glm_L0glm_scalar_profile_cpp', PACKAGE = 'L0glm', y, weights, labels, family, phi, censor, nthreads)
+}
+
+L0glm_scalar_dist_cpp <- function(y, weights, family, phi, censor, nthreads = 1L) {
+    .Call('_L0glm_L0glm_scalar_dist_cpp', PACKAGE = 'L0glm', y, weights, family, phi, censor, nthreads)
+}
+
 sis_score_cpp <- function(design, context, nsis, full, nthreads = 1L) {
     .Call('_L0glm_sis_score_cpp', PACKAGE = 'L0glm', design, context, nsis, full, nthreads)
 }

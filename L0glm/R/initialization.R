@@ -56,6 +56,10 @@ L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,
   W <- as.numeric(weights * derivative^2 / family$variance(mu))
   z <- if (family$link == "identity") as.numeric(y - offset) else
     as.numeric(eta - offset + (y - mu) / derivative)
+  if (is.function(family$score)) {
+    working <- L0glm_working_model(family)(y, eta, mu, weights, offset)
+    W <- working$weights; z <- working$response
+  }
   good <- is.finite(W) & W > 0 & is.finite(z)
   if (!any(good)) return(rep(0, p))
   X <- X[good, , drop = FALSE]; W <- W[good]

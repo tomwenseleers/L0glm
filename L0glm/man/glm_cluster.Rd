@@ -52,12 +52,13 @@ physical cores; \code{1L} requests serial execution. Results have the same
 within-pair summation order at every thread count.}
 
 \item{linkage}{\code{"ward"} or \code{"bregman"}. The size-adjusted Poisson distance
-defaults to the Ward hierarchy. Other scalar-family deviances
-default to Bregman likelihood merges.}
+defaults to the Ward hierarchy. Regular scalar GLM likelihoods default
+to Bregman merges; \link{signal_families} use Ward likelihood-ratio distances.}
 
 \item{criterion}{\code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"}, \code{"mbic"},
-or \code{"dynamic"} for dynamicTreeCut on a Ward hierarchy. Quasi/custom
-families default to dynamic cutting because likelihood ICs are unavailable. Supplying \code{k}
+or \code{"dynamic"} for dynamicTreeCut on a Ward hierarchy. Quasibinomial and
+custom unit-deviance families default to dynamic cutting. For quasipoisson,
+supply a common dispersion to obtain quasi-information criteria. Supplying \code{k}
 requests that fixed number of groups.}
 
 \item{k}{Optional fixed number of groups, between one and \code{ncol(Y)}.}
@@ -135,6 +136,10 @@ Quasipoisson and quasibinomial have native working-deviance kernels and
 support fixed cuts or Ward/dynamic cutting.
 Custom scalar unit deviances remain available through \code{\link[=glm_dist]{glm_dist()}} and
 the Ward/dynamic route.
+NB1, common-scale Gamma and censored Gamma use the fixed-parameter exact
+likelihoods in \link{signal_families}. Their pooled means are optimized with a
+native scalar score solve, and the saturated reference uses separate
+optimized means. They support Ward clustering with IC, fixed or dynamic cuts.
 
 Aggregation summarises the original columns. Poisson counts and their
 means add. Shared Poisson case weights stay unchanged; differing weights
@@ -186,4 +191,8 @@ ICML. \url{https://icml.cc/2012/papers/758.pdf}.
 
 Witten, D. M. (2011). Classification and Clustering of Sequencing Data
 using a Poisson Model. AOAS 5(4), 2493--2518. \doi{10.1214/11-AOAS493}.
+}
+\seealso{
+\link{signal_families} for NB1, common-scale Gamma and censored Gamma
+clustering with exact likelihood-ratio distances and a Ward hierarchy.
 }

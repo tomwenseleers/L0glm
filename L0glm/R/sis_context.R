@@ -112,12 +112,17 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
     } else {
       fit0 <- L0glm_sis_null_fit(N,Y[,j],w[,j],off[,j],f)
       eta <- fit0$linear.predictors;mu <- fit0$fitted.values
-      phi <- if (f$family%in%c("poisson","binomial") || grepl("negative binomial",f$family,ignore.case=TRUE)) 1 else
+      phi <- if (!is.null(f$scalar) || f$family%in%c("poisson","binomial") || grepl("negative binomial",f$family,ignore.case=TRUE)) 1 else
         sum(w[good,j]*(Y[good,j]-mu[good])^2/f$variance(mu[good]))/max(1,sum(good)-fit0$rank)
     }
     derivative <- f$mu.eta(eta)[good];variance <- f$variance(mu[good])
     s <- w[good,j]*(Y[good,j]-mu[good])*derivative/variance/max(phi,.Machine$double.eps)
     h <- w[good,j]*derivative^2/variance/max(phi,.Machine$double.eps)
+    if (is.function(f$score)) {
+      d <- f$score(Y[good,j],mu[good])
+      s <- -w[good,j]*d[,1L]*derivative
+      h <- w[good,j]*d[,2L]*derivative^2
+    }
     boundary <- variance==0 & Y[good,j]==mu[good]
     s[boundary] <- h[boundary] <- 0
     if (any(!is.finite(s)) || any(!is.finite(h)|h<0))
@@ -133,6 +138,13 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
 # Preserve ordinary null-fit initialization, retrying only an invalid first
 # solve. Warnings from an unsuccessful attempt do not describe the valid retry.
 L0glm_sis_null_fit <- function(N,y,w,offset,family) {
+  if (is.function(family$score)) {
+    if (!ncol(N)) return(list(linear.predictors=offset,fitted.values=family$linkinv(offset),rank=0L))
+    fit <- L0glm.fit(N,y,family=family,weights=w,offset=offset,lambda=0,
+      intercept=FALSE,screen="none",maxit=100,tol=1e-10)
+    eta <- as.numeric(N%*%coef(fit))+offset
+    return(list(linear.predictors=eta,fitted.values=family$linkinv(eta),rank=ncol(N)))
+  }
   fit <- function(start=NULL) stats::glm.fit(N,y,weights=w,offset=offset,family=family,start=start,
     intercept=any(vapply(seq_len(ncol(N)),function(j) all(N[,j]==1),logical(1))),
     control=stats::glm.control(maxit=100,epsilon=1e-10))

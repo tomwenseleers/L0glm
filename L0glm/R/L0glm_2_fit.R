@@ -893,6 +893,8 @@
 #'
 #' @importFrom parallel detectCores makeCluster clusterCall clusterApply
 #'   stopCluster
+#' @seealso \link{signal_families} for fixed-parameter NB1, common-scale Gamma
+#'   and censored Gamma models with exact likelihood scores.
 #'
 #' @export
 #' @author

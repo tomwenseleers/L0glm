@@ -67,8 +67,11 @@ Gaussian estimated dispersion is profiled as weighted RSS divided by the
 number of positive-weight observations in each channel. Estimated Gamma
 and inverse-Gaussian dispersion use the same deviance-based
 \code{family$aic} convention as the existing package metrics, which need
-not equal the jointly maximized likelihood. Quasi-families return
-\code{NA} likelihood-based criteria.
+not equal the jointly maximized likelihood. For quasipoisson, the Poisson
+log-likelihood kernel is divided by the fitted dispersion. The regular
+criterion names report the corresponding quasi-information criteria;
+\code{logLik()} marks the value with \code{quasi=TRUE}. Use a common dispersion when
+comparing candidate models. Quasibinomial likelihood criteria are unavailable.
 
 Multinomial grouped selection counts \eqn{K-1} parameters per active row
 for \eqn{K} categories. Ungrouped CLR selection counts nonzero entries
