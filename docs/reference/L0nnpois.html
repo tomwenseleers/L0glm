@@ -227,6 +227,11 @@ Negative values cannot request dispersion estimation for this family.</p></dd>
 
 <dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
 <dd><p><code>NULL</code> (default) requests automatic initialization.
+Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
+negative binomial) with nonnegative designs and a compulsory background or known
+offset use a positive signal backprojection in original coefficient units;
+see <a href="compulsory_terms.html">compulsory_terms</a>. This pilot respects observation weights and
+individual predictor scales. Other designs use the family-specific ridge pilot.
 Otherwise supply finite starting coefficients as a scalar, a length-<code>p</code>
 vector repeated across response columns, or a <code>p</code> by <code>m</code> matrix.
 Here <code>p</code> includes any added intercept; <code>m</code> is the number of
@@ -288,6 +293,8 @@ case-insensitive criterion name: <code>"aic"</code>, <code>"bic"</code>,
 For example, <code>"GIC"</code> and <code>"gic"</code> are equivalent.
 The preset is a per-coefficient penalty on the \(-2\log L\) scale:
 AIC uses 2, BIC uses \(\log n\), and GIC uses \(\log p\,\log\log n\).
+Use <code><a href="preset.lambda.html">preset.lambda</a></code> to obtain the numeric value directly,
+for example <code>preset.lambda("gic", p = ncol(X), n = nrow(X))</code>.
 Here \(p\) counts the original selectable predictors, excluding intercepts
 and <code>always.include</code> terms, before screening by explicit starts.
 A pool with no selectable predictors uses \(p=1\) in logarithms.

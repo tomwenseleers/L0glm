@@ -7,7 +7,7 @@ test_that("criterion presets match the documented penalties in any case", {
       for (ic in names(expected)) {
         mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
         for (name in c(ic, toupper(ic), mixed)) {
-          expect_equal(L0glm:::preset.lambda(name, p = p, n = n),
+          expect_equal(L0glm::preset.lambda(name, p = p, n = n),
                        unname(expected[ic]), info = name)
         }
       }
@@ -19,7 +19,7 @@ test_that("criterion presets match the documented penalties in any case", {
       }
     }
   }
-  expect_equal(L0glm:::preset.lambda("EBIC", p = 20, n = 100, gamma_ebic = 1),
+  expect_equal(L0glm::preset.lambda("EBIC", p = 20, n = 100, gamma_ebic = 1),
                log(100) + 2 * log(20))
 })
 
@@ -35,7 +35,7 @@ test_that("both fitters resolve every named preset before fitting", {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
     for (ic in c("aic", "bic", "gic", "ebic", "mbic")) {
-      penalty <- L0glm:::preset.lambda(ic, p = 4, n = 40)
+      penalty <- L0glm::preset.lambda(ic, p = 4, n = 40)
       numeric_fit <- do.call(fitter, c(args, list(lambda = penalty)))
       mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
       for (name in c(ic, toupper(ic), mixed)) {
@@ -131,7 +131,7 @@ test_that("invalid criteria and lambda values fail clearly in both fitters", {
 test_that("removed criteria are rejected by preset resolution and tuning", {
   X <- matrix(seq_len(60), 20, 3)
   for (ic in c("mebic", "MEBIC", "MeBiC")) {
-    expect_error(L0glm:::preset.lambda(ic, p = 3, n = 20),
+    expect_error(L0glm::preset.lambda(ic, p = 3, n = 20),
                  "Information criterion must be one of.*gic.*ebic.*mbic")
     expect_error(L0glm.tune(X, rep(1, 20), family = gaussian(), tune = ic,
                            plot = FALSE),

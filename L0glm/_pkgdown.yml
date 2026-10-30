@@ -91,7 +91,7 @@ reference:
   - title: Fit, tune and compare sparse models
     contents: [L0glm.fit, L0glm.tune, L0nnpois, sparseglm, L0glm.metrics, preclustering, compulsory_terms]
   - title: Predictions, summaries and information criteria
-    contents: [model_predictions, model_summary, model_criteria, information_criteria]
+    contents: [model_predictions, model_summary, model_criteria, information_criteria, preset.lambda]
   - title: Special families
     contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
   - title: Screening, simulations and solvers

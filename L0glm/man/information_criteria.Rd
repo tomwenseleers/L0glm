@@ -4,11 +4,12 @@
 \alias{information_criteria}
 \title{Information-criterion presets for sparse GLMs}
 \description{
-Both [L0glm.fit()] and [L0nnpois()] accept a numeric \code{lambda} or a
+Both \code{\link[=L0glm.fit]{L0glm.fit()}} and \code{\link[=L0nnpois]{L0nnpois()}} accept a numeric \code{lambda} or a
 case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 \code{"ebic"}, or \code{"mbic"}.
 For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
-[L0glm.tune()] accepts the same names through its \code{tune} argument,
+Use \code{\link[=preset.lambda]{preset.lambda()}} to calculate a preset's numeric value directly.
+\code{\link[=L0glm.tune]{L0glm.tune()}} accepts the same names through its \code{tune} argument,
 or \code{tune = "cv"} for cross-validation by held-out deviance.
 }
 \details{
@@ -28,40 +29,40 @@ the coefficient updates; scoring counts their parameter dimensions even
 when their fitted value is zero, adding a model-independent criterion term.
 
 \describe{
-  \item{\code{"aic"}: Akaike information criterion}{
-    \eqn{\lambda = 2}. A prediction-oriented choice based on estimated
-    expected Kullback--Leibler loss (Akaike, 1974). It often retains more
-    variables and is not generally consistent for exact support recovery.}
-  \item{\code{"bic"}: Bayesian information criterion}{
-    \eqn{\lambda = \log n}. A conventional choice for identifying a
-    parsimonious model when the candidate dimension is fixed or moderate
-    (Schwarz, 1978). Its classical consistency guarantee requires a
-    correctly specified identifiable model and regularity conditions;
-    it need not control overfitting in very large model spaces.}
-  \item{\code{"gic"}: generalized information criterion}{
-    \eqn{\lambda = \log p\,\log\log n}. A selection-oriented choice for
-    sparse problems, including high-dimensional settings. Fan and Tang
-    (2013), Corollary 1, justify this choice under their assumptions on
-    the design, response tails, signal strength and candidate model path.
-    It is a consistent choice under those conditions, not a uniquely
-    optimal penalty for every finite sample.}
-  \item{\code{"ebic"}: linearized extended BIC}{
-    \eqn{\lambda = \log n + 2\gamma_{\rm EBIC}\log p}, with package
-    default \eqn{\gamma_{\rm EBIC}=\max\{0,1-\log n/(2\log p)\}}.
-    This accounts for large model spaces (Chen and Chen, 2008). The
-    implementation replaces their combinatorial term
-    \eqn{2\gamma_{\rm EBIC}\log {p \choose k}} by
-    \eqn{2\gamma_{\rm EBIC}k\log p}, giving a constant penalty per
-    coefficient. With this default it reduces to BIC when
-    \eqn{p\le\sqrt n}. Supply a numeric \code{lambda} to use a different
-    \eqn{\gamma_{\rm EBIC}}; it is separate from the fitter's adaptive-ridge
-    exponent \code{gamma}.}
-  \item{\code{"mbic"}: modified BIC}{
-    \eqn{\lambda = \log(np^2/16)}. This multiplicity-adjusted criterion
-    is intended for sparse selection among many candidate predictors
-    (Bogdan, Ghosh and Zak-Szatkowska, 2008). The constant used here follows
-    Frommlet and Nuel (2016). It is distinct from the
-    false-discovery-rate-oriented mBIC2 criterion.}
+\item{\code{"aic"}: Akaike information criterion}{
+\eqn{\lambda = 2}. A prediction-oriented choice based on estimated
+expected Kullback--Leibler loss (Akaike, 1974). It often retains more
+variables and is not generally consistent for exact support recovery.}
+\item{\code{"bic"}: Bayesian information criterion}{
+\eqn{\lambda = \log n}. A conventional choice for identifying a
+parsimonious model when the candidate dimension is fixed or moderate
+(Schwarz, 1978). Its classical consistency guarantee requires a
+correctly specified identifiable model and regularity conditions;
+it need not control overfitting in very large model spaces.}
+\item{\code{"gic"}: generalized information criterion}{
+\eqn{\lambda = \log p\,\log\log n}. A selection-oriented choice for
+sparse problems, including high-dimensional settings. Fan and Tang
+(2013), Corollary 1, justify this choice under their assumptions on
+the design, response tails, signal strength and candidate model path.
+It is a consistent choice under those conditions, not a uniquely
+optimal penalty for every finite sample.}
+\item{\code{"ebic"}: linearized extended BIC}{
+\eqn{\lambda = \log n + 2\gamma_{\rm EBIC}\log p}, with package
+default \eqn{\gamma_{\rm EBIC}=\max\{0,1-\log n/(2\log p)\}}.
+This accounts for large model spaces (Chen and Chen, 2008). The
+implementation replaces their combinatorial term
+\eqn{2\gamma_{\rm EBIC}\log {p \choose k}} by
+\eqn{2\gamma_{\rm EBIC}k\log p}, giving a constant penalty per
+coefficient. With this default it reduces to BIC when
+\eqn{p\le\sqrt n}. Supply a numeric \code{lambda} to use a different
+\eqn{\gamma_{\rm EBIC}}; it is separate from the fitter's adaptive-ridge
+exponent \code{gamma}.}
+\item{\code{"mbic"}: modified BIC}{
+\eqn{\lambda = \log(np^2/16)}. This multiplicity-adjusted criterion
+is intended for sparse selection among many candidate predictors
+(Bogdan, Ghosh and Zak-Szatkowska, 2008). The constant used here follows
+Frommlet and Nuel (2016). It is distinct from the
+false-discovery-rate-oriented mBIC2 criterion.}
 }
 }
 \section{GIC, SIC and HBIC}{
@@ -91,7 +92,7 @@ Gaussian threshold calibration of Frommlet and Nuel (2016). Applying this
 calibration to general GLMs is an approximation. Criterion consistency
 also does not by itself establish consistency of the numerical algorithm.
 \code{relaxed = TRUE} refits selected coefficients with negligible
-penalization; [L0glm.tune()] searches nearby penalties and evaluates the
+penalization; \code{\link[=L0glm.tune]{L0glm.tune()}} searches nearby penalties and evaluates the
 requested criterion on the resulting fits.
 
 Reported scores use the fitted likelihood and the package's parameter
@@ -157,5 +158,5 @@ regularization. \emph{PLOS ONE}, 11, e0148620.
 \doi{10.1371/journal.pone.0148620}.
 }
 \seealso{
-[L0glm.fit()], [L0nnpois()], [L0glm.tune()]
+\code{\link[=preset.lambda]{preset.lambda()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0nnpois]{L0nnpois()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}
 }

@@ -1,11 +1,13 @@
 #' Information-criterion presets for sparse GLMs
 #'
 #' @name information_criteria
+#' @md
 #' @description
 #' Both [L0glm.fit()] and [L0nnpois()] accept a numeric \code{lambda} or a
 #' case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, or \code{"mbic"}.
 #' For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
+#' Use [preset.lambda()] to calculate a preset's numeric value directly.
 #' [L0glm.tune()] accepts the same names through its \code{tune} argument,
 #' or \code{tune = "cv"} for cross-validation by held-out deviance.
 #'
@@ -149,5 +151,5 @@
 #' # Both presets use p = 3 selectable predictors, excluding the intercept.
 #' c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
 #'
-#' @seealso [L0glm.fit()], [L0nnpois()], [L0glm.tune()]
+#' @seealso [preset.lambda()], [L0glm.fit()], [L0nnpois()], [L0glm.tune()]
 NULL

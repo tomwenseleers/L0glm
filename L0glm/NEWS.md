@@ -37,7 +37,8 @@
 * Observation weights, offsets, intercepts, mandatory predictors, normalization,
   starting values, nonnegativity constraints and validation-based early stopping.
 * Information-criterion presets and lambda-path tuning, five-fold cross-validation,
-  one-standard-error models and coefficient-path plots.
+  one-standard-error models and coefficient-path plots. `preset.lambda()`
+  returns the numeric AIC, BIC, GIC, EBIC or mBIC penalty directly.
 * `sparseglm()` comparisons with supported sparse-regression backends, common
   likelihood and support-recovery metrics, prediction and summary methods,
   mirrored deconvolution plots and multichannel heatmaps.

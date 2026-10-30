@@ -171,6 +171,8 @@ case-insensitive criterion name: \code{"aic"}, \code{"bic"},
 For example, \code{"GIC"} and \code{"gic"} are equivalent.
 The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
 AIC uses 2, BIC uses \eqn{\log n}, and GIC uses \eqn{\log p\,\log\log n}.
+Use \code{\link{preset.lambda}} to obtain the numeric value directly,
+for example \code{preset.lambda("gic", p = ncol(X), n = nrow(X))}.
 Here \eqn{p} counts the original selectable predictors, excluding intercepts
 and \code{always.include} terms, before screening by explicit starts.
 A pool with no selectable predictors uses \eqn{p=1} in logarithms.

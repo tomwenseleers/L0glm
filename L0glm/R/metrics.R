@@ -226,8 +226,47 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 }
 
 
-# preset.lambda ####
-# Per-coefficient penalty on the -2*logLik scale; see information_criteria.
+#' Calculate an information-criterion penalty preset
+#'
+#' Return the numeric penalty associated with an information criterion, for
+#' inspection or use as the \code{lambda} argument of \code{\link{L0glm.fit}}
+#' or \code{\link{L0nnpois}}.
+#'
+#' @param IC Case-insensitive criterion name: \code{"gic"} (default),
+#'   \code{"aic"}, \code{"bic"}, \code{"ebic"} or \code{"mbic"}.
+#' @param p Number of original selectable predictors, excluding intercepts and
+#'   other compulsory terms, before screening or starting-value exclusions.
+#'   Use \code{p = 1} when there are no selectable predictors.
+#' @param n Sample size used by the information criterion. For ordinary GLMs
+#'   this is the number of observations. See \link{model_criteria} for the
+#'   sample-size conventions for special families.
+#' @param gamma_ebic Coefficient of the multiplicity term for \code{IC = "ebic"}.
+#'   The default is \eqn{\max\{0,1-\log(n)/(2\log(p))\}}. It is unused for
+#'   the other criteria.
+#'
+#' @details
+#' The returned value is \eqn{\lambda} on the \eqn{-2\ell + \lambda d} scale,
+#' where \eqn{\ell} is the fitted log likelihood and \eqn{d} is the parameter
+#' count. All logarithms are natural. AIC gives 2, BIC gives \eqn{\log(n)},
+#' and GIC gives \eqn{\log(p)\log\log(n)}. Formulas, parameter-count conventions
+#' and references for all supported criteria are given in
+#' \link{information_criteria}.
+#'
+#' With the default \code{gamma_ebic}, passing the result as a numeric
+#' \code{lambda} uses the same preset as passing its criterion name.
+#' Dispersion adjustment and the adaptive-ridge factor of
+#' \eqn{1/4} are applied inside the fitters. A custom \code{gamma_ebic} can be
+#' supplied here and the resulting penalty passed to a fitter.
+#'
+#' @return A numeric scalar containing the penalty per parameter.
+#' @seealso \code{\link{L0glm.fit}}, \code{\link{L0nnpois}},
+#'   \code{\link{L0glm.tune}}, \link{information_criteria}
+#' @examples
+#' preset.lambda("gic", p = 10000, n = 10000)
+#' vapply(c("aic", "bic", "gic", "ebic", "mbic"), preset.lambda,
+#'        numeric(1), p = 10000, n = 10000)
+#' preset.lambda("ebic", p = 10000, n = 1000, gamma_ebic = 1)
+#' @export
 preset.lambda <- function(IC="gic", p, n,
                           gamma_ebic = max(0, 1 - log(n)/(2*log(p)))) { # reduces to BIC when p <= sqrt(n)
   IC <- L0glm_ic_name(IC)
