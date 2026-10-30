@@ -15,11 +15,11 @@ sigma2  <- 5                        # right-hand sigma
 g_true  <- convkernel("bigaussian", L,
                       params = list(sigma1 = sigma1,
                                     sigma2 = sigma2),
-                      perc   = 0)   # already centred
+                      perc   = "mean") # match the fitted PSF's centroid convention
 
 ## --- latent sparse spike-train ------------------------------------
-n        <- 10000                   # timepoints
-npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
+n        <- 500L                    # timepoints
+npeaks   <- 50L                     # nonzero peaks
 idx      <- sample(n, npeaks)
 amps     <- sample(1000:100000, npeaks)
 a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
@@ -58,7 +58,6 @@ lines(y_baseline, col="red")
 ## 2  Blind deconvolution starting from intial Gaussian PSF guess
 ## ------------------------------------------------------------------------
 g0 <- convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
-# = Gaussian with sigma=6, sigma=3.5 to 30 all converge to the same solution
 
 fit <- L0glm_blind_deco(y,
                         family = poisson(identity),
@@ -103,4 +102,12 @@ plot(a_est, a_true,
      xlab = "estimated value",
      ylab = "true value",
      main = main_expr)
+
+# Multichannel fits use an individual background offset for each channel.
+Y <- cbind(y, rpois(n, 0.7 * y_true), rpois(n, 1.3 * y_true))
+multi <- L0glm_blind_deco(Y, family = poisson(identity), kernel_est = g0,
+                         baseline = "bspline", nknots = 6L,
+                         maxiter = 3L, plot = FALSE)
+dim(multi$a_hat)
+multi$deviance
 }

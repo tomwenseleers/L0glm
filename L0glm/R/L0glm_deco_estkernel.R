@@ -51,6 +51,9 @@
 #' \describe{
 #'   \item{\code{kernel}}{The final (average) PSF estimate.}
 #'   \item{\code{kernels}}{Channel-wise estimates before averaging.}
+#'   \item{\code{informative}}{Logical vector identifying channels with nonzero spikes.
+#'     Only these channels contribute to the average. If all spike trains are
+#'     zero, the supplied PSF is retained, or a uniform PSF is returned.}
 #' }
 #'
 #' @references de Rooi, J. J. & Eilers, P. H. C. (2011). \emph{Deconvolution of
@@ -72,58 +75,81 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                               kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
                               perc = "mean", # shift PSF to centroid
                               IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, ebic or mbic)
-  if (is.vector(y)) y <- as.matrix(y)
-  if (!is.null(offset)) { if (is.vector(offset)) offset <- as.matrix(offset) } else { offset <- 0 }
-  if (is.vector(y_deconv)) y_deconv <- Matrix(y_deconv, sparse=TRUE)
-  n <- nrow(y)
+  response <- L0glm_deco_response(y, family)
+  y <- response$y; family <- response$family
+  n <- nrow(y); m <- ncol(y)
+  offset <- L0glm_ext_matrix(offset, n, m, 0, "offset")
+  y_deconv <- as.matrix(y_deconv)
+  if (!is.numeric(y_deconv) || !identical(dim(y_deconv), dim(y)) ||
+      any(!is.finite(y_deconv)) || any(y_deconv < 0))
+    stop("y_deconv must be finite, nonnegative and have the same dimensions as y.", call. = FALSE)
   
   if (!is.null(kernel_est)) {
-    kernel_est <- kernel_est/sum(kernel_est) # scale kernel_est / PSF_est to unit L1 norm (standard for PSF)
-  } else { prior.mean <- NULL }
+    kernel_est <- L0glm_deco_kernel(kernel_est, normalize = TRUE)
+    L <- length(kernel_est)
+  }
+  L0glm_deco_length(L, "L", 3L)
     
   # L1 norm normalise each column of y_deconv so that we end up with a discrete 
   # density distribution of where the peaks are 
   # in this way, with Poisson noise, the estimated kernel would also have expected Poisson noise
   cs <- Matrix::colSums(y_deconv)
+  informative <- cs > 0
+  fallback <- if (is.null(kernel_est)) rep(1 / L, L) else kernel_est
+  if (!any(informative)) {
+    warning("No nonzero spikes are available to estimate the PSF; returning the supplied or uniform kernel.", call. = FALSE)
+    return(list(kernels = matrix(rep(fallback, each = m), m, L),
+                kernel = fallback, informative = informative))
+  }
   y_deconv_scalings <- ifelse(cs > 0, 1/cs, 1)
   y_deconv <- y_deconv %*% Diagonal(x = y_deconv_scalings)
   
-  kernels <- do.call(rbind, lapply(1:ncol(y), # loop over outcome channels for multivariate case
+  kernels <- do.call(rbind, lapply(seq_len(m),
                                    function (col) {
+                                     if (!informative[col]) return(fallback)
                                      X <- convmatrix(kernel = y_deconv[, col],
                                                      n = n,
                                                      shape = "same",
                                                      n_cols = L,
                                                      origin = (L + 1L) %/% 2L)
                                      # shrink towards prior kernel estimate if kernel_est given (more stable)
-                                     if (!is.null(kernel_est)) { prior.mean = kernel_est/y_deconv_scalings[col] } 
+                                     prior.mean <- if (is.null(kernel_est)) NULL else kernel_est/y_deconv_scalings[col]
                                      kernel <- L0glm.fit(y = y[, col, drop = FALSE], # -offset[, col, drop = FALSE] # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate 
                                                          X = X, 
                                                          family = family, 
                                                          intercept = FALSE,
-                                                         offset = offset,
+                                                         offset = offset[, col, drop = FALSE],
                                                          always.include = seq(1, ncol(X), by=2), # TODO worth testing: always including every other scan line, similar to penalising the difference between consecutive coefficients, i.e. to using a fused ridge penalty, but with pre-set lambda that will approx optimise GIC
                                                          nonnegative = TRUE,
-                                                         start = NULL,
-                                                         normalize = FALSE,
+                                                         start = if (is.null(prior.mean)) NULL else
+                                                           pmax(prior.mean, max(prior.mean) * 1e-6),
+                                                         normalize = "none",
                                                          prior.mean = prior.mean, 
                                                          grouped = FALSE, 
                                                          lambda = IC,
                                                         method = 1L, # using sparse Cholesky LLT solver in adaptive ridge IRLS iterations
                                                          solver = "eigen")$coefficients
-                                     kernel <- pmax(kernel-quantile(kernel, 0.5), 0) # remove any kernel baseline
+                                     kernel <- as.numeric(kernel)
+                                     if (!all(is.finite(kernel)) || sum(kernel) <= 0) return(fallback)
+                                     trimmed <- pmax(kernel - quantile(kernel, 0.5), 0)
+                                     if (sum(trimmed) > 0) kernel <- trimmed
                                      # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)
-                                     if (!is.null(kernel_smoothfun)) { kernel <- kernel_smoothfun(y = kernel) }
+                                     if (!is.null(kernel_smoothfun)) {
+                                       kernel <- kernel_smoothfun(y = kernel)
+                                       if (length(kernel) != L)
+                                         stop("kernel_smoothfun must return a length-L kernel.", call. = FALSE)
+                                       kernel <- L0glm_deco_kernel(kernel, normalize = TRUE)
+                                     }
                                      # center PSF at given percentile p or with "mean" put centroid in middle
                                      kernel <- shift_kernel(kernel, 
                                                             perc = perc, # put centroid in middle 
                                                             method = "linear")
-                                     return(kernel/sum(kernel)) # normalise PSF to unit L1 norm
+                                     return(L0glm_deco_kernel(kernel, normalize = TRUE))
                                    } ))
   # average obtained kernels for different channels - we assume they should be identical, but also return the separate kernels
-  kernel <- colMeans(kernels) 
+  kernel <- colMeans(kernels[informative, , drop = FALSE])
   # plot(kernel, type="l", lwd=5)    
   # matplot(t(kernels), type="l", add = TRUE)    
   
-  return(list(kernels = kernels, kernel = kernel))
+  return(list(kernels = kernels, kernel = kernel, informative = informative))
 }

@@ -40,9 +40,13 @@ use scaled deviance plus complexity. The original predictor count determines
 the preset penalty throughout. Compulsory parameters retain their usual
 contribution to information-criterion degrees of freedom and estimated scale.
 
-For positive-mean identity models, a nonnegative partition-of-unity basis
-admits a stable initializer: first fit a constant, then expand it in the spline
-space. This is used with automatic starts. Supplied starts keep their meaning;
+For positive-mean identity-link distributions (Poisson, Gamma, inverse Gaussian
+and negative binomial) with nonnegative designs, automatic starts use a positive
+signal backprojection above a low channel-wise background. The pilot accounts
+for predictor scales, observation weights and known offsets, avoiding excessive
+initial shrinkage of peaks relative to unpenalized background terms.
+Gaussian models retain their ridge pilot, rescaled to the response units.
+Supplied starts keep their meaning;
 zero starts exclude selectable coefficients while compulsory terms remain
 eligible. \code{maxit=1} retains a single ridge-pilot iteration.
 

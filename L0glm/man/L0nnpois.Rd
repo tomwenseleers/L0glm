@@ -90,6 +90,11 @@ or 1; other finite nonzero numeric values are ignored with a warning.
 Negative values cannot request dispersion estimation for this family.}
 
 \item{start}{\code{NULL} (default) requests automatic initialization.
+Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
+negative binomial) with nonnegative designs and a compulsory background or known
+offset use a positive signal backprojection in original coefficient units;
+see \link{compulsory_terms}. This pilot respects observation weights and
+individual predictor scales. Other designs use the family-specific ridge pilot.
 Otherwise supply finite starting coefficients as a scalar, a length-\code{p}
 vector repeated across response columns, or a \code{p} by \code{m} matrix.
 Here \code{p} includes any added intercept; \code{m} is the number of

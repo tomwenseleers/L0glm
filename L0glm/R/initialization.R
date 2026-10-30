@@ -4,6 +4,46 @@ L0glm_nuisance_solve <- function(G, rhs) {
   answer
 }
 
+# Original-coordinate pilot for nonnegative identity-link signals above a
+# compulsory background or known offset. No ridge shrinkage is applied to this
+# pilot: a small initial amplitude otherwise creates a large adaptive penalty.
+L0glm_signal_family <- function(family) family$link == "identity" &&
+  !family$family %in% c("gaussian", "binomial", "quasibinomial")
+
+L0glm_signal_start <- function(X, y, offset, weights, included = integer(), prior = NULL) {
+  values <- if (inherits(X, "sparseMatrix") && "x" %in% methods::slotNames(X)) X@x else X
+  if (any(!is.finite(values)) || any(values < 0) ||
+      any(!is.finite(offset)) || any(!is.finite(weights)) || any(weights < 0)) return(NULL)
+  y <- as.matrix(y); n <- nrow(X); m <- ncol(y); p <- ncol(X)
+  selectable <- setdiff(seq_len(p), included)
+  if (!length(selectable) || !any(weights > 0)) return(NULL)
+  residual <- pmax(y - offset, 0)
+  result <- matrix(0, p, m)
+  if (length(included)) {
+    B <- as.matrix(X[, included, drop = FALSE]); mass <- rowSums(B)
+    if (!any(mass > 0)) return(NULL)
+    constant <- max(abs(mass - mass[1L])) <= 1e-12 * max(1, mass[1L]) && mass[1L] > 0
+    for (j in seq_len(m)) {
+      good <- weights[, j] > 0
+      level <- if (any(good)) as.numeric(stats::quantile(residual[good, j], 0.05)) else 0
+      result[included, j] <- if (constant) level / mass[1L] else
+        as.numeric(nuisance_quadratic_cpp(crossprod(B, B * weights[, j]),
+          as.numeric(crossprod(B, weights[, j] * level)), rep(TRUE, ncol(B))))
+    }
+    residual <- pmax(residual - B %*% result[included, , drop = FALSE], 0)
+  }
+  A <- X[, selectable, drop = FALSE]
+  information <- as.matrix(Matrix::crossprod(A^2, weights))
+  rhs <- as.matrix(Matrix::crossprod(A, weights * residual))
+  floor <- sweep(1 / sqrt(pmax(information, .Machine$double.xmin)), 2L,
+    1e-8 * sqrt(colSums(weights * residual^2)), "*")
+  beta <- pmax(rhs / pmax(information, .Machine$double.xmin), floor)
+  if (!is.null(prior)) beta <- pmax(beta, prior[selectable, , drop = FALSE])
+  beta[information == 0] <- 0
+  result[selectable, ] <- beta
+  result
+}
+
 L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,
                                         family, lambda, always.include, lower,
                                         preprocessing) {

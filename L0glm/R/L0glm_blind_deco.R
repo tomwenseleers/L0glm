@@ -14,6 +14,9 @@
 #' the point spread function and spike locations of an observed blurred single-
 #' or multichannel spike train corrupted by exponential-family noise 
 #' (Poisson, Gaussian, Gamma, Inverse Gaussian, etc.).
+#' The centering specified by \code{perc} sets the time origin of the estimated
+#' PSF and spikes. Use the same convention for simulated reference kernels when
+#' comparing spike locations or coefficients directly.
 #' 
 #' @details
 #' The algorithm is inspired by the L0-penalised blind deconvolution approach
@@ -109,7 +112,16 @@
 #'     \item{\code{a_hat}}{Final spike estimate.}
 #'     \item{\code{g_hat}}{Final PSF estimate (L1-normalised).}
 #'     \item{\code{deviance_trace}}{Deviance value after each iteration.}
+#'     \item{\code{fitted_values}, \code{fitted_baseline}, \code{coef_baseline}}{
+#'       Fitted signal, background and background coefficients on the original data scale.}
+#'     \item{\code{X_spikes}, \code{X_baseline}}{Final PSF design and background basis.}
+#'     \item{\code{deviance}, \code{iterations}, \code{converged}}{
+#'       Final deviance, number of alternating steps and PSF convergence flag.}
 #'   }
+#'   Background coefficients are fitted with the spikes in each iteration.
+#'   The kernel update uses the fitted background as a channel-specific offset.
+#'   Original observations are used in every fit. A final spike/background fit
+#'   ensures that the returned coefficients and deviance use the returned PSF.
 #'   
 #' @references
 #'   \itemize{
@@ -165,17 +177,23 @@ L0glm_blind_deco <- function(y,
                           maxiter = 15,
                           tol = 1e-3)
 {
-  if (is.vector(y)) y <- as.matrix(y)
-  n  <- nrow(y)
-  offset <- NULL
+  response <- L0glm_deco_response(y, family)
+  y <- response$y; family <- response$family
+  n <- nrow(y)
+  L0glm_deco_length(maxiter, "maxiter", 1L)
+  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol < 0)
+    stop("tol must be a finite nonnegative number.", call. = FALSE)
   
   ## --- initial PSF -------------------------------------------------------
   g_hat <- if (is.null(kernel_est)) {
-    kernelfunc(1:L)
+    L0glm_deco_length(L, "L", 3L)
+    kernelfunc(seq_len(L))
   } else kernel_est
-  g_hat <- g_hat / sum(g_hat)
+  g_hat <- L0glm_deco_kernel(g_hat, normalize = TRUE)
+  L <- length(g_hat)
   
   dev_trace <- numeric()
+  converged <- FALSE
   for (it in seq_len(maxiter)) {
     if (plot) {
       if (is.null(kernel_true)) { plot(g_hat, type = "l", 
@@ -192,24 +210,19 @@ L0glm_blind_deco <- function(y,
     
     ## 1. spike update -----------------------------------------------------
     Xg <- convmatrix(g_hat, n)              # banded design
-    est_baseline <- (it==1)&(!is.null(baseline))     # should baseline be estimated?
-    fit <- L0glm_sparse_deco(y = if (est_baseline|is.null(baseline)) y else pmax(y-offset, 0), 
+    fit <- L0glm_sparse_deco(y = y,
                              family = family, 
                              X = Xg,
-                             baseline = if (est_baseline) baseline else NULL,
+                             baseline = baseline,
+                             nknots = nknots,
                              IC = IC, 
                              grouped = grouped)
     a_hat <- fit$coef_spikes                          # estimated spike train
-    a_baseline <- fit$coef_baseline                   # estimated baseline coefs
-    if (est_baseline) { X_baseline <- fit$X_baseline         # design matrix for baseline 
-                        if (!is.null(X_baseline)) { offset <- X_baseline %*% a_baseline } else { 
-                           offset <- NULL }
-    }
     
     ## 2. PSF update -------------------------------------------------------
-    g_new <- L0glm_deco_estkernel(y = if (est_baseline|is.null(baseline)) y else pmax(y-offset, 0), 
+    g_new <- L0glm_deco_estkernel(y = y,
                                   y_deconv = a_hat,
-                                  offset = if (est_baseline) offset else NULL,
+                                  offset = fit$fitted_baseline,
                                   L = L,
                                   kernel_est = g_hat,
                                   family = family,
@@ -220,16 +233,21 @@ L0glm_blind_deco <- function(y,
     ## 3. convergence ------------------------------------------------------
     delta <- sum(abs(g_new - g_hat)) / sum(abs(g_hat))
     g_hat <- g_new
-    y_hat <- Xg %*% a_hat
-    if (!is.null(offset)) y_hat <- y_hat + offset
-    dev   <- sum(family$dev.resids(y = as.vector(y), 
-                                   mu = pmax(as.vector(y_hat), .Machine$double.eps), # to avoid Inf values with poisson
-                                   wt = 1))
-    dev_trace[it] <- dev
-    if (delta < tol) break
+    y_hat <- convmatrix(g_hat, n) %*% a_hat + fit$fitted_baseline
+    dev_trace[it] <- L0glm_deco_deviance(y, y_hat, family)
+    if (delta < tol) { converged <- TRUE; break }
   }
+  # Synchronize the final spike and background estimates with the returned PSF.
+  fit <- L0glm_sparse_deco(y, family = family, kernel = g_hat, baseline = baseline,
+                          nknots = nknots, IC = IC, grouped = grouped)
+  dev_trace[it] <- fit$deviance
   
-  list(a_hat = a_hat,
+  list(a_hat = fit$coef_spikes,
        g_hat = g_hat,
-       deviance_trace = dev_trace[seq_len(it)])
+       deviance_trace = dev_trace[seq_len(it)],
+       fitted_values = fit$fitted_values,
+       fitted_baseline = fit$fitted_baseline,
+       coef_baseline = fit$coef_baseline,
+       X_spikes = fit$X_spikes, X_baseline = fit$X_baseline,
+       deviance = fit$deviance, iterations = it, converged = converged)
 }

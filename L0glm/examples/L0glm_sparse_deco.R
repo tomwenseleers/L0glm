@@ -16,8 +16,8 @@ g_true  <- convkernel("bigaussian", L,
                       perc   = 0)   # already centred
 
 ## --- latent sparse spike-train ------------------------------------
-n        <- 10000                   # timepoints
-npeaks   <- round(n / 10)           # 1000, ~10 % non-zero
+n        <- 500L                    # timepoints
+npeaks   <- 50L                     # nonzero peaks
 idx      <- sample(n, npeaks)
 amps     <- sample(1000:100000, npeaks)
 a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
@@ -63,7 +63,6 @@ fit <- L0glm_sparse_deco(y, kernel = g_true,
 a_est_baseline <- as.vector(fit$coef_baseline) 
 a_est <- as.vector(fit$coef_spikes)
 sum(a_est!=0) 
-# 992 with NULL baseline, 1030 with intercept baseline, 1043 with bspline baseline
 
 ## ---------- summary statistics ------------------------------------
 n_true <- sum(a_true != 0)
@@ -75,7 +74,6 @@ F1        <- 2 * precision * recall / (precision + recall)
 R2p <- 100 *
   summary(lm(a_true ~ 0 + a_est))$r.squared
 R2p
-# 99.80369 with NULL baseline, 96.70126 with intercept baseline, 97.15414 with bspline baseline
 
 ## ---------- scatter-plot with true vs. estimated peak areas -------
 main_expr <- bquote(
@@ -92,3 +90,10 @@ plot(a_est, a_true,
      xlab = "estimated value",
      ylab = "true value",
      main = main_expr)
+
+# Fit several outcome channels jointly, with their own baseline coefficients.
+Y <- cbind(y, rpois(n, 0.7 * y_true), rpois(n, 1.3 * y_true))
+multi <- L0glm_sparse_deco(Y, kernel = g_true, family = poisson(identity),
+                          baseline = "bspline", nknots = 6L)
+dim(multi$coef_spikes)
+dim(multi$coef_baseline)

@@ -62,6 +62,11 @@
 #' L\eqn{_{0}} or grouped L\eqn{_{0}}-penalised generalised linear model (GLM)
 #' fit via adaptive ridge regularised iteratively reweighted least squares 
 #' (IRLS).
+#' When a fitted baseline or known offset is present, positive backprojection
+#' starts are calculated from the signal above a low channel-wise baseline.
+#' This keeps promising peaks eligible during the initial adaptive-ridge steps.
+#' These values initialize the coefficients only; the model always fits the
+#' original observations with its fitted background and known offset.
 #'
 #' A classical baseline for Poisson deconvolution is the
 #' Richardson-Lucy algorithm (Richardson 1972; Lucy 1974). In modern
@@ -112,11 +117,15 @@
 #'                ordering. For strictly banded PSF designs, users can pass
 #'                \code{control.solver.gen("eigen", method=1L, NaturalOrdering=TRUE)}
 #'                to request Eigen natural ordering.
+#' @param offset Optional known additive signal: a scalar, length-\eqn{n}
+#'                vector, or \eqn{n\times m} matrix. Original observations are
+#'                fitted with this model offset; counts are not background-subtracted.
 #'
 #' @return A list with
 #' \describe{
 #'   \item{\code{coef_spikes}}{Estimated un-blurred spikes, i.e. the coefficients
-#'                             for design matrix \code{X_spikes} (same shape as \code{y}).}
+#'                             for design matrix \code{X_spikes}. Its dimensions
+#'                             are \code{ncol(X_spikes)} by \code{ncol(as.matrix(y))}.}
 #'   \item{\code{coef_baseline}}{Estimated baseline coefficients for baseline
 #'                               design matrix \code{X_baseline}.}
 #'   \item{\code{fitted_values}}{\eqn{X a}, the fitted signal.}
@@ -124,6 +133,7 @@
 #'   \item{\code{deviance}}{Residual deviance of the fit.}
 #'   \item{\code{X_spikes}}{Toeplitz design matrix for the spikes.}
 #'   \item{\code{X_baseline}}{Design matrix for the baseline.}
+#'   \item{\code{offset}}{Known additive signal, expanded to the response dimensions.}
 #' }
 #'
 #' @references
@@ -186,17 +196,35 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                            IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, ebic or mbic
                            grouped = TRUE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
                            control.solver = do.call("control.solver.gen",
-                                                    list(solver = "eigen", method = 1L))) {
-  dev_res <- family$dev.resids # deviance residuals function
-  if (is.vector(y)) y <- as.matrix(y)
-  n <- nrow(y)
+                                                    list(solver = "eigen", method = 1L)),
+                           offset = NULL) {
+  response <- L0glm_deco_response(y, family)
+  y <- response$y; family <- response$family
+  n <- nrow(y); m <- ncol(y)
+  offset <- L0glm_ext_matrix(offset, n, m, 0, "offset")
   
   ## ---------- PSF design ----------
-  if (is.null(kernel)) kernel <- kernelfunc(1L:L)
-  if (is.null(X)) X <- convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf 
+  if (is.null(X)) {
+    if (is.null(kernel)) {
+      L0glm_deco_length(L, "L", 3L)
+      kernel <- kernelfunc(seq_len(L))
+    }
+    kernel <- L0glm_deco_kernel(kernel)
+    X <- convmatrix(kernel = kernel, n = n)
+  } else {
+    if (!is.matrix(X) && !inherits(X, "Matrix")) X <- as.matrix(X)
+    values <- if (inherits(X, "sparseMatrix")) X@x else X
+    if (nrow(X) != n || ncol(X) < 1L || !is.numeric(values) ||
+        any(!is.finite(values)) || any(values < 0))
+      stop("X must be a finite nonnegative design with nrow(X) equal to nrow(y).", call. = FALSE)
+  }
 
   ## ---------- baseline design ----------
-  if (!is.null(baseline) & nknots < 4) baseline <- "intercept"
+  if (!is.null(baseline)) baseline <- match.arg(baseline, c("intercept", "bspline"))
+  if (identical(baseline, "bspline")) {
+    L0glm_deco_length(nknots, "nknots", 1L)
+    if (nknots < 4L) baseline <- "intercept"
+  }
   if (!is.null(baseline)) {
     if (baseline == "intercept") {
       X_base <- Matrix::Matrix(1, n, 1, sparse = TRUE)
@@ -214,16 +242,13 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    X = X_full, 
                    family = family, 
                    intercept = FALSE,
-                   start = rep(1, ncol(X_full)), # WORKED WHILE start=NULL DID NOT
+                   start = NULL,
+                   offset = offset,
                    nonnegative = TRUE, # nonnegative coefficients, including any intercept
                    lambda = IC, 
                    grouped = grouped,
-                   prior.mean = if (!is.null(X_base)) c(rep(min(y), ncol(X_base)), rep(0,ncol(X))) else NULL, # NEEDED FOR STABLE CONVERGENCE WHEN THERE IS A BASELINE
-                   # using a quantile regression underapproximation with tau=0.05 (=sum(y<a_baseline)/n) 
-                   # instead of rep(min(y), ncol(X_base))
-                   # would also be an option (likely better solution)
                    always.include = if (!is.null(X_base)) 1:ncol(X_base) else NULL,
-                   normalize = !is.null(X_base), # required
+                   normalize = "none",
                    maxit = 100,
                    method = 1L, # sparse Cholesky LLT
                    solver = "eigen",
@@ -231,14 +256,8 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    # verbose = TRUE,
                    thresh = 1e-10,
                    tol = 1E-4)
-  # NOTE: we include X_baseline in design matrix & include those terms in always.include
-  # (those terms get their prior.mean updated in each IRLS iteration as opposed
-  # to having their estimates shrunk to zero).
-  # + use start=rep(1, ncol(X_baseline)+ncol(X_sim)) & normalize = TRUE
-  # & prior.mean = c(rep(min(y), ncol(X_baseline)), rep(0,ncol(X_sim)))
-  # to shrink baseline coefficients towards expected baseline.
-  # This works much better than presubtracting baseline, e.g. using
-  # X = X_sim & y = pmax(y-quantile(y, 0.05), 0).
+  # Compulsory baseline terms are unpenalized and use the fitter's constrained
+  # nuisance-block updates. Starting values have explicit coefficient dimensions.
   
   beta      <- fit$coefficients
   
@@ -246,11 +265,9 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
   beta_base <- if (k_base) beta[seq_len(k_base), , drop = FALSE] else NULL
   beta_spk  <- if (k_base!=0) beta[-seq_len(k_base), , drop = FALSE] else beta
   
-  y_hat  <- X_full %*% beta
+  y_hat  <- X_full %*% beta + offset
   y_base <- if (!is.null(X_base)) X_base %*% beta_base else Matrix(0, ncol = ncol(y_hat), nrow = nrow(y_hat), sparse = TRUE)
-  dev    <- sum(dev_res(y = as.vector(y), 
-                        mu = pmax(as.vector(y_hat), .Machine$double.eps), # to avoid Inf values with poisson
-                        wt = 1))
+  dev <- L0glm_deco_deviance(y, y_hat, family)
   
   return(list(coef_spikes     = beta_spk,
               coef_baseline   = beta_base,
@@ -258,5 +275,38 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
               fitted_baseline = y_base,
               deviance        = dev,
               X_spikes        = X,
-              X_baseline      = X_base))
+              X_baseline      = X_base,
+              offset          = offset))
+}
+
+# Shared input and scoring contracts for the three deconvolution steps.
+L0glm_deco_response <- function(y, family) {
+  if (is.function(family)) family <- family()
+  if (!inherits(family, "family") || !identical(family$link, "identity"))
+    stop("Deconvolution requires a GLM family with an identity link.", call. = FALSE)
+  y <- as.matrix(y)
+  if (!is.numeric(y) || !nrow(y) || !ncol(y) || any(!is.finite(y)))
+    stop("y must be a finite numeric vector or matrix with nonzero dimensions.", call. = FALSE)
+  storage.mode(y) <- "double"
+  list(y = y, family = family)
+}
+
+L0glm_deco_length <- function(value, name, minimum) {
+  if (!is.numeric(value) || length(value) != 1L || !is.finite(value) ||
+      value < minimum || value != floor(value))
+    stop(name, " must be an integer >= ", minimum, ".", call. = FALSE)
+}
+
+L0glm_deco_kernel <- function(kernel, normalize = FALSE) {
+  kernel <- as.numeric(kernel)
+  if (length(kernel) < 3L || any(!is.finite(kernel)) || any(kernel < 0) || sum(kernel) <= 0)
+    stop("The kernel must contain at least three finite nonnegative values with positive sum.", call. = FALSE)
+  if (normalize) kernel / sum(kernel) else kernel
+}
+
+L0glm_deco_deviance <- function(y, mu, family) {
+  mu <- as.numeric(mu)
+  if (!is.null(family$validmu) && !isTRUE(family$validmu(0)))
+    mu <- pmax(mu, .Machine$double.eps)
+  sum(family$dev.resids(as.numeric(y), mu, 1))
 }

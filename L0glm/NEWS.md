@@ -24,6 +24,10 @@
   backgrounds, alternating with sparse selection on the original channels.
   Gaussian, Poisson, other scalar GLMs and negative-binomial/Cox fits retain
   their distribution-specific likelihoods, dispersion and validation controls.
+* Fixed-PSF and blind deconvolution use positive signal-based starts with
+  backgrounds, channel-specific PSF offsets, and synchronized final estimates.
+  Automatic identity-link initialization accounts for nonnegative compulsory
+  backgrounds and known offsets while preserving original coefficient units.
 * Observation weights, offsets, intercepts, mandatory predictors, normalization,
   starting values, nonnegativity constraints and validation-based early stopping.
 * Information-criterion presets and lambda-path tuning, five-fold cross-validation,

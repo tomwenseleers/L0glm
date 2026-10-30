@@ -131,6 +131,11 @@
 #'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 #'   \code{family$dispersion}. See Details for initialization and updating.
 #' @param start \code{NULL} (default) requests automatic initialization.
+#'   Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
+#'   negative binomial) with nonnegative designs and a compulsory background or known
+#'   offset use a positive signal backprojection in original coefficient units;
+#'   see \link{compulsory_terms}. This pilot respects observation weights and
+#'   individual predictor scales. Other designs use the family-specific ridge pilot.
 #'   Otherwise supply finite starting coefficients as a scalar, a length-\code{p}
 #'   vector repeated across response columns, or a \code{p} by \code{m} matrix.
 #'   Here \code{p} includes any added intercept; \code{m} is the number of
@@ -1001,6 +1006,13 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     options$intercept <- screen_intercept
     return(L0glm_screen_fit(X, y, family, weights, offset, nonnegative,
       screen_method, tolower(screen) == "auto", nsis, screen.maxit, options, screen.nthreads))
+  }
+  if (identical(kind,"nb") && L0glm_signal_family(family) && nonnegative && is.null(start) &&
+      !isTRUE(intercept) && maxit > 1L && !is.null(offset) && any(offset != 0)) {
+    n <- nrow(X); m <- NCOL(y)
+    start <- L0glm_signal_start(X, as.matrix(y), L0glm_ext_matrix(offset,n,m,0,"offset"),
+      L0glm_ext_matrix(weights,n,m,1,"weights"), always.include,
+      if(is.null(prior.mean)) NULL else L0glm_ext_matrix(prior.mean,ncol(X),m,0,"prior.mean"))
   }
   if (!is.null(kind)) return(L0glm_ext_fit(
     X, y, weights, family, dispersion, start, offset, lambda,

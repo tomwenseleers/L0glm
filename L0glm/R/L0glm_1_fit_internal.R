@@ -149,7 +149,10 @@ L0glm.fit.internal = function(X,
   
   ## 6. set starting coefficients ---------------------------------------------
   if (is.null(start)) {
-    start <- L0glm_initial_coefficients(X, y, mu, weights, offset, prior.mean,
+    if (maxit > 1L && L0glm_signal_family(family) && all(lower >= 0) && any(offset != 0))
+      start <- L0glm_signal_start(X, matrix(y, ncol = 1L), matrix(offset, ncol = 1L),
+        matrix(weights, ncol = 1L), always.include, matrix(prior.mean, ncol = 1L))
+    if (is.null(start)) start <- L0glm_initial_coefficients(X, y, mu, weights, offset, prior.mean,
       family, lambda, always.include, lower, preprocessing)
     start <- clamp(start, lower, upper)
   }

@@ -49,6 +49,9 @@ A list with
 \describe{
   \item{\code{kernel}}{The final (average) PSF estimate.}
   \item{\code{kernels}}{Channel-wise estimates before averaging.}
+  \item{\code{informative}}{Logical vector identifying channels with nonzero spikes.
+    Only these channels contribute to the average. If all spike trains are
+    zero, the supplied PSF is retained, or a uniform PSF is returned.}
 }
 }
 \description{

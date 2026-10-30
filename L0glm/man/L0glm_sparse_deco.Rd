@@ -16,7 +16,8 @@ L0glm_sparse_deco(
   nknots = max(4L, floor(nrow(as.matrix(y))/500)),
   IC = "gic",
   grouped = TRUE,
-  control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L))
+  control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L)),
+  offset = NULL
 )
 }
 \arguments{
@@ -68,12 +69,17 @@ By default this uses Eigen sparse Cholesky LLT with AMD
 ordering. For strictly banded PSF designs, users can pass
 \code{control.solver.gen("eigen", method=1L, NaturalOrdering=TRUE)}
 to request Eigen natural ordering.}
+
+\item{offset}{Optional known additive signal: a scalar, length-\eqn{n}
+vector, or \eqn{n\times m} matrix. Original observations are
+fitted with this model offset; counts are not background-subtracted.}
 }
 \value{
 A list with
 \describe{
   \item{\code{coef_spikes}}{Estimated un-blurred spikes, i.e. the coefficients
-                            for design matrix \code{X_spikes} (same shape as \code{y}).}
+                            for design matrix \code{X_spikes}. Its dimensions
+                            are \code{ncol(X_spikes)} by \code{ncol(as.matrix(y))}.}
   \item{\code{coef_baseline}}{Estimated baseline coefficients for baseline
                               design matrix \code{X_baseline}.}
   \item{\code{fitted_values}}{\eqn{X a}, the fitted signal.}
@@ -81,6 +87,7 @@ A list with
   \item{\code{deviance}}{Residual deviance of the fit.}
   \item{\code{X_spikes}}{Toeplitz design matrix for the spikes.}
   \item{\code{X_baseline}}{Design matrix for the baseline.}
+  \item{\code{offset}}{Known additive signal, expanded to the response dimensions.}
 }
 }
 \description{
@@ -144,6 +151,11 @@ dictionary matrix and where the matrix factorisation is solved with an
 L\eqn{_{0}} or grouped L\eqn{_{0}}-penalised generalised linear model (GLM)
 fit via adaptive ridge regularised iteratively reweighted least squares 
 (IRLS).
+When a fitted baseline or known offset is present, positive backprojection
+starts are calculated from the signal above a low channel-wise baseline.
+This keeps promising peaks eligible during the initial adaptive-ridge steps.
+These values initialize the coefficients only; the model always fits the
+original observations with its fitted background and known offset.
 
 A classical baseline for Poisson deconvolution is the
 Richardson-Lucy algorithm (Richardson 1972; Lucy 1974). In modern
@@ -175,8 +187,8 @@ g_true  <- convkernel("bigaussian", L,
                       perc   = 0)   # already centred
 
 ## --- latent sparse spike-train ------------------------------------
-n        <- 10000                   # timepoints
-npeaks   <- round(n / 10)           # 1000, ~10 \% non-zero
+n        <- 500L                    # timepoints
+npeaks   <- 50L                     # nonzero peaks
 idx      <- sample(n, npeaks)
 amps     <- sample(1000:100000, npeaks)
 a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
@@ -222,7 +234,6 @@ fit <- L0glm_sparse_deco(y, kernel = g_true,
 a_est_baseline <- as.vector(fit$coef_baseline) 
 a_est <- as.vector(fit$coef_spikes)
 sum(a_est!=0) 
-# 992 with NULL baseline, 1030 with intercept baseline, 1043 with bspline baseline
 
 ## ---------- summary statistics ------------------------------------
 n_true <- sum(a_true != 0)
@@ -234,7 +245,6 @@ F1        <- 2 * precision * recall / (precision + recall)
 R2p <- 100 *
   summary(lm(a_true ~ 0 + a_est))$r.squared
 R2p
-# 99.80369 with NULL baseline, 96.70126 with intercept baseline, 97.15414 with bspline baseline
 
 ## ---------- scatter-plot with true vs. estimated peak areas -------
 main_expr <- bquote(
@@ -251,6 +261,13 @@ plot(a_est, a_true,
      xlab = "estimated value",
      ylab = "true value",
      main = main_expr)
+
+# Fit several outcome channels jointly, with their own baseline coefficients.
+Y <- cbind(y, rpois(n, 0.7 * y_true), rpois(n, 1.3 * y_true))
+multi <- L0glm_sparse_deco(Y, kernel = g_true, family = poisson(identity),
+                          baseline = "bspline", nknots = 6L)
+dim(multi$coef_spikes)
+dim(multi$coef_baseline)
 }
 \references{
 \itemize{

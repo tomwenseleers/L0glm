@@ -104,6 +104,11 @@ values are invalid. Poisson, binomial and negative binomial with known
 \code{family$dispersion}. See Details for initialization and updating.}
 
 \item{start}{\code{NULL} (default) requests automatic initialization.
+Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
+negative binomial) with nonnegative designs and a compulsory background or known
+offset use a positive signal backprojection in original coefficient units;
+see \link{compulsory_terms}. This pilot respects observation weights and
+individual predictor scales. Other designs use the family-specific ridge pilot.
 Otherwise supply finite starting coefficients as a scalar, a length-\code{p}
 vector repeated across response columns, or a \code{p} by \code{m} matrix.
 Here \code{p} includes any added intercept; \code{m} is the number of

@@ -38,9 +38,13 @@
 #' the preset penalty throughout. Compulsory parameters retain their usual
 #' contribution to information-criterion degrees of freedom and estimated scale.
 #'
-#' For positive-mean identity models, a nonnegative partition-of-unity basis
-#' admits a stable initializer: first fit a constant, then expand it in the spline
-#' space. This is used with automatic starts. Supplied starts keep their meaning;
+#' For positive-mean identity-link distributions (Poisson, Gamma, inverse Gaussian
+#' and negative binomial) with nonnegative designs, automatic starts use a positive
+#' signal backprojection above a low channel-wise background. The pilot accounts
+#' for predictor scales, observation weights and known offsets, avoiding excessive
+#' initial shrinkage of peaks relative to unpenalized background terms.
+#' Gaussian models retain their ridge pilot, rescaled to the response units.
+#' Supplied starts keep their meaning;
 #' zero starts exclude selectable coefficients while compulsory terms remain
 #' eligible. `maxit=1` retains a single ridge-pilot iteration.
 #'
@@ -159,6 +163,13 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   allowed <- if(is.null(S)) matrix(TRUE,p,m) else S!=0
   allowed[included,] <- TRUE
   original_w <- L0glm_ext_matrix(options$weights,n,m,1,"weights")
+  automatic_signal <- FALSE
+  screened <- !is.null(options$screen) &&
+    L0glm_screen_method(options$screen,X,options$start,added,options$always.include)!="none"
+  if(is.null(S) && L0glm_signal_family(f) && !any(lower[included]<0) && !screened && !identical(kind,"cox")) {
+    S <- L0glm_signal_start(Z,Y,O,original_w,included,P)
+    automatic_signal <- !is.null(S)
+  }
   n_ic <- if(identical(kind,"cox")) sum(as.matrix(Y)[,2L]*original_w[,1L]) else
     if(identical(kind,"nb")) sum(rowSums(original_w)>0) else n
   lambda <- L0glm_resolve_lambda(options$lambda,max(1L,length(selectable)),max(2,n_ic))
@@ -360,7 +371,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     fit$preclustering$seconds["nuisance"] <- background_seconds
     fit$preclustering$seconds["total"] <- proc.time()[[3L]]-begun
   }
-  fit$nuisance <- list(terms=included,cycles=cycles,initializer=if(collapsed) "constant_in_spline_space" else "joint",
+  fit$nuisance <- list(terms=included,cycles=cycles,initializer=if(automatic_signal) "signal_backprojection" else if(collapsed) "constant_in_spline_space" else "joint",
     candidates=candidate,history=do.call(rbind,trace),kkt=if(is.null(details)) NULL else details$kkt,
     criterion=if(!is.null(validation)) "validation deviance" else "likelihood + lambda * df",
     seconds=c(initialization=init_seconds,conditional=background_seconds,refit=peak_seconds,

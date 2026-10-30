@@ -283,6 +283,8 @@ L0nnpois <- function(X,
   always.include <- always.include[!is.na(always.include) &
                                      always.include >= 1L &
                                      always.include <= p]
+  if (is.null(start) && maxit > 1L && any(offset != 0))
+    start <- L0glm_signal_start(X, y, offset, weights, always.include, prior.mean)
   allowed <- if (is.null(start)) NULL else start != 0
   if (!is.null(allowed)) allowed[always.include, ] <- TRUE
 
