@@ -645,11 +645,19 @@ estimate_psf_from_std <- function(y,
                                      psf_offsets,
                                      psf_kernels,
                                      log_floor,
-                                     drop_tol) {
+                                     drop_tol,
+                                     normalize = TRUE,
+                                     smooth = FALSE) {
   n <- length(output_timepoints)
   half_width <- max(abs(psf_offsets))
-  floor_abs <- pmax(psf_kernels, apply(psf_kernels, 1L, max) * log_floor)
-  log_kernels <- log(floor_abs)
+  if (log_floor == 0) {
+    # Linear log-tail continuation preserves concavity when supports differ.
+    log_kernels <- t(apply(psf_kernels, 1L, .psf_log_tail))
+  } else {
+    floor_abs <- pmax(psf_kernels, apply(psf_kernels, 1L, max) * log_floor)
+    log_kernels <- log(floor_abs)
+  }
+  common <- which(colSums(psf_kernels) > 0)
 
   i_list <- vector("list", n)
   j_list <- vector("list", n)
@@ -657,8 +665,10 @@ estimate_psf_from_std <- function(y,
 
   for (j in seq_len(n)) {
     center <- output_timepoints[j]
-    log_kernel <- .psf_interp_log_kernel(center, peak_timepoints, log_kernels)
+    log_kernel <- .psf_interp_log_kernel(center, peak_timepoints, log_kernels, smooth)
     kernel_grid <- exp(log_kernel - max(log_kernel))
+    if (log_floor == 0) kernel_grid[seq_along(kernel_grid) < min(common) |
+                                     seq_along(kernel_grid) > max(common)] <- 0
     if (sum(kernel_grid) <= 0 || any(!is.finite(kernel_grid))) next
     kernel_grid <- kernel_grid / sum(kernel_grid)
 
@@ -683,7 +693,7 @@ estimate_psf_from_std <- function(y,
       nearest <- which.min(abs(output_timepoints - center))
       rows <- nearest
       vals <- 1
-    } else {
+    } else if (normalize) {
       vals <- vals / val_sum
     }
     keep <- vals > 0 & is.finite(vals)
@@ -700,7 +710,7 @@ estimate_psf_from_std <- function(y,
   )
 }
 
-.psf_interp_log_kernel <- function(center, peak_timepoints, log_kernels) {
+.psf_interp_log_kernel <- function(center, peak_timepoints, log_kernels, smooth = FALSE) {
   n_peaks <- length(peak_timepoints)
   if (n_peaks == 1L || center <= peak_timepoints[1L]) {
     return(log_kernels[1L, ])
@@ -712,7 +722,19 @@ estimate_psf_from_std <- function(y,
   right <- left + 1L
   w <- (center - peak_timepoints[left]) /
     (peak_timepoints[right] - peak_timepoints[left])
+  if (smooth) w <- w * w * (3 - 2 * w)
   (1 - w) * log_kernels[left, ] + w * log_kernels[right, ]
+}
+
+.psf_log_tail <- function(kernel) {
+  at <- which(kernel > 0)
+  if (length(at) == 1L) return(-36 * abs(seq_along(kernel) - at))
+  z <- stats::approx(at, log(kernel[at]), xout = seq_along(kernel), rule = 2)$y
+  left <- seq_len(min(at) - 1L)
+  right <- seq.int(max(at), length(kernel))
+  z[left] <- z[min(at)] + (left - min(at)) * (z[at[2L]] - z[at[1L]])
+  z[right] <- z[max(at)] + (right - max(at)) * (z[at[length(at)]] - z[at[length(at) - 1L]])
+  z
 }
 
 .psf_running_mean <- function(x, width = 3L) {

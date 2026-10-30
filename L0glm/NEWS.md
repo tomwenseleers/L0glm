@@ -5,6 +5,8 @@
 * Sparse Poisson log-concave NMF (`spoloconmf`) recovers elution profiles and
   spectra using local Poisson updates and fast spectral fusion, with a
   compound-count criterion, unpenalized spline backgrounds and native OpenMP.
+* Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
+  returns the corresponding sparse design as `X` for downstream deconvolution.
 
 * Fast sparse generalized linear models with adaptive ridge and IRLS, including
   Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.

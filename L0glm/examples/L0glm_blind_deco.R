@@ -18,8 +18,8 @@ g_true  <- convkernel("bigaussian", L,
                       perc   = "mean") # match the fitted PSF's centroid convention
 
 ## --- latent sparse spike-train ------------------------------------
-n        <- 500L                    # timepoints
-npeaks   <- 50L                     # nonzero peaks
+n        <- 10000L                  # timepoints
+npeaks   <- 1000L                   # nonzero peaks
 idx      <- sample(n, npeaks)
 amps     <- sample(1000:100000, npeaks)
 a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
@@ -110,4 +110,12 @@ multi <- L0glm_blind_deco(Y, family = poisson(identity), kernel_est = g0,
                          maxiter = 3L, plot = FALSE)
 dim(multi$a_hat)
 multi$deviance
+
+# Estimate smoothly varying PSFs in ten overlapping windows.
+# The returned X can also be supplied to spoloconmf().
+varying <- L0glm_blind_deco(y, family = poisson(identity), kernel_est = g0,
+                           baseline = "bspline", nknots = 8L,
+                           nwindows = 10L, maxiter = 6L)
+dim(varying$g_hat)  # 10 local PSFs
+dim(varying$X)      # sparse scan-by-scan design
 }

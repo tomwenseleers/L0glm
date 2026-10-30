@@ -108,6 +108,10 @@
 #'                  and \code{baseline="bspline"} \code{baseline} is changed
 #'                  to \code{intercept}. 
 #' @param IC Information criterion for the penalty preset; see \link{information_criteria}.
+#' @param ... Execution controls passed to the spike/background
+#'   \code{L0glm.fit()} calls, such as \code{parallelize}, \code{ncores},
+#'   \code{nthreads} and \code{openmp}. For small non-Poisson multichannel
+#'   fits, \code{parallelize = FALSE} avoids worker-startup overhead.
 #' @param grouped Logical, passed unchanged to \code{L0glm.fit}, specifying
 #'                whether to perform grouped L0 feature selection, i.e. best subset
 #'                of group selection (BSGS), in case there are multiple outcome
@@ -134,6 +138,8 @@
 #'   \item{\code{X_spikes}}{Toeplitz design matrix for the spikes.}
 #'   \item{\code{X_baseline}}{Design matrix for the baseline.}
 #'   \item{\code{offset}}{Known additive signal, expanded to the response dimensions.}
+#'   \item{\code{fit}}{The underlying \code{L0glm_fit} model, supporting
+#'     \code{logLik()}, \code{GIC()} and the other fitted-model methods.}
 #' }
 #'
 #' @references
@@ -197,7 +203,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                            grouped = TRUE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
                            control.solver = do.call("control.solver.gen",
                                                     list(solver = "eigen", method = 1L)),
-                           offset = NULL) {
+                           offset = NULL, ...) {
   response <- L0glm_deco_response(y, family)
   y <- response$y; family <- response$family
   n <- nrow(y); m <- ncol(y)
@@ -255,7 +261,7 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
                    control.solver = control.solver,
                    # verbose = TRUE,
                    thresh = 1e-10,
-                   tol = 1E-4)
+                   tol = 1E-4, ...)
   # Compulsory baseline terms are unpenalized and use the fitter's constrained
   # nuisance-block updates. Starting values have explicit coefficient dimensions.
   
@@ -276,7 +282,8 @@ L0glm_sparse_deco <- function(y,                         # response to be deconv
               deviance        = dev,
               X_spikes        = X,
               X_baseline      = X_base,
-              offset          = offset))
+              offset          = offset,
+              fit             = fit))
 }
 
 # Shared input and scoring contracts for the three deconvolution steps.

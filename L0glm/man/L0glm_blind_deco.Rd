@@ -8,7 +8,8 @@ L0glm_blind_deco(
   y,
   family = poisson(identity),
   kernel_est = NULL,
-  L = if (!is.null(kernel_est)) length(kernel_est) else 41,
+  L = if (is.matrix(kernel_est)) ncol(kernel_est) else if (!is.null(kernel_est))
+    length(kernel_est) else 41,
   baseline = NULL,
   nknots = max(4L, floor(nrow(as.matrix(y))/500)),
   kernelfunc = function(x) convkernel("gaussian", L, list(sigma = 6)),
@@ -19,7 +20,9 @@ L0glm_blind_deco(
   kernel_true = NULL,
   plot = FALSE,
   maxiter = 15,
-  tol = 0.001
+  tol = 0.001,
+  nwindows = 1L,
+  ...
 )
 }
 \arguments{
@@ -31,7 +34,9 @@ link specifying the desired error distribution
 (e.g. `poisson(identity)`, `gaussian(identity)`
 or `Gamma(identity)`).}
 
-\item{kernel_est}{Initial starting estimate of PSF (L1-normalised internally).}
+\item{kernel_est}{Initial PSF (L1-normalised internally). For
+\code{nwindows > 1}, a matrix with one row per window can supply local
+starting PSFs of equal length.}
 
 \item{L}{Desired kernel length when `kernel` is `NULL`.}
 
@@ -79,23 +84,51 @@ iteration when \code{plot=TRUE}.}
 \item{maxiter}{Integer >= 1.  Maximum alternating steps. Default 15.}
 
 \item{tol}{Relative L1 change in the PSF that triggers early stop (default 1e-3).}
+
+\item{nwindows}{Number of overlapping windows used to estimate a
+time-varying PSF. The default \code{1L} estimates one shared PSF. Larger
+values fit local PSFs, interpolate their log densities smoothly across
+scans, and refit the original outcomes using the resulting sparse design.
+For multichannel Poisson data, local PSF calibration uses the summed
+channels; the final fit retains every original channel.}
+
+\item{...}{Execution controls passed to the spike/background
+\code{L0glm.fit()} calls, such as \code{parallelize}, \code{ncores},
+\code{nthreads} and \code{openmp}. For small non-Poisson multichannel
+fits, \code{parallelize = FALSE} avoids worker-startup overhead.}
 }
 \value{
 A list with components
   \describe{
     \item{\code{a_hat}}{Final spike estimate.}
-    \item{\code{g_hat}}{Final PSF estimate (L1-normalised).}
+    \item{\code{g_hat}}{Final unit-sum PSF, or a matrix with one PSF per
+      window when \code{nwindows > 1}.}
     \item{\code{deviance_trace}}{Deviance value after each iteration.}
     \item{\code{fitted_values}, \code{fitted_baseline}, \code{coef_baseline}}{
       Fitted signal, background and background coefficients on the original data scale.}
-    \item{\code{X_spikes}, \code{X_baseline}}{Final PSF design and background basis.}
+    \item{\code{X}, \code{X_spikes}, \code{X_baseline}}{Final sparse PSF design
+      (\code{X} and \code{X_spikes}) and background basis.}
+    \item{\code{psf_timepoints}, \code{windows}}{For time-varying fits,
+      calibration centers in scan coordinates and local diagnostics.}
     \item{\code{deviance}, \code{iterations}, \code{converged}}{
       Final deviance, number of alternating steps and PSF convergence flag.}
+    \item{\code{best_iteration}, \code{selection_score}, \code{selection_trace}}{
+      For a shared PSF, the selected update, its information criterion and
+      the criterion at each completed candidate fit. Local diagnostics for
+      time-varying PSFs are stored in \code{windows}.}
   }
   Background coefficients are fitted with the spikes in each iteration.
   The kernel update uses the fitted background as a channel-specific offset.
   Original observations are used in every fit. A final spike/background fit
   ensures that the returned coefficients and deviance use the returned PSF.
+  Time-varying fits blend local log PSFs using nonnegative smoothstep weights,
+  with linear log-tail continuation when their supports differ. This preserves
+  log-concavity when the local PSFs are log-concave. Edge columns are truncated
+  using the same convention as \code{convmatrix()}.
+  The best completed spike/background fit according to \code{IC} is retained
+  across PSF updates. \code{best_iteration} identifies its PSF update; zero
+  denotes the supplied starting kernel. \code{selection_trace} records the
+  criterion for every completed candidate fit.
 }
 \description{
 Runs a simple block-coordinate (alternating) optimisation:
@@ -113,6 +146,7 @@ or multichannel spike train corrupted by exponential-family noise
 The centering specified by \code{perc} sets the time origin of the estimated
 PSF and spikes. Use the same convention for simulated reference kernels when
 comparing spike locations or coefficients directly.
+Set \code{perc = 0} to retain the estimated time origin without recentering.
 }
 \details{
 The algorithm is inspired by the L0-penalised blind deconvolution approach
@@ -207,8 +241,8 @@ g_true  <- convkernel("bigaussian", L,
                       perc   = "mean") # match the fitted PSF's centroid convention
 
 ## --- latent sparse spike-train ------------------------------------
-n        <- 500L                    # timepoints
-npeaks   <- 50L                     # nonzero peaks
+n        <- 10000L                  # timepoints
+npeaks   <- 1000L                   # nonzero peaks
 idx      <- sample(n, npeaks)
 amps     <- sample(1000:100000, npeaks)
 a_true   <- numeric(n);  a_true[idx] <- amps   # true spikes
@@ -299,6 +333,14 @@ multi <- L0glm_blind_deco(Y, family = poisson(identity), kernel_est = g0,
                          maxiter = 3L, plot = FALSE)
 dim(multi$a_hat)
 multi$deviance
+
+# Estimate smoothly varying PSFs in ten overlapping windows.
+# The returned X can also be supplied to spoloconmf().
+varying <- L0glm_blind_deco(y, family = poisson(identity), kernel_est = g0,
+                           baseline = "bspline", nknots = 8L,
+                           nwindows = 10L, maxiter = 6L)
+dim(varying$g_hat)  # 10 local PSFs
+dim(varying$X)      # sparse scan-by-scan design
 }
 }
 \references{

@@ -17,7 +17,8 @@ L0glm_sparse_deco(
   IC = "gic",
   grouped = TRUE,
   control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L)),
-  offset = NULL
+  offset = NULL,
+  ...
 )
 }
 \arguments{
@@ -73,6 +74,11 @@ to request Eigen natural ordering.}
 \item{offset}{Optional known additive signal: a scalar, length-\eqn{n}
 vector, or \eqn{n\times m} matrix. Original observations are
 fitted with this model offset; counts are not background-subtracted.}
+
+\item{...}{Execution controls passed to the spike/background
+\code{L0glm.fit()} calls, such as \code{parallelize}, \code{ncores},
+\code{nthreads} and \code{openmp}. For small non-Poisson multichannel
+fits, \code{parallelize = FALSE} avoids worker-startup overhead.}
 }
 \value{
 A list with
@@ -88,6 +94,8 @@ A list with
   \item{\code{X_spikes}}{Toeplitz design matrix for the spikes.}
   \item{\code{X_baseline}}{Design matrix for the baseline.}
   \item{\code{offset}}{Known additive signal, expanded to the response dimensions.}
+  \item{\code{fit}}{The underlying \code{L0glm_fit} model, supporting
+    \code{logLik()}, \code{GIC()} and the other fitted-model methods.}
 }
 }
 \description{
