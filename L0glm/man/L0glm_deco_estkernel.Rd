@@ -67,6 +67,8 @@ prior guess for the PSF can be given, in which case it is used as the
 shrinkage centre in \pkg{L0glm}. Optional post-processing applies a
 log-concave spline smooth or custom smoothing function and/or recentres the
 PSF.
+The fitted kernel retains its positive tails; the supplied offset represents
+additive background during estimation.
 }
 \details{
 The algorithm is inspired by the L0-penalised blind deconvolution

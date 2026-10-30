@@ -265,7 +265,12 @@ fits, <code>parallelize = FALSE</code> avoids worker-startup overhead.</p></dd>
   The best completed spike/background fit according to <code>IC</code> is retained
   across PSF updates. <code>best_iteration</code> identifies its PSF update; zero
   denotes the supplied starting kernel. <code>selection_trace</code> records the
-  criterion for every completed candidate fit.</p>
+  criterion for every completed candidate fit.
+  Each blind update compares the full positive-tail PSF with a concentrated
+  proposal obtained by removing its raw median pedestal before smoothing.
+  Both proposals are refitted to the original observations; <code>IC</code> chooses
+  between them. This lets the blind search escape broad starting shapes
+  without imposing tail removal on a calibrated or directly estimated PSF.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

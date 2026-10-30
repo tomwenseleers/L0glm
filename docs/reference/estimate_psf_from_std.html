@@ -6,6 +6,9 @@ B-spline quantile regression underapproximation.  Major ladder peaks are
 detected in the baseline-corrected TIC, each local peak profile is smoothed
 as a non-negative, centroid-centred, log-concave unit-sum PSF, and the local
 log-PSFs are interpolated or extrapolated over retention time.
+The default support is inferred from the complete local peak windows and
+the output scan spacing, allowing broad and narrow peaks to share a suitable
+grid without imposing a fixed number of support points.
 The returned sparse matrix X has one column per requested output
 retention time.  Column j contains the PSF centred at
 output_timepoints[j] and is normalised to sum to one.  It can be
@@ -17,6 +20,9 @@ B-spline quantile regression underapproximation.  Major ladder peaks are
 detected in the baseline-corrected TIC, each local peak profile is smoothed
 as a non-negative, centroid-centred, log-concave unit-sum PSF, and the local
 log-PSFs are interpolated or extrapolated over retention time.
+The default support is inferred from the complete local peak windows and
+the output scan spacing, allowing broad and narrow peaks to share a suitable
+grid without imposing a fixed number of support points.
 The returned sparse matrix X has one column per requested output
 retention time.  Column j contains the PSF centred at
 output_timepoints[j] and is normalised to sum to one.  It can be
@@ -76,7 +82,10 @@ convolution design matrix.  The baseline is estimated as a low-degree
 B-spline quantile regression underapproximation.  Major ladder peaks are
 detected in the baseline-corrected TIC, each local peak profile is smoothed
 as a non-negative, centroid-centred, log-concave unit-sum PSF, and the local
-log-PSFs are interpolated or extrapolated over retention time.</p>
+log-PSFs are interpolated or extrapolated over retention time.
+The default support is inferred from the complete local peak windows and
+the output scan spacing, allowing broad and narrow peaks to share a suitable
+grid without imposing a fixed number of support points.</p>
 <p>The returned sparse matrix <code>X</code> has one column per requested output
 retention time.  Column <code>j</code> contains the PSF centred at
 <code>output_timepoints[j]</code> and is normalised to sum to one.  It can be
@@ -213,8 +222,8 @@ log-concave curve and tend to preserve heavier tails.</p></dd>
 
 <dt id="arg-psf-weight-power">psf_weight_power<a class="anchor" aria-label="anchor" href="#arg-psf-weight-power"></a></dt>
 <dd><p>Exponent applied to the local normalised peak profile
-when constructing log-spline weights.  The previous Poisson-like weighting
-corresponds to <code>1</code>; the default <code>0.5</code> downweights tails less and
+when constructing log-spline weights. Poisson-like weighting corresponds
+to <code>1</code>; the default <code>0.5</code> downweights tails less and
 usually gives more realistic early alkane peak tails.  Use <code>0</code> for
 equal weights.</p></dd>
 
@@ -269,7 +278,7 @@ detection, and PSF support.</p></dd>
 <span>           col <span class="op">=</span> <span class="st">"blue"</span>,</span>
 <span>           type<span class="op">=</span><span class="st">"l"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># estimate time-varying PSF from alkane ladder standard:</span></span>
+<span><span class="co"># Estimate the time-varying PSF with automatic support and scan-grid length.</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">estimate_psf_from_std</span><span class="op">(</span></span>
 <span>  y <span class="op">=</span> <span class="va">tic</span>,</span>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
@@ -313,13 +322,13 @@ detection, and PSF support.</p></dd>
 <span>  relaxed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  parallelize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ncores <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span> <span class="co"># 1.4s</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="plotmat.html">plotmat</a></span><span class="op">(</span><span class="va">GCMS_data1</span>, </span>
 <span>        xlab <span class="op">=</span> <span class="st">"Elution time (min)"</span>,</span>
 <span>        ylab <span class="op">=</span> <span class="st">"Mass (m/z)"</span>,</span>
 <span>        main <span class="op">=</span> <span class="st">"Section of Cataglyphis iberica\nant queen cuticular GC/MS profile"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span> <span class="co"># 63</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="va">rows</span> <span class="op">=</span> <span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="va">nrows</span> <span class="op">=</span> <span class="va">rows</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">rows</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span>,</span>

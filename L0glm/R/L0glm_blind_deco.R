@@ -147,6 +147,11 @@
 #'   across PSF updates. \code{best_iteration} identifies its PSF update; zero
 #'   denotes the supplied starting kernel. \code{selection_trace} records the
 #'   criterion for every completed candidate fit.
+#'   Each blind update compares the full positive-tail PSF with a concentrated
+#'   proposal obtained by removing its raw median pedestal before smoothing.
+#'   Both proposals are refitted to the original observations; \code{IC} chooses
+#'   between them. This lets the blind search escape broad starting shapes
+#'   without imposing tail removal on a calibrated or directly estimated PSF.
 #'   
 #' @references
 #'   \itemize{
@@ -241,6 +246,7 @@ L0glm_blind_deco <- function(y,
       best <<- list(fit = fit, kernel = kernel, iteration = iteration, score = score)
   }
   converged <- FALSE
+  next_fit <- NULL
   for (it in seq_len(maxiter)) {
     if (plot) {
       if (is.null(kernel_true)) { plot(g_hat, type = "l", 
@@ -257,7 +263,7 @@ L0glm_blind_deco <- function(y,
     
     ## 1. spike update -----------------------------------------------------
     Xg <- convmatrix(g_hat, n)              # banded design
-    fit <- L0glm_sparse_deco(y = y,
+    fit <- if (!is.null(next_fit)) next_fit else L0glm_sparse_deco(y = y,
                              family = family, 
                              X = Xg,
                              baseline = baseline,
@@ -268,15 +274,40 @@ L0glm_blind_deco <- function(y,
     checkpoint(fit, g_hat, it - 1L)
     
     ## 2. PSF update -------------------------------------------------------
+    raw_kernels <- list()
+    capture_smooth <- function(y) {
+      raw_kernels[[length(raw_kernels) + 1L]] <<- y
+      if (is.null(kernel_smoothfun)) y else kernel_smoothfun(y)
+    }
     g_new <- L0glm_deco_estkernel(y = y,
                                   y_deconv = a_hat,
                                   offset = fit$fitted_baseline,
                                   L = L,
                                   kernel_est = g_hat,
                                   family = family,
-                                  kernel_smoothfun = kernel_smoothfun,
+                                  kernel_smoothfun = capture_smooth,
                                   perc = perc,
                                   IC = IC)$kernel
+    next_fit <- NULL
+    if (length(raw_kernels)) {
+      concentrated <- lapply(raw_kernels, function(h) {
+        trimmed <- pmax(h - stats::median(h), 0)
+        if (sum(trimmed) > 0) h <- trimmed
+        if (!is.null(kernel_smoothfun)) h <- kernel_smoothfun(h)
+        L0glm_deco_kernel(shift_kernel(h, perc = perc, method = "linear"), normalize = TRUE)
+      })
+      alternative <- colMeans(do.call(rbind, concentrated))
+      if (sum(abs(alternative - g_new)) > 1e-10) {
+        candidates <- lapply(list(g_new, alternative), function(g)
+          L0glm_sparse_deco(y, family = family, kernel = g, baseline = baseline,
+            nknots = nknots, IC = IC, grouped = grouped, ...))
+        scores <- vapply(candidates, function(f)
+          L0glm_model_criterion(f$fit, criterion, mu_floor = 1e-8), 0)
+        chosen <- which.min(replace(scores, !is.finite(scores), Inf))
+        if (chosen == 2L) g_new <- alternative
+        next_fit <- candidates[[chosen]]
+      }
+    }
     
     ## 3. convergence ------------------------------------------------------
     delta <- sum(abs(g_new - g_hat)) / sum(abs(g_hat))
@@ -286,7 +317,7 @@ L0glm_blind_deco <- function(y,
     if (delta < tol) { converged <- TRUE; break }
   }
   # Synchronize the final spike and background estimates with the returned PSF.
-  fit <- L0glm_sparse_deco(y, family = family, kernel = g_hat, baseline = baseline,
+  fit <- if (!is.null(next_fit)) next_fit else L0glm_sparse_deco(y, family = family, kernel = g_hat, baseline = baseline,
                           nknots = nknots, IC = IC, grouped = grouped, ...)
   checkpoint(fit, g_hat, it)
   converged <- converged && (is.null(best) || sum(abs(best$kernel - g_hat)) < tol)

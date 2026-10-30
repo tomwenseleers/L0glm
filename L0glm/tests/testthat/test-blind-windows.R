@@ -85,6 +85,20 @@ test_that("blind deconvolution retains its best completed IC checkpoint", {
   expect_equal(fit$a_hat, check$coef_spikes)
 })
 
+test_that("blind proposal selection retains a calibrated broad PSF", {
+  set.seed(104)
+  n <- 500L;g <- dnorm(-50:50, sd = 12);g <- g / sum(g)
+  a <- numeric(n);a[c(70, 160, 250, 340, 430)] <- c(5, 8, 6, 3, 7) * 1e5
+  y <- rpois(n, as.numeric(convmatrix(g, n) %*% a) + 5)
+  fit <- L0glm_blind_deco(y, kernel_est = g, baseline = "intercept", maxiter = 2L)
+  width <- function(h) diff(range(which(h >= max(h) / 2)))
+  expect_lte(abs(width(fit$g_hat) - width(g)), 2)
+  expect_gt(sum(g * fit$g_hat) / sqrt(sum(g^2) * sum(fit$g_hat^2)), .995)
+  expect_equal(fit$selection_score, min(fit$selection_trace))
+  expect_equal(fit$fitted_values, fit$X %*% fit$a_hat + fit$fitted_baseline,
+    ignore_attr = TRUE, tolerance = 1e-10)
+})
+
 test_that("local starts and window counts are validated", {
   Y <- matrix(0, 150, 2)
   g <- convkernel("gaussian", 21L)

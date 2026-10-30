@@ -129,6 +129,11 @@ A list with components
   across PSF updates. \code{best_iteration} identifies its PSF update; zero
   denotes the supplied starting kernel. \code{selection_trace} records the
   criterion for every completed candidate fit.
+  Each blind update compares the full positive-tail PSF with a concentrated
+  proposal obtained by removing its raw median pedestal before smoothing.
+  Both proposals are refitted to the original observations; \code{IC} chooses
+  between them. This lets the blind search escape broad starting shapes
+  without imposing tail removal on a calibrated or directly estimated PSF.
 }
 \description{
 Runs a simple block-coordinate (alternating) optimisation:

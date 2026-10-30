@@ -10,7 +10,9 @@ Inverse Gaussian). Regularisation is again done via L0glm. An optional
 prior guess for the PSF can be given, in which case it is used as the
 shrinkage centre in L0glm. Optional post-processing applies a
 log-concave spline smooth or custom smoothing function and/or recentres the
-PSF."><meta property="og:description" content="Solves the transpose problem: given an estimated latent
+PSF.
+The fitted kernel retains its positive tails; the supplied offset represents
+additive background during estimation."><meta property="og:description" content="Solves the transpose problem: given an estimated latent
 single- or multichannel spike train signal \(a\) and the vector (or matrix)
 of observations \(y\), find the PSF \(g\) that minimises the deviance in
 \(y \approx X(g)\,a\), where \(X(g)\) is a Toeplitz design matrix that
@@ -21,7 +23,9 @@ Inverse Gaussian). Regularisation is again done via L0glm. An optional
 prior guess for the PSF can be given, in which case it is used as the
 shrinkage centre in L0glm. Optional post-processing applies a
 log-concave spline smooth or custom smoothing function and/or recentres the
-PSF."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
+PSF.
+The fitted kernel retains its positive tails; the supplied offset represents
+additive background during estimation."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -81,7 +85,9 @@ Inverse Gaussian). Regularisation is again done via <span class="pkg">L0glm</spa
 prior guess for the PSF can be given, in which case it is used as the
 shrinkage centre in <span class="pkg">L0glm</span>. Optional post-processing applies a
 log-concave spline smooth or custom smoothing function and/or recentres the
-PSF.</p>
+PSF.
+The fitted kernel retains its positive tails; the supplied offset represents
+additive background during estimation.</p>
     </div>
 
     <div class="section level2">
@@ -155,6 +161,11 @@ the centroid, or a value in \([0,1]\) for a percentile.</p></dd>
 
   <dt><code>kernels</code></dt>
 <dd><p>Channel-wise estimates before averaging.</p></dd>
+
+  <dt><code>informative</code></dt>
+<dd><p>Logical vector identifying channels with nonzero spikes.
+    Only these channels contribute to the average. If all spike trains are
+    zero, the supplied PSF is retained, or a uniform PSF is returned.</p></dd>
 
 
 </dl></div>

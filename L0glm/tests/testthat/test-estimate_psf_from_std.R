@@ -76,3 +76,36 @@ test_that("estimate_psf_from_std infers retention times from numeric names", {
   expect_equal(fit$time, time, tolerance = 1e-12)
   expect_true(abs(fit$peak_timepoints - 6) < 0.05)
 })
+
+test_that("standard peak windows retain both sides of neighbouring peaks", {
+  time <- seq(0, 10, by = .01)
+  sigma <- c(.15, .2)
+  y <- 1e6 * (dnorm(time, 3, sigma[1L]) + dnorm(time, 6, sigma[2L]))
+  at <- vapply(c(3, 6), function(t) which.min(abs(time - t)), 1L)
+  windows <- L0glm:::.psf_peak_windows(time, y, at, 0, .005, .999)
+  for (j in seq_along(windows)) {
+    w <- windows[[j]]
+    expect_lt(min(w$x), time[at[j]])
+    expect_gt(max(w$x), time[at[j]])
+    fwhm <- diff(range(w$x[w$signal >= max(w$signal) / 2]))
+    expect_lt(abs(fwhm - 2 * sqrt(2 * log(2)) * sigma[j]), 2 * median(diff(time)))
+  }
+})
+
+test_that("automatic standard support recovers broad as well as narrow PSFs", {
+  time <- 0:1000
+  centers <- c(120, 350, 600, 850)
+  sigma <- c(4, 7, 10, 12)
+  y <- rep(100, length(time))
+  for (j in seq_along(centers)) y <- y + 1e6 * dnorm(time, centers[j], sigma[j])
+  fit <- estimate_psf_from_std(y, time = time, n_peaks = 4L,
+    peak_height = 1000, peak_min_distance = 100, return_details = TRUE)
+  width <- function(x, h) diff(range(x[h >= max(h) / 2]))
+  expected <- vapply(sigma, function(s) width(time, dnorm(time, 500, s)), 0)
+  estimated <- apply(fit$psf_kernels, 1L, function(h) width(fit$psf_offsets, h))
+  expect_gt(fit$psf_length, 51L)
+  expect_equal(fit$psf_length %% 2L, 1L)
+  expect_lt(max(abs(estimated / expected - 1)), .1)
+  expect_s4_class(fit$X, "dgCMatrix")
+  expect_equal(as.numeric(Matrix::colSums(fit$X)), rep(1, length(time)), tolerance = 1e-10)
+})

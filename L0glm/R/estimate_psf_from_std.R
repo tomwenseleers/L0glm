@@ -9,6 +9,9 @@
 #' detected in the baseline-corrected TIC, each local peak profile is smoothed
 #' as a non-negative, centroid-centred, log-concave unit-sum PSF, and the local
 #' log-PSFs are interpolated or extrapolated over retention time.
+#' The default support is inferred from the complete local peak windows and
+#' the output scan spacing, allowing broad and narrow peaks to share a suitable
+#' grid without imposing a fixed number of support points.
 #'
 #' The returned sparse matrix \code{X} has one column per requested output
 #' retention time.  Column \code{j} contains the PSF centred at
@@ -61,8 +64,8 @@
 #'   local PSF.  Values above \code{0.5} fit a more upper-envelope-like
 #'   log-concave curve and tend to preserve heavier tails.
 #' @param psf_weight_power Exponent applied to the local normalised peak profile
-#'   when constructing log-spline weights.  The previous Poisson-like weighting
-#'   corresponds to \code{1}; the default \code{0.5} downweights tails less and
+#'   when constructing log-spline weights. Poisson-like weighting corresponds
+#'   to \code{1}; the default \code{0.5} downweights tails less and
 #'   usually gives more realistic early alkane peak tails.  Use \code{0} for
 #'   equal weights.
 #' @param log_floor Positive relative floor used before interpolating local
@@ -500,11 +503,11 @@ estimate_psf_from_std <- function(y,
   n <- length(time)
   lapply(seq_along(peak_indices), function(k) {
     idx <- peak_indices[k]
-    left_limit_time <- if (k == 1L) min(time) else mean(time[peak_indices[k - 1L]], time[idx])
+    left_limit_time <- if (k == 1L) min(time) else mean(c(time[peak_indices[k - 1L]], time[idx]))
     right_limit_time <- if (k == length(peak_indices)) {
       max(time)
     } else {
-      mean(time[idx], time[peak_indices[k + 1L]])
+      mean(c(time[idx], time[peak_indices[k + 1L]]))
     }
     left_limit <- .psf_lower_bound(time, left_limit_time)
     right_limit <- .psf_upper_bound(time, right_limit_time)

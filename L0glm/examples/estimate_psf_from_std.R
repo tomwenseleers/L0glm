@@ -10,7 +10,7 @@ plot(x=as.numeric(names(attr(GCMS_data1, "alkanes_TIC"))),
            col = "blue",
            type="l")
 
-# estimate time-varying PSF from alkane ladder standard:
+# Estimate the time-varying PSF with automatic support and scan-grid length.
 fit <- estimate_psf_from_std(
   y = tic,
   family = poisson(identity),
@@ -54,13 +54,13 @@ system.time(fit.mc <- L0nnpois(
   relaxed = TRUE,
   parallelize = TRUE,
   ncores = round(parallel::detectCores(logical = FALSE))
-)) # 1.4s
+))
 
 plotmat(GCMS_data1, 
         xlab = "Elution time (min)",
         ylab = "Mass (m/z)",
         main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
-sum(Matrix::rowSums(fit.mc$coefficients)!=0) # 63
+sum(Matrix::rowSums(fit.mc$coefficients)!=0)
 rows = Matrix::rowSums(fit.mc$coefficients)[which(Matrix::rowSums(fit.mc$coefficients)!=0)]
 nrows = rows/max(rows)
 abline(v = which(Matrix::rowSums(fit.mc$coefficients)!=0),

@@ -51,7 +51,7 @@
 <div class="section level3">
 <h3 id="initial-version-0-1-0">Initial version<a class="anchor" aria-label="anchor" href="#initial-version-0-1-0"></a></h3>
 <ul><li><p>Sparse Poisson log-concave NMF (<code>spoloconmf</code>) recovers elution profiles and spectra using local Poisson updates and fast spectral fusion, with a compound-count criterion, unpenalized spline backgrounds and native OpenMP.</p></li>
-<li><p>Blind deconvolution supports smoothly time-varying PSFs with <code>nwindows</code>, and returns the corresponding sparse design as <code>X</code> for downstream deconvolution.</p></li>
+<li><p>Blind deconvolution supports smoothly time-varying PSFs with <code>nwindows</code>, and returns the corresponding sparse design as <code>X</code> for downstream deconvolution. Standard calibration uses full local peak windows and automatic PSF support; blind PSF updates retain positive peak tails alongside the fitted background. Blind fitting compares full-tail and concentrated PSF proposals by refitting the original observations and evaluating the requested information criterion.</p></li>
 <li><p>Fast sparse generalized linear models with adaptive ridge and IRLS, including Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.</p></li>
 <li><p>Negative binomial regression with estimated shape, joint multinomial regression in centered log-ratio coordinates, and Cox proportional hazards models.</p></li>
 <li><p>Conditional boundary polishing for relaxed nonnegative models removes likelihood-supported zero coefficients without a coefficient-size cutoff. Native Gaussian/Poisson kernels retain dense/sparse storage and Poisson OpenMP; other GLMs, negative binomial and Cox use their family-specific objectives.</p></li>

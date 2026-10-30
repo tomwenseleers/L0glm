@@ -13,6 +13,8 @@
 #' shrinkage centre in \pkg{L0glm}. Optional post-processing applies a
 #' log-concave spline smooth or custom smoothing function and/or recentres the
 #' PSF.
+#' The fitted kernel retains its positive tails; the supplied offset represents
+#' additive background during estimation.
 #'
 #' @details The algorithm is inspired by the L0-penalised blind deconvolution
 #' approach of de Rooi & Eilers (2011) for chromatographic pulse trains, but it
@@ -131,8 +133,6 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                                                          solver = "eigen")$coefficients
                                      kernel <- as.numeric(kernel)
                                      if (!all(is.finite(kernel)) || sum(kernel) <= 0) return(fallback)
-                                     trimmed <- pmax(kernel - quantile(kernel, 0.5), 0)
-                                     if (sum(trimmed) > 0) kernel <- trimmed
                                      # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)
                                      if (!is.null(kernel_smoothfun)) {
                                        kernel <- kernel_smoothfun(y = kernel)

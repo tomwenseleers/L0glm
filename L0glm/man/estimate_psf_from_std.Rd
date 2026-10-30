@@ -92,8 +92,8 @@ local PSF.  Values above \code{0.5} fit a more upper-envelope-like
 log-concave curve and tend to preserve heavier tails.}
 
 \item{psf_weight_power}{Exponent applied to the local normalised peak profile
-when constructing log-spline weights.  The previous Poisson-like weighting
-corresponds to \code{1}; the default \code{0.5} downweights tails less and
+when constructing log-spline weights. Poisson-like weighting corresponds
+to \code{1}; the default \code{0.5} downweights tails less and
 usually gives more realistic early alkane peak tails.  Use \code{0} for
 equal weights.}
 
@@ -126,6 +126,9 @@ B-spline quantile regression underapproximation.  Major ladder peaks are
 detected in the baseline-corrected TIC, each local peak profile is smoothed
 as a non-negative, centroid-centred, log-concave unit-sum PSF, and the local
 log-PSFs are interpolated or extrapolated over retention time.
+The default support is inferred from the complete local peak windows and
+the output scan spacing, allowing broad and narrow peaks to share a suitable
+grid without imposing a fixed number of support points.
 
 The returned sparse matrix \code{X} has one column per requested output
 retention time.  Column \code{j} contains the PSF centred at
@@ -146,7 +149,7 @@ plot(x=as.numeric(names(attr(GCMS_data1, "alkanes_TIC"))),
            col = "blue",
            type="l")
 
-# estimate time-varying PSF from alkane ladder standard:
+# Estimate the time-varying PSF with automatic support and scan-grid length.
 fit <- estimate_psf_from_std(
   y = tic,
   family = poisson(identity),
@@ -190,13 +193,13 @@ system.time(fit.mc <- L0nnpois(
   relaxed = TRUE,
   parallelize = TRUE,
   ncores = round(parallel::detectCores(logical = FALSE))
-)) # 1.4s
+))
 
 plotmat(GCMS_data1, 
         xlab = "Elution time (min)",
         ylab = "Mass (m/z)",
         main = "Section of Cataglyphis iberica\nant queen cuticular GC/MS profile")
-sum(Matrix::rowSums(fit.mc$coefficients)!=0) # 63
+sum(Matrix::rowSums(fit.mc$coefficients)!=0)
 rows = Matrix::rowSums(fit.mc$coefficients)[which(Matrix::rowSums(fit.mc$coefficients)!=0)]
 nrows = rows/max(rows)
 abline(v = which(Matrix::rowSums(fit.mc$coefficients)!=0),

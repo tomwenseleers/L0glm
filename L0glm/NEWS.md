@@ -7,6 +7,10 @@
   compound-count criterion, unpenalized spline backgrounds and native OpenMP.
 * Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
   returns the corresponding sparse design as `X` for downstream deconvolution.
+  Standard calibration uses full local peak windows and automatic PSF support;
+  blind PSF updates retain positive peak tails alongside the fitted background.
+  Blind fitting compares full-tail and concentrated PSF proposals by refitting
+  the original observations and evaluating the requested information criterion.
 
 * Fast sparse generalized linear models with adaptive ridge and IRLS, including
   Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.

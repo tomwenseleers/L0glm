@@ -86,6 +86,25 @@ test_that("uninformative channels cannot introduce NaN PSFs", {
   expect_equal(dim(empty$kernels), c(2L, 21L))
 })
 
+test_that("PSF updates preserve the width of broad positive kernels", {
+  set.seed(104)
+  n <- 500L; x <- -25:25
+  spikes <- matrix(0, n, 1L)
+  spikes[c(60, 150, 240, 330, 420), 1L] <- c(5, 8, 6, 3, 7) * 1e5
+  width <- function(h) diff(range(x[h >= max(h) / 2]))
+  for (sigma in c(8, 12)) {
+    kernel <- dnorm(x, sd = sigma); kernel <- kernel / sum(kernel)
+    mean <- as.numeric(convmatrix(kernel, n) %*% spikes) + 5
+    y <- rpois(n, mean)
+    fit <- L0glm_deco_estkernel(y, spikes, kernel_est = kernel,
+      offset = 5, kernel_smoothfun = NULL)
+    expect_equal(width(fit$kernel), width(kernel), tolerance = 2)
+    cosine <- sum(fit$kernel * kernel) / sqrt(sum(fit$kernel^2) * sum(kernel^2))
+    expect_gt(cosine, .999)
+    expect_equal(sum(fit$kernel), 1, tolerance = 1e-12)
+  }
+})
+
 test_that("blind fits return synchronized PSF, spikes, baseline and deviance", {
   d <- deco_fixture()
   for (m in c(1L, 3L)) {
