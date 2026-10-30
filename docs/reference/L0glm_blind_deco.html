@@ -8,7 +8,11 @@ until maxiter iterations have elapsed or the relative L1 change in
 the PSF drops below tol. This allows one to simultaneously determine
 the point spread function and spike locations of an observed blurred single-
 or multichannel spike train corrupted by exponential-family noise
-(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.)."><meta property="og:description" content="Runs a simple block-coordinate (alternating) optimisation:
+(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.).
+The centering specified by perc sets the time origin of the estimated
+PSF and spikes. Use the same convention for simulated reference kernels when
+comparing spike locations or coefficients directly.
+Set perc = 0 to retain the estimated time origin without recentering."><meta property="og:description" content="Runs a simple block-coordinate (alternating) optimisation:
 repeatedly
 fix the PSF and estimate spikes with L0glm_sparse_deco;
 fix the spikes and estimate the PSF with
@@ -17,7 +21,11 @@ until maxiter iterations have elapsed or the relative L1 change in
 the PSF drops below tol. This allows one to simultaneously determine
 the point spread function and spike locations of an observed blurred single-
 or multichannel spike train corrupted by exponential-family noise
-(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.)."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
+(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.).
+The centering specified by perc sets the time origin of the estimated
+PSF and spikes. Use the same convention for simulated reference kernels when
+comparing spike locations or coefficients directly.
+Set perc = 0 to retain the estimated time origin without recentering."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -74,7 +82,11 @@ repeatedly</p><ol><li><p>fix the PSF and estimate spikes with <code>L0glm_sparse
 the PSF drops below <code>tol</code>. This allows one to simultaneously determine
 the point spread function and spike locations of an observed blurred single-
 or multichannel spike train corrupted by exponential-family noise
-(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.).</p>
+(Poisson, Gaussian, Gamma, Inverse Gaussian, etc.).
+The centering specified by <code>perc</code> sets the time origin of the estimated
+PSF and spikes. Use the same convention for simulated reference kernels when
+comparing spike locations or coefficients directly.
+Set <code>perc = 0</code> to retain the estimated time origin without recentering.</p>
     </div>
 
     <div class="section level2">
@@ -83,7 +95,8 @@ or multichannel spike train corrupted by exponential-family noise
 <span>  <span class="va">y</span>,</span>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
 <span>  kernel_est <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  L <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span> <span class="kw">else</span> <span class="fl">41</span>,</span>
+<span>  L <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">is.matrix</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span> <span class="kw">else</span> <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">kernel_est</span><span class="op">)</span> <span class="kw">else</span> <span class="fl">41</span>,</span>
 <span>  baseline <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nknots <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">4L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fl">500</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  kernelfunc <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="va">L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -94,7 +107,9 @@ or multichannel spike train corrupted by exponential-family noise
 <span>  kernel_true <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  plot <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  maxiter <span class="op">=</span> <span class="fl">15</span>,</span>
-<span>  tol <span class="op">=</span> <span class="fl">0.001</span></span>
+<span>  tol <span class="op">=</span> <span class="fl">0.001</span>,</span>
+<span>  nwindows <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -115,7 +130,9 @@ or `Gamma(identity)`).</p></dd>
 
 
 <dt id="arg-kernel-est">kernel_est<a class="anchor" aria-label="anchor" href="#arg-kernel-est"></a></dt>
-<dd><p>Initial starting estimate of PSF (L1-normalised internally).</p></dd>
+<dd><p>Initial PSF (L1-normalised internally). For
+<code>nwindows &gt; 1</code>, a matrix with one row per window can supply local
+starting PSFs of equal length.</p></dd>
 
 
 <dt id="arg-l">L<a class="anchor" aria-label="anchor" href="#arg-l"></a></dt>
@@ -188,6 +205,22 @@ iteration when <code>plot=TRUE</code>.</p></dd>
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
 <dd><p>Relative L1 change in the PSF that triggers early stop (default 1e-3).</p></dd>
 
+
+<dt id="arg-nwindows">nwindows<a class="anchor" aria-label="anchor" href="#arg-nwindows"></a></dt>
+<dd><p>Number of overlapping windows used to estimate a
+time-varying PSF. The default <code>1L</code> estimates one shared PSF. Larger
+values fit local PSFs, interpolate their log densities smoothly across
+scans, and refit the original outcomes using the resulting sparse design.
+For multichannel Poisson data, local PSF calibration uses the summed
+channels; the final fit retains every original channel.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Execution controls passed to the spike/background
+<code><a href="L0glm.fit.html">L0glm.fit()</a></code> calls, such as <code>parallelize</code>, <code>ncores</code>,
+<code>nthreads</code> and <code>openmp</code>. For small non-Poisson multichannel
+fits, <code>parallelize = FALSE</code> avoids worker-startup overhead.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -195,13 +228,45 @@ iteration when <code>plot=TRUE</code>.</p></dd>
 <dd><p>Final spike estimate.</p></dd>
 
     <dt><code>g_hat</code></dt>
-<dd><p>Final PSF estimate (L1-normalised).</p></dd>
+<dd><p>Final unit-sum PSF, or a matrix with one PSF per
+      window when <code>nwindows &gt; 1</code>.</p></dd>
 
     <dt><code>deviance_trace</code></dt>
 <dd><p>Deviance value after each iteration.</p></dd>
 
+    <dt><code>fitted_values</code>, <code>fitted_baseline</code>, <code>coef_baseline</code></dt>
+<dd><p>Fitted signal, background and background coefficients on the original data scale.</p></dd>
 
-</dl></div>
+    <dt><code>X</code>, <code>X_spikes</code>, <code>X_baseline</code></dt>
+<dd><p>Final sparse PSF design
+      (<code>X</code> and <code>X_spikes</code>) and background basis.</p></dd>
+
+    <dt><code>psf_timepoints</code>, <code>windows</code></dt>
+<dd><p>For time-varying fits,
+      calibration centers in scan coordinates and local diagnostics.</p></dd>
+
+    <dt><code>deviance</code>, <code>iterations</code>, <code>converged</code></dt>
+<dd><p>Final deviance, number of alternating steps and PSF convergence flag.</p></dd>
+
+    <dt><code>best_iteration</code>, <code>selection_score</code>, <code>selection_trace</code></dt>
+<dd><p>For a shared PSF, the selected update, its information criterion and
+      the criterion at each completed candidate fit. Local diagnostics for
+      time-varying PSFs are stored in <code>windows</code>.</p></dd>
+
+
+</dl><p>Background coefficients are fitted with the spikes in each iteration.
+  The kernel update uses the fitted background as a channel-specific offset.
+  Original observations are used in every fit. A final spike/background fit
+  ensures that the returned coefficients and deviance use the returned PSF.
+  Time-varying fits blend local log PSFs using nonnegative smoothstep weights,
+  with linear log-tail continuation when their supports differ. This preserves
+  log-concavity when the local PSFs are log-concave. Edge columns are truncated
+  using the same convention as <code><a href="convmatrix.html">convmatrix()</a></code>.
+  The best completed spike/background fit according to <code>IC</code> is retained
+  across PSF updates. <code>best_iteration</code> identifies its PSF update; zero
+  denotes the supplied starting kernel. <code>selection_trace</code> records the
+  criterion for every completed candidate fit.</p>
+    </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The algorithm is inspired by the L0-penalised blind deconvolution approach
@@ -318,11 +383,11 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span><span class="va">g_true</span>  <span class="op">&lt;-</span> <span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"bigaussian"</span>, <span class="va">L</span>,</span>
 <span>                      params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma1 <span class="op">=</span> <span class="va">sigma1</span>,</span>
 <span>                                    sigma2 <span class="op">=</span> <span class="va">sigma2</span><span class="op">)</span>,</span>
-<span>                      perc   <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>   <span class="co"># already centred</span></span>
+<span>                      perc   <span class="op">=</span> <span class="st">"mean"</span><span class="op">)</span> <span class="co"># match the fitted PSF's centroid convention</span></span>
 <span></span>
 <span><span class="co">## --- latent sparse spike-train ------------------------------------</span></span>
-<span><span class="va">n</span>        <span class="op">&lt;-</span> <span class="fl">10000</span>                   <span class="co"># timepoints</span></span>
-<span><span class="va">npeaks</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span>           <span class="co"># 1000, ~10 % non-zero</span></span>
+<span><span class="va">n</span>        <span class="op">&lt;-</span> <span class="fl">10000L</span>                  <span class="co"># timepoints</span></span>
+<span><span class="va">npeaks</span>   <span class="op">&lt;-</span> <span class="fl">1000L</span>                   <span class="co"># nonzero peaks</span></span>
 <span><span class="va">idx</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">npeaks</span><span class="op">)</span></span>
 <span><span class="va">amps</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1000</span><span class="op">:</span><span class="fl">100000</span>, <span class="va">npeaks</span><span class="op">)</span></span>
 <span><span class="va">a_true</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>;  <span class="va">a_true</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">amps</span>   <span class="co"># true spikes</span></span>
@@ -361,7 +426,6 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span><span class="co">## 2  Blind deconvolution starting from intial Gaussian PSF guess</span></span>
 <span><span class="co">## ------------------------------------------------------------------------</span></span>
 <span><span class="va">g0</span> <span class="op">&lt;-</span> <span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="va">L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span><span class="op">)</span><span class="op">)</span>  <span class="co"># initial guess for PSF</span></span>
-<span><span class="co"># = Gaussian with sigma=6, sigma=3.5 to 30 all converge to the same solution</span></span>
 <span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">L0glm_blind_deco</span><span class="op">(</span><span class="va">y</span>,</span>
 <span>                        family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
@@ -406,6 +470,22 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span>     xlab <span class="op">=</span> <span class="st">"estimated value"</span>,</span>
 <span>     ylab <span class="op">=</span> <span class="st">"true value"</span>,</span>
 <span>     main <span class="op">=</span> <span class="va">main_expr</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Multichannel fits use an individual background offset for each channel.</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span> <span class="op">*</span> <span class="va">y_true</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">1.3</span> <span class="op">*</span> <span class="va">y_true</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu">L0glm_blind_deco</span><span class="op">(</span><span class="va">Y</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, kernel_est <span class="op">=</span> <span class="va">g0</span>,</span>
+<span>                         baseline <span class="op">=</span> <span class="st">"bspline"</span>, nknots <span class="op">=</span> <span class="fl">6L</span>,</span>
+<span>                         maxiter <span class="op">=</span> <span class="fl">3L</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">a_hat</span><span class="op">)</span></span>
+<span><span class="va">multi</span><span class="op">$</span><span class="va">deviance</span></span>
+<span></span>
+<span><span class="co"># Estimate smoothly varying PSFs in ten overlapping windows.</span></span>
+<span><span class="co"># The returned X can also be supplied to spoloconmf().</span></span>
+<span><span class="va">varying</span> <span class="op">&lt;-</span> <span class="fu">L0glm_blind_deco</span><span class="op">(</span><span class="va">y</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, kernel_est <span class="op">=</span> <span class="va">g0</span>,</span>
+<span>                           baseline <span class="op">=</span> <span class="st">"bspline"</span>, nknots <span class="op">=</span> <span class="fl">8L</span>,</span>
+<span>                           nwindows <span class="op">=</span> <span class="fl">10L</span>, maxiter <span class="op">=</span> <span class="fl">6L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">varying</span><span class="op">$</span><span class="va">g_hat</span><span class="op">)</span>  <span class="co"># 10 local PSFs</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">varying</span><span class="op">$</span><span class="va">X</span><span class="op">)</span>      <span class="co"># sparse scan-by-scan design</span></span>
 <span><span class="co"># }</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

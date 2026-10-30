@@ -92,7 +92,9 @@ or <em>best-subset of group selection</em> via <span class="pkg">L0glm</span>.</
 <span>  nknots <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">4L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fl">500</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  IC <span class="op">=</span> <span class="st">"gic"</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control.solver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"control.solver.gen"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>solver <span class="op">=</span> <span class="st">"eigen"</span>, method <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
+<span>  control.solver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"control.solver.gen"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>solver <span class="op">=</span> <span class="st">"eigen"</span>, method <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  offset <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -170,12 +172,26 @@ ordering. For strictly banded PSF designs, users can pass
 <code>control.solver.gen("eigen", method=1L, NaturalOrdering=TRUE)</code>
 to request Eigen natural ordering.</p></dd>
 
+
+<dt id="arg-offset">offset<a class="anchor" aria-label="anchor" href="#arg-offset"></a></dt>
+<dd><p>Optional known additive signal: a scalar, length-\(n\)
+vector, or \(n\times m\) matrix. Original observations are
+fitted with this model offset; counts are not background-subtracted.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Execution controls passed to the spike/background
+<code><a href="L0glm.fit.html">L0glm.fit()</a></code> calls, such as <code>parallelize</code>, <code>ncores</code>,
+<code>nthreads</code> and <code>openmp</code>. For small non-Poisson multichannel
+fits, <code>parallelize = FALSE</code> avoids worker-startup overhead.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list with</p><dl><dt><code>coef_spikes</code></dt>
 <dd><p>Estimated un-blurred spikes, i.e. the coefficients
-                            for design matrix <code>X_spikes</code> (same shape as <code>y</code>).</p></dd>
+                            for design matrix <code>X_spikes</code>. Its dimensions
+                            are <code>ncol(X_spikes)</code> by <code>ncol(as.matrix(y))</code>.</p></dd>
 
   <dt><code>coef_baseline</code></dt>
 <dd><p>Estimated baseline coefficients for baseline
@@ -195,6 +211,13 @@ to request Eigen natural ordering.</p></dd>
 
   <dt><code>X_baseline</code></dt>
 <dd><p>Design matrix for the baseline.</p></dd>
+
+  <dt><code>offset</code></dt>
+<dd><p>Known additive signal, expanded to the response dimensions.</p></dd>
+
+  <dt><code>fit</code></dt>
+<dd><p>The underlying <code>L0glm_fit</code> model, supporting
+    <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>, <code><a href="model_criteria.html">GIC()</a></code> and the other fitted-model methods.</p></dd>
 
 
 </dl></div>
@@ -240,7 +263,12 @@ specialised to the case where \(W\) is a Toeplitz single-atom convolutional
 dictionary matrix and where the matrix factorisation is solved with an
 L\(_{0}\) or grouped L\(_{0}\)-penalised generalised linear model (GLM)
 fit via adaptive ridge regularised iteratively reweighted least squares
-(IRLS).</p>
+(IRLS).
+When a fitted baseline or known offset is present, positive backprojection
+starts are calculated from the signal above a low channel-wise baseline.
+This keeps promising peaks eligible during the initial adaptive-ridge steps.
+These values initialize the coefficients only; the model always fits the
+original observations with its fitted background and known offset.</p>
 <p>A classical baseline for Poisson deconvolution is the
 Richardson-Lucy algorithm (Richardson 1972; Lucy 1974). In modern
 terms, Richardson-Lucy equals Kullback-Leibler NMF with
@@ -309,8 +337,8 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span>                      perc   <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>   <span class="co"># already centred</span></span>
 <span></span>
 <span><span class="co">## --- latent sparse spike-train ------------------------------------</span></span>
-<span><span class="va">n</span>        <span class="op">&lt;-</span> <span class="fl">10000</span>                   <span class="co"># timepoints</span></span>
-<span><span class="va">npeaks</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span>           <span class="co"># 1000, ~10 % non-zero</span></span>
+<span><span class="va">n</span>        <span class="op">&lt;-</span> <span class="fl">500L</span>                    <span class="co"># timepoints</span></span>
+<span><span class="va">npeaks</span>   <span class="op">&lt;-</span> <span class="fl">50L</span>                     <span class="co"># nonzero peaks</span></span>
 <span><span class="va">idx</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">npeaks</span><span class="op">)</span></span>
 <span><span class="va">amps</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1000</span><span class="op">:</span><span class="fl">100000</span>, <span class="va">npeaks</span><span class="op">)</span></span>
 <span><span class="va">a_true</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>;  <span class="va">a_true</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">amps</span>   <span class="co"># true spikes</span></span>
@@ -356,7 +384,6 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span><span class="va">a_est_baseline</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">coef_baseline</span><span class="op">)</span> </span>
 <span><span class="va">a_est</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">coef_spikes</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">a_est</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span> </span>
-<span><span class="co"># 992 with NULL baseline, 1030 with intercept baseline, 1043 with bspline baseline</span></span>
 <span></span>
 <span><span class="co">## ---------- summary statistics ------------------------------------</span></span>
 <span><span class="va">n_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">a_true</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
@@ -368,7 +395,6 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span><span class="va">R2p</span> <span class="op">&lt;-</span> <span class="fl">100</span> <span class="op">*</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">a_true</span> <span class="op">~</span> <span class="fl">0</span> <span class="op">+</span> <span class="va">a_est</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">r.squared</span></span>
 <span><span class="va">R2p</span></span>
-<span><span class="co"># 99.80369 with NULL baseline, 96.70126 with intercept baseline, 97.15414 with bspline baseline</span></span>
 <span></span>
 <span><span class="co">## ---------- scatter-plot with true vs. estimated peak areas -------</span></span>
 <span><span class="va">main_expr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/bquote.html" class="external-link">bquote</a></span><span class="op">(</span></span>
@@ -384,7 +410,14 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span>     pch  <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="st">"blue"</span>,</span>
 <span>     xlab <span class="op">=</span> <span class="st">"estimated value"</span>,</span>
 <span>     ylab <span class="op">=</span> <span class="st">"true value"</span>,</span>
-<span>     main <span class="op">=</span> <span class="va">main_expr</span><span class="op">)</span></span></code></pre></div>
+<span>     main <span class="op">=</span> <span class="va">main_expr</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Fit several outcome channels jointly, with their own baseline coefficients.</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span> <span class="op">*</span> <span class="va">y_true</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">1.3</span> <span class="op">*</span> <span class="va">y_true</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu">L0glm_sparse_deco</span><span class="op">(</span><span class="va">Y</span>, kernel <span class="op">=</span> <span class="va">g_true</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
+<span>                          baseline <span class="op">=</span> <span class="st">"bspline"</span>, nknots <span class="op">=</span> <span class="fl">6L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">coef_spikes</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">coef_baseline</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
