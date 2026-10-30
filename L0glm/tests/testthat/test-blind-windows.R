@@ -18,6 +18,19 @@ test_that("time-varying PSF interpolation preserves convolution and log concavit
   }
 })
 
+test_that("tiny log-tail roundoff cannot become a nonconcave interpolated PSF", {
+  n <- 160L; L <- 51L
+  g <- exp(-2 * abs(-25:25)); g[50L] <- .99 * g[50L]; g <- g / sum(g)
+  kernels <- rbind(g, convkernel("gaussian", L, list(sigma = 6)))
+  X <- L0glm:::.psf_build_sparse_matrix(seq_len(n), c(30, 130), -25:25,
+    kernels, log_floor = 0, drop_tol = 1e-12, normalize = FALSE, smooth = TRUE)
+  for (j in seq_len(n)) {
+    h <- as.numeric(X[, j]); h <- h[h > 0]
+    expect_true(all(diff(log(h), differences = 2L) < 1e-7))
+  }
+  expect_equal(exp(L0glm:::.psf_log_tail(c(1, .5, 1))), c(1, .5, 1))
+})
+
 test_that("window fits learn varying PSFs and refit every original channel", {
   set.seed(211)
   n <- 1200L; L <- 31L

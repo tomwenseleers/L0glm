@@ -1,7 +1,7 @@
 # Private SPoLoCoNMF numerical helpers.
 # Local Poisson updates and no-fit spectral fusion.
-spolo_lc <- function(h) {
-    h <- pmax(as.numeric(h), max(h) * 1e-12)
+spolo_lc <- function(h, min_relative = 1e-12) {
+    h <- pmax(as.numeric(h), max(h) * min_relative)
     h <- h/sum(h)
     n <- length(h)
     if (n < 3L) 

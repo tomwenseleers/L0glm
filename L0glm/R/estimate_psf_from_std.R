@@ -729,6 +729,14 @@ estimate_psf_from_std <- function(y,
 .psf_log_tail <- function(kernel) {
   at <- which(kernel > 0)
   if (length(at) == 1L) return(-36 * abs(seq_along(kernel) - at))
+  core <- seq.int(min(at), max(at))
+  if (all(kernel[core] > 0)) {
+    # Subtracting a spline's minimum can lose relative precision in tiny tails.
+    # Repair only negligible changes, retaining genuinely nonconcave inputs.
+    h <- spolo_lc(kernel[core], min_relative = 0)$h
+    if (sum(abs(h - kernel[core] / sum(kernel[core]))) <= 1e-10)
+      kernel[core] <- h * sum(kernel[core])
+  }
   z <- stats::approx(at, log(kernel[at]), xout = seq_along(kernel), rule = 2)$y
   left <- seq_len(min(at) - 1L)
   right <- seq.int(max(at), length(kernel))
