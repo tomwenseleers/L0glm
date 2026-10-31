@@ -139,6 +139,8 @@ An object of class `splogconNMF`, containing sparse unit-sum profiles
   `ledger_error`, aggregation diagnostics, controls and timings `seconds`.
   `coef()` returns spectra and `fitted()` the full mean matrix. `logLik()`,
   `AIC()`, `BIC()`, `GIC()`, `EBIC()` and `MBIC()` score the returned model.
+  Columns of `H` and the matching rows of `S` are ordered by increasing apex
+  scan, also returned in `apex_scan`. Their labels identify the same compounds.
 }
 \description{
 Recover a parsimonious set of compounds from multichannel signals, with

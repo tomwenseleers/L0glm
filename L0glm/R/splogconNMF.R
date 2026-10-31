@@ -21,6 +21,22 @@ slcn_start <- function(start, n, m, B, O) {
   list(H = H, S = S, alpha = A, mu = as.matrix(H %*% S) + B %*% A + O)
 }
 
+slcn_temporal_order <- function(model) {
+  apex <- vapply(seq_len(ncol(model$H)), function(j) {
+    at <- seq.int(model$H@p[j] + 1L, model$H@p[j + 1L])
+    model$H@i[at[which.max(model$H@x[at])]] + 1L
+  }, 0L)
+  index <- order(apex)
+  model$H <- model$H[, index, drop = FALSE]
+  model$S <- model$S[index, , drop = FALSE]
+  model$apex_scan <- apex[index]
+  if (length(model$state_ids) == length(index)) model$state_ids <- model$state_ids[index]
+  if (length(model$source_ids) == length(index)) model$source_ids <- model$source_ids[index]
+  labels <- if (length(index)) paste0("compound", seq_along(index)) else character()
+  colnames(model$H) <- rownames(model$S) <- labels
+  model
+}
+
 slcn_initial <- function(X, Y, B, spec, W, offset, scalar, ncores, screen_factor = 1) {
   p <- ncol(X);q <- ncol(B);pilot <- slcn_pilot(Y)
   variance <- switch(spec$name, gaussian = matrix(rep(rep_len(spec$dispersion, ncol(Y)), each = nrow(Y)), nrow(Y), ncol(Y)),
@@ -316,6 +332,8 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #'   `ledger_error`, aggregation diagnostics, controls and timings `seconds`.
 #'   `coef()` returns spectra and `fitted()` the full mean matrix. `logLik()`,
 #'   `AIC()`, `BIC()`, `GIC()`, `EBIC()` and `MBIC()` score the returned model.
+#'   Columns of `H` and the matching rows of `S` are ordered by increasing apex
+#'   scan, also returned in `apex_scan`. Their labels identify the same compounds.
 #' @seealso [GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
 #' @example examples/splogconNMF.R
 #' @export
@@ -423,8 +441,10 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
   fit$aggregation <- aggregation;fit$control <- control;fit$ncores <- ncores
   fit$seconds <- c(noise = nuisance, clustering = clustering_seconds, aggregate = aggregate_seconds,
     original = fit_seconds, total = proc.time()[["elapsed"]] - begun)
-  labels <- if (ncol(fit$H)) paste0("compound", seq_len(ncol(fit$H))) else character()
-  colnames(fit$H) <- rownames(fit$S) <- labels;colnames(fit$S) <- colnames(Y);dimnames(fit$mu) <- dimnames(Y)
+  fit <- slcn_temporal_order(fit)
+  if (!is.null(fit$aggregation$model))
+    fit$aggregation$model <- slcn_temporal_order(fit$aggregation$model)
+  colnames(fit$S) <- colnames(Y);dimnames(fit$mu) <- dimnames(Y)
   class(fit) <- "splogconNMF"
   fit
 }

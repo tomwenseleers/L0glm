@@ -14,6 +14,8 @@ slcn_check_model <- function(fit) {
   expect_equal(unname(fitted(fit)),unname(as.matrix(fit$H%*%fit$S)+fit$background%*%fit$alpha+fit$offset),tolerance=1e-8)
   expect_true(all(fit$S>=0)&&all(fit$alpha>=0))
   expect_equal(as.numeric(Matrix::colSums(fit$H)),rep(1,ncol(fit$H)),tolerance=1e-10)
+  apex<-vapply(seq_len(ncol(fit$H)),function(j) which.max(as.numeric(fit$H[,j])),0L)
+  expect_true(all(diff(apex)>=0));expect_equal(fit$apex_scan,apex)
   for(j in seq_len(ncol(fit$H))) {
     h <- as.numeric(fit$H[,j]);rows <- which(h>0)
     expect_true(all(diff(rows)==1L))
@@ -26,6 +28,20 @@ slcn_check_model <- function(fit) {
   expect_equal(as.numeric(logLik(fit)),fit$loglik)
   expect_equal(AIC(fit),-2*fit$loglik+2*fit$spec$information_factor*attr(logLik(fit),"df"))
 }
+
+test_that("temporal ordering keeps profiles, spectra and compound identities aligned", {
+  H <- Matrix::sparseMatrix(i=c(6L,2L,4L),j=1:3,x=1,dims=c(8L,3L))
+  S <- matrix(seq_len(12L),3L,4L)
+  model <- list(H=H,S=S,state_ids=c(80L,30L,50L),source_ids=c(60L,20L,40L))
+  signal <- H %*% S
+  z <- slcn_temporal_order(model)
+  expect_equal(z$apex_scan,c(2L,4L,6L))
+  expect_equal(z$state_ids,c(30L,50L,80L))
+  expect_equal(z$source_ids,c(20L,40L,60L))
+  expect_identical(colnames(z$H),rownames(z$S))
+  expect_equal(unname(z$H %*% z$S),unname(signal))
+  expect_equal(unname(z$S),S[c(2L,3L,1L),])
+})
 
 test_that("all noise models preserve original dimensions, exact scores and constraints", {
   d <- slcn_test_data();Y <- cbind(d$Y,silent=0);W <- matrix(1,nrow(Y),ncol(Y));W[1:5,] <- 0
