@@ -118,7 +118,7 @@ and shark-fin peaks while retaining all original outcome channels.</p>
 
 <dl><dt id="arg-x">X<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>Nonnegative scans-by-candidates matrix, typically shifted copies of
-a point-spread function from [convmatrix()] or [L0glm_blind_deco()]. Columns
+a point-spread function from <code><a href="convmatrix.html">convmatrix()</a></code> or <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>. Columns
 must have contiguous log-concave positive support. Dense and sparse inputs
 are accepted and stored sparsely; columns are normalized to unit sum.</p></dd>
 
@@ -128,42 +128,42 @@ are accepted and stored sparsely; columns are normalized to unit sum.</p></dd>
 
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
-<dd><p>Identity-link noise family: `gaussian`, `poisson`,
-`quasipoisson`, `mgcv::nb`, `Gamma`, [nb1()], [Gamma_scale()] or
-[Gamma_censored()]. The corresponding names, including `"nb"`, `"nb1"`
-and `"Gamma_scale"`, are also accepted. Count likelihoods require integer
+<dd><p>Identity-link noise family: <code>gaussian</code>, <code>poisson</code>,
+<code>quasipoisson</code>, <code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb</a></code>, <code>Gamma</code>, <code><a href="signal_families.html">nb1()</a></code>, <code><a href="signal_families.html">Gamma_scale()</a></code> or
+<code><a href="signal_families.html">Gamma_censored()</a></code>. The corresponding names, including <code>"nb"</code>, <code>"nb1"</code>
+and <code>"Gamma_scale"</code>, are also accepted. Count likelihoods require integer
 counts; quasipoisson accepts nonnegative intensities. Gaussian observations
 may be negative; their fitted latent signals remain nonnegative.</p></dd>
 
 
 <dt id="arg-background">background<a class="anchor" aria-label="anchor" href="#arg-background"></a></dt>
 <dd><p>Optional nonnegative scans-by-basis matrix, for example
-`splines::bs(time, df=6, intercept=TRUE)`. Coefficients are nonnegative and
-unpenalized. `NULL` fits without a background.</p></dd>
+<code>splines::bs(time, df=6, intercept=TRUE)</code>. Coefficients are nonnegative and
+unpenalized. <code>NULL</code> fits without a background.</p></dd>
 
 
 <dt id="arg-lambda">lambda<a class="anchor" aria-label="anchor" href="#arg-lambda"></a></dt>
-<dd><p>`"gic"` (default), `"aic"`, `"bic"`, `"ebic"`, `"mbic"`, or
+<dd><p><code>"gic"</code> (default), <code>"aic"</code>, <code>"bic"</code>, <code>"ebic"</code>, <code>"mbic"</code>, or
 a nonnegative numeric compound penalty. See Details for its scale.</p></dd>
 
 
 <dt id="arg-dispersion">dispersion<a class="anchor" aria-label="anchor" href="#arg-dispersion"></a></dt>
 <dd><p>Known common Gaussian variance, quasipoisson scale,
 Gamma dispersion, NB1 variance-to-mean ratio or common Gamma scale.
-`NULL` estimates a pooled value from temporal differences and freezes it.
-Parameters supplied in a [signal_families] object are used when this
+<code>NULL</code> estimates a pooled value from temporal differences and freezes it.
+Parameters supplied in a <a href="signal_families.html">signal_families</a> object are used when this
 argument is omitted. Poisson and NB2 use unit dispersion.</p></dd>
 
 
 <dt id="arg-theta">theta<a class="anchor" aria-label="anchor" href="#arg-theta"></a></dt>
-<dd><p>NB2 shape, shared by all original channels. `NULL` estimates and
+<dd><p>NB2 shape, shared by all original channels. <code>NULL</code> estimates and
 freezes a temporal moment estimate; a positive value fixes it; a negative
 value initializes at its absolute value and enables pooled likelihood
 updates. A fixed shape in the supplied NB family is respected.</p></dd>
 
 
 <dt id="arg-precluster">precluster<a class="anchor" aria-label="anchor" href="#arg-precluster"></a></dt>
-<dd><p>`NULL` or `FALSE` uses every channel throughout. `TRUE`
+<dd><p><code>NULL</code> or <code>FALSE</code> uses every channel throughout. <code>TRUE</code>
 uses up to 32 groups; an integer supplies another maximum. Size-adjusted
 Poisson clustering, aggregation, selection and fusion operate in that
 reduced space, followed by refinement on all original channels.</p></dd>
@@ -171,44 +171,48 @@ reduced space, followed by refinement on all original channels.</p></dd>
 
 <dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
 <dd><p>Nonnegative likelihood weights: a scalar, row vector or
-matrix matching `y`. `NULL` uses one. Zero weights omit observations.</p></dd>
+matrix matching <code>y</code>. <code>NULL</code> uses one. Zero weights omit observations.</p></dd>
 
 
 <dt id="arg-offset">offset<a class="anchor" aria-label="anchor" href="#arg-offset"></a></dt>
 <dd><p>Known nonnegative mean contribution, in the same supported
-formats as `weights`. `NULL` uses zero. It is included on the response
+formats as <code>weights</code>. <code>NULL</code> uses zero. It is included on the response
 scale because the link is identity.</p></dd>
 
 
 <dt id="arg-correlation">correlation<a class="anchor" aria-label="anchor" href="#arg-correlation"></a></dt>
-<dd><p>`"auto"` or `"lag1"` estimates an optional lag-one working
-adjustment to the selection penalty. `"none"` uses independent observations;
+<dd><p><code>"auto"</code> or <code>"lag1"</code> estimates an optional lag-one working
+adjustment to the selection penalty. <code>"none"</code> uses independent observations;
 a number between zero and 0.49 supplies the lag-one correlation.</p></dd>
 
 
 <dt id="arg-ncores">ncores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
-<dd><p>OpenMP workers. `NULL` uses the detected physical cores.</p></dd>
+<dd><p>OpenMP workers. <code>NULL</code> uses the detected physical cores.</p></dd>
 
 
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
-<dd><p>Named list: `broad_repeats=1L`, `full_sweeps=1L`,
-`final_polishes=1L`, `native_sweeps=6L`, `block_sweeps=6L`,
-`psf_width=NULL`, `screen_factor=1`, `censor=0.5`, `linkage="ward"`,
-`joint_trials=NULL`. The latter uses direct Poisson fusion for Poisson data
-and joint local refinement for the other families. `psf_width` is the typical FWHM in scans, inferred from
-the middle design column. `screen_factor` scales the initial selection
-penalty. `censor` is the Gamma detection limit: recorded zero intensities
+<dd><p>Named list: <code>broad_repeats=1L</code>, <code>full_sweeps=1L</code>,
+<code>final_polishes=1L</code>, <code>native_sweeps=6L</code>, <code>block_sweeps=6L</code>,
+<code>psf_width=NULL</code>, <code>screen_factor=1</code>, <code>censor=0.5</code>, <code>linkage="ward"</code>,
+<code>joint_trials=NULL</code>, <code>profile_fusion=TRUE</code>. <code>joint_trials</code> uses direct Poisson fusion for Poisson data
+and joint local refinement for the other families. <code>psf_width</code> supplies
+the typical FWHM in scans. When omitted, local updates use the middle design
+column and broad-profile fusion uses the median of up to 21 representative
+design columns. <code>screen_factor</code> scales the initial selection
+penalty. <code>censor</code> is the Gamma detection limit: recorded zero intensities
 are left-censored below this value; positive values must be at least the
 limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
-`linkage` may be `"ward"` or `"bregman"`. `joint_trials` allows overlapping
-compounds to adjust together during local fusion refinement.</p></dd>
+<code>linkage</code> may be <code>"ward"</code> or <code>"bregman"</code>. <code>joint_trials</code> allows overlapping
+compounds to adjust together during local fusion refinement.
+<code>profile_fusion</code> enables a final conservative fusion pass on all original
+channels, followed by one local likelihood-based profile/spectrum refit.</p></dd>
 
 
 <dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
-<dd><p>Optional list `H`, `S` and `alpha`, with original dimensions.
-`H` has scans in rows and compounds in columns; `S` has compounds in rows
-and all original channels in columns. `alpha` contains background
+<dd><p>Optional list <code>H</code>, <code>S</code> and <code>alpha</code>, with original dimensions.
+<code>H</code> has scans in rows and compounds in columns; <code>S</code> has compounds in rows
+and all original channels in columns. <code>alpha</code> contains background
 coefficients and defaults to zero. Profiles are normalized with the
 inverse change applied to spectra. A restart bypasses initial screening
 and preclustering; nonnegative spectral entries can reopen during refitting.</p></dd>
@@ -219,7 +223,7 @@ and preclustering; nonnegative spectral entries can reopen during refitting.</p>
 
 
 <dt id="arg-object-x">object, x<a class="anchor" aria-label="anchor" href="#arg-object-x"></a></dt>
-<dd><p>A fitted `splogconNMF` object.</p></dd>
+<dd><p>A fitted <code>splogconNMF</code> object.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -227,37 +231,40 @@ and preclustering; nonnegative spectral entries can reopen during refitting.</p>
 
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
-<dd><p>Complexity multiplier for [stats::AIC()].</p></dd>
+<dd><p>Complexity multiplier for <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">stats::AIC()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An object of class `splogconNMF`, containing sparse unit-sum profiles
-  `H`, spectra `S`, background coefficients `alpha`, the background basis,
-  fitted means `mu`, `rank`, resolved noise settings `spec`, original data,
-  offsets and weights, `objective`, `loglik`, stage ledger `history`,
-  `ledger_error`, aggregation diagnostics, controls and timings `seconds`.
-  `coef()` returns spectra and `fitted()` the full mean matrix. `logLik()`,
-  `AIC()`, `BIC()`, `GIC()`, `EBIC()` and `MBIC()` score the returned model.</p>
+    <p>An object of class <code>splogconNMF</code>, containing sparse unit-sum profiles
+<code>H</code>, spectra <code>S</code>, background coefficients <code>alpha</code>, the background basis,
+fitted means <code>mu</code>, <code>rank</code>, resolved noise settings <code>spec</code>, original data,
+offsets and weights, <code>objective</code>, <code>loglik</code>, stage ledger <code>history</code>,
+<code>ledger_error</code>, aggregation and <code>profile_fusion</code> diagnostics, controls and
+timings <code>seconds</code>.
+<code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> returns spectra and <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> the full mean matrix. <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>,
+<code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code>, <code><a href="model_criteria.html">GIC()</a></code>, <code><a href="model_criteria.html">EBIC()</a></code> and <code><a href="model_criteria.html">MBIC()</a></code> score the returned model.
+Columns of <code>H</code> and the matching rows of <code>S</code> are ordered by increasing apex
+scan, also returned in <code>apex_scan</code>. Their labels identify the same compounds.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>**Model and selection criterion.** With scans in rows, write
+    <p><strong>Model and selection criterion.</strong> With scans in rows, write
 $$\mu=HS+B A+O,\qquad H,S,A\geq0.$$
 Each profile has unit sum, contiguous positive support and
 \(\Delta^2\log H_{\cdot r}\leq0\) on that support. The objective is
 $$J=-2\sum_{ij}w_{ij}\ell(y_{ij};\mu_{ij},\nu)+\lambda_R K,$$
 where \(K\) is the number of compounds and \(\nu\) contains the shared
 noise parameters. An IC preset uses \(\lambda_R=m\kappa\lambda_{IC}\),
-with \(m\) original channels. A numeric `lambda` supplies the total
+with \(m\) original channels. A numeric <code>lambda</code> supplies the total
 compound penalty before multiplication by \(\kappa\). The initial
 grouped fit uses \(\lambda_R/m\). Each compound contributes one selection
 count; spectral entries and profile complexity have no separate penalty.
 This is a compound-count model-selection convention. The IC methods use
 \(mK\) plus the number of estimated shared noise parameters as their
 complexity count; it is distinct from counting every free profile ordinate.</p>
-<p>**Initialization and local updates.** A variance-matched grouped Poisson
-working fit supplies candidate components, using [L0glm.fit()] with relaxed
+<p><strong>Initialization and local updates.</strong> A variance-matched grouped Poisson
+working fit supplies candidate components, using <code><a href="L0glm.fit.html">L0glm.fit()</a></code> with relaxed
 refitting and compulsory background columns. The subsequent updates use
 the specified family's exact score and likelihood. For a spectral
 coefficient or profile ordinate, the conditional mean is
@@ -281,17 +288,40 @@ overlapping compatible profiles. A least concave majorant of the log profile
 enforces hard log concavity. Local refinement reallocates signal between
 overlapping compounds and checks the actual criterion. Every complete stage
 is accepted against its full working data, and final refinement and scoring
-use all original observations. `history` records each accepted or rejected
-stage; `ledger_error` checks the accumulated criterion change.</p>
-<p>**Noise models.** Gaussian variance is \(\phi\); quasipoisson variance is
+use all original observations. <code>history</code> records each accepted or rejected
+stage; <code>ledger_error</code> checks the accumulated criterion change.</p>
+<p><strong>Broad-profile fusion.</strong> After refitting the original channels, an additional
+algebraic pass compares elution profiles. Candidate pairs must have cosine
+similarity at least 0.95 and at least one profile with FWHM at least four
+times the typical PSF FWHM. This can reunite complementary ion sets assigned
+to nearly proportional broad profiles. The area-weighted profile is projected
+to hard log concavity and the spectra are added. Each merge must improve
+the original-channel likelihood-and-compound criterion with the noise scale,
+weights, offsets and background fixed. Candidate fusion requires no refits.
+One final local likelihood pass updates the profiles and spectra in affected
+elution regions. It uses Fisher scoring in log-profile coordinates with
+piecewise-linear interpolation and linear concavity constraints; the noise
+likelihood is evaluated on the original intensity scale. Backtracking
+preserves likelihood improvement. Neighboring profile modes stay within
+one quarter of their starting FWHM, while merged profiles can move freely.
+In log-profile coordinates \(\eta=\log H_{\cdot r}\), the score and working
+information are \(g_t=H_{tr}\sum_c w_{tc}S_{rc}g_{\mu,tc}\) and
+\(I_t=H_{tr}^2\sum_c w_{tc}S_{rc}^2I_{\mu,tc}\). With interpolation matrix
+\(C\), the quadratic step minimizes
+\(\sum_t I_t\{(Cb)_t-\eta_t+g_t/I_t\}^2\), subject to nonincreasing
+slopes of \(Cb\). Zero-information rows receive numerical stabilization.
+<code>profile_fusion</code> records the merge audit and source component groups, numbered
+in temporal order as they entered the final fusion pass. Its <code>source_components</code> list follows
+the returned temporal ordering.</p>
+<p><strong>Noise models.</strong> Gaussian variance is \(\phi\); quasipoisson variance is
 \(\phi\mu\); NB2 variance is \(\mu+\mu^2/\theta\); standard Gamma
 variance is \(\phi\mu^2\). NB1 has variance \(\phi\mu\), while
 common-scale Gamma has shape \(\mu/b\) and scale \(b\), hence variance
-\(b\mu\). Their exact scores and densities are given in [signal_families].
+\(b\mu\). Their exact scores and densities are given in <a href="signal_families.html">signal_families</a>.
 A censored Gamma zero contributes a log CDF at the detection limit, and a
 positive observation contributes its log density. For quasipoisson,
-\(\ell_Q=\{y\log\mu-\mu-\log\Gamma(y+1)\}/\phi\); `logLik()` marks
-this scaled kernel with `quasi=TRUE`, and the regular IC method names return
+\(\ell_Q=\{y\log\mu-\mu-\log\Gamma(y+1)\}/\phi\); <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code> marks
+this scaled kernel with <code>quasi=TRUE</code>, and the regular IC method names return
 quasi-information criteria. Compare candidate ranks under the same family
 and frozen scale.</p>
 <p>For an updated NB2 shape, the pooled score is
@@ -300,14 +330,14 @@ $$U_\theta=\sum_{ij}w_{ij}\left\{\psi(y_{ij}+\theta)-\psi(\theta)
 -\frac{y_{ij}+\theta}{\theta+\mu_{ij}}\right\}.$$
 Bounded Newton proposals in \(\log\theta\) are backtracked against the
 pooled likelihood. One common shape is retained across original channels.</p>
-<p>**Temporal calibration and aggregation.** [temporal_dispersion()] uses
+<p><strong>Temporal calibration and aggregation.</strong> <code><a href="temporal_dispersion.html">temporal_dispersion()</a></code> uses
 fourth and eighth differences in quieter parts of a smoothed pilot signal.
 This estimates the marginal noise scale; an optional lag-one working
 correction multiplies the rank penalty by
 \(\kappa=1+2\widehat\rho_1\). It leaves the fitted variance parameter on
 its marginal scale. This local covariance approximation is recorded in
-`spec`; use `correlation="none"` for independent simulated data.</p>
-<p>Preclustering uses [glm_cluster()] with `size_fac=colSums(pmax(y,0))`,
+<code>spec</code>; use <code>correlation="none"</code> for independent simulated data.</p>
+<p>Preclustering uses <code><a href="glm_cluster.html">glm_cluster()</a></code> with <code>size_fac=colSums(pmax(y,0))</code>,
 removing differences in total ion intensity when comparing channel shapes.
 Poisson and common-parameter NB1 latent signals add exactly; independent
 common-scale Gamma latent signals also add. Standard NB2 and Gamma use
@@ -318,7 +348,7 @@ their original-channel likelihood.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>[GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]</p></div>
+    <div class="dont-index"><p><code><a href="GCMSdeco.html">GCMSdeco()</a></code>, <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, <code><a href="L0glm.fit.html">L0glm.fit()</a></code>, <code><a href="glm_cluster.html">glm_cluster()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -338,6 +368,9 @@ their original-channel likelihood.</p>
 <span>  precluster <span class="op">=</span> <span class="fl">4L</span>, correlation <span class="op">=</span> <span class="st">"none"</span>, ncores <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>compounds <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">rank</span>, GIC <span class="op">=</span> <span class="fu"><a href="model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, seconds <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">seconds</span><span class="op">[[</span><span class="st">"total"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co"># Broad profiles with nearly identical shapes can share complementary ion sets.</span></span>
+<span><span class="co"># A conservative fusion pass runs on all original channels after preclustering.</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="va">profile_fusion</span><span class="op">$</span><span class="va">merges</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/matplot.html" class="external-link">matplot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">H</span>, type <span class="op">=</span> <span class="st">"l"</span>, lty <span class="op">=</span> <span class="fl">1</span>, xlab <span class="op">=</span> <span class="st">"Scan"</span>, ylab <span class="op">=</span> <span class="st">"Elution profile"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># For overdispersed intensities, estimate one common noise scale from temporal</span></span>

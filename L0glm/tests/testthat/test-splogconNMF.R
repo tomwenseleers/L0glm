@@ -32,12 +32,14 @@ slcn_check_model <- function(fit) {
 test_that("temporal ordering keeps profiles, spectra and compound identities aligned", {
   H <- Matrix::sparseMatrix(i=c(6L,2L,4L),j=1:3,x=1,dims=c(8L,3L))
   S <- matrix(seq_len(12L),3L,4L)
-  model <- list(H=H,S=S,state_ids=c(80L,30L,50L),source_ids=c(60L,20L,40L))
+  model <- list(H=H,S=S,state_ids=c(80L,30L,50L),source_ids=c(60L,20L,40L),
+    members=list(c(6L,7L),2L,c(4L,5L)))
   signal <- H %*% S
   z <- slcn_temporal_order(model)
   expect_equal(z$apex_scan,c(2L,4L,6L))
   expect_equal(z$state_ids,c(30L,50L,80L))
   expect_equal(z$source_ids,c(20L,40L,60L))
+  expect_identical(z$members,list(2L,c(4L,5L),c(6L,7L)))
   expect_identical(colnames(z$H),rownames(z$S))
   expect_equal(unname(z$H %*% z$S),unname(signal))
   expect_equal(unname(z$S),S[c(2L,3L,1L),])
@@ -100,6 +102,7 @@ test_that("empty models, numeric penalties and family constructors are supported
   expect_error(splogconNMF(X,matrix(0,24,2)),"nonnegative columns")
   expect_error(splogconNMF(X,rep(0,25),background=rep(-1,25)),"background")
   expect_error(splogconNMF(X,rep(0,25),control=list(unknown=1)),"Unknown")
+  expect_error(splogconNMF(X,rep(0,25),control=list(profile_fusion=NA)),"profile_fusion")
 })
 
 test_that("temporal noise calibration is parallel and recovers marginal variance", {

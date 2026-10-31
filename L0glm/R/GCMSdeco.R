@@ -192,6 +192,9 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' \deqn{q=\max\{4,\min[40,3+\lceil n/(200w)\rceil]\}.}
 #' Background coefficients are nonnegative and unpenalized. This keeps the
 #' baseline much smoother than an individual elution peak.
+#' The calibrated median PSF width also sets the guard for the final
+#' broad-profile fusion pass in [splogconNMF()]. Set
+#' \code{control=list(profile_fusion=FALSE)} to disable that pass.
 #'
 #' **Coherent noise scaling.** Noise parameters are estimated once from the
 #' original channels and shared by the PSF pilot and final factorization.

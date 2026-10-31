@@ -13,6 +13,9 @@ fit <- splogconNMF(X, Y, background = B, family = poisson("identity"),
   precluster = 4L, correlation = "none", ncores = 2L)
 fit
 c(compounds = fit$rank, GIC = GIC(fit), seconds = fit$seconds[["total"]])
+# Broad profiles with nearly identical shapes can share complementary ion sets.
+# A conservative fusion pass runs on all original channels after preclustering.
+fit$profile_fusion$merges
 matplot(fit$H, type = "l", lty = 1, xlab = "Scan", ylab = "Elution profile")
 
 # For overdispersed intensities, estimate one common noise scale from temporal

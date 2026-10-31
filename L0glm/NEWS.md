@@ -7,6 +7,9 @@
   include Gaussian, Poisson, quasipoisson, NB1/NB2 and both Gamma parameterizations,
   with a compound-count criterion, unpenalized spline backgrounds, temporal
   noise calibration and optional channel preclustering followed by full refitting.
+  Conservative broad-profile fusion reunites complementary ion sets on nearly
+  proportional profiles, with original-channel criterion checks and one final
+  native likelihood refit under hard log-concavity constraints.
 * `GCMSdeco` reads ANDI-MS chromatograms, estimates time-varying PSFs with optional
   alkane calibration, fits a spline background and log-concave compounds, and
   exports all-channel spectra as NIST-compatible MSP files.

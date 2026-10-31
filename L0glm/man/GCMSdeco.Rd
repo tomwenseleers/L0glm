@@ -133,15 +133,19 @@ a number between zero and 0.49 supplies the lag-one correlation.}
 \item{control}{Named list: \code{broad_repeats=1L}, \code{full_sweeps=1L},
 \code{final_polishes=1L}, \code{native_sweeps=6L}, \code{block_sweeps=6L},
 \code{psf_width=NULL}, \code{screen_factor=1}, \code{censor=0.5}, \code{linkage="ward"},
-\code{joint_trials=NULL}. The latter uses direct Poisson fusion for Poisson data
-and joint local refinement for the other families. \code{psf_width} is the typical FWHM in scans, inferred from
-the middle design column. \code{screen_factor} scales the initial selection
+\code{joint_trials=NULL}, \code{profile_fusion=TRUE}. \code{joint_trials} uses direct Poisson fusion for Poisson data
+and joint local refinement for the other families. \code{psf_width} supplies
+the typical FWHM in scans. When omitted, local updates use the middle design
+column and broad-profile fusion uses the median of up to 21 representative
+design columns. \code{screen_factor} scales the initial selection
 penalty. \code{censor} is the Gamma detection limit: recorded zero intensities
 are left-censored below this value; positive values must be at least the
 limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
 \code{linkage} may be \code{"ward"} or \code{"bregman"}. \code{joint_trials} allows overlapping
-compounds to adjust together during local fusion refinement.}
+compounds to adjust together during local fusion refinement.
+\code{profile_fusion} enables a final conservative fusion pass on all original
+channels, followed by one local likelihood-based profile/spectrum refit.}
 
 \item{psf_control}{Named list passed to \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, for example
 \code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
@@ -215,6 +219,9 @@ and normalized to unit sum. Their typical full width at half maximum,
 \deqn{q=\max\{4,\min[40,3+\lceil n/(200w)\rceil]\}.}
 Background coefficients are nonnegative and unpenalized. This keeps the
 baseline much smoother than an individual elution peak.
+The calibrated median PSF width also sets the guard for the final
+broad-profile fusion pass in \code{\link[=splogconNMF]{splogconNMF()}}. Set
+\code{control=list(profile_fusion=FALSE)} to disable that pass.
 
 \strong{Coherent noise scaling.} Noise parameters are estimated once from the
 original channels and shared by the PSF pilot and final factorization.

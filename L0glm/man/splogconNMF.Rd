@@ -54,93 +54,98 @@ splogconNMF(
 }
 \arguments{
 \item{X}{Nonnegative scans-by-candidates matrix, typically shifted copies of
-a point-spread function from [convmatrix()] or [L0glm_blind_deco()]. Columns
+a point-spread function from \code{\link[=convmatrix]{convmatrix()}} or \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}. Columns
 must have contiguous log-concave positive support. Dense and sparse inputs
 are accepted and stored sparsely; columns are normalized to unit sum.}
 
 \item{y}{Numeric scans-by-channels matrix or a single-channel vector.}
 
-\item{family}{Identity-link noise family: `gaussian`, `poisson`,
-`quasipoisson`, `mgcv::nb`, `Gamma`, [nb1()], [Gamma_scale()] or
-[Gamma_censored()]. The corresponding names, including `"nb"`, `"nb1"`
-and `"Gamma_scale"`, are also accepted. Count likelihoods require integer
+\item{family}{Identity-link noise family: \code{gaussian}, \code{poisson},
+\code{quasipoisson}, \code{mgcv::nb}, \code{Gamma}, \code{\link[=nb1]{nb1()}}, \code{\link[=Gamma_scale]{Gamma_scale()}} or
+\code{\link[=Gamma_censored]{Gamma_censored()}}. The corresponding names, including \code{"nb"}, \code{"nb1"}
+and \code{"Gamma_scale"}, are also accepted. Count likelihoods require integer
 counts; quasipoisson accepts nonnegative intensities. Gaussian observations
 may be negative; their fitted latent signals remain nonnegative.}
 
 \item{background}{Optional nonnegative scans-by-basis matrix, for example
-`splines::bs(time, df=6, intercept=TRUE)`. Coefficients are nonnegative and
-unpenalized. `NULL` fits without a background.}
+\code{splines::bs(time, df=6, intercept=TRUE)}. Coefficients are nonnegative and
+unpenalized. \code{NULL} fits without a background.}
 
-\item{lambda}{`"gic"` (default), `"aic"`, `"bic"`, `"ebic"`, `"mbic"`, or
+\item{lambda}{\code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"}, \code{"mbic"}, or
 a nonnegative numeric compound penalty. See Details for its scale.}
 
 \item{dispersion}{Known common Gaussian variance, quasipoisson scale,
 Gamma dispersion, NB1 variance-to-mean ratio or common Gamma scale.
-`NULL` estimates a pooled value from temporal differences and freezes it.
-Parameters supplied in a [signal_families] object are used when this
+\code{NULL} estimates a pooled value from temporal differences and freezes it.
+Parameters supplied in a \link{signal_families} object are used when this
 argument is omitted. Poisson and NB2 use unit dispersion.}
 
-\item{theta}{NB2 shape, shared by all original channels. `NULL` estimates and
+\item{theta}{NB2 shape, shared by all original channels. \code{NULL} estimates and
 freezes a temporal moment estimate; a positive value fixes it; a negative
 value initializes at its absolute value and enables pooled likelihood
 updates. A fixed shape in the supplied NB family is respected.}
 
-\item{precluster}{`NULL` or `FALSE` uses every channel throughout. `TRUE`
+\item{precluster}{\code{NULL} or \code{FALSE} uses every channel throughout. \code{TRUE}
 uses up to 32 groups; an integer supplies another maximum. Size-adjusted
 Poisson clustering, aggregation, selection and fusion operate in that
 reduced space, followed by refinement on all original channels.}
 
 \item{weights}{Nonnegative likelihood weights: a scalar, row vector or
-matrix matching `y`. `NULL` uses one. Zero weights omit observations.}
+matrix matching \code{y}. \code{NULL} uses one. Zero weights omit observations.}
 
 \item{offset}{Known nonnegative mean contribution, in the same supported
-formats as `weights`. `NULL` uses zero. It is included on the response
+formats as \code{weights}. \code{NULL} uses zero. It is included on the response
 scale because the link is identity.}
 
-\item{correlation}{`"auto"` or `"lag1"` estimates an optional lag-one working
-adjustment to the selection penalty. `"none"` uses independent observations;
+\item{correlation}{\code{"auto"} or \code{"lag1"} estimates an optional lag-one working
+adjustment to the selection penalty. \code{"none"} uses independent observations;
 a number between zero and 0.49 supplies the lag-one correlation.}
 
-\item{ncores}{OpenMP workers. `NULL` uses the detected physical cores.}
+\item{ncores}{OpenMP workers. \code{NULL} uses the detected physical cores.}
 
-\item{control}{Named list: `broad_repeats=1L`, `full_sweeps=1L`,
-`final_polishes=1L`, `native_sweeps=6L`, `block_sweeps=6L`,
-`psf_width=NULL`, `screen_factor=1`, `censor=0.5`, `linkage="ward"`,
-`joint_trials=NULL`. The latter uses direct Poisson fusion for Poisson data
-and joint local refinement for the other families. `psf_width` is the typical FWHM in scans, inferred from
-the middle design column. `screen_factor` scales the initial selection
-penalty. `censor` is the Gamma detection limit: recorded zero intensities
+\item{control}{Named list: \code{broad_repeats=1L}, \code{full_sweeps=1L},
+\code{final_polishes=1L}, \code{native_sweeps=6L}, \code{block_sweeps=6L},
+\code{psf_width=NULL}, \code{screen_factor=1}, \code{censor=0.5}, \code{linkage="ward"},
+\code{joint_trials=NULL}, \code{profile_fusion=TRUE}. \code{joint_trials} uses direct Poisson fusion for Poisson data
+and joint local refinement for the other families. \code{psf_width} supplies
+the typical FWHM in scans. When omitted, local updates use the middle design
+column and broad-profile fusion uses the median of up to 21 representative
+design columns. \code{screen_factor} scales the initial selection
+penalty. \code{censor} is the Gamma detection limit: recorded zero intensities
 are left-censored below this value; positive values must be at least the
 limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
-`linkage` may be `"ward"` or `"bregman"`. `joint_trials` allows overlapping
-compounds to adjust together during local fusion refinement.}
+\code{linkage} may be \code{"ward"} or \code{"bregman"}. \code{joint_trials} allows overlapping
+compounds to adjust together during local fusion refinement.
+\code{profile_fusion} enables a final conservative fusion pass on all original
+channels, followed by one local likelihood-based profile/spectrum refit.}
 
-\item{start}{Optional list `H`, `S` and `alpha`, with original dimensions.
-`H` has scans in rows and compounds in columns; `S` has compounds in rows
-and all original channels in columns. `alpha` contains background
+\item{start}{Optional list \code{H}, \code{S} and \code{alpha}, with original dimensions.
+\code{H} has scans in rows and compounds in columns; \code{S} has compounds in rows
+and all original channels in columns. \code{alpha} contains background
 coefficients and defaults to zero. Profiles are normalized with the
 inverse change applied to spectra. A restart bypasses initial screening
 and preclustering; nonnegative spectral entries can reopen during refitting.}
 
 \item{verbose}{Print stage timings, objective changes and compound counts.}
 
-\item{object, x}{A fitted `splogconNMF` object.}
+\item{object, x}{A fitted \code{splogconNMF} object.}
 
 \item{...}{Further method arguments.}
 
-\item{k}{Complexity multiplier for [stats::AIC()].}
+\item{k}{Complexity multiplier for \code{\link[stats:AIC]{stats::AIC()}}.}
 }
 \value{
-An object of class `splogconNMF`, containing sparse unit-sum profiles
-  `H`, spectra `S`, background coefficients `alpha`, the background basis,
-  fitted means `mu`, `rank`, resolved noise settings `spec`, original data,
-  offsets and weights, `objective`, `loglik`, stage ledger `history`,
-  `ledger_error`, aggregation diagnostics, controls and timings `seconds`.
-  `coef()` returns spectra and `fitted()` the full mean matrix. `logLik()`,
-  `AIC()`, `BIC()`, `GIC()`, `EBIC()` and `MBIC()` score the returned model.
-  Columns of `H` and the matching rows of `S` are ordered by increasing apex
-  scan, also returned in `apex_scan`. Their labels identify the same compounds.
+An object of class \code{splogconNMF}, containing sparse unit-sum profiles
+\code{H}, spectra \code{S}, background coefficients \code{alpha}, the background basis,
+fitted means \code{mu}, \code{rank}, resolved noise settings \code{spec}, original data,
+offsets and weights, \code{objective}, \code{loglik}, stage ledger \code{history},
+\code{ledger_error}, aggregation and \code{profile_fusion} diagnostics, controls and
+timings \code{seconds}.
+\code{coef()} returns spectra and \code{fitted()} the full mean matrix. \code{logLik()},
+\code{AIC()}, \code{BIC()}, \code{GIC()}, \code{EBIC()} and \code{MBIC()} score the returned model.
+Columns of \code{H} and the matching rows of \code{S} are ordered by increasing apex
+scan, also returned in \code{apex_scan}. Their labels identify the same compounds.
 }
 \description{
 Recover a parsimonious set of compounds from multichannel signals, with
@@ -149,14 +154,14 @@ Fast spectral fusion and local native updates accommodate broad, asymmetric
 and shark-fin peaks while retaining all original outcome channels.
 }
 \details{
-**Model and selection criterion.** With scans in rows, write
+\strong{Model and selection criterion.} With scans in rows, write
 \deqn{\mu=HS+B A+O,\qquad H,S,A\geq0.}
 Each profile has unit sum, contiguous positive support and
 \eqn{\Delta^2\log H_{\cdot r}\leq0} on that support. The objective is
 \deqn{J=-2\sum_{ij}w_{ij}\ell(y_{ij};\mu_{ij},\nu)+\lambda_R K,}
 where \eqn{K} is the number of compounds and \eqn{\nu} contains the shared
 noise parameters. An IC preset uses \eqn{\lambda_R=m\kappa\lambda_{IC}},
-with \eqn{m} original channels. A numeric `lambda` supplies the total
+with \eqn{m} original channels. A numeric \code{lambda} supplies the total
 compound penalty before multiplication by \eqn{\kappa}. The initial
 grouped fit uses \eqn{\lambda_R/m}. Each compound contributes one selection
 count; spectral entries and profile complexity have no separate penalty.
@@ -164,8 +169,8 @@ This is a compound-count model-selection convention. The IC methods use
 \eqn{mK} plus the number of estimated shared noise parameters as their
 complexity count; it is distinct from counting every free profile ordinate.
 
-**Initialization and local updates.** A variance-matched grouped Poisson
-working fit supplies candidate components, using [L0glm.fit()] with relaxed
+\strong{Initialization and local updates.} A variance-matched grouped Poisson
+working fit supplies candidate components, using \code{\link[=L0glm.fit]{L0glm.fit()}} with relaxed
 refitting and compulsory background columns. The subsequent updates use
 the specified family's exact score and likelihood. For a spectral
 coefficient or profile ordinate, the conditional mean is
@@ -190,18 +195,42 @@ overlapping compatible profiles. A least concave majorant of the log profile
 enforces hard log concavity. Local refinement reallocates signal between
 overlapping compounds and checks the actual criterion. Every complete stage
 is accepted against its full working data, and final refinement and scoring
-use all original observations. `history` records each accepted or rejected
-stage; `ledger_error` checks the accumulated criterion change.
+use all original observations. \code{history} records each accepted or rejected
+stage; \code{ledger_error} checks the accumulated criterion change.
 
-**Noise models.** Gaussian variance is \eqn{\phi}; quasipoisson variance is
+\strong{Broad-profile fusion.} After refitting the original channels, an additional
+algebraic pass compares elution profiles. Candidate pairs must have cosine
+similarity at least 0.95 and at least one profile with FWHM at least four
+times the typical PSF FWHM. This can reunite complementary ion sets assigned
+to nearly proportional broad profiles. The area-weighted profile is projected
+to hard log concavity and the spectra are added. Each merge must improve
+the original-channel likelihood-and-compound criterion with the noise scale,
+weights, offsets and background fixed. Candidate fusion requires no refits.
+One final local likelihood pass updates the profiles and spectra in affected
+elution regions. It uses Fisher scoring in log-profile coordinates with
+piecewise-linear interpolation and linear concavity constraints; the noise
+likelihood is evaluated on the original intensity scale. Backtracking
+preserves likelihood improvement. Neighboring profile modes stay within
+one quarter of their starting FWHM, while merged profiles can move freely.
+In log-profile coordinates \eqn{\eta=\log H_{\cdot r}}, the score and working
+information are \eqn{g_t=H_{tr}\sum_c w_{tc}S_{rc}g_{\mu,tc}} and
+\eqn{I_t=H_{tr}^2\sum_c w_{tc}S_{rc}^2I_{\mu,tc}}. With interpolation matrix
+\eqn{C}, the quadratic step minimizes
+\eqn{\sum_t I_t\{(Cb)_t-\eta_t+g_t/I_t\}^2}, subject to nonincreasing
+slopes of \eqn{Cb}. Zero-information rows receive numerical stabilization.
+\code{profile_fusion} records the merge audit and source component groups, numbered
+in temporal order as they entered the final fusion pass. Its \code{source_components} list follows
+the returned temporal ordering.
+
+\strong{Noise models.} Gaussian variance is \eqn{\phi}; quasipoisson variance is
 \eqn{\phi\mu}; NB2 variance is \eqn{\mu+\mu^2/\theta}; standard Gamma
 variance is \eqn{\phi\mu^2}. NB1 has variance \eqn{\phi\mu}, while
 common-scale Gamma has shape \eqn{\mu/b} and scale \eqn{b}, hence variance
-\eqn{b\mu}. Their exact scores and densities are given in [signal_families].
+\eqn{b\mu}. Their exact scores and densities are given in \link{signal_families}.
 A censored Gamma zero contributes a log CDF at the detection limit, and a
 positive observation contributes its log density. For quasipoisson,
-\eqn{\ell_Q=\{y\log\mu-\mu-\log\Gamma(y+1)\}/\phi}; `logLik()` marks
-this scaled kernel with `quasi=TRUE`, and the regular IC method names return
+\eqn{\ell_Q=\{y\log\mu-\mu-\log\Gamma(y+1)\}/\phi}; \code{logLik()} marks
+this scaled kernel with \code{quasi=TRUE}, and the regular IC method names return
 quasi-information criteria. Compare candidate ranks under the same family
 and frozen scale.
 
@@ -212,15 +241,15 @@ For an updated NB2 shape, the pooled score is
 Bounded Newton proposals in \eqn{\log\theta} are backtracked against the
 pooled likelihood. One common shape is retained across original channels.
 
-**Temporal calibration and aggregation.** [temporal_dispersion()] uses
+\strong{Temporal calibration and aggregation.} \code{\link[=temporal_dispersion]{temporal_dispersion()}} uses
 fourth and eighth differences in quieter parts of a smoothed pilot signal.
 This estimates the marginal noise scale; an optional lag-one working
 correction multiplies the rank penalty by
 \eqn{\kappa=1+2\widehat\rho_1}. It leaves the fitted variance parameter on
 its marginal scale. This local covariance approximation is recorded in
-`spec`; use `correlation="none"` for independent simulated data.
+\code{spec}; use \code{correlation="none"} for independent simulated data.
 
-Preclustering uses [glm_cluster()] with `size_fac=colSums(pmax(y,0))`,
+Preclustering uses \code{\link[=glm_cluster]{glm_cluster()}} with \code{size_fac=colSums(pmax(y,0))},
 removing differences in total ion intensity when comparing channel shapes.
 Poisson and common-parameter NB1 latent signals add exactly; independent
 common-scale Gamma latent signals also add. Standard NB2 and Gamma use
@@ -245,6 +274,9 @@ fit <- splogconNMF(X, Y, background = B, family = poisson("identity"),
   precluster = 4L, correlation = "none", ncores = 2L)
 fit
 c(compounds = fit$rank, GIC = GIC(fit), seconds = fit$seconds[["total"]])
+# Broad profiles with nearly identical shapes can share complementary ion sets.
+# A conservative fusion pass runs on all original channels after preclustering.
+fit$profile_fusion$merges
 matplot(fit$H, type = "l", lty = 1, xlab = "Scan", ylab = "Elution profile")
 
 # For overdispersed intensities, estimate one common noise scale from temporal
@@ -259,5 +291,5 @@ GIC(fitq)
 # Gamma_scale(scale=5, link="identity", censor=0.5).
 }
 \seealso{
-[GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
+\code{\link[=GCMSdeco]{GCMSdeco()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=glm_cluster]{glm_cluster()}}
 }
