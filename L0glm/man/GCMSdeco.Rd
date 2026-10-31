@@ -31,10 +31,12 @@ GCMSdeco(
   ncores = NULL,
   control = list(),
   psf_control = list(),
-  verbose = FALSE
+  verbose = FALSE,
+  xlsx_file = NULL,
+  sample_name = NULL
 )
 
-\method{coef}{GCMSdeco}(object, ...)
+\method{coef}{GCMSdeco}(object, ..., normalize = c("none", "l1"))
 
 \method{fitted}{GCMSdeco}(object, ...)
 
@@ -131,9 +133,20 @@ Poisson working weight is matched to the final noise model by default;
 
 \item{verbose}{Print stage timings, objective changes and compound counts.}
 
+\item{xlsx_file}{Optional Excel output path. The workbook contains compound
+areas, unit-L1 spectra and run metadata, including the sample name. Requires
+the optional \pkg{openxlsx} package. \code{NULL} omits Excel export.}
+
+\item{sample_name}{Sample identifier, defaulting to the CDF filename without
+its extension. Included in the compound table, MSP entries and workbook.}
+
 \item{object, x}{A fitted \code{GCMSdeco} object.}
 
 \item{...}{Further method arguments.}
+
+\item{normalize}{Spectral coefficient normalization: \code{"none"} returns
+integrated channel intensities; \code{"l1"} gives a unit-sum spectrum per
+compound, with its magnitude carried by the compound area.}
 
 \item{k}{Complexity multiplier for [stats::AIC()].}
 }
@@ -144,7 +157,7 @@ An object of class \code{GCMSdeco} containing \code{model} (the full
   the blind fit and sparse design in \code{psf}, optional standard calibration
   in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
   the actual PSF working weight, retention-time and mass axes, original scan
-  indices, file paths and stage timings. Coefficient, fitted-value,
+  indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
   log-likelihood and information-criterion methods delegate to \code{model}.
 }
 \description{
@@ -165,6 +178,15 @@ MSP entries are ordered by profile apex time, with a unique compound name,
 retention time and integrated ion intensity in the comments, followed by
 mass/intensity pairs. Exported spectra have base peak 999 and retain every
 positive fitted ion. \code{coef()} returns unnormalized fitted spectra.
+With \code{normalize="l1"}, \code{coef()} returns spectra summing to one.
+Their compound profiles are \eqn{P_{ir}=H_{ir}\sum_j S_{rj}}, preserving
+\eqn{HS=PT}. The workbook reports \code{area}, equal to \eqn{\sum_j S_{rj}}, in
+intensity-scans, and \code{area_min}, the trapezoidal integral of
+\eqn{P_{\cdot r}} over retention time, in intensity-minutes.
+
+The returned object stores the factors and source CDF path. Observed data
+are loaded from the CDF only when a plot needs them. Fitted signals are
+reconstructed from the factors; the observed matrix is released after fitting.
 
 **PSF and background.** [L0glm_blind_deco()] fits the total ion chromatogram
 in overlapping windows, optionally starting from the alkane standard.
@@ -196,11 +218,13 @@ criteria follow [splogconNMF()].
 \examples{
 \dontrun{
 fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",
-                time_range=c(6, Inf))
+                time_range=c(6, Inf), xlsx_file="beer.xlsx")
 fit
 fit$compounds
 coef(fit)                 # unnormalized spectra, all channels
 GIC(fit)
+plot(fit, type="lines", file="beer_traces.pdf")
+plot(fit, type="heatmap", file="beer_heatmaps.pdf")
 matplot(fit$time, as.matrix(fit$model$H), type="l", lty=1,
         xlab="Retention time (min)", ylab="Elution profile")
 }
@@ -210,5 +234,5 @@ NIST MS Search user manual, section on NIST text format:
   \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
 }
 \seealso{
-[splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+[plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
 }

@@ -48,6 +48,7 @@ Suggests:
     knitr,
     nnet,
     ncdf4,
+    openxlsx,
     ncvreg,
     ordinis,
     pkgload,

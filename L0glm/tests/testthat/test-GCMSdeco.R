@@ -69,13 +69,19 @@ test_that("CDF-to-MSP workflows preserve channels, scores and profile constraint
   if(requireNamespace("mgcv",quietly=TRUE)) families <- c(families,list(mgcv::nb(link="identity")))
   for(i in seq_along(families)) {
     f <- families[[i]];out <- tempfile(fileext=".msp")
+    excel <- if(i==2L&&requireNamespace("openxlsx",quietly=TRUE)) tempfile(fileext=".xlsx") else NULL
     z <- GCMSdeco(file,out,family=f,nwindows=if(i==2L) 2L else 1L,
       dispersion=if(i==1L) 16 else if(i==3L) 5 else NULL,
       theta=if(grepl("negative binomial",f$family,ignore.case=TRUE)) -10 else NULL,
       correlation="none",precluster=3L,ncores=1L,baseline_df=4L,
       psf_control=list(kernel_est=kernel,maxiter=1L),
-      control=list(broad_repeats=0L,full_sweeps=0L,final_polishes=0L))
+      control=list(broad_repeats=0L,full_sweeps=0L,final_polishes=0L),
+      xlsx_file=excel,sample_name="Test sample")
     expect_s3_class(z,"GCMSdeco")
+    expect_null(z$model$y);expect_null(z$model$mu)
+    expect_equal(z$sample_name,"Test sample")
+    expect_true(all(z$compounds$sample=="Test sample"))
+    if(!is.null(excel)) {expect_true(file.exists(z$xlsx_file));unlink(excel)}
     expect_equal(dim(fitted(z)),c(n,m));expect_equal(ncol(coef(z)),m)
     expect_true(all(coef(z)[,3]==0))
     expect_equal(GIC(z),GIC(z$model));expect_equal(AIC(z),AIC(z$model))
@@ -107,4 +113,68 @@ test_that("CDF-to-MSP workflows preserve channels, scores and profile constraint
   expect_error(GCMSdeco(file,file),"msp_file")
   expect_error(GCMSdeco(file,tempfile(fileext=".msp"),nwindows=0),"nwindows")
   unlink(file)
+})
+
+gcms_test_object <- function() {
+  set.seed(712);n<-70L;m<-6L;t<-seq_len(n)/60
+  H<-outer(seq_len(n),c(15,35,55),function(i,j) exp(-.5*((i-j)/2)^2))
+  H<-Matrix::Matrix(sweep(H,2L,colSums(H),"/"),sparse=TRUE)
+  S<-matrix(rexp(3*m,rate=1/500),3,m);colnames(S)<-as.character(40:45)
+  B<-matrix(1,n,1L);A<-matrix(3,1,m);mu<-as.matrix(H%*%S)+B%*%A
+  Y<-matrix(rpois(n*m,mu),n,m)
+  file<-tempfile(fileext=".cdf");gcms_test_cdf(Y,file)
+  model<-list(H=H,S=S,background=B,alpha=A,offset=0,n=n,p=n,rank=3L,
+    loglik=sum(dpois(Y,mu,log=TRUE)),spec=list(name="poisson",dispersion=1,
+      theta=1,dispersion_estimated=FALSE,theta_estimated=FALSE,information_factor=1))
+  class(model)<-"splogconNMF"
+  compounds<-GCMS_compounds(model,t,"beer_test")
+  structure(list(model=model,time=t,mass=40:45,cdf_file=file,sample_name="beer_test",
+    compounds=compounds,seconds=c(total=1)),class="GCMSdeco")
+}
+
+test_that("unit-L1 spectra and areas reconstruct the original fitted signal", {
+  skip_if_not_installed("ncdf4")
+  x<-gcms_test_object();on.exit(unlink(x$cdf_file))
+  S<-coef(x);T<-coef(x,normalize="l1");area<-rowSums(S)
+  expect_equal(rowSums(T),rep(1,nrow(T)))
+  expect_equal(as.matrix((x$model$H%*%Matrix::Diagonal(x=area))%*%T),
+    as.matrix(x$model$H%*%S),tolerance=1e-12)
+  expect_equal(x$compounds$area,area[x$compounds$compound])
+  q<-rep(1/60,length(x$time));q[c(1L,length(q))]<-1/120
+  expected<-as.numeric(Matrix::crossprod(x$model$H,q))*area
+  expect_equal(x$compounds$area_min,expected[x$compounds$compound])
+  expect_equal(fitted(x),as.matrix(x$model$H%*%S)+3)
+  expect_true(all(x$compounds$sample=="beer_test"));expect_null(x$model$y)
+})
+
+test_that("Excel exports preserve sample names, areas and every normalized ion", {
+  skip_if_not_installed("ncdf4");skip_if_not_installed("openxlsx")
+  x<-gcms_test_object();file<-tempfile(fileext=".xlsx")
+  on.exit(unlink(c(x$cdf_file,file)))
+  GCMS_write_xlsx(x$model,x$time,x$mass,x$compounds,file,x$cdf_file,NULL,c(fit=1))
+  expect_identical(openxlsx::getSheetNames(file),c("Compounds","Spectra","Run"))
+  tab<-openxlsx::read.xlsx(file,"Compounds")
+  expect_equal(tab$sample,rep("beer_test",3L));expect_equal(tab$area,x$compounds$area)
+  expect_equal(tab$area_min,x$compounds$area_min)
+  spectra<-openxlsx::read.xlsx(file,"Spectra")
+  expect_equal(unname(as.matrix(spectra[,-(1:4)])),
+    unname(coef(x,normalize="l1")[x$compounds$compound,,drop=FALSE]),tolerance=1e-12)
+  expect_error(GCMS_xlsx_path("bad.csv"),"xlsx_file")
+})
+
+test_that("GCMS plots reload observed intervals and create multi-panel PDFs", {
+  skip_if_not_installed("ncdf4")
+  x<-gcms_test_object();before<-serialize(x,NULL)
+  paths<-paste0(tempfile(),c("_lines.pdf","_heatmap.pdf","_spectra.pdf"))
+  on.exit(unlink(c(x$cdf_file,paths)))
+  for(i in seq_along(paths)) {
+    expect_invisible(plot(x,type=c("lines","heatmap","spectra")[i],file=paths[i],
+      nrows=2L,ncols=2L,minutes_per_panel=.25,max_time=19L))
+    expect_gt(file.info(paths[i])$size,1000)
+  }
+  expect_identical(serialize(x,NULL),before)
+  expect_error(plot(x,which=99),"which")
+  expect_error(plot(x,mass=1000),"recorded")
+  z<-GCMS_plot_observed(x,10:20,c(1L,3L))
+  expect_identical(dim(z),c(11L,2L));expect_null(x$model$y)
 })

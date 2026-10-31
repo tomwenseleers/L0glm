@@ -431,7 +431,10 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
 
 #' @rdname splogconNMF
 #' @export
-fitted.splogconNMF <- function(object, ...) object$mu
+fitted.splogconNMF <- function(object, ...) {
+  if(!is.null(object$mu)) return(object$mu)
+  as.matrix(object$H %*% object$S)+object$background %*% object$alpha+object$offset
+}
 #' @rdname splogconNMF
 #' @export
 nobs.splogconNMF <- function(object, ...) object$n

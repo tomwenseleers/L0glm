@@ -10,6 +10,9 @@
 * `GCMSdeco` reads ANDI-MS chromatograms, estimates time-varying PSFs with optional
   alkane calibration, fits a spline background and log-concave compounds, and
   exports all-channel spectra as NIST-compatible MSP files.
+  Excel exports include sample identity, integrated areas and unit-L1 spectra.
+  Compact fit objects reload observed CDF intervals for heatmaps and multi-panel
+  chromatogram plots; recovered spectra and PDF reports are also supported.
 * Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
   returns the corresponding sparse design as `X` for downstream deconvolution.
   Standard calibration uses full local peak windows and automatic PSF support;

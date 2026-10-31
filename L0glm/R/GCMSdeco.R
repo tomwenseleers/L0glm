@@ -4,7 +4,7 @@ GCMS_range <- function(value, name) {
   value
 }
 
-GCMS_read_cdf <- function(cdf_file, time_range=NULL) {
+GCMS_read_cdf <- function(cdf_file, time_range=NULL, mass=NULL) {
   if (!requireNamespace("ncdf4",quietly=TRUE)) stop("Install ncdf4 to read ANDI-MS files.",call.=FALSE)
   if (!is.character(cdf_file)||length(cdf_file)!=1L||is.na(cdf_file)||!nzchar(cdf_file))
     stop("cdf_file must be a local file path or HTTP(S) URL.",call.=FALSE)
@@ -38,40 +38,58 @@ GCMS_read_cdf <- function(cdf_file, time_range=NULL) {
   rows <- if(is.null(time_range)) seq_len(n) else which(minutes>=time_range[1L]&minutes<=time_range[2L])
   if(!length(rows)) stop("No scans in the requested retention-time range.",call.=FALSE)
   first <- starts[rows[1L]];span <- max(starts[rows]+counts[rows])-first
-  if(span<=0||sum(counts[rows])==0) stop("No mass/intensity points in the requested scans.",call.=FALSE)
+  if(span<=0||sum(counts[rows])==0) {
+    if(is.null(mass)) stop("No mass/intensity points in the requested scans.",call.=FALSE)
+    return(list(Y=matrix(0,length(rows),length(mass)),time=minutes[rows],mass=mass,
+      source=cdf_file,scans=rows,scan_time_units=units))
+  }
   take <- sequence(as.integer(counts[rows]))+rep(starts[rows]-first,counts[rows])
   mz <- as.numeric(get("mass_values",start=first+1,count=span))[take]
   intensity <- as.numeric(get("intensity_values",start=first+1,count=span))[take]
   if(any(!is.finite(mz)|mz<0)||any(!is.finite(intensity)|intensity<0))
     stop("CDF masses and intensities must be finite and nonnegative.",call.=FALSE)
-  nominal <- floor(mz+.5);mass <- seq.int(min(nominal),max(nominal))
-  Y <- as.matrix(Matrix::sparseMatrix(i=rep.int(seq_along(rows),counts[rows]),
-    j=nominal-min(mass)+1L,x=intensity,dims=c(length(rows),length(mass))))
+  nominal <- floor(mz+.5)
+  if(is.null(mass)) mass <- seq.int(min(nominal),max(nominal))
+  channel <- match(nominal,mass);keep <- !is.na(channel)
+  Y <- as.matrix(Matrix::sparseMatrix(i=rep.int(seq_along(rows),counts[rows])[keep],
+    j=channel[keep],x=intensity[keep],dims=c(length(rows),length(mass))))
   dimnames(Y) <- list(format(minutes[rows],digits=12,trim=TRUE),as.character(mass))
   list(Y=Y,time=minutes[rows],mass=mass,source=cdf_file,scans=rows,
     scan_time_units=if(nzchar(units)) units else "ANDI-MS seconds (units omitted)")
 }
 
-GCMS_write_msp <- function(model,time,mass,msp_file) {
+GCMS_compounds <- function(model,time,sample_name="L0glm") {
+  apex <- vapply(seq_len(ncol(model$H)),function(k) which.max(model$H[,k]),0L)
+  order <- order(time[apex]);area <- rowSums(model$S);delta <- diff(time)
+  quadrature <- if(length(time)>1L) c(delta[1L]/2,
+    if(length(time)>2L) (head(delta,-1L)+tail(delta,-1L))/2,tail(delta,1L)/2) else 0
+  integrated <- as.numeric(Matrix::crossprod(model$H,quadrature))*area
+  names <- sprintf("%s_%04d_RT%.5f",sample_name,seq_along(order),time[apex[order]])
+  data.frame(sample=rep(sample_name,length(order)),compound=order,name=names,
+    retention_time=time[apex[order]],apex_scan=apex[order],area=area[order],
+    area_min=integrated[order],n_ions=rowSums(model$S>0)[order],row.names=NULL)
+}
+
+GCMS_write_msp <- function(model,time,mass,msp_file,compounds=NULL) {
   if(nrow(model$H)!=length(time)||ncol(model$S)!=length(mass))
     stop("Profile, spectrum and scan/mass dimensions differ.",call.=FALSE)
   if(!is.character(msp_file)||length(msp_file)!=1L||is.na(msp_file)||!nzchar(msp_file)||
       !grepl("\\.msp$",msp_file,ignore.case=TRUE)) stop("msp_file must end in .msp.",call.=FALSE)
-  apex <- vapply(seq_len(ncol(model$H)),function(k) which.max(model$H[,k]),0L)
-  order <- order(time[apex]);names <- sprintf("L0glm_%04d_RT%.5f",seq_along(order),time[apex[order]])
+  if(is.null(compounds)) compounds <- GCMS_compounds(model,time)
+  order <- compounds$compound;names <- compounds$name
   lines <- unlist(lapply(seq_along(order),function(index) {
     k<-order[index];s<-model$S[k,];keep<-which(s>0)
     if(!length(keep)) stop("Cannot export an empty compound spectrum.",call.=FALSE)
     abundance<-999*s[keep]/max(s[keep])
     c(paste0("Name: ",names[index]),
-      sprintf("Comments: Retention time %.7g min; integrated ion intensity %.9g; splogconNMF",time[apex[k]],sum(s)),
+      sprintf("Comments: Sample %s; retention time %.7g min; integrated ion intensity %.9g; splogconNMF",
+        compounds$sample[index],compounds$retention_time[index],sum(s)),
       sprintf("Num Peaks: %d",length(keep)),sprintf("%d %.8g;",mass[keep],abundance),"")
   }),use.names=FALSE)
   dir.create(dirname(msp_file),recursive=TRUE,showWarnings=FALSE)
   con<-file(msp_file,"wb");on.exit(close(con))
   writeLines(as.character(lines),con,sep="\r\n",useBytes=TRUE)
-  data.frame(compound=order,name=names,retention_time=time[apex[order]],apex_scan=apex[order],
-    area=rowSums(model$S)[order],n_ions=rowSums(model$S>0)[order],row.names=NULL)
+  compounds
 }
 
 GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
@@ -106,6 +124,14 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #'   m/z; traces between the minimum and maximum recorded mass are retained.
 #' @param msp_file Output \code{.msp} path. Parent directories are created if
 #'   necessary; an existing output file is replaced.
+#' @param xlsx_file Optional Excel output path. The workbook contains compound
+#'   areas, unit-L1 spectra and run metadata, including the sample name. Requires
+#'   the optional \pkg{openxlsx} package. \code{NULL} omits Excel export.
+#' @param sample_name Sample identifier, defaulting to the CDF filename without
+#'   its extension. Included in the compound table, MSP entries and workbook.
+#' @param normalize Spectral coefficient normalization: \code{"none"} returns
+#'   integrated channel intensities; \code{"l1"} gives a unit-sum spectrum per
+#'   compound, with its magnitude carried by the compound area.
 #' @param family Identity-link noise model accepted by [splogconNMF()].
 #'   The default \code{quasipoisson("identity")} estimates one pooled dispersion
 #'   across channels, suitable for overdispersed instrumental intensities.
@@ -143,6 +169,15 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' retention time and integrated ion intensity in the comments, followed by
 #' mass/intensity pairs. Exported spectra have base peak 999 and retain every
 #' positive fitted ion. \code{coef()} returns unnormalized fitted spectra.
+#' With \code{normalize="l1"}, \code{coef()} returns spectra summing to one.
+#' Their compound profiles are \eqn{P_{ir}=H_{ir}\sum_j S_{rj}}, preserving
+#' \eqn{HS=PT}. The workbook reports \code{area}, equal to \eqn{\sum_j S_{rj}}, in
+#' intensity-scans, and \code{area_min}, the trapezoidal integral of
+#' \eqn{P_{\cdot r}} over retention time, in intensity-minutes.
+#'
+#' The returned object stores the factors and source CDF path. Observed data
+#' are loaded from the CDF only when a plot needs them. Fitted signals are
+#' reconstructed from the factors; the observed matrix is released after fitting.
 #'
 #' **PSF and background.** [L0glm_blind_deco()] fits the total ion chromatogram
 #' in overlapping windows, optionally starting from the alkane standard.
@@ -177,19 +212,21 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #'   the blind fit and sparse design in \code{psf}, optional standard calibration
 #'   in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
 #'   the actual PSF working weight, retention-time and mass axes, original scan
-#'   indices, file paths and stage timings. Coefficient, fitted-value,
+#'   indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
 #'   log-likelihood and information-criterion methods delegate to \code{model}.
 #' @references NIST MS Search user manual, section on NIST text format:
 #'   \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
-#' @seealso [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+#' @seealso [plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
 #' @examples
 #' \dontrun{
 #' fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",
-#'                 time_range=c(6, Inf))
+#'                 time_range=c(6, Inf), xlsx_file="beer.xlsx")
 #' fit
 #' fit$compounds
 #' coef(fit)                 # unnormalized spectra, all channels
 #' GIC(fit)
+#' plot(fit, type="lines", file="beer_traces.pdf")
+#' plot(fit, type="heatmap", file="beer_heatmaps.pdf")
 #' matplot(fit$time, as.matrix(fit$model$H), type="l", lty=1,
 #'         xlab="Retention time (min)", ylab="Elution profile")
 #' }
@@ -198,10 +235,15 @@ GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="g
                      alkanes_file=NULL,time_range=NULL,calibration_range=NULL,
                      baseline_df=NULL,precluster=32L,dispersion=NULL,theta=NULL,
                      correlation=c("auto","none","lag1"),
-                     ncores=NULL,control=list(),psf_control=list(),verbose=FALSE) {
+                     ncores=NULL,control=list(),psf_control=list(),verbose=FALSE,
+                     xlsx_file=NULL,sample_name=NULL) {
   begun<-proc.time()[["elapsed"]];seconds<-numeric()
   ncores<-L0glm_sis_threads(ncores);L0glm_deco_length(nwindows,"nwindows",1L)
   correlation<-slcn_correlation(correlation)
+  if(is.null(sample_name)) sample_name<-tools::file_path_sans_ext(basename(sub("[?#].*$","",cdf_file)))
+  if(!is.character(sample_name)||length(sample_name)!=1L||is.na(sample_name)||!nzchar(trimws(sample_name)))
+    stop("sample_name must be a nonempty string.",call.=FALSE)
+  if(!is.null(xlsx_file)) GCMS_xlsx_path(xlsx_file)
   GCMS_range(calibration_range,"calibration_range")
   if(!is.character(msp_file)||length(msp_file)!=1L||is.na(msp_file)||
       !grepl("\\.msp$",msp_file,ignore.case=TRUE)) stop("msp_file must end in .msp.",call.=FALSE)
@@ -269,18 +311,31 @@ GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="g
   model$spec$noise_diagnostics<-spec$noise_diagnostics
   model$nuisance_df<-as.integer(spec$dispersion_estimated)+as.integer(spec$theta_estimated)
   model$ic_df<-ncol(Y)*model$rank+model$nuisance_df
-  compounds<-timed("write_msp",GCMS_write_msp(model,raw$time,raw$mass,msp_file))
+  compounds<-GCMS_compounds(model,raw$time,sample_name)
+  compounds<-timed("write_msp",GCMS_write_msp(model,raw$time,raw$mass,msp_file,compounds))
   compounds$apex_scan<-raw$scans[compounds$apex_scan]
+  if(!is.null(xlsx_file)) timed("write_xlsx",GCMS_write_xlsx(model,raw$time,raw$mass,
+    compounds,xlsx_file,cdf_file,alkanes_file,seconds))
+  model$y<-model$mu<-NULL
+  if(!is.null(model$aggregation$model)) model$aggregation$model$mu<-NULL
+  blind$fitted_values<-blind$fitted_baseline<-NULL
   seconds["total"]<-proc.time()[["elapsed"]]-begun
   structure(list(model=model,compounds=compounds,psf=blind,background_df=baseline_df,
     psf_standard=calibration,psf_width_scans=width,time=raw$time,mass=raw$mass,
     scans=raw$scans,psf_working_weight=working_weight,
-    cdf_file=cdf_file,msp_file=normalizePath(msp_file,winslash="/"),seconds=seconds),class="GCMSdeco")
+    cdf_file=if(grepl("^https?://",cdf_file)) cdf_file else normalizePath(cdf_file,winslash="/"),
+    sample_name=sample_name,msp_file=normalizePath(msp_file,winslash="/"),
+    xlsx_file=if(is.null(xlsx_file)) NULL else normalizePath(xlsx_file,winslash="/"),
+    seconds=seconds),class="GCMSdeco")
 }
 
 #' @rdname GCMSdeco
 #' @export
-coef.GCMSdeco <- function(object,...) stats::coef(object$model,...)
+coef.GCMSdeco <- function(object,...,normalize=c("none","l1")) {
+  normalize<-match.arg(normalize);S<-stats::coef(object$model,...)
+  if(normalize=="l1"&&nrow(S)) S<-S/rowSums(S)
+  S
+}
 #' @rdname GCMSdeco
 #' @export
 fitted.GCMSdeco <- function(object,...) stats::fitted(object$model,...)
