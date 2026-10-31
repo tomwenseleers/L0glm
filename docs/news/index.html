@@ -26,6 +26,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -50,10 +51,12 @@
 <h2 class="pkg-version" data-toc-text="0.1.0" id="l0glm-010">L0glm 0.1.0<a class="anchor" aria-label="anchor" href="#l0glm-010"></a></h2>
 <div class="section level3">
 <h3 id="initial-version-0-1-0">Initial version<a class="anchor" aria-label="anchor" href="#initial-version-0-1-0"></a></h3>
-<ul><li><p>Sparse Poisson log-concave NMF (<code>spoloconmf</code>) recovers elution profiles and spectra using local Poisson updates and fast spectral fusion, with a compound-count criterion, unpenalized spline backgrounds and native OpenMP.</p></li>
+<ul><li><p>Sparse log-concave NMF (<code>splogconNMF</code>) recovers elution profiles and spectra with local native updates, spectral fusion and OpenMP. Supported noise models include Gaussian, Poisson, quasipoisson, NB1/NB2 and both Gamma parameterizations, with a compound-count criterion, unpenalized spline backgrounds, temporal noise calibration and optional channel preclustering followed by full refitting.</p></li>
+<li><p><code>GCMSdeco</code> reads ANDI-MS chromatograms, estimates time-varying PSFs with optional alkane calibration, fits a spline background and log-concave compounds, and exports all-channel spectra as NIST-compatible MSP files.</p></li>
 <li><p>Blind deconvolution supports smoothly time-varying PSFs with <code>nwindows</code>, and returns the corresponding sparse design as <code>X</code> for downstream deconvolution. Standard calibration uses full local peak windows and automatic PSF support; blind PSF updates retain positive peak tails alongside the fitted background. Blind fitting compares full-tail and concentrated PSF proposals by refitting the original observations and evaluating the requested information criterion.</p></li>
 <li><p>Fast sparse generalized linear models with adaptive ridge and IRLS, including Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.</p></li>
 <li><p>Negative binomial regression with estimated shape, joint multinomial regression in centered log-ratio coordinates, and Cox proportional hazards models.</p></li>
+<li><p>Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models, with native likelihood scores, tuning, screening and likelihood-ratio clustering. Quasipoisson models expose scaled log-likelihood kernels and quasi-information criteria through the regular scoring methods.</p></li>
 <li><p>Conditional boundary polishing for relaxed nonnegative models removes likelihood-supported zero coefficients without a coefficient-size cutoff. Native Gaussian/Poisson kernels retain dense/sparse storage and Poisson OpenMP; other GLMs, negative binomial and Cox use their family-specific objectives.</p></li>
 <li><p>Single and multichannel fitting, grouped predictor-row selection, and relaxed refitting for accurate coefficient estimates on the selected support.</p></li>
 <li><p>Dense and sparse matrices, tall and wide designs, fast Eigen solvers and a native OpenMP backend for nonnegative identity-link Poisson models.</p></li>

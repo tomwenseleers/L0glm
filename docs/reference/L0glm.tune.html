@@ -56,6 +56,7 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -153,7 +154,10 @@ their supported link functions are accepted; see
 negative binomial regression with fixed or estimated shape,
 <code>mgcv::multinom(K)</code> for multinomial regression with <code>K+1</code>
 categories, and <code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code> for right-censored Cox proportional
-hazards models. See <em>Special families</em> under Details.</p></dd>
+hazards models. See <em>Special families</em> under Details.
+Fixed-noise scalar models <code><a href="signal_families.html">nb1()</a></code>, <code><a href="signal_families.html">Gamma_scale()</a></code> and
+<code><a href="signal_families.html">Gamma_censored()</a></code> use the ordinary single- or multichannel response
+formats with exact likelihood-based IRLS; see <a href="signal_families.html">signal_families</a>.</p></dd>
 
 
 <dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
@@ -454,7 +458,11 @@ With a nonzero prior mean or an unsuccessful endpoint search, a warning is
 issued and <code>endpoint_zero</code> is false. A zoomed grid need not reach the
 full endpoint. Supplied observation weights, offsets and known dispersions
 are included in scoring; unknown Gaussian scales are profiled separately
-for each response channel.</p>
+for each response channel.
+Quasi-Poisson information criteria use a common dispersion across the path.
+When unspecified, it is estimated by a preset pilot fit and then held
+fixed; estimated scales retain their nuisance-parameter count. With CV,
+dispersion estimation uses training observations independently in each fold.</p>
 <p>With <code>tune = "cv"</code>, the full-data GIC preset defines the reference
 grid point. If that preset is nonpositive, the grid uses AIC's positive
 reference value 2 while <code>lambda_preset</code> still reports GIC. The reference
@@ -549,6 +557,11 @@ full data. An independent test set or nested CV can assess prediction error
 after tuning.</p>
 </div>
 
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><a href="signal_families.html">signal_families</a> for NB1, common-scale Gamma and censored
+  Gamma models supported by both information-criterion tuning and CV.</p></div>
     </div>
 
     <div class="section level2">

@@ -121,6 +121,12 @@ weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](articles/deconvolution.html)
 
+For broad or asymmetric peaks, [splogconNMF()](reference/splogconNMF.html)
+recovers log-concave elution profiles and spectra with a smooth background.
+[GCMSdeco()](reference/GCMSdeco.html) runs the workflow directly from an ANDI-MS
+`.cdf` chromatogram and exports the compound spectra to a NIST-compatible `.msp`
+library.
+
 ## Choose a starting point
 
 | I would like to… | Start here |

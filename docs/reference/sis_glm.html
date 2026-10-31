@@ -30,6 +30,7 @@ dense and sparse matrices stay sparse."><meta property="og:image" content="https
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -205,7 +206,8 @@ rows, and refit on the original responses and original offsets. Each round
 starts afresh; this does not reintroduce coefficients within an individual
 BAR fit. Preset lambda and GIC use the original selectable predictor count.
 The lowest-GIC round is returned, using the metrics scoring mean floor of
-<code>1e-8</code>. For quasi families without a likelihood/GIC, return the last round.
+<code>1e-8</code>. Quasi-Poisson rounds use a common dispersion, estimated by the first
+candidate fit when unspecified. For quasibinomial, return the last round.
 <code>nuisance</code> must be <code>NULL</code> for ISIS: put mandatory covariates in <code>X</code> and pass
 <code>always.include</code> instead. Intercept defaults match <code><a href="L0glm.fit.html">L0glm.fit()</a></code>.
 <code>converged</code> describes repetition of the outer candidate set; inner-fit

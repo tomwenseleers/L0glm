@@ -46,8 +46,36 @@ Here \(m\) is the original channel count, \(\nu\) contains pooled noise
 parameters and \(\kappa=1\) for independent observations. Numeric `lambda`
 specifies the total compound penalty before the optional covariance adjustment.
 Background coefficients and profile complexity have no additional penalty.
+Dividing by the channel count gives the equivalent criterion
+\(-2\ell/m+\kappa\lambda_{IC}K\), with one rank penalty per compound.
 The reported IC methods use the compound-count convention \(mK\), plus any
 estimated shared noise parameters.
+
+## From a chromatogram to NIST spectra
+
+`GCMSdeco()` connects the factorization to ANDI-MS `.cdf` files and NIST `.msp`
+spectral libraries:
+
+```r
+fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",
+                time_range=c(6, Inf))
+fit$compounds
+coef(fit)                 # spectra in all original mass channels
+GIC(fit)
+```
+
+Choose `time_range` to match the acquisition's solvent delay or the window of
+interest. The default workflow uses ten overlapping blind-PSF windows,
+size-adjusted aggregation to at most 32 outcome groups, and a low-df spline
+background. Alkane peaks provide an optional calibrated PSF start. Final
+refinement and exported spectra retain every original mass channel.
+
+For instrumental intensities the default quasipoisson model estimates one
+shared dispersion. Its variance scale also sets the working precision of the
+total-ion PSF pilot. The final likelihood uses the original channels and the
+same frozen noise parameters. [The reference page](../reference/GCMSdeco.html)
+details the working-weight formula, automatic spline dimension, retention-time
+units and exported metadata.
 
 ## Local quadratic updates
 

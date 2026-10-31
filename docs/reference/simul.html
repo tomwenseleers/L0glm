@@ -30,6 +30,7 @@ L0glm.fit() and L0glm.tune() with the returned family and intercept flag."><meta
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -118,7 +119,9 @@ on exit. <code>NULL</code> uses and advances the current random-number stream.</
 <code>"nb"</code>, <code>"multinomial"</code> and <code>"cox"</code>. Positive-response regression families
 default to a log link; deconvolution uses identity links. Special-family
 objects from <span class="pkg">mgcv</span> are accepted. <code>NULL</code> uses Poisson for named
-deconvolution, Gaussian for regression, or the numbered setup's family.</p></dd>
+deconvolution, Gaussian for regression, or the numbered setup's family.
+<a href="signal_families.html">signal_families</a> objects use their fixed NB1 or Gamma noise parameters;
+their Gamma detection limits are applied when drawing observations.</p></dd>
 
 
 <dt id="arg-n-nonzero">n_nonzero<a class="anchor" aria-label="anchor" href="#arg-n-nonzero"></a></dt>

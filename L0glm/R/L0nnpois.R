@@ -29,6 +29,7 @@
 #' if coefficients of either sign are required.
 #'
 #' @inheritParams L0glm.fit
+#' @param family The identity-link Poisson family, \code{poisson("identity")}.
 #' @param validation Optional held-out data and stopping controls as in
 #'   \code{L0glm.fit()}. Held-out deviance is scored directly in C++,
 #'   retaining OpenMP threading across channels and restoring the best selection

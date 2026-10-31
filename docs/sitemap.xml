@@ -7,6 +7,7 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/index.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/L0glm.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/articles/log-concave-nmf.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/multinomial.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/negative-binomial.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/performance.html</loc></url>
@@ -20,6 +21,7 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/convmatrix.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/estimate_psf_from_std.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/extended_families.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/GCMSdeco.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/GCMS_data1.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/GCMS_data2.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/glm_cluster.html</loc></url>
@@ -48,11 +50,15 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/plotmat.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/plot_L0glm_benchmark.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/preclustering.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/preset.lambda.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/signal_families.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/simul.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/simulated_spectra.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/simulate_GCMS.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/simulate_spike_train.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/sis_glm.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/sparseglm.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/splogconNMF.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/temporal_dispersion.html</loc></url>
 </urlset>
 

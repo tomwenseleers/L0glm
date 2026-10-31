@@ -1,3 +1,10 @@
+slcn_correlation <- function(correlation) {
+  if(is.character(correlation)) return(match.arg(correlation,c("auto","none","lag1")))
+  if(!is.numeric(correlation)||length(correlation)!=1L||!is.finite(correlation)||correlation<0||correlation>.49)
+    stop("A supplied lag-one correlation must lie between zero and 0.49.",call.=FALSE)
+  correlation
+}
+
 slcn_family <- function(family, dispersion = NULL, theta = NULL) {
   if (is.function(family)) family <- family(link = "identity")
   character_family <- is.character(family)

@@ -140,6 +140,7 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -313,7 +314,10 @@ their supported link functions are accepted; see
 negative binomial regression with fixed or estimated shape,
 <code>mgcv::multinom(K)</code> for multinomial regression with <code>K+1</code>
 categories, and <code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code> for right-censored Cox proportional
-hazards models. See <em>Special families</em> under Details.</p></dd>
+hazards models. See <em>Special families</em> under Details.
+Fixed-noise scalar models <code><a href="signal_families.html">nb1()</a></code>, <code><a href="signal_families.html">Gamma_scale()</a></code> and
+<code><a href="signal_families.html">Gamma_censored()</a></code> use the ordinary single- or multichannel response
+formats with exact likelihood-based IRLS; see <a href="signal_families.html">signal_families</a>.</p></dd>
 
 
 <dt id="arg-dispersion">dispersion<a class="anchor" aria-label="anchor" href="#arg-dispersion"></a></dt>
@@ -1193,6 +1197,11 @@ point, so use separate test observations to assess prediction performance.</p>
 <li><p>T.J. Hastie &amp; D. Pregibon, <em>Generalized linear models</em>. Chapter 6 of <em>Statistical Models in S</em> eds J. M. Chambers and T. J. Hastie, Wadsworth &amp; Brooks/Cole (1992).</p></li>
 <li><p>P. McCullagh &amp; J.A. Nelder, <em>Generalized Linear Models</em>. London: Chapman and Hall (1989).</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><a href="signal_families.html">signal_families</a> for fixed-parameter NB1, common-scale Gamma
+  and censored Gamma models with exact likelihood scores.</p></div>
+    </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
     <p>Tom Wenseleers, Laura Lanzas &amp; Christophe Vanderaa</p>

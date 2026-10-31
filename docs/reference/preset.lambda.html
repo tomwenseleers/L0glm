@@ -30,6 +30,7 @@ or L0nnpois."><meta property="og:image" content="https://tomwenseleers.github.io
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -115,15 +116,10 @@ supplied here and the resulting penalty passed to a fitter.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">preset.lambda</span><span class="op">(</span><span class="st">"gic"</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 20.44997</span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"aic"</span>, <span class="st">"bic"</span>, <span class="st">"gic"</span>, <span class="st">"ebic"</span>, <span class="st">"mbic"</span><span class="op">)</span>, <span class="va">preset.lambda</span>,</span></span>
-<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      aic      bic      gic     ebic     mbic </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  2.00000  9.21034 20.44997 18.42068 24.85843 </span>
-<span class="r-in"><span><span class="fu">preset.lambda</span><span class="op">(</span><span class="st">"ebic"</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">1000</span>, gamma_ebic <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 25.32844</span>
-</code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">preset.lambda</span><span class="op">(</span><span class="st">"gic"</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"aic"</span>, <span class="st">"bic"</span>, <span class="st">"gic"</span>, <span class="st">"ebic"</span>, <span class="st">"mbic"</span><span class="op">)</span>, <span class="va">preset.lambda</span>,</span>
+<span>       <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
+<span><span class="fu">preset.lambda</span><span class="op">(</span><span class="st">"ebic"</span>, p <span class="op">=</span> <span class="fl">10000</span>, n <span class="op">=</span> <span class="fl">1000</span>, gamma_ebic <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

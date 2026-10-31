@@ -8,11 +8,12 @@ articles:
   articles/cox: cox.html
   articles/deconvolution: deconvolution.html
   articles/high-dimensional: high-dimensional.html
+  articles/log-concave-nmf: log-concave-nmf.html
   articles/multinomial: multinomial.html
   articles/negative-binomial: negative-binomial.html
   articles/performance: performance.html
   articles/selection: selection.html
-last_built: 2026-10-22T18:59Z
+last_built: 2026-10-31T00:34Z
 urls:
   reference: https://tomwenseleers.github.io/L0glm/reference
   article: https://tomwenseleers.github.io/L0glm/articles

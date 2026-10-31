@@ -47,6 +47,7 @@ Suggests:
     mgcv,
     knitr,
     nnet,
+    ncdf4,
     ncvreg,
     ordinis,
     pkgload,

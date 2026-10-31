@@ -78,6 +78,7 @@ if coefficients of either sign are required."><meta property="og:image" content=
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -210,13 +211,7 @@ and risk sets. Event indicators belong in <code>y</code>, not in <code>weights</
 
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
-<dd><p>Model family and link function. All standard GLM families and
-their supported link functions are accepted; see
-<code><a href="https://rdrr.io/r/stats/family.html" class="external-link">family</a></code>. Special families are <code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code> for
-negative binomial regression with fixed or estimated shape,
-<code>mgcv::multinom(K)</code> for multinomial regression with <code>K+1</code>
-categories, and <code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code> for right-censored Cox proportional
-hazards models. See <em>Special families</em> under Details.</p></dd>
+<dd><p>The identity-link Poisson family, <code>poisson("identity")</code>.</p></dd>
 
 
 <dt id="arg-dispersion">dispersion<a class="anchor" aria-label="anchor" href="#arg-dispersion"></a></dt>

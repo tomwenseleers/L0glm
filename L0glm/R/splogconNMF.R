@@ -60,7 +60,7 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
     scalar, ncores, control$screen_factor)) else start
   score <- function(model) slcn_loglik(Y, model$mu, ctx$spec$kind,
     ctx$spec$dispersion, ctx$spec$theta, ctx$W, ncores, censor)
-  initial <- current;initial_ll <- score(current)
+  initial_rank <- ncol(current$H);initial_ll <- score(current)
   if (!is.finite(initial_ll)) stop("The initial mean has no finite family score; supply a positive background or offset.")
   history[[1L]] <- data.frame(stage = "initial", seconds = if (length(elapsed)) sum(elapsed) else 0,
     delta = 0, accepted = TRUE, compounds = ncol(current$H))
@@ -154,7 +154,7 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
   current$history <- do.call(rbind, history);current$spec <- ctx$spec
   current$seconds <- elapsed;current$loglik <- score(current)
   current$objective <- -2 * current$loglik + penalty * ncol(current$H)
-  current$initial_objective <- -2 * initial_ll + penalty * ncol(initial$H)
+  current$initial_objective <- -2 * initial_ll + penalty * initial_rank
   current$complete_delta <- current$objective - current$initial_objective
   current$ledger_error <- current$complete_delta - sum(current$history$delta[current$history$accepted])
   current
@@ -316,7 +316,7 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #'   `ledger_error`, aggregation diagnostics, controls and timings `seconds`.
 #'   `coef()` returns spectra and `fitted()` the full mean matrix. `logLik()`,
 #'   `AIC()`, `BIC()`, `GIC()`, `EBIC()` and `MBIC()` score the returned model.
-#' @seealso [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
+#' @seealso [GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
 #' @example examples/splogconNMF.R
 #' @export
 splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
@@ -325,9 +325,7 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
                        correlation = c("auto", "none", "lag1"), ncores = NULL,
                        control = list(), start = NULL, verbose = FALSE) {
   begun <- proc.time()[["elapsed"]]
-  if (is.character(correlation)) correlation <- match.arg(correlation)
-  if (is.numeric(correlation) && (length(correlation) != 1L || !is.finite(correlation) || correlation < 0 || correlation > .49))
-    stop("A supplied lag-one correlation must lie between zero and 0.49.")
+  correlation <- slcn_correlation(correlation)
   if (is.null(ncores)) {
     ncores <- parallel::detectCores(logical = FALSE)
     if (!is.finite(ncores)) ncores <- 1L

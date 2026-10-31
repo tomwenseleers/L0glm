@@ -26,6 +26,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -247,6 +248,13 @@
 
       <dl><dt>
 
+          <code><a href="GCMSdeco.html">GCMSdeco()</a></code> <code><a href="GCMSdeco.html">coef(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">fitted(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">nobs(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">logLik(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">AIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">BIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">GIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">EBIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">MBIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">print(<i>&lt;GCMSdeco&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Deconvolve a GC/MS chromatogram and export its compound spectra</dd>
+
+        <dt>
+
           <code><a href="L0glm_sparse_deco.html">L0glm_sparse_deco()</a></code>
 
         </dt>
@@ -268,10 +276,10 @@
 
         <dt>
 
-          <code><a href="spoloconmf.html">spoloconmf()</a></code> <code><a href="spoloconmf.html">print(<i>&lt;spoloconmf&gt;</i>)</a></code> <code><a href="spoloconmf.html">fitted(<i>&lt;spoloconmf&gt;</i>)</a></code>
+          <code><a href="splogconNMF.html">splogconNMF()</a></code> <code><a href="splogconNMF.html">fitted(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">nobs(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">coef(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">logLik(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">AIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">BIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">GIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">EBIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">MBIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">print(<i>&lt;splogconNMF&gt;</i>)</a></code>
 
         </dt>
-        <dd>Sparse Poisson log-concave nonnegative matrix factorization</dd>
+        <dd>Sparse log-concave nonnegative matrix factorization</dd>
 
         <dt>
 
@@ -300,6 +308,20 @@
 
         </dt>
         <dd>Log-concave spline smoothing of a discrete convolution kernel estimate</dd>
+
+        <dt>
+
+          <code><a href="signal_families.html">nb1()</a></code> <code><a href="signal_families.html">Gamma_scale()</a></code> <code><a href="signal_families.html">Gamma_censored()</a></code>
+
+        </dt>
+        <dd>Scalar noise models for nonnegative signals</dd>
+
+        <dt>
+
+          <code><a href="temporal_dispersion.html">temporal_dispersion()</a></code>
+
+        </dt>
+        <dd>Estimate noise dispersion from temporal differences</dd>
       </dl></div><div class="section level2">
       <h2 id="visualization-clustering-and-factorization">Visualization, clustering and factorization<a class="anchor" aria-label="anchor" href="#visualization-clustering-and-factorization"></a></h2>
 

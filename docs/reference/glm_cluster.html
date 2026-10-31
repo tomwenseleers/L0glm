@@ -30,6 +30,7 @@ Native OpenMP kernels calculate distances, Bregman merges and profile losses."><
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -64,7 +65,7 @@ Native OpenMP kernels calculate distances, Bregman merges and profile losses.</p
 <span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
 <span>  method <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">family</span><span class="op">$</span><span class="va">family</span> <span class="op">==</span> <span class="st">"poisson"</span><span class="op">)</span> <span class="st">"poissondist"</span> <span class="kw">else</span> <span class="st">"deviance"</span>,</span>
-<span>  size_fac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>,</span>
+<span>  size_fac <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>,</span>
 <span>  rowbins <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  nthreads <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  linkage <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -125,14 +126,15 @@ within-pair summation order at every thread count.</p></dd>
 
 <dt id="arg-linkage">linkage<a class="anchor" aria-label="anchor" href="#arg-linkage"></a></dt>
 <dd><p><code>"ward"</code> or <code>"bregman"</code>. The size-adjusted Poisson distance
-defaults to the Ward hierarchy. Other scalar-family deviances
-default to Bregman likelihood merges.</p></dd>
+defaults to the Ward hierarchy. Regular scalar GLM likelihoods default
+to Bregman merges; <a href="signal_families.html">signal_families</a> use Ward likelihood-ratio distances.</p></dd>
 
 
 <dt id="arg-criterion">criterion<a class="anchor" aria-label="anchor" href="#arg-criterion"></a></dt>
 <dd><p><code>"gic"</code> (default), <code>"aic"</code>, <code>"bic"</code>, <code>"ebic"</code>, <code>"mbic"</code>,
-or <code>"dynamic"</code> for dynamicTreeCut on a Ward hierarchy. Quasi/custom
-families default to dynamic cutting because likelihood ICs are unavailable. Supplying <code>k</code>
+or <code>"dynamic"</code> for dynamicTreeCut on a Ward hierarchy. Quasibinomial and
+custom unit-deviance families default to dynamic cutting. For quasipoisson,
+supply a common dispersion to obtain quasi-information criteria. Supplying <code>k</code>
 requests that fixed number of groups.</p></dd>
 
 
@@ -212,7 +214,11 @@ multinomial and Cox responses have different likelihood structures.
 Quasipoisson and quasibinomial have native working-deviance kernels and
 support fixed cuts or Ward/dynamic cutting.
 Custom scalar unit deviances remain available through <code><a href="glm_dist.html">glm_dist()</a></code> and
-the Ward/dynamic route.</p>
+the Ward/dynamic route.
+NB1, common-scale Gamma and censored Gamma use the fixed-parameter exact
+likelihoods in <a href="signal_families.html">signal_families</a>. Their pooled means are optimized with a
+native scalar score solve, and the saturated reference uses separate
+optimized means. They support Ward clustering with IC, fixed or dynamic cuts.</p>
 <p>Aggregation summarises the original columns. Poisson counts and their
 means add. Shared Poisson case weights stay unchanged; differing weights
 within a group cannot be combined into one exact weighted Poisson model.
@@ -238,6 +244,11 @@ ICML. <a href="https://icml.cc/2012/papers/758.pdf" class="external-link">https:
 using a Poisson Model. AOAS 5(4), 2493–2518. <a href="https://doi.org/10.1214/11-AOAS493" class="external-link">doi:10.1214/11-AOAS493</a>
 .</p>
     </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><a href="signal_families.html">signal_families</a> for NB1, common-scale Gamma and censored Gamma
+clustering with exact likelihood-ratio distances and a Ward hierarchy.</p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -252,7 +263,7 @@ using a Poisson Model. AOAS 5(4), 2493–2518. <a href="https://doi.org/10.1214/
 <span><span class="co"># A fixed-variance Gaussian example uses exact Bregman likelihood merges.</span></span>
 <span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">*</span><span class="fl">5</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">.5</span><span class="op">)</span>,<span class="fl">60</span><span class="op">)</span>,</span>
 <span>           <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">*</span><span class="fl">5</span>,  <span class="fl">2</span>, <span class="fl">.5</span><span class="op">)</span>,<span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">normal</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Z</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, dispersion<span class="op">=</span><span class="fl">.25</span>, k.max<span class="op">=</span><span class="fl">5L</span><span class="op">)</span></span>
+<span><span class="va">normal</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Z</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, dispersion<span class="op">=</span><span class="fl">.25</span>, k.max<span class="op">=</span><span class="fl">5L</span><span class="op">)</span></span>
 <span><span class="va">normal</span><span class="op">$</span><span class="va">clusterids</span></span>
 <span></span>
 <span><span class="co"># \donttest{</span></span>
@@ -260,9 +271,9 @@ using a Poisson Model. AOAS 5(4), 2493–2518. <a href="https://doi.org/10.1214/
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">GCMS_data2</span><span class="op">)</span></span>
 <span><span class="co"># Ordered scans allow coarsening for the clustering stage.</span></span>
 <span><span class="va">ward</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Y</span>, method<span class="op">=</span><span class="st">"poissondist"</span>, linkage<span class="op">=</span><span class="st">"ward"</span>,</span>
-<span>                    size_fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, rowbins<span class="op">=</span><span class="fl">5L</span>, k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span></span>
+<span>                    size_fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, rowbins<span class="op">=</span><span class="fl">5L</span>, k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span></span>
 <span><span class="va">bregman</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Y</span>, method<span class="op">=</span><span class="st">"poissondist"</span>, linkage<span class="op">=</span><span class="st">"bregman"</span>,</span>
-<span>                       size_fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, rowbins<span class="op">=</span><span class="fl">5L</span>, k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span></span>
+<span>                       size_fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, rowbins<span class="op">=</span><span class="fl">5L</span>, k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/matplot.html" class="external-link">matplot</a></span><span class="op">(</span><span class="va">ward</span><span class="op">$</span><span class="va">Y_agg</span><span class="op">^</span><span class="fl">.2</span>,type<span class="op">=</span><span class="st">"l"</span>,lty<span class="op">=</span><span class="fl">1</span>,xlab<span class="op">=</span><span class="st">"Scan"</span>,ylab<span class="op">=</span><span class="st">"Summed intensity ^ 0.2"</span><span class="op">)</span></span>
 <span><span class="co"># }</span></span></code></pre></div>
     </div>

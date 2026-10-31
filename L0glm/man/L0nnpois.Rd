@@ -77,13 +77,7 @@ and risk sets. Event indicators belong in \code{y}, not in \code{weights}.
 }
 At least one positive weight is required.}
 
-\item{family}{Model family and link function. All standard GLM families and
-their supported link functions are accepted; see
-\code{\link[stats]{family}}. Special families are \code{mgcv::nb()} for
-negative binomial regression with fixed or estimated shape,
-\code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
-categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
-hazards models. See \emph{Special families} under Details.}
+\item{family}{The identity-link Poisson family, \code{poisson("identity")}.}
 
 \item{dispersion}{Poisson dispersion is fixed at 1. Accepts \code{NULL}
 or 1; other finite nonzero numeric values are ignored with a warning.

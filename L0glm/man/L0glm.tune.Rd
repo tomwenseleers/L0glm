@@ -52,7 +52,10 @@ their supported link functions are accepted; see
 negative binomial regression with fixed or estimated shape,
 \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
 categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
-hazards models. See \emph{Special families} under Details.}
+hazards models. See \emph{Special families} under Details.
+Fixed-noise scalar models \code{nb1()}, \code{Gamma_scale()} and
+\code{Gamma_censored()} use the ordinary single- or multichannel response
+formats with exact likelihood-based IRLS; see \link{signal_families}.}
 
 \item{weights}{Optional finite, nonnegative prior/case observation weights.
 For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by

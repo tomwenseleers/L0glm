@@ -52,6 +52,7 @@ Set perc = 0 to retain the estimated time origin without recentering."><meta pro
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -485,7 +486,7 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 <span><span class="va">multi</span><span class="op">$</span><span class="va">deviance</span></span>
 <span></span>
 <span><span class="co"># Estimate smoothly varying PSFs in ten overlapping windows.</span></span>
-<span><span class="co"># The returned X can also be supplied to spoloconmf().</span></span>
+<span><span class="co"># The returned X can also be supplied to splogconNMF().</span></span>
 <span><span class="va">varying</span> <span class="op">&lt;-</span> <span class="fu">L0glm_blind_deco</span><span class="op">(</span><span class="va">y</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, kernel_est <span class="op">=</span> <span class="va">g0</span>,</span>
 <span>                           baseline <span class="op">=</span> <span class="st">"bspline"</span>, nknots <span class="op">=</span> <span class="fl">8L</span>,</span>
 <span>                           nwindows <span class="op">=</span> <span class="fl">10L</span>, maxiter <span class="op">=</span> <span class="fl">6L</span><span class="op">)</span></span>

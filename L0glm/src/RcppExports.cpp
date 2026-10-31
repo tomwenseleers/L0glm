@@ -637,6 +637,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// slcn_project_design_cpp
+S4 slcn_project_design_cpp(S4 design, int nthreads, double min_relative);
+RcppExport SEXP _L0glm_slcn_project_design_cpp(SEXP designSEXP, SEXP nthreadsSEXP, SEXP min_relativeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type design(designSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< double >::type min_relative(min_relativeSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_project_design_cpp(design, nthreads, min_relative));
+    return rcpp_result_gen;
+END_RCPP
+}
 // spolo_connected_cpp
 IntegerVector spolo_connected_cpp(NumericMatrix spectra, NumericVector area, NumericVector center, IntegerVector lo, IntegerVector hi, int anchor, double radius);
 RcppExport SEXP _L0glm_spolo_connected_cpp(SEXP spectraSEXP, SEXP areaSEXP, SEXP centerSEXP, SEXP loSEXP, SEXP hiSEXP, SEXP anchorSEXP, SEXP radiusSEXP) {
@@ -727,6 +740,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_slcn_nb_score", (DL_FUNC) &_L0glm_slcn_nb_score, 5},
     {"_L0glm_slcn_background", (DL_FUNC) &_L0glm_slcn_background, 12},
     {"_L0glm_slcn_logconcave_cpp", (DL_FUNC) &_L0glm_slcn_logconcave_cpp, 2},
+    {"_L0glm_slcn_project_design_cpp", (DL_FUNC) &_L0glm_slcn_project_design_cpp, 3},
     {"_L0glm_spolo_connected_cpp", (DL_FUNC) &_L0glm_spolo_connected_cpp, 7},
     {"_L0glm_spolo_extract_cpp", (DL_FUNC) &_L0glm_spolo_extract_cpp, 6},
     {"_L0glm_difference_scale_cpp", (DL_FUNC) &_L0glm_difference_scale_cpp, 7},

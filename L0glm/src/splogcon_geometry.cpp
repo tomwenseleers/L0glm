@@ -18,17 +18,14 @@ double js_distance(const double* spectrum,double area,const double* p,int m) {
 }
 }
 
-// Linear-time least concave majorant of a log profile.
-// [[Rcpp::export]]
-List slcn_logconcave_cpp(NumericVector profile,double min_relative=1e-12) {
-  const int n=profile.size();
-  if(!n||!std::isfinite(min_relative)||min_relative<0||min_relative>1)stop("Invalid log-concavity projection.");
-  double maximum=0;for(double v:profile){if(!std::isfinite(v))stop("Profiles must be finite.");maximum=std::max(maximum,v);}
-  if(maximum<=0)stop("A profile needs positive mass.");
-  NumericVector out(n);long double total=0;
+// Linear-time least concave majorant shared by local and whole-design updates.
+namespace {
+double project_logconcave(const double* profile,double* out,int n,double min_relative) {
+  double maximum=0;for(int i=0;i<n;++i)maximum=std::max(maximum,profile[i]);
+  long double total=0;
   for(int i=0;i<n;++i){out[i]=std::max(profile[i],maximum*min_relative);total+=out[i];}
   for(int i=0;i<n;++i)out[i]/=(double)total;
-  if(n<3)return List::create(_["h"]=out,_["gap"]=0.);
+  if(n<3)return 0;
   std::vector<int> stack;std::vector<double> y(n);
   for(int i=0;i<n;++i)y[i]=std::log(out[i]);
   for(int i=0;i<n;++i) {
@@ -47,7 +44,44 @@ List slcn_logconcave_cpp(NumericVector profile,double min_relative=1e-12) {
   out[n-1]=std::exp(y[n-1]);total+=out[n-1];
   const double gap=std::max(0.,(double)total-1);
   for(int i=0;i<n;++i)out[i]/=(double)total;
+  return gap;
+}
+}
+
+// [[Rcpp::export]]
+List slcn_logconcave_cpp(NumericVector profile,double min_relative=1e-12) {
+  const int n=profile.size();
+  if(!n||!std::isfinite(min_relative)||min_relative<0||min_relative>1)stop("Invalid log-concavity projection.");
+  double maximum=0;for(double v:profile){if(!std::isfinite(v))stop("Profiles must be finite.");maximum=std::max(maximum,v);}
+  if(maximum<=0)stop("A profile needs positive mass.");
+  NumericVector out(n);
+  const double gap=project_logconcave(profile.begin(),out.begin(),n,min_relative);
   return List::create(_["h"]=out,_["gap"]=gap);
+}
+
+// One copy of the sparse design; all column projections write disjoint slots.
+// [[Rcpp::export]]
+S4 slcn_project_design_cpp(S4 design,int nthreads=1,double min_relative=1e-12) {
+  if(!Rf_inherits(design,"dgCMatrix")||nthreads<1||!std::isfinite(min_relative)||min_relative<0||min_relative>1)
+    stop("Invalid sparse projection controls.");
+  S4 out=clone(design);IntegerVector ptr=out.slot("p"),index=out.slot("i"),dims=out.slot("Dim");
+  NumericVector values=out.slot("x");const int p=dims[1];
+  for(double v:values)if(!std::isfinite(v)||v<0)stop("Profiles must be finite and nonnegative.");
+  for(int j=0;j<p;++j) {
+    if(ptr[j]==ptr[j+1])stop("A profile needs positive mass.");
+    double maximum=0;
+    for(int z=ptr[j];z<ptr[j+1];++z) {
+      maximum=std::max(maximum,values[z]);
+      if(z>ptr[j]&&index[z]!=index[z-1]+1)stop("Profiles need contiguous support.");
+    }
+    if(maximum<=0)stop("A profile needs positive mass.");
+  }
+  double* x=values.begin();
+  #ifdef _OPENMP
+  #pragma omp parallel for schedule(dynamic,1) num_threads(nthreads)
+  #endif
+  for(int j=0;j<p;++j)project_logconcave(x+ptr[j],x+ptr[j],ptr[j+1]-ptr[j],min_relative);
+  return out;
 }
 
 // [[Rcpp::export]]

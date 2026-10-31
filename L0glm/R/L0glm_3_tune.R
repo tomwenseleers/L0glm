@@ -48,6 +48,9 @@
 #'   \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
 #'   categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
 #'   hazards models. See \emph{Special families} under Details.
+#'   Fixed-noise scalar models \code{nb1()}, \code{Gamma_scale()} and
+#'   \code{Gamma_censored()} use the ordinary single- or multichannel response
+#'   formats with exact likelihood-based IRLS; see \link{signal_families}.
 #' @param weights Optional finite, nonnegative prior/case observation weights.
 #'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
 #'   \code{m} matrix; for binomial proportions, weights give trial totals.

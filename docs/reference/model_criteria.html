@@ -30,6 +30,7 @@ L0nnpois() models, including the special families."><meta property="og:image" co
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -125,8 +126,11 @@ Gaussian estimated dispersion is profiled as weighted RSS divided by the
 number of positive-weight observations in each channel. Estimated Gamma
 and inverse-Gaussian dispersion use the same deviance-based
 <code>family$aic</code> convention as the existing package metrics, which need
-not equal the jointly maximized likelihood. Quasi-families return
-<code>NA</code> likelihood-based criteria.</p>
+not equal the jointly maximized likelihood. For quasipoisson, the Poisson
+log-likelihood kernel is divided by the fitted dispersion. The regular
+criterion names report the corresponding quasi-information criteria;
+<code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code> marks the value with <code>quasi=TRUE</code>. Use a common dispersion when
+comparing candidate models. Quasibinomial likelihood criteria are unavailable.</p>
 <p>Multinomial grouped selection counts \(K-1\) parameters per active row
 for \(K\) categories. Ungrouped CLR selection counts nonzero entries
 minus active rows, imposing the zero-sum constraint. Mandatory rows count

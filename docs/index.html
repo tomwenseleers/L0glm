@@ -54,6 +54,7 @@
     <li><a class="dropdown-item" href="articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
@@ -283,6 +284,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <img src="deconvolution-multi-home-coefficients.png" alt="True versus estimated coefficients across all channels for L0glm and relaxed group LASSO."><div class="figcaption">True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.</div>
 </div>
 <p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
+<p>For broad or asymmetric peaks, <a href="reference/splogconNMF.html">splogconNMF()</a> recovers log-concave elution profiles and spectra with a smooth background. <a href="reference/GCMSdeco.html">GCMSdeco()</a> runs the workflow directly from an ANDI-MS <code>.cdf</code> chromatogram and exports the compound spectra to a NIST-compatible <code>.msp</code> library.</p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-starting-point">Choose a starting point<a class="anchor" aria-label="anchor" href="#choose-a-starting-point"></a>

@@ -153,6 +153,10 @@ slcn_logconcave_cpp <- function(profile, min_relative = 1e-12) {
     .Call('_L0glm_slcn_logconcave_cpp', PACKAGE = 'L0glm', profile, min_relative)
 }
 
+slcn_project_design_cpp <- function(design, nthreads = 1L, min_relative = 1e-12) {
+    .Call('_L0glm_slcn_project_design_cpp', PACKAGE = 'L0glm', design, nthreads, min_relative)
+}
+
 spolo_connected_cpp <- function(spectra, area, center, lo, hi, anchor, radius) {
     .Call('_L0glm_spolo_connected_cpp', PACKAGE = 'L0glm', spectra, area, center, lo, hi, anchor, radius)
 }

@@ -257,5 +257,5 @@ GIC(fitq)
 # Gamma_scale(scale=5, link="identity", censor=0.5).
 }
 \seealso{
-[L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
+[GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
 }

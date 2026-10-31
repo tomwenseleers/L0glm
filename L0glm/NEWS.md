@@ -7,6 +7,9 @@
   include Gaussian, Poisson, quasipoisson, NB1/NB2 and both Gamma parameterizations,
   with a compound-count criterion, unpenalized spline backgrounds, temporal
   noise calibration and optional channel preclustering followed by full refitting.
+* `GCMSdeco` reads ANDI-MS chromatograms, estimates time-varying PSFs with optional
+  alkane calibration, fits a spline background and log-concave compounds, and
+  exports all-channel spectra as NIST-compatible MSP files.
 * Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
   returns the corresponding sparse design as `X` for downstream deconvolution.
   Standard calibration uses full local peak windows and automatic PSF support;
