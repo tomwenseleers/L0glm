@@ -207,11 +207,8 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' family's full original-channel likelihood.
 #'
 #' \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
-#' outcome groups. Original-channel refinement jointly updates overlapping
-#' hard log-concave profiles and spectra, tests broad and terminal-fragment
-#' fusions against the full likelihood-and-compound-count criterion, and refits
-#' spectra and background using local joint or sparse coordinate solves. See
-#' [splogconNMF()] for the working quadratic and shape constraints. The
+#' outcome groups, followed by refinement on every original channel. See
+#' [splogconNMF()] for the selection criterion and shape constraints. The
 #' spreadsheet and returned coefficient rows use increasing apex retention time. Rank selection,
 #' hard log concavity, censored Gamma intensities and compound-count information
 #' criteria follow [splogconNMF()].

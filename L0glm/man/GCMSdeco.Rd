@@ -133,10 +133,7 @@ a number between zero and 0.49 supplies the lag-one correlation.}
 \item{control}{Named list: \code{broad_repeats=1L}, \code{full_sweeps=1L},
 \code{final_polishes=1L}, \code{native_sweeps=6L}, \code{block_sweeps=6L},
 \code{psf_width=NULL}, \code{screen_factor=1}, \code{censor=0.5}, \code{linkage="ward"},
-\code{joint_trials=NULL}, \code{profile_cycles=10L}, \code{fusion_passes=5L}. The latter two
-control original-channel profile refinement and each round of broad or
-terminal-fragment fusion. \code{profile_cycles=0L} disables this refinement.
-\code{joint_trials} uses direct Poisson fusion for Poisson data
+\code{joint_trials=NULL}. The latter uses direct Poisson fusion for Poisson data
 and joint local refinement for the other families. \code{psf_width} is the typical FWHM in scans, inferred from
 the middle design column. \code{screen_factor} scales the initial selection
 penalty. \code{censor} is the Gamma detection limit: recorded zero intensities
@@ -233,11 +230,8 @@ appropriate average precision; final factorization uses the specified
 family's full original-channel likelihood.
 
 \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
-outcome groups. Original-channel refinement jointly updates overlapping
-hard log-concave profiles and spectra, tests broad and terminal-fragment
-fusions against the full likelihood-and-compound-count criterion, and refits
-spectra and background using local joint or sparse coordinate solves. See
-\code{\link[=splogconNMF]{splogconNMF()}} for the working quadratic and shape constraints. The
+outcome groups, followed by refinement on every original channel. See
+\code{\link[=splogconNMF]{splogconNMF()}} for the selection criterion and shape constraints. The
 spreadsheet and returned coefficient rows use increasing apex retention time. Rank selection,
 hard log concavity, censored Gamma intensities and compound-count information
 criteria follow \code{\link[=splogconNMF]{splogconNMF()}}.
