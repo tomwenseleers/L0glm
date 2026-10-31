@@ -20,6 +20,16 @@ GCMS_plot_offset <- function(x,rows,cols) {
   if(length(O)==1L) O else O[rows,cols,drop=FALSE]
 }
 
+GCMS_raster_grid <- function(z,time,mass) {
+  grid<-seq(min(time),max(time),length.out=length(time))
+  values<-if(length(time)>1L) vapply(seq_along(mass),function(j)
+    stats::approx(time,z[,j],xout=grid,rule=2,ties="ordered")$y,numeric(length(grid))) else z
+  masses<-seq.int(min(mass),max(mass))
+  image<-matrix(NA_real_,length(grid),length(masses))
+  image[,match(mass,masses)]<-values
+  list(time=grid,mass=masses,z=image)
+}
+
 GCMS_pearson <- function(x,Y,mu,rows,cols) {
   spec<-x$model$spec;phi<-spec$dispersion;theta<-spec$theta
   variance<-switch(spec$name,gaussian=matrix(phi,nrow(mu),ncol(mu)),poisson=mu,
@@ -69,7 +79,9 @@ residuals.GCMSdeco <- function(object,type=c("pearson","response"),
 #' from the source CDF for the requested interval and released after plotting.
 #'
 #' @param x A fitted [GCMSdeco()] object.
-#' @param type \code{"lines"}, \code{"heatmap"} or \code{"spectra"}.
+#' @param type \code{"lines"}, \code{"heatmap"}, \code{"spectra"} or
+#'   \code{"profiles"}. The last places each compound's total-ion profile
+#'   beside its spectrum, with one compound per row.
 #' @param file Optional PDF output path. \code{NULL} uses the current device.
 #'   PDF reports can contain multiple pages.
 #' @param time_range Retention-time bounds in minutes; \code{NULL} uses the full
@@ -81,6 +93,7 @@ residuals.GCMSdeco <- function(object,type=c("pearson","response"),
 #'   retention time; \code{"area"} or \code{"height"} uses decreasing compound
 #'   area or total-ion peak height; \code{"index"} preserves the selected indices.
 #' @param nrows,ncols Rows per PDF page, and columns for spectral panels.
+#'   Profile-and-spectrum panels always use two columns.
 #' @param minutes_per_panel Retention-time span of each line panel, default 2.5
 #'   minutes. Consecutive panels cover the whole selected interval.
 #' @param transform Line-display transform: signed square root (default),
@@ -106,9 +119,12 @@ residuals.GCMSdeco <- function(object,type=c("pearson","response"),
 #'   palette and truncate negative corrected intensities at zero. Pearson
 #'   residuals use blue-black-red for negative-zero-positive deviations, without
 #'   an intensity transform. Display time bins contain their average residual.
-#'   Spectral panels use base-peak percentages for readability; \code{coef(x,
-#'   normalize="l1")} and the Excel export provide unit-L1 spectra.
+#'   Heatmaps are interpolated onto a regular display grid and drawn as rasters;
+#'   red vertical lines mark the selected compound apices. Spectral panels use
+#'   base-peak percentages. The Excel compound sheet places a compact spectrum
+#'   beside the integrated area; \code{coef(x,normalize="l1")} returns unit-L1 spectra.
 #' @seealso [GCMSdeco()], [splogconNMF()]
+#' @md
 #' @examples
 #' \dontrun{
 #' fit <- GCMSdeco("beer.cdf", "beer.msp", xlsx_file="beer.xlsx")
@@ -118,7 +134,7 @@ residuals.GCMSdeco <- function(object,type=c("pearson","response"),
 #'      which=head(fit$compounds$compound[order(-fit$compounds$area)],24))
 #' }
 #' @export
-plot.GCMSdeco <- function(x,type=c("lines","heatmap","spectra"),file=NULL,
+plot.GCMSdeco <- function(x,type=c("lines","heatmap","spectra","profiles"),file=NULL,
                          time_range=NULL,mass=NULL,which=NULL,nrows=4L,ncols=2L,
                          minutes_per_panel=2.5,transform=c("sqrt","identity","log1p"),
                          peak_scale=c("basepeak","total"),labels=FALSE,
@@ -151,16 +167,23 @@ plot.GCMSdeco <- function(x,type=c("lines","heatmap","spectra"),file=NULL,
   inverse<-switch(transform,sqrt=function(z) sign(z)*z^2,identity=identity,
     log1p=function(z) sign(z)*expm1(abs(z)))
   sample<-if(is.null(x$sample_name)) tools::file_path_sans_ext(basename(x$cdf_file)) else x$sample_name
-  if(type=="spectra") {
+  if(type%in%c("spectra","profiles")) {
     if(length(ids)&&order!="index") {
       key<-switch(order,rt=vapply(ids,function(k) x$time[which.max(H[,k])],0),
         area=-rowSums(S[ids,,drop=FALSE]),
         height=-vapply(ids,function(k) max(H[,k])*sum(S[k,]),0))
       ids<-ids[base::order(key)]
     }
-    graphics::par(mfrow=c(nrows,ncols),mar=c(3,3,2.5,1),mgp=c(1.8,.6,0))
+    graphics::par(mfrow=c(nrows,if(type=="profiles")2L else ncols),mar=c(3,3,2.5,1),mgp=c(1.8,.6,0))
     if(!length(ids)) {graphics::plot.new();graphics::title("No recovered compounds");return(invisible(x))}
     for(k in ids) {
+      if(type=="profiles") {
+        at<-intersect(rows,which(H[,k]>max(H[,k])*1e-6))
+        if(!length(at))at<-rows
+        graphics::plot(x$time[at],as.numeric(H[at,k])*sum(S[k,]),type="l",col=colour[k],
+          xlab="Retention time (min)",ylab="Total ion intensity",
+          main=sprintf("Compound %d | area %.4g",k,sum(S[k,])),...)
+      }
       s<-S[k,cols];scale<-max(s)
       graphics::plot(x$mass[cols],if(scale>0) 100*s/scale else s,type="h",col=colour[k],
         xlab="m/z",ylab="Relative intensity (%)",ylim=c(0,105),
@@ -196,10 +219,13 @@ plot.GCMSdeco <- function(x,type=c("lines","heatmap","spectra"),file=NULL,
       palette<-if(signed) grDevices::colorRampPalette(c("blue","black","red"))(1000L) else
         grDevices::colorRampPalette(c("black","black","blue","green","yellow","orange","red"))(1000L)
       z[]<-pmax(if(signed) -bound else 0,pmin(bound,z))
-      graphics::image(seq(min(t),max(t),length.out=length(t)),x$mass[cols],z,
+      raster<-GCMS_raster_grid(z,t,x$mass[cols])
+      graphics::image(raster$time,raster$mass,raster$z,
         col=palette,zlim=if(signed) c(-bound,bound) else c(0,bound),
-        useRaster=length(cols)<3L||length(unique(diff(x$mass[cols])))==1L,
+        useRaster=TRUE,
         xlab="Retention time (min)",ylab="m/z",main=paste(sample,titles[panel],sep=" | "))
+      graphics::abline(v=x$time[vapply(ids,function(k)which.max(H[,k]),0L)],
+        col=grDevices::adjustcolor("red",.8),lwd=.7)
     }
   } else {
     graphics::par(mfrow=c(nrows,1L),mar=c(3,6,2.2,1),mgp=c(1.8,.6,0))

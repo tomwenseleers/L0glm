@@ -147,18 +147,24 @@ test_that("unit-L1 spectra and areas reconstruct the original fitted signal", {
   expect_true(all(x$compounds$sample=="beer_test"));expect_null(x$model$y)
 })
 
-test_that("Excel exports preserve sample names, areas and every normalized ion", {
+test_that("Excel exports preserve areas and sorted packed spectra without wrapping", {
   skip_if_not_installed("ncdf4");skip_if_not_installed("openxlsx")
   x<-gcms_test_object();file<-tempfile(fileext=".xlsx")
   on.exit(unlink(c(x$cdf_file,file)))
   GCMS_write_xlsx(x$model,x$time,x$mass,x$compounds,file,x$cdf_file,NULL,c(fit=1))
-  expect_identical(openxlsx::getSheetNames(file),c("Compounds","Spectra","Run"))
+  expect_identical(openxlsx::getSheetNames(file),c("Compounds","Run"))
   tab<-openxlsx::read.xlsx(file,"Compounds")
   expect_equal(tab$sample,rep("beer_test",3L));expect_equal(tab$area,x$compounds$area)
   expect_equal(tab$area_min,x$compounds$area_min)
-  spectra<-openxlsx::read.xlsx(file,"Spectra")
-  expect_equal(unname(as.matrix(spectra[,-(1:4)])),
-    unname(coef(x,normalize="l1")[x$compounds$compound,,drop=FALSE]),tolerance=1e-12)
+  expect_identical(names(tab)[1:4],c("compound","retention_time","area","Spectrum"))
+  for(i in seq_len(nrow(tab))) {
+    k<-tab$compound[i];intensity<-round(9999*x$model$S[k,]/max(x$model$S[k,]))
+    keep<-which(intensity>0);keep<-keep[order(-intensity[keep],x$mass[keep])]
+    expect_identical(tab$Spectrum[i],paste0(x$mass[keep]," (",intensity[keep],")",collapse=", "))
+  }
+  book<-openxlsx::loadWorkbook(file)
+  for(style in book$styleObjects)if(style$sheet=="Compounds" && 4L%in%style$cols && any(style$rows>1L))
+    expect_false(isTRUE(as.logical(style$style$wrapText)))
   expect_error(GCMS_xlsx_path("bad.csv"),"xlsx_file")
 })
 

@@ -125,7 +125,10 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' @param msp_file Output \code{.msp} path. Parent directories are created if
 #'   necessary; an existing output file is replaced.
 #' @param xlsx_file Optional Excel output path. The workbook contains compound
-#'   areas, unit-L1 spectra and run metadata, including the sample name. Requires
+#'   areas and one spectrum column on the first sheet, followed by run metadata
+#'   including the sample name. Fragments use \code{m/z (intensity)}, sorted by
+#'   decreasing intensity and scaled to base peak 9999; fragments rounding to
+#'   zero are omitted from this display. Requires
 #'   the optional \pkg{openxlsx} package. \code{NULL} omits Excel export.
 #' @param sample_name Sample identifier, defaulting to the CDF filename without
 #'   its extension. Included in the compound table, MSP entries and workbook.
@@ -170,6 +173,8 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' mass/intensity pairs. Exported spectra have base peak 999 and retain every
 #' positive fitted ion. \code{coef()} returns unnormalized fitted spectra.
 #' With \code{normalize="l1"}, \code{coef()} returns spectra summing to one.
+#' The MSP and R object retain every positive fitted ion. The spreadsheet's
+#' compact spectrum text is a rounded display alongside the integrated areas.
 #' Their compound profiles are \eqn{P_{ir}=H_{ir}\sum_j S_{rj}}, preserving
 #' \eqn{HS=PT}. The workbook reports \code{area}, equal to \eqn{\sum_j S_{rj}}, in
 #' intensity-scans, and \code{area_min}, the trapezoidal integral of
@@ -202,7 +207,12 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' family's full original-channel likelihood.
 #'
 #' \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
-#' groups, followed by refinement on every original channel. Rank selection,
+#' outcome groups. Original-channel refinement jointly updates overlapping
+#' hard log-concave profiles and spectra, tests broad and terminal-fragment
+#' fusions against the full likelihood-and-compound-count criterion, and refits
+#' spectra and background using local joint or sparse coordinate solves. See
+#' [splogconNMF()] for the working quadratic and shape constraints. The
+#' spreadsheet and returned coefficient rows use increasing apex retention time. Rank selection,
 #' hard log concavity, censored Gamma intensities and compound-count information
 #' criteria follow [splogconNMF()].
 #'
@@ -217,6 +227,7 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' @references NIST MS Search user manual, section on NIST text format:
 #'   \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
 #' @seealso [plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+#' @md
 #' @examples
 #' \dontrun{
 #' fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",

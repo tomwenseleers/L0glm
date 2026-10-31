@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{GCMSdeco}(
   x,
-  type = c("lines", "heatmap", "spectra"),
+  type = c("lines", "heatmap", "spectra", "profiles"),
   file = NULL,
   time_range = NULL,
   mass = NULL,
@@ -26,9 +26,11 @@
 )
 }
 \arguments{
-\item{x}{A fitted [GCMSdeco()] object.}
+\item{x}{A fitted \code{\link[=GCMSdeco]{GCMSdeco()}} object.}
 
-\item{type}{\code{"lines"}, \code{"heatmap"} or \code{"spectra"}.}
+\item{type}{\code{"lines"}, \code{"heatmap"}, \code{"spectra"} or
+\code{"profiles"}. The last places each compound's total-ion profile
+beside its spectrum, with one compound per row.}
 
 \item{file}{Optional PDF output path. \code{NULL} uses the current device.
 PDF reports can contain multiple pages.}
@@ -41,7 +43,8 @@ fitted interval.}
 \item{which}{Compound indices, as returned in \code{x$compounds$compound}.
 \code{NULL} shows all compounds.}
 
-\item{nrows, ncols}{Rows per PDF page, and columns for spectral panels.}
+\item{nrows, ncols}{Rows per PDF page, and columns for spectral panels.
+Profile-and-spectrum panels always use two columns.}
 
 \item{minutes_per_panel}{Retention-time span of each line panel, default 2.5
 minutes. Consecutive panels cover the whole selected interval.}
@@ -63,7 +66,7 @@ over the same bins, retaining all selected mass channels.}
 \item{clip}{Upper quantile used for heatmap colour saturation, default .999.
 Set to one to display the full transformed range.}
 
-\item{gamma}{Positive heatmap contrast exponent, default .13 as in [plotmat()].}
+\item{gamma}{Positive heatmap contrast exponent, default .13 as in \code{\link[=plotmat]{plotmat()}}.}
 
 \item{residual_limit}{Symmetric Pearson-residual colour limit, default 3.}
 
@@ -83,14 +86,16 @@ from the source CDF for the requested interval and released after plotting.
 }
 \details{
 Heatmaps show the observed signal, observed signal minus modeled
-  background, fitted chromatogram and Pearson residuals. Spline background and
-  any known offset are subtracted in the second heatmap and grey line traces.
-  Signal heatmaps use the [plotmat()] black-blue-green-yellow-orange-red
-  palette and truncate negative corrected intensities at zero. Pearson
-  residuals use blue-black-red for negative-zero-positive deviations, without
-  an intensity transform. Display time bins contain their average residual.
-  Spectral panels use base-peak percentages for readability; \code{coef(x,
-  normalize="l1")} and the Excel export provide unit-L1 spectra.
+background, fitted chromatogram and Pearson residuals. Spline background and
+any known offset are subtracted in the second heatmap and grey line traces.
+Signal heatmaps use the \code{\link[=plotmat]{plotmat()}} black-blue-green-yellow-orange-red
+palette and truncate negative corrected intensities at zero. Pearson
+residuals use blue-black-red for negative-zero-positive deviations, without
+an intensity transform. Display time bins contain their average residual.
+Heatmaps are interpolated onto a regular display grid and drawn as rasters;
+red vertical lines mark the selected compound apices. Spectral panels use
+base-peak percentages. The Excel compound sheet places a compact spectrum
+beside the integrated area; \code{coef(x,normalize="l1")} returns unit-L1 spectra.
 }
 \examples{
 \dontrun{
@@ -102,5 +107,5 @@ plot(fit, type="spectra", file="beer_spectra.pdf",
 }
 }
 \seealso{
-[GCMSdeco()], [splogconNMF()]
+\code{\link[=GCMSdeco]{GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}
 }

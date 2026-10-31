@@ -86,11 +86,11 @@ m/z; traces between the minimum and maximum recorded mass are retained.}
 \item{msp_file}{Output \code{.msp} path. Parent directories are created if
 necessary; an existing output file is replaced.}
 
-\item{family}{Identity-link noise model accepted by [splogconNMF()].
+\item{family}{Identity-link noise model accepted by \code{\link[=splogconNMF]{splogconNMF()}}.
 The default \code{quasipoisson("identity")} estimates one pooled dispersion
 across channels, suitable for overdispersed instrumental intensities.}
 
-\item{lambda}{`"gic"` (default), `"aic"`, `"bic"`, `"ebic"`, `"mbic"`, or
+\item{lambda}{\code{"gic"} (default), \code{"aic"}, \code{"bic"}, \code{"ebic"}, \code{"mbic"}, or
 a nonnegative numeric compound penalty. See Details for its scale.}
 
 \item{nwindows}{Number of overlapping blind-PSF windows, default \code{10L}.
@@ -98,7 +98,7 @@ a nonnegative numeric compound penalty. See Details for its scale.}
 PSFs smoothly across the chromatogram.}
 
 \item{alkanes_file}{Optional ANDI-MS alkane-standard chromatogram. Isolated
-peaks calibrate the initial PSF through [estimate_psf_from_std()], with
+peaks calibrate the initial PSF through \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}, with
 automatic support and resampling to the sample's scan interval.}
 
 \item{calibration_range}{Optional retention-time bounds in minutes for the
@@ -108,42 +108,45 @@ standard. The whole standard is used when omitted.}
 \code{NULL} chooses a low-dimensional basis from the scan count and typical
 PSF width; an integer of at least four fixes its dimension.}
 
-\item{precluster}{`NULL` or `FALSE` uses every channel throughout. `TRUE`
+\item{precluster}{\code{NULL} or \code{FALSE} uses every channel throughout. \code{TRUE}
 uses up to 32 groups; an integer supplies another maximum. Size-adjusted
 Poisson clustering, aggregation, selection and fusion operate in that
 reduced space, followed by refinement on all original channels.}
 
 \item{dispersion}{Known common Gaussian variance, quasipoisson scale,
 Gamma dispersion, NB1 variance-to-mean ratio or common Gamma scale.
-`NULL` estimates a pooled value from temporal differences and freezes it.
-Parameters supplied in a [signal_families] object are used when this
+\code{NULL} estimates a pooled value from temporal differences and freezes it.
+Parameters supplied in a \link{signal_families} object are used when this
 argument is omitted. Poisson and NB2 use unit dispersion.}
 
-\item{theta}{NB2 shape, shared by all original channels. `NULL` estimates and
+\item{theta}{NB2 shape, shared by all original channels. \code{NULL} estimates and
 freezes a temporal moment estimate; a positive value fixes it; a negative
 value initializes at its absolute value and enables pooled likelihood
 updates. A fixed shape in the supplied NB family is respected.}
 
-\item{correlation}{`"auto"` or `"lag1"` estimates an optional lag-one working
-adjustment to the selection penalty. `"none"` uses independent observations;
+\item{correlation}{\code{"auto"} or \code{"lag1"} estimates an optional lag-one working
+adjustment to the selection penalty. \code{"none"} uses independent observations;
 a number between zero and 0.49 supplies the lag-one correlation.}
 
-\item{ncores}{OpenMP workers. `NULL` uses the detected physical cores.}
+\item{ncores}{OpenMP workers. \code{NULL} uses the detected physical cores.}
 
-\item{control}{Named list: `broad_repeats=1L`, `full_sweeps=1L`,
-`final_polishes=1L`, `native_sweeps=6L`, `block_sweeps=6L`,
-`psf_width=NULL`, `screen_factor=1`, `censor=0.5`, `linkage="ward"`,
-`joint_trials=NULL`. The latter uses direct Poisson fusion for Poisson data
-and joint local refinement for the other families. `psf_width` is the typical FWHM in scans, inferred from
-the middle design column. `screen_factor` scales the initial selection
-penalty. `censor` is the Gamma detection limit: recorded zero intensities
+\item{control}{Named list: \code{broad_repeats=1L}, \code{full_sweeps=1L},
+\code{final_polishes=1L}, \code{native_sweeps=6L}, \code{block_sweeps=6L},
+\code{psf_width=NULL}, \code{screen_factor=1}, \code{censor=0.5}, \code{linkage="ward"},
+\code{joint_trials=NULL}, \code{profile_cycles=10L}, \code{fusion_passes=5L}. The latter two
+control original-channel profile refinement and each round of broad or
+terminal-fragment fusion. \code{profile_cycles=0L} disables this refinement.
+\code{joint_trials} uses direct Poisson fusion for Poisson data
+and joint local refinement for the other families. \code{psf_width} is the typical FWHM in scans, inferred from
+the middle design column. \code{screen_factor} scales the initial selection
+penalty. \code{censor} is the Gamma detection limit: recorded zero intensities
 are left-censored below this value; positive values must be at least the
 limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
-`linkage` may be `"ward"` or `"bregman"`. `joint_trials` allows overlapping
+\code{linkage} may be \code{"ward"} or \code{"bregman"}. \code{joint_trials} allows overlapping
 compounds to adjust together during local fusion refinement.}
 
-\item{psf_control}{Named list passed to [L0glm_blind_deco()], for example
+\item{psf_control}{Named list passed to \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, for example
 \code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
 initial PSF. Data and \code{nwindows} are set by this function. The scalar
 Poisson working weight is matched to the final noise model by default;
@@ -152,7 +155,10 @@ Poisson working weight is matched to the final noise model by default;
 \item{verbose}{Print stage timings, objective changes and compound counts.}
 
 \item{xlsx_file}{Optional Excel output path. The workbook contains compound
-areas, unit-L1 spectra and run metadata, including the sample name. Requires
+areas and one spectrum column on the first sheet, followed by run metadata
+including the sample name. Fragments use \code{m/z (intensity)}, sorted by
+decreasing intensity and scaled to base peak 9999; fragments rounding to
+zero are omitted from this display. Requires
 the optional \pkg{openxlsx} package. \code{NULL} omits Excel export.}
 
 \item{sample_name}{Sample identifier, defaulting to the CDF filename without
@@ -162,26 +168,26 @@ its extension. Included in the compound table, MSP entries and workbook.}
 integrated channel intensities; \code{"l1"} gives a unit-sum spectrum per
 compound, with its magnitude carried by the compound area.}
 
-\item{k}{Complexity multiplier for [stats::AIC()].}
+\item{k}{Complexity multiplier for \code{\link[stats:AIC]{stats::AIC()}}.}
 }
 \value{
 An object of class \code{GCMSdeco} containing \code{model} (the full
-  factorization), a \code{compounds} table with names, retention times,
-  original-file apex scan indices, integrated intensities and ion counts,
-  the blind fit and sparse design in \code{psf}, optional standard calibration
-  in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
-  the actual PSF working weight, retention-time and mass axes, original scan
-  indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
-  log-likelihood and information-criterion methods delegate to \code{model}.
+factorization), a \code{compounds} table with names, retention times,
+original-file apex scan indices, integrated intensities and ion counts,
+the blind fit and sparse design in \code{psf}, optional standard calibration
+in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
+the actual PSF working weight, retention-time and mass axes, original scan
+indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
+log-likelihood and information-criterion methods delegate to \code{model}.
 }
 \description{
 Read an ANDI-MS netCDF chromatogram, estimate a smoothly time-varying point
-spread function, recover log-concave compounds with [splogconNMF()], and
+spread function, recover log-concave compounds with \code{\link[=splogconNMF]{splogconNMF()}}, and
 write a NIST-compatible MSP spectral library. All original mass channels
 are retained in the final spectra.
 }
 \details{
-**File formats.** ANDI-MS variables \code{scan_index}, \code{point_count},
+\strong{File formats.} ANDI-MS variables \code{scan_index}, \code{point_count},
 \code{scan_acquisition_time}, \code{mass_values} and \code{intensity_values}
 define the scan spectra. Scan indices are zero-based. Padding between scans
 is accepted. Intensities must be finite and nonnegative. Times are converted
@@ -193,6 +199,8 @@ retention time and integrated ion intensity in the comments, followed by
 mass/intensity pairs. Exported spectra have base peak 999 and retain every
 positive fitted ion. \code{coef()} returns unnormalized fitted spectra.
 With \code{normalize="l1"}, \code{coef()} returns spectra summing to one.
+The MSP and R object retain every positive fitted ion. The spreadsheet's
+compact spectrum text is a rounded display alongside the integrated areas.
 Their compound profiles are \eqn{P_{ir}=H_{ir}\sum_j S_{rj}}, preserving
 \eqn{HS=PT}. The workbook reports \code{area}, equal to \eqn{\sum_j S_{rj}}, in
 intensity-scans, and \code{area_min}, the trapezoidal integral of
@@ -202,7 +210,7 @@ The returned object stores the factors and source CDF path. Observed data
 are loaded from the CDF only when a plot needs them. Fitted signals are
 reconstructed from the factors; the observed matrix is released after fitting.
 
-**PSF and background.** [L0glm_blind_deco()] fits the total ion chromatogram
+\strong{PSF and background.} \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}} fits the total ion chromatogram
 in overlapping windows, optionally starting from the alkane standard.
 Interpolated columns are projected to log concavity on their local support
 and normalized to unit sum. Their typical full width at half maximum,
@@ -211,7 +219,7 @@ and normalized to unit sum. Their typical full width at half maximum,
 Background coefficients are nonnegative and unpenalized. This keeps the
 baseline much smoother than an individual elution peak.
 
-**Coherent noise scaling.** Noise parameters are estimated once from the
+\strong{Coherent noise scaling.} Noise parameters are estimated once from the
 original channels and shared by the PSF pilot and final factorization.
 If \eqn{\widehat\mu_{i+}} and \eqn{\widehat V_{i+}} are pilot total means
 and variances, the Poisson working weight for PSF estimation is
@@ -225,9 +233,14 @@ appropriate average precision; final factorization uses the specified
 family's full original-channel likelihood.
 
 \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
-groups, followed by refinement on every original channel. Rank selection,
+outcome groups. Original-channel refinement jointly updates overlapping
+hard log-concave profiles and spectra, tests broad and terminal-fragment
+fusions against the full likelihood-and-compound-count criterion, and refits
+spectra and background using local joint or sparse coordinate solves. See
+\code{\link[=splogconNMF]{splogconNMF()}} for the working quadratic and shape constraints. The
+spreadsheet and returned coefficient rows use increasing apex retention time. Rank selection,
 hard log concavity, censored Gamma intensities and compound-count information
-criteria follow [splogconNMF()].
+criteria follow \code{\link[=splogconNMF]{splogconNMF()}}.
 }
 \examples{
 \dontrun{
@@ -245,8 +258,8 @@ matplot(fit$time, as.matrix(fit$model$H), type="l", lty=1,
 }
 \references{
 NIST MS Search user manual, section on NIST text format:
-  \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
+\url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
 }
 \seealso{
-[plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+\code{\link[=plot.GCMSdeco]{plot.GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}
 }
