@@ -19,6 +19,9 @@
   labels = FALSE,
   max_time = 1600L,
   clip = 0.999,
+  gamma = 0.13,
+  residual_limit = 3,
+  order = c("rt", "area", "height", "index"),
   ...
 )
 }
@@ -43,9 +46,9 @@ fitted interval.}
 \item{minutes_per_panel}{Retention-time span of each line panel, default 2.5
 minutes. Consecutive panels cover the whole selected interval.}
 
-\item{transform}{Display transform: signed square root (default), identity
-or signed \code{log1p}. Negative background-corrected values and residuals
-are retained. Line-axis tick labels use the original intensity scale.}
+\item{transform}{Line-display transform: signed square root (default),
+identity or signed \code{log1p}. Negative background-corrected traces are
+retained. Tick labels use the original intensity scale.}
 
 \item{peak_scale}{\code{"basepeak"} scales each profile by its strongest ion
 in the displayed mass range, matching the individual grey mass traces.
@@ -60,6 +63,14 @@ over the same bins, retaining all selected mass channels.}
 \item{clip}{Upper quantile used for heatmap colour saturation, default .999.
 Set to one to display the full transformed range.}
 
+\item{gamma}{Positive heatmap contrast exponent, default .13 as in [plotmat()].}
+
+\item{residual_limit}{Symmetric Pearson-residual colour limit, default 3.}
+
+\item{order}{Spectral panel order: \code{"rt"} (default) uses increasing apex
+retention time; \code{"area"} or \code{"height"} uses decreasing compound
+area or total-ion peak height; \code{"index"} preserves the selected indices.}
+
 \item{...}{Graphical arguments passed to the line or spectral panel.}
 }
 \value{
@@ -72,8 +83,12 @@ from the source CDF for the requested interval and released after plotting.
 }
 \details{
 Heatmaps show the observed signal, observed signal minus modeled
-  background, fitted chromatogram and signed residuals. Spline background and
+  background, fitted chromatogram and Pearson residuals. Spline background and
   any known offset are subtracted in the second heatmap and grey line traces.
+  Signal heatmaps use the [plotmat()] black-blue-green-yellow-orange-red
+  palette and truncate negative corrected intensities at zero. Pearson
+  residuals use blue-black-red for negative-zero-positive deviations, without
+  an intensity transform. Display time bins contain their average residual.
   Spectral panels use base-peak percentages for readability; \code{coef(x,
   normalize="l1")} and the Excel export provide unit-L1 spectra.
 }

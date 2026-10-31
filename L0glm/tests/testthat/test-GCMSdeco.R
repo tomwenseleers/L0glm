@@ -178,3 +178,21 @@ test_that("GCMS plots reload observed intervals and create multi-panel PDFs", {
   z<-GCMS_plot_observed(x,10:20,c(1L,3L))
   expect_identical(dim(z),c(11L,2L));expect_null(x$model$y)
 })
+
+test_that("Pearson residuals use the fitted marginal variance", {
+  skip_if_not_installed("ncdf4")
+  x<-gcms_test_object();on.exit(unlink(x$cdf_file))
+  Y<-GCMS_read_cdf(x$cdf_file,mass=x$mass)$Y;mu<-fitted(x)
+  expect_equal(residuals(x),(Y-mu)/sqrt(mu),ignore_attr=TRUE)
+  for(name in c("gaussian","quasipoisson","nb1","Gamma","Gamma_scale","nb")) {
+    x$model$spec$name<-name;x$model$spec$dispersion<-3;x$model$spec$theta<-10
+    variance<-switch(name,gaussian=matrix(3,nrow(mu),ncol(mu)),quasipoisson=3*mu,
+      nb1=3*mu,Gamma=3*mu^2,Gamma_scale=3*mu,nb=mu+mu^2/10)
+    expect_equal(residuals(x),(Y-mu)/sqrt(variance),ignore_attr=TRUE)
+  }
+  x$model$spec$name<-"Gamma";x$model$spec$dispersion<-.5;x$model$control<-list(censor=.5)
+  one<-matrix(0,1L,1L);mean<-matrix(1,1L,1L)
+  first<-integrate(function(z) z*dgamma(z,shape=2,scale=.5),.5,Inf)$value
+  second<-integrate(function(z) z^2*dgamma(z,shape=2,scale=.5),.5,Inf)$value
+  expect_equal(as.numeric(GCMS_pearson(x,one,mean,1L,1L)),-first/sqrt(second-first^2),tolerance=1e-8)
+})

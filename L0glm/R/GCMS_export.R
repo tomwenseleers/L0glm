@@ -21,7 +21,8 @@ GCMS_write_xlsx <- function(model,time,mass,compounds,path,cdf_file,alkanes_file
     value=c(if(nrow(compounds)) compounds$sample[1L] else tools::file_path_sans_ext(basename(cdf_file)),
       cdf_file,if(is.null(alkanes_file)) "" else alkanes_file,model$spec$name,
       format(model$spec$dispersion),format(model$spec$theta),length(time),length(mass),nrow(compounds),
-      "minutes","intensity-scans","intensity-minutes","unit L1 sum per compound",sum(seconds)),
+      "minutes","intensity-scans","intensity-minutes","unit L1 sum per compound",
+      if("total"%in%names(seconds)) seconds[["total"]] else sum(seconds)),
     stringsAsFactors=FALSE)
   tables<-list(Compounds=compounds,Spectra=spectra,Run=metadata)
   for(name in names(tables)) {
