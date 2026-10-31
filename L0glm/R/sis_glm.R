@@ -75,7 +75,8 @@
 #' starts afresh; this does not reintroduce coefficients within an individual
 #' BAR fit. Preset lambda and GIC use the original selectable predictor count.
 #' The lowest-GIC round is returned, using the metrics scoring mean floor of
-#' `1e-8`. For quasi families without a likelihood/GIC, return the last round.
+#' `1e-8`. Quasi-Poisson rounds use a common dispersion, estimated by the first
+#' candidate fit when unspecified. For quasibinomial, return the last round.
 #' `nuisance` must be `NULL` for ISIS: put mandatory covariates in `X` and pass
 #' `always.include` instead. Intercept defaults match [L0glm.fit()].
 #' `converged` describes repetition of the outer candidate set; inner-fit

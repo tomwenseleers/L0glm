@@ -116,8 +116,8 @@ test_that("screened fits support nonnegative grouped Poisson and all special fam
   expect_identical(dim(coef(cox)),c(15L,1L));expect_true(all(is.finite(predict(cox,X))))
   quasi <- L0glm.fit(X,rpois(n,2),family=quasipoisson(),intercept=TRUE,
     screen="ISIS",nsis=6,screen.maxit=2)
-  expect_true(all(is.na(quasi$screening$history$gic)))
-  expect_equal(quasi$screening$best_iteration,quasi$screening$iterations)
+  expect_true(all(is.finite(quasi$screening$history$gic)))
+  expect_equal(quasi$screening$best_iteration,which.min(quasi$screening$history$gic))
 })
 
 test_that("cross-validation screens its training rows rather than the full response", {

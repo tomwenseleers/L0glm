@@ -218,6 +218,10 @@
 #' full endpoint. Supplied observation weights, offsets and known dispersions
 #' are included in scoring; unknown Gaussian scales are profiled separately
 #' for each response channel.
+#' Quasi-Poisson information criteria use a common dispersion across the path.
+#' When unspecified, it is estimated by a preset pilot fit and then held
+#' fixed; estimated scales retain their nuisance-parameter count. With CV,
+#' dispersion estimation uses training observations independently in each fold.
 #'
 #' With \code{tune = "cv"}, the full-data GIC preset defines the reference
 #' grid point. If that preset is nonpositive, the grid uses AIC's positive
@@ -453,8 +457,20 @@ L0glm.tune <- function(X, y,
   initialization <- if (pilot_start) L0glm_pilot_start(args, pilot_bounds) else
     list(start = start, pilot = NULL)
   args$start <- initialization$start
-  fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
+  quasi_estimated <- NULL
+  fit_lambda <- function(lambda) {
+    fit <- do.call(L0glm.fit, c(args, list(lambda = lambda)))
+    if (!is.null(quasi_estimated)) fit$dispersion.estimated <- quasi_estimated
+    fit
+  }
   preset_fit <- fit_lambda(lambda_reference)
+  # Quasi-likelihood kernels require one scale across the compared models.
+  if (!do_cv && identical(family$family, "quasipoisson")) {
+    quasi_estimated <- preset_fit$dispersion.estimated
+    args$dispersion <- preset_fit$dispersion
+    dispersion <- ifelse(quasi_estimated, -args$dispersion, args$dispersion)
+    if (any(quasi_estimated)) preset_fit <- fit_lambda(lambda_reference)
+  }
   # Reuse memberships only: every lambda still estimates its own support.
   args <- L0glm_precluster_reuse(args, preset_fit)
   included <- preset_fit$always.include

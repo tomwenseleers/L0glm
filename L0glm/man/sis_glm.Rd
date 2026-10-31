@@ -126,7 +126,8 @@ rows, and refit on the original responses and original offsets. Each round
 starts afresh; this does not reintroduce coefficients within an individual
 BAR fit. Preset lambda and GIC use the original selectable predictor count.
 The lowest-GIC round is returned, using the metrics scoring mean floor of
-\code{1e-8}. For quasi families without a likelihood/GIC, return the last round.
+\code{1e-8}. Quasi-Poisson rounds use a common dispersion, estimated by the first
+candidate fit when unspecified. For quasibinomial, return the last round.
 \code{nuisance} must be \code{NULL} for ISIS: put mandatory covariates in \code{X} and pass
 \code{always.include} instead. Intercept defaults match \code{\link[=L0glm.fit]{L0glm.fit()}}.
 \code{converged} describes repetition of the outer candidate set; inner-fit

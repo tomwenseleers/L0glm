@@ -305,6 +305,10 @@ issued and \code{endpoint_zero} is false. A zoomed grid need not reach the
 full endpoint. Supplied observation weights, offsets and known dispersions
 are included in scoring; unknown Gaussian scales are profiled separately
 for each response channel.
+Quasi-Poisson information criteria use a common dispersion across the path.
+When unspecified, it is estimated by a preset pilot fit and then held
+fixed; estimated scales retain their nuisance-parameter count. With CV,
+dispersion estimation uses training observations independently in each fold.
 
 With \code{tune = "cv"}, the full-data GIC preset defines the reference
 grid point. If that preset is nonpositive, the grid uses AIC's positive

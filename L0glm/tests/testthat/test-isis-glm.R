@@ -80,9 +80,13 @@ test_that("ISIS fits ordinary families and noncanonical links, with quasi fallba
     expect_s3_class(result$fit,"L0glm_fit");expect_true(all(is.finite(coef(result$fit))))
     expect_identical(dim(coef(result$fit)),c(17L,1L))
     expect_true(all(is.finite(predict(result$fit,X,offset=off))))
-    if(f$family%in%c("quasibinomial","quasipoisson")) {
+    if(f$family=="quasibinomial") {
       expect_true(all(is.na(result$history$gic)))
       expect_equal(result$best_iteration,result$iterations)
+    }
+    if(f$family=="quasipoisson") {
+      expect_true(all(is.finite(result$history$gic)))
+      expect_equal(result$best_iteration, which.min(result$history$gic))
     }
   }
 })

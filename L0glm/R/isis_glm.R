@@ -53,6 +53,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   screen_X <- if (length(eligible)==p) X else X[,eligible,drop=FALSE]
   B <- Matrix::Matrix(0,ncol(design),m,sparse=TRUE)
   selected <- mandatory;previous <- NULL;best <- NULL;history <- list();converged <- FALSE
+  quasi_estimated <- NULL
   for (iteration in seq_len(niter)) {
     if (length(eligible)) {
       active <- which(Matrix::rowSums(B!=0)>0)
@@ -71,6 +72,13 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       fit_args[[name]] <- args[[name]][rows,,drop=FALSE]
     fit <- do.call(L0glm.fit,c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
       weights=w,offset=off,nonnegative=nonnegative),fit_args))
+    if (identical(family$family,"quasipoisson")) {
+      if (is.null(quasi_estimated)) {
+        quasi_estimated <- fit$dispersion.estimated
+        args$dispersion <- fit$dispersion
+      }
+      fit$dispersion.estimated <- quasi_estimated
+    }
     score <- L0glm.metrics(fit,mu_floor=1e-8)
     gic <- get.IC(score$loglik,max(2,n_ic),max(1L,p_total),score$df)$gic
     entry <- summary(methods::as(methods::as(coef(fit),"generalMatrix"),"CsparseMatrix"))

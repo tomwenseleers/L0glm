@@ -133,9 +133,29 @@ test_that("CV supports binomial and quasi families without relying on IC scores"
   quasi <- L0glm.tune(X,y,family=quasipoisson(identity),dispersion=2,
     nonnegative=TRUE,tune="cv",nfolds=3,nlambda=2,prop_range=.1,
     parallelize=FALSE,plot=FALSE,printbest=FALSE)
-  expect_true(all(is.na(quasi$metrics$gic)))
+  expect_true(all(is.finite(quasi$metrics$gic)))
   expect_true(all(is.finite(quasi$cv$mean)))
   expect_false(is.null(quasi$fit_best))
+})
+
+test_that("quasi-Poisson IC tuning uses a common fitted dispersion", {
+  set.seed(508)
+  X <- cbind(1, matrix(runif(80 * 4), 80, 4))
+  y <- cbind(rpois(80, 2 + 4 * X[, 2]), rpois(80, 3 + X[, 3]))
+  fit <- L0glm.tune(X, y, family=quasipoisson(identity), tune="gic",
+    nonnegative=TRUE, nlambda=3, prop_range=.1, parallelize=FALSE,
+    plot=FALSE, printbest=FALSE)
+  expect_true(all(is.finite(fit$metrics$gic)))
+  expect_true(all(fit$fit_args$dispersion > 0))
+  expect_equal(fit$fit_best$dispersion, fit$fit_args$dispersion)
+  expect_true(all(fit$fit_best$dispersion.estimated))
+  expect_equal(GIC(fit$fit_best, mu_floor=1e-8), min(fit$metrics$gic))
+  for (i in seq_along(fit$lambdas)) {
+    score <- get.metrics(fit$coefficients[[i]], fit$fit_best$X, y,
+      family=quasipoisson(identity), dispersion=-fit$fit_args$dispersion,
+      always.include=fit$always.include, mu_floor=1e-8)
+    expect_equal(score$gic, fit$metrics$gic[i])
+  }
 })
 
 test_that("CV validates fold controls and rejects the removed IC argument clearly", {
