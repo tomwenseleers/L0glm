@@ -183,8 +183,8 @@ PSFs smoothly across the chromatogram.</p></dd>
 
 <dt id="arg-alkanes-file">alkanes_file<a class="anchor" aria-label="anchor" href="#arg-alkanes-file"></a></dt>
 <dd><p>Optional ANDI-MS alkane-standard chromatogram. Isolated
-peaks calibrate the initial PSF through <code><a href="estimate_psf_from_std.html">estimate_psf_from_std()</a></code>, with
-automatic support and resampling to the sample's scan interval.</p></dd>
+peaks calibrate the initial PSF through <code><a href="estimate_psf.html">estimate_psf()</a></code>, with automatic
+support, sample refinement and resampling to the sample scan interval.</p></dd>
 
 
 <dt id="arg-calibration-range">calibration_range<a class="anchor" aria-label="anchor" href="#arg-calibration-range"></a></dt>
@@ -251,17 +251,25 @@ compounds to adjust together during local fusion refinement.
 <code>profile_cycles</code> bounds the original-channel shape/background refinement;
 zero disables it. <code>fusion_passes</code> bounds broad-anchor and compatible-tail
 fusion after that refinement.
+For a narrow, spectrally matching fragment contained in a broad profile,
+a guarded whole-profile refit can also update the shared background.
+Neighbouring modes stay within one quarter of their initial FWHM, and
+the merge is retained only when the original-channel criterion decreases.
 <code>profile_fusion</code> enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.</p></dd>
 
 
 <dt id="arg-psf-control">psf_control<a class="anchor" aria-label="anchor" href="#arg-psf-control"></a></dt>
-<dd><p>Named list passed to <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, for example
-<code>list(kernel_est=psf, maxiter=0L)</code> keeps a supplied PSF fixed.
-<code>list(L=61L, maxiter=8L, tol=1e-3)</code>. <code>kernel_est</code> supplies a known
-initial PSF. Data and <code>nwindows</code> are set by this function. The scalar
-Poisson working weight is matched to the final noise model by default;
-<code>weights</code> can override it. Multiple windows require a scalar weight.</p></dd>
+<dd><p>Named PSF settings. Entries <code>method</code>, <code>standard</code>,
+<code>precluster</code>, <code>weights</code> and <code>offset</code> are passed directly to <code><a href="estimate_psf.html">estimate_psf()</a></code>.
+Other entries form its <code>control</code> list, for example
+<code>list(kernel_est=psf, maxiter=0L)</code> keeps a supplied PSF fixed and
+<code>list(L=61L, maxiter=8L, tol=1e-3)</code> estimates a PSF on the sample.
+<code>list(standard=attr(GCMS_data2, "alkanes_TIC"))</code> uses the bundled calibration
+TIC; its numeric names supply retention times. <code>precluster=1L</code> uses the
+total-ion signal, <code>FALSE</code> the original channels, and <code>32L</code> at most 32 groups.
+The PSF uses the same noise family and fixed noise estimates as the final
+factorization, with its information adjustment included in the weights.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -297,9 +305,9 @@ compound, with its magnitude carried by the compound area.</p></dd>
     <p>An object of class <code>GCMSdeco</code> containing <code>model</code> (the full
 factorization), a <code>compounds</code> table with names, retention times,
 original-file apex scan indices, integrated intensities and ion counts,
-the blind fit and sparse design in <code>psf</code>, optional standard calibration
+the unified PSF estimate and sparse design in <code>psf</code>, optional standard calibration
 in <code>psf_standard</code>, <code>background_df</code>, <code>psf_width_scans</code>,
-the actual PSF working weight, retention-time and mass axes, original scan
+an average precision diagnostic, retention-time and mass axes, original scan
 indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
 log-likelihood and information-criterion methods delegate to <code>model</code>.</p>
     </div>
@@ -325,8 +333,9 @@ intensity-scans, and <code>area_min</code>, the trapezoidal integral of
 <p>The returned object stores the factors and source CDF path. Observed data
 are loaded from the CDF only when a plot needs them. Fitted signals are
 reconstructed from the factors; the observed matrix is released after fitting.</p>
-<p><strong>PSF and background.</strong> <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code> fits the total ion chromatogram
-in overlapping windows, optionally starting from the alkane standard.
+<p><strong>PSF and background.</strong> <code><a href="estimate_psf.html">estimate_psf()</a></code> estimates constant or smoothly
+time-varying PSFs from the sample, optionally starting from an alkane standard.
+Original channels, outcome groups and the total-ion signal are supported.
 Interpolated columns are projected to log concavity on their local support
 and normalized to unit sum. Their typical full width at half maximum,
 \(w\), sets the background dimension to
@@ -336,18 +345,14 @@ baseline much smoother than an individual elution peak.
 The calibrated median PSF width also sets the guard for the final
 broad-profile fusion pass in <code><a href="splogconNMF.html">splogconNMF()</a></code>. Set
 <code>control=list(profile_fusion=FALSE)</code> to disable that pass.</p>
-<p><strong>Coherent noise scaling.</strong> Noise parameters are estimated once from the
-original channels and shared by the PSF pilot and final factorization.
-If \(\widehat\mu_{i+}\) and \(\widehat V_{i+}\) are pilot total means
-and variances, the Poisson working weight for PSF estimation is
-$$a=\frac{\sum_i\widehat\mu_{i+}}
-{\kappa\sum_i\widehat V_{i+}}.$$
-For quasipoisson and NB1 this becomes \(1/(\kappa\phi)\), and for
-common-scale Gamma it is \(1/(\kappa b)\). The lag-one adjustment is
-\(\kappa=1+2\widehat\rho_1\). Gaussian, NB2 and standard Gamma use their
-summed pilot variances in the same formula. This gives the PSF pilot an
-appropriate average precision; final factorization uses the specified
-family's full original-channel likelihood.</p>
+<p><strong>Shared noise model.</strong> Noise parameters are estimated once from the
+original channels and reused in PSF estimation and factorization. The PSF
+weights include the information adjustment \(1/\kappa\), where
+\(\kappa=1+2\widehat\rho_1\). Aggregation adjusts the variance parameters
+according to the selected family; NB2 and ordinary Gamma use moment matching.
+See <code><a href="estimate_psf.html">estimate_psf()</a></code> for the distributional details. The returned
+<code>psf_working_weight</code> summarises the average Poisson-scale precision for
+comparing noise scales; the actual PSF likelihood uses the specified family.</p>
 <p><code>precluster=32L</code> performs selection and fusion in at most 32 size-adjusted
 outcome groups, followed by refinement on every original channel. See
 <code><a href="splogconNMF.html">splogconNMF()</a></code> for the selection criterion and shape constraints. The
@@ -375,7 +380,7 @@ information criteria and all plot types, alongside the algorithm.
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="write_GCMS_cdf.html">write_GCMS_cdf()</a></code>, <code><a href="plot.GCMSdeco.html">plot.GCMSdeco()</a></code>, <code><a href="splogconNMF.html">splogconNMF()</a></code>, <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, <code><a href="estimate_psf_from_std.html">estimate_psf_from_std()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="write_GCMS_cdf.html">write_GCMS_cdf()</a></code>, <code><a href="plot.GCMSdeco.html">plot.GCMSdeco()</a></code>, <code><a href="splogconNMF.html">splogconNMF()</a></code>, <code><a href="estimate_psf.html">estimate_psf()</a></code>, <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -416,6 +421,15 @@ information criteria and all plot types, alongside the algorithm.
 <span><span class="co"># For a full chromatogram with a separate calibration standard:</span></span>
 <span><span class="va">beer</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="st">"beer.cdf"</span>, <span class="st">"beer.msp"</span>, alkanes_file <span class="op">=</span> <span class="st">"alkanes.cdf"</span>,</span>
 <span>  xlsx_file <span class="op">=</span> <span class="st">"beer.xlsx"</span>, nwindows <span class="op">=</span> <span class="fl">10L</span>, precluster <span class="op">=</span> <span class="fl">32L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Automatic PSF estimation from a bundled window and its named alkane TIC.</span></span>
+<span><span class="va">psf</span> <span class="op">&lt;-</span> <span class="fu"><a href="estimate_psf.html">estimate_psf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, nwindows <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">psf</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># A CDF contains the chromatogram; pass the R calibration attribute explicitly.</span></span>
+<span><span class="va">calibrated</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2.cdf"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2_calibrated.msp"</span><span class="op">)</span>, nwindows <span class="op">=</span> <span class="fl">3L</span>, precluster <span class="op">=</span> <span class="fl">32L</span>,</span>
+<span>  psf_control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>standard <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, <span class="st">"alkanes_TIC"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="co"># }</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

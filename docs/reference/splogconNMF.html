@@ -210,6 +210,10 @@ compounds to adjust together during local fusion refinement.
 <code>profile_cycles</code> bounds the original-channel shape/background refinement;
 zero disables it. <code>fusion_passes</code> bounds broad-anchor and compatible-tail
 fusion after that refinement.
+For a narrow, spectrally matching fragment contained in a broad profile,
+a guarded whole-profile refit can also update the shared background.
+Neighbouring modes stay within one quarter of their initial FWHM, and
+the merge is retained only when the original-channel criterion decreases.
 <code>profile_fusion</code> enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.</p></dd>
 
@@ -329,9 +333,10 @@ information are \(g_t=H_{tr}\sum_c w_{tc}S_{rc}g_{\mu,tc}\) and
 \(C\), the quadratic step minimizes
 \(\sum_t I_t\{(Cb)_t-\eta_t+g_t/I_t\}^2\), subject to nonincreasing
 slopes of \(Cb\). Zero-information rows receive numerical stabilization.
-<code>profile_fusion</code> records the merge audit and source component groups, numbered
-in temporal order as they entered the final fusion pass. Its <code>source_components</code> list follows
-the returned temporal ordering.</p>
+<code>profile_fusion</code> records the merge audit and source component groups. Source
+IDs refer to components entering original-channel profile refinement, or the
+final pass when that refinement is disabled. Groups are retained across
+passes; <code>source_components</code> follows the returned temporal ordering.</p>
 <p><strong>Noise models.</strong> Gaussian variance is \(\phi\); quasipoisson variance is
 \(\phi\mu\); NB2 variance is \(\mu+\mu^2/\theta\); standard Gamma
 variance is \(\phi\mu^2\). NB1 has variance \(\phi\mu\), while

@@ -80,14 +80,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>GC/MS deconvolution</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/gcms-deconvolution.Rmd" class="external-link"><code>vignettes/articles/gcms-deconvolution.Rmd</code></a></small>
       <div class="d-none name"><code>gcms-deconvolution.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p><code><a href="../reference/GCMSdeco.html">GCMSdeco()</a></code> takes a chromatogram from an ANDI-MS
 <code>.cdf</code> file to resolved compound profiles, integrated areas
 and a NIST-compatible <code>.msp</code> spectral library. Its
@@ -148,10 +148,49 @@ alkane standard can supply its initial calibration through
 <code>alkanes_file="alkanes.cdf"</code>. The hydrocarbon window uses a
 constant background; the longer beer window uses the automatically
 chosen low-df cubic spline.</p>
+<div class="section level3">
+<h3 id="estimate-the-psf-automatically">Estimate the PSF automatically<a class="anchor" aria-label="anchor" href="#estimate-the-psf-automatically"></a>
+</h3>
+<p><code><a href="../reference/estimate_psf.html">estimate_psf()</a></code> provides one interface for standard
+calibration and blind sample estimation. Both bundled matrices include a
+full alkane TIC in <code>attr(Y, "alkanes_TIC")</code>; its numeric
+names give retention times in minutes. The estimator uses this
+calibration automatically, resamples to the sample scan interval and
+refines the PSF on the sample:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">psf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_psf.html">estimate_psf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, nwindows <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">psf</span><span class="op">$</span><span class="va">X</span>                         <span class="co"># sparse scan-by-scan PSF design</span></span>
+<span><span class="va">psf</span><span class="op">$</span><span class="va">width_scans</span></span>
+<span></span>
+<span><span class="co"># A constant PSF, calibration alone, or blind fitting without a standard:</span></span>
+<span><span class="va">constant</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_psf.html">estimate_psf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, nwindows <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">standard</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_psf.html">estimate_psf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, method <span class="op">=</span> <span class="st">"standard"</span>, nwindows <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="va">blind</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_psf.html">estimate_psf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, standard <span class="op">=</span> <span class="cn">NULL</span>, method <span class="op">=</span> <span class="st">"blind"</span>,</span>
+<span>  nwindows <span class="op">=</span> <span class="fl">3L</span>, precluster <span class="op">=</span> <span class="fl">32L</span><span class="op">)</span></span></code></pre></div>
+<p><code>precluster=FALSE</code> uses all ion channels, <code>1L</code>
+uses their total, and <code>32L</code> uses at most 32 size-adjusted
+groups. The same identity-link noise models are available as in
+<code><a href="../reference/splogconNMF.html">splogconNMF()</a></code>, including negative binomial and Gamma
+models. The <a href="../reference/estimate_psf.html">PSF help page</a>
+describes likelihood fitting, noise scaling and aggregation.</p>
+<p><code><a href="../reference/GCMSdeco.html">GCMSdeco()</a></code> uses the same estimator. A CDF contains the
+sample chromatogram; its accompanying R calibration attribute can be
+supplied explicitly:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">calibrated</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/GCMSdeco.html">GCMSdeco</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2.cdf"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2_calibrated.msp"</span><span class="op">)</span>, nwindows <span class="op">=</span> <span class="fl">3L</span>, precluster <span class="op">=</span> <span class="fl">32L</span>,</span>
+<span>  psf_control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>standard <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, <span class="st">"alkanes_TIC"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Calibration peaks should reflect the sample’s chromatographic
+conditions. The bundled beer calibration has broader peaks than the PSF
+used in the plotted comparison, so the table and figures below use the
+explicit Gaussian PSFs in <code>fit1</code> and <code>fit2</code> above.
+Automatic calibration is available through the calls in this
+section.</p>
 <!-- BEGIN gcms-results -->
 <p>These results were obtained with the calls above on the <a href="performance.html#reproduce-and-extend">benchmark workstation</a>,
-using eight OpenMP workers and one BLAS thread. Timings include CDF
-reading, PSF estimation, factorization and MSP export.</p>
+using eight OpenMP workers and one BLAS thread. Timings are medians of
+two complete runs, including CDF reading, PSF initialization,
+factorization and MSP export.</p>
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="14%">
@@ -177,7 +216,7 @@ reading, PSF estimation, factorization and MSP export.</p>
 <td align="right">119</td>
 <td align="right">671</td>
 <td align="right">6</td>
-<td align="right">5.09</td>
+<td align="right">4.77</td>
 <td align="right">219,686</td>
 <td align="right">0.98980</td>
 </tr>
@@ -186,9 +225,9 @@ reading, PSF estimation, factorization and MSP export.</p>
 <td align="right">1,764</td>
 <td align="right">518</td>
 <td align="right">37</td>
-<td align="right">58.33</td>
-<td align="right">1,325,745</td>
-<td align="right">0.99392</td>
+<td align="right">92.21</td>
+<td align="right">1,289,044</td>
+<td align="right">0.99418</td>
 </tr>
 </tbody>
 </table>
@@ -196,6 +235,7 @@ reading, PSF estimation, factorization and MSP export.</p>
 separate weighted mean for each ion channel. Its adjustment is
 conditional on the fitted profiles, using the positive spectral
 coefficients and background coefficients as the parameter count.</p>
+</div>
 <div class="section level3">
 <h3 id="cuticular-hydrocarbons">Cuticular hydrocarbons<a class="anchor" aria-label="anchor" href="#cuticular-hydrocarbons"></a>
 </h3>
@@ -233,7 +273,9 @@ GCMS_data2</div>
 </div>
 <p>The profile/spectrum preview includes the broadest component and five
 other large components, in temporal order. The PDF contains every
-recovered component.</p>
+recovered component. The broad acid peak is represented by one extended
+log-concave profile (compound 20 in this fit), while the smaller
+neighbouring peaks remain distinct.</p>
 <p>Download <a href="../gcms/gcms-data2-traces.pdf">traces</a>, <a href="../gcms/gcms-data2-heatmaps.pdf">heatmaps</a>, <a href="../gcms/gcms-data2-profiles-spectra.pdf">all profiles and
 spectra</a>, or the <a href="../gcms/gcms-data2.msp">MSP library</a>.
 <!-- END gcms-results --></p>
@@ -242,7 +284,7 @@ spectra</a>, or the <a href="../gcms/gcms-data2.msp">MSP library</a>.
 <div class="section level2">
 <h2 id="plot-and-export-the-results">Plot and export the results<a class="anchor" aria-label="anchor" href="#plot-and-export-the-results"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit1</span>, type <span class="op">=</span> <span class="st">"lines"</span>, nrows <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  minutes_per_panel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">fit1</span><span class="op">$</span><span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">0.01</span>, labels <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit1</span>, type <span class="op">=</span> <span class="st">"heatmap"</span><span class="op">)</span></span>
@@ -274,7 +316,7 @@ scans from that file.</p>
 <p>Use <code><a href="../reference/splogconNMF.html">splogconNMF()</a></code> when a suitable PSF design and
 background basis are already available. This also gives direct control
 over the background for a short chromatographic window:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">GCMS_data1</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/convmatrix.html">convmatrix</a></span><span class="op">(</span><span class="fu"><a href="../reference/convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="fl">65L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="fl">1L</span><span class="op">)</span>          <span class="co"># constant background in this short window</span></span>
@@ -334,7 +376,12 @@ improves.</li>
 their coefficients using the original observations and noise model.</li>
 <li>Refine local log-concave profiles and spectra, treating all other
 compounds as offsets. Consider broad-anchor and compatible-tail fusions,
-restoring distinct components when the full criterion favours them.</li>
+restoring distinct components when the full criterion favours them. A
+narrow fragment contained within a spectrally matching broad profile can
+also receive a guarded whole-profile refit with a shared background
+update. Neighbouring modes remain within one quarter of their starting
+FWHM; the complete original-channel criterion must decrease for the
+fusion to be retained.</li>
 <li>Apply the conservative broad-profile fusion pass, refine the
 affected neighbourhoods, and return profiles and spectra in temporal
 order.</li>

@@ -286,6 +286,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 </div>
 <p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
 <p>For broad or asymmetric peaks, <a href="reference/splogconNMF.html">splogconNMF()</a> recovers log-concave elution profiles and spectra with a smooth background. <a href="reference/GCMSdeco.html">GCMSdeco()</a> runs the workflow directly from an ANDI-MS <code>.cdf</code> chromatogram and exports the compound spectra to a NIST-compatible <code>.msp</code> library.</p>
+<p><a href="reference/estimate_psf.html">estimate_psf()</a> estimates constant or smoothly varying PSFs from a calibration standard or the sample, returning a sparse design ready for deconvolution.</p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-starting-point">Choose a starting point<a class="anchor" aria-label="anchor" href="#choose-a-starting-point"></a>
@@ -373,7 +374,6 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <li>Laura Lanzas <br><small class="roles"> Author </small>   </li>
 <li>Christophe Vanderaa <br><small class="roles"> Author </small>   </li>
 <li>Niamh Callinan Keenan <br><small class="roles"> Contributor </small>   </li>
-<li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
 
