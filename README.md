@@ -120,7 +120,7 @@ copies of the peak-shape function (or "point spread function"), L0glm recovers
 the underlying peaks and their mass spectra in a highly efficient and accurate way.
 
 <!-- BEGIN multi-speed -->
-In this 2,26 million coefficient example, L0glm recovers **944 of 1,000 true peaks 
+In this 2.26 million coefficient example, L0glm recovers **944 of 1,000 true peaks 
 with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned 
 group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** 
 in this comparison, while also boasting a much reduced false-positive rate (0.11% vs. 
