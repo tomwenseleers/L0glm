@@ -113,7 +113,9 @@
 #'                    iteration when \code{plot=TRUE}.
 #' @param plot Boolean specifying whether to plot the estimated PSF in each iteration
 #'             (alongside the true PSF if \code{kernel_true} is given).                                        
-#' @param maxiter  Integer >= 1.  Maximum alternating steps. Default 15.
+#' @param maxiter Integer >= 0. Maximum alternating steps. Default 15.
+#'   Zero keeps a supplied \code{kernel_est} fixed and fits its spike train
+#'   and background without updating the PSF.
 #' @param tol      Relative L1 change in the PSF that triggers early stop (default 1e-3).
 #'
 #' @return A list with components
@@ -214,7 +216,9 @@ L0glm_blind_deco <- function(y,
   n <- nrow(y)
   L0glm_deco_length(nwindows, "nwindows", 1L)
   if (!is.null(kernel_est)) L <- if (is.matrix(kernel_est)) ncol(kernel_est) else length(kernel_est)
-  L0glm_deco_length(maxiter, "maxiter", 1L)
+  L0glm_deco_length(maxiter, "maxiter", 0L)
+  if(maxiter==0L && is.null(kernel_est))
+    stop("Supply kernel_est when maxiter=0.",call.=FALSE)
   if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol < 0)
     stop("tol must be a finite nonnegative number.", call. = FALSE)
   if (nwindows > 1L) {
@@ -247,6 +251,7 @@ L0glm_blind_deco <- function(y,
   }
   converged <- FALSE
   next_fit <- NULL
+  it <- 0L
   for (it in seq_len(maxiter)) {
     if (plot) {
       if (is.null(kernel_true)) { plot(g_hat, type = "l", 
@@ -316,17 +321,18 @@ L0glm_blind_deco <- function(y,
     dev_trace[it] <- L0glm_deco_deviance(y, y_hat, family)
     if (delta < tol) { converged <- TRUE; break }
   }
+  if(maxiter==0L) it <- 0L
   # Synchronize the final spike and background estimates with the returned PSF.
   fit <- if (!is.null(next_fit)) next_fit else L0glm_sparse_deco(y, family = family, kernel = g_hat, baseline = baseline,
                           nknots = nknots, IC = IC, grouped = grouped, ...)
   checkpoint(fit, g_hat, it)
-  converged <- converged && (is.null(best) || sum(abs(best$kernel - g_hat)) < tol)
+  converged <- maxiter==0L || (converged && (is.null(best) || sum(abs(best$kernel - g_hat)) < tol))
   if (!is.null(best)) { fit <- best$fit; g_hat <- best$kernel }
-  dev_trace[it] <- fit$deviance
+  dev_trace[max(1L,it)] <- fit$deviance
   
   list(a_hat = fit$coef_spikes,
        g_hat = g_hat,
-       deviance_trace = dev_trace[seq_len(it)],
+       deviance_trace = dev_trace[seq_len(max(1L,it))],
        fitted_values = fit$fitted_values,
        fitted_baseline = fit$fitted_baseline,
        coef_baseline = fit$coef_baseline,

@@ -82,7 +82,7 @@
 #' "shark-fin" octanoic-acid peak whose apex lies at RT 21.50 min. For details 
 #' see Schreurs et al. Nature Communications 2024.
 #'
-#' @format A numeric matrix with 764 rows (time slices) and 518 columns (m/z values).
+#' @format A numeric matrix with 1764 rows (time slices) and 518 columns (m/z values).
 #' \describe{
 #'   \item{Rows}{Individual full-scan acquisitions (time scans).
 #'               Row names give the scan mid-point in minutes

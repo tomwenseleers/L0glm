@@ -32,6 +32,7 @@ and shark-fin peaks while retaining all original outcome channels."><meta proper
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
@@ -194,7 +195,8 @@ a number between zero and 0.49 supplies the lag-one correlation.</p></dd>
 <dd><p>Named list: <code>broad_repeats=1L</code>, <code>full_sweeps=1L</code>,
 <code>final_polishes=1L</code>, <code>native_sweeps=6L</code>, <code>block_sweeps=6L</code>,
 <code>psf_width=NULL</code>, <code>screen_factor=1</code>, <code>censor=0.5</code>, <code>linkage="ward"</code>,
-<code>joint_trials=NULL</code>, <code>profile_fusion=TRUE</code>. <code>joint_trials</code> uses direct Poisson fusion for Poisson data
+<code>joint_trials=NULL</code>, <code>profile_cycles=10L</code>, <code>fusion_passes=5L</code>,
+<code>profile_fusion=TRUE</code>. <code>joint_trials</code> uses direct Poisson fusion for Poisson data
 and joint local refinement for the other families. <code>psf_width</code> supplies
 the typical FWHM in scans. When omitted, local updates use the middle design
 column and broad-profile fusion uses the median of up to 21 representative
@@ -205,6 +207,9 @@ limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
 <code>linkage</code> may be <code>"ward"</code> or <code>"bregman"</code>. <code>joint_trials</code> allows overlapping
 compounds to adjust together during local fusion refinement.
+<code>profile_cycles</code> bounds the original-channel shape/background refinement;
+zero disables it. <code>fusion_passes</code> bounds broad-anchor and compatible-tail
+fusion after that refinement.
 <code>profile_fusion</code> enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.</p></dd>
 
@@ -249,7 +254,21 @@ scan, also returned in <code>apex_scan</code>. Their labels identify the same co
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p><strong>Model and selection criterion.</strong> With scans in rows, write
+    <p><strong>Generalized matrix factorization.</strong> The model is an identity-link,
+nonnegative generalized matrix factorization (GMF), with a smooth background,
+log-concave profiles and automatic rank selection. See Kidzinski et al.
+(2022) and Castiglione et al. (2026). The function retains the NMF name;
+<a href="../articles/log-concave-nmf.html#generalized-matrix-factorization">the mathematical article</a>
+relates its mean model to the GMF formulation.</p>
+<p><strong>Deviance matrix factorization.</strong> This is a rank-penalized, nonnegative
+deviance matrix factorization on the mean scale, with hard log-concavity
+constraints and an additive background. For standard exponential families
+with fixed noise parameters, the loss is a weighted Bregman divergence:
+Gaussian gives squared error, Poisson gives generalized KL, and uncensored
+Gamma gives Itakura–Saito. See Wang and Carvalho (2023), and Li and Tyagi
+(2023). The <a href="../articles/log-concave-nmf.html#deviance-matrix-factorization-and-bregman-nmf">mathematical article</a>
+gives the derivation and the negative-binomial case.</p>
+<p><strong>Model and selection criterion.</strong> With scans in rows, write
 $$\mu=HS+B A+O,\qquad H,S,A\geq0.$$
 Each profile has unit sum, contiguous positive support and
 \(\Delta^2\log H_{\cdot r}\leq0\) on that support. The objective is
@@ -344,7 +363,43 @@ common-scale Gamma latent signals also add. Standard NB2 and Gamma use
 moment-matched aggregate parameters. Censored Gamma sums and differing
 channel weights give working approximations in the reduced space. The
 returned model always contains all original channels, their offsets and
-their original-channel likelihood.</p>
+their original-channel likelihood.
+The compound penalty uses the original channel count throughout aggregation.
+Selection and initial fusion run in the reduced space. Lifting the spectra
+to the original channels is followed by a spectral/background refit and
+local shape refinement, with no repetition of the reduced-space search.
+Worked full-channel fits to <a href="GCMS_data1.html">GCMS_data1</a> and <a href="GCMS_data2.html">GCMS_data2</a>, with traces,
+heatmaps, profiles and spectra, are shown in the
+<a href="../articles/gcms-deconvolution.html">GC/MS deconvolution tutorial</a> and
+the <code><a href="GCMSdeco.html">GCMSdeco()</a></code> help page. <code><a href="write_GCMS_cdf.html">write_GCMS_cdf()</a></code> exports these matrices for
+the complete file-based workflow.</p>
+<p><strong>Smooth local profiles.</strong> Original-channel refinement fits
+\(\eta(t)=a+bt-\tfrac12\sum_j c_j\{(t-u_j)_+^2-(t-v_j)_+^2\}\),
+with \(c_j\geq0\). Thus \(\eta''(t)\leq0\) and
+\(H(t)=\exp\{\eta(t)\}\) is log-concave. Fisher scoring uses the
+original observation model and the chain-rule score/information given above.
+Small constrained quadratic solves and likelihood backtracking update each
+local profile. Joint spectral updates separate overlapping compounds;
+compatible broad-profile and tail fusions are accepted under the same
+original-channel likelihood and compound-count penalty.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Wang, L. and Carvalho, L. E. (2023). Deviance matrix factorization.
+Electronic Journal of Statistics 17(2), 3762–3810. <a href="https://doi.org/10.1214/23-EJS2174" class="external-link">doi:10.1214/23-EJS2174</a>
+.
+Li, X. and Tyagi, A. (2023). Block-active ADMM to minimize NMF with Bregman
+divergences. Sensors 23(16), 7229. <a href="https://doi.org/10.3390/s23167229" class="external-link">doi:10.3390/s23167229</a>
+.
+Kidzinski, L., Hui, F. K. C., Warton, D. I. and Hastie, T. J. (2022).
+Generalized matrix factorization: efficient algorithms for fitting
+generalized linear latent variable models to large data arrays.
+JMLR 23(291), 1–29. <a href="https://www.jmlr.org/papers/v23/20-1104.html" class="external-link">https://www.jmlr.org/papers/v23/20-1104.html</a>.
+Castiglione, C., Segers, A., Clement, L. and Risso, D. (2026).
+Stochastic gradient descent estimation of generalized matrix factorization
+models with application to single-cell RNA sequencing data.
+Biostatistics 27(1), kxag010. <a href="https://doi.org/10.1093/biostatistics/kxag010" class="external-link">doi:10.1093/biostatistics/kxag010</a>
+.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -382,7 +437,34 @@ their original-channel likelihood.</p>
 <span></span>
 <span><span class="co"># Other identity-link choices include gaussian(), mgcv::nb(), Gamma(),</span></span>
 <span><span class="co"># nb1(dispersion=5, link="identity"), and</span></span>
-<span><span class="co"># Gamma_scale(scale=5, link="identity", censor=0.5).</span></span></code></pre></div>
+<span><span class="co"># Gamma_scale(scale=5, link="identity", censor=0.5).</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
+<span><span class="co"># Six co-eluting compounds, retaining all 671 mass channels.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GCMS_data1</span><span class="op">)</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">GCMS_data1</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="convmatrix.html">convmatrix</a></span><span class="op">(</span><span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="fl">65L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">f1</span> <span class="op">&lt;-</span> <span class="fu">splogconNMF</span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span>, background <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">quasipoisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>, precluster <span class="op">=</span> <span class="fl">16L</span>,</span>
+<span>  correlation <span class="op">=</span> <span class="st">"none"</span>, ncores <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>compounds <span class="op">=</span> <span class="va">f1</span><span class="op">$</span><span class="va">rank</span>, GIC <span class="op">=</span> <span class="fu"><a href="model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">f1</span><span class="op">)</span>, seconds <span class="op">=</span> <span class="va">f1</span><span class="op">$</span><span class="va">seconds</span><span class="op">[[</span><span class="st">"total"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/matplot.html" class="external-link">matplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">f1</span><span class="op">$</span><span class="va">H</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"l"</span>, lty <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  xlab <span class="op">=</span> <span class="st">"Retention time (min)"</span>, ylab <span class="op">=</span> <span class="st">"Unit-area elution profile"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Beer volatiles with a broad acid peak and a low-df spline background.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GCMS_data2</span><span class="op">)</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">GCMS_data2</span></span>
+<span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="convmatrix.html">convmatrix</a></span><span class="op">(</span><span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="fl">65L</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fu">splines</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/splines/bs.html" class="external-link">bs</a></span><span class="op">(</span><span class="va">time</span>, df <span class="op">=</span> <span class="fl">4L</span>, intercept <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">f2</span> <span class="op">&lt;-</span> <span class="fu">splogconNMF</span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span>, background <span class="op">=</span> <span class="va">B</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">quasipoisson</a></span><span class="op">(</span><span class="st">"identity"</span><span class="op">)</span>, precluster <span class="op">=</span> <span class="fl">32L</span>,</span>
+<span>  correlation <span class="op">=</span> <span class="st">"none"</span>, ncores <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>compounds <span class="op">=</span> <span class="va">f2</span><span class="op">$</span><span class="va">rank</span>, GIC <span class="op">=</span> <span class="fu"><a href="model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span>, seconds <span class="op">=</span> <span class="va">f2</span><span class="op">$</span><span class="va">seconds</span><span class="op">[[</span><span class="st">"total"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="plotmat.html">plotmat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">f2</span><span class="op">)</span>, xlab <span class="op">=</span> <span class="st">"Retention time (min)"</span>, ylab <span class="op">=</span> <span class="st">"Mass (m/z)"</span>,</span>
+<span>  main <span class="op">=</span> <span class="st">"Fitted GC/MS chromatogram"</span><span class="op">)</span></span>
+<span><span class="co"># GCMSdeco() adds CDF input, MSP/Excel export, and traces/heatmaps/profile plots.</span></span>
+<span><span class="op">}</span> <span class="co"># }</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

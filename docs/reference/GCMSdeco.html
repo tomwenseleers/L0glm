@@ -32,6 +32,7 @@ are retained in the final spectra."><meta property="og:image" content="https://t
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
@@ -193,6 +194,8 @@ standard. The whole standard is used when omitted.</p></dd>
 
 <dt id="arg-baseline-df">baseline_df<a class="anchor" aria-label="anchor" href="#arg-baseline-df"></a></dt>
 <dd><p>Dimension of the nonnegative cubic B-spline background.
+Use <code>1L</code> for a constant background in a short window. A spline uses
+at least four basis functions.
 <code>NULL</code> chooses a low-dimensional basis from the scan count and typical
 PSF width; an integer of at least four fixes its dimension.</p></dd>
 
@@ -233,7 +236,8 @@ a number between zero and 0.49 supplies the lag-one correlation.</p></dd>
 <dd><p>Named list: <code>broad_repeats=1L</code>, <code>full_sweeps=1L</code>,
 <code>final_polishes=1L</code>, <code>native_sweeps=6L</code>, <code>block_sweeps=6L</code>,
 <code>psf_width=NULL</code>, <code>screen_factor=1</code>, <code>censor=0.5</code>, <code>linkage="ward"</code>,
-<code>joint_trials=NULL</code>, <code>profile_fusion=TRUE</code>. <code>joint_trials</code> uses direct Poisson fusion for Poisson data
+<code>joint_trials=NULL</code>, <code>profile_cycles=10L</code>, <code>fusion_passes=5L</code>,
+<code>profile_fusion=TRUE</code>. <code>joint_trials</code> uses direct Poisson fusion for Poisson data
 and joint local refinement for the other families. <code>psf_width</code> supplies
 the typical FWHM in scans. When omitted, local updates use the middle design
 column and broad-profile fusion uses the median of up to 21 representative
@@ -244,12 +248,16 @@ limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
 <code>linkage</code> may be <code>"ward"</code> or <code>"bregman"</code>. <code>joint_trials</code> allows overlapping
 compounds to adjust together during local fusion refinement.
+<code>profile_cycles</code> bounds the original-channel shape/background refinement;
+zero disables it. <code>fusion_passes</code> bounds broad-anchor and compatible-tail
+fusion after that refinement.
 <code>profile_fusion</code> enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.</p></dd>
 
 
 <dt id="arg-psf-control">psf_control<a class="anchor" aria-label="anchor" href="#arg-psf-control"></a></dt>
 <dd><p>Named list passed to <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, for example
+<code>list(kernel_est=psf, maxiter=0L)</code> keeps a supplied PSF fixed.
 <code>list(L=61L, maxiter=8L, tol=1e-3)</code>. <code>kernel_est</code> supplies a known
 initial PSF. Data and <code>nwindows</code> are set by this function. The scalar
 Poisson working weight is matched to the final noise model by default;
@@ -348,28 +356,66 @@ hard log concavity, censored Gamma intensities and compound-count information
 criteria follow <code><a href="splogconNMF.html">splogconNMF()</a></code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="experimental-gc-ms-examples">Experimental GC/MS examples<a class="anchor" aria-label="anchor" href="#experimental-gc-ms-examples"></a></h2>
+
+
+<p>The <a href="../articles/gcms-deconvolution.html">GC/MS deconvolution tutorial</a>
+converts the bundled <a href="GCMS_data1.html">GCMS_data1</a> and <a href="GCMS_data2.html">GCMS_data2</a> matrices to CDF, fits the
+full-channel models and exports their spectra. It includes timings,
+information criteria and all plot types, alongside the algorithm.
+
+<strong>GCMS_data1: overlapping cuticular hydrocarbons.</strong>
+<img src="figures/gcms-data1-traces.png" alt="Background-corrected observed mass traces and fitted compounds."><img src="figures/gcms-data1-heatmaps.png" alt="Observed, corrected, fitted and Pearson-residual heatmaps."><img src="figures/gcms-data1-profiles-spectra.png" alt="Recovered elution profiles and mass spectra."><strong>GCMS_data2: beer volatiles with an asymmetric acid peak.</strong>
+<img src="figures/gcms-data2-traces.png" alt="Observed ion traces and fitted beer-volatile components."><img src="figures/gcms-data2-heatmaps.png" alt="Full-channel signal and Pearson-residual heatmaps."><img src="figures/gcms-data2-profiles-spectra.png" alt="Representative compound profiles and mass spectra."></p>
+    </div>
+    <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>NIST MS Search user manual, section on NIST text format:
 <a href="https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf" class="external-link">https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf</a>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="plot.GCMSdeco.html">plot.GCMSdeco()</a></code>, <code><a href="splogconNMF.html">splogconNMF()</a></code>, <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, <code><a href="estimate_psf_from_std.html">estimate_psf_from_std()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="write_GCMS_cdf.html">write_GCMS_cdf()</a></code>, <code><a href="plot.GCMSdeco.html">plot.GCMSdeco()</a></code>, <code><a href="splogconNMF.html">splogconNMF()</a></code>, <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>, <code><a href="estimate_psf_from_std.html">estimate_psf_from_std()</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="st">"beer.cdf"</span>, <span class="st">"beer.msp"</span>, alkanes_file<span class="op">=</span><span class="st">"alkanes.cdf"</span>,</span>
-<span>                time_range<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">6</span>, <span class="cn">Inf</span><span class="op">)</span>, xlsx_file<span class="op">=</span><span class="st">"beer.xlsx"</span><span class="op">)</span></span>
-<span><span class="va">fit</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">compounds</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                 <span class="co"># unnormalized spectra, all channels</span></span>
-<span><span class="fu"><a href="model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type<span class="op">=</span><span class="st">"lines"</span>, file<span class="op">=</span><span class="st">"beer_traces.pdf"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span>, type<span class="op">=</span><span class="st">"heatmap"</span>, file<span class="op">=</span><span class="st">"beer_heatmaps.pdf"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/matplot.html" class="external-link">matplot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">time</span>, <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="va">H</span><span class="op">)</span>, type<span class="op">=</span><span class="st">"l"</span>, lty<span class="op">=</span><span class="fl">1</span>,</span>
-<span>        xlab<span class="op">=</span><span class="st">"Retention time (min)"</span>, ylab<span class="op">=</span><span class="st">"Elution profile"</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GCMS_data1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GCMS_data2</span><span class="op">)</span></span>
+<span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"L0glm-GCMS"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">out</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="write_GCMS_cdf.html">write_GCMS_cdf</a></span><span class="op">(</span><span class="va">GCMS_data1</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data1.cdf"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="write_GCMS_cdf.html">write_GCMS_cdf</a></span><span class="op">(</span><span class="va">GCMS_data2</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2.cdf"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data1.cdf"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data1.msp"</span><span class="op">)</span>, nwindows <span class="op">=</span> <span class="fl">1L</span>, precluster <span class="op">=</span> <span class="fl">16L</span>,</span>
+<span>  baseline_df <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  correlation <span class="op">=</span> <span class="st">"none"</span>, ncores <span class="op">=</span> <span class="fl">8L</span>,</span>
+<span>  psf_control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>kernel_est <span class="op">=</span> <span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="fl">65L</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span>, maxiter <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2.cdf"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2.msp"</span><span class="op">)</span>, nwindows <span class="op">=</span> <span class="fl">1L</span>, precluster <span class="op">=</span> <span class="fl">32L</span>,</span>
+<span>  correlation <span class="op">=</span> <span class="st">"none"</span>, ncores <span class="op">=</span> <span class="fl">8L</span>,</span>
+<span>  psf_control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>kernel_est <span class="op">=</span> <span class="fu"><a href="convkernel.html">convkernel</a></span><span class="op">(</span><span class="st">"gaussian"</span>, <span class="fl">65L</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sigma <span class="op">=</span> <span class="fl">6</span><span class="op">)</span><span class="op">)</span>, maxiter <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit1</span><span class="op">$</span><span class="va">compounds</span></span>
+<span><span class="fu"><a href="model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">fit2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit2</span>, normalize <span class="op">=</span> <span class="st">"l1"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit1</span>, type <span class="op">=</span> <span class="st">"lines"</span>, nrows <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  minutes_per_panel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">fit1</span><span class="op">$</span><span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">.01</span>, labels <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit1</span>, type <span class="op">=</span> <span class="st">"heatmap"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit1</span>, type <span class="op">=</span> <span class="st">"profiles"</span>, nrows <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit2</span>, type <span class="op">=</span> <span class="st">"lines"</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2_traces.pdf"</span><span class="op">)</span>,</span>
+<span>  nrows <span class="op">=</span> <span class="fl">1L</span>, minutes_per_panel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">fit2</span><span class="op">$</span><span class="va">time</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">.01</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit2</span>, type <span class="op">=</span> <span class="st">"heatmap"</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2_heatmaps.pdf"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit2</span>, type <span class="op">=</span> <span class="st">"profiles"</span>, file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">out</span>, <span class="st">"GCMS_data2_profiles_and_spectra.pdf"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># For a full chromatogram with a separate calibration standard:</span></span>
+<span><span class="va">beer</span> <span class="op">&lt;-</span> <span class="fu">GCMSdeco</span><span class="op">(</span><span class="st">"beer.cdf"</span>, <span class="st">"beer.msp"</span>, alkanes_file <span class="op">=</span> <span class="st">"alkanes.cdf"</span>,</span>
+<span>  xlsx_file <span class="op">=</span> <span class="st">"beer.xlsx"</span>, nwindows <span class="op">=</span> <span class="fl">10L</span>, precluster <span class="op">=</span> <span class="fl">32L</span><span class="op">)</span></span>
 <span><span class="op">}</span> <span class="co"># }</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

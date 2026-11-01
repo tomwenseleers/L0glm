@@ -10,6 +10,11 @@ Our methods for automatically setting regularization, the extensions to Poisson
 or negative-binomial noise, and the multichannel shared-support extensions are
 new developments of the present work. `simul()` supports all three noise models.
 
+For experimental chromatograms with flexible peak shapes, a smooth background
+and full mass-spectrum export, see the [GC/MS deconvolution tutorial](gcms-deconvolution.html).
+It works through both bundled GC/MS datasets using `splogconNMF()` and
+`GCMSdeco()`, with traces, heatmaps, elution profiles and recovered spectra.
+
 In deconvolution, a design matrix contains shifted copies of the peak-shape
 function, also called the point spread function. Sparse coefficients represent
 sharp events, while the measured signal is blurred and noisy. For nonnegative

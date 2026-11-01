@@ -52,6 +52,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
@@ -79,19 +80,24 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Poisson spike-train deconvolution</h1>
-            
-      
+
+
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/deconvolution.Rmd" class="external-link"><code>vignettes/articles/deconvolution.Rmd</code></a></small>
       <div class="d-none name"><code>deconvolution.Rmd</code></div>
     </div>
 
-    
-    
+
+
 <p>The L0 deconvolution idea was inspired by work by <a href="https://doi.org/10.1016/j.aca.2011.05.030" class="external-link">de Rooi &amp; Eilers
 (2011)</a>. Our methods for automatically setting regularization, the
 extensions to Poisson or negative-binomial noise, and the multichannel
 shared-support extensions are new developments of the present work.
 <code><a href="../reference/simul.html">simul()</a></code> supports all three noise models.</p>
+<p>For experimental chromatograms with flexible peak shapes, a smooth
+background and full mass-spectrum export, see the <a href="gcms-deconvolution.html">GC/MS deconvolution tutorial</a>. It
+works through both bundled GC/MS datasets using
+<code><a href="../reference/splogconNMF.html">splogconNMF()</a></code> and <code><a href="../reference/GCMSdeco.html">GCMSdeco()</a></code>, with traces,
+heatmaps, elution profiles and recovered spectra.</p>
 <p>In deconvolution, a design matrix contains shifted copies of the
 peak-shape function, also called the point spread function. Sparse
 coefficients represent sharp events, while the measured signal is

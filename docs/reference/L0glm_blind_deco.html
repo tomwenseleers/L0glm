@@ -52,6 +52,7 @@ Set perc = 0 to retain the estimated time origin without recentering."><meta pro
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
@@ -200,7 +201,9 @@ iteration when <code>plot=TRUE</code>.</p></dd>
 
 
 <dt id="arg-maxiter">maxiter<a class="anchor" aria-label="anchor" href="#arg-maxiter"></a></dt>
-<dd><p>Integer &gt;= 1.  Maximum alternating steps. Default 15.</p></dd>
+<dd><p>Integer &gt;= 0. Maximum alternating steps. Default 15.
+Zero keeps a supplied <code>kernel_est</code> fixed and fits its spike train
+and background without updating the PSF.</p></dd>
 
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
@@ -513,4 +516,3 @@ to exploit grouped-sparsity when several channels are deconvolved jointly.</p>
 
 
   </body></html>
-

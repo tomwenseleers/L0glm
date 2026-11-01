@@ -30,6 +30,7 @@ Native OpenMP kernels calculate distances, Bregman merges and profile losses."><
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
@@ -263,7 +264,7 @@ clustering with exact likelihood-ratio distances and a Ward hierarchy.</p></div>
 <span><span class="co"># A fixed-variance Gaussian example uses exact Bregman likelihood merges.</span></span>
 <span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">*</span><span class="fl">5</span>, <span class="op">-</span><span class="fl">2</span>, <span class="fl">.5</span><span class="op">)</span>,<span class="fl">60</span><span class="op">)</span>,</span>
 <span>           <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">*</span><span class="fl">5</span>,  <span class="fl">2</span>, <span class="fl">.5</span><span class="op">)</span>,<span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">normal</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Z</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, dispersion<span class="op">=</span><span class="fl">.25</span>, k.max<span class="op">=</span><span class="fl">5L</span><span class="op">)</span></span>
+<span><span class="va">normal</span> <span class="op">&lt;-</span> <span class="fu">glm_cluster</span><span class="op">(</span><span class="va">Z</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, dispersion<span class="op">=</span><span class="fl">.25</span>, k.max<span class="op">=</span><span class="fl">5L</span><span class="op">)</span></span>
 <span><span class="va">normal</span><span class="op">$</span><span class="va">clusterids</span></span>
 <span></span>
 <span><span class="co"># \donttest{</span></span>
@@ -296,4 +297,3 @@ clustering with exact likelihood-ratio distances and a Ward hierarchy.</p></div>
 
 
   </body></html>
-

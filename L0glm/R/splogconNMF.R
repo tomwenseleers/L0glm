@@ -254,6 +254,22 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #' @param k Complexity multiplier for [stats::AIC()].
 #'
 #' @details
+#' **Generalized matrix factorization.** The model is an identity-link,
+#' nonnegative generalized matrix factorization (GMF), with a smooth background,
+#' log-concave profiles and automatic rank selection. See Kidzinski et al.
+#' (2022) and Castiglione et al. (2026). The function retains the NMF name;
+#' [the mathematical article](../articles/log-concave-nmf.html#generalized-matrix-factorization)
+#' relates its mean model to the GMF formulation.
+#'
+#' **Deviance matrix factorization.** This is a rank-penalized, nonnegative
+#' deviance matrix factorization on the mean scale, with hard log-concavity
+#' constraints and an additive background. For standard exponential families
+#' with fixed noise parameters, the loss is a weighted Bregman divergence:
+#' Gaussian gives squared error, Poisson gives generalized KL, and uncensored
+#' Gamma gives Itakura--Saito. See Wang and Carvalho (2023), and Li and Tyagi
+#' (2023). The [mathematical article](../articles/log-concave-nmf.html#deviance-matrix-factorization-and-bregman-nmf)
+#' gives the derivation and the negative-binomial case.
+#'
 #' **Model and selection criterion.** With scans in rows, write
 #' \deqn{\mu=HS+B A+O,\qquad H,S,A\geq0.}
 #' Each profile has unit sum, contiguous positive support and
@@ -361,6 +377,11 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #' Selection and initial fusion run in the reduced space. Lifting the spectra
 #' to the original channels is followed by a spectral/background refit and
 #' local shape refinement, with no repetition of the reduced-space search.
+#' Worked full-channel fits to [GCMS_data1] and [GCMS_data2], with traces,
+#' heatmaps, profiles and spectra, are shown in the
+#' [GC/MS deconvolution tutorial](../articles/gcms-deconvolution.html) and
+#' the [GCMSdeco()] help page. [write_GCMS_cdf()] exports these matrices for
+#' the complete file-based workflow.
 #'
 #' **Smooth local profiles.** Original-channel refinement fits
 #' \eqn{\eta(t)=a+bt-\tfrac12\sum_j c_j\{(t-u_j)_+^2-(t-v_j)_+^2\}},
@@ -383,6 +404,18 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #'   Columns of `H` and the matching rows of `S` are ordered by increasing apex
 #'   scan, also returned in `apex_scan`. Their labels identify the same compounds.
 #' @seealso [GCMSdeco()], [L0glm_blind_deco()], [L0glm.fit()], [glm_cluster()]
+#' @references Wang, L. and Carvalho, L. E. (2023). Deviance matrix factorization.
+#'   Electronic Journal of Statistics 17(2), 3762--3810. \doi{10.1214/23-EJS2174}.
+#'   Li, X. and Tyagi, A. (2023). Block-active ADMM to minimize NMF with Bregman
+#'   divergences. Sensors 23(16), 7229. \doi{10.3390/s23167229}.
+#'   Kidzinski, L., Hui, F. K. C., Warton, D. I. and Hastie, T. J. (2022).
+#'   Generalized matrix factorization: efficient algorithms for fitting
+#'   generalized linear latent variable models to large data arrays.
+#'   JMLR 23(291), 1--29. \url{https://www.jmlr.org/papers/v23/20-1104.html}.
+#'   Castiglione, C., Segers, A., Clement, L. and Risso, D. (2026).
+#'   Stochastic gradient descent estimation of generalized matrix factorization
+#'   models with application to single-cell RNA sequencing data.
+#'   Biostatistics 27(1), kxag010. \doi{10.1093/biostatistics/kxag010}.
 #' @example examples/splogconNMF.R
 #' @md
 #' @export

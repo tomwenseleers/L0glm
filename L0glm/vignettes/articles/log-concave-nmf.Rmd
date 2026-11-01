@@ -24,6 +24,8 @@ For experimental GC/MS intensities, `family=quasipoisson("identity")` allows
 extra variation through one pooled temporal dispersion estimate. Gaussian,
 negative-binomial and Gamma likelihoods are also available. The help page
 [`?splogconNMF`](../reference/splogconNMF.html) gives all arguments and examples.
+The [GC/MS deconvolution tutorial](gcms-deconvolution.html) shows complete
+experimental examples, including CDF input, MSP export and all four plot types.
 
 ## Model and criterion
 
@@ -46,10 +48,95 @@ Here \(m\) is the original channel count, \(\nu\) contains pooled noise
 parameters and \(\kappa=1\) for independent observations. Numeric `lambda`
 specifies the total compound penalty before the optional covariance adjustment.
 Background coefficients and profile complexity have no additional penalty.
+The original channel count is retained in this penalty when the observations
+are aggregated, so changing the number of outcome groups does not change
+the compound penalty.
 Dividing by the channel count gives the equivalent criterion
 \(-2\ell/m+\kappa\lambda_{IC}K\), with one rank penalty per compound.
 The reported IC methods use the compound-count convention \(mK\), plus any
 estimated shared noise parameters.
+
+## Generalized matrix factorization
+
+The broad statistical setting is **generalized matrix factorization (GMF)**:
+an exponential-family mean is linked to a low-rank product, optionally with
+observed covariate effects and offsets. See
+[Kidziński et al. (2022)](https://www.jmlr.org/papers/v23/20-1104.html) and
+[Castiglione et al. (2026)](https://doi.org/10.1093/biostatistics/kxag010).
+For example, the latter mean-model structure is
+
+\[
+g(\mu)=X_{\rm row}B_{\rm row}^{\top}
+       +B_{\rm col}X_{\rm col}^{\top}+UV^{\top}+O.
+\]
+
+Our model uses the identity link, \(U=H\), \(V^{\top}=S\), and
+\(X_{\rm row}=B\), \(B_{\rm row}^{\top}=A\) for the smooth background;
+the column-covariate term is omitted. It adds nonnegativity, unit-area
+log-concave profiles and a compound-count penalty to select the rank.
+Thus **sparse log-concave nonnegative GMF** describes the model, while the
+function retains the familiar `splogconNMF()` name.
+
+## Deviance matrix factorization and Bregman NMF
+
+`splogconNMF()` is a **rank-penalized, nonnegative deviance matrix
+factorization with log-concave profiles**. It belongs to the deviance-based
+framework of [Wang & Carvalho (2023)](https://doi.org/10.1214/23-EJS2174),
+using an identity link for the additive mean \(\mu=HS+BA+O\).
+The loss also connects directly to
+[NMF with Bregman divergences](https://doi.org/10.3390/s23167229).
+
+For a regular exponential-dispersion model with fixed noise parameters,
+
+\[
+\ell(y;\theta,\phi)=\frac{y\theta-b(\theta)}{\phi}+c(y,\phi),
+\qquad \mu=b'(\theta),
+\]
+
+let \(\Psi=b^*\) be the convex conjugate of \(b\). Its Bregman divergence is
+
+\[
+D_\Psi(y,\mu)=\Psi(y)-\Psi(\mu)-\Psi'(\mu)(y-\mu).
+\]
+
+Since \(\Psi'(\mu)=\theta(\mu)\) and
+\(\Psi(\mu)=\mu\theta(\mu)-b\{\theta(\mu)\}\), substitution gives
+
+\[
+\begin{aligned}
+D_\Psi(y,\mu)
+&=y\theta(y)-b\{\theta(y)\}-y\theta(\mu)+b\{\theta(\mu)\},\\
+2\{\ell(y;y,\phi)-\ell(y;\mu,\phi)\}
+&=\frac{2}{\phi}D_\Psi(y,\mu).
+\end{aligned}
+\]
+
+Here the likelihood on the second line is written in mean coordinates.
+Boundary observations use the corresponding limits. Thus, conditional on the
+noise parameters, fitting is equivalent to minimizing
+
+\[
+2\sum_{ij}\frac{w_{ij}}{\phi}D_\Psi(y_{ij},(HS+BA+O)_{ij})
+   +\lambda_RK
+\]
+
+under the nonnegativity, profile-normalization and log-concavity constraints.
+The saturated likelihood contributes a constant in these conditional model
+comparisons. The corresponding divergences include:
+
+| Noise model | Generator \(\Psi(u)\) | Half unit deviance \(D_\Psi(y,\mu)\) |
+|:--|:--|:--|
+| Gaussian | \(u^2/2\) | \((y-\mu)^2/2\) |
+| Poisson | \(u\log u-u\) | \(y\log(y/\mu)-y+\mu\) |
+| Gamma, uncensored \(y>0\) | \(-\log u\) | \(y/\mu-\log(y/\mu)-1\) |
+| NB2, fixed shape \(\theta\) | \(u\log u-(u+\theta)\log(u+\theta)\) | \(y\log(y/\mu)-(y+\theta)\log\{(y+\theta)/(\mu+\theta)\}\) |
+
+For NB2, \(\phi=1\) and the shape \(\theta\) enters the generator.
+Gaussian, Poisson and Gamma therefore give squared-error, generalized KL and
+Itakura–Saito NMF losses. Quasipoisson gives the KL kernel scaled by its
+dispersion. Censored Gamma and the mean-dependent-shape extensions use their
+full likelihood kernels described below; estimated noise parameters are
+compared using the full likelihood as well.
 
 ## From a chromatogram to NIST spectra
 
@@ -94,11 +181,44 @@ The Poisson branch uses a faster bracketed likelihood solve. Its score
 above by \(\sum_iw_iy_i/\sum_iw_ix_i\). Channels are independent conditional on
 the profiles, allowing deterministic OpenMP parallelism.
 
-Poisson profile proposals use four warm native IRLS steps. In a full profile
-sweep, the preceding profile supplies the ridge centre, with adaptive local
-weights proportional to the inverse squared current ordinate. This stabilizes
-low-intensity tails. The tether generates proposals; acceptance is evaluated
-against the full likelihood-and-compound-count criterion above.
+Local profile updates use the original observation likelihood. For
+\(\eta_i=\log h_i\), \(\mu_{ij}=r_{ij}+h_i s_j\), the chain-rule score and
+working information are
+
+\[
+g_{\eta,i}=h_i\sum_jw_{ij}s_jg_{\mu,ij},\qquad
+I_{\eta,i}=h_i^2\sum_jw_{ij}s_j^2I_{\mu,ij}.
+\]
+
+The working target is \(\eta_i-g_{\eta,i}/I_{\eta,i}\), with tiny stabilization
+where the information vanishes. This quadratic approximation updates the
+**log profile parameters**; the observed intensities remain on their original
+scale and acceptance uses their actual likelihood.
+
+A smooth concave log profile can be written as
+
+\[
+\eta(t)=a+bt-\frac12\sum_j c_j
+  \{(t-u_j)_+^2-(t-v_j)_+^2\},\qquad c_j\geq0,
+\]
+
+where the intervals \([u_j,v_j)\) partition the local time window. Its second
+derivative is \(-\sum_jc_j\mathbf1_{[u_j,v_j)}(t)\leq0\), giving hard
+log-concavity. The intercept and slope are unrestricted, and a small
+nonnegative quadratic solve estimates the curvature coefficients. For more
+detailed local adjustments, piecewise-linear log-profile increments preserve
+the existing fine-scale curvature; a concave-envelope projection removes
+numerical constraint residuals. Backtracking between feasible log profiles
+preserves concavity and accepts only likelihood improvements.
+
+Fusion starts with spectral compatibility and profile overlap. Broad-anchor
+and contained-tail proposals are refined only within the affected windows;
+other compounds remain in an offset. The full original-channel criterion
+decides whether each proposed rank change is retained. A final conservative
+pass can reunite broad profiles with complementary ion sets when their
+profile cosine is at least 0.95. Neighbouring modes are guarded during its
+local refit. `control=list(profile_cycles=0L)` disables the main shape-refinement
+stage; `control=list(profile_fusion=FALSE)` disables the final conservative pass.
 
 | Noise model | Variance | Negative log-likelihood score in the mean |
 |:--|:--|:--|
@@ -155,8 +275,9 @@ units and can be changed through `control$censor`.
 5. Update broad profiles, smooth background coefficients and spectra, followed
    by final boundary checks and rank pruning.
 
-Log concavity is enforced by a least concave majorant of the log profile,
-followed by normalization. Every complete accepted stage decreases the actual
+Algebraic fusion uses a least concave majorant of the log profile, followed
+by normalization. Local likelihood updates impose hard concavity constraints
+in their quadratic solves. Every complete accepted stage decreases the actual
 criterion, within numerical tolerance. `history` and `ledger_error` make this
 property directly checkable.
 
@@ -200,9 +321,23 @@ is sensitivity and \(J\) is score covariance (Varin, Reid & Firth, 2011).
 
 ## References
 
+Kidziński, Ł., Hui, F. K. C., Warton, D. I. & Hastie, T. J. (2022).
+[Generalized matrix factorization: efficient algorithms for fitting generalized linear latent variable models to large data arrays.](https://www.jmlr.org/papers/v23/20-1104.html)
+
+Castiglione, C., Segers, A., Clement, L. & Risso, D. (2026).
+[Stochastic gradient descent estimation of generalized matrix factorization models with application to single-cell RNA sequencing data.](https://doi.org/10.1093/biostatistics/kxag010)
+
+Wang, L. & Carvalho, L. E. (2023). [Deviance matrix factorization.](https://doi.org/10.1214/23-EJS2174)
+
+Li, X. & Tyagi, A. (2023). [Block-active ADMM to minimize NMF with Bregman divergences.](https://doi.org/10.3390/s23167229)
+
 Banerjee, A. et al. (2005). [Clustering with Bregman divergences.](https://jmlr.org/papers/v6/banerjee05b.html)
 
 Witten, D. M. (2011). [Classification and clustering of sequencing data using a Poisson model.](https://doi.org/10.1214/11-AOAS493)
+
+Lee, D. D. & Seung, H. S. (2000). [Algorithms for non-negative matrix factorization.](https://proceedings.neurips.cc/paper_files/paper/2000/file/f9d1152547c0bde01830b7e8bd60024c-Paper.pdf)
+
+Eilers, P. H. C. (2005). [Unimodal smoothing.](https://doi.org/10.1002/cem.935)
 
 Varin, C., Reid, N. & Firth, D. (2011). [An overview of composite likelihood methods.](https://www3.stat.sinica.edu.tw/statistica/oldpdf/A21n11.pdf)
 

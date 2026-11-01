@@ -52,6 +52,7 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
+    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
     <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
@@ -79,14 +80,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Model selection and cross-validation</h1>
-            
-      
+
+
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/selection.Rmd" class="external-link"><code>vignettes/articles/selection.Rmd</code></a></small>
       <div class="d-none name"><code>selection.Rmd</code></div>
     </div>
 
-    
-    
+
+
 <p>The example below has <strong>1,000 observations, 5,000 predictors
 and 100 nonzero coefficients of either sign</strong>. It shows a rich
 coefficient path while retaining a genuinely sparse underlying
@@ -107,7 +108,7 @@ model.</p>
 <p>A preset is often a very effective starting point. Searching a path
 lets the data choose among the candidate sparse models.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <table class="table">
 <thead><tr class="header">
 <th>Preset</th>
@@ -143,7 +144,7 @@ reference</a> gives the parameter-count conventions and literature,
 including <a href="https://doi.org/10.1111/rssb.12001" class="external-link">Fan &amp; Tang’s
 GIC</a>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>,</span>
+<code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10L</span>,</span>
 <span>  prop_range<span class="op">=</span><span class="fl">.25</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, coefs.true<span class="op">=</span><span class="va">sim</span><span class="op">$</span><span class="va">beta_true</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda_best<span class="op">=</span><span class="va">gic</span><span class="op">$</span><span class="va">lambda_best</span>, lambda_preset<span class="op">=</span><span class="va">gic</span><span class="op">$</span><span class="va">lambda_preset</span><span class="op">)</span></span></code></pre></div>
 <p><img src="../selection-gic.png" alt="One hundred signal coefficients: regularization paths and GIC around the preset." width="100%"></p>
@@ -223,7 +224,7 @@ count.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">folds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, length.out<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5L</span>,</span>
+<span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5L</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, foldid<span class="op">=</span><span class="va">folds</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>  coefs.true<span class="op">=</span><span class="va">sim</span><span class="op">$</span><span class="va">beta_true</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><img src="../selection-cv.png" alt="Coefficient paths for a sparse 5,000-predictor Gaussian model and five-fold validation deviance with standard-error bars." width="100%"></p>
@@ -250,7 +251,7 @@ vector to choose a design:</p>
 <span></span>
 <span><span class="co"># Venetian blind: odd and even observations alternate</span></span>
 <span><span class="va">folds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, length.out<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
+<span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
 <span>  foldid<span class="op">=</span><span class="va">folds</span>, nlambda<span class="op">=</span><span class="fl">10</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>For time-dependent observations, choose folds that reflect how
 predictions will be used. Reserve an independent test set when measuring
@@ -263,7 +264,7 @@ final predictive accuracy.</p>
 ABESS, L0Learn, LASSO, relaxed LASSO, adaptive variants, MCP and SCAD
 where supported.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"abess"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"cv"</span>, nfolds<span class="op">=</span><span class="fl">5</span>, foldid<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, length.out<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, nlambda<span class="op">=</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span></span></code></pre></div>

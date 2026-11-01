@@ -60,7 +60,7 @@
 #'
 #' @references de Rooi, J. J. & Eilers, P. H. C. (2011). \emph{Deconvolution of
 #' pulse trains with the L0 penalty}. \strong{Analytica Chimica Acta},
-#' \emph{705}(1-2), 218-226. DOI: 10.1016/j.aca.2011.07.012
+#' \emph{705}(1-2), 218-226. DOI: 10.1016/j.aca.2011.05.030
 #'
 #' @seealso \code{\link{L0glm_sparse_deco}}, \code{\link{shift_kernel}},
 #' \code{\link{log_conc_smooth}}

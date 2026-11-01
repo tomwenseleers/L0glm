@@ -227,7 +227,7 @@ spolo_cluster <- function(H, S, psf_width, radius = 0.04, fractions = c(0.05, 0.
         family <- spolo_connected_cpp(T, area, p, lo, hi, anchor, radius)
         broad <- 1/height[anchor] >= 3 * psf_width || (length(family) >= 3L && max(hi[family]) - min(lo[family]) + 
             1L >= 8 * psf_width)
-        
+
         if (any(owners %in% family)) 
             next
         owners <- c(owners, anchor)

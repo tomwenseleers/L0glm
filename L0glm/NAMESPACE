@@ -81,6 +81,7 @@ export(sis_glm)
 export(sparseglm)
 export(splogconNMF)
 export(temporal_dispersion)
+export(write_GCMS_cdf)
 import(Matrix)
 importFrom(Matrix,
   Diagonal,

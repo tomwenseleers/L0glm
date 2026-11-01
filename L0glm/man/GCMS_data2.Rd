@@ -5,7 +5,7 @@
 \alias{GCMS_data2}
 \title{GC/MS Chromatogram Section - Beer Headspace Volatiles}
 \format{
-A numeric matrix with 764 rows (time slices) and 518 columns (m/z values).
+A numeric matrix with 1764 rows (time slices) and 518 columns (m/z values).
 \describe{
   \item{Rows}{Individual full-scan acquisitions (time scans).
               Row names give the scan mid-point in minutes

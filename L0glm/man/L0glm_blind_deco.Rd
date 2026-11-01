@@ -81,7 +81,9 @@ iteration when \code{plot=TRUE}.}
 \item{plot}{Boolean specifying whether to plot the estimated PSF in each iteration
 (alongside the true PSF if \code{kernel_true} is given).}
 
-\item{maxiter}{Integer >= 1.  Maximum alternating steps. Default 15.}
+\item{maxiter}{Integer >= 0. Maximum alternating steps. Default 15.
+Zero keeps a supplied \code{kernel_est} fixed and fits its spike train
+and background without updating the PSF.}
 
 \item{tol}{Relative L1 change in the PSF that triggers early stop (default 1e-3).}
 

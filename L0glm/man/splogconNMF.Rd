@@ -158,6 +158,22 @@ Fast spectral fusion and local native updates accommodate broad, asymmetric
 and shark-fin peaks while retaining all original outcome channels.
 }
 \details{
+\strong{Generalized matrix factorization.} The model is an identity-link,
+nonnegative generalized matrix factorization (GMF), with a smooth background,
+log-concave profiles and automatic rank selection. See Kidzinski et al.
+(2022) and Castiglione et al. (2026). The function retains the NMF name;
+\href{../articles/log-concave-nmf.html#generalized-matrix-factorization}{the mathematical article}
+relates its mean model to the GMF formulation.
+
+\strong{Deviance matrix factorization.} This is a rank-penalized, nonnegative
+deviance matrix factorization on the mean scale, with hard log-concavity
+constraints and an additive background. For standard exponential families
+with fixed noise parameters, the loss is a weighted Bregman divergence:
+Gaussian gives squared error, Poisson gives generalized KL, and uncensored
+Gamma gives Itakura--Saito. See Wang and Carvalho (2023), and Li and Tyagi
+(2023). The \href{../articles/log-concave-nmf.html#deviance-matrix-factorization-and-bregman-nmf}{mathematical article}
+gives the derivation and the negative-binomial case.
+
 \strong{Model and selection criterion.} With scans in rows, write
 \deqn{\mu=HS+B A+O,\qquad H,S,A\geq0.}
 Each profile has unit sum, contiguous positive support and
@@ -265,6 +281,11 @@ The compound penalty uses the original channel count throughout aggregation.
 Selection and initial fusion run in the reduced space. Lifting the spectra
 to the original channels is followed by a spectral/background refit and
 local shape refinement, with no repetition of the reduced-space search.
+Worked full-channel fits to \link{GCMS_data1} and \link{GCMS_data2}, with traces,
+heatmaps, profiles and spectra, are shown in the
+\href{../articles/gcms-deconvolution.html}{GC/MS deconvolution tutorial} and
+the \code{\link[=GCMSdeco]{GCMSdeco()}} help page. \code{\link[=write_GCMS_cdf]{write_GCMS_cdf()}} exports these matrices for
+the complete file-based workflow.
 
 \strong{Smooth local profiles.} Original-channel refinement fits
 \eqn{\eta(t)=a+bt-\tfrac12\sum_j c_j\{(t-u_j)_+^2-(t-v_j)_+^2\}},
@@ -307,6 +328,47 @@ GIC(fitq)
 # Other identity-link choices include gaussian(), mgcv::nb(), Gamma(),
 # nb1(dispersion=5, link="identity"), and
 # Gamma_scale(scale=5, link="identity", censor=0.5).
+
+\dontrun{
+# Six co-eluting compounds, retaining all 671 mass channels.
+data(GCMS_data1)
+Y <- GCMS_data1
+X <- convmatrix(convkernel("gaussian", 65L, list(sigma = 8)), nrow(Y))
+f1 <- splogconNMF(X, Y, background = matrix(1, nrow(Y), 1L),
+  family = quasipoisson("identity"), precluster = 16L,
+  correlation = "none", ncores = 8L)
+c(compounds = f1$rank, GIC = GIC(f1), seconds = f1$seconds[["total"]])
+matplot(as.numeric(rownames(Y)), as.matrix(f1$H), type = "l", lty = 1,
+  xlab = "Retention time (min)", ylab = "Unit-area elution profile")
+
+# Beer volatiles with a broad acid peak and a low-df spline background.
+data(GCMS_data2)
+Y <- GCMS_data2
+time <- as.numeric(rownames(Y))
+X <- convmatrix(convkernel("gaussian", 65L, list(sigma = 6)), nrow(Y))
+B <- splines::bs(time, df = 4L, intercept = TRUE)
+f2 <- splogconNMF(X, Y, background = B,
+  family = quasipoisson("identity"), precluster = 32L,
+  correlation = "none", ncores = 8L)
+c(compounds = f2$rank, GIC = GIC(f2), seconds = f2$seconds[["total"]])
+plotmat(fitted(f2), xlab = "Retention time (min)", ylab = "Mass (m/z)",
+  main = "Fitted GC/MS chromatogram")
+# GCMSdeco() adds CDF input, MSP/Excel export, and traces/heatmaps/profile plots.
+}
+}
+\references{
+Wang, L. and Carvalho, L. E. (2023). Deviance matrix factorization.
+Electronic Journal of Statistics 17(2), 3762--3810. \doi{10.1214/23-EJS2174}.
+Li, X. and Tyagi, A. (2023). Block-active ADMM to minimize NMF with Bregman
+divergences. Sensors 23(16), 7229. \doi{10.3390/s23167229}.
+Kidzinski, L., Hui, F. K. C., Warton, D. I. and Hastie, T. J. (2022).
+Generalized matrix factorization: efficient algorithms for fitting
+generalized linear latent variable models to large data arrays.
+JMLR 23(291), 1--29. \url{https://www.jmlr.org/papers/v23/20-1104.html}.
+Castiglione, C., Segers, A., Clement, L. and Risso, D. (2026).
+Stochastic gradient descent estimation of generalized matrix factorization
+models with application to single-cell RNA sequencing data.
+Biostatistics 27(1), kxag010. \doi{10.1093/biostatistics/kxag010}.
 }
 \seealso{
 \code{\link[=GCMSdeco]{GCMSdeco()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=glm_cluster]{glm_cluster()}}

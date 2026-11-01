@@ -150,9 +150,12 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' @param calibration_range Optional retention-time bounds in minutes for the
 #'   standard. The whole standard is used when omitted.
 #' @param baseline_df Dimension of the nonnegative cubic B-spline background.
+#'   Use \code{1L} for a constant background in a short window. A spline uses
+#'   at least four basis functions.
 #'   \code{NULL} chooses a low-dimensional basis from the scan count and typical
 #'   PSF width; an integer of at least four fixes its dimension.
 #' @param psf_control Named list passed to [L0glm_blind_deco()], for example
+#'   \code{list(kernel_est=psf, maxiter=0L)} keeps a supplied PSF fixed.
 #'   \code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
 #'   initial PSF. Data and \code{nwindows} are set by this function. The scalar
 #'   Poisson working weight is matched to the final noise model by default;
@@ -216,6 +219,22 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' hard log concavity, censored Gamma intensities and compound-count information
 #' criteria follow [splogconNMF()].
 #'
+#' @section Experimental GC/MS examples:
+#' The [GC/MS deconvolution tutorial](../articles/gcms-deconvolution.html)
+#' converts the bundled [GCMS_data1] and [GCMS_data2] matrices to CDF, fits the
+#' full-channel models and exports their spectra. It includes timings,
+#' information criteria and all plot types, alongside the algorithm.
+#' \if{html}{
+#' \strong{GCMS_data1: overlapping cuticular hydrocarbons.}
+#' \figure{gcms-data1-traces.png}{Background-corrected observed mass traces and fitted compounds.}
+#' \figure{gcms-data1-heatmaps.png}{Observed, corrected, fitted and Pearson-residual heatmaps.}
+#' \figure{gcms-data1-profiles-spectra.png}{Recovered elution profiles and mass spectra.}
+#' \strong{GCMS_data2: beer volatiles with an asymmetric acid peak.}
+#' \figure{gcms-data2-traces.png}{Observed ion traces and fitted beer-volatile components.}
+#' \figure{gcms-data2-heatmaps.png}{Full-channel signal and Pearson-residual heatmaps.}
+#' \figure{gcms-data2-profiles-spectra.png}{Representative compound profiles and mass spectra.}
+#' }
+#'
 #' @return An object of class \code{GCMSdeco} containing \code{model} (the full
 #'   factorization), a \code{compounds} table with names, retention times,
 #'   original-file apex scan indices, integrated intensities and ion counts,
@@ -226,21 +245,9 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #'   log-likelihood and information-criterion methods delegate to \code{model}.
 #' @references NIST MS Search user manual, section on NIST text format:
 #'   \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
-#' @seealso [plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+#' @seealso [write_GCMS_cdf()], [plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
 #' @md
-#' @examples
-#' \dontrun{
-#' fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",
-#'                 time_range=c(6, Inf), xlsx_file="beer.xlsx")
-#' fit
-#' fit$compounds
-#' coef(fit)                 # unnormalized spectra, all channels
-#' GIC(fit)
-#' plot(fit, type="lines", file="beer_traces.pdf")
-#' plot(fit, type="heatmap", file="beer_heatmaps.pdf")
-#' matplot(fit$time, as.matrix(fit$model$H), type="l", lty=1,
-#'         xlab="Retention time (min)", ylab="Elution profile")
-#' }
+#' @example examples/GCMSdeco.R
 #' @export
 GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="gic",nwindows=10L,
                      alkanes_file=NULL,time_range=NULL,calibration_range=NULL,
@@ -310,9 +317,10 @@ GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="g
   widths<-vapply(sample,function(j){h<-X[,j];sum(h>=max(h)/2)},0)
   width<-max(1,stats::median(widths))
   if(is.null(baseline_df)) baseline_df<-max(4L,min(40L,3L+ceiling(n/(200*width))))
-  L0glm_deco_length(baseline_df,"baseline_df",4L)
+  L0glm_deco_length(baseline_df,"baseline_df",1L)
+  if(baseline_df %in% c(2L,3L)) stop("Use baseline_df=1 for a constant or at least 4 for a cubic spline.",call.=FALSE)
   if(baseline_df>n) stop("baseline_df exceeds the number of scans.",call.=FALSE)
-  B<-as.matrix(splines::bs(raw$time,df=baseline_df,intercept=TRUE))
+  B<-if(baseline_df==1L) matrix(1,n,1L) else as.matrix(splines::bs(raw$time,df=baseline_df,intercept=TRUE))
   model<-timed("factorization",splogconNMF(X,Y,family=family,lambda=lambda,background=B,precluster=precluster,
     dispersion=spec$dispersion,theta=if(spec$name=="nb") spec$theta*(if(spec$theta_update) -1 else 1) else NULL,
     correlation=spec$correlation,ncores=ncores,control=control,verbose=verbose))

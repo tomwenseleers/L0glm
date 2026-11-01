@@ -105,6 +105,8 @@ automatic support and resampling to the sample's scan interval.}
 standard. The whole standard is used when omitted.}
 
 \item{baseline_df}{Dimension of the nonnegative cubic B-spline background.
+Use \code{1L} for a constant background in a short window. A spline uses
+at least four basis functions.
 \code{NULL} chooses a low-dimensional basis from the scan count and typical
 PSF width; an integer of at least four fixes its dimension.}
 
@@ -152,6 +154,7 @@ fusion after that refinement.
 channels, followed by one local likelihood-based profile/spectrum refit.}
 
 \item{psf_control}{Named list passed to \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, for example
+\code{list(kernel_est=psf, maxiter=0L)} keeps a supplied PSF fixed.
 \code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
 initial PSF. Data and \code{nwindows} are set by this function. The scalar
 Poisson working weight is matched to the final noise model by default;
@@ -247,18 +250,61 @@ spreadsheet and returned coefficient rows use increasing apex retention time. Ra
 hard log concavity, censored Gamma intensities and compound-count information
 criteria follow \code{\link[=splogconNMF]{splogconNMF()}}.
 }
+\section{Experimental GC/MS examples}{
+
+The \href{../articles/gcms-deconvolution.html}{GC/MS deconvolution tutorial}
+converts the bundled \link{GCMS_data1} and \link{GCMS_data2} matrices to CDF, fits the
+full-channel models and exports their spectra. It includes timings,
+information criteria and all plot types, alongside the algorithm.
+\if{html}{
+\strong{GCMS_data1: overlapping cuticular hydrocarbons.}
+\figure{gcms-data1-traces.png}{Background-corrected observed mass traces and fitted compounds.}
+\figure{gcms-data1-heatmaps.png}{Observed, corrected, fitted and Pearson-residual heatmaps.}
+\figure{gcms-data1-profiles-spectra.png}{Recovered elution profiles and mass spectra.}
+\strong{GCMS_data2: beer volatiles with an asymmetric acid peak.}
+\figure{gcms-data2-traces.png}{Observed ion traces and fitted beer-volatile components.}
+\figure{gcms-data2-heatmaps.png}{Full-channel signal and Pearson-residual heatmaps.}
+\figure{gcms-data2-profiles-spectra.png}{Representative compound profiles and mass spectra.}
+}
+}
+
 \examples{
 \dontrun{
-fit <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file="alkanes.cdf",
-                time_range=c(6, Inf), xlsx_file="beer.xlsx")
-fit
-fit$compounds
-coef(fit)                 # unnormalized spectra, all channels
-GIC(fit)
-plot(fit, type="lines", file="beer_traces.pdf")
-plot(fit, type="heatmap", file="beer_heatmaps.pdf")
-matplot(fit$time, as.matrix(fit$model$H), type="l", lty=1,
-        xlab="Retention time (min)", ylab="Elution profile")
+library(L0glm)
+data(GCMS_data1)
+data(GCMS_data2)
+out <- file.path(tempdir(), "L0glm-GCMS")
+dir.create(out, showWarnings = FALSE)
+write_GCMS_cdf(GCMS_data1, file.path(out, "GCMS_data1.cdf"))
+write_GCMS_cdf(GCMS_data2, file.path(out, "GCMS_data2.cdf"))
+
+fit1 <- GCMSdeco(file.path(out, "GCMS_data1.cdf"),
+  file.path(out, "GCMS_data1.msp"), nwindows = 1L, precluster = 16L,
+  baseline_df = 1L,
+  correlation = "none", ncores = 8L,
+  psf_control = list(kernel_est = convkernel("gaussian", 65L,
+    list(sigma = 8)), maxiter = 0L))
+fit2 <- GCMSdeco(file.path(out, "GCMS_data2.cdf"),
+  file.path(out, "GCMS_data2.msp"), nwindows = 1L, precluster = 32L,
+  correlation = "none", ncores = 8L,
+  psf_control = list(kernel_est = convkernel("gaussian", 65L,
+    list(sigma = 6)), maxiter = 0L))
+fit1$compounds
+GIC(fit2)
+coef(fit2, normalize = "l1")
+
+plot(fit1, type = "lines", nrows = 1L,
+  minutes_per_panel = diff(range(fit1$time)) + .01, labels = TRUE)
+plot(fit1, type = "heatmap")
+plot(fit1, type = "profiles", nrows = 3L)
+plot(fit2, type = "lines", file = file.path(out, "GCMS_data2_traces.pdf"),
+  nrows = 1L, minutes_per_panel = diff(range(fit2$time)) + .01)
+plot(fit2, type = "heatmap", file = file.path(out, "GCMS_data2_heatmaps.pdf"))
+plot(fit2, type = "profiles", file = file.path(out, "GCMS_data2_profiles_and_spectra.pdf"))
+
+# For a full chromatogram with a separate calibration standard:
+beer <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file = "alkanes.cdf",
+  xlsx_file = "beer.xlsx", nwindows = 10L, precluster = 32L)
 }
 }
 \references{
@@ -266,5 +312,5 @@ NIST MS Search user manual, section on NIST text format:
 \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
 }
 \seealso{
-\code{\link[=plot.GCMSdeco]{plot.GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}
+\code{\link[=write_GCMS_cdf]{write_GCMS_cdf()}}, \code{\link[=plot.GCMSdeco]{plot.GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}
 }
