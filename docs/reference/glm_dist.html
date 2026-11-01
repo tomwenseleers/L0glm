@@ -13,7 +13,7 @@ each pair at its precision-weighted mean and sums their unit deviances."><meta p
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,8 +32,8 @@ each pair at its precision-weighted mean and sums their unit deviances."><meta p
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -170,8 +170,8 @@ Clustering with Bregman Divergences. JMLR 6, 1705–1749.
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## example: calculating distance among different m/z mass traces in GC/MS datasets</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">GCMS_data2</span><span class="op">)</span> <span class="co"># section of a GC/MS chromatogram of beer volatiles</span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">GCMS_data2</span></span>
+<span><span class="va">demo</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>n<span class="op">=</span><span class="fl">400</span>, p<span class="op">=</span><span class="fl">400</span>, n_nonzero<span class="op">=</span><span class="fl">30</span>, m<span class="op">=</span><span class="fl">24</span><span class="op">)</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">demo</span><span class="op">$</span><span class="va">y</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span> <span class="co"># 1764 timepoints x 518 m/z mass traces</span></span>
 <span><span class="co"># we aggregate together every bin of 10 subsequent timepoints for extra performance:</span></span>
 <span><span class="va">Y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="glm_cluster.html">glm_aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, </span>
@@ -191,7 +191,7 @@ Clustering with Bregman Divergences. JMLR 6, 1705–1749.
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> · GPL ≥ 2</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> Â· GPL â‰¥ 2</p>
 </div>
 
     </footer></div>
@@ -201,3 +201,4 @@ Clustering with Bregman Divergences. JMLR 6, 1705–1749.
 
 
   </body></html>
+

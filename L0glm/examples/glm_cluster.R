@@ -13,8 +13,8 @@ normal <- glm_cluster(Z, family=gaussian(), dispersion=.25, k.max=5L)
 normal$clusterids
 
 \donttest{
-data(GCMS_data2)
-Y <- as.matrix(GCMS_data2)
+demo <- simul(n=400, p=400, n_nonzero=30, m=24)
+Y <- as.matrix(demo$y)
 # Ordered scans allow coarsening for the clustering stage.
 ward <- glm_cluster(Y, method="poissondist", linkage="ward",
                     size_fac=colSums(Y), rowbins=5L, k.max=32L)

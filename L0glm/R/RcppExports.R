@@ -37,10 +37,6 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
-slcn_log_profile <- function(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 4L, censor = .5, q = 128L, nthreads = 1L, apex_lo = -1L, apex_hi = -1L, mode = 2L) {
-    .Call('_L0glm_slcn_log_profile', PACKAGE = 'L0glm', y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, q, nthreads, apex_lo, apex_hi, mode)
-}
-
 nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {
     .Call('_L0glm_nuisance_poisson_cpp', PACKAGE = 'L0glm', B, Y, Signal, Prior, Start, maxit, tol, nthreads)
 }
@@ -55,14 +51,6 @@ nuisance_quadratic_cpp <- function(H, h, constrained) {
 
 nuisance_gaussian_cpp <- function(B, Y, Signal, W, Start, constrained, nthreads = 1L) {
     .Call('_L0glm_nuisance_gaussian_cpp', PACKAGE = 'L0glm', B, Y, Signal, W, Start, constrained, nthreads)
-}
-
-logconc_quadratic_cpp <- function(target, weights, smooth = 0, maxit = 2000L, tol = 1e-8) {
-    .Call('_L0glm_logconc_quadratic_cpp', PACKAGE = 'L0glm', target, weights, smooth, maxit, tol)
-}
-
-logconc_profile_cpp <- function(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 12L, censor = .5, ridge = as.numeric( c(0)), prior = as.numeric( c(0))) {
-    .Call('_L0glm_logconc_profile_cpp', PACKAGE = 'L0glm', y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, ridge, prior)
 }
 
 L0glm_scalar_terms_cpp <- function(y, mu, family, phi, censor, deviance = FALSE) {
@@ -119,62 +107,6 @@ solve_sparse_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
 
 solve_dense_CG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
     .Call('_L0glm_solve_dense_CG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
-}
-
-slcn_state <- function(y, mu) {
-    .Call('_L0glm_slcn_state', PACKAGE = 'L0glm', y, mu)
-}
-
-slcn_local <- function(handle, left, right) {
-    .Call('_L0glm_slcn_local', PACKAGE = 'L0glm', handle, left, right)
-}
-
-slcn_commit <- function(handle, left, mu) {
-    invisible(.Call('_L0glm_slcn_commit', PACKAGE = 'L0glm', handle, left, mu))
-}
-
-slcn_mean <- function(handle) {
-    .Call('_L0glm_slcn_mean', PACKAGE = 'L0glm', handle)
-}
-
-slcn_delta <- function(y, old, next_mu, family, phi, theta, weights, full_n, first = 0L, censor = .5) {
-    .Call('_L0glm_slcn_delta', PACKAGE = 'L0glm', y, old, next_mu, family, phi, theta, weights, full_n, first, censor)
-}
-
-slcn_loglik <- function(y, mu, family, phi, theta, weights, nthreads = 1L, censor = .5) {
-    .Call('_L0glm_slcn_loglik', PACKAGE = 'L0glm', y, mu, family, phi, theta, weights, nthreads, censor)
-}
-
-slcn_spectral <- function(y, mean, design, spectra, family, phi, theta, weights, full_n, first = 0L, sweeps = 4L, nthreads = 1L, maxit = 12L, tol = 1e-8, censor = .5, keep_zeros = FALSE) {
-    .Call('_L0glm_slcn_spectral', PACKAGE = 'L0glm', y, mean, design, spectra, family, phi, theta, weights, full_n, first, sweeps, nthreads, maxit, tol, censor, keep_zeros)
-}
-
-slcn_profile <- function(y, mean, old, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 8L, nthreads = 1L, censor = .5, ridge = 0) {
-    .Call('_L0glm_slcn_profile', PACKAGE = 'L0glm', y, mean, old, spectrum, family, phi, theta, weights, full_n, first, maxit, nthreads, censor, ridge)
-}
-
-slcn_nb_score <- function(y, mu, theta, weights, nthreads = 1L) {
-    .Call('_L0glm_slcn_nb_score', PACKAGE = 'L0glm', y, mu, theta, weights, nthreads)
-}
-
-slcn_background <- function(y, signal, basis, start, family, phi, theta, weights, nthreads = 1L, maxit = 40L, tol = 1e-8, censor = .5) {
-    .Call('_L0glm_slcn_background', PACKAGE = 'L0glm', y, signal, basis, start, family, phi, theta, weights, nthreads, maxit, tol, censor)
-}
-
-slcn_logconcave_cpp <- function(profile, min_relative = 1e-12) {
-    .Call('_L0glm_slcn_logconcave_cpp', PACKAGE = 'L0glm', profile, min_relative)
-}
-
-slcn_project_design_cpp <- function(design, nthreads = 1L, min_relative = 1e-12) {
-    .Call('_L0glm_slcn_project_design_cpp', PACKAGE = 'L0glm', design, nthreads, min_relative)
-}
-
-spolo_connected_cpp <- function(spectra, area, center, lo, hi, anchor, radius) {
-    .Call('_L0glm_spolo_connected_cpp', PACKAGE = 'L0glm', spectra, area, center, lo, hi, anchor, radius)
-}
-
-spolo_extract_cpp <- function(spectra, area, center, fraction = .1, pure_radius = .005, nthreads = 1L) {
-    .Call('_L0glm_spolo_extract_cpp', PACKAGE = 'L0glm', spectra, area, center, fraction, pure_radius, nthreads)
 }
 
 difference_scale_cpp <- function(residual, variance, level, eligible, coefficient, minimum_mean, nthreads) {

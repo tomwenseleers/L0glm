@@ -1,5 +1,8 @@
 <!-- README.md is generated from README.Rmd. Run Rscript benchmarks/render_readme.R. -->
 
+L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
+
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="L0glm/man/figures/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="L0glm/man/figures/logo-light.svg">

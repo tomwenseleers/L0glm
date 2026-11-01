@@ -67,9 +67,9 @@ navbar:
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
         - text: GC/MS deconvolution
-          href: articles/gcms-deconvolution.html
+          href: https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html
         - text: Sparse log-concave NMF
-          href: articles/log-concave-nmf.html
+          href: https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html
         - text: SIS / ISIS screening for high dimensional models
           href: articles/high-dimensional.html
     algorithm:
@@ -88,7 +88,7 @@ articles:
   - title: Model families
     contents: [articles/negative-binomial, articles/multinomial, articles/cox]
   - title: Applications and scale
-    contents: [articles/deconvolution, articles/gcms-deconvolution, articles/log-concave-nmf, articles/high-dimensional]
+    contents: [articles/deconvolution, articles/high-dimensional]
   - title: Algorithms and evidence
     contents: [articles/algorithm, articles/performance]
 reference:
@@ -99,13 +99,13 @@ reference:
   - title: Special families
     contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
   - title: Screening, simulations and solvers
-    contents: [sis_glm, simul, simulate_spike_train, simulate_GCMS, lmridge, control.solver.gen]
+    contents: [sis_glm, simul, simulate_spike_train, lmridge, control.solver.gen]
   - title: Deconvolution and signal processing
-    contents: [GCMSdeco, write_GCMS_cdf, plot.GCMSdeco, estimate_psf, L0glm_sparse_deco, L0glm_blind_deco, L0glm_deco_estkernel, splogconNMF, convmatrix, convkernel, estimate_psf_from_std, log_conc_smooth, signal_families, temporal_dispersion]
+    contents: [convmatrix, convkernel, signal_families, temporal_dispersion]
   - title: Visualization, clustering and factorization
-    contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist, L0BestRankGNMF]
+    contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist]
   - title: Example data
-    contents: [GCMS_data1, GCMS_data2, simulated_spectra]
+    contents: [simulated_spectra]
   - title: Likelihood adapters
     contents: [logLik.glmnet, logLik.L0Learn, logLik.L0glm_extended_fit]
 footer:
@@ -113,4 +113,4 @@ footer:
     left: developed_by
     right: [built_with, source]
   components:
-    source: "[Source & issues](https://github.com/tomwenseleers/L0glm) · GPL ≥ 2"
+    source: "[Source & issues](https://github.com/tomwenseleers/L0glm) Â· GPL â‰¥ 2"

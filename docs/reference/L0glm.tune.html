@@ -37,7 +37,7 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,8 +56,8 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -634,11 +634,11 @@ after tuning.</p>
 <span></span>
 <span><span class="co"># screen="auto" applies p_eligible &gt; 10*n independently at each lambda,</span></span>
 <span><span class="co"># with n equal to the training row count, including within each CV fold.</span></span>
-<span><span class="va">hd_gic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
+<span><span class="va">hd_gic</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">5</span>, coefs.true<span class="op">=</span><span class="va">beta_hd</span>, screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span>, plot<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co"># Screening and preprocessing are recomputed within each training fold.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">hd_cv</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
+<span><span class="va">hd_cv</span> <span class="op">&lt;-</span> <span class="fu">L0glm.tune</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">5</span>, nfolds<span class="op">=</span><span class="fl">3</span>, coefs.true<span class="op">=</span><span class="va">beta_hd</span>,</span>
 <span>  screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span>, plot<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GIC<span class="op">=</span><span class="va">hd_gic</span><span class="op">$</span><span class="va">lambda_best</span>, CV<span class="op">=</span><span class="va">hd_cv</span><span class="op">$</span><span class="va">lambda_best</span>,</span>
@@ -731,7 +731,7 @@ after tuning.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> · GPL ≥ 2</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> Â· GPL â‰¥ 2</p>
 </div>
 
     </footer></div>
@@ -741,3 +741,4 @@ after tuning.</p>
 
 
   </body></html>
+

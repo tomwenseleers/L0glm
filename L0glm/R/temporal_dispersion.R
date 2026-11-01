@@ -38,7 +38,7 @@
 #'
 #' @return A list with per-order channel and pooled estimates, summaries
 #'   `channel` and `pooled`, estimation method and covariance model.
-#' @seealso [splogconNMF()]
+#' @seealso [L0nmf::splogconNMF()]
 #' @examples
 #' set.seed(4)
 #' y <- matrix(rnorm(3000, sd=3), 500, 6)

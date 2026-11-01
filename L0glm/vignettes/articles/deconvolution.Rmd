@@ -11,7 +11,7 @@ or negative-binomial noise, and the multichannel shared-support extensions are
 new developments of the present work. `simul()` supports all three noise models.
 
 For experimental chromatograms with flexible peak shapes, a smooth background
-and full mass-spectrum export, see the [GC/MS deconvolution tutorial](gcms-deconvolution.html).
+and full mass-spectrum export, see the [GC/MS deconvolution tutorial](https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html).
 It works through both bundled GC/MS datasets using `splogconNMF()` and
 `GCMSdeco()`, with traces, heatmaps, elution profiles and recovered spectra.
 

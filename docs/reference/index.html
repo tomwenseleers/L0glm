@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,8 +26,8 @@
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -219,13 +219,6 @@
 
         <dt>
 
-          <code><a href="simulate_GCMS.html">simulate_GCMS()</a></code>
-
-        </dt>
-        <dd>Simulate synthetic GC-MS chromatograms with ground-truth signal + background</dd>
-
-        <dt>
-
           <code><a href="lmridge.html">lmridge()</a></code>
 
         </dt>
@@ -249,62 +242,6 @@
 
       <dl><dt>
 
-          <code><a href="GCMSdeco.html">residuals(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">GCMSdeco()</a></code> <code><a href="GCMSdeco.html">coef(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">fitted(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">nobs(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">logLik(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">AIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">BIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">GIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">EBIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">MBIC(<i>&lt;GCMSdeco&gt;</i>)</a></code> <code><a href="GCMSdeco.html">print(<i>&lt;GCMSdeco&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Deconvolve a GC/MS chromatogram and export its compound spectra</dd>
-
-        <dt>
-
-          <code><a href="write_GCMS_cdf.html">write_GCMS_cdf()</a></code>
-
-        </dt>
-        <dd>Write a chromatogram matrix as an ANDI-MS CDF file</dd>
-
-        <dt>
-
-          <code><a href="plot.GCMSdeco.html">plot(<i>&lt;GCMSdeco&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Plot GC/MS signals, compound profiles and recovered spectra</dd>
-
-        <dt>
-
-          <code><a href="estimate_psf.html">estimate_psf()</a></code>
-
-        </dt>
-        <dd>Estimate constant or time-varying point spread functions</dd>
-
-        <dt>
-
-          <code><a href="L0glm_sparse_deco.html">L0glm_sparse_deco()</a></code>
-
-        </dt>
-        <dd>Sparse deconvolution with a fixed PSF via L0-penalised GLMs</dd>
-
-        <dt>
-
-          <code><a href="L0glm_blind_deco.html">L0glm_blind_deco()</a></code>
-
-        </dt>
-        <dd>Alternating sparse L0 glm powered blind deconvolution</dd>
-
-        <dt>
-
-          <code><a href="L0glm_deco_estkernel.html">L0glm_deco_estkernel()</a></code>
-
-        </dt>
-        <dd>Estimate the PSF given a spike train estimate via L0-penalised GLMs</dd>
-
-        <dt>
-
-          <code><a href="splogconNMF.html">splogconNMF()</a></code> <code><a href="splogconNMF.html">fitted(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">nobs(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">coef(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">logLik(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">AIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">BIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">GIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">EBIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">MBIC(<i>&lt;splogconNMF&gt;</i>)</a></code> <code><a href="splogconNMF.html">print(<i>&lt;splogconNMF&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Sparse log-concave nonnegative matrix factorization</dd>
-
-        <dt>
-
           <code><a href="convmatrix.html">convmatrix()</a></code>
 
         </dt>
@@ -316,20 +253,6 @@
 
         </dt>
         <dd>Generate normalised 1-D convolution kernels (point-spread functions)</dd>
-
-        <dt>
-
-          <code><a href="estimate_psf_from_std.html">estimate_psf_from_std()</a></code>
-
-        </dt>
-        <dd>Estimate a time-varying PSF matrix from an alkane ladder TIC</dd>
-
-        <dt>
-
-          <code><a href="log_conc_smooth.html">log_conc_smooth()</a></code>
-
-        </dt>
-        <dd>Log-concave spline smoothing of a discrete convolution kernel estimate</dd>
 
         <dt>
 
@@ -381,13 +304,6 @@
 
         </dt>
         <dd>Dissimilarities between scalar GLM response channels</dd>
-
-        <dt>
-
-          <code><a href="L0BestRankGNMF.html">L0BestRankGNMF()</a></code>
-
-        </dt>
-        <dd>L0-Penalised Generalised Best-Rank NMF</dd>
       </dl></div><div class="section level2">
       <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>
 
@@ -399,20 +315,6 @@
 
 
       <dl><dt>
-
-          <code><a href="GCMS_data1.html">GCMS_data1</a></code>
-
-        </dt>
-        <dd>GC/MS Chromatogram Section - Cuticular Hydrocarbon Profile of a Cataglyphis iberica Ant Queen</dd>
-
-        <dt>
-
-          <code><a href="GCMS_data2.html">GCMS_data2</a></code>
-
-        </dt>
-        <dd>GC/MS Chromatogram Section - Beer Headspace Volatiles</dd>
-
-        <dt>
 
           <code><a href="simulated_spectra.html">simulated_spectra</a></code>
 
@@ -458,7 +360,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> · GPL ≥ 2</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> Â· GPL â‰¥ 2</p>
 </div>
 
     </footer></div>
@@ -468,3 +370,4 @@
 
 
   </body></html>
+

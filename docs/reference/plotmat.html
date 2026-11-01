@@ -19,7 +19,7 @@ and tick labels reflect those values."><meta property="og:image" content="https:
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,8 +38,8 @@ and tick labels reflect those values."><meta property="og:image" content="https:
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html">GC/MS deconvolution</a></li>
+    <li><a class="external-link dropdown-item" href="https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html">Sparse log-concave NMF</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -156,7 +156,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## Dense matrix example: plot a GC/MS chromatogram</span></span>
-<span><span class="va">M</span> <span class="op">=</span> <span class="fu"><a href="simulate_GCMS.html">simulate_GCMS</a></span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">D</span> <span class="co"># simulated GC/MS chromatogram</span></span>
+<span><span class="va">M</span> <span class="op">=</span> <span class="fu">simulate_GCMS</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">D</span> <span class="co"># simulated GC/MS chromatogram</span></span>
 <span><span class="fu">plotmat</span><span class="op">(</span>M <span class="op">=</span> <span class="va">M</span>, </span>
 <span>        gamma <span class="op">=</span> <span class="fl">0.13</span>, </span>
 <span>        xlab <span class="op">=</span> <span class="st">"Elution time (mins)"</span>, </span>
@@ -173,7 +173,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> · GPL ≥ 2</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> Â· GPL â‰¥ 2</p>
 </div>
 
     </footer></div>
@@ -183,3 +183,4 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 
 
   </body></html>
+

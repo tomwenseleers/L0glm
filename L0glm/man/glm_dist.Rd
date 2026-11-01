@@ -83,8 +83,8 @@ all size factors leaves the model unchanged.
 }
 \examples{
 ## example: calculating distance among different m/z mass traces in GC/MS datasets
-data(GCMS_data2) # section of a GC/MS chromatogram of beer volatiles
-Y <- GCMS_data2
+demo <- simul(n=400, p=400, n_nonzero=30, m=24)
+Y <- demo$y
 dim(Y) # 1764 timepoints x 518 m/z mass traces
 # we aggregate together every bin of 10 subsequent timepoints for extra performance:
 Y2 <- t(glm_aggregate(t(Y), 
