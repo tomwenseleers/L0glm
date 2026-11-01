@@ -13,7 +13,9 @@ L0glm_deco_estkernel(
   family = poisson(identity),
   kernel_smoothfun = function(y) log_conc_smooth(y),
   perc = "mean",
-  IC = "gic"
+  IC = "gic",
+  weights = NULL,
+  dispersion = NULL
 )
 }
 \arguments{
@@ -43,6 +45,12 @@ or `Gamma(identity)`).}
 the centroid, or a value in \eqn{[0,1]} for a percentile.}
 
 \item{IC}{Information criterion for the penalty preset; see \link{information_criteria}.}
+
+\item{weights}{Optional nonnegative scalar, scan vector or matrix matching
+\code{y}. Applied to the kernel likelihood as well as the spike fit.}
+
+\item{dispersion}{Optional fixed Gaussian or quasi-family dispersion,
+shared across channels or supplied per channel.}
 }
 \value{
 A list with

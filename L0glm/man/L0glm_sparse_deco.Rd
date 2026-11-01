@@ -298,16 +298,19 @@ dim(multi$coef_baseline)
     \item de Rooi, J., & Eilers, P. H. C. (2011)\cr
           Deconvolution of pulse trains with the L0 penalty.\cr
           \emph{Analytica Chimica Acta} 705 (1-2): 218-226.
-    \item Kidzinski, L., Stumpe, M. C., & Hastie, T. (2022)\cr
-          Generalized matrix factorization.\cr
-          arXiv:2208.05987.
-    \item Castiglione, F., van Kolk, E., & Chiappori, G. (2024)\cr
-          Generalized non-negative matrix factorization for biological
-          count data.\cr
-          \emph{Bioinformatics} 40 (2): btae024.
-    \item Wang, W., & Carvalho, C. M. (2023)\cr
+    \item Kidzinski, L., Hui, F. K. C., Warton, D. I. and Hastie, T. (2022)\cr
+          Generalized Matrix Factorization: efficient algorithms for fitting
+          generalized linear latent variable models to large data arrays.\cr
+          \emph{Journal of Machine Learning Research} 23(291): 1--29.
+          \url{https://www.jmlr.org/papers/v23/20-1104.html}.
+    \item Castiglione, C., Segers, A., Clement, L. and Risso, D. (2026)\cr
+          Stochastic gradient descent estimation of generalized matrix factorization
+          models with application to single-cell RNA sequencing data.\cr
+          \emph{Biostatistics} 27(1), kxag010. \doi{10.1093/biostatistics/kxag010}.
+    \item Wang, L. and Carvalho, L. E. (2023)\cr
           Deviance matrix factorization.\cr
-          arXiv:2303.01517.
+          \emph{Electronic Journal of Statistics} 17(2): 3762--3810.
+          \doi{10.1214/23-EJS2174}.
   }
 }
 \seealso{

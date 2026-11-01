@@ -176,16 +176,19 @@
 #'     \item de Rooi, J., & Eilers, P. H. C. (2011)\cr
 #'           Deconvolution of pulse trains with the L0 penalty.\cr
 #'           \emph{Analytica Chimica Acta} 705 (1-2): 218-226.
-#'     \item Kidzinski, L., Stumpe, M. C., & Hastie, T. (2022)\cr
-#'           Generalized matrix factorization.\cr
-#'           arXiv:2208.05987.
-#'     \item Castiglione, F., van Kolk, E., & Chiappori, G. (2024)\cr
-#'           Generalized non-negative matrix factorization for biological
-#'           count data.\cr
-#'           \emph{Bioinformatics} 40 (2): btae024.
-#'     \item Wang, W., & Carvalho, C. M. (2023)\cr
+#'     \item Kidzinski, L., Hui, F. K. C., Warton, D. I. and Hastie, T. (2022)\cr
+#'           Generalized Matrix Factorization: efficient algorithms for fitting
+#'           generalized linear latent variable models to large data arrays.\cr
+#'           \emph{Journal of Machine Learning Research} 23(291): 1--29.
+#'           \url{https://www.jmlr.org/papers/v23/20-1104.html}.
+#'     \item Castiglione, C., Segers, A., Clement, L. and Risso, D. (2026)\cr
+#'           Stochastic gradient descent estimation of generalized matrix factorization
+#'           models with application to single-cell RNA sequencing data.\cr
+#'           \emph{Biostatistics} 27(1), kxag010. \doi{10.1093/biostatistics/kxag010}.
+#'     \item Wang, L. and Carvalho, L. E. (2023)\cr
 #'           Deviance matrix factorization.\cr
-#'           arXiv:2303.01517.
+#'           \emph{Electronic Journal of Statistics} 17(2): 3762--3810.
+#'           \doi{10.1214/23-EJS2174}.
 #'   }
 #'
 #' @seealso \code{\link{L0glm_sparse_deco}}, \code{\link{L0glm_deco_estkernel}}
@@ -286,13 +289,13 @@ L0glm_blind_deco <- function(y,
     }
     g_new <- L0glm_deco_estkernel(y = y,
                                   y_deconv = a_hat,
-                                  offset = fit$fitted_baseline,
+                                  offset = fit$fitted_baseline + fit$offset,
                                   L = L,
                                   kernel_est = g_hat,
                                   family = family,
                                   kernel_smoothfun = capture_smooth,
                                   perc = perc,
-                                  IC = IC)$kernel
+                                  IC = IC, weights = list(...)$weights, dispersion = list(...)$dispersion)$kernel
     next_fit <- NULL
     if (length(raw_kernels)) {
       concentrated <- lapply(raw_kernels, function(h) {
@@ -317,7 +320,7 @@ L0glm_blind_deco <- function(y,
     ## 3. convergence ------------------------------------------------------
     delta <- sum(abs(g_new - g_hat)) / sum(abs(g_hat))
     g_hat <- g_new
-    y_hat <- convmatrix(g_hat, n) %*% a_hat + fit$fitted_baseline
+    y_hat <- convmatrix(g_hat, n) %*% a_hat + fit$fitted_baseline + fit$offset
     dev_trace[it] <- L0glm_deco_deviance(y, y_hat, family)
     if (delta < tol) { converged <- TRUE; break }
   }
@@ -355,7 +358,9 @@ L0glm_blind_windows <- function(y, family, kernel_est, L, baseline, nknots,
     stop("kernel_est must have one row per window and L columns.", call. = FALSE)
   centers <- .5 + (seq_len(nwindows) - .5) * n / nwindows
   half_width <- n / (2 * nwindows) + L / 2
-  local_y <- if (ncol(y) > 1L && identical(family$family, "poisson"))
+  dots <- list(...)
+  local_y <- if (ncol(y) > 1L && identical(family$family, "poisson") &&
+    is.null(dots$weights) && is.null(dots$offset))
     matrix(rowSums(y), ncol = 1L) else y
   kernels <- matrix(0, nwindows, L)
   windows <- vector("list", nwindows)
@@ -363,12 +368,19 @@ L0glm_blind_windows <- function(y, family, kernel_est, L, baseline, nknots,
     rows <- seq.int(max(1L, ceiling(centers[j] - half_width)),
                     min(n, floor(centers[j] + half_width)))
     initial <- if (is.matrix(kernel_est)) kernel_est[j, ] else kernel_est
-    fit <- L0glm_blind_deco(local_y[rows, , drop = FALSE], family = family,
+    window_dots <- dots
+    for (name in intersect(c("weights", "offset"), names(dots))) {
+      value <- dots[[name]]
+      if (!is.null(dim(value))) window_dots[[name]] <- value[rows, , drop = FALSE] else
+        if (length(value) == n) window_dots[[name]] <- value[rows] else
+          if (length(value) == 1L) window_dots[[name]] <- rep(value, length(rows))
+    }
+    fit <- do.call(L0glm_blind_deco, c(list(y = local_y[rows, , drop = FALSE], family = family,
       kernel_est = initial, L = L, baseline = baseline,
       nknots = max(4L, ceiling(nknots / nwindows) + 3L), kernelfunc = kernelfunc,
       kernel_smoothfun = kernel_smoothfun, perc = perc, IC = IC, grouped = grouped,
       kernel_true = if (is.matrix(kernel_true)) kernel_true[j, ] else kernel_true,
-      plot = plot, maxiter = maxiter, tol = tol, ...)
+      plot = plot, maxiter = maxiter, tol = tol), window_dots))
     kernels[j, ] <- fit$g_hat
     windows[[j]] <- list(scans = range(rows), iterations = fit$iterations,
       best_iteration = fit$best_iteration, selection_trace = fit$selection_trace,

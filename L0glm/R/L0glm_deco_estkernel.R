@@ -48,6 +48,10 @@
 #'   (default: \code{\link{log_conc_smooth}}).
 #' @param perc   Passed to \code{\link{shift_kernel}} - use `"mean"` to recenter
 #'   the centroid, or a value in \eqn{[0,1]} for a percentile.
+#' @param weights Optional nonnegative scalar, scan vector or matrix matching
+#'   \code{y}. Applied to the kernel likelihood as well as the spike fit.
+#' @param dispersion Optional fixed Gaussian or quasi-family dispersion,
+#'   shared across channels or supplied per channel.
 #'
 #' @return A list with
 #' \describe{
@@ -76,11 +80,12 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                               family = poisson(identity),   # noise model, we only support identity link families here
                               kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
                               perc = "mean", # shift PSF to centroid
-                              IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, ebic or mbic)
+                              IC = "gic", weights = NULL, dispersion = NULL) { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, ebic or mbic)
   response <- L0glm_deco_response(y, family)
   y <- response$y; family <- response$family
   n <- nrow(y); m <- ncol(y)
   offset <- L0glm_ext_matrix(offset, n, m, 0, "offset")
+  W <- if(is.null(weights))NULL else L0glm_ext_matrix(weights,n,m,1,"weights")
   y_deconv <- as.matrix(y_deconv)
   if (!is.numeric(y_deconv) || !identical(dim(y_deconv), dim(y)) ||
       any(!is.finite(y_deconv)) || any(y_deconv < 0))
@@ -117,7 +122,9 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
                                      # shrink towards prior kernel estimate if kernel_est given (more stable)
                                      prior.mean <- if (is.null(kernel_est)) NULL else kernel_est/y_deconv_scalings[col]
                                      kernel <- L0glm.fit(y = y[, col, drop = FALSE], # -offset[, col, drop = FALSE] # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate 
-                                                         X = X, 
+                                                         X = X,
+                                                         weights = if(is.null(W))NULL else W[,col,drop=FALSE],
+                                                         dispersion = if(length(dispersion)>1L)dispersion[col] else dispersion,
                                                          family = family, 
                                                          intercept = FALSE,
                                                          offset = offset[, col, drop = FALSE],

@@ -97,6 +97,12 @@ convmatrix <- function(kernel,
     rep(diagv[j], len)
   })
   
+  if (n_row != n_cols) {
+    lengths <- vapply(diagList, length, 0L)
+    i <- sequence(lengths) + rep(pmax(1L, 1L-k_off)-1L, lengths)
+    return(Matrix::sparseMatrix(i=i, j=i+rep(k_off,lengths),
+      x=rep(diagv,lengths), dims=c(n_row,n_cols)))
+  }
   Matrix::bandSparse(n_row, n_cols,
                      k = k_off,
                      diagonals = diagList)
