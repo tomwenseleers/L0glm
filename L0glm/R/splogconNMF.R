@@ -62,11 +62,11 @@ slcn_initial <- function(X, Y, B, spec, W, offset, scalar, ncores, screen_factor
 }
 
 slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = NULL,
-                     verbose = FALSE, censor = .5) {
+                     verbose = FALSE, censor = .5, rank_channels = ncol(Y), selection = TRUE) {
   objects <- slcn_context(Y, B, spec, W, offset, ncores, censor)
   engine <- objects$engine;ctx <- objects$context
   if (isTRUE(control$joint_trials)) slcn_enhance_trials(engine, ctx)
-  penalty <- scalar * ncol(Y)
+  penalty <- scalar * rank_channels
   d <- list(X = X, Y = Y, B = B, lambda = scalar, lambda_rank = penalty, psf_width = control$psf_width)
   elapsed <- numeric();history <- list()
   timer <- function(label, expression) {
@@ -148,7 +148,7 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
       round(seconds, 2), "s\n");flush.console()}
   }
   theta_update("pooled_theta_0")
-  if (ncol(current$H)) {
+  if (ncol(current$H) && selection) {
     step("fusion_1", engine$spolo_fast(current, d, ncores, control$native_sweeps, control$block_sweeps))
     for (pass in seq_len(control$broad_repeats)) {
       step(paste0("broad_", pass), engine$spolo_broad_polish(current, d, ncores))
@@ -225,7 +225,8 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #' @param control Named list: `broad_repeats=1L`, `full_sweeps=1L`,
 #'   `final_polishes=1L`, `native_sweeps=6L`, `block_sweeps=6L`,
 #'   `psf_width=NULL`, `screen_factor=1`, `censor=0.5`, `linkage="ward"`,
-#'   `joint_trials=NULL`, `profile_fusion=TRUE`. `joint_trials` uses direct Poisson fusion for Poisson data
+#'   `joint_trials=NULL`, `profile_cycles=10L`, `fusion_passes=5L`,
+#'   `profile_fusion=TRUE`. `joint_trials` uses direct Poisson fusion for Poisson data
 #'   and joint local refinement for the other families. `psf_width` supplies
 #'   the typical FWHM in scans. When omitted, local updates use the middle design
 #'   column and broad-profile fusion uses the median of up to 21 representative
@@ -236,6 +237,9 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #'   constructor provides its own detection limit unless overridden here.
 #'   `linkage` may be `"ward"` or `"bregman"`. `joint_trials` allows overlapping
 #'   compounds to adjust together during local fusion refinement.
+#'   `profile_cycles` bounds the original-channel shape/background refinement;
+#'   zero disables it. `fusion_passes` bounds broad-anchor and compatible-tail
+#'   fusion after that refinement.
 #'   `profile_fusion` enables a final conservative fusion pass on all original
 #'   channels, followed by one local likelihood-based profile/spectrum refit.
 #' @param start Optional list `H`, `S` and `alpha`, with original dimensions.
@@ -353,6 +357,20 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #' channel weights give working approximations in the reduced space. The
 #' returned model always contains all original channels, their offsets and
 #' their original-channel likelihood.
+#' The compound penalty uses the original channel count throughout aggregation.
+#' Selection and initial fusion run in the reduced space. Lifting the spectra
+#' to the original channels is followed by a spectral/background refit and
+#' local shape refinement, with no repetition of the reduced-space search.
+#'
+#' **Smooth local profiles.** Original-channel refinement fits
+#' \eqn{\eta(t)=a+bt-\tfrac12\sum_j c_j\{(t-u_j)_+^2-(t-v_j)_+^2\}},
+#' with \eqn{c_j\geq0}. Thus \eqn{\eta''(t)\leq0} and
+#' \eqn{H(t)=\exp\{\eta(t)\}} is log-concave. Fisher scoring uses the
+#' original observation model and the chain-rule score/information given above.
+#' Small constrained quadratic solves and likelihood backtracking update each
+#' local profile. Joint spectral updates separate overlapping compounds;
+#' compatible broad-profile and tail fusions are accepted under the same
+#' original-channel likelihood and compound-count penalty.
 #'
 #' @return An object of class `splogconNMF`, containing sparse unit-sum profiles
 #'   `H`, spectra `S`, background coefficients `alpha`, the background basis,
@@ -396,7 +414,8 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
   if (any(!is.finite(W) | W < 0) || !any(W > 0) || any(!is.finite(O) | O < 0)) stop("Nonnegative finite weights/offset and some positive weight are required.")
   defaults <- list(broad_repeats = 1L, full_sweeps = 1L, final_polishes = 1L,
     native_sweeps = 6L, block_sweeps = 6L, psf_width = NULL, screen_factor = 1,
-    censor = .5, linkage = "ward", joint_trials = NULL, profile_fusion = TRUE)
+    censor = .5, linkage = "ward", joint_trials = NULL, profile_fusion = TRUE,
+    profile_cycles = 10L, fusion_passes = 5L)
   if (!is.list(control) || length(control) && (is.null(names(control)) ||
       any(!nzchar(names(control))) || anyDuplicated(names(control)))) stop("Use a named control list.")
   if (is.list(family) && !is.null(family$scalar) && !"censor" %in% names(control))
@@ -409,8 +428,8 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
   if (is.null(control$psf_width)) {
     h <- as.numeric(X[, max(1L, ncol(X) %/% 2L)]);control$psf_width <- sum(h >= max(h) / 2)
   }
-  for (key in c("broad_repeats", "full_sweeps", "final_polishes", "native_sweeps", "block_sweeps", "psf_width")) {
-    value <- control[[key]];minimum <- if (key %in% c("broad_repeats", "full_sweeps", "final_polishes")) 0 else 1
+  for (key in c("broad_repeats", "full_sweeps", "final_polishes", "native_sweeps", "block_sweeps", "psf_width", "profile_cycles", "fusion_passes")) {
+    value <- control[[key]];minimum <- if (key %in% c("broad_repeats", "full_sweeps", "final_polishes", "profile_cycles", "fusion_passes")) 0 else 1
     if (length(value) != 1L || !is.finite(value) || value < minimum || value != as.integer(value)) stop("Invalid integer control: ", key)
   }
   if (!is.numeric(control$screen_factor) || length(control$screen_factor)!=1L ||
@@ -461,7 +480,8 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
     aggregate_W <- if (length(W) == 1L) W else as.matrix(W %*% P) / rep(sizes, each = n)
     aggregate_O <- if (length(O) == 1L) matrix(O, n, g) * rep(sizes, each = n) else as.matrix(O %*% P)
     aggregate_seconds <- system.time(a <- slcn_run(X, aggregate_Y, B, aggregated_spec,
-      aggregate_W, aggregate_O, scalar, ncores, control, verbose = verbose, censor = control$censor))[["elapsed"]]
+      aggregate_W, aggregate_O, scalar, ncores, control, verbose = verbose, censor = control$censor,
+      rank_channels = m))[["elapsed"]]
     S <- sweep(a$S[, group, drop = FALSE], 2, fractions, "*")
     alpha <- sweep(a$alpha[, group, drop = FALSE], 2, fractions, "*")
     start <- list(H = a$H, S = S, alpha = alpha,
@@ -473,7 +493,7 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
       sumsq_fractions = sumsq, original_channels = m)
   }
   fit_seconds <- system.time(fit <- slcn_run(X, Y, B, spec, W, O, scalar, ncores, control,
-    start, verbose, control$censor))[["elapsed"]]
+    start, verbose, control$censor, selection = is.null(aggregation)))[["elapsed"]]
   fit$background <- B;fit$offset <- O;fit$weights <- W;fit$y <- Y
   fit$family <- family;fit$n <- n;fit$p <- ncol(X);fit$lambda <- scalar * m
   fit$rank <- ncol(fit$H)
@@ -481,8 +501,9 @@ splogconNMF <- function(X, y, family = poisson("identity"), background = NULL,
   fit$ic_df <- m * fit$rank + fit$nuisance_df
   fit$aggregation <- aggregation;fit$control <- control;fit$ncores <- ncores
   fit <- slcn_temporal_order(fit)
-  refinement_seconds <- 0
-  if (control$profile_fusion) refinement_seconds <- system.time(
+  refinement_seconds <- system.time(
+    if (ncol(fit$H) && control$profile_cycles) fit <- slcn_refine_fit(fit, Y, verbose))[["elapsed"]]
+  if (control$profile_fusion) refinement_seconds <- refinement_seconds + system.time(
     fit <- slcn_refine_profiles(fit, Y, verbose, fusion_width))[["elapsed"]]
   fit$rank <- ncol(fit$H);fit$ic_df <- m * fit$rank + fit$nuisance_df
   fit$seconds <- c(noise = nuisance, clustering = clustering_seconds, aggregate = aggregate_seconds,

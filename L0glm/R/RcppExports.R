@@ -37,8 +37,8 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
-slcn_log_profile <- function(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 4L, censor = .5, q = 128L, nthreads = 1L, apex_lo = -1L, apex_hi = -1L) {
-    .Call('_L0glm_slcn_log_profile', PACKAGE = 'L0glm', y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, q, nthreads, apex_lo, apex_hi)
+slcn_log_profile <- function(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 4L, censor = .5, q = 128L, nthreads = 1L, apex_lo = -1L, apex_hi = -1L, mode = 2L) {
+    .Call('_L0glm_slcn_log_profile', PACKAGE = 'L0glm', y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, q, nthreads, apex_lo, apex_hi, mode)
 }
 
 nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {

@@ -106,7 +106,8 @@ a number between zero and 0.49 supplies the lag-one correlation.}
 \item{control}{Named list: \code{broad_repeats=1L}, \code{full_sweeps=1L},
 \code{final_polishes=1L}, \code{native_sweeps=6L}, \code{block_sweeps=6L},
 \code{psf_width=NULL}, \code{screen_factor=1}, \code{censor=0.5}, \code{linkage="ward"},
-\code{joint_trials=NULL}, \code{profile_fusion=TRUE}. \code{joint_trials} uses direct Poisson fusion for Poisson data
+\code{joint_trials=NULL}, \code{profile_cycles=10L}, \code{fusion_passes=5L},
+\code{profile_fusion=TRUE}. \code{joint_trials} uses direct Poisson fusion for Poisson data
 and joint local refinement for the other families. \code{psf_width} supplies
 the typical FWHM in scans. When omitted, local updates use the middle design
 column and broad-profile fusion uses the median of up to 21 representative
@@ -117,6 +118,9 @@ limit. Zero requests an uncensored Gamma model. A supplied Gamma family
 constructor provides its own detection limit unless overridden here.
 \code{linkage} may be \code{"ward"} or \code{"bregman"}. \code{joint_trials} allows overlapping
 compounds to adjust together during local fusion refinement.
+\code{profile_cycles} bounds the original-channel shape/background refinement;
+zero disables it. \code{fusion_passes} bounds broad-anchor and compatible-tail
+fusion after that refinement.
 \code{profile_fusion} enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.}
 
@@ -257,6 +261,20 @@ moment-matched aggregate parameters. Censored Gamma sums and differing
 channel weights give working approximations in the reduced space. The
 returned model always contains all original channels, their offsets and
 their original-channel likelihood.
+The compound penalty uses the original channel count throughout aggregation.
+Selection and initial fusion run in the reduced space. Lifting the spectra
+to the original channels is followed by a spectral/background refit and
+local shape refinement, with no repetition of the reduced-space search.
+
+\strong{Smooth local profiles.} Original-channel refinement fits
+\eqn{\eta(t)=a+bt-\tfrac12\sum_j c_j\{(t-u_j)_+^2-(t-v_j)_+^2\}},
+with \eqn{c_j\geq0}. Thus \eqn{\eta''(t)\leq0} and
+\eqn{H(t)=\exp\{\eta(t)\}} is log-concave. Fisher scoring uses the
+original observation model and the chain-rule score/information given above.
+Small constrained quadratic solves and likelihood backtracking update each
+local profile. Joint spectral updates separate overlapping compounds;
+compatible broad-profile and tail fusions are accepted under the same
+original-channel likelihood and compound-count penalty.
 }
 \examples{
 set.seed(12)

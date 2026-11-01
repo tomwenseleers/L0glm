@@ -227,8 +227,7 @@ spolo_cluster <- function(H, S, psf_width, radius = 0.04, fractions = c(0.05, 0.
         family <- spolo_connected_cpp(T, area, p, lo, hi, anchor, radius)
         broad <- 1/height[anchor] >= 3 * psf_width || (length(family) >= 3L && max(hi[family]) - min(lo[family]) + 
             1L >= 8 * psf_width)
-        if (!broad) 
-            next
+        
         if (any(owners %in% family)) 
             next
         owners <- c(owners, anchor)
@@ -462,7 +461,12 @@ spolo_sweep <- function(model, d, cycles, ncores = 8L) {
     h <- numeric(right - left + 1L);h[seq.int(st$lo[j], st$hi[j]) - left + 1L] <- st$h[[j]]
     a <- spolo_local_cpp(st$handle, left, right)
     residual <- pmax(a$mu - h %o% s, 0)
-    if (ctx$spec$kind == 1L) {
+    positive <- if (prior_strength == 0) slcn_positive_tail(h) else NULL
+    if (!is.null(positive) && length(h) >= 3L) {
+      raw <- slcn_profile_fit(a$Y, residual + positive %o% s, positive, s,
+        ctx$spec$kind, ctx$spec$dispersion, ctx$spec$theta, ctx$W, ctx$n,
+        left - 1L, 4L, ctx$censor, 12L, as.integer(ncores), FALSE)$profile
+    } else if (ctx$spec$kind == 1L) {
       W <- if (length(ctx$W)==1L) matrix(ctx$W,length(h),length(s)) else
         matrix(ctx$W,ctx$n,ctx$m)[left:right,,drop=FALSE]
       fit <- L0glm.fit(matrix(s,ncol=1L),t(a$Y),family=poisson("identity"),

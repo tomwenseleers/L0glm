@@ -180,8 +180,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // slcn_log_profile
-List slcn_log_profile(NumericMatrix y, NumericMatrix mean, NumericVector profile, NumericVector spectrum, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, int maxit, double censor, int q, int nthreads, int apex_lo, int apex_hi);
-RcppExport SEXP _L0glm_slcn_log_profile(SEXP ySEXP, SEXP meanSEXP, SEXP profileSEXP, SEXP spectrumSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP maxitSEXP, SEXP censorSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP apex_loSEXP, SEXP apex_hiSEXP) {
+List slcn_log_profile(NumericMatrix y, NumericMatrix mean, NumericVector profile, NumericVector spectrum, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, int maxit, double censor, int q, int nthreads, int apex_lo, int apex_hi, int mode);
+RcppExport SEXP _L0glm_slcn_log_profile(SEXP ySEXP, SEXP meanSEXP, SEXP profileSEXP, SEXP spectrumSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP maxitSEXP, SEXP censorSEXP, SEXP qSEXP, SEXP nthreadsSEXP, SEXP apex_loSEXP, SEXP apex_hiSEXP, SEXP modeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -201,7 +201,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< int >::type apex_lo(apex_loSEXP);
     Rcpp::traits::input_parameter< int >::type apex_hi(apex_hiSEXP);
-    rcpp_result_gen = Rcpp::wrap(slcn_log_profile(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, q, nthreads, apex_lo, apex_hi));
+    Rcpp::traits::input_parameter< int >::type mode(modeSEXP);
+    rcpp_result_gen = Rcpp::wrap(slcn_log_profile(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, q, nthreads, apex_lo, apex_hi, mode));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -737,7 +738,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_bregman_tree_cpp", (DL_FUNC) &_L0glm_L0glm_bregman_tree_cpp, 6},
     {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
-    {"_L0glm_slcn_log_profile", (DL_FUNC) &_L0glm_slcn_log_profile, 16},
+    {"_L0glm_slcn_log_profile", (DL_FUNC) &_L0glm_slcn_log_profile, 17},
     {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},

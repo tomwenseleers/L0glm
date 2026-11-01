@@ -16,9 +16,10 @@ using namespace Rcpp;
 List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
  NumericVector spectrum,int family,NumericVector phi,NumericVector theta,
  NumericVector weights,int full_n,int first=0,int maxit=4,double censor=.5,
- int q=128,int nthreads=1,int apex_lo=-1,int apex_hi=-1) {
+ int q=128,int nthreads=1,int apex_lo=-1,int apex_hi=-1,int mode=2) {
   const int n=y.nrow(),m=y.ncol();q=std::min(n,q);
-  if(n<3||q<3||first<0||maxit<0||nthreads<1||family<0||family>6||
+  const bool smooth=mode==0,whole=mode!=1;
+  if(n<3||q<3||first<0||maxit<0||nthreads<1||family<0||family>6||mode<0||mode>2||
      mean.nrow()!=n||mean.ncol()!=m||profile.size()!=n||spectrum.size()!=m||
      full_n<first+n||!(weights.size()==1||weights.size()==full_n*m)||
      !(phi.size()==1||phi.size()==m)||!(theta.size()==1||theta.size()==m))
@@ -27,6 +28,20 @@ List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
   auto w=[&](int i,int j){return weights[weights.size()==1?0:first+i+full_n*j];};
   auto p=[&](int j){return phi[phi.size()==1?0:j];};
   auto th=[&](int j){return theta[theta.size()==1?0:j];};
+  std::vector<int> knots;Eigen::MatrixXd C,D;bool lo=false,hi=false;
+  if(smooth) {
+    // Integrating nonnegative, piecewise-constant curvature twice gives a
+    // smooth concave log profile. The intercept and slope remain unrestricted.
+    C.resize(n,q);const int J=q-2;
+    for(int i=0;i<n;++i) {
+      const double t=(double)i/(n-1);C(i,0)=1;C(i,1)=t;
+      for(int j=0;j<J;++j) {
+        const double a=std::max(0.,t-(double)j/J),b=std::max(0.,t-(double)(j+1)/J);
+        C(i,j+2)=-.5*(a*a-b*b);
+      }
+    }
+    for(int j=0;j<q;++j)C.col(j)/=C.col(j).norm();
+  } else {
   std::set<int> index;const int regular=std::max(3,q/3);
   for(int j=0;j<regular;++j) index.insert((int)std::round((double)j*(n-1)/(regular-1)));
   {
@@ -49,11 +64,11 @@ List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
     const int limit=significant<=q/2?significant:q/3;
     for(int j=0;j<limit;++j)index.insert(curvature[j].second);
   }
-  const bool lo=apex_lo>0&&apex_lo<n,hi=apex_hi>=0&&apex_hi<n-1;
+  lo=apex_lo>0&&apex_lo<n;hi=apex_hi>=0&&apex_hi<n-1;
   if(lo){index.insert(apex_lo-1);index.insert(apex_lo);}
   if(hi){index.insert(apex_hi);index.insert(apex_hi+1);}
-  std::vector<int> knots(index.begin(),index.end());q=knots.size();
-  Eigen::MatrixXd C=Eigen::MatrixXd::Zero(n,q),D=Eigen::MatrixXd::Zero(q-2+lo+hi,q);
+  knots.assign(index.begin(),index.end());q=knots.size();
+  C=Eigen::MatrixXd::Zero(n,q);D=Eigen::MatrixXd::Zero(q-2+lo+hi,q);
   int left=0;
   for(int i=0;i<n;++i) {
     while(left<q-2&&i>knots[left+1])++left;
@@ -67,6 +82,7 @@ List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
   int next_constraint=q-2;
   if(lo){D.row(next_constraint)=C.row(apex_lo-1)-C.row(apex_lo);D.row(next_constraint)/=D.row(next_constraint).norm();++next_constraint;}
   if(hi){D.row(next_constraint)=C.row(apex_hi+1)-C.row(apex_hi);D.row(next_constraint)/=D.row(next_constraint).norm();}
+  }
   NumericMatrix rest(n,m);NumericVector h=clone(profile);
   Eigen::VectorXd eta(n),gradient(n),information(n),target(n),W(n);
   for(int i=0;i<n;++i) {
@@ -105,26 +121,39 @@ List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
     const double top=information.maxCoeff();if(!(top>0))break;
     for(int i=0;i<n;++i) {
       W[i]=information[i]/top+1e-8;
-      target[i]=eta[i]-gradient[i]/(information[i]+top*1e-8);
+      target[i]=(whole?eta[i]:0)-gradient[i]/(smooth?std::max(information[i],top*1e-8):(information[i]+top*1e-8));
     }
     Eigen::MatrixXd G=C.transpose()*W.asDiagonal()*C;
     G.diagonal().array()+=std::max(1e-12,1e-10*G.diagonal().maxCoeff());
-    Eigen::VectorXd rhs=C.transpose()*(W.array()*target.array()).matrix();
-    Eigen::LLT<Eigen::MatrixXd> factor(G);
-    if(factor.info()!=Eigen::Success)stop("Adaptive profile Gram failed.");
-    Eigen::VectorXd unconstrained=factor.solve(rhs);
-    Eigen::MatrixXd inverse_D=factor.solve(D.transpose());
-    Eigen::MatrixXd dual_G=D*inverse_D;dual_G=(dual_G+dual_G.transpose()).eval()*.5;
-    Eigen::VectorXd bound=Eigen::VectorXd::Zero(D.rows());
-    if(lo)bound[q-2]=-1e-6;
-    if(hi)bound[q-2+lo]=-1e-6;
-    Eigen::VectorXd dual_rhs=D*unconstrained-bound;
-    Eigen::VectorXd multiplier=L0glm::nuisance_qp(dual_G,dual_rhs,std::vector<char>(D.rows(),1));
-    Eigen::VectorXd node=unconstrained-inverse_D*multiplier;
-    residual=std::max(0.,(D*node-bound).maxCoeff());
-    // Concave knot values interpolate to a concave log profile on the full grid.
-    Eigen::VectorXd proposed=C*node;
+    Eigen::VectorXd proposed;
+    if(smooth) {
+      Eigen::VectorXd rhs=C.transpose()*W.asDiagonal()*target;
+      std::vector<char> bounds(q,1);bounds[0]=bounds[1]=0;
+      proposed=C*L0glm::nuisance_qp(G,rhs,bounds);
+    } else {
+      Eigen::VectorXd rhs=C.transpose()*(W.array()*target.array()).matrix();
+      Eigen::LLT<Eigen::MatrixXd> factor(G);
+      if(factor.info()!=Eigen::Success)stop("Log-profile Gram failed.");
+      Eigen::VectorXd unconstrained=factor.solve(rhs);
+      Eigen::MatrixXd inverse_D=factor.solve(D.transpose());
+      Eigen::MatrixXd dual_G=D*inverse_D;dual_G=(dual_G+dual_G.transpose()).eval()*.5;
+      Eigen::VectorXd bound=Eigen::VectorXd::Zero(D.rows());
+      if(!whole)for(int j=0;j<q-2;++j) {
+        const int k=knots[j+1];
+        const double a=1.0/(knots[j+1]-knots[j]),b=1.0/(knots[j+2]-knots[j+1]);
+        bound[j]=std::max(0.,-(eta[k-1]-2*eta[k]+eta[k+1]))/std::sqrt(a*a+(a+b)*(a+b)+b*b);
+      }
+      if(lo)bound[q-2]=-1e-6;
+      if(hi)bound[q-2+lo]=-1e-6;
+      Eigen::VectorXd dual_rhs=D*unconstrained-bound;
+      Eigen::VectorXd multiplier=L0glm::nuisance_qp(dual_G,dual_rhs,std::vector<char>(D.rows(),1));
+      Eigen::VectorXd node=unconstrained-inverse_D*multiplier;
+      residual=std::max(0.,(D*node-bound).maxCoeff());
+      proposed=C*node;
+      if(!whole)proposed+=eta;
+    }
     // Remove numerical inequality residuals on the full grid.
+    if(!smooth) {
     std::vector<int> hull;
     for(int i=0;i<n;++i) {
       hull.push_back(i);
@@ -140,8 +169,10 @@ List slcn_log_profile(NumericMatrix y,NumericMatrix mean,NumericVector profile,
       const int a=hull[j-1],b=hull[j];
       feasible[i]=proposed[a]+(proposed[b]-proposed[a])*(i-a)/(b-a);
     }
-    proposed=feasible;bool accepted=false;NumericVector next(n);double delta=0;
-    for(int half=0;half<=22;++half) {
+    proposed=feasible;
+    }
+    bool accepted=false;NumericVector next(n);double delta=0;
+    for(int half=0;half<=(smooth?20:22);++half) {
       bool valid=true;const double fraction=std::ldexp(1.,-half);
       for(int i=0;i<n;++i) {
         const double value=eta[i]+fraction*(proposed[i]-eta[i]);
