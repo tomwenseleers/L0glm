@@ -47,6 +47,30 @@ test_that("ordinary narrow profiles are protected and empty models are supported
   expect_equal(dim(z$H), c(160L, 0L));expect_equal(dim(z$S), c(0L, 4L))
 })
 
+test_that("guarded tail refinement retains dimensions and every original noise model", {
+  for (kind in 0:6) {
+    d <- fusion_test_model(kind)
+    f <- d$f
+    f$members <- list(1L, 2L)
+    before <- -2 * slcn_loglik(d$Y, f$mu, kind, f$spec$dispersion,
+      20, as.numeric(f$weights), 1L, .5) + f$lambda * 2
+    proposal <- list(group = 1:2, anchor = 1L, donors = 2L, shape = "hull")
+    z <- slcn_merge_anchor(f, d$Y, proposal, cycles = 2L, guarded = TRUE)
+    after <- -2 * slcn_loglik(d$Y, z$mu, kind, f$spec$dispersion,
+      20, as.numeric(f$weights), 1L, .5) + f$lambda
+    expect_lte(after, before + 1e-6)
+    expect_equal(dim(z$H), c(160L, 1L))
+    expect_equal(dim(z$S), c(1L, 4L))
+    expect_equal(z$mu, as.matrix(z$H %*% z$S) + z$background %*% z$alpha + z$offset,
+      tolerance = 1e-8)
+    expect_identical(z$offset, f$offset)
+    expect_identical(z$weights, f$weights)
+    expect_equal(as.numeric(Matrix::colSums(z$H)), 1, tolerance = 1e-10)
+    h <- as.numeric(z$H[, 1L]);h <- h[h > 0]
+    expect_lte(max(diff(log(h), differences = 2L)), 1e-6)
+  }
+})
+
 test_that("the public pass uses a representative PSF width and respects overrides", {
   d <- fusion_test_model();n <- nrow(d$Y)
   X <- convmatrix(convkernel("gaussian", 9L, list(sigma=.5)), n)

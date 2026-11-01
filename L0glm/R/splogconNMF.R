@@ -240,6 +240,10 @@ slcn_run <- function(X, Y, B, spec, W, offset, scalar, ncores, control, start = 
 #'   `profile_cycles` bounds the original-channel shape/background refinement;
 #'   zero disables it. `fusion_passes` bounds broad-anchor and compatible-tail
 #'   fusion after that refinement.
+#'   For a narrow, spectrally matching fragment contained in a broad profile,
+#'   a guarded whole-profile refit can also update the shared background.
+#'   Neighbouring modes stay within one quarter of their initial FWHM, and
+#'   the merge is retained only when the original-channel criterion decreases.
 #'   `profile_fusion` enables a final conservative fusion pass on all original
 #'   channels, followed by one local likelihood-based profile/spectrum refit.
 #' @param start Optional list `H`, `S` and `alpha`, with original dimensions.

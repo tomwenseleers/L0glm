@@ -43,6 +43,13 @@ function (f, Y, verbose = FALSE)
                   z <- slcn_restore_atoms(z, Y, f, proposal$donors,
                     criterion)
                 z <- slcn_joint_fixed(z, Y)
+                if (pairs && identical(proposal$shape, "anchor") &&
+                    criterion(z) >= criterion(f) - 1e-6) {
+                    proposal$shape <- "hull"
+                    alternative <- slcn_merge_anchor(f, Y, proposal, guarded = TRUE)
+                    alternative <- slcn_joint_fixed(alternative, Y)
+                    if (criterion(alternative) < criterion(z)) z <- alternative
+                }
             })[["elapsed"]]
             if (accept(z, if (pairs)
                 "contained_tail_fusion"
@@ -120,7 +127,7 @@ function (f, Y, H, S, fixed, rows = seq_len(nrow(Y)), maxit = 80L,
 }
 slcn_refine_block <-
 function (f, Y, block = seq_len(ncol(f$H)), cycles = 2L, profile_steps = 2L,
-    adaptive = TRUE, joint = TRUE, pad = 2L, background = FALSE)
+    adaptive = TRUE, joint = TRUE, pad = 2L, background = FALSE, free = NULL)
 {
     if (!length(block))
         return(f)
@@ -132,6 +139,10 @@ function (f, Y, block = seq_len(ncol(f$H)), cycles = 2L, profile_steps = 2L,
         rows <- seq_len(nrow(Y))
     h <- as.matrix(f$H[rows, block, drop = FALSE])
     s <- f$S[block, , drop = FALSE]
+    if (!is.null(free)) {
+        modes <- apply(h, 2L, which.max)
+        radius <- pmax(1L, round(colSums(sweep(h, 2L, apply(h, 2L, max), "/") > .5) / 4))
+    }
     fixed <- pmax(f$mu[rows, , drop = FALSE] - h %*% s, 0)
     A <- f$alpha
     B <- f$background[rows, , drop = FALSE]
@@ -170,13 +181,22 @@ function (f, Y, block = seq_len(ncol(f$H)), cycles = 2L, profile_steps = 2L,
             before <- mean[at, , drop = FALSE]
             rest <- pmax(before - h[at, k] %o% s[k, ], 0)
             first <- min(rows) + min(at) - 2L
-            fit <- slcn_profile_fit(Y[rows[at], , drop = FALSE],
-                rest + positive %o% s[k, ], positive, s[k, ],
-                f$spec$kind, f$spec$dispersion, f$spec$theta,
+            guarded <- !is.null(free) && !block[k] %in% free
+            lo <- if (guarded) max(0L, modes[k] - min(at) - radius[k]) else -1L
+            hi <- if (guarded) min(length(at) - 1L, modes[k] - min(at) + radius[k]) else -1L
+            if (guarded && lo > hi) next
+            fit <- if (is.null(free)) slcn_profile_fit(
+                Y[rows[at], , drop = FALSE], rest + positive %o% s[k, ], positive,
+                s[k, ], f$spec$kind, f$spec$dispersion, f$spec$theta,
                 as.numeric(f$weights), nrow(Y), first, as.integer(profile_steps),
-                f$control$censor, if (adaptive)
-                  48L
-                else 12L, as.integer(f$ncores), adaptive)
+                f$control$censor, if (adaptive) 48L else 12L,
+                as.integer(f$ncores), adaptive) else slcn_log_profile(
+                Y[rows[at], , drop = FALSE], rest + positive %o% s[k, ], positive,
+                s[k, ], f$spec$kind, f$spec$dispersion, f$spec$theta,
+                as.numeric(f$weights), nrow(Y), first, as.integer(profile_steps),
+                f$control$censor, 128L, as.integer(f$ncores),
+                as.integer(lo), as.integer(hi), mode = 2L)
+            if (guarded && max(fit$profile[seq.int(lo, hi) + 1L]) < max(fit$profile) * (1 - 1e-8)) next
             a <- sum(fit$profile)
             hh <- fit$profile/a
             ss <- s[k, ] * a
@@ -340,7 +360,7 @@ function (f, pairs = FALSE)
     result
 }
 slcn_merge_anchor <-
-function (f, Y, proposal, cycles = 8L)
+function (f, Y, proposal, cycles = 8L, guarded = FALSE)
 {
     group <- proposal$group
     anchor <- proposal$anchor
@@ -362,8 +382,10 @@ function (f, Y, proposal, cycles = 8L)
     new <- ncol(f$H)
     support <- which(f$H[, new] > max(f$H[, new]) * 1e-06)
     block <- which(colSums(f$H[support, , drop = FALSE]) > 0.025)
+    if (guarded && nrow(Y) <= 2000L && ncol(f$H) <= 64L)
+        block <- seq_len(ncol(f$H))
     slcn_refine_block(f, Y, block, cycles = cycles, profile_steps = 4L,
-        pad = 2L)
+        pad = 2L, background = guarded, free = if (guarded) new else NULL)
 }
 slcn_restore_atoms <-
 function (f, Y, original, pool, criterion)
