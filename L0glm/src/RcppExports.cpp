@@ -268,6 +268,45 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// logconc_quadratic_cpp
+List logconc_quadratic_cpp(NumericVector target, NumericVector weights, double smooth, int maxit, double tol);
+RcppExport SEXP _L0glm_logconc_quadratic_cpp(SEXP targetSEXP, SEXP weightsSEXP, SEXP smoothSEXP, SEXP maxitSEXP, SEXP tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type target(targetSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< double >::type smooth(smoothSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(logconc_quadratic_cpp(target, weights, smooth, maxit, tol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// logconc_profile_cpp
+List logconc_profile_cpp(NumericMatrix y, NumericMatrix mean, NumericVector profile, NumericVector spectrum, int family, NumericVector phi, NumericVector theta, NumericVector weights, int full_n, int first, int maxit, double censor, NumericVector ridge, NumericVector prior);
+RcppExport SEXP _L0glm_logconc_profile_cpp(SEXP ySEXP, SEXP meanSEXP, SEXP profileSEXP, SEXP spectrumSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP thetaSEXP, SEXP weightsSEXP, SEXP full_nSEXP, SEXP firstSEXP, SEXP maxitSEXP, SEXP censorSEXP, SEXP ridgeSEXP, SEXP priorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type profile(profileSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type spectrum(spectrumSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< int >::type full_n(full_nSEXP);
+    Rcpp::traits::input_parameter< int >::type first(firstSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ridge(ridgeSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type prior(priorSEXP);
+    rcpp_result_gen = Rcpp::wrap(logconc_profile_cpp(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, ridge, prior));
+    return rcpp_result_gen;
+END_RCPP
+}
 // L0glm_scalar_terms_cpp
 NumericMatrix L0glm_scalar_terms_cpp(NumericVector y, NumericVector mu, int family, double phi, double censor, bool deviance);
 RcppExport SEXP _L0glm_L0glm_scalar_terms_cpp(SEXP ySEXP, SEXP muSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP censorSEXP, SEXP devianceSEXP) {
@@ -743,6 +782,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
     {"_L0glm_nuisance_gaussian_cpp", (DL_FUNC) &_L0glm_nuisance_gaussian_cpp, 7},
+    {"_L0glm_logconc_quadratic_cpp", (DL_FUNC) &_L0glm_logconc_quadratic_cpp, 5},
+    {"_L0glm_logconc_profile_cpp", (DL_FUNC) &_L0glm_logconc_profile_cpp, 14},
     {"_L0glm_L0glm_scalar_terms_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_terms_cpp, 6},
     {"_L0glm_L0glm_scalar_profile_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_profile_cpp, 7},
     {"_L0glm_L0glm_scalar_dist_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_dist_cpp, 6},

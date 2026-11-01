@@ -9,8 +9,7 @@ Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
   	       email = "lauralanzasiolsina@gmail.com"),
   	       person("Christophe", "Vanderaa", role = c("aut"),
            email = "christophe.vanderaa@kuleuven.be"),
-           person("Niamh", "Callinan Keenan", role = "ctb",
-             comment = "Unit tests developed as part of her master's thesis"))
+           person("Niamh", "Callinan Keenan", role = "ctb"))
 Depends: R (>= 3.5.0)
 Imports: Matrix,
          Rcpp,
@@ -33,7 +32,7 @@ Description: Fits L0-norm penalized or group-L0 penalized generalized linear mod
              for best subset selection and best subset of groups selection.
              Supports ordinary GLMs, negative binomial, multinomial and Cox
              models, dense and sparse designs, multichannel responses,
-             observation weights, offsets and nonnegative constraints.
+             observation weights, offsets and nonnegativity constraints.
              Combines adaptive ridge and IRLS with fast solvers, SIS/ISIS
              screening, information criteria and cross-validation.
 URL: https://tomwenseleers.github.io/L0glm/, https://github.com/tomwenseleers/L0glm

@@ -57,6 +57,14 @@ nuisance_gaussian_cpp <- function(B, Y, Signal, W, Start, constrained, nthreads 
     .Call('_L0glm_nuisance_gaussian_cpp', PACKAGE = 'L0glm', B, Y, Signal, W, Start, constrained, nthreads)
 }
 
+logconc_quadratic_cpp <- function(target, weights, smooth = 0, maxit = 2000L, tol = 1e-8) {
+    .Call('_L0glm_logconc_quadratic_cpp', PACKAGE = 'L0glm', target, weights, smooth, maxit, tol)
+}
+
+logconc_profile_cpp <- function(y, mean, profile, spectrum, family, phi, theta, weights, full_n, first = 0L, maxit = 12L, censor = .5, ridge = as.numeric( c(0)), prior = as.numeric( c(0))) {
+    .Call('_L0glm_logconc_profile_cpp', PACKAGE = 'L0glm', y, mean, profile, spectrum, family, phi, theta, weights, full_n, first, maxit, censor, ridge, prior)
+}
+
 L0glm_scalar_terms_cpp <- function(y, mu, family, phi, censor, deviance = FALSE) {
     .Call('_L0glm_L0glm_scalar_terms_cpp', PACKAGE = 'L0glm', y, mu, family, phi, censor, deviance)
 }
