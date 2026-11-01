@@ -3,11 +3,11 @@
 
 <div class="l0-hero">
 <div class="l0-hero-copy">
-<p class="l0-eyebrow">SPARSE REGRESSION Â· GENERALIZED LINEAR MODELS</p>
+<p class="l0-eyebrow">SPARSE REGRESSION · GENERALIZED LINEAR MODELS</p>
 <h1>Fast variable selection.<br><span>Parsimonious models.</span></h1>
 <p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.</p>
-<div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">â†—</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
-<p class="l0-hero-note">R Â· Dense & sparse designs Â· Single & multiple responses</p>
+<div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
+<p class="l0-hero-note">R · Dense & sparse designs · Single & multiple responses</p>
 </div>
 <img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280">
 </div>
@@ -15,10 +15,10 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictor-example"><strong>35Ã— faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
-<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94Ã— faster</b> than relaxed group LASSO</span></a>
+<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a>
 <!-- END multi-stat -->
 </div>
 
@@ -81,7 +81,7 @@ explains the example and prediction methods.
 
 In **GC/MS analysis**, overlapping chromatographic peaks have distinct mass
 spectra. Recovering their peak times and spectra together is a natural application
-of grouped Lâ‚€ regression. This Poisson simulation has **10,000 observations,
+of grouped L₀ regression. This Poisson simulation has **10,000 observations,
 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels**.
 
 By regressing the observed signal on a design matrix consisting of shifted
@@ -89,7 +89,7 @@ copies of the peak-shape function (the point spread function), L0glm recovers
 the underlying peaks and their mass spectra.
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25Ã— faster than GIC-tuned group LASSO** and **332Ã— faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
 <!-- END multi-speed -->
 It also recovers the sparse mass spectra accurately, with a within-row F1 of
 **0.909**. A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
@@ -124,7 +124,7 @@ this benchmark.
 L0glm fits the Poisson model directly. The group-LASSO methods use a
 weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
-benchmark tables â†’](articles/deconvolution.html)
+benchmark tables →](articles/deconvolution.html)
 
 For broad or asymmetric peaks, [splogconNMF()](reference/splogconNMF.html)
 recovers log-concave elution profiles and spectra with a smooth background.
@@ -138,12 +138,12 @@ design ready for deconvolution.
 
 ## Choose a starting point
 
-| I would like toâ€¦ | Start here |
+| I would like to… | Start here |
 |---|---|
 | Fit a model and make predictions | [Get started](articles/L0glm.html) |
 | Choose a penalty by GIC or cross-validation | [Model selection](articles/selection.html) |
 | Use weights, constraints or held-out early stopping | [Fitting controls](articles/controls.html) |
-| Fit counts, classes or survival outcomes | [Negative binomial](articles/negative-binomial.html) Â· [Multinomial](articles/multinomial.html) Â· [Cox](articles/cox.html) |
+| Fit counts, classes or survival outcomes | [Negative binomial](articles/negative-binomial.html) · [Multinomial](articles/multinomial.html) · [Cox](articles/cox.html) |
 | Search a very large predictor set | [SIS / ISIS](articles/high-dimensional.html) |
 | Understand the mathematics | [Algorithm & theory](articles/algorithm.html) |
 | Compare speed and support recovery | [Benchmarks](articles/performance.html) |

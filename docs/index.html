@@ -81,7 +81,7 @@
 <div class="l0-hero">
 <div class="l0-hero-copy">
 <p class="l0-eyebrow">
-SPARSE REGRESSION Â· GENERALIZED LINEAR MODELS
+SPARSE REGRESSION · GENERALIZED LINEAR MODELS
 </p>
 <h1>
 Fast variable selection.<br><span>Parsimonious models.</span>
@@ -90,16 +90,16 @@ Fast variable selection.<br><span>Parsimonious models.</span>
 Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.
 </p>
 <div class="l0-actions">
-<a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">â†—</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a>
+<a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a>
 </div>
 <p class="l0-hero-note">
-R Â· Dense &amp; sparse designs Â· Single &amp; multiple responses
+R · Dense &amp; sparse designs · Single &amp; multiple responses
 </p>
 </div>
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35Ã— faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94Ã— faster</b> than relaxed group LASSO</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a> <!-- END multi-stat --></p>
 </div>
 <p>L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. <a href="https://tomwenseleers.github.io/L0nmf/" class="external-link">L0nmf</a> provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; <a href="https://tomwenseleers.github.io/GCMSprime/" class="external-link">GCMSprime</a> provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.</p>
 <div class="section level2">
@@ -194,10 +194,10 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="section level2">
 <h2 id="application-sparse-deconvolution">Application: sparse deconvolution<a class="anchor" aria-label="anchor" href="#application-sparse-deconvolution"></a>
 </h2>
-<p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped Lâ‚€ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
+<p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped L₀ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
 <p>By regressing the observed signal on a design matrix consisting of shifted copies of the peak-shape function (the point spread function), L0glm recovers the underlying peaks and their mass spectra.</p>
 <!-- BEGIN multi-speed -->
-<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong> in <strong>9.63 seconds</strong>: <strong>25Ã— faster than GIC-tuned group LASSO</strong> and <strong>332Ã— faster than relaxed group LASSO tuned by five-fold CV</strong> in this comparison. <!-- END multi-speed --> It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. A direct <code><a href="reference/L0glm.fit.html">L0glm.fit()</a></code> call uses <code>lambda="gic"</code> and four cores; the competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
+<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong> in <strong>9.63 seconds</strong>: <strong>25× faster than GIC-tuned group LASSO</strong> and <strong>332× faster than relaxed group LASSO tuned by five-fold CV</strong> in this comparison. <!-- END multi-speed --> It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. A direct <code><a href="reference/L0glm.fit.html">L0glm.fit()</a></code> call uses <code>lambda="gic"</code> and four cores; the competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
 <span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
@@ -285,7 +285,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="float">
 <img src="deconvolution-multi-home-coefficients.png" alt="True versus estimated coefficients across all channels for L0glm and relaxed group LASSO."><div class="figcaption">True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.</div>
 </div>
-<p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables â†’</a></p>
+<p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
 <p>For broad or asymmetric peaks, <a href="reference/splogconNMF.html">splogconNMF()</a> recovers log-concave elution profiles and spectra with a smooth background. <a href="reference/GCMSdeco.html">GCMSdeco()</a> runs the workflow directly from an ANDI-MS <code>.cdf</code> chromatogram and exports the compound spectra to a NIST-compatible <code>.msp</code> library.</p>
 <p><a href="reference/estimate_psf.html">estimate_psf()</a> estimates constant or smoothly varying PSFs from a calibration standard or the sample, returning a sparse design ready for deconvolution.</p>
 </div>
@@ -298,7 +298,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <col width="50%">
 </colgroup>
 <thead><tr>
-<th>I would like toâ€¦</th>
+<th>I would like to…</th>
 <th>Start here</th>
 </tr></thead>
 <tbody>
@@ -317,7 +317,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Fit counts, classes or survival outcomes</td>
 <td>
-<a href="articles/negative-binomial.html">Negative binomial</a> Â· <a href="articles/multinomial.html">Multinomial</a> Â· <a href="articles/cox.html">Cox</a>
+<a href="articles/negative-binomial.html">Negative binomial</a> · <a href="articles/multinomial.html">Multinomial</a> · <a href="articles/cox.html">Cox</a>
 </td>
 </tr>
 <tr>
@@ -394,7 +394,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> Â· GPL â‰¥ 2</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1. <a href="https://github.com/tomwenseleers/L0glm" class="external-link">Source &amp; issues</a> · GPL ≥ 2</p>
 </div>
 
     </footer>

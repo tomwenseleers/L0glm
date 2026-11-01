@@ -113,4 +113,4 @@ footer:
     left: developed_by
     right: [built_with, source]
   components:
-    source: "[Source & issues](https://github.com/tomwenseleers/L0glm) Â· GPL â‰¥ 2"
+    source: "[Source & issues](https://github.com/tomwenseleers/L0glm) · GPL ≥ 2"
