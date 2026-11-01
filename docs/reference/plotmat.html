@@ -155,13 +155,13 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## Dense matrix example: plot a GC/MS chromatogram</span></span>
-<span><span class="va">M</span> <span class="op">=</span> <span class="fu">simulate_GCMS</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">D</span> <span class="co"># simulated GC/MS chromatogram</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## Dense matrix example: plot a simulated multichannel signal</span></span>
+<span><span class="va">M</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>n<span class="op">=</span><span class="fl">400L</span>, p<span class="op">=</span><span class="fl">400L</span>, n_nonzero<span class="op">=</span><span class="fl">30L</span>, m<span class="op">=</span><span class="fl">24L</span><span class="op">)</span><span class="op">$</span><span class="va">y</span></span>
 <span><span class="fu">plotmat</span><span class="op">(</span>M <span class="op">=</span> <span class="va">M</span>, </span>
 <span>        gamma <span class="op">=</span> <span class="fl">0.13</span>, </span>
-<span>        xlab <span class="op">=</span> <span class="st">"Elution time (mins)"</span>, </span>
-<span>        ylab <span class="op">=</span> <span class="st">"Mass (m/z)"</span>,</span>
-<span>        main <span class="op">=</span> <span class="st">"GC/MS chromatogram"</span><span class="op">)</span></span>
+<span>        xlab <span class="op">=</span> <span class="st">"Time index"</span>, </span>
+<span>        ylab <span class="op">=</span> <span class="st">"Channel"</span>,</span>
+<span>        main <span class="op">=</span> <span class="st">"Simulated multichannel signal"</span><span class="op">)</span></span>
 <span>        </span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

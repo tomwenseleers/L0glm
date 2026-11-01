@@ -1,7 +1,5 @@
 <!-- README.md is generated from README.Rmd. Run Rscript benchmarks/render_readme.R. -->
 
-L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
-
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="L0glm/man/figures/logo-dark.svg">
@@ -11,7 +9,7 @@ L0glm is the statistical fitting and variable-selection layer of a three-package
 
 # L0glm: fast sparse regression for generalized linear models
 
-[Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) · [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
+[Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) Â· [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
 
 `L0glm` fits **L0-penalized and grouped L0-penalized models** for best subset and
 best subset of groups selection. It combines adaptive ridge with IRLS, fast
@@ -41,6 +39,10 @@ explains the mathematics, regularization presets and full fitting algorithms.
   cross-validation with minimum-deviance and one-standard-error models.
 - **Comparison:** `sparseglm()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
+
+
+L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
+
 
 ## Installation
 
@@ -88,7 +90,7 @@ L0glm.metrics(fit, beta_true=beta)[
 <!-- END million-comparison -->
 
 <!-- BEGIN million-speed -->
-L0glm is **35× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+L0glm is **35Ã— faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
 <!-- END million-speed -->
 L0glm uses a single GIC preset and a relaxed refit. LASSO and fully relaxed
 LASSO search up to 40 lambda values using BIC or five-fold CV. BIC is included
@@ -115,7 +117,7 @@ fit, using its training row count. See the
 
 In **GC/MS analysis**, overlapping chromatographic peaks have distinct mass
 spectra. Recovering their peak times and spectra together is a natural application
-of grouped L₀ regression. This Poisson simulation has **10,000 observations,
+of grouped Lâ‚€ regression. This Poisson simulation has **10,000 observations,
 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels**.
 
 By regressing the observed signal on a design matrix consisting of shifted
@@ -124,8 +126,8 @@ the underlying peaks and their mass spectra in a highly efficient and accurate w
 
 <!-- BEGIN multi-speed -->
 In this 2.26 million coefficient example, L0glm recovers **944 of 1,000 true peaks 
-with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned 
-group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** 
+with just 11 false positives** in **9.63 seconds**: **25Ã— faster than GIC-tuned 
+group LASSO** and **332Ã— faster than relaxed group LASSO tuned by five-fold CV** 
 in this comparison, while also boasting a much reduced false-positive rate (0.11% vs. 
 3.09% for GIC tuned relaxed group LASSO).
 <!-- END multi-speed -->
@@ -163,7 +165,7 @@ this benchmark, but is 94 times slower and has a 28 times higher false positive 
 L0glm fits the multivariate Poisson model directly. The group-LASSO methods use a
 weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
-benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
+benchmark tables â†’](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
 
 For broad or asymmetric peaks, [splogconNMF()](https://tomwenseleers.github.io/L0glm/reference/splogconNMF.html)
 recovers log-concave elution profiles and spectra with a smooth background.
@@ -188,7 +190,7 @@ fit_single <- L0glm.fit(single$X, single$y, family=poisson("identity"),
 ```
 
 <!-- BEGIN single-speed -->
-L0glm recovers **845 of 1,000 true peaks with just 154 false positives** in **0.20 seconds**: **2× faster than GIC-tuned LASSO** and **34× faster than relaxed LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **845 of 1,000 true peaks with just 154 false positives** in **0.20 seconds**: **2Ã— faster than GIC-tuned LASSO** and **34Ã— faster than relaxed LASSO tuned by five-fold CV** in this comparison.
 <!-- END single-speed -->
 
 <!-- BEGIN single-metrics -->
@@ -228,7 +230,7 @@ predict(cv$fit_best, newdata=multi$X, type="response")
 
 CV returns `lambda_best`, `lambda_1se`, `fit_best` and `fit_1se`, with both
 models refitted on all observations. Plots show coefficient paths and mean
-validation deviance ± one standard error.
+validation deviance Â± one standard error.
 
 The same interface supports negative binomial, joint multinomial and Cox
 models. These small sparse simulations show a preset, GIC tuning and five-fold
@@ -259,12 +261,12 @@ relative risks.
 
 ## Choose a starting point
 
-| I would like to… | Start here |
+| I would like toâ€¦ | Start here |
 |---|---|
 | Fit a model and make predictions | [Get started](https://tomwenseleers.github.io/L0glm/articles/L0glm.html) |
 | Choose a penalty by GIC or cross-validation | [Model selection](https://tomwenseleers.github.io/L0glm/articles/selection.html) |
 | Use weights, constraints or held-out early stopping | [Fitting controls](https://tomwenseleers.github.io/L0glm/articles/controls.html) |
-| Fit counts, classes or survival outcomes | [Negative binomial](https://tomwenseleers.github.io/L0glm/articles/negative-binomial.html) · [Multinomial](https://tomwenseleers.github.io/L0glm/articles/multinomial.html) · [Cox](https://tomwenseleers.github.io/L0glm/articles/cox.html) |
+| Fit counts, classes or survival outcomes | [Negative binomial](https://tomwenseleers.github.io/L0glm/articles/negative-binomial.html) Â· [Multinomial](https://tomwenseleers.github.io/L0glm/articles/multinomial.html) Â· [Cox](https://tomwenseleers.github.io/L0glm/articles/cox.html) |
 | Search a very large predictor set | [SIS / ISIS](https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html) |
 | Understand the mathematics | [Algorithm & theory](https://tomwenseleers.github.io/L0glm/articles/algorithm.html) |
 | Compare speed and support recovery | [Benchmarks](https://tomwenseleers.github.io/L0glm/articles/performance.html) |

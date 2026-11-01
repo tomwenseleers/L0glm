@@ -1,3 +1,5 @@
+library(L0nmf)
+
 ## BENCHMARK OF GC-MS DECONVOLUTION USING THE L0BestRankGNMF ALGORITHM & COMPARISON WITH MCR-ALS (ANNLS) #### 
 
 ## Below we deconvolute overlapping peaks in multichannel GC/MS data using L0BestRankGNMF.

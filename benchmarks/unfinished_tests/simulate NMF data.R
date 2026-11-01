@@ -1,3 +1,5 @@
+library(L0nmf)
+
 # simulate some data to benchmark our sparse NMF algo
 # right now only Gaussian with identity link supported, could do other identity link noise families too
 simulate_nmf_data <- function(n = 500, p = 300, k = 10,
