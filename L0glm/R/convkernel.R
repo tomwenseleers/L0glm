@@ -189,6 +189,7 @@ convkernel <- function(type = c("gaussian","bigaussian","emg","lorentzian",
 #' @param method `"linear"` (sub-sample interpolation) or
 #'               `"integer"` (whole-sample shift).
 #' @return shifted vector of the same length as `kernel`
+#' @export
 shift_kernel <- function(kernel,
                          perc = "mean",
                          method = c("linear", "integer"))

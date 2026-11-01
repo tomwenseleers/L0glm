@@ -181,3 +181,7 @@ difference_scale_cpp <- function(residual, variance, level, eligible, coefficien
     .Call('_L0glm_difference_scale_cpp', PACKAGE = 'L0glm', residual, variance, level, eligible, coefficient, minimum_mean, nthreads)
 }
 
+# Register entry points for exported C++ functions
+methods::setLoadAction(function(ns) {
+    .Call('_L0glm_RcppExport_registerCCallable', PACKAGE = 'L0glm')
+})

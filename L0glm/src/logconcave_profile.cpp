@@ -1,7 +1,7 @@
 #define EIGEN_DONT_PARALLELIZE
 #include <RcppEigen.h>
-#include "scalar_families.h"
-#include "nuisance.h"
+#include <L0glm/scalar_families.h>
+#include <L0glm/nuisance.h>
 #include <set>
 #ifdef _OPENMP
 #include <omp.h>

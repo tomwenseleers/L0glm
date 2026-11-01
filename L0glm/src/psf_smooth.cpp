@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
-#include "scalar_families.h"
+#include <L0glm/scalar_families.h>
 using namespace Rcpp;
 
 namespace {

@@ -3,6 +3,8 @@
 
 #include <RcppEigen.h>
 #include <Rcpp.h>
+#include <string>
+#include <set>
 
 using namespace Rcpp;
 
@@ -208,10 +210,9 @@ END_RCPP
 }
 // nuisance_poisson_cpp
 Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& Prior, const Eigen::Map<Eigen::MatrixXd>& Start, int maxit, double tol, int nthreads);
-RcppExport SEXP _L0glm_nuisance_poisson_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
+static SEXP _L0glm_nuisance_poisson_cpp_try(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Signal(SignalSEXP);
@@ -222,41 +223,110 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(nuisance_poisson_cpp(B, Y, Signal, Prior, Start, maxit, tol, nthreads));
     return rcpp_result_gen;
-END_RCPP
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _L0glm_nuisance_poisson_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_L0glm_nuisance_poisson_cpp_try(BSEXP, YSEXP, SignalSEXP, PriorSEXP, StartSEXP, maxitSEXP, tolSEXP, nthreadsSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
 }
 // nuisance_poisson_deviance_cpp
 Eigen::VectorXd nuisance_poisson_deviance_cpp(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Mu, const Eigen::Map<Eigen::MatrixXd>& W, int nthreads);
-RcppExport SEXP _L0glm_nuisance_poisson_deviance_cpp(SEXP YSEXP, SEXP MuSEXP, SEXP WSEXP, SEXP nthreadsSEXP) {
+static SEXP _L0glm_nuisance_poisson_deviance_cpp_try(SEXP YSEXP, SEXP MuSEXP, SEXP WSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Mu(MuSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type W(WSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(nuisance_poisson_deviance_cpp(Y, Mu, W, nthreads));
     return rcpp_result_gen;
-END_RCPP
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _L0glm_nuisance_poisson_deviance_cpp(SEXP YSEXP, SEXP MuSEXP, SEXP WSEXP, SEXP nthreadsSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_L0glm_nuisance_poisson_deviance_cpp_try(YSEXP, MuSEXP, WSEXP, nthreadsSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
 }
 // nuisance_quadratic_cpp
 Eigen::VectorXd nuisance_quadratic_cpp(const Eigen::Map<Eigen::MatrixXd>& H, const Eigen::Map<Eigen::VectorXd>& h, Rcpp::LogicalVector constrained);
-RcppExport SEXP _L0glm_nuisance_quadratic_cpp(SEXP HSEXP, SEXP hSEXP, SEXP constrainedSEXP) {
+static SEXP _L0glm_nuisance_quadratic_cpp_try(SEXP HSEXP, SEXP hSEXP, SEXP constrainedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type H(HSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type h(hSEXP);
     Rcpp::traits::input_parameter< Rcpp::LogicalVector >::type constrained(constrainedSEXP);
     rcpp_result_gen = Rcpp::wrap(nuisance_quadratic_cpp(H, h, constrained));
     return rcpp_result_gen;
-END_RCPP
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _L0glm_nuisance_quadratic_cpp(SEXP HSEXP, SEXP hSEXP, SEXP constrainedSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_L0glm_nuisance_quadratic_cpp_try(HSEXP, hSEXP, constrainedSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
 }
 // nuisance_gaussian_cpp
 Rcpp::List nuisance_gaussian_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& W, const Eigen::Map<Eigen::MatrixXd>& Start, Rcpp::LogicalVector constrained, int nthreads);
-RcppExport SEXP _L0glm_nuisance_gaussian_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP WSEXP, SEXP StartSEXP, SEXP constrainedSEXP, SEXP nthreadsSEXP) {
+static SEXP _L0glm_nuisance_gaussian_cpp_try(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP WSEXP, SEXP StartSEXP, SEXP constrainedSEXP, SEXP nthreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Signal(SignalSEXP);
@@ -266,7 +336,31 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(nuisance_gaussian_cpp(B, Y, Signal, W, Start, constrained, nthreads));
     return rcpp_result_gen;
-END_RCPP
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _L0glm_nuisance_gaussian_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP WSEXP, SEXP StartSEXP, SEXP constrainedSEXP, SEXP nthreadsSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_L0glm_nuisance_gaussian_cpp_try(BSEXP, YSEXP, SignalSEXP, WSEXP, StartSEXP, constrainedSEXP, nthreadsSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
 }
 // logconc_quadratic_cpp
 List logconc_quadratic_cpp(NumericVector target, NumericVector weights, double smooth, int maxit, double tol);
@@ -767,6 +861,28 @@ BEGIN_RCPP
 END_RCPP
 }
 
+// validate (ensure exported C++ functions exist before calling them)
+static int _L0glm_RcppExport_validate(const char* sig) { 
+    static std::set<std::string> signatures;
+    if (signatures.empty()) {
+        signatures.insert("Rcpp::List(*nuisance_poisson_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int,double,int)");
+        signatures.insert("Eigen::VectorXd(*nuisance_poisson_deviance_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int)");
+        signatures.insert("Eigen::VectorXd(*nuisance_quadratic_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::VectorXd>&,Rcpp::LogicalVector)");
+        signatures.insert("Rcpp::List(*nuisance_gaussian_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,Rcpp::LogicalVector,int)");
+    }
+    return signatures.find(sig) != signatures.end();
+}
+
+// registerCCallable (register entry points for exported C++ functions)
+RcppExport SEXP _L0glm_RcppExport_registerCCallable() { 
+    R_RegisterCCallable("L0glm", "_L0glm_nuisance_poisson_cpp", (DL_FUNC)_L0glm_nuisance_poisson_cpp_try);
+    R_RegisterCCallable("L0glm", "_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC)_L0glm_nuisance_poisson_deviance_cpp_try);
+    R_RegisterCCallable("L0glm", "_L0glm_nuisance_quadratic_cpp", (DL_FUNC)_L0glm_nuisance_quadratic_cpp_try);
+    R_RegisterCCallable("L0glm", "_L0glm_nuisance_gaussian_cpp", (DL_FUNC)_L0glm_nuisance_gaussian_cpp_try);
+    R_RegisterCCallable("L0glm", "_L0glm_RcppExport_validate", (DL_FUNC)_L0glm_RcppExport_validate);
+    return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
     {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 19},
@@ -813,6 +929,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_spolo_connected_cpp", (DL_FUNC) &_L0glm_spolo_connected_cpp, 7},
     {"_L0glm_spolo_extract_cpp", (DL_FUNC) &_L0glm_spolo_extract_cpp, 6},
     {"_L0glm_difference_scale_cpp", (DL_FUNC) &_L0glm_difference_scale_cpp, 7},
+    {"_L0glm_RcppExport_registerCCallable", (DL_FUNC) &_L0glm_RcppExport_registerCCallable, 0},
     {NULL, NULL, 0}
 };
 

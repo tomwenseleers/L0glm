@@ -1,6 +1,7 @@
 // [[Rcpp::depends(RcppEigen)]]
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::plugins(openmp)]]
+// [[Rcpp::interfaces(r, cpp)]]
 #define EIGEN_DONT_PARALLELIZE
 #include <RcppEigen.h>
 #include <cmath>
@@ -9,7 +10,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include "nuisance.h"
+#include <L0glm/nuisance.h>
 #include "boundary.h"
 using Eigen::MatrixXd;using Eigen::VectorXd;
 inline double sx_b_loss(const VectorXd& y,const VectorXd& mu,const VectorXd& prior) {

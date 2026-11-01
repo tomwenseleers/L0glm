@@ -1,4 +1,4 @@
-#include "scalar_families.h"
+#include <L0glm/scalar_families.h>
 #include <vector>
 #ifdef _OPENMP
 #include <omp.h>
