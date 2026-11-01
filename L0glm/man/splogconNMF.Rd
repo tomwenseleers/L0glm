@@ -242,9 +242,10 @@ information are \eqn{g_t=H_{tr}\sum_c w_{tc}S_{rc}g_{\mu,tc}} and
 \eqn{C}, the quadratic step minimizes
 \eqn{\sum_t I_t\{(Cb)_t-\eta_t+g_t/I_t\}^2}, subject to nonincreasing
 slopes of \eqn{Cb}. Zero-information rows receive numerical stabilization.
-\code{profile_fusion} records the merge audit and source component groups, numbered
-in temporal order as they entered the final fusion pass. Its \code{source_components} list follows
-the returned temporal ordering.
+\code{profile_fusion} records the merge audit and source component groups. Source
+IDs refer to components entering original-channel profile refinement, or the
+final pass when that refinement is disabled. Groups are retained across
+passes; \code{source_components} follows the returned temporal ordering.
 
 \strong{Noise models.} Gaussian variance is \eqn{\phi}; quasipoisson variance is
 \eqn{\phi\mu}; NB2 variance is \eqn{\mu+\mu^2/\theta}; standard Gamma

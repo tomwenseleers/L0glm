@@ -59,8 +59,8 @@
 #' \Delta^2\log h_i\leq0.}
 #' Native likelihood-based profile updates minimize
 #' \eqn{-\sum_{ij}w_{ij}\ell(y_{ij};\mu_{ij})} while imposing hard log concavity.
-#' The logarithm parameterizes the positive profile; observations retain the
-#' supplied noise distribution. Unit-area kernels are aligned by their centroid
+#' The logarithm parameterizes the positive profile; likelihood or quasi-likelihood
+#' is evaluated on the original observation scale. Unit-area kernels are aligned by their centroid
 #' and resampled to the sample scan interval. Isolated-peak fitting, automatic
 #' support and interpolation share helpers with [estimate_psf_from_std()].
 #'
@@ -68,10 +68,16 @@
 #' spike fitting with PSF estimation. Completed candidates are compared using
 #' the requested information criterion and the best checkpoint is retained.
 #' The unpenalized background and any known offset enter both updates.
+#' With fixed-dispersion quasipoisson counts, the Poisson likelihood weighted
+#' by \eqn{1/\phi} has the same mean-dependent objective. This permits the
+#' native Poisson backend while preserving the quasipoisson noise scale.
 #' For multiple windows, local kernels are estimated independently, and
 #' \eqn{\log g_t=(1-a)\log g_l+a\log g_r}, with smoothstep weights
 #' \eqn{a=u^2(3-2u)}, joins adjacent anchors. The returned design has nonnegative,
 #' unit-sum, log-concave columns, including truncated boundary columns.
+#' Kernel vectors are indexed by scans. Standard profiles are resampled using
+#' the median sample scan interval; a constant kernel gives shifted copies on
+#' that scan grid, independently of rounding in the retention-time labels.
 #'
 #' **Channel aggregation.** Poisson sums retain their model. Shared-dispersion
 #' quasipoisson and NB1 sums retain their mean-variance relationship, Gaussian
@@ -80,8 +86,10 @@
 #' \eqn{r_j=\sum_i y_{ij}/\sum_{i,j\in G}y_{ij}}:
 #' \deqn{\theta_G=\theta/\sum_{j\in G}r_j^2,\qquad
 #' \phi_G=\phi\sum_{j\in G}r_j^2.}
-#' These two sum distributions are approximate when channel means have different
-#' temporal shapes. Censored Gamma aggregation is also approximate. Different
+#' These are generally moment-matched sum distributions. Equal component means
+#' give exact NB2 or ordinary Gamma closure under shared per-channel parameters.
+#' Varying channel proportions over time also affect the variance approximation.
+#' Censored Gamma aggregation is approximate and flagged separately. Different
 #' observation weights within a group are averaged and flagged in the returned
 #' diagnostics; retain the original channels for exact weighted fitting.
 #'
@@ -93,7 +101,7 @@
 #' @return A list containing the sparse design `X` (`X_spikes`), kernel vector
 #'   or matrix `g_hat`, `psf_kernels`, relative-time `psf_offsets`, anchor
 #'   retention times `psf_timepoints`, sample `time`, fitted `width_scans`,
-#'   `method`, noise `spec`, aggregation diagnostics, optional `calibration`,
+#'   `method`, noise `spec`, Gamma detection limit `censor`, aggregation diagnostics, optional `calibration`,
 #'   blind `windows`, `iterations`, `converged` and elapsed `seconds`.
 #'   The result can be passed directly as `X=psf$X` to [splogconNMF()] or
 #'   [L0glm.fit()]. No observed matrix is retained.
@@ -104,6 +112,7 @@
 #'   [splogconNMF()], [glm_cluster()]
 #' @example examples/estimate_psf.R
 #' @md
+#' @importFrom stats Gamma quasipoisson
 #' @export
 estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
                          standard=attr(y,"alkanes_TIC"),
@@ -141,7 +150,7 @@ estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
     refined<-estimate_psf(y,family,time,NULL,"blind",nwindows,precluster,
       dispersion,theta,weights,offset,ncores,control,verbose)
     refined$method<-"calibrated_blind";refined$calibration<-calibration$calibration
-    refined$calibrated_psf<-calibration[c("psf_kernels","psf_offsets","psf_timepoints","width_scans")]
+    refined$calibrated_psf<-calibration[c("psf_kernels","psf_offsets","psf_timepoints","width_scans","spec")]
     refined$seconds<-proc.time()[["elapsed"]]-begun
     return(refined)
   }
@@ -161,6 +170,8 @@ estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
     stop("Gamma observations must be zero (censored) or at least censor.",call.=FALSE)
   noise<-slcn_noise(input$Y,spec,W,ncores,"none",control$censor);spec<-noise$spec
   aggregated<-.psf_group(input$Y,W,O,spec,precluster,ncores,control$linkage)
+  aggregated$censored_approximation<-spec$name%in%c("Gamma","Gamma_scale")&&
+    control$censor>0&&any(input$Y==0)&&ncol(aggregated$Y)<ncol(input$Y)
   work<-aggregated$Y;W<-aggregated$W;O<-aggregated$O;local_spec<-aggregated$spec
   dt<-median(diff(time))
   if(method=="standard") {
@@ -202,6 +213,11 @@ estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
         offset=if(length(O)==1L) O else O[rows,channels,drop=FALSE],
         dispersion=if(channel_spec$name%in%c("gaussian","quasipoisson")) channel_spec$dispersion else NULL,
         parallelize=FALSE),control$fit)
+      if(identical(args$family$family,"quasipoisson")&&
+        all(abs(args$y-round(args$y))<1e-7)&&length(args$dispersion)==1L&&args$dispersion>0) {
+        args$weights<-args$weights/args$dispersion
+        args$family<-poisson("identity");args$dispersion<-1
+      }
       if(control$maxiter==0L) {
         if(is.null(initial))stop("Supply kernel_est when maxiter=0.",call.=FALSE)
         list(g_hat=L0glm_deco_kernel(initial,normalize=TRUE),iterations=0L,
@@ -209,15 +225,17 @@ estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
       } else do.call(L0glm_blind_deco,args)
       })
       value<-Reduce(`+`,lapply(fitted,function(z).psf_log_tail(z$g_hat)))/length(fitted)
-      kernels[j,]<-exp(value-max(value));kernels[j,]<-kernels[j,]/sum(kernels[j,])
+      kernels[j,]<-if(control$maxiter==0L)fitted[[1L]]$g_hat else exp(value-max(value))
+      kernels[j,]<-kernels[j,]/sum(kernels[j,])
       windows[[j]]<-list(iterations=max(vapply(fitted,`[[`,0L,"iterations")),
         converged=all(vapply(fitted,`[[`,FALSE,"converged")),
         channels=lapply(fitted,function(z)z[c("best_iteration","selection_trace","deviance_trace")]))
     }
     offsets<-(seq_len(L)-(L+1L)%/%2L)*dt;calibration<-NULL
   }
-  X<-.psf_build_sparse_matrix(time,points,offsets,kernels,log_floor=0,
-    drop_tol=1e-12,normalize=TRUE,smooth=TRUE)
+  X<-if(nwindows==1L)convmatrix(as.numeric(kernels),n) else
+    .psf_build_sparse_matrix(time,points,offsets,kernels,log_floor=0,
+      drop_tol=1e-12,normalize=TRUE,smooth=TRUE)
   X<-slcn_project_design_cpp(as(X,"dgCMatrix"),as.integer(ncores))
   width<-vapply(unique(round(seq(1,n,length.out=min(n,21L)))),function(j) {
     h<-X[,j];sum(h>=max(h)/2)
@@ -227,8 +245,8 @@ estimate_psf <- function(y, family=quasipoisson("identity"), time=NULL,
     "calibration channel(s); median FWHM",median(width),"scans\n")
   list(X=X,X_spikes=X,g_hat=if(nwindows==1L)as.numeric(kernels) else kernels,
     psf_kernels=kernels,psf_offsets=offsets,psf_timepoints=points,time=time,
-    method=method,aggregation=aggregated[c("group","original_channels","moment_matched","weight_approximation")],
-    spec=spec,calibration=calibration,windows=windows,
+    method=method,aggregation=aggregated[c("group","original_channels","moment_matched","weight_approximation","censored_approximation")],
+    spec=spec,censor=control$censor,calibration=calibration,windows=windows,
     iterations=if(is.null(windows)) 0L else vapply(windows,`[[`,0L,"iterations"),
     converged=is.null(windows)||all(vapply(windows,`[[`,FALSE,"converged")),
     width_scans=median(width),seconds=proc.time()[["elapsed"]]-begun)

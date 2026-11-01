@@ -10,12 +10,18 @@
   Conservative broad-profile fusion reunites complementary ion sets on nearly
   proportional profiles, with original-channel criterion checks and one final
   native likelihood refit under hard log-concavity constraints.
+  Guarded whole-profile refinement also reunites a narrow, spectrally matching
+  tail with its broad compound, retaining neighbouring modes and fusion lineage.
 * `GCMSdeco` reads ANDI-MS chromatograms, estimates time-varying PSFs with optional
   alkane calibration, fits a spline background and log-concave compounds, and
   exports all-channel spectra as NIST-compatible MSP files.
   Excel exports include sample identity, integrated areas and unit-L1 spectra.
   Compact fit objects reload observed CDF intervals for heatmaps and multi-panel
   chromatogram plots; recovered spectra and PDF reports are also supported.
+* `estimate_psf()` unifies standard and blind PSF estimation for all supported
+  signal families, using original channels, grouped channels or their total.
+  Named alkane TIC attributes supply automatic calibration. Constant and
+  smoothly time-varying estimates return a normalized sparse design as `X`.
 * Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
   returns the corresponding sparse design as `X` for downstream deconvolution.
   Standard calibration uses full local peak windows and automatic PSF support;

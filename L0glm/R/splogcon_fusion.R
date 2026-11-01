@@ -1,7 +1,8 @@
 # Reunite complementary ion sets when their broad elution profiles coincide.
 # Candidate construction is algebraic; only the original-channel loss is scored.
 slcn_fuse_profiles <- function(model, Y, psf_width) {
-  model$members <- lapply(seq_len(ncol(model$H)), identity)
+  if (is.null(model$members))
+    model$members <- lapply(seq_len(ncol(model$H)), identity)
   audit <- list()
   repeat {
     H <- model$H;K <- ncol(H)

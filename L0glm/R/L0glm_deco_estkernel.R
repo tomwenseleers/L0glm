@@ -97,9 +97,8 @@ L0glm_deco_estkernel <- function(y,     # vector or matrix (for multivariate cas
   }
   L0glm_deco_length(L, "L", 3L)
     
-  # L1 norm normalise each column of y_deconv so that we end up with a discrete 
-  # density distribution of where the peaks are 
-  # in this way, with Poisson noise, the estimated kernel would also have expected Poisson noise
+  # Normalize each spike train for conditioning; rescale its prior kernel
+  # coefficients below. The likelihood still models the original observations.
   cs <- Matrix::colSums(y_deconv)
   informative <- cs > 0
   fallback <- if (is.null(kernel_est)) rep(1 / L, L) else kernel_est

@@ -92,26 +92,6 @@ GCMS_write_msp <- function(model,time,mass,msp_file,compounds=NULL) {
   compounds
 }
 
-GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
-  dt<-stats::median(diff(time))
-  if(is.null(L)) L<-2L*ceiling(max(abs(calibration$psf_offsets))/dt)+1L
-  if(L%%2L==0L)L<-L+1L
-  centres<-.5+(seq_len(nwindows)-.5)*length(time)/nwindows
-  times<-stats::approx(seq_along(time),time,xout=centres,rule=2)$y
-  log_kernels<-t(apply(calibration$psf_kernels,1L,.psf_log_tail))
-  offsets<-(seq_len(L)-(L+1L)%/%2L)*dt
-  kernels<-t(vapply(times,function(t) {
-    z<-.psf_interp_log_kernel(t,calibration$peak_timepoints,log_kernels,smooth=TRUE)
-    h<-exp(stats::approx(calibration$psf_offsets,z-max(z),xout=offsets,
-      yleft=-Inf,yright=-Inf)$y)
-    positive<-which(h>0)
-    if(!length(positive)) stop("The calibrated PSF has no positive sample-grid support.",call.=FALSE)
-    core<-seq.int(min(positive),max(positive));h[core]<-spolo_lc(h[core])$h
-    h/sum(h)
-  },numeric(L)))
-  if(nwindows==1L) as.numeric(kernels) else kernels
-}
-
 #' Deconvolve a GC/MS chromatogram and export its compound spectra
 #'
 #' Read an ANDI-MS netCDF chromatogram, estimate a smoothly time-varying point
@@ -142,8 +122,8 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #'   \code{1L} uses a shared PSF. The returned sparse design interpolates the
 #'   PSFs smoothly across the chromatogram.
 #' @param alkanes_file Optional ANDI-MS alkane-standard chromatogram. Isolated
-#'   peaks calibrate the initial PSF through [estimate_psf_from_std()], with
-#'   automatic support and resampling to the sample's scan interval.
+#'   peaks calibrate the initial PSF through [estimate_psf()], with automatic
+#'   support, sample refinement and resampling to the sample scan interval.
 #' @param time_range Optional increasing pair of sample retention-time bounds
 #'   in minutes. Infinite bounds are accepted. This can exclude the solvent
 #'   interval or select a chromatographic window.
@@ -154,12 +134,16 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #'   at least four basis functions.
 #'   \code{NULL} chooses a low-dimensional basis from the scan count and typical
 #'   PSF width; an integer of at least four fixes its dimension.
-#' @param psf_control Named list passed to [L0glm_blind_deco()], for example
-#'   \code{list(kernel_est=psf, maxiter=0L)} keeps a supplied PSF fixed.
-#'   \code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
-#'   initial PSF. Data and \code{nwindows} are set by this function. The scalar
-#'   Poisson working weight is matched to the final noise model by default;
-#'   \code{weights} can override it. Multiple windows require a scalar weight.
+#' @param psf_control Named PSF settings. Entries `method`, `standard`,
+#'   `precluster`, `weights` and `offset` are passed directly to [estimate_psf()].
+#'   Other entries form its `control` list, for example
+#'   `list(kernel_est=psf, maxiter=0L)` keeps a supplied PSF fixed and
+#'   `list(L=61L, maxiter=8L, tol=1e-3)` estimates a PSF on the sample.
+#'   `list(standard=attr(GCMS_data2, "alkanes_TIC"))` uses the bundled calibration
+#'   TIC; its numeric names supply retention times. `precluster=1L` uses the
+#'   total-ion signal, `FALSE` the original channels, and `32L` at most 32 groups.
+#'   The PSF uses the same noise family and fixed noise estimates as the final
+#'   factorization, with its information adjustment included in the weights.
 #' @inheritParams splogconNMF
 #' @param object,x A fitted \code{GCMSdeco} object.
 #'
@@ -187,8 +171,9 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' are loaded from the CDF only when a plot needs them. Fitted signals are
 #' reconstructed from the factors; the observed matrix is released after fitting.
 #'
-#' **PSF and background.** [L0glm_blind_deco()] fits the total ion chromatogram
-#' in overlapping windows, optionally starting from the alkane standard.
+#' **PSF and background.** [estimate_psf()] estimates constant or smoothly
+#' time-varying PSFs from the sample, optionally starting from an alkane standard.
+#' Original channels, outcome groups and the total-ion signal are supported.
 #' Interpolated columns are projected to log concavity on their local support
 #' and normalized to unit sum. Their typical full width at half maximum,
 #' \eqn{w}, sets the background dimension to
@@ -199,18 +184,14 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' broad-profile fusion pass in [splogconNMF()]. Set
 #' \code{control=list(profile_fusion=FALSE)} to disable that pass.
 #'
-#' **Coherent noise scaling.** Noise parameters are estimated once from the
-#' original channels and shared by the PSF pilot and final factorization.
-#' If \eqn{\widehat\mu_{i+}} and \eqn{\widehat V_{i+}} are pilot total means
-#' and variances, the Poisson working weight for PSF estimation is
-#' \deqn{a=\frac{\sum_i\widehat\mu_{i+}}
-#' {\kappa\sum_i\widehat V_{i+}}.}
-#' For quasipoisson and NB1 this becomes \eqn{1/(\kappa\phi)}, and for
-#' common-scale Gamma it is \eqn{1/(\kappa b)}. The lag-one adjustment is
-#' \eqn{\kappa=1+2\widehat\rho_1}. Gaussian, NB2 and standard Gamma use their
-#' summed pilot variances in the same formula. This gives the PSF pilot an
-#' appropriate average precision; final factorization uses the specified
-#' family's full original-channel likelihood.
+#' **Shared noise model.** Noise parameters are estimated once from the
+#' original channels and reused in PSF estimation and factorization. The PSF
+#' weights include the information adjustment \eqn{1/\kappa}, where
+#' \eqn{\kappa=1+2\widehat\rho_1}. Aggregation adjusts the variance parameters
+#' according to the selected family; NB2 and ordinary Gamma use moment matching.
+#' See [estimate_psf()] for the distributional details. The returned
+#' `psf_working_weight` summarises the average Poisson-scale precision for
+#' comparing noise scales; the actual PSF likelihood uses the specified family.
 #'
 #' \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
 #' outcome groups, followed by refinement on every original channel. See
@@ -238,16 +219,17 @@ GCMS_calibration_start <- function(calibration,time,nwindows,L=NULL) {
 #' @return An object of class \code{GCMSdeco} containing \code{model} (the full
 #'   factorization), a \code{compounds} table with names, retention times,
 #'   original-file apex scan indices, integrated intensities and ion counts,
-#'   the blind fit and sparse design in \code{psf}, optional standard calibration
+#'   the unified PSF estimate and sparse design in \code{psf}, optional standard calibration
 #'   in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
-#'   the actual PSF working weight, retention-time and mass axes, original scan
+#'   an average precision diagnostic, retention-time and mass axes, original scan
 #'   indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
 #'   log-likelihood and information-criterion methods delegate to \code{model}.
 #' @references NIST MS Search user manual, section on NIST text format:
 #'   \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
-#' @seealso [write_GCMS_cdf()], [plot.GCMSdeco()], [splogconNMF()], [L0glm_blind_deco()], [estimate_psf_from_std()]
+#' @seealso [write_GCMS_cdf()], [plot.GCMSdeco()], [splogconNMF()], [estimate_psf()], [L0glm_blind_deco()]
 #' @md
 #' @example examples/GCMSdeco.R
+#' @importFrom stats AIC BIC residuals
 #' @export
 GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="gic",nwindows=10L,
                      alkanes_file=NULL,time_range=NULL,calibration_range=NULL,
@@ -291,31 +273,28 @@ GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="g
       nb=mean(rowSums(level+level^2/spec$theta)),Gamma=spec$dispersion*mean(rowSums(level^2)))
     working_weight<-total/max(variance,1e-15)/factor
   }
-  calibration<-NULL;initial<-psf_control$kernel_est
-  if(!is.null(alkanes_file)) {
-    std<-timed("read_standard",if(identical(alkanes_file,cdf_file)&&identical(calibration_range,time_range))
-      raw else GCMS_read_cdf(alkanes_file,calibration_range))
-    calibration<-timed("calibrate_psf",estimate_psf_from_std(rowSums(std$Y),time=std$time,
-      output_timepoints=raw$time,n_peaks=16L,return_details=TRUE))
-    if(is.null(initial)) initial<-GCMS_calibration_start(calibration,raw$time,nwindows,psf_control$L)
+  standard <- NULL
+  if (!is.null(alkanes_file) && is.null(psf_control$kernel_est)) {
+    std <- timed("read_standard", if (identical(alkanes_file, cdf_file) &&
+      identical(calibration_range, time_range)) raw else GCMS_read_cdf(alkanes_file, calibration_range))
+    standard <- std[c("Y", "time")]
   }
-  pilot_df<-max(4L,min(40L,3L+ceiling(n/(200*15))))
-  args<-utils::modifyList(list(y=rowSums(Y),family=poisson("identity"),kernel_est=initial,
-    L=if(is.matrix(initial)) ncol(initial) else if(!is.null(initial)) length(initial) else 41L,
-    baseline="bspline",nknots=pilot_df,nwindows=nwindows,plot=FALSE,ncores=ncores,
-    IC=if(is.character(lambda)) lambda else "gic",
-    weights=working_weight),psf_control)
-  if(nwindows>1L&&length(args$weights)>1L)
-    stop("Use a scalar PSF working weight with multiple windows.",call.=FALSE)
-  working_weight<-args$weights
-  blind<-timed("blind_psf",do.call(L0glm_blind_deco,args))
-  X<-methods::as(methods::as(Matrix::Matrix(blind$X,sparse=TRUE),"generalMatrix"),"dgCMatrix")
-  # Interpolated PSFs are projected on their local support, retaining structural zeros.
-  X<-timed("project_psf",slcn_project_design_cpp(X,ncores))
-  blind$X<-blind$X_spikes<-X
-  sample<-unique(round(seq(1,n,length.out=min(n,21L))))
-  widths<-vapply(sample,function(j){h<-X[,j];sum(h>=max(h)/2)},0)
-  width<-max(1,stats::median(widths))
+  direct <- c("standard", "method", "precluster", "weights", "offset")
+  settings <- psf_control[setdiff(names(psf_control), c(direct, "control"))]
+  settings <- utils::modifyList(if (is.null(psf_control$control)) list() else psf_control$control,
+    settings, keep.null = TRUE)
+  settings <- utils::modifyList(list(censor = censor), settings, keep.null = TRUE)
+  settings$fit <- utils::modifyList(list(IC = if (is.character(lambda)) lambda else "gic"),
+    if (is.null(settings$fit)) list() else settings$fit, keep.null = TRUE)
+  args <- utils::modifyList(list(y = Y, family = family, time = raw$time,
+    standard = standard, nwindows = nwindows, precluster = 1L,
+    dispersion = spec$dispersion, theta = if (spec$name == "nb") spec$theta else NULL,
+    weights = 1/factor, ncores = ncores, control = settings, verbose = verbose),
+    psf_control[intersect(names(psf_control), direct)], keep.null = TRUE)
+  blind <- timed("estimate_psf", do.call(estimate_psf, args))
+  calibration <- blind$calibration
+  X <- blind$X
+  width <- max(1, blind$width_scans)
   if(is.null(baseline_df)) baseline_df<-max(4L,min(40L,3L+ceiling(n/(200*width))))
   L0glm_deco_length(baseline_df,"baseline_df",1L)
   if(baseline_df %in% c(2L,3L)) stop("Use baseline_df=1 for a constant or at least 4 for a cubic spline.",call.=FALSE)
@@ -337,7 +316,6 @@ GCMSdeco <- function(cdf_file,msp_file,family=quasipoisson("identity"),lambda="g
     compounds,xlsx_file,cdf_file,alkanes_file,seconds))
   model$y<-model$mu<-NULL
   if(!is.null(model$aggregation$model)) model$aggregation$model$mu<-NULL
-  blind$fitted_values<-blind$fitted_baseline<-NULL
   seconds["total"]<-proc.time()[["elapsed"]]-begun
   structure(list(model=model,compounds=compounds,psf=blind,background_df=baseline_df,
     psf_standard=calibration,psf_width_scans=width,time=raw$time,mass=raw$mass,

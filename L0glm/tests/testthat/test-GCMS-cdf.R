@@ -47,7 +47,8 @@ test_that("short CDF windows can use a constant unpenalized background", {
   expect_lt(abs(f$model$ledger_error),1e-4)
   expect_identical(f$psf$iterations,0L)
   expect_equal(f$psf$g_hat,kernel/sum(kernel),tolerance=1e-12)
-  expect_length(f$psf$deviance_trace,1L)
+  expect_identical(f$psf$method,"fixed")
+  expect_equal(dim(f$psf$X),c(n,n))
   expect_error(L0glm_blind_deco(rowSums(Y),maxiter=0L,plot=FALSE),"kernel_est")
   windows <- L0glm_blind_deco(rowSums(Y),kernel_est=kernel,nwindows=2L,
     maxiter=0L,plot=FALSE,baseline="bspline",nknots=4L)

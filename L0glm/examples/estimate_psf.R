@@ -26,7 +26,7 @@ blind$width_scans
 data(GCMS_data2)
 Y <- GCMS_data2
 # The alkane TIC and its time axis are taken from attr(Y, "alkanes_TIC").
-psf <- estimate_psf(Y, nwindows = 3L, precluster = 32L)
+psf <- estimate_psf(Y, nwindows = 3L)
 B <- splines::bs(as.numeric(rownames(Y)), df = 4L, intercept = TRUE)
 fit <- splogconNMF(psf$X, Y, background = B,
   family = quasipoisson("identity"), precluster = 32L)

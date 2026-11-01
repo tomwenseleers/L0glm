@@ -83,7 +83,7 @@ family constructor unless explicitly overridden.}
 A list containing the sparse design \code{X} (\code{X_spikes}), kernel vector
 or matrix \code{g_hat}, \code{psf_kernels}, relative-time \code{psf_offsets}, anchor
 retention times \code{psf_timepoints}, sample \code{time}, fitted \code{width_scans},
-\code{method}, noise \code{spec}, aggregation diagnostics, optional \code{calibration},
+\code{method}, noise \code{spec}, Gamma detection limit \code{censor}, aggregation diagnostics, optional \code{calibration},
 blind \code{windows}, \code{iterations}, \code{converged} and elapsed \code{seconds}.
 The result can be passed directly as \code{X=psf$X} to \code{\link[=splogconNMF]{splogconNMF()}} or
 \code{\link[=L0glm.fit]{L0glm.fit()}}. No observed matrix is retained.
@@ -102,8 +102,8 @@ geometry. Each peak is fitted on its original observation scale:
 \Delta^2\log h_i\leq0.}
 Native likelihood-based profile updates minimize
 \eqn{-\sum_{ij}w_{ij}\ell(y_{ij};\mu_{ij})} while imposing hard log concavity.
-The logarithm parameterizes the positive profile; observations retain the
-supplied noise distribution. Unit-area kernels are aligned by their centroid
+The logarithm parameterizes the positive profile; likelihood or quasi-likelihood
+is evaluated on the original observation scale. Unit-area kernels are aligned by their centroid
 and resampled to the sample scan interval. Isolated-peak fitting, automatic
 support and interpolation share helpers with \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}.
 
@@ -111,10 +111,16 @@ support and interpolation share helpers with \code{\link[=estimate_psf_from_std]
 spike fitting with PSF estimation. Completed candidates are compared using
 the requested information criterion and the best checkpoint is retained.
 The unpenalized background and any known offset enter both updates.
+With fixed-dispersion quasipoisson counts, the Poisson likelihood weighted
+by \eqn{1/\phi} has the same mean-dependent objective. This permits the
+native Poisson backend while preserving the quasipoisson noise scale.
 For multiple windows, local kernels are estimated independently, and
 \eqn{\log g_t=(1-a)\log g_l+a\log g_r}, with smoothstep weights
 \eqn{a=u^2(3-2u)}, joins adjacent anchors. The returned design has nonnegative,
 unit-sum, log-concave columns, including truncated boundary columns.
+Kernel vectors are indexed by scans. Standard profiles are resampled using
+the median sample scan interval; a constant kernel gives shifted copies on
+that scan grid, independently of rounding in the retention-time labels.
 
 \strong{Channel aggregation.} Poisson sums retain their model. Shared-dispersion
 quasipoisson and NB1 sums retain their mean-variance relationship, Gaussian
@@ -123,8 +129,10 @@ use variance matching with observed channel fractions
 \eqn{r_j=\sum_i y_{ij}/\sum_{i,j\in G}y_{ij}}:
 \deqn{\theta_G=\theta/\sum_{j\in G}r_j^2,\qquad
 \phi_G=\phi\sum_{j\in G}r_j^2.}
-These two sum distributions are approximate when channel means have different
-temporal shapes. Censored Gamma aggregation is also approximate. Different
+These are generally moment-matched sum distributions. Equal component means
+give exact NB2 or ordinary Gamma closure under shared per-channel parameters.
+Varying channel proportions over time also affect the variance approximation.
+Censored Gamma aggregation is approximate and flagged separately. Different
 observation weights within a group are averaged and flagged in the returned
 diagnostics; retain the original channels for exact weighted fitting.
 
@@ -162,7 +170,7 @@ blind$width_scans
 data(GCMS_data2)
 Y <- GCMS_data2
 # The alkane TIC and its time axis are taken from attr(Y, "alkanes_TIC").
-psf <- estimate_psf(Y, nwindows = 3L, precluster = 32L)
+psf <- estimate_psf(Y, nwindows = 3L)
 B <- splines::bs(as.numeric(rownames(Y)), df = 4L, intercept = TRUE)
 fit <- splogconNMF(psf$X, Y, background = B,
   family = quasipoisson("identity"), precluster = 32L)

@@ -87,7 +87,8 @@
 #'
 #' @example examples/estimate_psf_from_std.R
 #'
-#' @seealso \code{\link{L0glm_sparse_deco}}, \code{\link{log_conc_smooth}},
+#' @seealso \code{\link{estimate_psf}} for unified standard and blind estimation,
+#'   \code{\link{L0glm_sparse_deco}}, \code{\link{log_conc_smooth}},
 #'   \code{\link{convmatrix}}
 #'
 #' @importFrom Matrix sparseMatrix

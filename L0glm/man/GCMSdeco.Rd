@@ -98,8 +98,8 @@ a nonnegative numeric compound penalty. See Details for its scale.}
 PSFs smoothly across the chromatogram.}
 
 \item{alkanes_file}{Optional ANDI-MS alkane-standard chromatogram. Isolated
-peaks calibrate the initial PSF through \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}, with
-automatic support and resampling to the sample's scan interval.}
+peaks calibrate the initial PSF through \code{\link[=estimate_psf]{estimate_psf()}}, with automatic
+support, sample refinement and resampling to the sample scan interval.}
 
 \item{calibration_range}{Optional retention-time bounds in minutes for the
 standard. The whole standard is used when omitted.}
@@ -150,15 +150,23 @@ compounds to adjust together during local fusion refinement.
 \code{profile_cycles} bounds the original-channel shape/background refinement;
 zero disables it. \code{fusion_passes} bounds broad-anchor and compatible-tail
 fusion after that refinement.
+For a narrow, spectrally matching fragment contained in a broad profile,
+a guarded whole-profile refit can also update the shared background.
+Neighbouring modes stay within one quarter of their initial FWHM, and
+the merge is retained only when the original-channel criterion decreases.
 \code{profile_fusion} enables a final conservative fusion pass on all original
 channels, followed by one local likelihood-based profile/spectrum refit.}
 
-\item{psf_control}{Named list passed to \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, for example
-\code{list(kernel_est=psf, maxiter=0L)} keeps a supplied PSF fixed.
-\code{list(L=61L, maxiter=8L, tol=1e-3)}. \code{kernel_est} supplies a known
-initial PSF. Data and \code{nwindows} are set by this function. The scalar
-Poisson working weight is matched to the final noise model by default;
-\code{weights} can override it. Multiple windows require a scalar weight.}
+\item{psf_control}{Named PSF settings. Entries \code{method}, \code{standard},
+\code{precluster}, \code{weights} and \code{offset} are passed directly to \code{\link[=estimate_psf]{estimate_psf()}}.
+Other entries form its \code{control} list, for example
+\code{list(kernel_est=psf, maxiter=0L)} keeps a supplied PSF fixed and
+\code{list(L=61L, maxiter=8L, tol=1e-3)} estimates a PSF on the sample.
+\code{list(standard=attr(GCMS_data2, "alkanes_TIC"))} uses the bundled calibration
+TIC; its numeric names supply retention times. \code{precluster=1L} uses the
+total-ion signal, \code{FALSE} the original channels, and \code{32L} at most 32 groups.
+The PSF uses the same noise family and fixed noise estimates as the final
+factorization, with its information adjustment included in the weights.}
 
 \item{verbose}{Print stage timings, objective changes and compound counts.}
 
@@ -182,9 +190,9 @@ compound, with its magnitude carried by the compound area.}
 An object of class \code{GCMSdeco} containing \code{model} (the full
 factorization), a \code{compounds} table with names, retention times,
 original-file apex scan indices, integrated intensities and ion counts,
-the blind fit and sparse design in \code{psf}, optional standard calibration
+the unified PSF estimate and sparse design in \code{psf}, optional standard calibration
 in \code{psf_standard}, \code{background_df}, \code{psf_width_scans},
-the actual PSF working weight, retention-time and mass axes, original scan
+an average precision diagnostic, retention-time and mass axes, original scan
 indices, sample identity, output file paths and stage timings. Coefficient, fitted-value,
 log-likelihood and information-criterion methods delegate to \code{model}.
 }
@@ -218,8 +226,9 @@ The returned object stores the factors and source CDF path. Observed data
 are loaded from the CDF only when a plot needs them. Fitted signals are
 reconstructed from the factors; the observed matrix is released after fitting.
 
-\strong{PSF and background.} \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}} fits the total ion chromatogram
-in overlapping windows, optionally starting from the alkane standard.
+\strong{PSF and background.} \code{\link[=estimate_psf]{estimate_psf()}} estimates constant or smoothly
+time-varying PSFs from the sample, optionally starting from an alkane standard.
+Original channels, outcome groups and the total-ion signal are supported.
 Interpolated columns are projected to log concavity on their local support
 and normalized to unit sum. Their typical full width at half maximum,
 \eqn{w}, sets the background dimension to
@@ -230,18 +239,14 @@ The calibrated median PSF width also sets the guard for the final
 broad-profile fusion pass in \code{\link[=splogconNMF]{splogconNMF()}}. Set
 \code{control=list(profile_fusion=FALSE)} to disable that pass.
 
-\strong{Coherent noise scaling.} Noise parameters are estimated once from the
-original channels and shared by the PSF pilot and final factorization.
-If \eqn{\widehat\mu_{i+}} and \eqn{\widehat V_{i+}} are pilot total means
-and variances, the Poisson working weight for PSF estimation is
-\deqn{a=\frac{\sum_i\widehat\mu_{i+}}
-{\kappa\sum_i\widehat V_{i+}}.}
-For quasipoisson and NB1 this becomes \eqn{1/(\kappa\phi)}, and for
-common-scale Gamma it is \eqn{1/(\kappa b)}. The lag-one adjustment is
-\eqn{\kappa=1+2\widehat\rho_1}. Gaussian, NB2 and standard Gamma use their
-summed pilot variances in the same formula. This gives the PSF pilot an
-appropriate average precision; final factorization uses the specified
-family's full original-channel likelihood.
+\strong{Shared noise model.} Noise parameters are estimated once from the
+original channels and reused in PSF estimation and factorization. The PSF
+weights include the information adjustment \eqn{1/\kappa}, where
+\eqn{\kappa=1+2\widehat\rho_1}. Aggregation adjusts the variance parameters
+according to the selected family; NB2 and ordinary Gamma use moment matching.
+See \code{\link[=estimate_psf]{estimate_psf()}} for the distributional details. The returned
+\code{psf_working_weight} summarises the average Poisson-scale precision for
+comparing noise scales; the actual PSF likelihood uses the specified family.
 
 \code{precluster=32L} performs selection and fusion in at most 32 size-adjusted
 outcome groups, followed by refinement on every original channel. See
@@ -305,6 +310,15 @@ plot(fit2, type = "profiles", file = file.path(out, "GCMS_data2_profiles_and_spe
 # For a full chromatogram with a separate calibration standard:
 beer <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file = "alkanes.cdf",
   xlsx_file = "beer.xlsx", nwindows = 10L, precluster = 32L)
+
+# Automatic PSF estimation from a bundled window and its named alkane TIC.
+psf <- estimate_psf(GCMS_data2, nwindows = 3L)
+dim(psf$X)
+
+# A CDF contains the chromatogram; pass the R calibration attribute explicitly.
+calibrated <- GCMSdeco(file.path(out, "GCMS_data2.cdf"),
+  file.path(out, "GCMS_data2_calibrated.msp"), nwindows = 3L, precluster = 32L,
+  psf_control = list(standard = attr(GCMS_data2, "alkanes_TIC")))
 }
 }
 \references{
@@ -312,5 +326,5 @@ NIST MS Search user manual, section on NIST text format:
 \url{https://chemdata.nist.gov/mass-spc/ms-search/docs/Ver20Man.pdf}.
 }
 \seealso{
-\code{\link[=write_GCMS_cdf]{write_GCMS_cdf()}}, \code{\link[=plot.GCMSdeco]{plot.GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}, \code{\link[=estimate_psf_from_std]{estimate_psf_from_std()}}
+\code{\link[=write_GCMS_cdf]{write_GCMS_cdf()}}, \code{\link[=plot.GCMSdeco]{plot.GCMSdeco()}}, \code{\link[=splogconNMF]{splogconNMF()}}, \code{\link[=estimate_psf]{estimate_psf()}}, \code{\link[=L0glm_blind_deco]{L0glm_blind_deco()}}
 }

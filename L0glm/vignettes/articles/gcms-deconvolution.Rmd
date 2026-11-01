@@ -68,13 +68,54 @@ An alkane standard can supply its initial calibration through
 The hydrocarbon window uses a constant background; the longer beer window
 uses the automatically chosen low-df cubic spline.
 
+### Estimate the PSF automatically
+
+`estimate_psf()` provides one interface for standard calibration and blind
+sample estimation. Both bundled matrices include a full alkane TIC in
+`attr(Y, "alkanes_TIC")`; its numeric names give retention times in minutes.
+The estimator uses this calibration automatically, resamples to the sample
+scan interval and refines the PSF on the sample:
+
+```r
+psf <- estimate_psf(GCMS_data2, nwindows = 3L)
+X <- psf$X                         # sparse scan-by-scan PSF design
+psf$width_scans
+
+# A constant PSF, calibration alone, or blind fitting without a standard:
+constant <- estimate_psf(GCMS_data2, nwindows = 1L)
+standard <- estimate_psf(GCMS_data2, method = "standard", nwindows = 3L)
+blind <- estimate_psf(GCMS_data2, standard = NULL, method = "blind",
+  nwindows = 3L, precluster = 32L)
+```
+
+`precluster=FALSE` uses all ion channels, `1L` uses their total, and `32L`
+uses at most 32 size-adjusted groups. The same identity-link noise models
+are available as in `splogconNMF()`, including negative binomial and Gamma
+models. The [PSF help page](../reference/estimate_psf.html) describes likelihood
+fitting, noise scaling and aggregation.
+
+`GCMSdeco()` uses the same estimator. A CDF contains the sample chromatogram;
+its accompanying R calibration attribute can be supplied explicitly:
+
+```r
+calibrated <- GCMSdeco(file.path(out, "GCMS_data2.cdf"),
+  file.path(out, "GCMS_data2_calibrated.msp"), nwindows = 3L, precluster = 32L,
+  psf_control = list(standard = attr(GCMS_data2, "alkanes_TIC")))
+```
+
+Calibration peaks should reflect the sample's chromatographic conditions.
+The bundled beer calibration has broader peaks than the PSF used in the
+plotted comparison, so the table and figures below use the explicit Gaussian
+PSFs in `fit1` and `fit2` above. Automatic calibration is available through
+the calls in this section.
+
 <!-- BEGIN gcms-results -->
-These results were obtained with the calls above on the [benchmark workstation](performance.html#reproduce-and-extend), using eight OpenMP workers and one BLAS thread. Timings include CDF reading, PSF initialization, factorization and MSP export.
+These results were obtained with the calls above on the [benchmark workstation](performance.html#reproduce-and-extend), using eight OpenMP workers and one BLAS thread. Timings are medians of two complete runs, including CDF reading, PSF initialization, factorization and MSP export.
 
 | Dataset | Scans | Mass channels | Compounds | Time (s) | GIC | Adjusted weighted R² |
 |:--|--:|--:|--:|--:|--:|--:|
-| `GCMS_data1` | 119 | 671 | 6 | 5.09 | 219,686 | 0.98980 |
-| `GCMS_data2` | 1,764 | 518 | 37 | 58.33 | 1,325,745 | 0.99392 |
+| `GCMS_data1` | 119 | 671 | 6 | 4.77 | 219,686 | 0.98980 |
+| `GCMS_data2` | 1,764 | 518 | 37 | 92.21 | 1,289,044 | 0.99418 |
 
 Weighted R² uses weights `1/pmax(fitted_mean, 0.1)` and a separate weighted mean for each ion channel. Its adjustment is conditional on the fitted profiles, using the positive spectral coefficients and background coefficients as the parameter count.
 
@@ -98,7 +139,7 @@ Download [traces](../gcms/gcms-data1-traces.pdf), [heatmaps](../gcms/gcms-data1-
 
 ![Elution profiles and mass spectra for GCMS_data2](../reference/figures/gcms-data2-profiles-spectra.png)
 
-The profile/spectrum preview includes the broadest component and five other large components, in temporal order. The PDF contains every recovered component.
+The profile/spectrum preview includes the broadest component and five other large components, in temporal order. The PDF contains every recovered component. The broad acid peak is represented by one extended log-concave profile (compound 20 in this fit), while the smaller neighbouring peaks remain distinct.
 
 Download [traces](../gcms/gcms-data2-traces.pdf), [heatmaps](../gcms/gcms-data2-heatmaps.pdf), [all profiles and spectra](../gcms/gcms-data2-profiles-spectra.pdf), or the [MSP library](../gcms/gcms-data2.msp).
 <!-- END gcms-results -->
@@ -194,7 +235,11 @@ scaled by the common dispersion. The optional temporal working adjustment
    coefficients using the original observations and noise model.
 5. Refine local log-concave profiles and spectra, treating all other compounds
    as offsets. Consider broad-anchor and compatible-tail fusions, restoring
-   distinct components when the full criterion favours them.
+   distinct components when the full criterion favours them. A narrow fragment
+   contained within a spectrally matching broad profile can also receive a
+   guarded whole-profile refit with a shared background update. Neighbouring
+   modes remain within one quarter of their starting FWHM; the complete
+   original-channel criterion must decrease for the fusion to be retained.
 6. Apply the conservative broad-profile fusion pass, refine the affected
    neighbourhoods, and return profiles and spectra in temporal order.
 

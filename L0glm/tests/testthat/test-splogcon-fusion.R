@@ -47,6 +47,14 @@ test_that("ordinary narrow profiles are protected and empty models are supported
   expect_equal(dim(z$H), c(160L, 0L));expect_equal(dim(z$S), c(0L, 4L))
 })
 
+test_that("the final profile pass retains lineage from contained-tail refinement", {
+  d <- fusion_test_model()
+  d$f$members <- list(c(2L, 4L), c(7L, 9L))
+  z <- slcn_fuse_profiles(d$f, d$Y, 2L)
+  expect_identical(z$members, list(c(2L, 4L, 7L, 9L)))
+  expect_identical(z$profile_fusion$merges$source, "2;4;7;9")
+})
+
 test_that("guarded tail refinement retains dimensions and every original noise model", {
   for (kind in 0:6) {
     d <- fusion_test_model(kind)

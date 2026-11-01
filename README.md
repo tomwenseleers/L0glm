@@ -167,6 +167,9 @@ recovers log-concave elution profiles and spectra with a smooth background.
 [GCMSdeco()](https://tomwenseleers.github.io/L0glm/reference/GCMSdeco.html) runs the
 workflow directly from an ANDI-MS `.cdf` chromatogram and exports the compound
 spectra to a NIST-compatible `.msp` library.
+[estimate_psf()](https://tomwenseleers.github.io/L0glm/reference/estimate_psf.html)
+provides automatic standard or blind calibration and returns a constant or
+smoothly varying sparse PSF design.
 
 <details>
 <summary><strong>Single channel deconvolution</strong></summary>

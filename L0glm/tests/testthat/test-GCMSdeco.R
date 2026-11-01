@@ -90,6 +90,8 @@ test_that("CDF-to-MSP workflows preserve channels, scores and profile constraint
     expect_true(is.finite(GIC(z))&&file.exists(out))
     expect_output(print(z),"GC/MS deconvolution")
     expect_true(is.finite(z$psf_working_weight)&&z$psf_working_weight>0)
+    expect_identical(z$psf$spec$name,z$model$spec$name)
+    expect_identical(z$psf$censor,z$model$control$censor)
     if(i==2L) expect_equal(z$psf_working_weight,1)
     if(i==3L) expect_equal(z$psf_working_weight,.2)
     lines <- readLines(out,warn=FALSE)

@@ -34,4 +34,13 @@ plot(fit2, type = "profiles", file = file.path(out, "GCMS_data2_profiles_and_spe
 # For a full chromatogram with a separate calibration standard:
 beer <- GCMSdeco("beer.cdf", "beer.msp", alkanes_file = "alkanes.cdf",
   xlsx_file = "beer.xlsx", nwindows = 10L, precluster = 32L)
+
+# Automatic PSF estimation from a bundled window and its named alkane TIC.
+psf <- estimate_psf(GCMS_data2, nwindows = 3L)
+dim(psf$X)
+
+# A CDF contains the chromatogram; pass the R calibration attribute explicitly.
+calibrated <- GCMSdeco(file.path(out, "GCMS_data2.cdf"),
+  file.path(out, "GCMS_data2_calibrated.msp"), nwindows = 3L, precluster = 32L,
+  psf_control = list(standard = attr(GCMS_data2, "alkanes_TIC")))
 }

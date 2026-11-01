@@ -127,6 +127,10 @@ recovers log-concave elution profiles and spectra with a smooth background.
 `.cdf` chromatogram and exports the compound spectra to a NIST-compatible `.msp`
 library.
 
+[estimate_psf()](reference/estimate_psf.html) estimates constant or smoothly
+varying PSFs from a calibration standard or the sample, returning a sparse
+design ready for deconvolution.
+
 ## Choose a starting point
 
 | I would like to… | Start here |

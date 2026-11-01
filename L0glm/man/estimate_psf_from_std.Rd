@@ -220,6 +220,7 @@ for (i in 1:length(which(Matrix::rowSums(fit.mc$coefficients)!=0)) ) {
 
 }
 \seealso{
-\code{\link{L0glm_sparse_deco}}, \code{\link{log_conc_smooth}},
+\code{\link{estimate_psf}} for unified standard and blind estimation,
+  \code{\link{L0glm_sparse_deco}}, \code{\link{log_conc_smooth}},
   \code{\link{convmatrix}}
 }

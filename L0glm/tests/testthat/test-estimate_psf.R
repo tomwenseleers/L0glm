@@ -63,6 +63,8 @@ test_that("PSF input formats, attributes and fixed designs retain their meaning"
   expect_equal(fixed$aggregation$original_channels, 4L)
   expect_null(fixed$calibration)
   expect_null(fixed$Y)
+  expected <- slcn_project_design_cpp(as(convmatrix(d$g, nrow(Y)), "dgCMatrix"), 1L)
+  expect_identical(fixed$X, expected)
   expect_error(estimate_psf(Y, control = list(typo = 1)), "Unknown PSF control")
   expect_error(estimate_psf(Y, control = list(maxiter = 0L), standard = NULL), "Supply kernel_est")
   expect_error(estimate_psf(Y, time = rev(at)), "increasing")
@@ -79,4 +81,15 @@ test_that("rectangular convolution matches direct indexing with sparse kernels",
     expected[keep] <- g[index[keep]]
     expect_equal(as.matrix(z), expected, tolerance = 1e-12)
   }
+})
+
+test_that("censored aggregation is identified independently of variance closure", {
+  Y <- matrix(rep(c(0, 1, 2, 4), 10L), 20L, 2L)
+  args <- list(y=Y, family=Gamma_scale(4, "identity", censor=.5), ncores=1L,
+    control=list(kernel_est=c(.1,.8,.1), maxiter=0L))
+  grouped <- do.call(estimate_psf, args)
+  original <- do.call(estimate_psf, c(args, list(precluster=FALSE)))
+  expect_true(grouped$aggregation$censored_approximation)
+  expect_false(grouped$aggregation$moment_matched)
+  expect_false(original$aggregation$censored_approximation)
 })
