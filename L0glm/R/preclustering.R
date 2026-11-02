@@ -132,7 +132,7 @@ L0glm_precluster_validation<-function(validation,group=NULL,rows=NULL,added=FALS
   agg<-glm_aggregate(validation$y,validation$weights,poisson(identity),group)
   P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,max(group)))
   validation$y<-agg$Y_agg;validation$weights<-agg$weights_agg
-  if(!is.null(validation$offset)) validation$offset<-as.matrix(L0glm_ext_matrix(validation$offset,n,m,0,"Validation offset")%*%P)
+  if(!is.null(validation$offset)) validation$offset<-L0glm_precluster_offset(validation$offset,n,m,P)
   if(inherits(validation,"L0glm_validation")) {
     validation$m<-max(group);validation$mass<-rowSums(validation$weights)
     validation$response<-list(y=validation$y,m=validation$m)
@@ -208,7 +208,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   opt<-options;opt$lambda<-if(refit) control$screen.factor*lambda else lambda
   opt$dispersion<-if(is.null(options$dispersion)) NULL else 1
   opt$weights<-if(is.null(options$weights)) NULL else w
-  opt$offset<-if(is.null(options$offset)) NULL else as.matrix(L0glm_ext_matrix(options$offset,n,m,0,"offset")%*%P)
+  opt$offset<-if(is.null(options$offset)) NULL else L0glm_precluster_offset(options$offset,n,m,P)
   opt$start<-L0glm_precluster_sumcoef(original_start,P);opt$prior.mean<-L0glm_precluster_sumcoef(prior,P)
   opt$validation<-if(refit) NULL else L0glm_precluster_validation(options$validation,group=group)
   selected_start<-proc.time()[[3L]];reduced<-call_fit(X,response,opt)
@@ -265,4 +265,10 @@ L0glm_precluster_reuse <- function(args, fit) {
   if (isTRUE(fit$preclustering$used) && is.null(args$control.precluster$clusterids))
     args$control.precluster$clusterids <- fit$preclustering$clusterids
   args
+}
+
+L0glm_precluster_offset <- function(value,n,m,groups) {
+  offset<-L0glm_observation_input(value,n,m,0,"offset")
+  if(ncol(offset)==1L)as.numeric(offset) %o% as.numeric(Matrix::colSums(groups)) else
+    as.matrix(offset%*%groups)
 }

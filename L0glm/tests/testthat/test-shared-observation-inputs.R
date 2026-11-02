@@ -18,4 +18,6 @@ test_that("shared row weights and offsets stay compact and match channel matrice
   expect_error(L0glm.fit(X,y,weights=numeric(2)),"weights")
   expect_error(L0nnpois(X,y,offset=numeric(2)),"offset")
   expect_error(L0nnpois(X,y,weights=-1),"nonnegative")
+  groups<-Matrix::sparseMatrix(i=1:3,j=c(1L,1L,2L),x=1)
+  expect_equal(L0glm_precluster_offset(off,n,m,groups),as.matrix(matrix(off,n,m)%*%groups))
 })
