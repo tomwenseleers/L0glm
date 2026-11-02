@@ -63,7 +63,7 @@ L0glm_ext_multinomial_working <- function(data, B, D, state, args) {
   X <- data$Z[good, vars, drop = FALSE]; n <- nrow(X); p <- ncol(X)
   C <- data$m; m <- C - 1L; Q <- L0glm_ext_contrasts(C)
   eta <- as.matrix(data$Z %*% B)
-  P <- L0glm_ext_softmax(eta + data$offset)$p[good, , drop = FALSE]
+  P <- L0glm_ext_softmax(eta + L0glm_observation_broadcast(data$offset))$p[good, , drop = FALSE]
   score <- (data$y[good, , drop = FALSE] - total[good] * P) * w[good]
   weight <- w[good] * total[good]
   d <- D[vars, , drop = FALSE]

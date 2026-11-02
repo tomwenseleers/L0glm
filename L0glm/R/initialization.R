@@ -15,31 +15,37 @@ L0glm_signal_start <- function(X, y, offset, weights, included = integer(), prio
   if (any(!is.finite(values)) || any(values < 0) ||
       any(!is.finite(offset)) || any(!is.finite(weights)) || any(weights < 0)) return(NULL)
   y <- as.matrix(y); n <- nrow(X); m <- ncol(y); p <- ncol(X)
+  weights <- as.matrix(weights)
   selectable <- setdiff(seq_len(p), included)
   if (!length(selectable) || !any(weights > 0)) return(NULL)
-  residual <- pmax(y - offset, 0)
+  shared_weights <- ncol(weights)==1L
+  W <- L0glm_observation_broadcast(weights)
+  residual <- pmax(y - L0glm_observation_broadcast(offset), 0)
   result <- matrix(0, p, m)
   if (length(included)) {
     B <- as.matrix(X[, included, drop = FALSE]); mass <- rowSums(B)
     if (!any(mass > 0)) return(NULL)
     constant <- max(abs(mass - mass[1L])) <= 1e-12 * max(1, mass[1L]) && mass[1L] > 0
     for (j in seq_len(m)) {
-      good <- weights[, j] > 0
+      w <- L0glm_observation_column(weights,j)
+      good <- w > 0
       level <- if (any(good)) as.numeric(stats::quantile(residual[good, j], 0.05)) else 0
       result[included, j] <- if (constant) level / mass[1L] else
-        as.numeric(nuisance_quadratic_cpp(crossprod(B, B * weights[, j]),
-          as.numeric(crossprod(B, weights[, j] * level)), rep(TRUE, ncol(B))))
+        as.numeric(nuisance_quadratic_cpp(crossprod(B, B * w),
+          as.numeric(crossprod(B, w * level)), rep(TRUE, ncol(B))))
     }
     residual <- pmax(residual - B %*% result[included, , drop = FALSE], 0)
   }
   A <- X[, selectable, drop = FALSE]
   information <- as.matrix(Matrix::crossprod(A^2, weights))
-  rhs <- as.matrix(Matrix::crossprod(A, weights * residual))
-  floor <- sweep(1 / sqrt(pmax(information, .Machine$double.xmin)), 2L,
-    1e-8 * sqrt(colSums(weights * residual^2)), "*")
+  rhs <- as.matrix(Matrix::crossprod(A, W * residual))
+  if(shared_weights)information<-as.numeric(information)
+  uncertainty <- 1 / sqrt(pmax(information, .Machine$double.xmin))
+  magnitude <- 1e-8 * sqrt(colSums(W * residual^2))
+  floor <- if(shared_weights)uncertainty %o% magnitude else sweep(uncertainty,2L,magnitude,"*")
   beta <- pmax(rhs / pmax(information, .Machine$double.xmin), floor)
   if (!is.null(prior)) beta <- pmax(beta, prior[selectable, , drop = FALSE])
-  beta[information == 0] <- 0
+  if(shared_weights)beta[information==0,]<-0 else beta[information == 0] <- 0
   result[selectable, ] <- beta
   result
 }

@@ -56,7 +56,7 @@ test_that("aggregate-only fits retain the target penalty and summed response uni
     lambda=fit$preclustering$lambda.target,parallelize=FALSE)
   expect_identical(coef(fit),coef(manual));expect_equal(fit$y,agg$Y_agg)
   expect_equal(dim(coef(fit)),c(ncol(d$X),4L));expect_equal(fit$offset,matrix(.4,n,4))
-  expect_equal(fit$prior.weights,matrix(w,n,4));expect_null(fit$preclustering$lambda.screen)
+  expect_equal(fit$prior.weights,matrix(w,n,1L));expect_null(fit$preclustering$lambda.screen)
   expect_equal(dim(predict(fit,d$X[1:3,,drop=FALSE])),c(3L,4L))
 })
 

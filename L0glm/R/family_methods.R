@@ -3,13 +3,13 @@ L0glm_ext_loglik <- function(data, B, state) {
     mu <- L0glm_ext_nb_mean(data, B)$mu
     if (any(!is.finite(mu) | mu < 0)) return(-Inf)
     return(sum(vapply(seq_len(data$m), function(j) {
-      good <- data$weights[, j] > 0
-      sum(data$weights[good, j] * stats::dnbinom(data$y[good, j],
+      good <- L0glm_observation_column(data$weights,j) > 0
+      sum(L0glm_observation_column(data$weights,j,good) * stats::dnbinom(data$y[good, j],
         mu = mu[good, j], size = state$theta[j], log = TRUE))
     }, numeric(1))))
   }
   if (data$kind == "cox") return(L0glm_ext_cox_stats(data, B)$loglik)
-  probability <- L0glm_ext_softmax(as.matrix(data$Z %*% B + data$offset))
+  probability <- L0glm_ext_softmax(as.matrix(data$Z %*% B + L0glm_observation_broadcast(data$offset)))
   constant <- lgamma(rowSums(data$y) + 1) - rowSums(lgamma(data$y + 1))
   sum(data$weights[, 1L] * (constant + rowSums(ifelse(data$y == 0, 0, data$y * probability$logp))))
 }

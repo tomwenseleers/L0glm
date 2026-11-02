@@ -51,6 +51,8 @@ L0glm.fit.internal = function(X,
   
   if (length(weights) != n) stop("length(weights) must equal nrow(X)")
   if (length(offset) != n) stop("length(offset) must equal nrow(X)")
+  weights <- as.numeric(weights)
+  offset <- as.numeric(offset)
   if (length(lower) != p) stop("length(lower) must equal ncol(X)")
   if (length(upper) != p) stop("length(upper) must equal ncol(X)")
     

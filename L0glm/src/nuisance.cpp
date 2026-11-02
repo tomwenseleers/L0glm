@@ -37,7 +37,7 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
  const Eigen::Map<Eigen::MatrixXd>& Signal,const Eigen::Map<Eigen::MatrixXd>& Prior,
  const Eigen::Map<Eigen::MatrixXd>& Start,int maxit=60,double tol=1e-8,int nthreads=4) {
   const int n=Y.rows(),m=Y.cols(),q=B.cols();
-  if(B.rows()!=n || Signal.rows()!=n || Signal.cols()!=m || Prior.rows()!=n || Prior.cols()!=m ||
+  if(B.rows()!=n || Signal.rows()!=n || Signal.cols()!=m || Prior.rows()!=n || !(Prior.cols()==1||Prior.cols()==m) ||
      Start.rows()!=q || Start.cols()!=m || maxit<1 || nthreads<1 || tol<=0)
     Rcpp::stop("Incompatible conditional background inputs.");
   if(!B.allFinite() || !Y.allFinite() || !Signal.allFinite() || !Prior.allFinite() || !Start.allFinite() ||
@@ -48,7 +48,7 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) if(nthreads>1 && m>1)
 #endif
   for(int channel=0;channel<m;++channel) {
-    VectorXd y=Y.col(channel),signal=Signal.col(channel),prior=Prior.col(channel),a=Start.col(channel);
+    VectorXd y=Y.col(channel),signal=Signal.col(channel),prior=Prior.col(Prior.cols()==1?0:channel),a=Start.col(channel);
     VectorXd mu=signal+B*a;
     double old=sx_b_loss(y,mu,prior);
     if(!std::isfinite(old)) {
@@ -114,13 +114,13 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
 // [[Rcpp::export]]
 Eigen::VectorXd nuisance_poisson_deviance_cpp(const Eigen::Map<Eigen::MatrixXd>& Y,const Eigen::Map<Eigen::MatrixXd>& Mu,
  const Eigen::Map<Eigen::MatrixXd>& W,int nthreads=4) {
-  if(Y.rows()!=Mu.rows() || Y.cols()!=Mu.cols() || Y.rows()!=W.rows() || Y.cols()!=W.cols())
+  if(Y.rows()!=Mu.rows() || Y.cols()!=Mu.cols() || Y.rows()!=W.rows() || !(W.cols()==1||Y.cols()==W.cols()))
     Rcpp::stop("Incompatible Poisson scoring dimensions.");
   VectorXd out(Y.cols());
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) num_threads(nthreads)
 #endif
-  for(int j=0;j<Y.cols();++j) out[j]=2*sx_b_loss(Y.col(j),Mu.col(j),W.col(j));
+  for(int j=0;j<Y.cols();++j) out[j]=2*sx_b_loss(Y.col(j),Mu.col(j),W.col(W.cols()==1?0:j));
   return out;
 }
 
@@ -139,7 +139,7 @@ Rcpp::List nuisance_gaussian_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eige
  const Eigen::Map<Eigen::MatrixXd>& Signal,const Eigen::Map<Eigen::MatrixXd>& W,
  const Eigen::Map<Eigen::MatrixXd>& Start,Rcpp::LogicalVector constrained,int nthreads=1) {
  const int n=Y.rows(),m=Y.cols(),q=B.cols();
- if(B.rows()!=n||Signal.rows()!=n||Signal.cols()!=m||W.rows()!=n||W.cols()!=m||
+ if(B.rows()!=n||Signal.rows()!=n||Signal.cols()!=m||W.rows()!=n||!(W.cols()==1||W.cols()==m)||
    Start.rows()!=q||Start.cols()!=m||constrained.size()!=q||nthreads<1||
    !B.allFinite()||!Y.allFinite()||!Signal.allFinite()||!W.allFinite()||W.minCoeff()<0)
    Rcpp::stop("Invalid Gaussian nuisance inputs.");
@@ -149,7 +149,7 @@ Rcpp::List nuisance_gaussian_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eige
 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) if(nthreads>1 && m>1)
 #endif
  for(int c=0;c<m;++c) {
-   MatrixXd BW=B.array().colwise()*W.col(c).array();
+   MatrixXd BW=B.array().colwise()*W.col(W.cols()==1?0:c).array();
    MatrixXd H=B.transpose()*BW;VectorXd h=BW.transpose()*(Y.col(c)-Signal.col(c));
    VectorXd a=L0glm::nuisance_qp(H,h,bound),g=H*a-h;
    double residual=0,scale=std::max(1.0,h.lpNorm<Eigen::Infinity>());

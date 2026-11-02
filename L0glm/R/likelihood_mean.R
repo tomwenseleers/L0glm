@@ -2,8 +2,8 @@ L0glm_loglik_mean <- function(y, mu, weights, family, dispersion=NULL) {
   m <- ncol(y)
   free_scale <- if(is.null(dispersion)) rep(TRUE,m) else dispersion<0
   -0.5 * sum(vapply(seq_len(m), function(j) {
-    keep_j <- weights[, j] > 0 & is.finite(weights[, j])
-    yy <- y[keep_j, j]; mm <- mu[keep_j, j]; ww <- weights[keep_j, j]
+    keep_j <- L0glm_observation_column(weights,j) > 0 & is.finite(L0glm_observation_column(weights,j))
+    yy <- y[keep_j, j]; mm <- mu[keep_j, j]; ww <- L0glm_observation_column(weights,j,keep_j)
     if (!length(yy)) return(0)
     if (is.function(family$log_density)) return(-2 * sum(ww * family$log_density(yy, mm)))
     if (family$family == "quasipoisson") {

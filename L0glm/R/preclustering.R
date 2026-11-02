@@ -246,7 +246,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
     refit_seconds<-proc.time()[[3L]]-refit_start
   } else fit<-reduced
   # Refresh working quantities at the returned mean after all coefficient updates.
-  mu<-fitted(fit);W<-as.matrix(fit$prior.weights)/pmax(mu,.Machine$double.eps)
+  mu<-fitted(fit);W<-L0glm_observation_broadcast(fit$prior.weights)/pmax(mu,.Machine$double.eps)
   fit$weights<-if(ncol(mu)==1L) as.numeric(W) else Matrix::Matrix(W,sparse=TRUE)
   used_sizes<-if(is.null(cl$size_fac)) if(is.null(control$size_fac)) colSums(Y) else control$size_fac else cl$size_fac
   control$clusterids<-NULL;control$size_fac<-NULL

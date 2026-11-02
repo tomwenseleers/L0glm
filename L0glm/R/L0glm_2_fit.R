@@ -112,6 +112,7 @@
 #' @param weights Optional finite, nonnegative prior/case observation weights.
 #'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
 #'   \code{m} matrix; for binomial proportions, weights give trial totals.
+#'   Shared row weights retain one observation column internally.
 #'   Special families accept a scalar, a vector of length \code{n}, or an
 #'   \code{n} by \code{1} matrix; \code{NULL} uses unit weights.
 #'   \itemize{
@@ -183,7 +184,8 @@
 #'   offset per observation, shared across response columns.
 #'   \itemize{
 #'   \item \code{mgcv::nb()}: an \code{n} by \code{m} matrix supplies
-#'   channel-specific offsets on the chosen link scale.
+#'   channel-specific offsets on the chosen link scale. Shared vectors are kept
+#'   as one observation column internally and reused across channels.
 #'   \item \code{mgcv::multinom(K)}: an \code{n} by \code{K+1} matrix supplies
 #'   category-specific offsets, including every category. Offsets are centered
 #'   across categories within each row. A scalar or shared observation offset
@@ -1017,8 +1019,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   if (identical(kind,"nb") && L0glm_signal_family(family) && nonnegative && is.null(start) &&
       !isTRUE(intercept) && maxit > 1L && !is.null(offset) && any(offset != 0)) {
     n <- nrow(X); m <- NCOL(y)
-    start <- L0glm_signal_start(X, as.matrix(y), L0glm_ext_matrix(offset,n,m,0,"offset"),
-      L0glm_ext_matrix(weights,n,m,1,"weights"), always.include,
+    start <- L0glm_signal_start(X, as.matrix(y), L0glm_observation_input(offset,n,m,0,"offset"),
+      L0glm_observation_input(weights,n,m,1,"weights"), always.include,
       if(is.null(prior.mean)) NULL else L0glm_ext_matrix(prior.mean,ncol(X),m,0,"prior.mean"))
   }
   if (!is.null(kind)) return(L0glm_ext_fit(
@@ -1095,28 +1097,10 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = nrow(X))
   
   # - Some argument checking & conversion to matrices -----------------------
-  # 1  Observation weights --------------------------------------------------
-  if (is.null(weights)) {
-    weights <- if (m == 1) rep(1, n) else matrix(1, n, m)
-  } else {
-    weights <- as.matrix(weights)
-    if (m > 1 && ncol(weights) == 1L) {
-      weights <- matrix(rep(weights, m), n, m)
-    }
-  }
-  
-  # 2  Offset ---------------------------------------------------------------
-  if (is.null(offset)) {
-    offset <- Matrix::Matrix(0, n, m, sparse = TRUE)
-  } else {
-    if (!inherits(offset, "Matrix"))
-      offset <- if (is.null(dim(offset))) Matrix::Matrix(offset, n, 1, sparse = TRUE) else
-        Matrix::Matrix(offset, sparse = TRUE)
-    
-    if (m > 1 && ncol(offset) == 1L)
-      offset <- Matrix::Matrix(rep(offset, m), n, m, sparse = TRUE)
-  }
-  
+  # Shared inputs retain one observation column throughout fitting.
+  weights <- L0glm_observation_input(weights,n,m,1,"weights")
+  offset <- L0glm_observation_input(offset,n,m,0,"offset")
+
   # 3  Starting coefficient values --------------------------------------------
   if (!is.null(start) && length(start) != 1L) {
     start <- as.matrix(start)
@@ -1226,12 +1210,12 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       make_jobs <- function(chunks, vars, start.mat, validation_context) {
         lapply(chunks, function(cols) {
           job <- list(y          = y[, cols, drop = FALSE],
-               weights    = weights[, cols, drop = FALSE],
+               weights    = L0glm_observation_subset(weights,cols),
                prior.mean = prior.mean[vars, cols, drop = FALSE],
                dispersion = disp_list[cols],
                start      = if (is.null(start.mat) || length(start.mat) == 1L)
                  start.mat else start.mat[vars, cols, drop = FALSE],
-               offset     = offset[, cols, drop = FALSE])
+               offset     = L0glm_observation_subset(offset,cols))
           if (!is.null(validation_context)) job$validation <-
             L0glm_subset_validation(validation_context, vars, cols)
           job
@@ -1263,11 +1247,11 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         } else {
           channels <- lapply(seq_len(m), function(col) {
             L0glm.fit.internal(X = X[, vars, drop = FALSE],
-              y = y[, col, drop = FALSE], weights = weights[, col],
+              y = y[, col, drop = FALSE], weights = L0glm_observation_column(weights,col),
               family = family, lambda = lambda,
               hard_threshold = hard_threshold, normalize = normalize,
               preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-              offset = offset[, col], prior.mean = prior.mean[vars, col],
+              offset = L0glm_observation_column(offset,col), prior.mean = prior.mean[vars, col],
               dispersion = disp_list[[col]],
               start = if (is.null(start) || length(start) == 1L)
                 start else start[vars, col, drop = FALSE],
@@ -1667,7 +1651,7 @@ L0glmfun <- function(cols, lambda, thresh, solver, method,
     L0glm.fit.internal(
       X            = X,
       y            = as.vector(y[, col]),
-      weights      = as.vector(weights[, col]),
+      weights      = as.vector(L0glm_observation_column(weights,col)),
       family       = family,
       lambda       = lambda,
       dispersion   = disp_col,          # <- per channel list element (may be NULL)
@@ -1677,7 +1661,7 @@ L0glmfun <- function(cols, lambda, thresh, solver, method,
       tol          = tol,
       always.include       = always.include,
       lower        = lower,
-      offset       = as.vector(offset[, col]),
+      offset       = as.vector(L0glm_observation_column(offset,col)),
       upper        = upper,
       prior.mean   = prior.mean[, col],
       thresh        = thresh,

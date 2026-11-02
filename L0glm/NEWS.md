@@ -1,5 +1,6 @@
 # L0glm 0.2.0
 
+* Shared observation weights and offsets retain one row-wise input column across response channels, including native OpenMP Poisson, ordinary GLMs and special-family fits.
 * Statistical fitting, tuning, screening and generic simulation remain in L0glm.
 * Sparse matrix factorization, PSF estimation, blind deconvolution and the experimental chromatogram windows are provided by L0nmf.
 * GCMSprime provides chromatogram files, deconvolution workflows, spectral libraries and reports.

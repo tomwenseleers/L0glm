@@ -476,8 +476,8 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   const double eps = std::numeric_limits<double>::epsilon();
 
   VectorXd y = Y.col(channel);
-  VectorXd prior_w = prior_weights.col(channel);
-  VectorXd offset = Offset.col(channel);
+  VectorXd prior_w = prior_weights.col(prior_weights.cols()==1?0:channel);
+  VectorXd offset = Offset.col(Offset.cols()==1?0:channel);
   VectorXd prior_mean(q);
   for (int j = 0; j < q; ++j) {
     const int col = vars[j];
@@ -620,8 +620,8 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   const double eps = std::numeric_limits<double>::epsilon();
 
   VectorXd y = Y.col(channel);
-  VectorXd prior_w = prior_weights.col(channel);
-  VectorXd offset = Offset.col(channel);
+  VectorXd prior_w = prior_weights.col(prior_weights.cols()==1?0:channel);
+  VectorXd offset = Offset.col(Offset.cols()==1?0:channel);
   VectorXd prior_mean(q);
   for (int j = 0; j < q; ++j) {
     const int col = vars[j];
@@ -769,11 +769,17 @@ Rcpp::List fit_all_impl(const Design& X,
   MatrixXd best_coef, best_lambdas, best_weights, best_z;
   double pass_loss = 0.0;
 
+  if(Wmap.rows()!=n||Offsetmap.rows()!=n||
+     !(Wmap.cols()==1||Wmap.cols()==m)||!(Offsetmap.cols()==1||Offsetmap.cols()==m))
+    Rcpp::stop("Weights and offsets need n rows and one or m columns.");
   MatrixXd Y = Ymap;
   MatrixXd prior_weights = Wmap;
   MatrixXd Offset = Offsetmap;
   MatrixXd prior_mean_full = Priormap;
-  const VectorXd scaling = scaling_full;
+  if(scaling_full.size()!=1&&scaling_full.size()!=p)
+    Rcpp::stop("Scaling must be scalar or have one entry per predictor.");
+  VectorXd scaling = scaling_full;
+  if(scaling_full.size()==1)scaling.setConstant(p,scaling_full[0]);
 
   MatrixXd start_full;
   bool has_start = start_nullable.isNotNull();
@@ -907,11 +913,11 @@ Rcpp::List fit_all_impl(const Design& X,
 #pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
 #endif
     for (int col = 0; col < m; ++col) {
-      VectorXd beta = coef.col(col), previous = beta, eta = Offset.col(col);
+      VectorXd beta = coef.col(col), previous = beta, eta = Offset.col(Offset.cols()==1?0:col);
       for (int j : vars) if (beta[j] != 0.0)
         L0glm::boundary_column(X,j,[&](int i,double x) { eta[i] += x*beta[j]; });
-      int removed = L0glm::boundary_identity(X,Y.col(col),prior_weights.col(col),
-                                             beta,eta,lower,1,positive_design && (Offset.col(col).array()>=0.0).all());
+      int removed = L0glm::boundary_identity(X,Y.col(col),prior_weights.col(prior_weights.cols()==1?0:col),
+                                             beta,eta,lower,1,positive_design && (Offset.col(Offset.cols()==1?0:col).array()>=0.0).all());
       if (removed && validation) {
         VectorXd old_active(vars.size()), new_active(vars.size());
         for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
@@ -925,11 +931,11 @@ Rcpp::List fit_all_impl(const Design& X,
         coef.col(col) = beta;
         // Rebuild the final signal: endpoint subtractions can leave roundoff
         // at exact zero means, where inverse-variance weights are sensitive.
-        eta = Offset.col(col);
+        eta = Offset.col(Offset.cols()==1?0:col);
         for (int j : vars) if (beta[j] != 0.0)
           L0glm::boundary_column(X,j,[&](int i,double x) { eta[i] += x*beta[j]; });
-        for (int i = 0; i < n; ++i) weights_out(i,col) = prior_weights(i,col) == 0.0 ?
-          0.0 : prior_weights(i,col) / std::max(eta[i],std::numeric_limits<double>::epsilon());
+        for (int i = 0; i < n; ++i) weights_out(i,col) = prior_weights(i,prior_weights.cols()==1?0:col) == 0.0 ?
+          0.0 : prior_weights(i,prior_weights.cols()==1?0:col) / std::max(eta[i],std::numeric_limits<double>::epsilon());
       }
     }
   }

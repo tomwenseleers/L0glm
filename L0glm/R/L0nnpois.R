@@ -205,39 +205,10 @@ L0nnpois <- function(X,
   init.lambda <- lambda
   start <- L0glm_unit_start(start, X, preprocessing, m)
 
-  if (is.null(weights)) {
-    weights <- matrix(1, n, m)
-  } else {
-    if (length(weights) == 1L) weights <- rep(as.numeric(weights), n)
-    weights <- as.matrix(weights)
-    storage.mode(weights) <- "double"
-    if (nrow(weights) != n) {
-      stop("nrow(weights) must equal nrow(X).", call. = FALSE)
-    }
-    if (m > 1L && ncol(weights) == 1L) {
-      weights <- matrix(rep(weights, m), n, m)
-    }
-    if (!identical(dim(weights), c(n, m))) {
-      stop("weights must have dimension n x m, or length n.", call. = FALSE)
-    }
-  }
-
-  if (is.null(offset)) {
-    offset <- matrix(0, n, m)
-  } else {
-    if (length(offset) == 1L) offset <- rep(as.numeric(offset), n)
-    offset <- as.matrix(offset)
-    storage.mode(offset) <- "double"
-    if (nrow(offset) != n) {
-      stop("nrow(offset) must equal nrow(X).", call. = FALSE)
-    }
-    if (m > 1L && ncol(offset) == 1L) {
-      offset <- matrix(rep(offset, m), n, m)
-    }
-    if (!identical(dim(offset), c(n, m))) {
-      stop("offset must have dimension n x m, or length n.", call. = FALSE)
-    }
-  }
+  weights <- L0glm_observation_input(weights,n,m,1,"weights")
+  offset <- L0glm_observation_input(offset,n,m,0,"offset")
+  weights <- as.matrix(weights);storage.mode(weights)<-"double"
+  offset <- as.matrix(offset);storage.mode(offset)<-"double"
 
   if (!is.null(start)) {
     if (length(start) == 1L) {

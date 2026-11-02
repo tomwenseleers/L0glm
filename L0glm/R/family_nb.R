@@ -8,7 +8,7 @@ L0glm_ext_nb_response <- function(y, family, n) {
 }
 
 L0glm_ext_nb_mean <- function(data, B) {
-  eta <- as.matrix(data$Z %*% B + data$offset)
+  eta <- as.matrix(data$Z %*% B + L0glm_observation_broadcast(data$offset))
   mu <- matrix(data$family$linkinv(eta), nrow(eta), ncol(eta))
   list(eta = eta, mu = mu)
 }
@@ -24,9 +24,9 @@ L0glm_ext_nb_working <- function(data, B, D, state, args) {
       eta <- data$family$linkfun(mu)
     }
     derivative <- data$family$mu.eta(eta)
-    W <- data$weights[, j] * derivative^2 / (mu + mu^2/state$theta[j])
+    W <- L0glm_observation_column(data$weights,j) * derivative^2 / (mu + mu^2/state$theta[j])
     good <- is.finite(W) & W > 0 & derivative != 0
-    z <- eta - data$offset[, j] + (data$y[, j] - mu)/derivative
+    z <- eta - L0glm_observation_column(data$offset,j) + (data$y[, j] - mu)/derivative
     answer[, j] <- L0glm_ext_ridge(data$Z[good, , drop = FALSE], z[good], W[good],
       D[, j], B[, j], data$lower, data$prior[, j], args)
   }
@@ -44,8 +44,8 @@ L0glm_ext_theta_derivatives <- function(y, mu, theta, w) {
 L0glm_ext_nb_update <- function(data, B, state) {
   mu <- L0glm_ext_nb_mean(data, B)$mu
   for (j in which(state$estimated)) {
-    good <- data$weights[, j] > 0
-    y <- data$y[good, j]; fitted <- mu[good, j]; w <- data$weights[good, j]
+    good <- L0glm_observation_column(data$weights,j) > 0
+    y <- data$y[good, j]; fitted <- mu[good, j]; w <- L0glm_observation_column(data$weights,j,good)
     if (any(!is.finite(fitted) | fitted <= 0)) next
     a <- log(state$theta[j])
     derivatives <- L0glm_ext_theta_derivatives(y, fitted, exp(a), w)

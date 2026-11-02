@@ -64,6 +64,7 @@ censoring. Event indicators belong in \code{y}, not in \code{weights}.
 \item{weights}{Optional finite, nonnegative prior/case observation weights.
 For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
 \code{m} matrix; for binomial proportions, weights give trial totals.
+Shared row weights retain one observation column internally.
 Special families accept a scalar, a vector of length \code{n}, or an
 \code{n} by \code{1} matrix; \code{NULL} uses unit weights.
 \itemize{
@@ -134,7 +135,8 @@ while a length-\code{n} vector or \code{n} by \code{1} matrix supplies one
 offset per observation, shared across response columns.
 \itemize{
 \item \code{mgcv::nb()}: an \code{n} by \code{m} matrix supplies
-channel-specific offsets on the chosen link scale.
+channel-specific offsets on the chosen link scale. Shared vectors are kept
+as one observation column internally and reused across channels.
 \item \code{mgcv::multinom(K)}: an \code{n} by \code{K+1} matrix supplies
 category-specific offsets, including every category. Offsets are centered
 across categories within each row. A scalar or shared observation offset

@@ -89,14 +89,14 @@ L0glm_nuisance_conditional <- function(B,Y,signal,W,alpha,lower,families,threads
   iterations <- integer(m);kkt <- rep(NA_real_,m)
   for(j in seq_len(m)) {
     a <- alpha[,j];eta <- as.numeric(signal[,j]+B%*%a);f <- families[[j]]
-    loss <- if(is.null(cox)) function(e) L0glm_irls_deviance(Y[,j],e,W[,j],f) else
+    loss <- if(is.null(cox)) function(e) L0glm_irls_deviance(Y[,j],e,L0glm_observation_column(W,j),f) else
       function(e) -2*L0glm_ext_cox_eta(e,cox$response,W[,1L],cox$cache)$loglik
     old <- loss(eta)
     if(!is.finite(old)) next
     for(iter in seq_len(60L)) {
       if(is.null(cox)) {
         mu <- suppressWarnings(f$linkinv(eta))
-        work <- L0glm_working_model(f)(Y[,j],eta,mu,W[,j],signal[,j])
+        work <- L0glm_working_model(f)(Y[,j],eta,mu,L0glm_observation_column(W,j),signal[,j])
         good <- work$good
         A <- B[good,,drop=FALSE];ww <- work$weights[good]
         H <- crossprod(A,A*ww)
@@ -118,13 +118,13 @@ L0glm_nuisance_conditional <- function(B,Y,signal,W,alpha,lower,families,threads
       if(change<1e-10) break
     }
     if(is.null(cox)) {
-      edge <- L0glm_boundary(B,Y[,j],a,eta,W[,j],f,lower,signal[,j])
+      edge <- L0glm_boundary(B,Y[,j],a,eta,L0glm_observation_column(W,j),f,lower,signal[,j])
       a <- edge$beta
     }
     if(is.null(cox)) {
       eta <- as.numeric(signal[,j]+B%*%a)
       mu <- suppressWarnings(f$linkinv(eta))
-      work <- L0glm_working_model(f)(Y[,j],eta,mu,W[,j],signal[,j])
+      work <- L0glm_working_model(f)(Y[,j],eta,mu,L0glm_observation_column(W,j),signal[,j])
       A <- B[work$good,,drop=FALSE];ww <- work$weights[work$good]
       H <- crossprod(A,A*ww)
       g <- as.numeric(crossprod(A,ww*(eta[work$good]-signal[work$good,j]-work$response[work$good])))
@@ -157,12 +157,12 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   selectable <- setdiff(seq_len(p),included);B <- as.matrix(Z[,included,drop=FALSE]);q <- ncol(B)
   Y <- if(identical(kind,"cox")) y else as.matrix(y)
   storage.mode(Y) <- "double"
-  O <- L0glm_ext_matrix(options$offset,n,m,0,"offset")
+  O <- L0glm_observation_input(options$offset,n,m,0,"offset")
   S <- L0glm_nuisance_coefficients(options$start,Z,added,included,lower,options$normalize,m,TRUE)
   P <- L0glm_nuisance_coefficients(options$prior.mean,Z,added,included,lower,options$normalize,m)
   allowed <- if(is.null(S)) matrix(TRUE,p,m) else S!=0
   allowed[included,] <- TRUE
-  original_w <- L0glm_ext_matrix(options$weights,n,m,1,"weights")
+  original_w <- L0glm_observation_input(options$weights,n,m,1,"weights")
   automatic_signal <- FALSE
   screened <- !is.null(options$screen) &&
     L0glm_screen_method(options$screen,X,options$start,added,options$always.include)!="none"
@@ -239,17 +239,17 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   families <- function(model) if(identical(kind,"nb")) model$families else rep(list(f),m)
   cox <- if(identical(kind,"cox")) list(response=fit$response,
     cache=L0glm_ext_cox_cache(fit$response,W[,1L])) else NULL
-  eta <- function(coefs) as.matrix(Z%*%coefs)+O
+  eta <- function(coefs) as.matrix(Z%*%coefs)+L0glm_observation_broadcast(O)
   poisson_constant <- if(f$family=="poisson" && all(Y==round(Y)))
-    -2*sum(W*stats::dpois(Y,Y,log=TRUE)) else NULL
+    -2*sum(L0glm_observation_broadcast(W)*stats::dpois(Y,Y,log=TRUE)) else NULL
   score <- function(coefs,model) {
     pred <- eta(coefs)
     df <- sum(coefs[selectable,,drop=FALSE]!=0)+q*m
     if(identical(kind,"cox")) return(-2*L0glm_ext_cox_eta(as.numeric(pred),cox$response,W[,1L],cox$cache)$loglik+lambda*df)
     mu <- matrix(f$linkinv(pred),n,m)
     if(identical(kind,"nb")) {
-      ll <- sum(vapply(seq_len(m),function(j) {good<-W[,j]>0
-        sum(W[good,j]*stats::dnbinom(Y[good,j],mu=mu[good,j],size=model$theta[j],log=TRUE))},numeric(1)))
+      ll <- sum(vapply(seq_len(m),function(j) {good<-L0glm_observation_column(W,j)>0
+        sum(L0glm_observation_column(W,j,good)*stats::dnbinom(Y[good,j],mu=mu[good,j],size=model$theta[j],log=TRUE))},numeric(1)))
       return(-2*ll+lambda*(df+sum(model$theta.estimated)))
     }
     if(f$family=="poisson" && f$link=="identity" && !is.null(poisson_constant))
@@ -258,7 +258,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     ll <- L0glm_loglik_mean(Y,mu,W,f,phi)
     if(is.finite(ll)) return(-2*ll+lambda*(df+sum(estimated_phi)))
     # Quasi families use their penalized deviance rather than likelihood IC.
-    sum(vapply(seq_len(m),function(j) L0glm_irls_deviance(Y[,j],pred[,j],W[,j],f)/
+    sum(vapply(seq_len(m),function(j) L0glm_irls_deviance(Y[,j],pred[,j],L0glm_observation_column(W,j),f)/
       max(.Machine$double.eps,model$dispersion[j]),numeric(1)))+lambda*df
   }
   validation <- options$validation
@@ -277,7 +277,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     keep
   }
   polish <- function(cycle) {
-    signal <- as.matrix(Z[,selectable,drop=FALSE]%*%beta[selectable,,drop=FALSE])+O
+    signal <- as.matrix(Z[,selectable,drop=FALSE]%*%beta[selectable,,drop=FALSE])+L0glm_observation_broadcast(O)
     clock <- proc.time()[[3L]]
     model <- fit
     update <- L0glm_nuisance_conditional(B,Y,signal,W,alpha,lower[included],families(model),threads,cox)
@@ -310,7 +310,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     cycles <- cycle;polish(cycle)
     if(!length(candidate)) break
     pk <- options;pk$lambda <- lambda;pk$precluster <- FALSE;pk$intercept <- FALSE;pk$always.include <- NULL;pk$screen <- "none"
-    pk$weights <- W;pk$offset <- O+B%*%alpha
+    pk$weights <- W;pk$offset <- L0glm_observation_broadcast(O)+B%*%alpha
     pk$prior.mean <- if(is.null(P)) NULL else P[candidate,,drop=FALSE]
     pk$start <- if(cycle==1L) seed[candidate,,drop=FALSE] else if(isTRUE(options$grouped))
       matrix(rowMeans(beta[candidate,,drop=FALSE]),length(candidate),m) else beta[candidate,,drop=FALSE]
@@ -348,10 +348,10 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     wrk <- zr <- matrix(0,n,m)
     for(j in seq_len(m)) {
       if(estimated_phi[j]) {
-        target <- L0glm_pearson_scale(Y[,j],mu[,j],W[,j],f,sum(beta[selectable,j]!=0)+q)
+        target <- L0glm_pearson_scale(Y[,j],mu[,j],L0glm_observation_column(W,j),f,sum(beta[selectable,j]!=0)+q)
         if(is.finite(target) && target>0) fit$dispersion[j] <- target
       }
-      work <- L0glm_working_model(f)(Y[,j],pred[,j],mu[,j],W[,j],O[,j])
+      work <- L0glm_working_model(f)(Y[,j],pred[,j],mu[,j],L0glm_observation_column(W,j),L0glm_observation_column(O,j))
       wrk[,j] <- work$weights;zr[,j] <- work$response
     }
     fit$weights <- if(m==1L) as.numeric(wrk) else Matrix::Matrix(wrk,sparse=TRUE)
