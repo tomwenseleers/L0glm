@@ -1,5 +1,5 @@
 bibentry("Manual",
-  title = "L0glm: Fast Sparse Regression for Generalized Linear Models",
+  title = "L0glm: Scalable L\u2080 and Grouped L\u2080-Penalized Variable Selection for Generalized Linear Models",
   author = c(person("Tom", "Wenseleers"), person("Laura", "Lanzas"),
     person("Christophe", "Vanderaa")),
   year = "2026",

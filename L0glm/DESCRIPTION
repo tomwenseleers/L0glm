@@ -1,6 +1,6 @@
 Package: L0glm
 Type: Package
-Title: L0-Norm or Group-L0 Norm Penalized GLMs for Best Subset Selection and Best Subset of Group Selection
+Title: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models
 Version: 0.2.0
 Date: 2026-11-01
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),

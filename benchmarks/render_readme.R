@@ -9,8 +9,8 @@ render_readme <- function() {
   if (!requireNamespace("knitr", quietly=TRUE)) stop("Install knitr to render the README.")
   status <- system2("python", "benchmarks/update_website_tables.py")
   if (status != 0L) stop("Could not synchronize the published benchmark tables.")
-  knitr::knit("README.Rmd", output="README.md", envir=new.env(parent=globalenv()))
-  rendered <- sub("[ \t]+$", "", readLines("README.md"))
-  writeLines(gsub("\n{3,}", "\n\n", paste(rendered, collapse="\n")), "README.md")
+  knitr::knit("README.Rmd", output="README.md", envir=new.env(parent=globalenv()), encoding="UTF-8")
+  rendered <- sub("[ \t]+$", "", readLines("README.md", encoding="UTF-8"))
+  writeLines(gsub("\n{3,}", "\n\n", paste(rendered, collapse="\n")), "README.md", useBytes=TRUE)
 }
 render_readme()

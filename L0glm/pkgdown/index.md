@@ -170,8 +170,8 @@ If you use the package before the article is formally published, we would
 appreciate a citation to the package:
 
 Wenseleers T, Lanzas L, Vanderaa C (2026).
-*L0glm: Fast Sparse Regression for Generalized Linear Models*.
-R package version 0.1.0,
+*L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models*.
+R package version 0.2.0,
 <https://tomwenseleers.github.io/L0glm/>.
 
 The [Authors and Citation page](authors.html#citation) also provides the

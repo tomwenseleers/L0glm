@@ -1,13 +1,12 @@
 <!-- README.md is generated from README.Rmd. Run Rscript benchmarks/render_readme.R. -->
 
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="L0glm/man/figures/logo-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="L0glm/man/figures/logo-light.svg">
   <img src="L0glm/man/figures/logo-light.svg" align="right" width="135" alt="L0glm hex logo with selected coefficient rows across response channels">
 </picture>
 
-# L0glm: fast sparse regression for generalized linear models
+# L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models
 
 [Documentation and tutorials](https://tomwenseleers.github.io/L0glm/) · [Function reference](https://tomwenseleers.github.io/L0glm/reference/index.html)
 
@@ -19,7 +18,7 @@ the active predictors, giving accurate coefficients with few false positives.
 It is highly efficient, with fitting often being one or two orders of magnitude
 faster than `glmnet` - the most widely used sparse regression framework - and
 it is shown to return solutions with far fewer false positives, with similar or better
-predictive power and sensitivity than other competing sparse regression methods, like 
+predictive power and sensitivity than other competing sparse regression methods, like
 LASSO, adaptive LASSO, relaxed LASSO, MCP or SCAD. For most problems, performance
 in terms of speed and quality of the solution obtained is also superior to that
 of other packages aimed at best subset selection, such as abess and L0Learn.
@@ -40,9 +39,7 @@ explains the mathematics, regularization presets and full fitting algorithms.
 - **Comparison:** `sparseglm()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 
-
 L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
-
 
 ## Installation
 
@@ -125,14 +122,14 @@ copies of the peak-shape function (or "point spread function"), L0glm recovers
 the underlying peaks and their mass spectra in a highly efficient and accurate way.
 
 <!-- BEGIN multi-speed -->
-In this 2.26 million coefficient example, L0glm recovers **944 of 1,000 true peaks 
-with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned 
-group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** 
-in this comparison, while also boasting a much reduced false-positive rate (0.11% vs. 
+In this 2.26 million coefficient example, L0glm recovers **944 of 1,000 true peaks
+with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned
+group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV**
+in this comparison, while also boasting a much reduced false-positive rate (0.11% vs.
 3.09% for GIC tuned relaxed group LASSO).
 <!-- END multi-speed -->
 It also recovers the sparse sparse mass spectra accurately, with a within-row F1 of
-**0.909** and within-row MCC (Matthews Correlation Coefficient) of **0.864**. 
+**0.909** and within-row MCC (Matthews Correlation Coefficient) of **0.864**.
 A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
 the competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
@@ -318,8 +315,8 @@ If you use the package before the article is formally published, we would
 appreciate a citation to the package:
 
 Wenseleers T, Lanzas L, Vanderaa C (2026).
-*L0glm: Fast Sparse Regression for Generalized Linear Models*.
-R package version 0.1.0,
+*L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models*.
+R package version 0.2.0,
 <https://tomwenseleers.github.io/L0glm/>.
 
 The [Authors and Citation page](https://tomwenseleers.github.io/L0glm/authors.html#citation) also provides the

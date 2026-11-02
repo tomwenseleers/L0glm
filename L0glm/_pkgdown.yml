@@ -29,7 +29,7 @@ template:
       alt: L0glm hex logo with selected coefficient rows across response channels
 home:
   strip_header: false # Removed after logo insertion in pkgdown/build.R.
-  title: Fast sparse regression across generalized linear models
+  title: "L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models"
   description: >
     Fast L0 and grouped L0 regression for GLMs, negative binomial,
     multinomial and Cox models. Sparse or dense data, SIS/ISIS screening,
