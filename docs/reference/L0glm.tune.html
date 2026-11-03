@@ -104,8 +104,8 @@ estimates that retain shrinkage.</p>
 <span>  <span class="va">X</span>,</span>
 <span>  <span class="va">y</span>,</span>
 <span>  <span class="va">family</span>,</span>
-<span>  weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  offset <span class="op">=</span> <span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/Matrix.html" class="external-link">Matrix</a></span><span class="op">(</span><span class="fl">0</span>, nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span>, sparse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  offset <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dispersion <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tune <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"aic"</span>, <span class="st">"bic"</span>, <span class="st">"ebic"</span>, <span class="st">"mbic"</span>, <span class="st">"cv"</span><span class="op">)</span>,</span>
 <span>  nlambda <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -166,7 +166,8 @@ formats with exact likelihood-based IRLS; see <a href="signal_families.html">sig
 For ordinary GLMs, supply a vector of length <code>n</code> or an <code>n</code> by
 <code>m</code> matrix; for binomial proportions, weights give trial totals.
 Special families accept a scalar, a vector of length <code>n</code>, or an
-<code>n</code> by <code>1</code> matrix; <code>NULL</code> uses unit weights.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: these formats share weights across response
+<code>n</code> by <code>1</code> matrix; <code>NULL</code> uses unit weights.
+Shared row weights retain one observation column in tuning and CV fits.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: these formats share weights across response
 channels; an <code>n</code> by <code>m</code> matrix supplies channel-specific weights.</p></li>
 <li><p><code>mgcv::multinom(K)</code>: one weight per observation, shared across
 categories. For a count-matrix response, trial totals come from row sums of
@@ -182,7 +183,8 @@ and risk sets. Event indicators belong in <code>y</code>, not in <code>weights</
 <code>n</code> by <code>m</code> matrix. For special families, <code>NULL</code> uses zero
 offsets; a scalar is replicated over observations and response columns,
 while a length-<code>n</code> vector or <code>n</code> by <code>1</code> matrix supplies one
-offset per observation, shared across response columns.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: an <code>n</code> by <code>m</code> matrix supplies
+offset per observation, shared across response columns.
+Shared offsets remain compact when fitting the tuning grid and CV folds.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: an <code>n</code> by <code>m</code> matrix supplies
 channel-specific offsets on the chosen link scale.</p></li>
 <li><p><code>mgcv::multinom(K)</code>: an <code>n</code> by <code>K+1</code> matrix supplies
 category-specific offsets, including every category. Offsets are centered

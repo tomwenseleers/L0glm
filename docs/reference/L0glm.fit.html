@@ -297,6 +297,7 @@ censoring. Event indicators belong in <code>y</code>, not in <code>weights</code
 <dd><p>Optional finite, nonnegative prior/case observation weights.
 For ordinary GLMs, supply a vector of length <code>n</code> or an <code>n</code> by
 <code>m</code> matrix; for binomial proportions, weights give trial totals.
+Shared row weights retain one observation column internally.
 Special families accept a scalar, a vector of length <code>n</code>, or an
 <code>n</code> by <code>1</code> matrix; <code>NULL</code> uses unit weights.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: these formats share weights across response
 channels; an <code>n</code> by <code>m</code> matrix supplies channel-specific weights.</p></li>
@@ -382,7 +383,8 @@ coefficients can be excluded according to <code>thresh</code>.</p></dd>
 offsets; a scalar is replicated over observations and response columns,
 while a length-<code>n</code> vector or <code>n</code> by <code>1</code> matrix supplies one
 offset per observation, shared across response columns.</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: an <code>n</code> by <code>m</code> matrix supplies
-channel-specific offsets on the chosen link scale.</p></li>
+channel-specific offsets on the chosen link scale. Shared vectors are kept
+as one observation column internally and reused across channels.</p></li>
 <li><p><code>mgcv::multinom(K)</code>: an <code>n</code> by <code>K+1</code> matrix supplies
 category-specific offsets, including every category. Offsets are centered
 across categories within each row. A scalar or shared observation offset
