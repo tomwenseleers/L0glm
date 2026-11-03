@@ -56,6 +56,7 @@
 #'   \code{m} matrix; for binomial proportions, weights give trial totals.
 #'   Special families accept a scalar, a vector of length \code{n}, or an
 #'   \code{n} by \code{1} matrix; \code{NULL} uses unit weights.
+#'   Shared row weights retain one observation column in tuning and CV fits.
 #'   \itemize{
 #'   \item \code{mgcv::nb()}: these formats share weights across response
 #'   channels; an \code{n} by \code{m} matrix supplies channel-specific weights.
@@ -72,6 +73,7 @@
 #'   offsets; a scalar is replicated over observations and response columns,
 #'   while a length-\code{n} vector or \code{n} by \code{1} matrix supplies one
 #'   offset per observation, shared across response columns.
+#'   Shared offsets remain compact when fitting the tuning grid and CV folds.
 #'   \itemize{
 #'   \item \code{mgcv::nb()}: an \code{n} by \code{m} matrix supplies
 #'   channel-specific offsets on the chosen link scale.
@@ -377,11 +379,8 @@
 #' @export
 L0glm.tune <- function(X, y,
                        family,
-                       weights      = matrix(1, nrow = nrow(as.matrix(y)),
-                                             ncol = ncol(as.matrix(y))),
-                       offset       = Matrix::Matrix(0, nrow = nrow(X),
-                                                     ncol = ncol(as.matrix(y)),
-                                                     sparse = TRUE),
+                       weights      = NULL,
+                       offset       = NULL,
                        dispersion   = NULL,
                        tune         = c("gic", "aic", "bic", "ebic", "mbic", "cv"),
                        nlambda      = 10,
@@ -434,11 +433,9 @@ L0glm.tune <- function(X, y,
     stop('start must be NULL, numeric starting coefficients, or "pilot".', call. = FALSE)
   y <- as.matrix(y)
   n <- nrow(X); m <- ncol(y)
+  weights <- L0glm_observation_input(weights,n,m,1,"weights")
+  offset <- L0glm_observation_input(offset,n,m,0,"offset")
   if (do_cv) {
-    weights <- L0glm_tune_matrix(weights, n, m, 1, "weights")
-    offset <- L0glm_tune_matrix(offset, n, m, 0, "offset")
-    if (any(!is.finite(weights) | weights < 0))
-      stop("CV weights must be finite and nonnegative.", call. = FALSE)
     foldid <- L0glm_cv_folds(weights,
       if (missing(nfolds) && !is.null(foldid)) NULL else nfolds, foldid)
   } else if (!is.null(foldid)) stop("foldid is only used with tune = \"cv\".", call. = FALSE)
@@ -566,8 +563,7 @@ L0glm.tune <- function(X, y,
     ## quality metrics --------------------------------------------------------
     met <- get.metrics(beta = beta_hat,
                        X = fit$X, y = y, family = family,
-                       weights = if (is.null(weights)) matrix(1, n, m) else weights,
-                       offset = if (is.null(offset)) matrix(0, n, m) else offset,
+                       weights = weights, offset = offset,
                        dispersion = dispersion, mu_floor = mu_floor,
                        beta_true = coefs.true, p = p,
                        always.include = included)

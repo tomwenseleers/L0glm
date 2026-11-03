@@ -200,7 +200,7 @@ L0glm_prediction_eta <- function(object, newdata, offset) {
     as.matrix(X[,active,drop=FALSE] %*% beta[active,,drop=FALSE])
   if (!is.null(offset) && !is.numeric(offset) && !is.logical(offset) && !inherits(offset,"Matrix"))
     stop("Prediction offsets must be numeric.",call.=FALSE)
-  off <- L0glm_tune_matrix(offset,nrow(X),ncol(beta),0,"offset")
-  if (any(!is.finite(off))) stop("Prediction offsets must be finite.",call.=FALSE)
+  off <- L0glm_observation_broadcast(
+    L0glm_observation_input(offset,nrow(X),ncol(beta),0,"offset"))
   eta + off
 }

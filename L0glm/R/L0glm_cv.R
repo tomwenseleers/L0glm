@@ -49,6 +49,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   nfolds <- max(foldid)
   fold_weights <- vapply(seq_len(nfolds), function(k)
     sum(args$weights[foldid == k, , drop = FALSE]), numeric(1))
+  if (ncol(args$weights)==1L) fold_weights <- fold_weights * ncol(args$y)
   fractions <- 1 - fold_weights / sum(fold_weights)
   fold_lambdas <- outer(lambdas, fractions)
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
@@ -71,8 +72,8 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     starts[k] <- list(initialization$start)
     pilots[k] <- list(initialization$pilot)
     w <- args$weights[validation, , drop = FALSE]
-    keep <- w > 0
-    yy <- args$y[validation, , drop = FALSE][keep]
+    yy <- args$y[validation, , drop = FALSE]
+    off <- L0glm_observation_broadcast(args$offset[validation, , drop = FALSE])
     for (i in seq_along(lambdas)) {
       fit <- tryCatch(do.call(L0glm.fit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
@@ -84,13 +85,16 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
       }
       active <- which(Matrix::rowSums(abs(fit$coefficients)) != 0)
       eta <- as.matrix(design[validation, active, drop = FALSE] %*%
-        fit$coefficients[active, , drop = FALSE]) +
-        args$offset[validation, , drop = FALSE]
+        fit$coefficients[active, , drop = FALSE]) + off
       mu <- family$linkinv(eta)
       dim(mu) <- dim(eta)
       if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
         mu <- pmax(mu, mu_floor)
-      loss <- family$dev.resids(yy, mu[keep], w[keep])
+      # Family C kernels require equal-length inputs, including shared weights.
+      loss <- vapply(seq_len(ncol(yy)),function(j) {
+        ww <- L0glm_observation_column(w,j); keep <- ww>0
+        sum(family$dev.resids(yy[keep,j],mu[keep,j],ww[keep]))
+      },numeric(1))
       deviance[i, k] <- if (anyNA(loss)) Inf else sum(loss) / fold_weights[k]
     }
     rm(train_args, fit, initialization)

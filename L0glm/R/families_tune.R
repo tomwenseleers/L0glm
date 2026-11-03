@@ -2,7 +2,7 @@
 # independently, including theta and preprocessing inside every training fold.
 L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   response <- args$y
-  mass <- switch(kind, nb = rowSums(args$weights),
+  mass <- switch(kind, nb = rowSums(args$weights) * ncol(response)/ncol(args$weights),
     multinomial = args$weights[, 1L] * rowSums(response),
     cox = args$weights[, 1L] * response[, 2L])
   K <- max(foldid)
@@ -71,8 +71,8 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   n <- nrow(X)
   response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
     cox = L0glm_ext_cox_response(y, n), multinomial = L0glm_ext_multinomial_response(y, family, n))
-  weights <- L0glm_ext_matrix(weights, n, if (kind == "nb") response$m else 1L, 1, "weights")
-  offset <- L0glm_ext_matrix(offset, n, response$m, 0, "offset")
+  weights <- L0glm_observation_input(weights,n,if(kind=="nb")response$m else 1L,1,"weights")
+  offset <- L0glm_observation_input(offset,n,response$m,0,"offset")
   if (any(!is.finite(weights) | weights < 0) || !any(weights > 0))
     stop("Weights must be finite, nonnegative and not all zero.", call. = FALSE)
   intercept <- if (is.null(dots$intercept)) kind == "multinomial" else isTRUE(dots$intercept)
