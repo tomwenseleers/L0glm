@@ -1,93 +1,45 @@
 # L0glm 0.2.0
 
-* Shared observation weights and offsets retain one row-wise input column across response channels, including native OpenMP Poisson, ordinary GLMs and special-family fits.
-* Statistical fitting, tuning, screening and generic simulation remain in L0glm.
-* Sparse matrix factorization, PSF estimation, blind deconvolution and the experimental chromatogram windows are provided by L0nmf.
-* GCMSprime provides chromatogram files, deconvolution workflows, spectral libraries and reports.
-* Shared native likelihood and conditional background interfaces preserve the fitting engines across packages.
+## Sparse generalized linear models
 
-# L0glm 0.1.0
+* L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
+  relaxed refitting on the selected support.
+* Standard GLM families and links, negative binomial with fixed or estimated
+  shape, joint multinomial models in CLR coordinates, and Cox proportional
+  hazards models with direct or matrix-free quadratic updates.
+* NB1, common-scale Gamma and censored Gamma signal models; quasi families
+  expose scaled likelihood kernels and quasi-information criteria.
 
-## Initial version
+## Model specification and selection
 
-* Sparse log-concave NMF (`splogconNMF`) recovers elution profiles and spectra
-  with local native updates, spectral fusion and OpenMP. Supported noise models
-  include Gaussian, Poisson, quasipoisson, NB1/NB2 and both Gamma parameterizations,
-  with a compound-count criterion, unpenalized spline backgrounds, temporal
-  noise calibration and optional channel preclustering followed by full refitting.
-  Conservative broad-profile fusion reunites complementary ion sets on nearly
-  proportional profiles, with original-channel criterion checks and one final
-  native likelihood refit under hard log-concavity constraints.
-  Guarded whole-profile refinement also reunites a narrow, spectrally matching
-  tail with its broad compound, retaining neighbouring modes and fusion lineage.
-* `GCMSdeco` reads ANDI-MS chromatograms, estimates time-varying PSFs with optional
-  alkane calibration, fits a spline background and log-concave compounds, and
-  exports all-channel spectra as NIST-compatible MSP files.
-  Excel exports include sample identity, integrated areas and unit-L1 spectra.
-  Compact fit objects reload observed CDF intervals for heatmaps and multi-panel
-  chromatogram plots; recovered spectra and PDF reports are also supported.
-* `estimate_psf()` unifies standard and blind PSF estimation for all supported
-  signal families, using original channels, grouped channels or their total.
-  Named alkane TIC attributes supply automatic calibration. Constant and
-  smoothly time-varying estimates return a normalized sparse design as `X`.
-* Blind deconvolution supports smoothly time-varying PSFs with `nwindows`, and
-  returns the corresponding sparse design as `X` for downstream deconvolution.
-  Standard calibration uses full local peak windows and automatic PSF support;
-  blind PSF updates retain positive peak tails alongside the fitted background.
-  Blind fitting compares full-tail and concentrated PSF proposals by refitting
-  the original observations and evaluating the requested information criterion.
-
-* Fast sparse generalized linear models with adaptive ridge and IRLS, including
-  Gaussian, Poisson, binomial, Gamma and inverse Gaussian families and their links.
-* Negative binomial regression with estimated shape, joint multinomial regression
-  in centered log-ratio coordinates, and Cox proportional hazards models.
-* Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models, with
-  native likelihood scores, tuning, screening and likelihood-ratio clustering.
-  Quasipoisson models expose scaled log-likelihood kernels and quasi-information
-  criteria through the regular scoring methods.
-* Conditional boundary polishing for relaxed nonnegative models removes
-  likelihood-supported zero coefficients without a coefficient-size cutoff.
-  Native Gaussian/Poisson kernels retain dense/sparse storage and Poisson OpenMP;
-  other GLMs, negative binomial and Cox use their family-specific objectives.
-* Single and multichannel fitting, grouped predictor-row selection, and relaxed
-  refitting for accurate coefficient estimates on the selected support.
-* Dense and sparse matrices, tall and wide designs, fast Eigen solvers and
-  a native OpenMP backend for nonnegative identity-link Poisson models.
-* Sure Independence Screening (SIS) and Iterative Sure Independence Screening
-  (ISIS), with compiled OpenMP screening and automatic ISIS when
-  `p_eligible > 10*n`, excluding mandatory terms and predictors excluded by
-  zero starts in every response channel. The same rule uses the training row
-  count in each `L0glm.tune()` fit.
-  Screening uses physical cores by default, with explicit thread-count overrides.
-* Small constrained solves for nonnegative compulsory terms and smooth spline
-  backgrounds, alternating with sparse selection on the original channels.
-  Gaussian, Poisson, other scalar GLMs and negative-binomial/Cox fits retain
-  their distribution-specific likelihoods, dispersion and validation controls.
-* Fixed-PSF and blind deconvolution use positive signal-based starts with
-  backgrounds, channel-specific PSF offsets, and synchronized final estimates.
-  Automatic identity-link initialization accounts for nonnegative compulsory
-  backgrounds and known offsets while preserving original coefficient units.
-* Observation weights, offsets, intercepts, mandatory predictors, normalization,
-  starting values, nonnegativity constraints and validation-based early stopping.
-* Information-criterion presets and lambda-path tuning, five-fold cross-validation,
+* Observation weights, offsets, intercepts, mandatory predictors, nonnegative
+  coefficients, normalization, starting values and optional validation stopping.
+* Shared observation vectors stay compact across channels in fitting, native
+  Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
+* Automatic information-criterion presets, lambda-path tuning, n-fold CV,
   one-standard-error models and coefficient-path plots. `preset.lambda()`
-  returns the numeric AIC, BIC, GIC, EBIC or mBIC penalty directly.
-* `sparseglm()` comparisons with supported sparse-regression backends, common
-  likelihood and support-recovery metrics, prediction and summary methods,
-  mirrored deconvolution plots and multichannel heatmaps.
-* Reproducible simulations, large-scale examples and a documentation website with
-  tutorials, measured benchmarks and a mathematical algorithm appendix.
+  returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
+* Constrained updates for nonnegative compulsory terms and relaxed-fit boundary
+  checks use the specified likelihood.
 
-* Size-adjusted Poisson channel distances use a native OpenMP kernel with
-  packed distance storage and scalar, row or channel-specific weights.
+## High-dimensional and multichannel computation
 
-* Native scalar-family deviance and Bregman clustering use explicit pooled
-  likelihood merge costs, IC-scored tree cuts and dispersion-aware precision.
-  Poisson aggregation preserves shared case weights.
+* Dense and sparse designs, tall and wide systems, Eigen solvers and a native
+  OpenMP backend for nonnegative identity-link Poisson models.
+* Sure Independence Screening (SIS) and Iterative Sure Independence Screening
+  (ISIS), with compiled OpenMP screening. Automatic ISIS uses
+  `p_eligible > 10*n`, excluding mandatory predictors and rows locked out by
+  zero starts. Tuning applies the same rule to each training fold.
+* Single and multichannel fitting, shared predictor-row selection and optional
+  Poisson outcome aggregation followed by original-channel refitting.
+* Size-adjusted Poisson and scalar-family likelihood clustering with native
+  distances, pooled-likelihood merge costs and IC-scored cuts.
 
-* Optional Poisson channel preclustering screens aggregated responses and
-  refines on the original channels; aggregate-only fits retain the requested
-  penalty. Starts, weights, offsets and original predictor dimensions are preserved.
-* Preclustering-aware lambda paths reuse training-derived memberships while
-  estimating every model independently; cross-validation learns memberships and
-  size factors within each training fold.
+## Simulation, comparison and interpretation
+
+* `sparseglm()` compares supported sparse-regression methods with common
+  likelihood, prediction, coefficient and support-recovery metrics and timings.
+* Prediction, fitted-value, summary, likelihood and information-criterion
+  methods, including within-row multichannel sparsity metrics.
+* Generic simulations, fixed-PSF deconvolution examples, visualization tools,
+  reproducible benchmarks and a mathematical algorithm appendix.

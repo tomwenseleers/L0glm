@@ -66,10 +66,6 @@ navbar:
         - text: "---"
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
-        - text: GC/MS deconvolution
-          href: https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html
-        - text: Sparse log-concave NMF
-          href: https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html
         - text: SIS / ISIS screening for high dimensional models
           href: articles/high-dimensional.html
     algorithm:
@@ -102,7 +98,7 @@ reference:
     contents: [sis_glm, simul, simulate_spike_train, lmridge, control.solver.gen]
   - title: Deconvolution and signal processing
     contents: [convmatrix, convkernel, signal_families, temporal_dispersion]
-  - title: Visualization, clustering and factorization
+  - title: Visualization and outcome clustering
     contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist]
   - title: Example data
     contents: [simulated_spectra]
