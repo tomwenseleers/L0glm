@@ -516,7 +516,12 @@ factoring an observation-space system instead of a predictor-space system.
 Zero-weight observations are omitted and unpenalized terms are profiled out.
 Dense direct-Gram and sparse augmentation/factorization paths exploit the
 appropriate storage. Required solver-boundary conversions retain formal
-constraints for OSQP; the native Poisson backend shares designs across threads.
+constraints for OSQP. The native scalar-family driver keeps initialization,
+dispersion updates and grouped/relaxed coordination in C++. All Eigen methods
+share their kernels with the R solver interfaces, retain dense or sparse storage
+and share the design across OpenMP threads. OSQP and `bigGlm` enter through their
+R-facing dependency interfaces on the R thread, using independent R workers for
+concurrent channels. Nonnegative identity-link Poisson LLT fits use `L0nnpois`.
 
 For ultrahigh dimensions, SIS or offset-based ISIS adds another level of
 dimension reduction. Compiled screening ranks candidates, and joint refitting
@@ -1406,9 +1411,10 @@ source:
 | Routine | Source |
 |:--|:--|
 | Coordinates, scaling and mandatory terms | [normalization.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/normalization.R), [mandatory.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/mandatory.R) |
-| Ordinary single-channel IRLS | [L0glm_1_fit_internal.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R) |
-| Multichannel passes and refitting | [L0glm_2_fit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R), [group_start.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/group_start.R) |
-| Coefficient seeds and dispersion pilot | [initialization.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/initialization.R), [dispersion.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/dispersion.R) |
+| Scalar-family preparation and IRLS | [native_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/native_glm.R), [glm.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm.cpp) |
+| Native multichannel passes and refitting | [glm_group.h](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_group.h), [glm_solver.h](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_solver.h) |
+| Native coefficient seeds and dispersion pilot | [glm_initialize.h](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_initialize.h) |
+| R callback and validation orchestration | [L0glm_1_fit_internal.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R), [L0glm_2_fit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R) |
 | Constrained compulsory blocks | [nuisance.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/nuisance.R), [nuisance.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/nuisance.cpp) |
 | Native Poisson backend | [L0nnpois.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp) |
 | Special-family passes | [families_common.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R), [family_nb.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_nb.R), [family_multinomial.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_multinomial.R), [family_cox.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox.R), [family_cox_pcg.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R) |

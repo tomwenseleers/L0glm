@@ -5,8 +5,8 @@
 #' the main fitting arguments with `L0glm.fit()` for use in deconvolution
 #' workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 #' `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
-#' fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
-#' the design matrix `X` in shared memory across outcome channels.
+#' fits. Its specialized Poisson updates and the general native Eigen driver
+#' keep the design matrix `X` in shared memory across outcome channels.
 #' Dense inputs retain dense storage and sparse inputs retain sparse storage.
 #' The dense solver forms weighted crossproducts using R's BLAS library.
 #' Eligible wide active systems use the Woodbury identity to factor an
@@ -255,11 +255,6 @@ L0nnpois <- function(X,
   always.include <- always.include[!is.na(always.include) &
                                      always.include >= 1L &
                                      always.include <= p]
-  if (is.null(start) && maxit > 1L && any(offset != 0))
-    start <- L0glm_signal_start(X, y, offset, weights, always.include, prior.mean)
-  allowed <- if (is.null(start)) NULL else start != 0
-  if (!is.null(allowed)) allowed[always.include, ] <- TRUE
-
   if (isTRUE(parallelize) && m > 1L) {
     ncores <- suppressWarnings(as.integer(ncores[1L]))
     if (is.na(ncores) || ncores < 1L) ncores <- 1L
@@ -273,6 +268,10 @@ L0nnpois <- function(X,
   } else {
     ncores <- 1L
   }
+  if (is.null(start) && maxit > 1L && any(offset != 0))
+    start <- L0glm_signal_start(X,y,offset,weights,always.include,prior.mean,ncores)
+  allowed <- if (is.null(start)) NULL else start != 0
+  if (!is.null(allowed)) allowed[always.include, ] <- TRUE
 
   if (!is.null(validation)) {
     validation$X <- if (inherits(validation$X, "sparseMatrix"))

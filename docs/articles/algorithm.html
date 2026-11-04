@@ -645,8 +645,14 @@ b=c+D^{-1}X^T(W^{-1}+XD^{-1}X^T)^{-1}(z-Xc),
 system. Zero-weight observations are omitted and unpenalized terms are
 profiled out. Dense direct-Gram and sparse augmentation/factorization
 paths exploit the appropriate storage. Required solver-boundary
-conversions retain formal constraints for OSQP; the native Poisson
-backend shares designs across threads.</p>
+conversions retain formal constraints for OSQP. The native scalar-family
+driver keeps initialization, dispersion updates and grouped/relaxed
+coordination in C++. All Eigen methods share their kernels with the R
+solver interfaces, retain dense or sparse storage and share the design
+across OpenMP threads. OSQP and <code>bigGlm</code> enter through their
+R-facing dependency interfaces on the R thread, using independent R
+workers for concurrent channels. Nonnegative identity-link Poisson LLT
+fits use <code>L0nnpois</code>.</p>
 <p>For ultrahigh dimensions, SIS or offset-based ISIS adds another level
 of dimension reduction. Compiled screening ranks candidates, and joint
 refitting updates the support in small batches. This follows the
@@ -1639,35 +1645,42 @@ followed directly in the source:</p>
 </td>
 </tr>
 <tr class="even">
-<td align="left">Ordinary single-channel IRLS</td>
-<td align="left"><a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R" class="external-link">L0glm_1_fit_internal.R</a></td>
+<td align="left">Scalar-family preparation and IRLS</td>
+<td align="left">
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/native_glm.R" class="external-link">native_glm.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm.cpp" class="external-link">glm.cpp</a>
+</td>
 </tr>
 <tr class="odd">
-<td align="left">Multichannel passes and refitting</td>
+<td align="left">Native multichannel passes and refitting</td>
 <td align="left">
-<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R" class="external-link">L0glm_2_fit.R</a>,
-<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/group_start.R" class="external-link">group_start.R</a>
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_group.h" class="external-link">glm_group.h</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_solver.h" class="external-link">glm_solver.h</a>
 </td>
 </tr>
 <tr class="even">
-<td align="left">Coefficient seeds and dispersion pilot</td>
-<td align="left">
-<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/initialization.R" class="external-link">initialization.R</a>,
-<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/dispersion.R" class="external-link">dispersion.R</a>
-</td>
+<td align="left">Native coefficient seeds and dispersion pilot</td>
+<td align="left"><a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/glm_initialize.h" class="external-link">glm_initialize.h</a></td>
 </tr>
 <tr class="odd">
+<td align="left">R callback and validation orchestration</td>
+<td align="left">
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_1_fit_internal.R" class="external-link">L0glm_1_fit_internal.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/L0glm_2_fit.R" class="external-link">L0glm_2_fit.R</a>
+</td>
+</tr>
+<tr class="even">
 <td align="left">Constrained compulsory blocks</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/nuisance.R" class="external-link">nuisance.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/nuisance.cpp" class="external-link">nuisance.cpp</a>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Native Poisson backend</td>
 <td align="left"><a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp" class="external-link">L0nnpois.cpp</a></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Special-family passes</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R" class="external-link">families_common.R</a>,
@@ -1677,7 +1690,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R" class="external-link">family_cox_pcg.R</a>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">Screening and outer ISIS</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R" class="external-link">sis_context.R</a>,
@@ -1686,7 +1699,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R" class="external-link">screening.R</a>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">Backtracking and validation</td>
 <td align="left">
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/irls.R" class="external-link">irls.R</a>,

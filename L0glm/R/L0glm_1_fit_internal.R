@@ -83,7 +83,7 @@ L0glm.fit.internal = function(X,
       stop("start must contain finite coefficients, one per design column.", call. = FALSE)
     allowed <- as.numeric(start) != 0
     allowed[always.include] <- TRUE
-    if (any(!allowed)) {
+    if (any(!allowed) && !isTRUE(control.solver$.native.context)) {
       # Screen before the dispersion pilot as well as the repeated ridge solves.
       args <- mget(names(formals(L0glm.fit.internal)), envir = environment())
       args$X <- X[, allowed, drop = FALSE]
@@ -108,13 +108,16 @@ L0glm.fit.internal = function(X,
   
   ## 4. optional normalisation ------------------------------------------------
   scaling <- preprocessing$scale
-  centered <- L0glm_center_working_design(X, preprocessing, lower)
+  centered <- control.solver$.native.centered
+  if (is.null(centered)) centered <- L0glm_center_working_design(X, preprocessing, lower)
   X <- centered$X
   # Resolve automatic storage routing once, rather than scanning a large
   # dense-stored PSF matrix for exact zeros in every IRLS iteration.
   if (solver == "eigen" && is.null(control.solver$rowaug))
     control.solver$rowaug <- eigen_rowaug_default(X)
-  free_intercept <- intersect(always.include, intersect(L0glm_unit_intercepts(X), which(lower < 0)))
+  free_intercept <- control.solver$.native.intercept
+  if (is.null(free_intercept))
+    free_intercept <- intersect(always.include, intersect(L0glm_unit_intercepts(X), which(lower < 0)))
   if (length(free_intercept)) free_intercept <- free_intercept[1L]
   intercept_column <- if (length(free_intercept)) as.numeric(X[, free_intercept]) else numeric()
   if (length(centered$intercept)) {
@@ -144,6 +147,9 @@ L0glm.fit.internal = function(X,
   
   eta <- linkfun(mustart)                 # g(mu)  on link scale
   mu  <- mustart                          # on response scale
+  # The compiled driver shares these checked conventions and family expressions.
+  # It owns coefficient starts, dispersion preparation and all fitting passes.
+  if (isTRUE(control.solver$.native.context)) return(environment())
   
   # dev <- sum(dev_res(y, mu, weights))
   # W.ret     <- rep(0, n)                # working weights

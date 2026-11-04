@@ -4,8 +4,8 @@
 the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
-fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
-the design matrix `X` in shared memory across outcome channels.
+fits. Its specialized Poisson updates and the general native Eigen driver
+keep the design matrix `X` in shared memory across outcome channels.
 Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
@@ -30,8 +30,8 @@ if coefficients of either sign are required."><meta property="og:description" co
 the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
-fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
-the design matrix `X` in shared memory across outcome channels.
+fits. Its specialized Poisson updates and the general native Eigen driver
+keep the design matrix `X` in shared memory across outcome channels.
 Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
@@ -105,8 +105,8 @@ if coefficients of either sign are required."><meta property="og:image" content=
 the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
-fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
-the design matrix `X` in shared memory across outcome channels.
+fits. Its specialized Poisson updates and the general native Eigen driver
+keep the design matrix `X` in shared memory across outcome channels.
 Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an
@@ -400,7 +400,7 @@ not at the number of physical cores.</p></dd>
 <dd><p>Optional integer specifying the number of BLAS threads
 to use per fit process. The default <code>NULL</code> leaves the main R session's
 thread settings unchanged and uses one BLAS thread per parallel
-worker. Setting <code>nthreads</code> can be useful to benchmark serial fits or
+worker or native channel. Setting <code>nthreads</code> can be useful to benchmark serial fits or
 tune per-worker threading on systems with a multithreaded BLAS.
 The <code>L0nnpois</code> backend uses <code>ncores</code>; it ignores <code>nthreads</code>.</p></dd>
 

@@ -255,7 +255,7 @@ not at the number of physical cores.}
 \item{nthreads}{Optional integer specifying the number of BLAS threads
 to use per fit process. The default \code{NULL} leaves the main R session's
 thread settings unchanged and uses one BLAS thread per parallel
-worker. Setting \code{nthreads} can be useful to benchmark serial fits or
+worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
 tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
@@ -457,8 +457,8 @@ An object of class \code{L0glm_fit}, with the same main components as [L0glm.fit
 the main fitting arguments with `L0glm.fit()` for use in deconvolution
 workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
 `L0glm.fit(openmp = TRUE)` selects this backend automatically for eligible
-fits. Compared with the general R fitting path (`openmp = FALSE`), it keeps
-the design matrix `X` in shared memory across outcome channels.
+fits. Its specialized Poisson updates and the general native Eigen driver
+keep the design matrix `X` in shared memory across outcome channels.
 Dense inputs retain dense storage and sparse inputs retain sparse storage.
 The dense solver forms weighted crossproducts using R's BLAS library.
 Eligible wide active systems use the Woodbury identity to factor an

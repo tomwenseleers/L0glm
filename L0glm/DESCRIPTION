@@ -26,6 +26,7 @@ Imports: Matrix,
          scales,
          statmod
 LinkingTo: Rcpp, RcppEigen
+SystemRequirements: C++17, OpenMP (optional)
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
 Description: Fits L0-norm penalized or group-L0 penalized generalized linear models
              for best subset selection and best subset of groups selection.

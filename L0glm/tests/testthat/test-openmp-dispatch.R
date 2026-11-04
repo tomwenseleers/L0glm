@@ -30,7 +30,7 @@ test_that("OpenMP dispatch handles vector responses and family functions", {
   expect_identical(fit$args$lambda, 1)
 })
 
-test_that("ineligible or disabled OpenMP fits retain the general R path", {
+test_that("fits outside the Poisson specialization use the general driver", {
   local_mocked_bindings(L0nnpois = function(...) stop("Unexpected dispatch"))
   base <- list(X = diag(4), y = c(4, 3, 2, 1), family = poisson(identity),
                nonnegative = TRUE, parallelize = FALSE, grouped = FALSE,

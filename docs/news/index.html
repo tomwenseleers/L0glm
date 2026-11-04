@@ -63,7 +63,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="high-dimensional-and-multichannel-computation-0-2-0">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0"></a></h3>
-<ul><li>Dense and sparse designs, tall and wide systems, Eigen solvers and a native OpenMP backend for nonnegative identity-link Poisson models.</li>
+<ul><li>Dense and sparse designs and tall or wide systems. A native scalar-family driver performs initialization, dispersion updates and grouped/relaxed passes. All Eigen solvers share their kernels with the R interfaces and parallelize channels through OpenMP. OSQP and <code>bigGlm</code> use the native driver with their R-facing solver interfaces and independent workers for concurrent channels.</li>
+<li>Nonnegative identity-link Poisson LLT fits use the specialized <code>L0nnpois</code> backend, including native validation stopping.</li>
 <li>Sure Independence Screening (SIS) and Iterative Sure Independence Screening (ISIS), with compiled OpenMP screening. Automatic ISIS uses <code>p_eligible &gt; 10*n</code>, excluding mandatory predictors and rows locked out by zero starts. Tuning applies the same rule to each training fold.</li>
 <li>Single and multichannel fitting, shared predictor-row selection and optional Poisson outcome aggregation followed by original-channel refitting.</li>
 <li>Size-adjusted Poisson and scalar-family likelihood clustering with native distances, pooled-likelihood merge costs and IC-scored cuts.</li>

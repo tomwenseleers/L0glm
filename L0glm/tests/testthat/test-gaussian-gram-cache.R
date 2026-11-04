@@ -31,8 +31,12 @@ test_that("zero-weight rows do not turn an effectively wide fit into a Gram solv
   }, .package = "L0glm")
   fit <- L0glm.fit(X, y, weights = c(rep(1, 5), rep(0, 75)),
     family = gaussian(), intercept = TRUE, start = 1, dispersion = 1,
-    lambda = 2, maxit = 3L, parallelize = FALSE)
+    lambda = 2, maxit = 3L, parallelize = FALSE, openmp = FALSE)
   expect_gt(calls, 0L)
   expect_equal(dim(fit$coefficients), c(11L, 1L))
   expect_true(all(is.finite(fit$coefficients)))
+  native <- L0glm.fit(X, y, weights = c(rep(1, 5), rep(0, 75)),
+    family = gaussian(), intercept = TRUE, start = 1, dispersion = 1,
+    lambda = 2, maxit = 3L, parallelize = FALSE)
+  expect_equal(native$coefficients, fit$coefficients, tolerance = 1e-8)
 })

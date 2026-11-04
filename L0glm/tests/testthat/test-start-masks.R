@@ -56,11 +56,16 @@ test_that("fixed zeros are removed before Gaussian dispersion initialization", {
     seen <<- c(seen, ncol(X))
     original(X, ...)
   })
-  fit <- L0glm.fit(X, rnorm(40), start = c(1, 0, 1, 0, 0, 0, 0),
-                   family = gaussian(), parallelize = FALSE)
+  y <- rnorm(40)
+  fit <- L0glm.fit(X, y, start = c(1, 0, 1, 0, 0, 0, 0),
+                   family = gaussian(), parallelize = FALSE, openmp = FALSE)
   expect_equal(seen, 2L)
   expect_equal(dim(fit$coefficients), c(7L, 1L))
   expect_true(all(fit$coefficients[-c(1, 3), ] == 0))
+  native <- L0glm.fit(X, y, start = c(1, 0, 1, 0, 0, 0, 0),
+                    family = gaussian(), parallelize = FALSE)
+  expect_equal(native$coefficients, fit$coefficients, tolerance = 1e-8)
+  expect_equal(native$dispersion, fit$dispersion, tolerance = 1e-8)
   fit <- L0glm.fit(X, rnorm(40), start = 0, family = gaussian(),
                    dispersion = -2, parallelize = FALSE)
   expect_true(is.finite(fit$dispersion) && fit$dispersion > 0)

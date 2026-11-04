@@ -24,8 +24,13 @@
 
 ## High-dimensional and multichannel computation
 
-* Dense and sparse designs, tall and wide systems, Eigen solvers and a native
-  OpenMP backend for nonnegative identity-link Poisson models.
+* Dense and sparse designs and tall or wide systems. A native scalar-family
+  driver performs initialization, dispersion updates and grouped/relaxed passes.
+  All Eigen solvers share their kernels with the R interfaces and parallelize
+  channels through OpenMP. OSQP and `bigGlm` use the native driver with their
+  R-facing solver interfaces and independent workers for concurrent channels.
+* Nonnegative identity-link Poisson LLT fits use the specialized `L0nnpois`
+  backend, including native validation stopping.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening
   (ISIS), with compiled OpenMP screening. Automatic ISIS uses
   `p_eligible > 10*n`, excluding mandatory predictors and rows locked out by

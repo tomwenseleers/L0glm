@@ -1,125 +1,36 @@
 // [[Rcpp::depends(RcppEigen)]]
-#include <Rcpp.h>
-#include <RcppEigen.h>
+#include "solver_native.h"
 #include <Eigen/SparseQR>
-
-// Solve Ax = b using QR decomposition for sparse or dense covariate matrix A
-// adapted from https://github.com/nk027/sanic/blob/master/src/solve_QR.cpp
-
-template <typename SolverType, typename MatrixType, typename RhsType>
-Rcpp::List run_sparse_qr_solver(const MatrixType &A, const RhsType &b) {
-  SolverType solver;
-  solver.compute(A);
-
-  if(solver.info() != Eigen::Success) {
-    return Rcpp::List::create(
-      Rcpp::Named("status") = false,
-      Rcpp::Named("info") = static_cast<int>(solver.info()));
-  }
-
-  Eigen::MatrixXd x = solver.solve(b);
-  bool success = solver.info() == Eigen::Success;
-
-  if(!x.allFinite()) {
-    return Rcpp::List::create(
-      Rcpp::Named("status") = false,
-      Rcpp::Named("info") = static_cast<int>(solver.info()));
-  }
-
-  return Rcpp::List::create(
-    Rcpp::Named("status") = success,
-    Rcpp::Named("info") = static_cast<int>(solver.info()),
-    Rcpp::Named("coefficients") = x);
+// Solver wrappers adapted from nk027/sanic.
+namespace L0glm {
+template<class Solver> SolverResult dense_qr(DenseRef A,DenseRef b,bool ranked) {
+  SolverResult result;Solver solver;solver.compute(A);
+  if(ranked && solver.rank()<A.cols())return result;
+  result.coefficients=solver.solve(b);result.success=result.finite();return result;
 }
-
-template <typename SolverType, typename MatrixType, typename RhsType>
-Rcpp::List run_dense_qr_solver(const MatrixType &A, const RhsType &b) {
-  SolverType solver;
-  solver.compute(A);
-
-  Eigen::MatrixXd x = solver.solve(b);
-
-  if(!x.allFinite()) {
-    return Rcpp::List::create(Rcpp::Named("status") = false);
+SolverResult qr_solve(DenseRef A,DenseRef b,unsigned int pivot,unsigned int) {
+  if(pivot==0) {
+    SolverResult result;Eigen::HouseholderQR<Eigen::MatrixXd> solver(A);
+    result.coefficients=solver.solve(b);result.success=result.finite();return result;
   }
-
-  return Rcpp::List::create(
-    Rcpp::Named("status") = true,
-    Rcpp::Named("coefficients") = x);
+  if(pivot==2)return dense_qr<Eigen::FullPivHouseholderQR<Eigen::MatrixXd>>(A,b,true);
+  return dense_qr<Eigen::ColPivHouseholderQR<Eigen::MatrixXd>>(A,b,true);
 }
-
-template <typename SolverType, typename MatrixType, typename RhsType>
-Rcpp::List run_dense_ranked_qr_solver(const MatrixType &A, const RhsType &b) {
-  SolverType solver;
-  solver.compute(A);
-
-  if(solver.rank() < A.cols()) {
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  Eigen::MatrixXd x = solver.solve(b);
-
-  if(!x.allFinite()) {
-    return Rcpp::List::create(Rcpp::Named("status") = false);
-  }
-
-  return Rcpp::List::create(
-    Rcpp::Named("status") = true,
-    Rcpp::Named("coefficients") = x);
+SolverResult qr_solve(SparseRef A,DenseRef b,unsigned int,unsigned int ordering) {
+  if(ordering==0)return factor_solve<Eigen::SparseQR<Eigen::SparseMatrix<double>,Eigen::AMDOrdering<int>>>(A,b);
+  if(ordering==2)return factor_solve<Eigen::SparseQR<Eigen::SparseMatrix<double>,Eigen::NaturalOrdering<int>>>(A,b);
+  return factor_solve<Eigen::SparseQR<Eigen::SparseMatrix<double>,Eigen::COLAMDOrdering<int>>>(A,b);
 }
-
-// Solve Ax = b using sparse QR decomposition
+}
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double> &A,
-                           const Eigen::Map<Eigen::MatrixXd> b,
-                           unsigned int ordering = 1){
-
-  if(ordering == 0) {
-    Eigen::SparseMatrix<double> A_copy(A);
-    typedef Eigen::SparseQR<Eigen::SparseMatrix<double>,
-                            Eigen::AMDOrdering<int> > Solver;
-    return run_sparse_qr_solver<Solver>(A_copy, b);
-  }
-
-  if(ordering == 2) {
-    Eigen::SparseMatrix<double> A_copy(A);
-    typedef Eigen::SparseQR<Eigen::SparseMatrix<double>,
-                            Eigen::NaturalOrdering<int> > Solver;
-    return run_sparse_qr_solver<Solver>(A_copy, b);
-  }
-
-  if(ordering > 2) {
-    Rcpp::warning("No valid ordering requested -- using default.");
-  }
-
-  Eigen::SparseMatrix<double> A_copy(A);
-  typedef Eigen::SparseQR<Eigen::SparseMatrix<double>,
-                          Eigen::COLAMDOrdering<int> > Solver;
-  return run_sparse_qr_solver<Solver>(A_copy, b);
+    const Eigen::Map<Eigen::MatrixXd> b,unsigned int ordering=1) {
+  if(ordering>2)Rcpp::warning("No valid ordering requested -- using default.");
+  return L0glm::qr_solve(L0glm::SparseRef(A),L0glm::DenseRef(b),1,ordering).list();
 }
-
-
-// Solve Ax = b using dense QR decomposition(pivot=0: HouseHolderQR, pivot=1: ColPivHouseholderQR,
-// pivot=2: FullPivHouseholderQR)
 // [[Rcpp::export]]
 Rcpp::List solve_dense_QR(const Eigen::Map<Eigen::MatrixXd> &A,
-                          const Eigen::Map<Eigen::MatrixXd> b,
-                          unsigned int pivot = 1) {
-
-  if(pivot == 0) {
-    typedef Eigen::HouseholderQR<Eigen::MatrixXd> Solver;
-    return run_dense_qr_solver<Solver>(A, b);
-  }
-
-  if(pivot == 2) {
-    typedef Eigen::FullPivHouseholderQR<Eigen::MatrixXd> Solver;
-    return run_dense_ranked_qr_solver<Solver>(A, b);
-  }
-
-  if(pivot > 2) {
-    Rcpp::warning("No valid pivoting scheme requested -- using default ColPivHouseholderQR.");
-  }
-
-  typedef Eigen::ColPivHouseholderQR<Eigen::MatrixXd> Solver;
-  return run_dense_ranked_qr_solver<Solver>(A, b);
+    const Eigen::Map<Eigen::MatrixXd> b,unsigned int pivot=1) {
+  if(pivot>2)Rcpp::warning("No valid pivoting scheme requested -- using default ColPivHouseholderQR.");
+  return L0glm::qr_solve(L0glm::DenseRef(A),L0glm::DenseRef(b),pivot).list(2);
 }

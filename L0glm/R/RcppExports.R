@@ -37,6 +37,18 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
+glm_native_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, nthreads = 1L, probes = numeric(), max_passes = 1L, relaxed = FALSE, nonnegative = FALSE, solver_control, solver_bridge = NULL, executor = NULL) {
+    .Call('_L0glm_glm_native_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, nthreads, probes, max_passes, relaxed, nonnegative, solver_control, solver_bridge, executor)
+}
+
+glm_native_pass_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, probes = numeric(), solver_control, solver_bridge = NULL) {
+    .Call('_L0glm_glm_native_pass_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, probes, solver_control, solver_bridge)
+}
+
+signal_start_cpp <- function(design, Y, offset, weights, prior, mandatory, nthreads = 1L) {
+    .Call('_L0glm_signal_start_cpp', PACKAGE = 'L0glm', design, Y, offset, weights, prior, mandatory, nthreads)
+}
+
 nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {
     .Call('_L0glm_nuisance_poisson_cpp', PACKAGE = 'L0glm', B, Y, Signal, Prior, Start, maxit, tol, nthreads)
 }

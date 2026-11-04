@@ -339,15 +339,19 @@
 #'
 #'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
 #'
-#' @param openmp Logical; defaults to \code{TRUE}. For nonnegative
-#'   identity-link Poisson fits with \code{solver="eigen"} and
-#'   \code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
-#'   Validation-based stopping is supported directly by this backend.
-#'   Other families, links and solvers use the general R fitting path.
-#'   Set \code{FALSE} to use that path explicitly. Solver controls requesting
-#'   another factorization or \code{rowaug=FALSE} also retain the R path.
-#'   This option selects the backend; \code{parallelize} controls whether
-#'   its outcome channels run concurrently.
+#' @param openmp Logical; defaults to \code{TRUE}. Selects a native driver for
+#'   built-in scalar GLM families and fixed-noise signal families, including
+#'   coefficient initialization, dispersion updates, grouped selection and
+#'   relaxed refitting. All Eigen methods are supported and share the design
+#'   across OpenMP threads. OSQP and \code{bigGlm} use the same native IRLS
+#'   driver, calling their dependency interfaces on the R thread; concurrent
+#'   channels use independent R workers for these two solvers.
+#'   Eligible nonnegative identity-link Poisson LLT fits use the specialized
+#'   \code{\link{L0nnpois}} backend, including native validation stopping.
+#'   Custom family callbacks, general validation stopping and structured
+#'   special-family algorithms retain their R orchestration. Set \code{FALSE}
+#'   to request the general R driver. \code{parallelize} separately controls
+#'   whether outcome channels run concurrently.
 #' @param parallelize A logical value indicating whether in the multivariate
 #'   case, the columns of the response matrix \code{y} should be fitted in
 #'   parallel. If \code{TRUE}, each column of \code{y} is fitted concurrently,
@@ -358,12 +362,14 @@
 #'   detected number of physical cores when that can be determined, falling back
 #'   to half the number of logical cores. The requested value is capped at the
 #'   detected number of physical cores when that can be determined.
-#'   With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
-#'   threads sharing the design matrix and is capped at the logical core count.
+#'   Native Eigen fits use this many OpenMP threads sharing the design matrix;
+#'   OSQP, \code{bigGlm} and the general R path use independent R workers.
+#'   With \code{L0nnpois}, the OpenMP thread count is capped at the logical
+#'   core count.
 #' @param nthreads Optional integer specifying the number of BLAS threads
 #'   to use per fit process. The default \code{NULL} leaves the main R session's
 #'   thread settings unchanged and uses one BLAS thread per parallel
-#'   worker. Setting \code{nthreads} can be useful to benchmark serial fits or
+#'   worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
 #'   tune per-worker threading on systems with a multithreaded BLAS.
 #'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
@@ -1038,7 +1044,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       isTRUE(method == 1L) &&
       (is.null(control.solver$method) || identical(control.solver$method, "chol")) &&
       (is.null(control.solver$pivot) || isTRUE(control.solver$pivot == 0L)) &&
-      (is.null(control.solver$rowaug) || isTRUE(control.solver$rowaug))) {
+      (is.null(control.solver$rowaug) || isTRUE(control.solver$rowaug)) &&
+      !is.null(L0glm_native_family(family))) {
     return(L0nnpois(
       X = X, y = y, weights = weights, family = family,
       dispersion = dispersion, start = start, offset = offset,
@@ -1143,12 +1150,19 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
   # 6 misc --------------------------------------------------
   always.include.start <- always.include
   init.lambda <- lambda
+  native_family <- if(openmp && is.null(validation) && !(lambda==0 && p>=n))
+    L0glm_native_family(family) else NULL
   
   
   # =======================================================================
   #  MULTIVARIATE RESPONSE  (m > 1) ***************************************
   # =======================================================================
-  if (m > 1) {
+  if (m==1L && !is.null(native_family)) {
+    native <- L0glm_native_model(environment(),native_family)
+    coefficients <- native$coefficients;weights.ret <- native$weights
+    dispersion <- native$dispersion;lambdas <- native$lambdas
+    z <- native$z;convergence <- native$convergence
+  } else if (m > 1) {
     
     if (!grouped) group.maxit <- 1L
     ncores <- suppressWarnings(as.integer(ncores[1L]))
@@ -1174,6 +1188,8 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
     }
     
     fit_multichannel <- function(do_parallel) {
+      if(!is.null(native_family)) return(L0glm_native_model(environment(),native_family,
+        if(do_parallel)min(m,ncores)else 1L))
       convergence <- list()
       empty_coefs <- Matrix(0, p, m, sparse = TRUE)
       empty_obs <- Matrix(0, n, m, sparse = TRUE)

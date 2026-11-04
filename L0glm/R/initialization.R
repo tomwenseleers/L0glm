@@ -10,44 +10,21 @@ L0glm_nuisance_solve <- function(G, rhs) {
 L0glm_signal_family <- function(family) family$link == "identity" &&
   !family$family %in% c("gaussian", "binomial", "quasibinomial")
 
-L0glm_signal_start <- function(X, y, offset, weights, included = integer(), prior = NULL) {
+L0glm_signal_start <- function(X, y, offset, weights, included = integer(), prior = NULL,
+                              nthreads = 1L) {
   values <- if (inherits(X, "sparseMatrix") && "x" %in% methods::slotNames(X)) X@x else X
   if (any(!is.finite(values)) || any(values < 0) ||
       any(!is.finite(offset)) || any(!is.finite(weights)) || any(weights < 0)) return(NULL)
-  y <- as.matrix(y); n <- nrow(X); m <- ncol(y); p <- ncol(X)
-  weights <- as.matrix(weights)
-  selectable <- setdiff(seq_len(p), included)
-  if (!length(selectable) || !any(weights > 0)) return(NULL)
-  shared_weights <- ncol(weights)==1L
-  W <- L0glm_observation_broadcast(weights)
-  residual <- pmax(y - L0glm_observation_broadcast(offset), 0)
-  result <- matrix(0, p, m)
-  if (length(included)) {
-    B <- as.matrix(X[, included, drop = FALSE]); mass <- rowSums(B)
-    if (!any(mass > 0)) return(NULL)
-    constant <- max(abs(mass - mass[1L])) <= 1e-12 * max(1, mass[1L]) && mass[1L] > 0
-    for (j in seq_len(m)) {
-      w <- L0glm_observation_column(weights,j)
-      good <- w > 0
-      level <- if (any(good)) as.numeric(stats::quantile(residual[good, j], 0.05)) else 0
-      result[included, j] <- if (constant) level / mass[1L] else
-        as.numeric(nuisance_quadratic_cpp(crossprod(B, B * w),
-          as.numeric(crossprod(B, w * level)), rep(TRUE, ncol(B))))
-    }
-    residual <- pmax(residual - B %*% result[included, , drop = FALSE], 0)
-  }
-  A <- X[, selectable, drop = FALSE]
-  information <- as.matrix(Matrix::crossprod(A^2, weights))
-  rhs <- as.matrix(Matrix::crossprod(A, W * residual))
-  if(shared_weights)information<-as.numeric(information)
-  uncertainty <- 1 / sqrt(pmax(information, .Machine$double.xmin))
-  magnitude <- 1e-8 * sqrt(colSums(W * residual^2))
-  floor <- if(shared_weights)uncertainty %o% magnitude else sweep(uncertainty,2L,magnitude,"*")
-  beta <- pmax(rhs / pmax(information, .Machine$double.xmin), floor)
-  if (!is.null(prior)) beta <- pmax(beta, prior[selectable, , drop = FALSE])
-  if(shared_weights)beta[information==0,]<-0 else beta[information == 0] <- 0
-  result[selectable, ] <- beta
-  result
+  if(!any(weights>0))return(NULL)
+  design <- if(inherits(X,'sparseMatrix'))as(as(X,'generalMatrix'),'CsparseMatrix')else as.matrix(X)
+  Y <- as.matrix(y);O <- as.matrix(offset);W <- as.matrix(weights)
+  P <- if(is.null(prior))matrix(0,ncol(X),1L)else as.matrix(prior)
+  for(name in c('Y','O','W','P')){a<-get(name);storage.mode(a)<-'double';assign(name,a)}
+  if(!inherits(design,'sparseMatrix'))storage.mode(design)<-'double'
+  nthreads <- suppressWarnings(as.integer(nthreads[1L]))
+  if(!length(nthreads)||is.na(nthreads)||nthreads<1L)nthreads<-1L
+  result <- signal_start_cpp(design,Y,O,W,P,as.integer(included),min(ncol(Y),nthreads))
+  if(result$valid)result$coefficients else NULL
 }
 
 L0glm_initial_coefficients <- function(X, y, mu, weights, offset, prior.mean,

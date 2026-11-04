@@ -182,6 +182,67 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// glm_native_cpp
+List glm_native_cpp(SEXP design, List contexts, int family, int link, double theta, int scalar, double parameter, double censor, int nthreads, NumericVector probes, int max_passes, bool relaxed, bool nonnegative, List solver_control, SEXP solver_bridge, SEXP executor);
+RcppExport SEXP _L0glm_glm_native_cpp(SEXP designSEXP, SEXP contextsSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP thetaSEXP, SEXP scalarSEXP, SEXP parameterSEXP, SEXP censorSEXP, SEXP nthreadsSEXP, SEXP probesSEXP, SEXP max_passesSEXP, SEXP relaxedSEXP, SEXP nonnegativeSEXP, SEXP solver_controlSEXP, SEXP solver_bridgeSEXP, SEXP executorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< List >::type contexts(contextsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< int >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type scalar(scalarSEXP);
+    Rcpp::traits::input_parameter< double >::type parameter(parameterSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type probes(probesSEXP);
+    Rcpp::traits::input_parameter< int >::type max_passes(max_passesSEXP);
+    Rcpp::traits::input_parameter< bool >::type relaxed(relaxedSEXP);
+    Rcpp::traits::input_parameter< bool >::type nonnegative(nonnegativeSEXP);
+    Rcpp::traits::input_parameter< List >::type solver_control(solver_controlSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type solver_bridge(solver_bridgeSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type executor(executorSEXP);
+    rcpp_result_gen = Rcpp::wrap(glm_native_cpp(design, contexts, family, link, theta, scalar, parameter, censor, nthreads, probes, max_passes, relaxed, nonnegative, solver_control, solver_bridge, executor));
+    return rcpp_result_gen;
+END_RCPP
+}
+// glm_native_pass_cpp
+List glm_native_pass_cpp(SEXP design, List contexts, int family, int link, double theta, int scalar, double parameter, double censor, NumericVector probes, List solver_control, SEXP solver_bridge);
+RcppExport SEXP _L0glm_glm_native_pass_cpp(SEXP designSEXP, SEXP contextsSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP thetaSEXP, SEXP scalarSEXP, SEXP parameterSEXP, SEXP censorSEXP, SEXP probesSEXP, SEXP solver_controlSEXP, SEXP solver_bridgeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< List >::type contexts(contextsSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< int >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type scalar(scalarSEXP);
+    Rcpp::traits::input_parameter< double >::type parameter(parameterSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type probes(probesSEXP);
+    Rcpp::traits::input_parameter< List >::type solver_control(solver_controlSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type solver_bridge(solver_bridgeSEXP);
+    rcpp_result_gen = Rcpp::wrap(glm_native_pass_cpp(design, contexts, family, link, theta, scalar, parameter, censor, probes, solver_control, solver_bridge));
+    return rcpp_result_gen;
+END_RCPP
+}
+// signal_start_cpp
+List signal_start_cpp(SEXP design, NumericMatrix Y, NumericMatrix offset, NumericMatrix weights, NumericMatrix prior, IntegerVector mandatory, int nthreads);
+RcppExport SEXP _L0glm_signal_start_cpp(SEXP designSEXP, SEXP YSEXP, SEXP offsetSEXP, SEXP weightsSEXP, SEXP priorSEXP, SEXP mandatorySEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type offset(offsetSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type prior(priorSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type mandatory(mandatorySEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(signal_start_cpp(design, Y, offset, weights, prior, mandatory, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // nuisance_poisson_cpp
 Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& Prior, const Eigen::Map<Eigen::MatrixXd>& Start, int maxit, double tol, int nthreads);
 static SEXP _L0glm_nuisance_poisson_cpp_try(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
@@ -471,13 +532,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_chol
-Rcpp::List solve_dense_chol(const Eigen::Map <Eigen::MatrixXd>& A, const Eigen::Map <Eigen::MatrixXd> b, unsigned int pivot);
+Rcpp::List solve_dense_chol(const Eigen::Map<Eigen::MatrixXd>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot);
 RcppExport SEXP _L0glm_solve_dense_chol(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map <Eigen::MatrixXd>& >::type A(ASEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map <Eigen::MatrixXd> >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd> >::type b(bSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type pivot(pivotSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_dense_chol(A, b, pivot));
     return rcpp_result_gen;
@@ -597,6 +658,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_bregman_tree_cpp", (DL_FUNC) &_L0glm_L0glm_bregman_tree_cpp, 6},
     {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
+    {"_L0glm_glm_native_cpp", (DL_FUNC) &_L0glm_glm_native_cpp, 16},
+    {"_L0glm_glm_native_pass_cpp", (DL_FUNC) &_L0glm_glm_native_pass_cpp, 11},
+    {"_L0glm_signal_start_cpp", (DL_FUNC) &_L0glm_signal_start_cpp, 7},
     {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},

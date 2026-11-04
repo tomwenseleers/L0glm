@@ -291,13 +291,15 @@ fitted sequentially.}
 detected number of physical cores when that can be determined, falling back
 to half the number of logical cores. The requested value is capped at the
 detected number of physical cores when that can be determined.
-With the \code{L0nnpois} backend, \code{ncores} instead controls OpenMP
-threads sharing the design matrix and is capped at the logical core count.}
+Native Eigen fits use this many OpenMP threads sharing the design matrix;
+OSQP, \code{bigGlm} and the general R path use independent R workers.
+With \code{L0nnpois}, the OpenMP thread count is capped at the logical
+core count.}
 
 \item{nthreads}{Optional integer specifying the number of BLAS threads
 to use per fit process. The default \code{NULL} leaves the main R session's
 thread settings unchanged and uses one BLAS thread per parallel
-worker. Setting \code{nthreads} can be useful to benchmark serial fits or
+worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
 tune per-worker threading on systems with a multithreaded BLAS.
 The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.}
 
@@ -464,15 +466,19 @@ defaults to Eigen \code{COLAMDOrdering} (\code{ordering=1L});
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}
 
-\item{openmp}{Logical; defaults to \code{TRUE}. For nonnegative
-identity-link Poisson fits with \code{solver="eigen"} and
-\code{method=1L}, use the compiled Rcpp OpenMP \code{\link{L0nnpois}} backend.
-Validation-based stopping is supported directly by this backend.
-Other families, links and solvers use the general R fitting path.
-Set \code{FALSE} to use that path explicitly. Solver controls requesting
-another factorization or \code{rowaug=FALSE} also retain the R path.
-This option selects the backend; \code{parallelize} controls whether
-its outcome channels run concurrently.}
+\item{openmp}{Logical; defaults to \code{TRUE}. Selects a native driver for
+built-in scalar GLM families and fixed-noise signal families, including
+coefficient initialization, dispersion updates, grouped selection and
+relaxed refitting. All Eigen methods are supported and share the design
+across OpenMP threads. OSQP and \code{bigGlm} use the same native IRLS
+driver, calling their dependency interfaces on the R thread; concurrent
+channels use independent R workers for these two solvers.
+Eligible nonnegative identity-link Poisson LLT fits use the specialized
+\code{\link{L0nnpois}} backend, including native validation stopping.
+Custom family callbacks, general validation stopping and structured
+special-family algorithms retain their R orchestration. Set \code{FALSE}
+to request the general R driver. \code{parallelize} separately controls
+whether outcome channels run concurrently.}
 
 \item{control.family}{Family-specific IRLS controls. A named list with
 \code{multinomial="irls"} (joint block IRLS) or \code{"bound"}

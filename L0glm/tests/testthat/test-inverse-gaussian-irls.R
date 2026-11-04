@@ -58,9 +58,14 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
     })
   fit <- L0glm.fit(sim$X, sim$y, family=sim$family, weights=sim$weights,
     intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
-    relaxed=FALSE, parallelize=FALSE)
+    relaxed=FALSE, parallelize=FALSE, openmp=FALSE)
   expect_gt(halvings, 0L)
   expect_equal(solves, sum(fit$convergence$iterations))
+  native <- L0glm.fit(sim$X, sim$y, family=sim$family, weights=sim$weights,
+    intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
+    relaxed=FALSE, parallelize=FALSE)
+  expect_equal(native$coefficients, fit$coefficients, tolerance=1e-7)
+  expect_equal(native$dispersion, fit$dispersion, tolerance=1e-7)
 })
 
 test_that("unpenalized inverse-Gaussian IRLS agrees with likelihood optimization", {
