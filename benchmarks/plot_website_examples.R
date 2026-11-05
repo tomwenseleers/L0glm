@@ -1,8 +1,7 @@
 # Render the measured large examples without fitting models again.
-website_plot_examples <- function(cases=c("million", "single", "multi", "selection")) {
-  pkgload::load_all("L0glm", recompile=FALSE, quiet=TRUE)
-  cache <- "codex_sandbox/website_large_examples"
-  output <- "benchmarks/plots/website"
+website_plot_examples <- function(cases=c("million", "single", "multi", "selection"),
+  cache="codex_sandbox/website_large_examples", output="benchmarks/plots/website") {
+  library(L0glm)
   draw <- function(name, width, height, code) {
     grDevices::png(file.path(output, paste0(name, ".png")), width=width,
       height=height, res=160, type="cairo")

@@ -614,20 +614,20 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>[L0glm.fit()], <a href="information_criteria.html">information_criteria</a> for case-insensitive
-  criterion presets, penalty formulas, guidance and original references.</p></div>
+    <div class="dont-index"><p><a href="L0glm.fit.html">L0glm.fit</a>, <a href="information_criteria.html">information_criteria</a> for case-insensitive
+  criterion presets, penalty formulas, guidance and original references.
+  See <a href="https://tomwenseleers.github.io/L0glm/articles/performance.html">the benchmark article</a>
+  for measured deconvolution and validation timings.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## Fast nonnegative identity-link Poisson L0 or grouped L0 penalized fit</span></span>
-<span><span class="co">## All coefficients, including an optional intercept, are always nonnegative.</span></span>
-<span><span class="co">## No nonnegative, lower or upper argument is needed or accepted.</span></span>
-<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
-<span><span class="va">npeaks</span> <span class="op">&lt;-</span> <span class="fl">100</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co">## Grouped identity-link Poisson deconvolution with nonnegative coefficients.</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
+<span><span class="va">npeaks</span> <span class="op">&lt;-</span> <span class="fl">100L</span></span>
 <span></span>
-<span><span class="va">sim.pois.mc</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="va">n</span>, p <span class="op">=</span> <span class="va">p</span>, s <span class="op">=</span> <span class="va">npeaks</span> <span class="op">/</span> <span class="va">p</span>, seed <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span> <span class="co"># 1000 x 176 channels</span></span>
+<span><span class="va">sim.pois.mc</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method <span class="op">=</span> <span class="fl">4L</span>, n <span class="op">=</span> <span class="va">n</span>, p <span class="op">=</span> <span class="va">p</span>, n_nonzero <span class="op">=</span> <span class="va">npeaks</span>, seed <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">## Multichannel fit. OpenMP is used across outcome channels when available.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit.mc</span> <span class="op">&lt;-</span> <span class="fu">L0nnpois</span><span class="op">(</span></span>
@@ -637,10 +637,8 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  relaxed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  parallelize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  ncores <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span> </span>
-<span><span class="co"># with n &lt;- p &lt;- 1000 and npeaks &lt;- 100   0.56s with 4 cores on my machine</span></span>
-<span><span class="co"># with n &lt;- p &lt;- 10000 and npeaks &lt;- 1000 9.41s with 4 cores on my machine</span></span>
+<span>  ncores <span class="op">=</span> <span class="fl">4L</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
@@ -658,27 +656,6 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 <span><span class="va">background_hat</span> <span class="op">&lt;-</span> <span class="va">B</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_background</span><span class="op">)</span><span class="op">[</span><span class="va">compulsory</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">fit_background</span><span class="op">$</span><span class="va">nuisance</span><span class="op">$</span><span class="va">seconds</span></span>
 <span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
-<span><span class="co">## Compare with the general R fitting path (process-based parallelism):</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit.mc</span> <span class="op">&lt;-</span> <span class="fu"><a href="L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span></span>
-<span>  X <span class="op">=</span> <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">X</span>,</span>
-<span>  y <span class="op">=</span> <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span>,</span>
-<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda <span class="op">=</span> <span class="st">"gic"</span>,</span>
-<span>  nonnegative <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  openmp <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  parallelize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  ncores <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span> </span>
-<span><span class="co"># with n &lt;- p &lt;- 1000 and npeaks &lt;- 100   11.84s with 4 cores on my machine</span></span>
-<span><span class="co"># with n &lt;- p &lt;- 10000 and npeaks &lt;- 1000 38.55s with 4 cores on my machine</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit.mc</span><span class="op">$</span><span class="va">coefficients</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="op">}</span> <span class="co"># }</span></span>
-<span></span>
 <span><span class="co">## Single-channel fit uses the same nonnegative model.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit.sc</span> <span class="op">&lt;-</span> <span class="fu">L0nnpois</span><span class="op">(</span></span>
 <span>  <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">X</span>,</span>
@@ -687,9 +664,7 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 <span>  grouped <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  relaxed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  parallelize <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span><span class="op">)</span> </span>
-<span><span class="co"># with n &lt;- p &lt;- 1000 and npeaks &lt;- 100   0.03s on my machine</span></span>
-<span><span class="co"># with n &lt;- p &lt;- 10000 and npeaks &lt;- 1000 0.13s on my machine</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit.sc</span><span class="op">$</span><span class="va">coefficients</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span></span>
@@ -700,24 +675,7 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 <span><span class="va">validated</span> <span class="op">&lt;-</span> <span class="fu">L0nnpois</span><span class="op">(</span><span class="va">small</span><span class="op">$</span><span class="va">X</span>, <span class="va">small</span><span class="op">$</span><span class="va">y</span>, lambda <span class="op">=</span> <span class="st">"gic"</span>, ncores <span class="op">=</span> <span class="fl">2L</span>,</span>
 <span>  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X <span class="op">=</span> <span class="va">small</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">y.validation</span>, patience <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">validated</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">deviance</span></span>
-<span><span class="va">validated</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">selection</span><span class="op">$</span><span class="va">history</span></span>
-<span></span>
-<span><span class="co">## Compare with the general R path for a single channel:</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit.sc</span> <span class="op">&lt;-</span> <span class="fu"><a href="L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span></span>
-<span>  X <span class="op">=</span> <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">X</span>,</span>
-<span>  y <span class="op">=</span> <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span><span class="op">[</span>, <span class="fl">1L</span><span class="op">]</span>,</span>
-<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda <span class="op">=</span> <span class="st">"gic"</span>,</span>
-<span>  nonnegative <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  openmp <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  grouped <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  parallelize <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span><span class="op">)</span> </span>
-<span><span class="co"># with n &lt;- p &lt;- 1000 and npeaks &lt;- 100   0.04s on my machine</span></span>
-<span><span class="co"># with n &lt;- p &lt;- 10000 and npeaks &lt;- 1000 0.25s on my machine</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit.sc</span><span class="op">$</span><span class="va">coefficients</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">validated</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">selection</span><span class="op">$</span><span class="va">history</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

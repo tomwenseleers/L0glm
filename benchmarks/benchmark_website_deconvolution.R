@@ -2,9 +2,9 @@
 # CV uses glmnet's weighted-Gaussian prediction error, with common random folds.
 website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
   n_nonzero=1000L, seed=2L, ncores=4L, cache="codex_sandbox/website_large_examples",
-  output="benchmarks/plots/website", reuse=TRUE) {
+  output="benchmarks/plots/website", reuse=FALSE) {
   case <- match.arg(case)
-  pkgload::load_all("L0glm", recompile=FALSE, quiet=TRUE)
+  library(L0glm)
   RhpcBLASctl::blas_set_num_threads(1L)
   RhpcBLASctl::omp_set_num_threads(1L)
   source("benchmarks/cv_glmnet_parallel.R", local=TRUE)
@@ -38,7 +38,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
   })
   gic <- lapply(c("lasso", "relaxed_lasso"), function(method) checkpoint(method,
     sparseglm(sim, family=poisson("identity"), method=method,
-      tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE,
+      tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE, screen="none",
       approximation=if (case=="single") "wls" else "wls_grouped")))
   stopifnot(all(vapply(gic, function(z) all(z$timings$status=="ok"), logical(1))))
   stopifnot(all(vapply(gic, function(z)

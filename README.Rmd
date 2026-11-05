@@ -57,10 +57,9 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 
 ## A one million predictor example
 
-In this example there are sixty nonzero effects among **one million predictors**, while
-we have only 500 observations. Fitting this high dimensional dataset on a laptop takes just a single
-call and completes in just **3 seconds**, and recovers **40 out of 60 nonzero coefficients** with
-just **3 false positives**:
+<!-- BEGIN million-intro -->
+This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.55 seconds** and recovers **40 true effects with 3 false positives**.
+<!-- END million-intro -->
 
 ```r
 library(L0glm)
@@ -82,22 +81,22 @@ L0glm.metrics(fit, beta_true=beta)[
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **3.49** | **2583** | **40** | **3** | **20** | **999937** | **0.777** | **0.787** |
-| LASSO | BIC path | 22.75 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
-| Relaxed LASSO | BIC path | 21.42 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
-| LASSO | 5-fold CV | 123.13 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
-| Relaxed LASSO | 5-fold CV | 91.76 | 7413 | 20 | 252 | 40 | 999688 | 0.120 | 0.156 |
+| **L0glm + ISIS** | **GIC preset** | **2.55** | **2583** | **40** | **3** | **20** | **999937** | **0.777** | **0.787** |
+| LASSO | BIC path | 23.42 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
+| Relaxed LASSO | BIC path | 22.47 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
+| LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
+| Relaxed LASSO | 5-fold CV | 99.24 | 7413 | 20 | 252 | 40 | 999688 | 0.120 | 0.156 |
 <!-- END million-comparison -->
 
 <!-- BEGIN million-speed -->
-L0glm is **35× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+L0glm is **47× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
 <!-- END million-speed -->
-L0glm uses a single GIC preset and a relaxed refit. LASSO and fully relaxed
-LASSO search up to 40 lambda values using BIC or five-fold CV. BIC is included
+L0glm uses ISIS, a GIC preset and a relaxed refit. Here LASSO and fully relaxed
+LASSO search up to 40 lambda values on the unscreened design using BIC or five-fold CV. BIC is included
 because GIC can select a null LASSO model at this dimension; all methods are
 also evaluated with the same GIC. CV uses common random folds.
 
-Recovered coefficients show near-zero bias:
+The recovered coefficients are close to their true values.
 
 ![Recovered versus true effects in the million-predictor example.](benchmarks/plots/website/million-coefficients.png)
 
@@ -125,16 +124,13 @@ copies of the peak-shape function (or "point spread function"), L0glm recovers
 the underlying peaks and their mass spectra in a highly efficient and accurate way.
 
 <!-- BEGIN multi-speed -->
-In this 2.26 million coefficient example, L0glm recovers **944 of 1,000 true peaks
-with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned
-group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV**
-in this comparison, while also boasting a much reduced false-positive rate (0.11% vs.
-3.09% for GIC tuned relaxed group LASSO).
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
-It also recovers the sparse sparse mass spectra accurately, with a within-row F1 of
-**0.909** and within-row MCC (Matthews Correlation Coefficient) of **0.864**.
-A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
-the competing methods select lambda from a ten-value grid using GIC or
+<!-- BEGIN multi-spectral -->
+Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
+<!-- END multi-spectral -->
+A direct `L0glm.fit()` call uses `lambda="gic"` and four cores.
+The competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
 
 ```r
@@ -147,11 +143,11 @@ fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
 <!-- BEGIN multi-home -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 9.63 | 5615963 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 0.690 | 0.685 |
-| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 0.820 | 0.802 |
-| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
-| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 0.781 | 0.769 |
+| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 0.966 | 0.962 |
+| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 0.690 | 0.685 |
+| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 0.820 | 0.802 |
+| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
+| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 0.781 | 0.769 |
 <!-- END multi-home -->
 
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](benchmarks/plots/website/deconvolution-multi-large.png)
@@ -167,12 +163,12 @@ weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
 
-For broad or asymmetric peaks, [splogconNMF()](https://tomwenseleers.github.io/L0glm/reference/splogconNMF.html)
+For broad or asymmetric peaks, [splogconNMF()](https://tomwenseleers.github.io/L0nmf/reference/splogconNMF.html)
 recovers log-concave elution profiles and spectra with a smooth background.
-[GCMSdeco()](https://tomwenseleers.github.io/L0glm/reference/GCMSdeco.html) runs the
+[GCMSdeco()](https://tomwenseleers.github.io/GCMSprime/reference/GCMSdeco.html) runs the
 workflow directly from an ANDI-MS `.cdf` chromatogram and exports the compound
 spectra to a NIST-compatible `.msp` library.
-[estimate_psf()](https://tomwenseleers.github.io/L0glm/reference/estimate_psf.html)
+[estimate_psf()](https://tomwenseleers.github.io/L0nmf/reference/estimate_psf.html)
 provides automatic standard or blind calibration and returns a constant or
 smoothly varying sparse PSF design.
 
@@ -190,17 +186,17 @@ fit_single <- L0glm.fit(single$X, single$y, family=poisson("identity"),
 ```
 
 <!-- BEGIN single-speed -->
-L0glm recovers **845 of 1,000 true peaks with just 154 false positives** in **0.20 seconds**: **2× faster than GIC-tuned LASSO** and **34× faster than relaxed LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **845 of 1,000 true peaks with 154 false positives** in **0.14 seconds**. In this benchmark it is **1.7× faster than GIC-tuned LASSO** and **20× faster than relaxed LASSO tuned by five-fold CV**.
 <!-- END single-speed -->
 
 <!-- BEGIN single-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 0.20 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
-| LASSO | GIC path | 0.40 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
-| Relaxed LASSO | GIC path | 0.64 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
-| LASSO | 5-fold CV | 4.83 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
-| Relaxed LASSO | 5-fold CV | 6.70 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
+| L0glm | GIC preset | 0.14 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
+| LASSO | GIC path | 0.24 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
+| Relaxed LASSO | GIC path | 0.42 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
+| LASSO | 5-fold CV | 2.72 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
+| Relaxed LASSO | 5-fold CV | 2.77 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
 <!-- END single-metrics -->
 
 ![True versus estimated coefficients in single-channel Poisson deconvolution.](benchmarks/plots/website/deconvolution-single-coefficients-large.png)

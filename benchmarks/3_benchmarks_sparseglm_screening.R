@@ -6,7 +6,7 @@ RhpcBLASctl::blas_set_num_threads(1)
 root <- if (file.exists("L0glm/DESCRIPTION")) "." else ".."
 output <- file.path(root,"benchmarks/3_benchmarks_sis_vs_SIS_results")
 dir.create(output,recursive=TRUE,showWarnings=FALSE)
-set.seed(123)
+set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
 n <- 500L;p <- 1000000L
 X <- matrix(rnorm(n*p),n,p)
 active <- sample.int(p,60L);beta <- numeric(p);beta[active] <- runif(60L,-.8,.8)

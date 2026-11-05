@@ -29,6 +29,24 @@ library(L0glm)
 
 Windows source installation requires [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
 
+## Start with a small model
+
+Pass a design matrix and a response vector to `L0glm.fit()`. A GIC preset
+provides a single penalty value for variable selection. A relaxed refit
+then estimates the retained effects with reduced shrinkage.
+
+```{r small-fit}
+sim <- simul("normal", n=200L, p=80L, n_nonzero=6L, seed=42L)
+small <- L0glm.fit(sim$X, sim$y, family=gaussian(), lambda="gic", relaxed=TRUE)
+which(as.numeric(coef(small)) != 0)
+head(fitted(small))
+```
+
+The coefficient vector retains the original predictor positions, with zeroes
+at excluded predictors. For a response matrix, `grouped=TRUE` selects predictor
+rows shared by the responses. See [fitting controls](controls.html) for
+weights, offsets and constraints.
+
 ## Fit a sparse model
 
 Here 60 positive or negative effects are hidden among **one million predictors**
@@ -54,7 +72,7 @@ L0glm.metrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 3.49 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
+| 2.55 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
 <!-- END million-metrics -->
 
 The corresponding support confusion matrix is:

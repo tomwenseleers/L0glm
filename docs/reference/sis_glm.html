@@ -219,24 +219,14 @@ explicit zero starts in every response channel. No separate minimum sample
 size or predictor count is imposed.
 Its small default ISIS batch and other screened-fit defaults are documented
 in that function; pass <code>nsis</code> explicitly to match a standalone call exactly.</p>
-<p><strong>Timing comparisons with SIS.</strong> For Gaussian identity-link data with an
-intercept and unit observation weights, the screening statistic is
-proportional to squared Pearson correlation. The complete ranking agrees
-with SIS's initial Gaussian screen. On 500 observations and one million
-predictors, screening-only median times over three runs were
-0.24 seconds for <code>sis_glm()</code> on eight physical cores,
-0.74 seconds on one thread and 2.00 seconds for SIS's screening helper.
-Complete one-pass screening and selection took 0.30 seconds for
-<code>L0glm.fit(screen="SIS")</code> with the GIC preset and 7.31 seconds for
-<code>SIS::SIS(iter=FALSE,penalty="lasso",tune="bic")</code>.
-On the same homepage simulation, the default ISIS fit recovered 40 true
-effects with three false positives (GIC 2582.75, F1 0.7767, MCC 0.7875).
-Its median time was 2.36 seconds; the homepage records 3.49 seconds.
-Measurements used an Intel Core i9-11950H, R 4.5.0 and SIS 1.5.
-Predictor standardization is omitted because Gaussian correlation ranks are
-scale invariant. The example separates screening-only and fitted-model
-timings. <code><a href="sparseglm.html">sparseglm()</a></code> offers shared screening controls for comparisons
-with other sparse-regression methods, including fold-local screening for CV.</p>
+<p><strong>Comparison with SIS.</strong> With an intercept, unit observation weights and
+a Gaussian identity link, the screening statistic is proportional to squared
+Pearson correlation. Predictor scaling leaves the ranking unchanged.
+The million-predictor example below checks the complete ranking against
+the initial Gaussian screen from SIS. The <a href="https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html#compare-screening-and-complete-models-with-sis">screening tutorial</a>
+reports screening and end-to-end fitting times separately.
+<code><a href="sparseglm.html">sparseglm()</a></code> compares complete models with shared screening controls and
+repeats screening within each training fold for cross-validation.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -11,7 +11,7 @@ output <- file.path(root,"benchmarks","3_benchmarks_sis_vs_SIS_results")
 dir.create(output,recursive=TRUE,showWarnings=FALSE)
 
 make_data <- function(p) {
-  set.seed(123,kind="Mersenne-Twister")
+  set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
   X <- matrix(rnorm(as.double(n)*p),n,p)
   active <- sample.int(p,60L)
   beta <- numeric(p)

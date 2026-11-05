@@ -162,13 +162,14 @@ occupies about 4 GB.</p>
 <span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p>The default L0glm fit with ISIS screening recovers <strong>40 true
-effects with only 3 false positives</strong>. It finished in just
-<strong>3.49 s</strong> using all eight physical cores (the default). By
-comparison, five-fold-CV LASSO took <strong>123.13 s</strong>,
-recovering 17 true effects with 50 false positives. The <a href="performance.html#one-million-predictor-example">benchmark
-article</a> reports all methods, including relaxed LASSO, together with
-their tuning settings.</p>
+<!-- BEGIN million-screening-summary -->
+<p>The default L0glm fit with ISIS recovers <strong>40 true effects with
+3 false positives</strong> in <strong>2.55 s</strong> using eight
+physical cores. Five-fold-CV LASSO on the unscreened design takes
+<strong>120.69 s</strong> and recovers 17 true effects with 50 false
+positives. The <a href="performance.html#one-million-predictor-example">benchmark
+article</a> gives the tuning settings.
+<!-- END million-screening-summary --></p>
 </div>
 <div class="section level2">
 <h2 id="compare-screening-and-complete-models-with-sis">Compare screening and complete models with SIS<a class="anchor" aria-label="anchor" href="#compare-screening-and-complete-models-with-sis"></a>
@@ -186,22 +187,22 @@ top 100 predictors. Screening-only median timings over three runs:</p>
 <tr class="odd">
 <td align="left">
 <code><a href="../reference/sis_glm.html">sis_glm()</a></code>, eight physical cores</td>
-<td align="right"><strong>0.24</strong></td>
+<td align="right">0.24</td>
 </tr>
 <tr class="even">
 <td align="left"><code>sis_glm(nthreads=1)</code></td>
-<td align="right">0.74</td>
+<td align="right">0.80</td>
 </tr>
 <tr class="odd">
 <td align="left">SIS Gaussian screen (<code>obtain.ix0</code>)</td>
-<td align="right">2.00</td>
+<td align="right">2.03</td>
 </tr>
 </tbody>
 </table>
 <p>The SIS row calls its screening helper directly, excluding the
 subsequent LASSO fit. Gaussian correlation ranks are scale invariant, so
-redundant standardization is omitted. The default OpenMP screen is about
-<strong>8.3 times faster</strong> on this machine.</p>
+redundant standardization is omitted. The OpenMP screen is <strong>8.5
+times faster</strong> on this machine.</p>
 <p>Complete screening-and-selection pipelines were timed separately on
 the <strong>same million-predictor simulation as the homepage</strong>.
 L0glm uses its default GIC preset. LASSO variants use BIC-selected paths
@@ -215,10 +216,8 @@ best ISIS round by GIC; the LASSO comparisons use the requested BIC for
 their outer searches. The public SIS pipeline fits a free intercept;
 L0glm and glmnet use a zero intercept, matching the simulation. Both ICs
 are saved with the results.</p>
-<p>The default call reproduces <strong>GIC 2582.75, 40 true effects and
-3 false positives</strong>, with <strong>F1 0.7767 and MCC
-0.7875</strong>. The recorded homepage time is <strong>3.49 s</strong>;
-the median of the three runs below is <strong>2.36 s</strong>.</p>
+<p>The rows below report median elapsed time over three runs. They
+include screening and variable selection for each fitted model.</p>
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="11%">
@@ -247,7 +246,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">SIS</td>
 <td align="left">SIS::SIS + BIC LASSO</td>
-<td align="right">7.31</td>
+<td align="right">7.04</td>
 <td align="right">4407</td>
 <td align="right">12</td>
 <td align="right">86</td>
@@ -258,7 +257,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">SIS</td>
 <td align="left">L0glm.fit, GIC preset</td>
-<td align="right">0.30</td>
+<td align="right">0.31</td>
 <td align="right">2793</td>
 <td align="right">7</td>
 <td align="right">1</td>
@@ -269,7 +268,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">SIS</td>
 <td align="left">sparseglm LASSO, BIC grid</td>
-<td align="right">1.57</td>
+<td align="right">1.50</td>
 <td align="right">4414</td>
 <td align="right">12</td>
 <td align="right">87</td>
@@ -280,7 +279,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">SIS</td>
 <td align="left">sparseglm relaxed LASSO, BIC grid</td>
-<td align="right">1.56</td>
+<td align="right">1.55</td>
 <td align="right">4240</td>
 <td align="right">12</td>
 <td align="right">80</td>
@@ -291,7 +290,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">ISIS</td>
 <td align="left">L0glm.fit, GIC preset</td>
-<td align="right">2.36</td>
+<td align="right">2.30</td>
 <td align="right">2583</td>
 <td align="right">40</td>
 <td align="right">3</td>
@@ -302,7 +301,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">ISIS</td>
 <td align="left">sparseglm LASSO, BIC grid</td>
-<td align="right">4.65</td>
+<td align="right">4.36</td>
 <td align="right">4402</td>
 <td align="right">9</td>
 <td align="right">191</td>
@@ -313,7 +312,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">1,000,000</td>
 <td align="left">ISIS</td>
 <td align="left">sparseglm relaxed LASSO, BIC grid</td>
-<td align="right">4.70</td>
+<td align="right">4.56</td>
 <td align="right">4187</td>
 <td align="right">9</td>
 <td align="right">185</td>
@@ -324,7 +323,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">5,000</td>
 <td align="left">ISIS</td>
 <td align="left">SIS::SIS + BIC LASSO</td>
-<td align="right">23.04</td>
+<td align="right">22.40</td>
 <td align="right">2883</td>
 <td align="right">42</td>
 <td align="right">57</td>
@@ -335,7 +334,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">5,000</td>
 <td align="left">ISIS</td>
 <td align="left">L0glm.fit, GIC preset</td>
-<td align="right">0.07</td>
+<td align="right">0.06</td>
 <td align="right">2180</td>
 <td align="right">46</td>
 <td align="right">0</td>
@@ -346,7 +345,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">5,000</td>
 <td align="left">ISIS</td>
 <td align="left">sparseglm LASSO, BIC grid</td>
-<td align="right">0.24</td>
+<td align="right">0.22</td>
 <td align="right">4581</td>
 <td align="right">47</td>
 <td align="right">228</td>
@@ -357,7 +356,7 @@ the median of the three runs below is <strong>2.36 s</strong>.</p>
 <td align="right">5,000</td>
 <td align="left">ISIS</td>
 <td align="left">sparseglm relaxed LASSO, BIC grid</td>
-<td align="right">0.27</td>
+<td align="right">0.25</td>
 <td align="right">2939</td>
 <td align="right">47</td>
 <td align="right">71</td>
@@ -405,7 +404,7 @@ common scoring; shared input preparation is separate.</p>
 <tbody>
 <tr class="odd">
 <td align="left">L0glm</td>
-<td align="right">2.20</td>
+<td align="right">2.52</td>
 <td align="right">2583</td>
 <td align="right">40</td>
 <td align="right">3</td>
@@ -414,7 +413,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="even">
 <td align="left">abess</td>
-<td align="right">11.32</td>
+<td align="right">12.72</td>
 <td align="right">3268</td>
 <td align="right">9</td>
 <td align="right">91</td>
@@ -423,7 +422,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="odd">
 <td align="left">L0Learn</td>
-<td align="right">1.50</td>
+<td align="right">1.64</td>
 <td align="right">2790</td>
 <td align="right">11</td>
 <td align="right">2</td>
@@ -432,7 +431,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="even">
 <td align="left">MCP</td>
-<td align="right">3.50</td>
+<td align="right">3.78</td>
 <td align="right">4040</td>
 <td align="right">9</td>
 <td align="right">168</td>
@@ -441,7 +440,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="odd">
 <td align="left">SCAD</td>
-<td align="right">3.29</td>
+<td align="right">4.13</td>
 <td align="right">4353</td>
 <td align="right">9</td>
 <td align="right">187</td>
@@ -450,7 +449,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="even">
 <td align="left">lasso</td>
-<td align="right">3.27</td>
+<td align="right">3.87</td>
 <td align="right">4402</td>
 <td align="right">9</td>
 <td align="right">191</td>
@@ -459,7 +458,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="odd">
 <td align="left">relaxed_lasso</td>
-<td align="right">3.39</td>
+<td align="right">4.00</td>
 <td align="right">4187</td>
 <td align="right">9</td>
 <td align="right">185</td>
@@ -468,7 +467,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="even">
 <td align="left">adaptive_lasso</td>
-<td align="right">3.28</td>
+<td align="right">4.05</td>
 <td align="right">4316</td>
 <td align="right">9</td>
 <td align="right">184</td>
@@ -477,7 +476,7 @@ common scoring; shared input preparation is separate.</p>
 </tr>
 <tr class="odd">
 <td align="left">adaptive_relaxed_lasso</td>
-<td align="right">3.39</td>
+<td align="right">4.18</td>
 <td align="right">4305</td>
 <td align="right">9</td>
 <td align="right">185</td>

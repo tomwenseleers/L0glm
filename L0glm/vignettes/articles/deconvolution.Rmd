@@ -45,17 +45,17 @@ L0glm.metrics(fit, beta_true=single$beta_true)[c("gic", "TP", "FP", "FN", "TN",
 ```
 
 <!-- BEGIN single-speed -->
-L0glm recovers **845 of 1,000 true peaks with just 154 false positives** in **0.20 seconds**: **2× faster than GIC-tuned LASSO** and **34× faster than relaxed LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **845 of 1,000 true peaks with 154 false positives** in **0.14 seconds**. In this benchmark it is **1.7× faster than GIC-tuned LASSO** and **20× faster than relaxed LASSO tuned by five-fold CV**.
 <!-- END single-speed -->
 
 <!-- BEGIN single-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 0.20 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
-| LASSO | GIC path | 0.40 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
-| Relaxed LASSO | GIC path | 0.64 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
-| LASSO | 5-fold CV | 4.83 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
-| Relaxed LASSO | 5-fold CV | 6.70 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
+| L0glm | GIC preset | 0.14 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
+| LASSO | GIC path | 0.24 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
+| Relaxed LASSO | GIC path | 0.42 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
+| LASSO | 5-fold CV | 2.72 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
+| Relaxed LASSO | 5-fold CV | 2.77 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
 <!-- END single-metrics -->
 
 The table compares the GIC-preset fit with LASSO and fully relaxed LASSO,
@@ -103,17 +103,17 @@ L0glm.metrics(fit_multi, beta_true=multi$beta_true)[c("gic", "TP", "FP", "FN", "
 ```
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
 
 <!-- BEGIN multi-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Within-row F1 | Within-row MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 9.63 | 5615963 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.909 | 0.864 |
-| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
-| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
-| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 2 | 4758 | 0.320 | 0.316 | 0.886 | 0.830 |
-| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
+| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.912 | 0.869 |
+| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
+| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
+| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 2 | 4758 | 0.320 | 0.316 | 0.886 | 0.830 |
+| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
 <!-- END multi-metrics -->
 
 Row F1 and MCC measure recovery of peak times. Within-row F1 and MCC measure

@@ -1,4 +1,10 @@
-These measured examples supply the pkgdown homepage and tutorials.
+These measured examples supply the README and pkgdown tutorials. Install the
+checkout of L0glm you want to measure, and run the scripts with that installation
+first on the R library path.
+
+The published runs use L0glm 0.2.0 at fitter revision
+[`d7bdece`](https://github.com/tomwenseleers/L0glm/commit/d7bdece).
+See [`sessionInfo.txt`](sessionInfo.txt) for R and dependency versions.
 
 From the repository root, run:
 
@@ -14,9 +20,9 @@ Then run `Rscript benchmarks/render_readme.R` and
 The README renderer runs `python benchmarks/update_website_tables.py` and reuses
 the published figures; it does not rerun the large fitting comparisons.
 The fitting function also accepts a subset of cases, for example
-`website_fit_examples("million")`. Cached deconvolution fits are reused;
-remove the corresponding RDS files from `codex_sandbox/website_large_examples`
-to fit those methods again. Cached model objects remain outside Git.
+`website_fit_examples("million")`. Deconvolution fits are recomputed by default.
+Use `reuse=TRUE` only to resume checkpoints made with the same package versions,
+simulation and fitting settings. Cached model objects remain outside Git.
 
 The million-predictor design is dense and occupies about 4 GB. Its default-fit
 time is the median of three runs; all three return identical coefficients.
@@ -50,8 +56,11 @@ Windows and R 4.5.0 with OpenBLAS and one BLAS thread.
 The million-predictor LASSO and relaxed-LASSO comparison is reproduced by
 `Rscript benchmarks/benchmark_million_lasso.R`, including common random five-fold
 CV folds. Its published results are stored in `million-lasso-metrics.csv`; the
-GIC-preset L0glm result comes from `million-metrics.csv`. Those CV results use
-the package's common-scoring fold loop. Standalone `cv.glmnet` calls use
+GIC-preset L0glm result comes from `million-metrics.csv`. The LASSO paths set
+`screen="none"` and use the package's common-scoring fold loop for CV.
+The shared-SIS and shared-ISIS comparisons are available separately in
+[`3_benchmarks_sis_vs_SIS_results`](../../3_benchmarks_sis_vs_SIS_results).
+Standalone `cv.glmnet` calls use
 `benchmarks/cv_glmnet_parallel.R`, which manages a parallel backend and requires
 `doParallel`. It limits simultaneous copies of large dense designs by default.
 

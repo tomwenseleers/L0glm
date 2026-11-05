@@ -21,16 +21,18 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base
 
 other attached packages:
-[1] L0glm_0.2.0
+[1] GCMSprime_0.1.0 L0nmf_0.1.0     L0glm_0.2.0
 
 loaded via a namespace (and not attached):
- [1] codetools_0.2-20      shape_1.4.6.1         doParallel_1.0.17
- [4] Matrix_1.7-6          ncvreg_3.16.0         lattice_0.23-1
- [7] sparsesvd_0.2-3       nnet_7.3-21           splines_4.5.0
-[10] iterators_1.0.14      parallel_4.5.0        RhpcBLASctl_0.23-42
-[13] docopt_0.7.2          dynamicTreeCut_1.63-1 mvtnorm_1.4-2
-[16] foreach_1.5.2         gcdnet_1.0.6          gsignal_0.3-7
-[19] qlcMatrix_0.9.9       grid_4.5.0            statmod_1.5.2
-[22] slam_0.1-56           compiler_4.5.0        fastcluster_1.3.0
-[25] tools_4.5.0           SIS_1.5               survival_3.8-12
-[28] Rcpp_1.1.2            msaenet_3.1.2         glmnet_5.1
+ [1] doParallel_1.0.17     slam_0.1-56           MatrixModels_0.5-4
+ [4] SIS_1.5               statmod_1.5.2         gsignal_0.3-7
+ [7] gcdnet_1.0.6          nnet_7.3-21           cobs_1.3-9-1
+[10] msaenet_3.1.2         fastcluster_1.3.0     sparsesvd_0.2-3
+[13] glmnet_5.1            grid_4.5.0            SparseM_1.84-2
+[16] MASS_7.3-66           mvtnorm_1.4-2         foreach_1.5.2
+[19] RhpcBLASctl_0.23-42   compiler_4.5.0        dynamicTreeCut_1.63-1
+[22] codetools_0.2-20      Rcpp_1.1.2            qlcMatrix_0.9.9
+[25] docopt_0.7.2          quantreg_6.1          lattice_0.23-1
+[28] ncvreg_3.16.0         shape_1.4.6.1         parallel_4.5.0
+[31] splines_4.5.0         Matrix_1.7-6          tools_4.5.0
+[34] iterators_1.0.14      survival_3.8-12

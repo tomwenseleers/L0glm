@@ -123,10 +123,10 @@ timing conventions</a>.</p>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">single</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
 <span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <!-- BEGIN single-speed -->
-<p>L0glm recovers <strong>845 of 1,000 true peaks with just 154 false
-positives</strong> in <strong>0.20 seconds</strong>: <strong>2× faster
-than GIC-tuned LASSO</strong> and <strong>34× faster than relaxed LASSO
-tuned by five-fold CV</strong> in this comparison.
+<p>L0glm recovers <strong>845 of 1,000 true peaks with 154 false
+positives</strong> in <strong>0.14 seconds</strong>. In this benchmark
+it is <strong>1.7× faster than GIC-tuned LASSO</strong> and <strong>20×
+faster than relaxed LASSO tuned by five-fold CV</strong>.
 <!-- END single-speed --></p>
 <!-- BEGIN single-metrics -->
 <table class="table">
@@ -158,7 +158,7 @@ tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>L0glm</td>
 <td>GIC preset</td>
-<td align="right">0.20</td>
+<td align="right">0.14</td>
 <td align="right">102682</td>
 <td align="right">845</td>
 <td align="right">154</td>
@@ -170,7 +170,7 @@ tuned by five-fold CV</strong> in this comparison.
 <tr class="even">
 <td>LASSO</td>
 <td>GIC path</td>
-<td align="right">0.40</td>
+<td align="right">0.24</td>
 <td align="right">145904</td>
 <td align="right">950</td>
 <td align="right">2096</td>
@@ -182,7 +182,7 @@ tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>Relaxed LASSO</td>
 <td>GIC path</td>
-<td align="right">0.64</td>
+<td align="right">0.42</td>
 <td align="right">122083</td>
 <td align="right">905</td>
 <td align="right">999</td>
@@ -194,7 +194,7 @@ tuned by five-fold CV</strong> in this comparison.
 <tr class="even">
 <td>LASSO</td>
 <td>5-fold CV</td>
-<td align="right">4.83</td>
+<td align="right">2.72</td>
 <td align="right">146234</td>
 <td align="right">951</td>
 <td align="right">2146</td>
@@ -206,7 +206,7 @@ tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>Relaxed LASSO</td>
 <td>5-fold CV</td>
-<td align="right">6.70</td>
+<td align="right">2.77</td>
 <td align="right">133122</td>
 <td align="right">920</td>
 <td align="right">1523</td>
@@ -258,11 +258,11 @@ discarded for fitting or plotting.</p>
 <span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit_multi</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>,</span>
 <span>  <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>, <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <!-- BEGIN multi-speed -->
-<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false
-positives</strong> in <strong>9.63 seconds</strong>: <strong>25× faster
-than GIC-tuned group LASSO</strong> and <strong>332× faster than relaxed
-group LASSO tuned by five-fold CV</strong> in this comparison.
-<!-- END multi-speed --></p>
+<p>L0glm recovers <strong>944 of 1,000 true peaks with 11 false
+positives</strong> in <strong>8.03 seconds</strong>. In this benchmark
+it is <strong>25.0× faster than GIC-tuned group LASSO</strong> and
+<strong>306× faster than relaxed group LASSO tuned by five-fold
+CV</strong>. <!-- END multi-speed --></p>
 <!-- BEGIN multi-metrics -->
 <table style="width:100%;" class="table">
 <colgroup>
@@ -297,21 +297,21 @@ group LASSO tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>L0glm</td>
 <td>GIC preset</td>
-<td align="right">9.63</td>
-<td align="right">5615963</td>
+<td align="right">8.03</td>
+<td align="right">5606331</td>
 <td align="right">944</td>
 <td align="right">11</td>
 <td align="right">56</td>
 <td align="right">8989</td>
 <td align="right">0.966</td>
 <td align="right">0.962</td>
-<td align="right">0.909</td>
-<td align="right">0.864</td>
+<td align="right">0.912</td>
+<td align="right">0.869</td>
 </tr>
 <tr class="even">
 <td>Group LASSO</td>
 <td>GIC path</td>
-<td align="right">244.87</td>
+<td align="right">201.03</td>
 <td align="right">7413616</td>
 <td align="right">980</td>
 <td align="right">860</td>
@@ -325,7 +325,7 @@ group LASSO tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>Relaxed group LASSO</td>
 <td>GIC path</td>
-<td align="right">906.34</td>
+<td align="right">804.89</td>
 <td align="right">6138687</td>
 <td align="right">909</td>
 <td align="right">309</td>
@@ -339,7 +339,7 @@ group LASSO tuned by five-fold CV</strong> in this comparison.
 <tr class="even">
 <td>Group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">813.42</td>
+<td align="right">593.23</td>
 <td align="right">9639345</td>
 <td align="right">998</td>
 <td align="right">4242</td>
@@ -353,7 +353,7 @@ group LASSO tuned by five-fold CV</strong> in this comparison.
 <tr class="odd">
 <td>Relaxed group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">3199.62</td>
+<td align="right">2460.38</td>
 <td align="right">6198648</td>
 <td align="right">962</td>
 <td align="right">502</td>

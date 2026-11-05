@@ -66,12 +66,26 @@ def deconvolution_speed(data, grouped=False):
     relaxed_ratio = float(by_method["relaxed_lasso_cv"]["seconds"]) / elapsed
     name = "group LASSO" if grouped else "LASSO"
     return (f'L0glm recovers **{int(fitted["TP"]):,} of {int(fitted["support_size_true"]):,} true peaks '
-            f'with just {int(fitted["FP"]):,} false positives** in **{elapsed:.2f} seconds**: '
-            f'**{plain_ratio:.0f}× faster than GIC-tuned {name}** and '
-            f'**{relaxed_ratio:.0f}× faster than relaxed {name} tuned by five-fold CV** in this comparison.')
+            f'with {int(fitted["FP"]):,} false positives** in **{elapsed:.2f} seconds**. '
+            f'In this benchmark it is **{plain_ratio:.1f}× faster than GIC-tuned {name}** and '
+            f'**{relaxed_ratio:.0f}× faster than relaxed {name} tuned by five-fold CV**.')
 
 
 content = {
+    "million-intro": (
+        "This Gaussian simulation has **one million predictors**, 500 observations and "
+        f'{million["support_size_true"]} nonzero effects. One default L0glm call takes '
+        f'**{float(million["seconds"]):.2f} seconds** and recovers '
+        f'**{million["TP"]} true effects with {million["FP"]} false positives**.'
+    ),
+    "million-screening-summary": (
+        f'The default L0glm fit with ISIS recovers **{million["TP"]} true effects with '
+        f'{million["FP"]} false positives** in **{float(million["seconds"]):.2f} s** '
+        'using eight physical cores. Five-fold-CV LASSO on the unscreened design takes '
+        f'**{float(million_cv["lasso_cv"]["seconds"]):.2f} s** and recovers '
+        f'{million_cv["lasso_cv"]["TP"]} true effects with {million_cv["lasso_cv"]["FP"]} false positives. '
+        'The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.'
+    ),
     "million-comparison": table(million_display, fields, bold_first=True),
     "million-speed": f'L0glm is **{ratio:.0f}× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.',
     "million-metrics": table([million], fields[2:]),
@@ -81,11 +95,16 @@ content = {
     "single-metrics": table(single, fields),
     "multi-metrics": table(multi_display, fields + ["within_row_F1_score", "within_row_MCC"]),
     "multi-home": table(multi_display, ["method","tune","seconds","gic","TP","FP","F1_score","MCC"]),
+    "multi-spectral": (
+        'Among correctly located peaks, the recovered mass spectra have a within-row F1 of '
+        f'**{float(multi[0]["within_row_F1_score"]):.3f}** and MCC of '
+        f'**{float(multi[0]["within_row_MCC"]):.3f}**.'
+    ),
     "single-speed": deconvolution_speed(single),
     "multi-speed": deconvolution_speed(multi, grouped=True),
     "selection-metrics": table(selection, ["method", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]),
     "speed-stat": f'<a href="articles/performance.html#one-million-predictor-example"><strong>{ratio:.0f}× faster</strong><span>than five-fold-CV LASSO in that example</span></a>',
-    "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>{multi_relaxed_ratio:.0f}× faster</b> than relaxed group LASSO</span></a>',
+    "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>{multi_relaxed_ratio:.0f}× faster</b> than GIC-tuned relaxed group LASSO</span></a>',
 }
 paths = [ROOT/"README.Rmd", ROOT/"README.md", ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))

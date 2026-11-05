@@ -101,13 +101,39 @@ one fitting interface.</p>
 <p>Windows source installation requires <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>.</p>
 </div>
 <div class="section level2">
+<h2 id="start-with-a-small-model">Start with a small model<a class="anchor" aria-label="anchor" href="#start-with-a-small-model"></a>
+</h2>
+<p>Pass a design matrix and a response vector to
+<code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code>. A GIC preset provides a single penalty value
+for variable selection. A relaxed refit then estimates the retained
+effects with reduced shrinkage.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span><span class="st">"normal"</span>, n<span class="op">=</span><span class="fl">200L</span>, p<span class="op">=</span><span class="fl">80L</span>, n_nonzero<span class="op">=</span><span class="fl">6L</span>, seed<span class="op">=</span><span class="fl">42L</span><span class="op">)</span></span>
+<span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1]  9 26 33 45 47 57</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;           [,1]</span></span>
+<span><span class="co">#&gt; [1,] -0.477622</span></span>
+<span><span class="co">#&gt; [2,] -0.000332</span></span>
+<span><span class="co">#&gt; [3,] -0.224059</span></span>
+<span><span class="co">#&gt; [4,] -1.173313</span></span>
+<span><span class="co">#&gt; [5,] -1.497028</span></span>
+<span><span class="co">#&gt; [6,]  0.835916</span></span></code></pre></div>
+<p>The coefficient vector retains the original predictor positions, with
+zeroes at excluded predictors. For a response matrix,
+<code>grouped=TRUE</code> selects predictor rows shared by the
+responses. See <a href="controls.html">fitting controls</a> for weights,
+offsets and constraints.</p>
+</div>
+<div class="section level2">
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
 <p>Here 60 positive or negative effects are hidden among <strong>one
 million predictors</strong> with 500 observations. A single call fits
 the model using the package defaults. The dense design occupies about 4
 GB; data generation is excluded from the fitting time.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
@@ -134,7 +160,7 @@ GB; data generation is excluded from the fitting time.</p>
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr class="odd">
-<td align="right">3.49</td>
+<td align="right">2.55</td>
 <td align="right">2583</td>
 <td align="right">40</td>
 <td align="right">3</td>
@@ -179,7 +205,7 @@ for serial screening.</p>
 available when desired, and often selects a value close to the preset.
 In this example, the best value over the displayed ten-value GIC grid is
 exactly the preset.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda_best<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_best</span>, lambda_preset<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_preset</span><span class="op">)</span></span></code></pre></div>
@@ -195,7 +221,7 @@ model.</p>
 <div class="section level2">
 <h2 id="predict-and-inspect">Predict and inspect<a class="anchor" aria-label="anchor" href="#predict-and-inspect"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>logLik<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span>, AIC<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, BIC<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, GIC<span class="op">=</span><span class="fu"><a href="../reference/model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>

@@ -141,24 +141,14 @@ size or predictor count is imposed.
 Its small default ISIS batch and other screened-fit defaults are documented
 in that function; pass \code{nsis} explicitly to match a standalone call exactly.
 
-\strong{Timing comparisons with SIS.} For Gaussian identity-link data with an
-intercept and unit observation weights, the screening statistic is
-proportional to squared Pearson correlation. The complete ranking agrees
-with SIS's initial Gaussian screen. On 500 observations and one million
-predictors, screening-only median times over three runs were
-0.24 seconds for \code{sis_glm()} on eight physical cores,
-0.74 seconds on one thread and 2.00 seconds for SIS's screening helper.
-Complete one-pass screening and selection took 0.30 seconds for
-\code{L0glm.fit(screen="SIS")} with the GIC preset and 7.31 seconds for
-\code{SIS::SIS(iter=FALSE,penalty="lasso",tune="bic")}.
-On the same homepage simulation, the default ISIS fit recovered 40 true
-effects with three false positives (GIC 2582.75, F1 0.7767, MCC 0.7875).
-Its median time was 2.36 seconds; the homepage records 3.49 seconds.
-Measurements used an Intel Core i9-11950H, R 4.5.0 and SIS 1.5.
-Predictor standardization is omitted because Gaussian correlation ranks are
-scale invariant. The example separates screening-only and fitted-model
-timings. \code{\link[=sparseglm]{sparseglm()}} offers shared screening controls for comparisons
-with other sparse-regression methods, including fold-local screening for CV.
+\strong{Comparison with SIS.} With an intercept, unit observation weights and
+a Gaussian identity link, the screening statistic is proportional to squared
+Pearson correlation. Predictor scaling leaves the ranking unchanged.
+The million-predictor example below checks the complete ranking against
+the initial Gaussian screen from SIS. The \href{https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html#compare-screening-and-complete-models-with-sis}{screening tutorial}
+reports screening and end-to-end fitting times separately.
+\code{\link[=sparseglm]{sparseglm()}} compares complete models with shared screening controls and
+repeats screening within each training fold for cross-validation.
 }
 \examples{
 set.seed(1)

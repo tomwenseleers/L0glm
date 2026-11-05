@@ -97,9 +97,9 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>47× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a> <!-- END multi-stat --></p>
 </div>
-<p>L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. <a href="https://tomwenseleers.github.io/L0nmf/" class="external-link">L0nmf</a> provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; <a href="https://tomwenseleers.github.io/GCMSprime/" class="external-link">GCMSprime</a> provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.</p>
+<p>L0glm selects predictors and estimates their effects in a generalized linear model. For one response it selects individual coefficients. For multiple responses, grouped selection identifies a common set of predictor rows and estimates a separate coefficient for each outcome.</p>
 <div class="section level2">
 <h2 id="sparse-learning-across-a-wide-range-of-models">Sparse learning across a wide range of models<a class="anchor" aria-label="anchor" href="#sparse-learning-across-a-wide-range-of-models"></a>
 </h2>
@@ -146,7 +146,8 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <div class="section level2">
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
-<p>Sixty nonzero effects among <strong>one million predictors</strong>, fitted in one simple call in about <strong>3 seconds</strong>, with <strong>40 out of 60 successfully recovered</strong> and just <strong>3 false positives</strong>:</p>
+<!-- BEGIN million-intro -->
+<p>This Gaussian simulation has <strong>one million predictors</strong>, 500 observations and 60 nonzero effects. One default L0glm call takes <strong>2.55 seconds</strong> and recovers <strong>40 true effects with 3 false positives</strong>. <!-- END million-intro --></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
@@ -175,7 +176,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr>
-<td align="right">3.49</td>
+<td align="right">2.55</td>
 <td align="right">2583</td>
 <td align="right">40</td>
 <td align="right">3</td>
@@ -185,7 +186,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <td align="right">0.787</td>
 </tr></tbody>
 </table>
-<!-- END million-metrics --><p>Recovered coefficients show near-zero bias:</p>
+<!-- END million-metrics --><p>The recovered coefficients are close to their true values.</p>
 <p><img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%"></p>
 <p>Install with <code>remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")</code>. The dense design occupies about 4 GB. The <a href="articles/L0glm.html">getting-started guide</a> explains the example and prediction methods.</p>
 </div>
@@ -195,7 +196,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped L₀ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
 <p>By regressing the observed signal on a design matrix consisting of shifted copies of the peak-shape function (the point spread function), L0glm recovers the underlying peaks and their mass spectra.</p>
 <!-- BEGIN multi-speed -->
-<p>L0glm recovers <strong>944 of 1,000 true peaks with just 11 false positives</strong> in <strong>9.63 seconds</strong>: <strong>25× faster than GIC-tuned group LASSO</strong> and <strong>332× faster than relaxed group LASSO tuned by five-fold CV</strong> in this comparison. <!-- END multi-speed --> It also recovers the sparse mass spectra accurately, with a within-row F1 of <strong>0.909</strong>. A direct <code><a href="reference/L0glm.fit.html">L0glm.fit()</a></code> call uses <code>lambda="gic"</code> and four cores; the competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
+<p>L0glm recovers <strong>944 of 1,000 true peaks with 11 false positives</strong> in <strong>8.03 seconds</strong>. In this benchmark it is <strong>25.0× faster than GIC-tuned group LASSO</strong> and <strong>306× faster than relaxed group LASSO tuned by five-fold CV</strong>. <!-- END multi-speed --> <!-- BEGIN multi-spectral --> Among correctly located peaks, the recovered mass spectra have a within-row F1 of <strong>0.912</strong> and MCC of <strong>0.869</strong>. <!-- END multi-spectral --> A direct <code><a href="reference/L0glm.fit.html">L0glm.fit()</a></code> call uses <code>lambda="gic"</code> and four cores. The competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
 <span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
@@ -227,8 +228,8 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>L0glm</td>
 <td>GIC preset</td>
-<td align="right">9.63</td>
-<td align="right">5615963</td>
+<td align="right">8.03</td>
+<td align="right">5606331</td>
 <td align="right">944</td>
 <td align="right">11</td>
 <td align="right">0.966</td>
@@ -237,7 +238,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Group LASSO</td>
 <td>GIC path</td>
-<td align="right">244.87</td>
+<td align="right">201.03</td>
 <td align="right">7413616</td>
 <td align="right">980</td>
 <td align="right">860</td>
@@ -247,7 +248,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Relaxed group LASSO</td>
 <td>GIC path</td>
-<td align="right">906.34</td>
+<td align="right">804.89</td>
 <td align="right">6138687</td>
 <td align="right">909</td>
 <td align="right">309</td>
@@ -257,7 +258,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">813.42</td>
+<td align="right">593.23</td>
 <td align="right">9639345</td>
 <td align="right">998</td>
 <td align="right">4242</td>
@@ -267,7 +268,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Relaxed group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">3199.62</td>
+<td align="right">2460.38</td>
 <td align="right">6198648</td>
 <td align="right">962</td>
 <td align="right">502</td>
@@ -279,13 +280,12 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <!-- END multi-home --><div class="float">
 <img src="deconvolution-multi-large.png" alt="Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives."><div class="figcaption">Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.</div>
 </div>
-<p>The coefficient comparison shows how closely L0glm recovers the individual mass-spectral intensities. Relaxed group LASSO is the strongest alternative in this benchmark.</p>
+<p>The coefficient panels compare the individual mass-spectral intensities. They show L0glm and the alternative with the highest peak-level MCC.</p>
 <div class="float">
 <img src="deconvolution-multi-home-coefficients.png" alt="True versus estimated coefficients across all channels for L0glm and relaxed group LASSO."><div class="figcaption">True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.</div>
 </div>
 <p>L0glm fits the Poisson model directly. The group-LASSO methods use a weighted-Gaussian approximation with shared observation weights; CV uses four parallel workers. <a href="articles/deconvolution.html">Explore the deconvolution examples and full benchmark tables →</a></p>
-<p>For broad or asymmetric peaks, <a href="reference/splogconNMF.html">splogconNMF()</a> recovers log-concave elution profiles and spectra with a smooth background. <a href="reference/GCMSdeco.html">GCMSdeco()</a> runs the workflow directly from an ANDI-MS <code>.cdf</code> chromatogram and exports the compound spectra to a NIST-compatible <code>.msp</code> library.</p>
-<p><a href="reference/estimate_psf.html">estimate_psf()</a> estimates constant or smoothly varying PSFs from a calibration standard or the sample, returning a sparse design ready for deconvolution.</p>
+<p>When peaks have different shapes, L0nmf can estimate a response dictionary and then fit a log-concave profile for each component. GCMSprime handles chromatogram files, quantification and spectral library search. <a href="https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html" class="external-link">L0nmf deconvolution</a> · <a href="https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html" class="external-link">GCMSprime workflow</a></p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-starting-point">Choose a starting point<a class="anchor" aria-label="anchor" href="#choose-a-starting-point"></a>

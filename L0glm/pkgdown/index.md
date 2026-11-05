@@ -15,15 +15,18 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictor-example"><strong>35× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>47× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
-<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in multichannel GC/MS deconvolution and <b>94× faster</b> than relaxed group LASSO</span></a>
+<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a>
 <!-- END multi-stat -->
 </div>
 
 
-L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
+L0glm selects predictors and estimates their effects in a generalized linear
+model. For one response it selects individual coefficients. For multiple
+responses, grouped selection identifies a common set of predictor rows and
+estimates a separate coefficient for each outcome.
 
 
 ## Sparse learning across a wide range of models
@@ -42,9 +45,9 @@ where it matters, producing sparse models with excellent support recovery.
 
 ## Fit a sparse model
 
-Sixty nonzero effects among **one million predictors**, fitted in one simple
-call in about **3 seconds**, with **40 out of 60 successfully recovered** and
-just **3 false positives**:
+<!-- BEGIN million-intro -->
+This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.55 seconds** and recovers **40 true effects with 3 false positives**.
+<!-- END million-intro -->
 
 ```r
 library(L0glm)
@@ -66,10 +69,10 @@ L0glm.metrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 3.49 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
+| 2.55 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
 <!-- END million-metrics -->
 
-Recovered coefficients show near-zero bias:
+The recovered coefficients are close to their true values.
 
 <img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%">
 
@@ -89,11 +92,13 @@ copies of the peak-shape function (the point spread function), L0glm recovers
 the underlying peaks and their mass spectra.
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with just 11 false positives** in **9.63 seconds**: **25× faster than GIC-tuned group LASSO** and **332× faster than relaxed group LASSO tuned by five-fold CV** in this comparison.
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
-It also recovers the sparse mass spectra accurately, with a within-row F1 of
-**0.909**. A direct `L0glm.fit()` call uses `lambda="gic"` and four cores;
-the competing methods select lambda from a ten-value grid using GIC or
+<!-- BEGIN multi-spectral -->
+Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
+<!-- END multi-spectral -->
+A direct `L0glm.fit()` call uses `lambda="gic"` and four cores.
+The competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
 
 ```r
@@ -106,18 +111,17 @@ fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
 <!-- BEGIN multi-home -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 9.63 | 5615963 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 0.690 | 0.685 |
-| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 0.820 | 0.802 |
-| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
-| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 0.781 | 0.769 |
+| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 0.966 | 0.962 |
+| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 0.690 | 0.685 |
+| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 0.820 | 0.802 |
+| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
+| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 0.781 | 0.769 |
 <!-- END multi-home -->
 
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](deconvolution-multi-large.png)
 
-The coefficient comparison shows how closely L0glm recovers the individual
-mass-spectral intensities. Relaxed group LASSO is the strongest alternative in
-this benchmark.
+The coefficient panels compare the individual mass-spectral intensities.
+They show L0glm and the alternative with the highest peak-level MCC.
 
 ![True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.](deconvolution-multi-home-coefficients.png)
 
@@ -126,15 +130,11 @@ weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](articles/deconvolution.html)
 
-For broad or asymmetric peaks, [splogconNMF()](reference/splogconNMF.html)
-recovers log-concave elution profiles and spectra with a smooth background.
-[GCMSdeco()](reference/GCMSdeco.html) runs the workflow directly from an ANDI-MS
-`.cdf` chromatogram and exports the compound spectra to a NIST-compatible `.msp`
-library.
-
-[estimate_psf()](reference/estimate_psf.html) estimates constant or smoothly
-varying PSFs from a calibration standard or the sample, returning a sparse
-design ready for deconvolution.
+When peaks have different shapes, L0nmf can estimate a response dictionary
+and then fit a log-concave profile for each component. GCMSprime handles
+chromatogram files, quantification and spectral library search.
+[L0nmf deconvolution](https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html) ·
+[GCMSprime workflow](https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html)
 
 ## Choose a starting point
 

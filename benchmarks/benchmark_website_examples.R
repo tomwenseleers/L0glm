@@ -1,19 +1,19 @@
 # Reproduce the large examples displayed on the pkgdown website.
 # Run from the repository root with R 4.5.0 and one BLAS thread.
 # Intermediate fitted objects stay in the ignored codex_sandbox directory.
-website_fit_examples <- function(cases=c("million", "single", "multi", "selection")) {
-  pkgload::load_all("L0glm", recompile=FALSE, quiet=TRUE)
+website_fit_examples <- function(cases=c("million", "single", "multi", "selection"),
+  cache="codex_sandbox/website_large_examples", output="benchmarks/plots/website",
+  reuse=FALSE) {
+  library(L0glm)
   RhpcBLASctl::blas_set_num_threads(1L)
   RhpcBLASctl::omp_set_num_threads(1L)
-  cache <- "codex_sandbox/website_large_examples"
-  output <- "benchmarks/plots/website"
   dir.create(cache, recursive=TRUE, showWarnings=FALSE)
   dir.create(output, recursive=TRUE, showWarnings=FALSE)
   message("Package ", packageVersion("L0glm"), "; BLAS threads: 1")
   for (case in cases) {
     message("Starting ", case, " at ", Sys.time())
     if (case == "million") {
-      set.seed(123)
+      set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
       n <- 500L; p <- 1000000L
       X <- matrix(rnorm(n*p), n, p)
       active <- sample.int(p, 60L)
@@ -50,7 +50,7 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
       rm(X, y, fit, path, B, beta); gc()
     } else if (case %in% c("single", "multi")) {
       source("benchmarks/benchmark_website_deconvolution.R", local=TRUE)
-      website_deconvolution(case, ncores=4L, cache=cache, output=output)
+      website_deconvolution(case, ncores=4L, cache=cache, output=output, reuse=reuse)
       gc()
     } else if (case == "selection") {
       sim <- simul("normal", n=1000L, p=5000L, n_nonzero=100L, seed=42L,

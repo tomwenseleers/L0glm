@@ -63,8 +63,10 @@
 #'   \code{predict()} and \code{fitted()} return original-scale Poisson means;
 #'   see \link{model_predictions} for new data and prediction offsets.
 #'
-#' @seealso [L0glm.fit()], \link{information_criteria} for case-insensitive
+#' @seealso \link{L0glm.fit}, \link{information_criteria} for case-insensitive
 #'   criterion presets, penalty formulas, guidance and original references.
+#'   See \href{https://tomwenseleers.github.io/L0glm/articles/performance.html}{the benchmark article}
+#'   for measured deconvolution and validation timings.
 #'
 #' @example examples/L0nnpois.R
 #'
