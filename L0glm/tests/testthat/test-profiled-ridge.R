@@ -77,7 +77,8 @@ test_that("GIC counts the original selectable pool despite intercepts and masks"
 
 test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", {
   n <- 60L
-  psf <- convmatrix(c(0.2, 1, 0.2), n)
+  psf <- Matrix::bandSparse(n,k=-1:1,
+    diagonals=list(rep(.2,n-1L),rep(1,n),rep(.2,n-1L)))
   X <- as(cbind(Intercept = 1, psf), "dgCMatrix")
   X@x[seq.int(2L, n, by = 4L)] <- 0
   penalty <- c(0, rep(2, n))
@@ -101,7 +102,9 @@ test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", 
 test_that("native wide sparse nuisance fits preserve dense and threaded results", {
   set.seed(1663)
   n <- 50L
-  X <- as(cbind(Intercept = 1, convmatrix(c(.2, 1, .2), n)), "dgCMatrix")
+  psf <- Matrix::bandSparse(n,k=-1:1,
+    diagonals=list(rep(.2,n-1L),rep(1,n),rep(.2,n-1L)))
+  X <- as(cbind(Intercept=1,psf), "dgCMatrix")
   X@x[seq.int(2L, n, by = 5L)] <- 0
   Y <- matrix(rpois(n * 3L, 5), n, 3L)
   opt <- list(y = Y, lambda = 2, start = 1, maxit = 1L, grouped = FALSE,

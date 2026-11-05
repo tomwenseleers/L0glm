@@ -1,8 +1,10 @@
 background_start_fixture <- function(sparse = TRUE) {
   set.seed(864)
   n <- 240L
-  g <- convkernel("gaussian", 21L, list(sigma = 2), perc = 0)
-  X <- convmatrix(g, n)
+  offsets <- -10:10
+  g <- dnorm(offsets,sd=2); g <- g/sum(g)
+  X <- Matrix::bandSparse(n,k=offsets,
+    diagonals=lapply(seq_along(offsets),function(j) rep(g[j],n-abs(offsets[j]))))
   A <- matrix(0, n, 3L)
   A[c(30, 85, 145, 205), ] <- matrix(seq(6000, 18000, length.out = 12L), 4L, 3L)
   B <- splines::bs(seq_len(n), df = 4L, intercept = TRUE)

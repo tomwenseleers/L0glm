@@ -115,9 +115,9 @@ plotmat <- function(M,
     yticks_val <- yticks_val[yticks_val >= min(yvals) & yticks_val <= max(yvals)]
     
     xticks_at <- if (length(xvals) == 1L) rep(1, length(xticks_val)) else
-      approx(x = xvals, y = seq_along(xvals), xout = xticks_val, rule = 2)$y
+      stats::approx(x = xvals, y = seq_along(xvals), xout = xticks_val, rule = 2)$y
     yticks_at <- if (length(yvals) == 1L) rep(1, length(yticks_val)) else
-      approx(x = yvals, y = seq_along(yvals), xout = yticks_val, rule = 2)$y
+      stats::approx(x = yvals, y = seq_along(yvals), xout = yticks_val, rule = 2)$y
     
     graphics::axis(side = 1, at = xticks_at, labels = xticks_val)
     graphics::axis(side = 2, at = yticks_at, labels = yticks_val, las = 1)

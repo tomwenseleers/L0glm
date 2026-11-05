@@ -62,7 +62,7 @@ plot(x=as.vector(beta_est)[!((as.vector(beta_est)==0)&(as.vector(beta_true)==0))
 # first estimate PSF using blind deconvolution, using rowSums(Y)
 # NOTE: using Yagg1 or Yagg2 below also works but is much slower & solution not better
 L <- 41 # length of estimated PSF
-g0 <- convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
+g0 <- L0nmf::convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
 system.time(psf_est <- L0glm_blind_deco(y = rowSums(Y), # note: using Yagg1/Yagg2 is slower & gives same fit
                                         family = poisson(identity), 
                                         baseline = NULL, # or "intercept" or "bspline"
@@ -74,7 +74,7 @@ system.time(psf_est <- L0glm_blind_deco(y = rowSums(Y), # note: using Yagg1/Yagg
                                         kernel_true = psf_true/sum(psf_true),
                                         plot = TRUE,
                                         tol = 1e-3)$g_hat) # 5s
-X_est <- convmatrix(psf_est, n)
+X_est <- L0nmf::convmatrix(psf_est, n)
 
 ### 1.1. WORKING ON POISSON DISTANCE CLUSTERED DATA, cf. Witten 2011 - BEST? ####
 # cluster & aggregate
@@ -205,13 +205,13 @@ matplot(Y^0.4, type="l", col = rgb(0, 0, 0, 0.1), lty = 1)
 psf_fun <- function(x, centre, width) exp(-0.5 * ((x - centre) / width)^2)
 psf <- psf_fun(0:88, centre=44, width=12) # TO DO use kernel as determine by blind deconvolution algo from alkane ladder
 plot(psf, type="l")
-X <- convmatrix(kernel=psf, n=nrow(Y))
+X <- L0nmf::convmatrix(kernel=psf, n=nrow(Y))
 # image(X)
 
 # first estimate PSF using blind deconvolution, using rowSums(Y)
 # NOTE: using Yagg1 or Yagg2 below also works but is much slower & solution not better
 L <- 91 # length of estimated PSF
-g0 <- convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
+g0 <- L0nmf::convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
 plot(g0, type="l")
 system.time(psf_est <- L0glm_blind_deco(rowSums(Y), # note: using Yagg1/Yagg2 is slower & gives same fit
                                         family = poisson(identity), 
@@ -223,7 +223,7 @@ system.time(psf_est <- L0glm_blind_deco(rowSums(Y), # note: using Yagg1/Yagg2 is
                                         IC = "gic",
                                         plot = TRUE,
                                         tol = 1e-3)$g_hat) # 2s
-X_est <- convmatrix(psf_est, n)
+X_est <- L0nmf::convmatrix(psf_est, n)
 
 matplot(Y^0.4, type="l", lty=1)
 lines(250*psf^0.4, col="red", lwd=3)
@@ -241,7 +241,7 @@ matplot(Yagg1^0.5, type="l", lty=1) # looks good & distance in line with PoiClaC
 
 # estimate PSF using blind deconvolution, using Yagg1
 L <- 91 # length of estimated PSF
-g0 <- convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
+g0 <- L0nmf::convkernel("gaussian", L, list(sigma = 10))  # initial guess for PSF
 plot(g0, type="l")
 system.time(psf_est1 <- L0glm_blind_deco(Yagg1,
                                         family = poisson(identity), 
@@ -254,7 +254,7 @@ system.time(psf_est1 <- L0glm_blind_deco(Yagg1,
                                         grouped = TRUE,
                                         plot = TRUE,
                                         tol = 1e-3)$g_hat) # 2s
-X_est <- convmatrix(psf_est1, n) 
+X_est <- L0nmf::convmatrix(psf_est1, n)
 # using this PSF estimate in the deconvolution below did not give a good result
 # though (too many peaks - 25 instead of the ca 6 expected)
 # It seems that deconvoluting with a PSF that is slightly wider works better.

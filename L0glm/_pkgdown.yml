@@ -96,8 +96,8 @@ reference:
     contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
   - title: Screening, simulations and solvers
     contents: [sis_glm, simul, simulate_spike_train, lmridge, control.solver.gen]
-  - title: Deconvolution and signal processing
-    contents: [convmatrix, convkernel, signal_families, temporal_dispersion]
+  - title: Signal noise and dispersion
+    contents: [signal_families, temporal_dispersion]
   - title: Visualization and outcome clustering
     contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist]
   - title: Example data

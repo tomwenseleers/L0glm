@@ -35,8 +35,6 @@ export(L0glm.tune)
 export(L0nnpois)
 export(MBIC)
 export(control.solver.gen)
-export(convkernel)
-export(convmatrix)
 export(glm_aggregate)
 export(glm_cluster)
 export(glm_dist)
@@ -45,17 +43,13 @@ export(nb1)
 export(plot_L0glm_benchmark)
 export(plotmat)
 export(preset.lambda)
-export(shift_kernel)
 export(simul)
 export(simulate_spike_train)
 export(sis_glm)
 export(sparseglm)
 export(temporal_dispersion)
 import(Matrix)
-importFrom(Matrix,
-  Matrix,
-  bandSparse
-)
+importFrom(Matrix,Matrix)
 importFrom(Rcpp,evalCpp)
 importFrom(RhpcBLASctl,
   get_num_cores,
@@ -78,7 +72,6 @@ importFrom(graphics,
   points,
   segments
 )
-importFrom(gsignal,conv)
 importFrom(methods,
   as,
   is
@@ -97,7 +90,6 @@ importFrom(qlcMatrix,
 )
 importFrom(statmod,rinvgauss)
 importFrom(stats,
-  approx,
   as.dist,
   coef,
   cor,

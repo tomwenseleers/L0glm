@@ -102,8 +102,8 @@ as_sparse_matrix <- function(x) {
 }
 
 make_kernel_design <- function(n, p) {
-  kernel <- convkernel("bigaussian", 51L, params = list(sigma1 = 1.25, sigma2 = 5), perc = 0)
-  X <- convmatrix(kernel, n = n, n_cols = p)
+  kernel <- L0nmf::convkernel("bigaussian", 51L, params = list(sigma1 = 1.25, sigma2 = 5), perc = 0)
+  X <- L0nmf::convmatrix(kernel, n = n, n_cols = p)
   dimnames(X) <- list(paste0("t", seq_len(n)), paste0("x", seq_len(p)))
   X
 }
