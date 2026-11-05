@@ -173,6 +173,45 @@ article</a> reports all methods, including relaxed LASSO, together with
 their tuning settings.</p>
 </div>
 <div class="section level2">
+<h2 id="compare-screening-speed-with-sis">Compare screening speed with SIS<a class="anchor" aria-label="anchor" href="#compare-screening-speed-with-sis"></a>
+</h2>
+<p>On a Gaussian design with <strong>500 observations and one million
+predictors</strong>, <code><a href="../reference/sis_glm.html">sis_glm()</a></code> and the initial screen in
+<code><a href="https://rdrr.io/pkg/SIS/man/SIS.html" class="external-link">SIS::SIS()</a></code> returned <strong>exactly the same complete
+ranking</strong>, including the same top 100 predictors. Median timings
+over three repetitions were:</p>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Method</th>
+<th align="right">Elapsed time</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code><a href="../reference/sis_glm.html">sis_glm()</a></code>, default eight physical
+cores</td>
+<td align="right"><strong>0.23 s</strong></td>
+</tr>
+<tr class="even">
+<td align="left"><code>sis_glm(nthreads=1)</code></td>
+<td align="right">0.82 s</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>SIS::SIS(iter=FALSE, standardize=FALSE)</code></td>
+<td align="right">2.69 s</td>
+</tr>
+</tbody>
+</table>
+<p>This gives about a <strong>12-fold speed advantage</strong> with the
+default thread count on the Intel Core i9-11950H workstation (R 4.5.0,
+SIS 1.5). Gaussian correlation ranks are scale invariant, so the SIS
+call omits redundant predictor standardization. Its timing includes a
+subsequent BIC-tuned LASSO fit on the 100 screened predictors. The
+comparison uses its initial ranking, returned in
+<code>ix_list[[1L]]</code>. The <a href="../reference/sis_glm.html#examples"><code>sis_glm()</code>
+example</a> provides the complete reproducible code and rank checks.</p>
+</div>
+<div class="section level2">
 <h2 id="gic-tuning-and-cross-validation">GIC tuning and cross-validation<a class="anchor" aria-label="anchor" href="#gic-tuning-and-cross-validation"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">

@@ -140,6 +140,20 @@ explicit zero starts in every response channel. No separate minimum sample
 size or predictor count is imposed.
 Its small default ISIS batch and other screened-fit defaults are documented
 in that function; pass \code{nsis} explicitly to match a standalone call exactly.
+
+\strong{Timing comparison with SIS.} With Gaussian identity-link data, an intercept
+and unit observation weights, the screening statistic is proportional to
+squared Pearson correlation. Its rank therefore agrees with the initial
+Gaussian screen in the \pkg{SIS} package. In the example with 500 observations
+and one million predictors, the complete rankings were identical. Median
+elapsed times over three repetitions were 0.23 seconds for \code{sis_glm()} using
+eight physical cores, 0.82 seconds with one thread, and 2.69 seconds for
+\code{SIS::SIS(iter=FALSE)}: about a twelve-fold speed advantage with the default
+thread count on an Intel Core i9-11950H (R 4.5.0, SIS 1.5).
+The SIS call disables redundant predictor standardization, which leaves
+Gaussian correlation ranks unchanged, and includes its subsequent BIC-tuned
+LASSO fit on the 100 screened predictors. Rank comparisons use its initial
+\code{sis.ix0} and \code{ix_list[[1L]]}, before this additional selection.
 }
 \examples{
 set.seed(1)
@@ -186,6 +200,42 @@ if (requireNamespace("mgcv",quietly=TRUE) && requireNamespace("survival",quietly
   outcome <- survival::Surv(pmin(time,2),time<=2)
   cox <- sis_glm(Matrix::Matrix(X,sparse=TRUE),outcome,
                 family=mgcv::cox.ph(),nsis=20,return_stats=FALSE)
+}
+
+\dontrun{
+# One million predictors, 500 observations and 60 nonzero effects.
+# The dense design occupies about 4 GB; data generation is outside the timings.
+set.seed(123)
+n <- 500L; p <- 1000000L; nsis <- 100L
+X <- matrix(rnorm(as.double(n) * p), n, p)
+colnames(X) <- paste0("x", seq_len(p))
+active <- sort(sample.int(p, 60L))
+beta <- sample(c(-1, 1), 60L, TRUE) * runif(60L, .5, 1.5)
+y <- as.numeric(X[, active, drop = FALSE] \%*\% beta) + rnorm(n)
+
+t_fast <- system.time(fast <- sis_glm(X, y, nsis = nsis))
+t_one <- system.time(one <- sis_glm(X, y, nsis = nsis, nthreads = 1L))
+t_SIS <- system.time(reference <- SIS::SIS(X, y, family = "gaussian",
+  nsis = nsis, iter = FALSE, penalty = "lasso", tune = "bic",
+  standardize = FALSE, parallel = FALSE, seed = 123L))
+
+data.frame(method = c("sis_glm, default threads", "sis_glm, one thread", "SIS::SIS"),
+  seconds = c(t_fast[["elapsed"]], t_one[["elapsed"]], t_SIS[["elapsed"]]))
+
+# Compare the initial screening rank, including all one million predictors.
+identical(fast$indices, as.integer(reference$sis.ix0))       # TRUE
+identical(fast$ranking, as.integer(reference$ix_list[[1L]]))  # TRUE
+identical(one$ranking, fast$ranking)                        # TRUE
+cor(fast$stats$rank, order(reference$ix_list[[1L]]))          # 1
+
+# Median elapsed times over three repetitions on an i9-11950H:
+# sis_glm, default eight physical cores: 0.23 s
+# sis_glm, one thread:                  0.82 s
+# SIS::SIS:                            2.69 s
+# R 4.5.0, SIS 1.5; identical full ranks in every repetition.
+# SIS::SIS also fits a BIC-tuned LASSO on the 100 retained predictors.
+# Gaussian correlation ranks are unchanged by standardize=FALSE, which avoids
+# making a redundant standardized copy of this large design.
 }
 }
 \seealso{

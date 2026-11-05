@@ -96,6 +96,27 @@ recovering 17 true effects with 50 false positives. The
 [benchmark article](performance.html#one-million-predictor-example) reports all methods,
 including relaxed LASSO, together with their tuning settings.
 
+## Compare screening speed with SIS
+
+On a Gaussian design with **500 observations and one million predictors**,
+`sis_glm()` and the initial screen in `SIS::SIS()` returned **exactly the same
+complete ranking**, including the same top 100 predictors. Median timings over
+three repetitions were:
+
+| Method | Elapsed time |
+|:--|--:|
+| `sis_glm()`, default eight physical cores | **0.23 s** |
+| `sis_glm(nthreads=1)` | 0.82 s |
+| `SIS::SIS(iter=FALSE, standardize=FALSE)` | 2.69 s |
+
+This gives about a **12-fold speed advantage** with the default thread count
+on the Intel Core i9-11950H workstation (R 4.5.0, SIS 1.5). Gaussian correlation
+ranks are scale invariant, so the SIS call omits redundant predictor
+standardization. Its timing includes a subsequent BIC-tuned LASSO fit on the
+100 screened predictors. The comparison uses its initial ranking, returned in
+`ix_list[[1L]]`. The [`sis_glm()` example](../reference/sis_glm.html#examples)
+provides the complete reproducible code and rank checks.
+
 ## GIC tuning and cross-validation
 
 ```{r tuning, eval=FALSE}
