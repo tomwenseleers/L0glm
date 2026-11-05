@@ -1,5 +1,5 @@
 // Efficient-score screening without design-sized squares or channel Hessians.
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 #include <queue>
 #include <algorithm>
 #include <exception>

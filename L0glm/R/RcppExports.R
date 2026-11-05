@@ -37,11 +37,11 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
-glm_native_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, nthreads = 1L, probes = numeric(), max_passes = 1L, relaxed = FALSE, nonnegative = FALSE, solver_control, solver_bridge = NULL, executor = NULL) {
+glm_native_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, nthreads = 1L, probes = numeric(), max_passes = 1L, relaxed = FALSE, nonnegative = FALSE, solver_control = NULL, solver_bridge = NULL, executor = NULL) {
     .Call('_L0glm_glm_native_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, nthreads, probes, max_passes, relaxed, nonnegative, solver_control, solver_bridge, executor)
 }
 
-glm_native_pass_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, probes = numeric(), solver_control, solver_bridge = NULL) {
+glm_native_pass_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, probes = numeric(), solver_control = NULL, solver_bridge = NULL) {
     .Call('_L0glm_glm_native_pass_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, probes, solver_control, solver_bridge)
 }
 

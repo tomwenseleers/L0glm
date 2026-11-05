@@ -3,7 +3,7 @@
 // [[Rcpp::plugins(openmp)]]
 // [[Rcpp::interfaces(r, cpp)]]
 #define EIGEN_DONT_PARALLELIZE
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 #include <cmath>
 #include <limits>
 #include <vector>

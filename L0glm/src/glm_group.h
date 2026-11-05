@@ -3,7 +3,9 @@
 template<class Design> bool valid_boundary_mean(const Family& f,double mu) {
  if(!std::isfinite(mu))return false;
  if(f.scalar>=0)return (f.scalar==5||f.censor>0)?mu>=0:mu>0;
- if(f.kind==0)return true;if(f.kind==2)return mu>0&&mu<1;return mu>0;
+ if(f.kind==0)return true;
+ if(f.kind==2)return mu>0&&mu<1;
+ return mu>0;
 }
 template<class Design> void final_boundary(const Design& X,State& s,const Family& f) {
  VectorXd original=s.beta,previous=s.eta;int removed=0;

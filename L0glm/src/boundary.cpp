@@ -1,4 +1,4 @@
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 #include <cmath>
 #include <limits>
 #include "boundary.h"

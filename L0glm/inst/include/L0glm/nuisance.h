@@ -28,7 +28,8 @@ inline Eigen::VectorXd nuisance_qp(const Eigen::MatrixXd& G,const Eigen::VectorX
  for(int outer=0;outer<10*q*q;++outer) {
    VectorXd gradient=b-A*x;int enter=-1;double best=tol;
    for(int j=0;j<q;++j) if(!passive[j]&&gradient[j]>best) {best=gradient[j];enter=j;}
-   if(enter<0) break;passive[enter]=1;
+   if(enter<0) break;
+   passive[enter]=1;
    for(int inner=0;inner<10*q;++inner) {
      VectorXd z=solve();bool positive=true;
      for(int j=0;j<q;++j) if(passive[j]&&bounded[j]&&z[j]<=0) positive=false;

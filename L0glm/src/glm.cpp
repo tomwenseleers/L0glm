@@ -1,6 +1,6 @@
 // Channel-level OpenMP owns parallelism; Eigen kernels run within each channel.
 #define EIGEN_DONT_PARALLELIZE
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 #include <R_ext/BLAS.h>
 #include <R_ext/Lapack.h>
 #include <memory>
@@ -63,7 +63,8 @@ struct Family {
    if(!(mu>0&&mu<1))return R_PosInf;
    return 2*((y>0?y*std::log(y/mu):0)+(y<1?(1-y)*std::log((1-y)/(1-mu)):0));
   }
-  if(mu<0)return R_PosInf;mu=std::max(eps,mu);
+  if(mu<0)return R_PosInf;
+  mu=std::max(eps,mu);
   if(kind==1)return 2*((y==0?0:y*std::log(y/mu))-(y-mu));
   if(kind==3)return 2*((y-mu)/mu-std::log(y/mu));
   if(kind==4) {
@@ -236,8 +237,10 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
    }
   }
   auto penalty=[&](const VectorXd& b) {
-    long double value=0;for(int j=0;j<p;++j)if(s.lambdas[j]>0&&std::isfinite(s.lambdas[j]))
-      value+=s.lambdas[j]*(b[j]-s.prior[j])*(b[j]-s.prior[j]);return (double)value;
+    long double value=0;
+    for(int j=0;j<p;++j)if(s.lambdas[j]>0&&std::isfinite(s.lambdas[j]))
+      value+=s.lambdas[j]*(b[j]-s.prior[j])*(b[j]-s.prior[j]);
+    return (double)value;
   };
   double reference=iteration>0&&!support_changed?s.previous_dev+penalty(old):R_PosInf;
   double threshold=std::isfinite(reference)?reference+1e-10*std::max(1.,std::abs(reference)):R_PosInf;
@@ -359,7 +362,7 @@ template<class Design> std::vector<State> load_states(const Design& X,List conte
 List glm_native_cpp(SEXP design,List contexts,int family,int link,double theta=1,
  int scalar=-1,double parameter=1,double censor=0,int nthreads=1,
   NumericVector probes=NumericVector(),int max_passes=1,bool relaxed=false,bool nonnegative=false,
-   List solver_control=List::create(),SEXP solver_bridge=R_NilValue,SEXP executor=R_NilValue) {
+   List solver_control=R_NilValue,SEXP solver_bridge=R_NilValue,SEXP executor=R_NilValue) {
  L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
   -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
  auto stream=as<std::vector<double>>(probes);
@@ -374,7 +377,7 @@ List glm_native_cpp(SEXP design,List contexts,int family,int link,double theta=1
 // [[Rcpp::export(rng = false)]]
 List glm_native_pass_cpp(SEXP design,List contexts,int family,int link,double theta=1,
   int scalar=-1,double parameter=1,double censor=0,NumericVector probes=NumericVector(),
-  List solver_control=List::create(),SEXP solver_bridge=R_NilValue) {
+  List solver_control=R_NilValue,SEXP solver_bridge=R_NilValue) {
   L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
     -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
   auto stream=as<std::vector<double>>(probes);L0glmNative::SolverControl control(solver_control,solver_bridge);

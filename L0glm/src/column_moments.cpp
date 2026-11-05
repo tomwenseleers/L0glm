@@ -1,5 +1,5 @@
 // [[Rcpp::depends(RcppEigen)]]
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 
 // Column information without constructing X^2 or changing design storage.
 // [[Rcpp::export]]

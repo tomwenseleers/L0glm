@@ -1,6 +1,6 @@
 #ifndef L0GLM_SOLVER_NATIVE_H
 #define L0GLM_SOLVER_NATIVE_H
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 
 // Allocation-free solver interface shared by the native IRLS driver and the
 // Rcpp entry points. R lists and warnings are assembled on the R thread only.

@@ -1,6 +1,6 @@
 // [[Rcpp::depends(RcppEigen)]]
 #define EIGEN_DONT_PARALLELIZE
-#include <RcppEigen.h>
+#include "eigen_diagnostics.h"
 #include <R_ext/BLAS.h>
 
 #ifdef _OPENMP
@@ -259,7 +259,6 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
                   A.data(), &k FCONE FCONE);
   VectorXd b = Xw.transpose() * zw;
   for (int a = 0; a < k; ++a) {
-    const int pos = active[a];
     A(a, a) += penalty[a];
     b[a] += penalty[a] * center[a];
   }
@@ -327,7 +326,6 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
   SparseMatrix<double> A = Xw.transpose() * Xw;
   VectorXd b = Xw.transpose() * zw;
   for (int a = 0; a < k; ++a) {
-    const int pos = active[a];
     A.coeffRef(a, a) += penalty[a];
     b[a] += penalty[a] * center[a];
   }

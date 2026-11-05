@@ -32,7 +32,8 @@ struct DenseFactor {
  MatrixXd solve(const MatrixXd& B) const {
   MatrixXd out=B;const int n=L.rows(),m=B.cols();int info=0;
   if(n&&m)F77_CALL(dpotrs)("L",&n,&m,L.data(),&n,out.data(),&n,&info FCONE);
-  if(info)throw std::runtime_error("Native dispersion pilot solve failed.");return out;
+  if(info)throw std::runtime_error("Native dispersion pilot solve failed.");
+  return out;
  }
 };
 struct SparseFactor {
@@ -46,7 +47,8 @@ inline MatrixXd row_gram_native(const MatrixXd& A) {return L0glm::row_gram(A).se
 inline SparseMatrix<double> row_gram_native(const SparseMatrix<double>& A) {return A*A.transpose();}
 inline void add_diagonal(MatrixXd& A,const VectorXd& d) {A.diagonal()+=d;}
 inline void add_diagonal(SparseMatrix<double>& A,const VectorXd& d) {
- for(int j=0;j<A.rows();++j)A.coeffRef(j,j)+=d[j];A.makeCompressed();
+ for(int j=0;j<A.rows();++j)A.coeffRef(j,j)+=d[j];
+ A.makeCompressed();
 }
 inline MatrixXd append_columns(const MatrixXd& U,const MatrixXd& A) {
  MatrixXd D(A.rows(),U.cols()+A.cols());D<<U,A;return D;
@@ -70,7 +72,8 @@ template<class Matrix,class Factor> struct PilotOperator {
   }else {
    if(q){D=append_columns(U,A);design=&D;}
    Matrix K=sym_gram(*design);VectorXd penalty=VectorXd::Constant(p+q,tau);
-   if(q)penalty.head(q).setZero();add_diagonal(K,penalty);factor=std::make_unique<Factor>(K);
+   if(q)penalty.head(q).setZero();
+   add_diagonal(K,penalty);factor=std::make_unique<Factor>(K);
   }
  }
  MatrixXd apply(const MatrixXd& B) const {
@@ -159,7 +162,9 @@ inline std::vector<int> positive_rows(const VectorXd& W) {
  std::vector<int> rows;for(int i=0;i<W.size();++i)if(W[i]>0)rows.push_back(i);return rows;
 }
 template<class Design> bool unit_column(const Design& X,int j,const std::vector<int>& rows) {
- if(rows.empty())return false;for(int i:rows)if(X.coeff(i,j)!=1)return false;return true;
+ if(rows.empty())return false;
+ for(int i:rows)if(X.coeff(i,j)!=1)return false;
+ return true;
 }
 template<class Design> VectorXd marginal_start(const Design& X,State& s,const Family& f) {
  const int p=X.cols();VectorXd result=VectorXd::Zero(p);
@@ -219,9 +224,11 @@ template<class Design> VectorXd marginal_start(const Design& X,State& s,const Fa
  return result;
 }
 inline double quantile05(std::vector<double> values) {
- if(values.empty())return 0;const double index=(values.size()-1)*.05;int lo=(int)index,hi=(int)std::ceil(index);
+ if(values.empty())return 0;
+ const double index=(values.size()-1)*.05;int lo=(int)index,hi=(int)std::ceil(index);
  std::nth_element(values.begin(),values.begin()+lo,values.end());double a=values[lo];
- if(hi==lo)return a;std::nth_element(values.begin(),values.begin()+hi,values.end());return a+(index-lo)*(values[hi]-a);
+ if(hi==lo)return a;
+ std::nth_element(values.begin(),values.begin()+hi,values.end());return a+(index-lo)*(values[hi]-a);
 }
 template<class Design> bool signal_start(const Design& X,State& s,VectorXd& result,bool require_offset=true) {
  if(!s.signal_family||s.maxit<=1||!(s.lower.array()>=0).all()||(require_offset&&s.offset.isZero()))return false;
