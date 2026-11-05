@@ -11,13 +11,14 @@ output <- file.path(root,"benchmarks","3_benchmarks_sis_vs_SIS_results")
 dir.create(output,recursive=TRUE,showWarnings=FALSE)
 
 make_data <- function(p) {
-  set.seed(123)
+  set.seed(123,kind="Mersenne-Twister")
   X <- matrix(rnorm(as.double(n)*p),n,p)
-  colnames(X) <- paste0("x",seq_len(p))
-  active <- sort(sample.int(p,60L))
+  active <- sample.int(p,60L)
   beta <- numeric(p)
-  beta[active] <- sample(c(-1,1),60L,TRUE)*runif(60L,.5,1.5)
-  list(X=X,y=as.numeric(X[,active,drop=FALSE]%*%beta[active])+rnorm(n),beta_true=beta)
+  beta[active] <- runif(60L,-.8,.8)
+  set.seed(1)
+  list(X=X,y=as.numeric(X[,active,drop=FALSE]%*%beta[active])+rnorm(n),
+    beta_true=beta,intercept=FALSE)
 }
 sim <- make_data(p)
 
@@ -56,10 +57,9 @@ wrap_sis <- function(fit,sim) {
     dispersion=1,dispersion.estimated=TRUE,p=ncol(sim$X),always.include=1L),class="L0glm_fit")
 }
 
-# Every row below includes screening AND fitting. BIC is available in both
-# packages; L0glm uses its BIC preset and glmnet/SIS search their native paths.
-# Standalone L0glm.fit retains its best ISIS round by GIC; sparseglm uses the
-# requested criterion for its outer rounds. The model table reports both ICs.
+# Every row includes screening AND fitting. L0glm uses its default GIC preset;
+# LASSO variants use BIC because GIC often selects a null LASSO model here.
+# The million-predictor ISIS L0glm call is exactly the homepage default fit.
 run_models <- function(sim,screen,repetitions,
   methods=c("SIS_package","L0glm.fit","sparseglm_lasso","sparseglm_relaxed_lasso"),
   batch=nsis,rounds=3L) {
@@ -71,15 +71,17 @@ run_models <- function(sim,screen,repetitions,
         SIS_package=SIS::SIS(sim$X,sim$y,family="gaussian",nsis=nsis,
           iter=screen=="ISIS",iter.max=rounds,penalty="lasso",tune="bic",
           standardize=FALSE,parallel=FALSE,seed=123L),
-        L0glm.fit=L0glm.fit(sim$X,sim$y,family=gaussian(),intercept=TRUE,
-          screen=screen,nsis=batch,screen.maxit=rounds,lambda="bic",relaxed=TRUE),
+        L0glm.fit=if (p==1000000L && screen=="ISIS" && is.null(batch) && rounds==10L)
+          L0glm.fit(sim$X,sim$y,family=gaussian()) else
+          L0glm.fit(sim$X,sim$y,family=gaussian(),screen=screen,nsis=batch,screen.maxit=rounds),
         sparseglm_lasso=sparseglm(sim,method="lasso",screen=screen,nsis=batch,
           screen.maxit=rounds,tune="bic",nlambda=10L),
         sparseglm_relaxed_lasso=sparseglm(sim,method="relaxed_lasso",screen=screen,
           nsis=batch,screen.maxit=rounds,tune="bic",nlambda=10L)))[["elapsed"]]
       model <- if (method=="SIS_package") wrap_sis(fit,sim) else
         if (inherits(fit,"sparseglm")) fit$fits[[1L]] else fit
-      scores <- L0glm.metrics(model,beta_true=c(0,sim$beta_true))
+      truth <- if (nrow(coef(model))==p+1L) c(0,sim$beta_true) else sim$beta_true
+      scores <- L0glm.metrics(model,beta_true=truth)
       row <- cbind(data.frame(n,p,screen,method,repetition,seconds),
         scores[c("gic","bic","TP","FP","FN","F1_score","MCC")])
       result[[length(result)+1L]] <- row

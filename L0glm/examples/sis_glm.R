@@ -51,11 +51,15 @@ stopifnot(requireNamespace("SIS",quietly=TRUE))
 set.seed(123)
 n <- 500L; p <- 1000000L; nsis <- 100L
 X <- matrix(rnorm(as.double(n) * p), n, p)
-colnames(X) <- paste0("x", seq_len(p))
-active <- sort(sample.int(p, 60L))
+active <- sample.int(p, 60L)
 beta <- numeric(p)
-beta[active] <- sample(c(-1, 1), 60L, TRUE) * runif(60L, .5, 1.5)
+beta[active] <- runif(60L, -.8, .8)
+set.seed(1)
 y <- as.numeric(X[, active, drop = FALSE] %*% beta[active]) + rnorm(n)
+
+# The default fit uses the GIC preset and automatic ISIS screening.
+t_default <- system.time(fit <- L0glm.fit(X,y,family=gaussian()))
+L0glm.metrics(fit,beta_true=beta)[c("gic","TP","FP","FN","TN","F1_score","MCC")]
 
 t_fast <- system.time(fast <- sis_glm(X, y, nsis = nsis))
 t_one <- system.time(one <- sis_glm(X, y, nsis = nsis, nthreads = 1L))
@@ -77,16 +81,16 @@ identical(one$ranking,fast$ranking)                   # TRUE
 # Complete models: both timings include screening and variable selection.
 t_SIS <- system.time(sis_fit <- SIS::SIS(X,y,family="gaussian",nsis=nsis,
   iter=FALSE,penalty="lasso",tune="bic",standardize=FALSE,parallel=FALSE,seed=123L))
-t_L0glm <- system.time(l0_fit <- L0glm.fit(X,y,intercept=TRUE,
-  screen="SIS",nsis=nsis,lambda="bic",relaxed=TRUE))
-data.frame(method=c("SIS + BIC LASSO","SIS + L0glm BIC preset"),
+t_L0glm <- system.time(l0_fit <- L0glm.fit(X,y,
+  screen="SIS",nsis=nsis,lambda="gic",relaxed=TRUE))
+data.frame(method=c("SIS + BIC LASSO","SIS + L0glm GIC preset"),
   seconds=c(t_SIS[["elapsed"]],t_L0glm[["elapsed"]]))
-L0glm.metrics(l0_fit,beta_true=c(0,beta))[c("bic","TP","FP","F1_score","MCC")]
+L0glm.metrics(l0_fit,beta_true=beta)[c("gic","TP","FP","F1_score","MCC")]
 
 # Shared screening also makes end-to-end comparisons convenient for other
 # methods. Change screen to "ISIS" for method-specific iterative screening.
 comparison <- sparseglm(X,y,method=c("L0glm","lasso","relaxed_lasso"),
-  screen="SIS",nsis=nsis,tune="bic",nlambda=10,beta_true=beta,
-  lambda=list(L0glm=preset.lambda("bic",p,n)),options=list(L0glm=list(relaxed=TRUE)))
+  screen="SIS",nsis=nsis,tune="bic",nlambda=10,beta_true=beta,intercept=FALSE,
+  lambda=list(L0glm=preset.lambda("gic",p,n)),options=list(L0glm=list(relaxed=TRUE)))
 L0glm.metrics(comparison)[c("method","screen","seconds","bic","TP","FP","F1_score","MCC")]
 }

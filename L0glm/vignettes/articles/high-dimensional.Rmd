@@ -83,9 +83,7 @@ beta[active] <- runif(60L, -.8, .8)
 set.seed(1)
 y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
-  screen="ISIS", screen.nthreads=8L, nthreads=1L,
-  intercept=FALSE, relaxed=TRUE)
+fit <- L0glm.fit(X, y, family=gaussian())
 L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
@@ -104,37 +102,45 @@ the same top 100 predictors. Screening-only median timings over three runs:
 
 | Screening routine | Seconds |
 |:--|--:|
-| `sis_glm()`, eight physical cores | **0.26** |
-| `sis_glm(nthreads=1)` | 0.83 |
-| SIS Gaussian screen (`obtain.ix0`) | 2.16 |
+| `sis_glm()`, eight physical cores | **0.24** |
+| `sis_glm(nthreads=1)` | 0.74 |
+| SIS Gaussian screen (`obtain.ix0`) | 2.00 |
 
 The SIS row calls its screening helper directly, excluding the subsequent
 LASSO fit. Gaussian correlation ranks are scale invariant, so redundant
 standardization is omitted. The default OpenMP screen is about
 **8.3 times faster** on this machine.
 
-Complete screening-and-selection pipelines were timed separately. All use
-BIC: L0glm uses its preset; LASSO variants search their native paths. The
+Complete screening-and-selection pipelines were timed separately on the
+**same million-predictor simulation as the homepage**. L0glm uses its default
+GIC preset. LASSO variants use BIC-selected paths because GIC commonly selects
+an empty LASSO model in this example. The
 one-pass comparison retains 100 predictors. On the million-predictor design,
 ISIS uses the default GIC-based batch size and ten rounds. The SIS-package
 ISIS comparison uses a separate 5,000-predictor design and three rounds;
 `nsis=100` is a batch size in L0glm and a total support limit in SIS.
-Standalone `L0glm.fit()` retains its best ISIS round by GIC; `sparseglm()`
-uses the requested BIC for its outer search. Both ICs are saved with the results.
+Standalone `L0glm.fit()` retains its best ISIS round by GIC; the LASSO
+comparisons use the requested BIC for their outer searches. The public SIS
+pipeline fits a free intercept; L0glm and glmnet use a zero intercept, matching
+the simulation. Both ICs are saved with the results.
 
-| Predictors | Screen | Complete model | Seconds | TP | FP | F1 | MCC |
-|--:|:--|:--|--:|--:|--:|--:|--:|
-| 1,000,000 | SIS | SIS::SIS + BIC LASSO | 2.71 | 12 | 87 | 0.151 | 0.156 |
-| 1,000,000 | SIS | L0glm.fit, BIC preset | 1.43 | 12 | 46 | 0.203 | 0.203 |
-| 1,000,000 | SIS | sparseglm LASSO, BIC grid | 2.58 | 12 | 87 | 0.151 | 0.156 |
-| 1,000,000 | SIS | sparseglm relaxed LASSO, BIC grid | 2.62 | 12 | 76 | 0.162 | 0.165 |
-| 1,000,000 | ISIS | L0glm.fit, BIC preset | 3.52 | 7 | 12 | 0.177 | 0.207 |
-| 1,000,000 | ISIS | sparseglm LASSO, BIC grid | 5.98 | 10 | 190 | 0.077 | 0.091 |
-| 1,000,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 6.65 | 10 | 190 | 0.077 | 0.091 |
-| 5,000 | ISIS | SIS::SIS + BIC LASSO | 23.04 | 58 | 39 | 0.739 | 0.757 |
-| 5,000 | ISIS | L0glm.fit, BIC preset | 0.09 | 60 | 26 | 0.822 | 0.833 |
-| 5,000 | ISIS | sparseglm LASSO, BIC grid | 0.33 | 60 | 182 | 0.397 | 0.489 |
-| 5,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 0.39 | 60 | 57 | 0.678 | 0.712 |
+The default call reproduces **GIC 2582.75, 40 true effects and 3 false positives**,
+with **F1 0.7767 and MCC 0.7875**. The recorded homepage time is **3.49 s**;
+the median of the three runs below is **2.36 s**.
+
+| Predictors | Screen | Complete model | Seconds | GIC | TP | FP | F1 | MCC |
+|--:|:--|:--|--:|--:|--:|--:|--:|--:|
+| 1,000,000 | SIS | SIS::SIS + BIC LASSO | 7.31 | 4407 | 12 | 86 | 0.152 | 0.156 |
+| 1,000,000 | SIS | L0glm.fit, GIC preset | 0.30 | 2793 | 7 | 1 | 0.206 | 0.319 |
+| 1,000,000 | SIS | sparseglm LASSO, BIC grid | 1.57 | 4414 | 12 | 87 | 0.151 | 0.156 |
+| 1,000,000 | SIS | sparseglm relaxed LASSO, BIC grid | 1.56 | 4240 | 12 | 80 | 0.158 | 0.161 |
+| 1,000,000 | ISIS | L0glm.fit, GIC preset | 2.36 | 2583 | 40 | 3 | 0.777 | 0.787 |
+| 1,000,000 | ISIS | sparseglm LASSO, BIC grid | 4.65 | 4402 | 9 | 191 | 0.069 | 0.082 |
+| 1,000,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 4.70 | 4187 | 9 | 185 | 0.071 | 0.083 |
+| 5,000 | ISIS | SIS::SIS + BIC LASSO | 23.04 | 2883 | 42 | 57 | 0.528 | 0.538 |
+| 5,000 | ISIS | L0glm.fit, GIC preset | 0.07 | 2180 | 46 | 0 | 0.868 | 0.874 |
+| 5,000 | ISIS | sparseglm LASSO, BIC grid | 0.24 | 4581 | 47 | 228 | 0.281 | 0.352 |
+| 5,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 0.27 | 2939 | 47 | 71 | 0.528 | 0.552 |
 
 `sparseglm()` also supports `screen="SIS"`, `"ISIS"`, `"auto"` and `"none"`
 for every compatible method. Each ISIS search uses its own method's fitted
@@ -155,6 +161,30 @@ HP ZBook Fury G8 Mobile Workstation, Intel Core i9-11950H, eight physical cores 
 common candidate scoring and diagnostics. The [`sis_glm()` example](../reference/sis_glm.html#examples)
 and [benchmark script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS.R)
 give the calls and checks.
+
+### Compare all supported adapters
+
+The same homepage data were also fitted with all nine adapters. This table
+uses ISIS, the GIC preset for L0glm and BIC-selected paths for the competitors.
+Times are one run of each method's screening, fitting and common scoring;
+shared input preparation is separate.
+
+| Method | Seconds | GIC | TP | FP | F1 | MCC |
+|:--|--:|--:|--:|--:|--:|--:|
+| L0glm | 2.20 | 2583 | 40 | 3 | 0.777 | 0.787 |
+| abess | 11.32 | 3268 | 9 | 91 | 0.113 | 0.116 |
+| L0Learn | 1.50 | 2790 | 11 | 2 | 0.301 | 0.394 |
+| MCP | 3.50 | 4040 | 9 | 168 | 0.076 | 0.087 |
+| SCAD | 3.29 | 4353 | 9 | 187 | 0.070 | 0.083 |
+| lasso | 3.27 | 4402 | 9 | 191 | 0.069 | 0.082 |
+| relaxed_lasso | 3.39 | 4187 | 9 | 185 | 0.071 | 0.083 |
+| adaptive_lasso | 3.28 | 4316 | 9 | 184 | 0.071 | 0.084 |
+| adaptive_relaxed_lasso | 3.39 | 4305 | 9 | 185 | 0.071 | 0.083 |
+
+The [complete SIS and ISIS results](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS_results/all_methods.csv)
+and [reproducible calls](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sparseglm_screening.R)
+include every method and its tuning settings.
+
 
 ## GIC tuning and cross-validation
 

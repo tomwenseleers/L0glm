@@ -95,11 +95,14 @@
 #' proportional to squared Pearson correlation. The complete ranking agrees
 #' with SIS's initial Gaussian screen. On 500 observations and one million
 #' predictors, screening-only median times over three runs were
-#' 0.26 seconds for `sis_glm()` on eight physical cores,
-#' 0.83 seconds on one thread and 2.16 seconds for SIS's screening helper.
-#' Complete screening plus BIC selection took 1.43 seconds for
-#' `L0glm.fit(screen="SIS",lambda="bic")` and 2.71 seconds for
+#' 0.24 seconds for `sis_glm()` on eight physical cores,
+#' 0.74 seconds on one thread and 2.00 seconds for SIS's screening helper.
+#' Complete one-pass screening and selection took 0.30 seconds for
+#' `L0glm.fit(screen="SIS")` with the GIC preset and 7.31 seconds for
 #' `SIS::SIS(iter=FALSE,penalty="lasso",tune="bic")`.
+#' On the same homepage simulation, the default ISIS fit recovered 40 true
+#' effects with three false positives (GIC 2582.75, F1 0.7767, MCC 0.7875).
+#' Its median time was 2.36 seconds; the homepage records 3.49 seconds.
 #' Measurements used an Intel Core i9-11950H, R 4.5.0 and SIS 1.5.
 #' Predictor standardization is omitted because Gaussian correlation ranks are
 #' scale invariant. The example separates screening-only and fitted-model
