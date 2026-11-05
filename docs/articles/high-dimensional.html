@@ -173,48 +173,205 @@ article</a> reports all methods, including relaxed LASSO, together with
 their tuning settings.</p>
 </div>
 <div class="section level2">
-<h2 id="compare-screening-speed-with-sis">Compare screening speed with SIS<a class="anchor" aria-label="anchor" href="#compare-screening-speed-with-sis"></a>
+<h2 id="compare-screening-and-complete-models-with-sis">Compare screening and complete models with SIS<a class="anchor" aria-label="anchor" href="#compare-screening-and-complete-models-with-sis"></a>
 </h2>
 <p>On a Gaussian design with <strong>500 observations and one million
-predictors</strong>, <code><a href="../reference/sis_glm.html">sis_glm()</a></code> and the initial screen in
-<code><a href="https://rdrr.io/pkg/SIS/man/SIS.html" class="external-link">SIS::SIS()</a></code> returned <strong>exactly the same complete
-ranking</strong>, including the same top 100 predictors. Median timings
-over three repetitions were:</p>
+predictors</strong>, <code><a href="../reference/sis_glm.html">sis_glm()</a></code> and SIS returned
+<strong>identical complete screening ranks</strong>, including the same
+top 100 predictors. Screening-only median timings over three runs:</p>
 <table class="table">
 <thead><tr class="header">
-<th align="left">Method</th>
-<th align="right">Elapsed time</th>
+<th align="left">Screening routine</th>
+<th align="right">Seconds</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="left">
-<code><a href="../reference/sis_glm.html">sis_glm()</a></code>, default eight physical
-cores</td>
-<td align="right"><strong>0.23 s</strong></td>
+<code><a href="../reference/sis_glm.html">sis_glm()</a></code>, eight physical cores</td>
+<td align="right"><strong>0.26</strong></td>
 </tr>
 <tr class="even">
 <td align="left"><code>sis_glm(nthreads=1)</code></td>
-<td align="right">0.82 s</td>
+<td align="right">0.83</td>
 </tr>
 <tr class="odd">
-<td align="left"><code>SIS::SIS(iter=FALSE, standardize=FALSE)</code></td>
-<td align="right">2.69 s</td>
+<td align="left">SIS Gaussian screen (<code>obtain.ix0</code>)</td>
+<td align="right">2.16</td>
 </tr>
 </tbody>
 </table>
-<p>This gives about a <strong>12-fold speed advantage</strong> with the
-default thread count on the Intel Core i9-11950H workstation (R 4.5.0,
-SIS 1.5). Gaussian correlation ranks are scale invariant, so the SIS
-call omits redundant predictor standardization. Its timing includes a
-subsequent BIC-tuned LASSO fit on the 100 screened predictors. The
-comparison uses its initial ranking, returned in
-<code>ix_list[[1L]]</code>. The <a href="../reference/sis_glm.html#examples"><code>sis_glm()</code>
-example</a> provides the complete reproducible code and rank checks.</p>
+<p>The SIS row calls its screening helper directly, excluding the
+subsequent LASSO fit. Gaussian correlation ranks are scale invariant, so
+redundant standardization is omitted. The default OpenMP screen is about
+<strong>8.3 times faster</strong> on this machine.</p>
+<p>Complete screening-and-selection pipelines were timed separately. All
+use BIC: L0glm uses its preset; LASSO variants search their native
+paths. The one-pass comparison retains 100 predictors. On the
+million-predictor design, ISIS uses the default GIC-based batch size and
+ten rounds. The SIS-package ISIS comparison uses a separate
+5,000-predictor design and three rounds; <code>nsis=100</code> is a
+batch size in L0glm and a total support limit in SIS. Standalone
+<code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code> retains its best ISIS round by GIC;
+<code><a href="../reference/sparseglm.html">sparseglm()</a></code> uses the requested BIC for its outer search.
+Both ICs are saved with the results.</p>
+<table class="table">
+<colgroup>
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+<col width="12%">
+</colgroup>
+<thead><tr class="header">
+<th align="right">Predictors</th>
+<th align="left">Screen</th>
+<th align="left">Complete model</th>
+<th align="right">Seconds</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="right">1,000,000</td>
+<td align="left">SIS</td>
+<td align="left">SIS::SIS + BIC LASSO</td>
+<td align="right">2.71</td>
+<td align="right">12</td>
+<td align="right">87</td>
+<td align="right">0.151</td>
+<td align="right">0.156</td>
+</tr>
+<tr class="even">
+<td align="right">1,000,000</td>
+<td align="left">SIS</td>
+<td align="left">L0glm.fit, BIC preset</td>
+<td align="right">1.43</td>
+<td align="right">12</td>
+<td align="right">46</td>
+<td align="right">0.203</td>
+<td align="right">0.203</td>
+</tr>
+<tr class="odd">
+<td align="right">1,000,000</td>
+<td align="left">SIS</td>
+<td align="left">sparseglm LASSO, BIC grid</td>
+<td align="right">2.58</td>
+<td align="right">12</td>
+<td align="right">87</td>
+<td align="right">0.151</td>
+<td align="right">0.156</td>
+</tr>
+<tr class="even">
+<td align="right">1,000,000</td>
+<td align="left">SIS</td>
+<td align="left">sparseglm relaxed LASSO, BIC grid</td>
+<td align="right">2.62</td>
+<td align="right">12</td>
+<td align="right">76</td>
+<td align="right">0.162</td>
+<td align="right">0.165</td>
+</tr>
+<tr class="odd">
+<td align="right">1,000,000</td>
+<td align="left">ISIS</td>
+<td align="left">L0glm.fit, BIC preset</td>
+<td align="right">3.52</td>
+<td align="right">7</td>
+<td align="right">12</td>
+<td align="right">0.177</td>
+<td align="right">0.207</td>
+</tr>
+<tr class="even">
+<td align="right">1,000,000</td>
+<td align="left">ISIS</td>
+<td align="left">sparseglm LASSO, BIC grid</td>
+<td align="right">5.98</td>
+<td align="right">10</td>
+<td align="right">190</td>
+<td align="right">0.077</td>
+<td align="right">0.091</td>
+</tr>
+<tr class="odd">
+<td align="right">1,000,000</td>
+<td align="left">ISIS</td>
+<td align="left">sparseglm relaxed LASSO, BIC grid</td>
+<td align="right">6.65</td>
+<td align="right">10</td>
+<td align="right">190</td>
+<td align="right">0.077</td>
+<td align="right">0.091</td>
+</tr>
+<tr class="even">
+<td align="right">5,000</td>
+<td align="left">ISIS</td>
+<td align="left">SIS::SIS + BIC LASSO</td>
+<td align="right">23.04</td>
+<td align="right">58</td>
+<td align="right">39</td>
+<td align="right">0.739</td>
+<td align="right">0.757</td>
+</tr>
+<tr class="odd">
+<td align="right">5,000</td>
+<td align="left">ISIS</td>
+<td align="left">L0glm.fit, BIC preset</td>
+<td align="right">0.09</td>
+<td align="right">60</td>
+<td align="right">26</td>
+<td align="right">0.822</td>
+<td align="right">0.833</td>
+</tr>
+<tr class="even">
+<td align="right">5,000</td>
+<td align="left">ISIS</td>
+<td align="left">sparseglm LASSO, BIC grid</td>
+<td align="right">0.33</td>
+<td align="right">60</td>
+<td align="right">182</td>
+<td align="right">0.397</td>
+<td align="right">0.489</td>
+</tr>
+<tr class="odd">
+<td align="right">5,000</td>
+<td align="left">ISIS</td>
+<td align="left">sparseglm relaxed LASSO, BIC grid</td>
+<td align="right">0.39</td>
+<td align="right">60</td>
+<td align="right">57</td>
+<td align="right">0.678</td>
+<td align="right">0.712</td>
+</tr>
+</tbody>
+</table>
+<p><code><a href="../reference/sparseglm.html">sparseglm()</a></code> also supports <code>screen="SIS"</code>,
+<code>"ISIS"</code>, <code>"auto"</code> and <code>"none"</code> for
+every compatible method. Each ISIS search uses its own method’s fitted
+predictions as screening offsets. CV recomputes screening on training
+rows, and returned coefficients retain every original predictor row.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseglm.html">sparseglm</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>,</span>
+<span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"abess"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
+<span>  screen<span class="op">=</span><span class="st">"ISIS"</span>, nsis<span class="op">=</span><span class="fl">10</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10</span>,</span>
+<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="../reference/preset.lambda.html">preset.lambda</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"screen"</span>, <span class="st">"seconds"</span>, <span class="st">"gic"</span>,</span>
+<span>  <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>HP ZBook Fury G8 Mobile Workstation, Intel Core i9-11950H, eight
+physical cores / 16 logical cores; R 4.5.0, SIS 1.5, one BLAS thread.
+Timings exclude data generation. The <code>sparseglm</code> rows include
+common candidate scoring and diagnostics. The <a href="../reference/sis_glm.html#examples"><code>sis_glm()</code>
+example</a> and <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS.R" class="external-link">benchmark
+script</a> give the calls and checks.</p>
 </div>
 <div class="section level2">
 <h2 id="gic-tuning-and-cross-validation">GIC tuning and cross-validation<a class="anchor" aria-label="anchor" href="#gic-tuning-and-cross-validation"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, screen<span class="op">=</span><span class="st">"ISIS"</span>,</span>
 <span>  screen.nthreads<span class="op">=</span><span class="fl">8L</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/pkg/gsignal/man/gaussian.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, screen<span class="op">=</span><span class="st">"ISIS"</span>,</span>

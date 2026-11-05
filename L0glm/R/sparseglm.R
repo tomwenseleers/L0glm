@@ -46,6 +46,17 @@
 #'   that argument is supplied.
 #' @param foldid Optional row-fold labels shared by every method and channel.
 #'   For odd/even Venetian-blind validation use `rep(1:2,length.out=nrow(X))`.
+#' @param screen `"auto"`, `"none"`, `"SIS"` or `"ISIS"`, shared by all
+#'   methods. Auto enables ISIS when there are more than ten eligible predictors
+#'   per observation. SIS screens once; ISIS alternates screening with the
+#'   requested method's own selected model. Screening uses the original family,
+#'   including when a competing fit uses a labelled WLS approximation.
+#' @param nsis Number retained by SIS, or number proposed per ISIS round.
+#'   Defaults to `2*floor(n/log(n))` for SIS and
+#'   `max(1, round(n/(log(log(n))*log(p))))` for ISIS.
+#' @param screen.maxit Maximum ISIS rounds, default 10. The best round is chosen
+#'   by the requested IC, or GIC within each training fold for CV.
+#' @param screen.nthreads OpenMP screening threads; `NULL` uses physical cores.
 #' @param weights,offset Original prior observation weights and offsets. Default
 #'   to data-list components, then unit weights and zero offsets. Independent
 #'   channels accept vectors or channel matrices. Multinomial and Cox use one
@@ -117,6 +128,11 @@
 #' subtraction with the full risk sets, per held-out event, as in [L0glm.tune()].
 #' Folds share observation rows across channels, and whole multinomial count
 #' rows remain together. Fold means and SE use the conventions of [L0glm.tune()].
+#' Screening and ISIS selection are recomputed within each training fold.
+#' Excluded predictors return zero coefficients in the original dimensions.
+#' IC scores retain the original number of predictors after screening.
+#' Per-method `screening` diagnostics and training-fold diagnostics are retained
+#' in `tuning`; elapsed timings include screening and every ISIS candidate fit.
 #' L0glm sum-loss penalties are scaled by the training likelihood-mass fraction;
 #' other backend lambdas retain their native units. The selected model uses all
 #' data. CV used to select a model is not an independent test of that model.
@@ -153,13 +169,15 @@ sparseglm <- function(X, y=NULL, family=NULL, method="all", tune="gic",
   nlambda=40L, lambda=NULL, support.size=NULL, nfolds=5L, foldid=NULL,
   weights=NULL, offset=NULL, dispersion=NULL, intercept=NULL, nonnegative=FALSE,
   grouped="auto", options=list(), approximation="none", adaptive.gamma=1,
-  adaptive.epsilon=1e-8, seed=1L, mu_floor=1e-8, beta_true=NULL, plot=FALSE) {
+  adaptive.epsilon=1e-8, seed=1L, mu_floor=1e-8, beta_true=NULL, plot=FALSE,
+  screen="auto", nsis=NULL, screen.maxit=10L, screen.nthreads=NULL) {
   if (is.list(X) && !is.null(X$X) && is.null(y)) sim <- X else sim <- list(X=X, y=y)
   if (!is.null(beta_true)) sim$beta_true <- beta_true
   result <- L0glm_benchmark(sim, family, method, tune, nlambda, lambda, support.size,
     if (missing(nfolds) && !is.null(foldid)) NULL else nfolds, foldid,
     weights, offset, dispersion, intercept, nonnegative, options, approximation,
-    adaptive.gamma, adaptive.epsilon, seed, mu_floor, plot, grouped)
+    adaptive.gamma, adaptive.epsilon, seed, mu_floor, plot, grouped,
+    screen, nsis, screen.maxit, screen.nthreads)
   result$call <- match.call()
   result
 }

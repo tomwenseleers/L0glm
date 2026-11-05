@@ -30,7 +30,11 @@ sparseglm(
   seed = 1L,
   mu_floor = 1e-08,
   beta_true = NULL,
-  plot = FALSE
+  plot = FALSE,
+  screen = "auto",
+  nsis = NULL,
+  screen.maxit = 10L,
+  screen.nthreads = NULL
 )
 
 \method{coef}{sparseglm}(object, ...)
@@ -150,6 +154,21 @@ category and is centered into CLR coordinates.}
 
 \item{plot}{Plot the completed coefficient comparison, without refitting.}
 
+\item{screen}{\code{"auto"}, \code{"none"}, \code{"SIS"} or \code{"ISIS"}, shared by all
+methods. Auto enables ISIS when there are more than ten eligible predictors
+per observation. SIS screens once; ISIS alternates screening with the
+requested method's own selected model. Screening uses the original family,
+including when a competing fit uses a labelled WLS approximation.}
+
+\item{nsis}{Number retained by SIS, or number proposed per ISIS round.
+Defaults to \code{2*floor(n/log(n))} for SIS and
+\code{max(1, round(n/(log(log(n))*log(p))))} for ISIS.}
+
+\item{screen.maxit}{Maximum ISIS rounds, default 10. The best round is chosen
+by the requested IC, or GIC within each training fold for CV.}
+
+\item{screen.nthreads}{OpenMP screening threads; \code{NULL} uses physical cores.}
+
 \item{object}{A \code{sparseglm} result.}
 
 \item{...}{Further arguments passed to [graphics::plot()] for coefficient
@@ -217,6 +236,11 @@ or per weighted trial for multinomial. Cox uses Breslow partial-likelihood
 subtraction with the full risk sets, per held-out event, as in \code{\link[=L0glm.tune]{L0glm.tune()}}.
 Folds share observation rows across channels, and whole multinomial count
 rows remain together. Fold means and SE use the conventions of \code{\link[=L0glm.tune]{L0glm.tune()}}.
+Screening and ISIS selection are recomputed within each training fold.
+Excluded predictors return zero coefficients in the original dimensions.
+IC scores retain the original number of predictors after screening.
+Per-method \code{screening} diagnostics and training-fold diagnostics are retained
+in \code{tuning}; elapsed timings include screening and every ISIS candidate fit.
 L0glm sum-loss penalties are scaled by the training likelihood-mass fraction;
 other backend lambdas retain their native units. The selected model uses all
 data. CV used to select a model is not an independent test of that model.
@@ -248,6 +272,22 @@ comparison <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),
   tune="gic",nlambda=5,beta_true=truth)
 L0glm.metrics(comparison)[c("method","seconds","gic","adj_R2_weighted","F1_score","MCC")]
 plot(comparison,which=c(1,2))
+
+# The same SIS/ISIS controls apply to every supported method. Each ISIS round
+# uses that method's own selected model to screen for additional predictors.
+set.seed(2)
+wide <- matrix(rnorm(100*2000),100,2000)
+truth_wide <- c(3,-2,1.5,rep(0,1997))
+y_wide <- as.numeric(wide\%*\%truth_wide)+rnorm(100)
+screened <- sparseglm(wide,y_wide,method=c("L0glm","lasso","relaxed_lasso"),
+  screen="ISIS",nsis=10,nlambda=5,beta_true=truth_wide,
+  lambda=list(L0glm=preset.lambda("gic",ncol(wide),nrow(wide))),
+  options=list(L0glm=list(relaxed=TRUE)))
+L0glm.metrics(screened)[c("method","screen","seconds","gic","TP","FP","F1_score","MCC")]
+# With tune="cv", all screening and adaptive pilots use training rows only.
+screened_cv <- sparseglm(wide,y_wide,method="lasso",screen="SIS",nsis=20,
+  tune="cv",nfolds=3,nlambda=5,beta_true=truth_wide)
+L0glm.metrics(screened_cv)[c("method","screen","seconds","TP","FP","F1_score","MCC")]
 
 # Blurred Poisson spike trains: smaller versions of the single/multichannel
 # deconvolution benchmarks. MCP and SCAD are omitted because they were slow

@@ -1,5 +1,6 @@
 test_that("Gaussian score screening agrees with the initial SIS-package rank", {
   skip_if_not_installed("SIS")
+  rng <- RNGkind()
   set.seed(431)
   X <- matrix(rnorm(150 * 400), 150, 400)
   colnames(X) <- paste0("x", seq_len(ncol(X)))
@@ -12,4 +13,5 @@ test_that("Gaussian score screening agrees with the initial SIS-package rank", {
     expect_identical(actual$indices, as.integer(reference$sis.ix0))
     expect_identical(actual$ranking, as.integer(reference$ix_list[[1L]]))
   }
+  do.call(RNGkind,as.list(rng))
 })

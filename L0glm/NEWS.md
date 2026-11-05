@@ -44,6 +44,8 @@
 
 * `sparseglm()` compares supported sparse-regression methods with common
   likelihood, prediction, coefficient and support-recovery metrics and timings.
+  Shared SIS/ISIS options screen every adapter, with method-specific ISIS
+  offsets, original-dimension coefficients and training-only screening for CV.
 * Prediction, fitted-value, summary, likelihood and information-criterion
   methods, including within-row multichannel sparsity metrics.
 * Generic simulations, fixed-PSF deconvolution examples, visualization tools,

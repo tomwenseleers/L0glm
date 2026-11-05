@@ -47,35 +47,46 @@ if (requireNamespace("mgcv",quietly=TRUE) && requireNamespace("survival",quietly
 \dontrun{
 # One million predictors, 500 observations and 60 nonzero effects.
 # The dense design occupies about 4 GB; data generation is outside the timings.
+stopifnot(requireNamespace("SIS",quietly=TRUE))
 set.seed(123)
 n <- 500L; p <- 1000000L; nsis <- 100L
 X <- matrix(rnorm(as.double(n) * p), n, p)
 colnames(X) <- paste0("x", seq_len(p))
 active <- sort(sample.int(p, 60L))
-beta <- sample(c(-1, 1), 60L, TRUE) * runif(60L, .5, 1.5)
-y <- as.numeric(X[, active, drop = FALSE] %*% beta) + rnorm(n)
+beta <- numeric(p)
+beta[active] <- sample(c(-1, 1), 60L, TRUE) * runif(60L, .5, 1.5)
+y <- as.numeric(X[, active, drop = FALSE] %*% beta[active]) + rnorm(n)
 
 t_fast <- system.time(fast <- sis_glm(X, y, nsis = nsis))
 t_one <- system.time(one <- sis_glm(X, y, nsis = nsis, nthreads = 1L))
-t_SIS <- system.time(reference <- SIS::SIS(X, y, family = "gaussian",
-  nsis = nsis, iter = FALSE, penalty = "lasso", tune = "bic",
-  standardize = FALSE, parallel = FALSE, seed = 123L))
+# Screening only: this helper runs the initial screen in SIS 1.5 without its
+# subsequent LASSO fit. Its internal interface may vary between SIS versions.
+sis_screen <- getFromNamespace("obtain.ix0","SIS")
+t_screen <- system.time(reference <- sis_screen(X,y,s1=NULL,s2=NULL,
+  family="gaussian",nsis=nsis,iter=FALSE,varISIS="vanilla",perm=FALSE,
+  q=1,greedy=FALSE,greedy.size=1L,iterind=0L))
 
-data.frame(method = c("sis_glm, default threads", "sis_glm, one thread", "SIS::SIS"),
-  seconds = c(t_fast[["elapsed"]], t_one[["elapsed"]], t_SIS[["elapsed"]]))
+data.frame(method=c("sis_glm, default threads","sis_glm, one thread","SIS screen"),
+  seconds=c(t_fast[["elapsed"]],t_one[["elapsed"]],t_screen[["elapsed"]]))
 
 # Compare the initial screening rank, including all one million predictors.
-identical(fast$indices, as.integer(reference$sis.ix0))       # TRUE
-identical(fast$ranking, as.integer(reference$ix_list[[1L]]))  # TRUE
-identical(one$ranking, fast$ranking)                        # TRUE
-cor(fast$stats$rank, order(reference$ix_list[[1L]]))          # 1
+identical(fast$indices,as.integer(reference$ix0))       # TRUE
+identical(fast$ranking,as.integer(reference$ix0all))    # TRUE
+identical(one$ranking,fast$ranking)                   # TRUE
 
-# Median elapsed times over three repetitions on an i9-11950H:
-# sis_glm, default eight physical cores: 0.23 s
-# sis_glm, one thread:                  0.82 s
-# SIS::SIS:                            2.69 s
-# R 4.5.0, SIS 1.5; identical full ranks in every repetition.
-# SIS::SIS also fits a BIC-tuned LASSO on the 100 retained predictors.
-# Gaussian correlation ranks are unchanged by standardize=FALSE, which avoids
-# making a redundant standardized copy of this large design.
+# Complete models: both timings include screening and variable selection.
+t_SIS <- system.time(sis_fit <- SIS::SIS(X,y,family="gaussian",nsis=nsis,
+  iter=FALSE,penalty="lasso",tune="bic",standardize=FALSE,parallel=FALSE,seed=123L))
+t_L0glm <- system.time(l0_fit <- L0glm.fit(X,y,intercept=TRUE,
+  screen="SIS",nsis=nsis,lambda="bic",relaxed=TRUE))
+data.frame(method=c("SIS + BIC LASSO","SIS + L0glm BIC preset"),
+  seconds=c(t_SIS[["elapsed"]],t_L0glm[["elapsed"]]))
+L0glm.metrics(l0_fit,beta_true=c(0,beta))[c("bic","TP","FP","F1_score","MCC")]
+
+# Shared screening also makes end-to-end comparisons convenient for other
+# methods. Change screen to "ISIS" for method-specific iterative screening.
+comparison <- sparseglm(X,y,method=c("L0glm","lasso","relaxed_lasso"),
+  screen="SIS",nsis=nsis,tune="bic",nlambda=10,beta_true=beta,
+  lambda=list(L0glm=preset.lambda("bic",p,n)),options=list(L0glm=list(relaxed=TRUE)))
+L0glm.metrics(comparison)[c("method","screen","seconds","bic","TP","FP","F1_score","MCC")]
 }

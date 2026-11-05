@@ -14,7 +14,8 @@ L0glm_benchmark_methods <- function(method) {
 
 L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.size,
   nfolds, foldid, weights, offset, dispersion, intercept, nonnegative, options,
-  approximation, adaptive.gamma, adaptive.epsilon, seed, mu_floor, plot, grouped) {
+  approximation, adaptive.gamma, adaptive.epsilon, seed, mu_floor, plot, grouped,
+  screen="auto", nsis=NULL, screen.maxit=10L, screen.nthreads=NULL) {
   if (!is.list(sim) || is.null(sim$X) || is.null(sim$y))
     stop("sim must contain X and y.", call. = FALSE)
   X <- sim$X; y <- sim$y
@@ -70,6 +71,14 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     stop("nlambda must be an integer of at least 2.", call. = FALSE)
   tune <- L0glm_ic_name(tune, allow_cv = TRUE)
   approximation <- match.arg(approximation, c("none", "wls", "wls_grouped"))
+  L0glm_screen_method(screen, X, NULL, intercept, NULL)
+  if (!is.null(nsis) && (!is.numeric(nsis) || length(nsis)!=1L ||
+      !is.finite(nsis) || nsis<1 || nsis!=floor(nsis)))
+    stop("nsis must be a positive integer.", call.=FALSE)
+  if (!is.numeric(screen.maxit) || length(screen.maxit)!=1L ||
+      !is.finite(screen.maxit) || screen.maxit<1 || screen.maxit!=floor(screen.maxit))
+    stop("screen.maxit must be a positive integer.", call.=FALSE)
+  screen.nthreads <- L0glm_sis_threads(screen.nthreads)
   if (any(!is.finite(c(adaptive.gamma, adaptive.epsilon, mu_floor))) ||
       length(adaptive.gamma) != 1 || adaptive.gamma <= 0 || length(adaptive.epsilon) != 1 ||
       adaptive.epsilon <= 0 || length(mu_floor) != 1 || mu_floor < 0)
@@ -136,7 +145,8 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     grouped=grouped, nlambda=as.integer(nlambda), support.size=support.size,
     approximation=approximation, adaptive.gamma=adaptive.gamma,
     adaptive.epsilon=adaptive.epsilon, options=options, seed=seed, mu_floor=mu_floor,
-    tune=tune)
+    tune=tune, p=p, screen=screen, nsis=nsis, screen.maxit=screen.maxit,
+    screen.nthreads=screen.nthreads)
   if (kind == "cox") data$cox.cache <- L0glm_ext_cox_cache(response, weights[, 1L])
   if (all_methods) {
     supported <- vapply(methods, function(name) tryCatch({
@@ -155,8 +165,10 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
       grid <- if (name == "abess") support.size else if (is.list(lambda)) lambda[[name]] else lambda
       path_start <- proc.time()[[3L]]
       path <- L0glm_benchmark_path(name, data, grid)
-      full_scores <- lapply(path$coefficients, function(B) if (is.null(B)) NULL else
-        L0glm.metrics(L0glm_benchmark_fit(B, data), mu_floor=mu_floor))
+      full_scores <- path$metrics
+      if (is.null(full_scores)) full_scores <- lapply(path$coefficients,
+        function(B) if (is.null(B)) NULL else
+          L0glm.metrics(L0glm_benchmark_fit(B, data), mu_floor=mu_floor))
       path_seconds <- proc.time()[[3L]] - path_start
       cv <- NULL
       if (tune == "cv") {
@@ -175,7 +187,8 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
       if (!is.null(cv)) candidates$se <- cv$se
       list(fit=fit, tuning=list(parameter=path$parameter, best=path$grid[best],
         index=best, candidates=candidates, cv=cv, adaptive=path$adaptive,
-        scope=path$scope, approximation=path$approximation, backend=path$backend))
+        scope=path$scope, approximation=path$approximation, backend=path$backend,
+        screening=path$screening))
     }, warning=function(w) {warnings <<- unique(c(warnings, conditionMessage(w))); invokeRestart("muffleWarning")},
     message=function(w) {warnings <<- unique(c(warnings, conditionMessage(w))); invokeRestart("muffleMessage")}),
     error=function(e) e)
@@ -191,6 +204,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
       tuning_score=if (failed) NA_real_ else result$tuning$candidates$score[result$tuning$index],
       cv_mean=if (failed || tune != "cv") NA_real_ else result$tuning$cv$mean[result$tuning$index],
       cv_se=if (failed || tune != "cv") NA_real_ else result$tuning$cv$se[result$tuning$index],
+      screen=if (failed) NA_character_ else if (is.null(result$tuning$screening)) "none" else result$tuning$screening$method,
       seconds=elapsed, path_seconds=path_seconds, cv_seconds=cv_seconds,
       note=paste(unique(c(if (failed) conditionMessage(result), warnings)), collapse="; "))
   }
@@ -218,7 +232,7 @@ L0glm_benchmark_fit <- function(beta, data) {
   if (data$kind != "glm") {
     result <- structure(list(coefficients=beta, X=X, y=data$y, family=data$family,
       kind=data$kind, weights=data$weights, offset=data$offset, response=data$response,
-      theta.estimated=logical(), p=ncol(data$X), always.include=if (data$intercept) 1L else integer(),
+      theta.estimated=logical(), p=data$p, always.include=if (data$intercept) 1L else integer(),
       added_intercept=data$intercept, grouped=!identical(data$grouped, FALSE), init.lambda=NA_real_,
       n_ic=if (data$kind == "cox") sum(data$weights[, 1L] * data$response$status) else
         sum(data$weights[, 1L] > 0)), class=c("L0glm_extended_fit", "L0glm_fit"))
@@ -229,7 +243,7 @@ L0glm_benchmark_fit <- function(beta, data) {
   structure(list(coefficients=beta, X=X, y=data$y, family=data$family,
     prior.weights=data$weights, offset=data$offset, dispersion=scale,
     dispersion.estimated=if (is.null(data$dispersion)) rep(TRUE, m) else data$dispersion < 0,
-    p=ncol(data$X), always.include=if (data$intercept) 1L else integer(),
+    p=data$p, always.include=if (data$intercept) 1L else integer(),
     added_intercept=data$intercept), class="L0glm_fit")
 }
 
@@ -238,7 +252,7 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
   observation_mass <- if (data$kind == "cox") data$weights[, 1L] * data$response$status else
     if (data$kind == "multinomial") data$weights[, 1L] * rowSums(data$y) else rowSums(data$weights)
   mass <- vapply(seq_len(K), function(k) sum(observation_mass[foldid == k]), numeric(1))
-  loss <- matrix(Inf, L, K); adaptive <- vector("list", K)
+  loss <- matrix(Inf, L, K); adaptive <- screening <- vector("list", K)
   grids <- matrix(NA_real_, L, K)
   large <- as.double(nrow(data$X))*ncol(data$X) > 1e8
   if (large) invisible(gc())
@@ -249,7 +263,9 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
     # avoids copying multi-gigabyte training matrices; adaptive pilots and other
     # backends still receive physically subsetted training data.
     shared <- data$kind == "glm" && data$family$family == "gaussian" &&
-      data$family$link == "identity" && method %in% c("lasso", "relaxed_lasso")
+      data$family$link == "identity" && method %in% c("lasso", "relaxed_lasso") &&
+      (tolower(data$screen)=="none" || tolower(data$screen)=="auto" &&
+        ncol(data$X)<=10*sum(train))
     if (shared) d$weights <- data$weights * train else {
       d$X <- data$X[train, , drop=FALSE]
       d$design <- if (data$intercept) cbind(Intercept=1, d$X) else d$X
@@ -266,6 +282,7 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
     grids[, k] <- grid
     fold_path <- L0glm_benchmark_path(method, d, grid)
     adaptive[k] <- list(fold_path$adaptive)
+    screening[k] <- list(fold_path$screening)
     fit <- NULL
     for (j in seq_len(L)) {
       B <- fold_path$coefficients[[j]]
@@ -288,7 +305,7 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
   centered <- sweep(loss[finite, , drop=FALSE], 1, means[finite], "-")
   se[finite] <- sqrt(as.numeric(centered^2 %*% proportions)/(K - 1))
   list(mean=means, se=se, deviance=loss, foldid=foldid, nfolds=K,
-    fold_weights=mass, parameter_train=grids, adaptive=adaptive)
+    fold_weights=mass, parameter_train=grids, adaptive=adaptive, screening=screening)
 }
 
 L0glm_benchmark_unavailable <- function(message, status="unsupported") {

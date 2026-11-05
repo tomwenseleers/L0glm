@@ -8,6 +8,22 @@ comparison <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),
 L0glm.metrics(comparison)[c("method","seconds","gic","adj_R2_weighted","F1_score","MCC")]
 plot(comparison,which=c(1,2))
 
+# The same SIS/ISIS controls apply to every supported method. Each ISIS round
+# uses that method's own selected model to screen for additional predictors.
+set.seed(2)
+wide <- matrix(rnorm(100*2000),100,2000)
+truth_wide <- c(3,-2,1.5,rep(0,1997))
+y_wide <- as.numeric(wide%*%truth_wide)+rnorm(100)
+screened <- sparseglm(wide,y_wide,method=c("L0glm","lasso","relaxed_lasso"),
+  screen="ISIS",nsis=10,nlambda=5,beta_true=truth_wide,
+  lambda=list(L0glm=preset.lambda("gic",ncol(wide),nrow(wide))),
+  options=list(L0glm=list(relaxed=TRUE)))
+L0glm.metrics(screened)[c("method","screen","seconds","gic","TP","FP","F1_score","MCC")]
+# With tune="cv", all screening and adaptive pilots use training rows only.
+screened_cv <- sparseglm(wide,y_wide,method="lasso",screen="SIS",nsis=20,
+  tune="cv",nfolds=3,nlambda=5,beta_true=truth_wide)
+L0glm.metrics(screened_cv)[c("method","screen","seconds","TP","FP","F1_score","MCC")]
+
 # Blurred Poisson spike trains: smaller versions of the single/multichannel
 # deconvolution benchmarks. MCP and SCAD are omitted because they were slow
 # on the large deconvolution examples. All times below are measured locally.

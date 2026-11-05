@@ -90,19 +90,21 @@
 #' Its small default ISIS batch and other screened-fit defaults are documented
 #' in that function; pass `nsis` explicitly to match a standalone call exactly.
 #'
-#' **Timing comparison with SIS.** With Gaussian identity-link data, an intercept
-#' and unit observation weights, the screening statistic is proportional to
-#' squared Pearson correlation. Its rank therefore agrees with the initial
-#' Gaussian screen in the \pkg{SIS} package. In the example with 500 observations
-#' and one million predictors, the complete rankings were identical. Median
-#' elapsed times over three repetitions were 0.23 seconds for `sis_glm()` using
-#' eight physical cores, 0.82 seconds with one thread, and 2.69 seconds for
-#' `SIS::SIS(iter=FALSE)`: about a twelve-fold speed advantage with the default
-#' thread count on an Intel Core i9-11950H (R 4.5.0, SIS 1.5).
-#' The SIS call disables redundant predictor standardization, which leaves
-#' Gaussian correlation ranks unchanged, and includes its subsequent BIC-tuned
-#' LASSO fit on the 100 screened predictors. Rank comparisons use its initial
-#' `sis.ix0` and `ix_list[[1L]]`, before this additional selection.
+#' **Timing comparisons with SIS.** For Gaussian identity-link data with an
+#' intercept and unit observation weights, the screening statistic is
+#' proportional to squared Pearson correlation. The complete ranking agrees
+#' with SIS's initial Gaussian screen. On 500 observations and one million
+#' predictors, screening-only median times over three runs were
+#' 0.26 seconds for `sis_glm()` on eight physical cores,
+#' 0.83 seconds on one thread and 2.16 seconds for SIS's screening helper.
+#' Complete screening plus BIC selection took 1.43 seconds for
+#' `L0glm.fit(screen="SIS",lambda="bic")` and 2.71 seconds for
+#' `SIS::SIS(iter=FALSE,penalty="lasso",tune="bic")`.
+#' Measurements used an Intel Core i9-11950H, R 4.5.0 and SIS 1.5.
+#' Predictor standardization is omitted because Gaussian correlation ranks are
+#' scale invariant. The example separates screening-only and fitted-model
+#' timings. [sparseglm()] offers shared screening controls for comparisons
+#' with other sparse-regression methods, including fold-local screening for CV.
 #' @return A list with decreasing-score `indices`, `top_statistics`, `nsis`,
 #'   `family`, `link`, fitted `theta` for NB, and `nthreads` (screening threads
 #'   actually used). With `return_stats=TRUE`, `ranking` lists all predictor

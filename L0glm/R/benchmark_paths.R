@@ -77,7 +77,7 @@ L0glm_benchmark_setup <- function(method, data) {
 }
 
 # Shared path adapters: no backend information criteria are used for selection.
-L0glm_benchmark_path <- function(method, data, grid = NULL) {
+L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
   original <- data
   setup <- L0glm_benchmark_setup(method, data)
   data <- setup$data
@@ -90,7 +90,7 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     "lows", "highs", "lower.limits", "upper.limits", "penalty", "relax", "penalty.factor",
     "loss", "excludeFirstK", "maxSuppSize", "nLambda", "nlambda", "tune", "tune.type",
     "tune.path", "foldid", "nfolds", "nFolds", "grouped", "standardize.response", "alpha",
-    "type.multinomial", "cox.ties")
+    "type.multinomial", "cox.ties", "screen", "nsis", "screen.maxit", "screen.nthreads")
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) || anyDuplicated(names(options))))
     stop("Backend options must have unique argument names.", call.=FALSE)
   if (any(names(options) %in% locked))
@@ -101,7 +101,8 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     if (is.null(pilot_options)) pilot_options <- list()
     fixed <- list(X=original$X, y=original$y, weights=original$weights, offset=original$offset,
       family=original$family, dispersion=original$dispersion, intercept=original$intercept,
-      nonnegative=original$nonnegative, start=NULL, lambda="gic", maxit=1,
+      nonnegative=original$nonnegative, start=NULL,
+      lambda=preset.lambda("gic", original$p, nrow(original$X)), maxit=1,
       grouped=FALSE, relaxed=FALSE, thresh=0, parallelize=FALSE, screen="none")
     pilot <- do.call(L0glm.fit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
     B <- as.matrix(pilot$coefficients)
@@ -116,7 +117,7 @@ L0glm_benchmark_path <- function(method, data, grid = NULL) {
     args <- utils::modifyList(list(X=data$X, y=data$y, family=data$family,
       weights=data$weights, offset=data$offset, dispersion=data$dispersion,
       intercept=data$intercept, nonnegative=data$nonnegative, grouped=grouped,
-      parallelize=FALSE), options, keep.null=TRUE)
+      parallelize=FALSE, screen="none"), options, keep.null=TRUE)
     if (is.null(grid) && !grepl("^quasi", data$family$family)) {
       fit <- do.call(L0glm.tune, c(args, list(tune=if (data$tune == "cv") "gic" else data$tune, nlambda=data$nlambda,
         plot=FALSE, printbest=FALSE, mu_floor=data$mu_floor)))

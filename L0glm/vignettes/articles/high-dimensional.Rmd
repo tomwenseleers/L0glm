@@ -96,26 +96,65 @@ recovering 17 true effects with 50 false positives. The
 [benchmark article](performance.html#one-million-predictor-example) reports all methods,
 including relaxed LASSO, together with their tuning settings.
 
-## Compare screening speed with SIS
+## Compare screening and complete models with SIS
 
 On a Gaussian design with **500 observations and one million predictors**,
-`sis_glm()` and the initial screen in `SIS::SIS()` returned **exactly the same
-complete ranking**, including the same top 100 predictors. Median timings over
-three repetitions were:
+`sis_glm()` and SIS returned **identical complete screening ranks**, including
+the same top 100 predictors. Screening-only median timings over three runs:
 
-| Method | Elapsed time |
+| Screening routine | Seconds |
 |:--|--:|
-| `sis_glm()`, default eight physical cores | **0.23 s** |
-| `sis_glm(nthreads=1)` | 0.82 s |
-| `SIS::SIS(iter=FALSE, standardize=FALSE)` | 2.69 s |
+| `sis_glm()`, eight physical cores | **0.26** |
+| `sis_glm(nthreads=1)` | 0.83 |
+| SIS Gaussian screen (`obtain.ix0`) | 2.16 |
 
-This gives about a **12-fold speed advantage** with the default thread count
-on the Intel Core i9-11950H workstation (R 4.5.0, SIS 1.5). Gaussian correlation
-ranks are scale invariant, so the SIS call omits redundant predictor
-standardization. Its timing includes a subsequent BIC-tuned LASSO fit on the
-100 screened predictors. The comparison uses its initial ranking, returned in
-`ix_list[[1L]]`. The [`sis_glm()` example](../reference/sis_glm.html#examples)
-provides the complete reproducible code and rank checks.
+The SIS row calls its screening helper directly, excluding the subsequent
+LASSO fit. Gaussian correlation ranks are scale invariant, so redundant
+standardization is omitted. The default OpenMP screen is about
+**8.3 times faster** on this machine.
+
+Complete screening-and-selection pipelines were timed separately. All use
+BIC: L0glm uses its preset; LASSO variants search their native paths. The
+one-pass comparison retains 100 predictors. On the million-predictor design,
+ISIS uses the default GIC-based batch size and ten rounds. The SIS-package
+ISIS comparison uses a separate 5,000-predictor design and three rounds;
+`nsis=100` is a batch size in L0glm and a total support limit in SIS.
+Standalone `L0glm.fit()` retains its best ISIS round by GIC; `sparseglm()`
+uses the requested BIC for its outer search. Both ICs are saved with the results.
+
+| Predictors | Screen | Complete model | Seconds | TP | FP | F1 | MCC |
+|--:|:--|:--|--:|--:|--:|--:|--:|
+| 1,000,000 | SIS | SIS::SIS + BIC LASSO | 2.71 | 12 | 87 | 0.151 | 0.156 |
+| 1,000,000 | SIS | L0glm.fit, BIC preset | 1.43 | 12 | 46 | 0.203 | 0.203 |
+| 1,000,000 | SIS | sparseglm LASSO, BIC grid | 2.58 | 12 | 87 | 0.151 | 0.156 |
+| 1,000,000 | SIS | sparseglm relaxed LASSO, BIC grid | 2.62 | 12 | 76 | 0.162 | 0.165 |
+| 1,000,000 | ISIS | L0glm.fit, BIC preset | 3.52 | 7 | 12 | 0.177 | 0.207 |
+| 1,000,000 | ISIS | sparseglm LASSO, BIC grid | 5.98 | 10 | 190 | 0.077 | 0.091 |
+| 1,000,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 6.65 | 10 | 190 | 0.077 | 0.091 |
+| 5,000 | ISIS | SIS::SIS + BIC LASSO | 23.04 | 58 | 39 | 0.739 | 0.757 |
+| 5,000 | ISIS | L0glm.fit, BIC preset | 0.09 | 60 | 26 | 0.822 | 0.833 |
+| 5,000 | ISIS | sparseglm LASSO, BIC grid | 0.33 | 60 | 182 | 0.397 | 0.489 |
+| 5,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 0.39 | 60 | 57 | 0.678 | 0.712 |
+
+`sparseglm()` also supports `screen="SIS"`, `"ISIS"`, `"auto"` and `"none"`
+for every compatible method. Each ISIS search uses its own method's fitted
+predictions as screening offsets. CV recomputes screening on training rows,
+and returned coefficients retain every original predictor row.
+
+```{r comparison-screening, eval=FALSE}
+comparison <- sparseglm(X, y,
+  method=c("L0glm", "abess", "lasso", "relaxed_lasso"),
+  screen="ISIS", nsis=10, tune="gic", nlambda=10,
+  lambda=list(L0glm=preset.lambda("gic", ncol(X), nrow(X))),
+  options=list(L0glm=list(relaxed=TRUE)), beta_true=beta)
+L0glm.metrics(comparison)[c("method", "screen", "seconds", "gic",
+  "TP", "FP", "F1_score", "MCC")]
+```
+
+HP ZBook Fury G8 Mobile Workstation, Intel Core i9-11950H, eight physical cores / 16 logical cores; R 4.5.0, SIS 1.5, one BLAS thread. Timings exclude data generation. The `sparseglm` rows include
+common candidate scoring and diagnostics. The [`sis_glm()` example](../reference/sis_glm.html#examples)
+and [benchmark script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS.R)
+give the calls and checks.
 
 ## GIC tuning and cross-validation
 

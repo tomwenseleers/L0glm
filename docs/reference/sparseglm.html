@@ -86,7 +86,11 @@ extract a comparison table with <code><a href="L0glm.metrics.html">L0glm.metrics
 <span>  seed <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  mu_floor <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  beta_true <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  plot <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  plot <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  screen <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  nsis <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  screen.maxit <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  screen.nthreads <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'sparseglm'</span></span>
@@ -258,6 +262,29 @@ category and is centered into CLR coordinates.</p></dd>
 <dd><p>Plot the completed coefficient comparison, without refitting.</p></dd>
 
 
+<dt id="arg-screen">screen<a class="anchor" aria-label="anchor" href="#arg-screen"></a></dt>
+<dd><p><code>"auto"</code>, <code>"none"</code>, <code>"SIS"</code> or <code>"ISIS"</code>, shared by all
+methods. Auto enables ISIS when there are more than ten eligible predictors
+per observation. SIS screens once; ISIS alternates screening with the
+requested method's own selected model. Screening uses the original family,
+including when a competing fit uses a labelled WLS approximation.</p></dd>
+
+
+<dt id="arg-nsis">nsis<a class="anchor" aria-label="anchor" href="#arg-nsis"></a></dt>
+<dd><p>Number retained by SIS, or number proposed per ISIS round.
+Defaults to <code>2*floor(n/log(n))</code> for SIS and
+<code>max(1, round(n/(log(log(n))*log(p))))</code> for ISIS.</p></dd>
+
+
+<dt id="arg-screen-maxit">screen.maxit<a class="anchor" aria-label="anchor" href="#arg-screen-maxit"></a></dt>
+<dd><p>Maximum ISIS rounds, default 10. The best round is chosen
+by the requested IC, or GIC within each training fold for CV.</p></dd>
+
+
+<dt id="arg-screen-nthreads">screen.nthreads<a class="anchor" aria-label="anchor" href="#arg-screen-nthreads"></a></dt>
+<dd><p>OpenMP screening threads; <code>NULL</code> uses physical cores.</p></dd>
+
+
 <dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
 <dd><p>A <code>sparseglm</code> result.</p></dd>
 
@@ -331,6 +358,11 @@ or per weighted trial for multinomial. Cox uses Breslow partial-likelihood
 subtraction with the full risk sets, per held-out event, as in <code><a href="L0glm.tune.html">L0glm.tune()</a></code>.
 Folds share observation rows across channels, and whole multinomial count
 rows remain together. Fold means and SE use the conventions of <code><a href="L0glm.tune.html">L0glm.tune()</a></code>.
+Screening and ISIS selection are recomputed within each training fold.
+Excluded predictors return zero coefficients in the original dimensions.
+IC scores retain the original number of predictors after screening.
+Per-method <code>screening</code> diagnostics and training-fold diagnostics are retained
+in <code>tuning</code>; elapsed timings include screening and every ISIS candidate fit.
 L0glm sum-loss penalties are scaled by the training likelihood-mass fraction;
 other backend lambdas retain their native units. The selected model uses all
 data. CV used to select a model is not an independent test of that model.</p>
@@ -366,6 +398,22 @@ accounted for when matching training-fold paths to the requested grid.</p>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>,nlambda<span class="op">=</span><span class="fl">5</span>,beta_true<span class="op">=</span><span class="va">truth</span><span class="op">)</span></span>
 <span><span class="fu"><a href="L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"adj_R2_weighted"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">comparison</span>,which<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The same SIS/ISIS controls apply to every supported method. Each ISIS round</span></span>
+<span><span class="co"># uses that method's own selected model to screen for additional predictors.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">*</span><span class="fl">2000</span><span class="op">)</span>,<span class="fl">100</span>,<span class="fl">2000</span><span class="op">)</span></span>
+<span><span class="va">truth_wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>,<span class="op">-</span><span class="fl">2</span>,<span class="fl">1.5</span>,<span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1997</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y_wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">wide</span><span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span><span class="va">truth_wide</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span></span>
+<span><span class="va">screened</span> <span class="op">&lt;-</span> <span class="fu">sparseglm</span><span class="op">(</span><span class="va">wide</span>,<span class="va">y_wide</span>,method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>,<span class="st">"lasso"</span>,<span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
+<span>  screen<span class="op">=</span><span class="st">"ISIS"</span>,nsis<span class="op">=</span><span class="fl">10</span>,nlambda<span class="op">=</span><span class="fl">5</span>,beta_true<span class="op">=</span><span class="va">truth_wide</span>,</span>
+<span>  lambda<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="preset.lambda.html">preset.lambda</a></span><span class="op">(</span><span class="st">"gic"</span>,<span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">wide</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">wide</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>L0glm<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">screened</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"screen"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co"># With tune="cv", all screening and adaptive pilots use training rows only.</span></span>
+<span><span class="va">screened_cv</span> <span class="op">&lt;-</span> <span class="fu">sparseglm</span><span class="op">(</span><span class="va">wide</span>,<span class="va">y_wide</span>,method<span class="op">=</span><span class="st">"lasso"</span>,screen<span class="op">=</span><span class="st">"SIS"</span>,nsis<span class="op">=</span><span class="fl">20</span>,</span>
+<span>  tune<span class="op">=</span><span class="st">"cv"</span>,nfolds<span class="op">=</span><span class="fl">3</span>,nlambda<span class="op">=</span><span class="fl">5</span>,beta_true<span class="op">=</span><span class="va">truth_wide</span><span class="op">)</span></span>
+<span><span class="fu"><a href="L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">screened_cv</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"screen"</span>,<span class="st">"seconds"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
 <span><span class="co"># Blurred Poisson spike trains: smaller versions of the single/multichannel</span></span>
 <span><span class="co"># deconvolution benchmarks. MCP and SCAD are omitted because they were slow</span></span>
