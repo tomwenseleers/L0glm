@@ -84,11 +84,11 @@ returns time and spike grids. Cox responses are right-censored \code{Surv} objec
 }
 \description{
 Generate blurred spike trains or regression data with Gaussian predictors.
-Returned data and ground truth can be passed to \code{\link[=sparseglm]{sparseglm()}}, or to
-\code{\link[=L0glm.fit]{L0glm.fit()}} and \code{\link[=L0glm.tune]{L0glm.tune()}} with the returned family and intercept flag.
+Returned data and ground truth can be passed to \code{\link[=sparseGLM]{sparseGLM()}}, or to
+\code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=l0glmTune]{l0glmTune()}} with the returned family and intercept flag.
 }
 \details{
-\strong{Deconvolution.} Options are arguments of \code{\link[=simulate_spike_train]{simulate_spike_train()}}, including
+\strong{Deconvolution.} Options are arguments of \code{\link[=simulateSpikeTrain]{simulateSpikeTrain()}}, including
 \code{mean_beta}, \code{sd_logbeta}, \code{sd_noise}, \code{psf}, \code{thresh}, \code{theta}, \code{clip},
 \code{spectra} and \code{channel.sparsity}. Gaussian responses are untruncated by default.
 Numeric setups 1/3 clip negative responses to zero by default; set
@@ -170,13 +170,13 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
 # Standard normal predictors, arbitrary n/p, and signed sparse coefficients.
 regression <- simul("normal", n=150, p=30, n_nonzero=4, intercept=1.5,
   options=list(beta_range=c(-2, 2), error_sd=.5), seed=10)
-fit <- L0glm.fit(regression$X, regression$y, family=regression$family,
+fit <- l0glmFit(regression$X, regression$y, family=regression$family,
   intercept=regression$intercept, nonnegative=FALSE, parallelize=FALSE)
-L0glm.metrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
+l0glmMetrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
 
-# sparseglm reads family, intercept and coefficient truth from the simulation.
-comparison <- sparseglm(regression, method=c("L0glm", "lasso"), nlambda=5)
-L0glm.metrics(comparison)[c("method", "seconds", "gic", "F1_score", "MCC")]
+# sparseGLM reads family, intercept and coefficient truth from the simulation.
+comparison <- sparseGLM(regression, method=c("L0glm", "lasso"), nlambda=5)
+l0glmMetrics(comparison)[c("method", "seconds", "gic", "F1_score", "MCC")]
 
 # ABESS-style correlated predictors and coefficient magnitudes.
 abess_data <- simul("abess", n=200, p=100, n_nonzero=5,
@@ -209,5 +209,5 @@ Hastie, Tibshirani and Tibshirani, best-subset source:
 \url{https://github.com/ryantibs/best-subset/blob/master/bestsubset/R/sim.R}.
 }
 \seealso{
-\code{\link[=simulate_spike_train]{simulate_spike_train()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=sparseglm]{sparseglm()}}
+\code{\link[=simulateSpikeTrain]{simulateSpikeTrain()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=sparseGLM]{sparseGLM()}}
 }

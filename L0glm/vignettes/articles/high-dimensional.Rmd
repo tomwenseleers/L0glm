@@ -19,7 +19,7 @@ examples and scales well to very large predictor sets. SIS was introduced by
 [Fan, Samworth & Wu (2009)](https://www.jmlr.org/papers/v10/fan09a.html)
 developed the general likelihood-based ISIS framework. L0glm uses an offset-based
 screen followed by joint sparse refitting; the controls are documented in
-[`sis_glm()`](../reference/sis_glm.html).
+[`sisGLM()`](../reference/sisGLM.html).
 
 ISIS is enabled by default for ultrahigh-dimensional models through
 `screen="auto"`. Let \(n\) be the number of observations and
@@ -31,7 +31,7 @@ is enabled when
 p_{\mathrm{eligible}}>10n.
 \]
 
-The same rule applies in `L0glm.tune()`, independently for each full-data or CV
+The same rule applies in `l0glmTune()`, independently for each full-data or CV
 training fit, using its training row count. There is no separate minimum sample
 size or predictor count.
 
@@ -51,9 +51,9 @@ set.seed(31)
 X <- matrix(rnorm(250*5000), 250, 5000)
 beta <- numeric(5000); beta[c(5, 50, 500)] <- c(2, -1.5, 1)
 y <- as.numeric(X %*% beta) + rnorm(250)
-fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic",
+fit <- l0glmFit(X, y, family=gaussian(), lambda="gic",
   screen="ISIS", screen.nthreads=2L, relaxed=TRUE)
-L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+l0glmMetrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
 `nsis` controls a SIS retained set or an ISIS batch. The default ISIS batch is
@@ -83,8 +83,8 @@ beta[active] <- runif(60L, -.8, .8)
 set.seed(1)
 y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-fit <- L0glm.fit(X, y, family=gaussian())
-L0glm.metrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
+fit <- l0glmFit(X, y, family=gaussian())
+l0glmMetrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
 <!-- BEGIN million-screening-summary -->
@@ -94,13 +94,13 @@ The default L0glm fit with ISIS recovers **40 true effects with 3 false positive
 ## Compare screening and complete models with SIS
 
 On a Gaussian design with **500 observations and one million predictors**,
-`sis_glm()` and SIS returned **identical complete screening ranks**, including
+`sisGLM()` and SIS returned **identical complete screening ranks**, including
 the same top 100 predictors. Screening-only median timings over three runs:
 
 | Screening routine | Seconds |
 |:--|--:|
-| `sis_glm()`, eight physical cores | 0.24 |
-| `sis_glm(nthreads=1)` | 0.80 |
+| `sisGLM()`, eight physical cores | 0.24 |
+| `sisGLM(nthreads=1)` | 0.80 |
 | SIS Gaussian screen (`obtain.ix0`) | 2.03 |
 
 The SIS row calls its screening helper directly, excluding the subsequent
@@ -115,7 +115,7 @@ one-pass comparison retains 100 predictors. On the million-predictor design,
 ISIS uses the default GIC-based batch size and ten rounds. The SIS-package
 ISIS comparison uses a separate 5,000-predictor design and three rounds;
 `nsis=100` is a batch size in L0glm and a total support limit in SIS.
-Standalone `L0glm.fit()` retains its best ISIS round by GIC; the LASSO
+Standalone `l0glmFit()` retains its best ISIS round by GIC; the LASSO
 comparisons use the requested BIC for their outer searches. The public SIS
 pipeline fits a free intercept; L0glm and glmnet use a zero intercept, matching
 the simulation. Both ICs are saved with the results.
@@ -126,34 +126,34 @@ screening and variable selection for each fitted model.
 | Predictors | Screen | Complete model | Seconds | GIC | TP | FP | F1 | MCC |
 |--:|:--|:--|--:|--:|--:|--:|--:|--:|
 | 1,000,000 | SIS | SIS::SIS + BIC LASSO | 7.04 | 4407 | 12 | 86 | 0.152 | 0.156 |
-| 1,000,000 | SIS | L0glm.fit, GIC preset | 0.31 | 2793 | 7 | 1 | 0.206 | 0.319 |
-| 1,000,000 | SIS | sparseglm LASSO, BIC grid | 1.50 | 4414 | 12 | 87 | 0.151 | 0.156 |
-| 1,000,000 | SIS | sparseglm relaxed LASSO, BIC grid | 1.55 | 4240 | 12 | 80 | 0.158 | 0.161 |
-| 1,000,000 | ISIS | L0glm.fit, GIC preset | 2.30 | 2583 | 40 | 3 | 0.777 | 0.787 |
-| 1,000,000 | ISIS | sparseglm LASSO, BIC grid | 4.36 | 4402 | 9 | 191 | 0.069 | 0.082 |
-| 1,000,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 4.56 | 4187 | 9 | 185 | 0.071 | 0.083 |
+| 1,000,000 | SIS | l0glmFit, GIC preset | 0.31 | 2793 | 7 | 1 | 0.206 | 0.319 |
+| 1,000,000 | SIS | sparseGLM LASSO, BIC grid | 1.50 | 4414 | 12 | 87 | 0.151 | 0.156 |
+| 1,000,000 | SIS | sparseGLM relaxed LASSO, BIC grid | 1.55 | 4240 | 12 | 80 | 0.158 | 0.161 |
+| 1,000,000 | ISIS | l0glmFit, GIC preset | 2.30 | 2583 | 40 | 3 | 0.777 | 0.787 |
+| 1,000,000 | ISIS | sparseGLM LASSO, BIC grid | 4.36 | 4402 | 9 | 191 | 0.069 | 0.082 |
+| 1,000,000 | ISIS | sparseGLM relaxed LASSO, BIC grid | 4.56 | 4187 | 9 | 185 | 0.071 | 0.083 |
 | 5,000 | ISIS | SIS::SIS + BIC LASSO | 22.40 | 2883 | 42 | 57 | 0.528 | 0.538 |
-| 5,000 | ISIS | L0glm.fit, GIC preset | 0.06 | 2180 | 46 | 0 | 0.868 | 0.874 |
-| 5,000 | ISIS | sparseglm LASSO, BIC grid | 0.22 | 4581 | 47 | 228 | 0.281 | 0.352 |
-| 5,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 0.25 | 2939 | 47 | 71 | 0.528 | 0.552 |
+| 5,000 | ISIS | l0glmFit, GIC preset | 0.06 | 2180 | 46 | 0 | 0.868 | 0.874 |
+| 5,000 | ISIS | sparseGLM LASSO, BIC grid | 0.22 | 4581 | 47 | 228 | 0.281 | 0.352 |
+| 5,000 | ISIS | sparseGLM relaxed LASSO, BIC grid | 0.25 | 2939 | 47 | 71 | 0.528 | 0.552 |
 
-`sparseglm()` also supports `screen="SIS"`, `"ISIS"`, `"auto"` and `"none"`
+`sparseGLM()` also supports `screen="SIS"`, `"ISIS"`, `"auto"` and `"none"`
 for every compatible method. Each ISIS search uses its own method's fitted
 predictions as screening offsets. CV recomputes screening on training rows,
 and returned coefficients retain every original predictor row.
 
 ```{r comparison-screening, eval=FALSE}
-comparison <- sparseglm(X, y,
+comparison <- sparseGLM(X, y,
   method=c("L0glm", "abess", "lasso", "relaxed_lasso"),
   screen="ISIS", nsis=10, tune="gic", nlambda=10,
-  lambda=list(L0glm=preset.lambda("gic", ncol(X), nrow(X))),
+  lambda=list(L0glm=presetLambda("gic", ncol(X), nrow(X))),
   options=list(L0glm=list(relaxed=TRUE)), beta_true=beta)
-L0glm.metrics(comparison)[c("method", "screen", "seconds", "gic",
+l0glmMetrics(comparison)[c("method", "screen", "seconds", "gic",
   "TP", "FP", "F1_score", "MCC")]
 ```
 
-HP ZBook Fury G8 Mobile Workstation, Intel Core i9-11950H, eight physical cores / 16 logical cores; R 4.5.0, SIS 1.5, one BLAS thread. Timings exclude data generation. The `sparseglm` rows include
-common candidate scoring and diagnostics. The [`sis_glm()` example](../reference/sis_glm.html#examples)
+HP ZBook Fury G8 Mobile Workstation, Intel Core i9-11950H, eight physical cores / 16 logical cores; R 4.5.0, SIS 1.5, one BLAS thread. Timings exclude data generation. The `sparseGLM` rows include
+common candidate scoring and diagnostics. The [`sisGLM()` example](../reference/sisGLM.html#examples)
 and [benchmark script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS.R)
 give the calls and checks.
 
@@ -184,9 +184,9 @@ include every method and its tuning settings.
 ## GIC tuning and cross-validation
 
 ```{r tuning, eval=FALSE}
-gic <- L0glm.tune(X, y, family=gaussian(), screen="ISIS",
+gic <- l0glmTune(X, y, family=gaussian(), screen="ISIS",
   screen.nthreads=8L, tune="gic", nlambda=10, relaxed=TRUE)
-cv <- L0glm.tune(X, y, family=gaussian(), screen="ISIS",
+cv <- l0glmTune(X, y, family=gaussian(), screen="ISIS",
   screen.nthreads=8L, tune="cv", nfolds=5, nlambda=10, relaxed=TRUE)
 ```
 

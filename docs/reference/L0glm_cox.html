@@ -9,7 +9,7 @@ adaptive L0 selection, an optional relaxed refit, and automatic LLT/PCG routing.
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -172,8 +172,8 @@ Cross-validation in survival analysis. Statistics in Medicine 12, 2305–2314.</
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="L0glm.fit.html">L0glm.fit</a></code>, <code><a href="L0glm.tune.html">L0glm.tune</a></code>,
-<code><a href="L0glm.metrics.html">L0glm.metrics</a></code>, <code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></code></p></div>
+    <div class="dont-index"><p><code><a href="l0glmFit.html">l0glmFit</a></code>, <code><a href="l0glmTune.html">l0glmTune</a></code>,
+<code><a href="l0glmMetrics.html">l0glmMetrics</a></code>, <code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -190,7 +190,7 @@ Cross-validation in survival analysis. Statistics in Medicine 12, 2305–2314.</
 <span>  <span class="va">Xtr</span> <span class="op">&lt;-</span> <span class="va">X</span><span class="op">[</span><span class="va">train</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span>  <span class="va">ytr</span> <span class="op">&lt;-</span> <span class="va">y</span><span class="op">[</span><span class="va">train</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span>  <span class="va">foldid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">train</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">time_l0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">tune_cox</span> <span class="op">&lt;-</span> <span class="fu"><a href="L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">Xtr</span>, <span class="va">ytr</span>,</span>
+<span>  <span class="va">time_l0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">tune_cox</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">Xtr</span>, <span class="va">ytr</span>,</span>
 <span>    family <span class="op">=</span> <span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>, tune <span class="op">=</span> <span class="st">"cv"</span>, foldid <span class="op">=</span> <span class="va">foldid</span>,</span>
 <span>    nlambda <span class="op">=</span> <span class="fl">6</span>, plot <span class="op">=</span> <span class="cn">FALSE</span>, printbest <span class="op">=</span> <span class="cn">FALSE</span>, relaxed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>    maxit <span class="op">=</span> <span class="fl">200</span>, tol <span class="op">=</span> <span class="fl">1e-8</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>

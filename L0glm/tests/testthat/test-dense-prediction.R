@@ -12,7 +12,7 @@ test_that("dense predictions retain offsets, weights, and excluded starting colu
     y <- switch(family$family, gaussian = rnorm(nrow(X), mu, .2),
       poisson = rpois(nrow(X), mu), binomial = rbinom(nrow(X), 1, mu))
     start <- matrix(as.numeric(seq_len(ncol(Z)) %in% eligible), ncol = 1L)
-    actual <- L0glm.fit(X, y, family = family, weights = weights, offset = offset,
+    actual <- l0glmFit(X, y, family = family, weights = weights, offset = offset,
       intercept = TRUE, nonnegative = FALSE, start = start,
       lambda = 0, thresh = 0, maxit = 100L, tol = 1e-10)
     expected <- stats::glm.fit(Z[, eligible], y, family = family,

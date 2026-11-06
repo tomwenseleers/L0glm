@@ -33,10 +33,10 @@ image(C^0.2, col = topo.colors(255))
 # Generate the spectrum profiles
 # Load real-life profiles
 file <- "../benchmarks/multichannel/simulated_spectra.rds"
-simulated_spectra <- readRDS(file)
-m <- ncol(simulated_spectra) # 460
+simulatedSpectra <- readRDS(file)
+m <- ncol(simulatedSpectra) # 460
 # Randomly select npeaks spectra
-S <- simulated_spectra[sample(1:nrow(simulated_spectra), npeaks),]
+S <- simulatedSpectra[sample(1:nrow(simulatedSpectra), npeaks),]
 
 # Simulate response variable
 Y0 <- C %*% S # noiseless simulated signal = linear convolution of spike train with peak shape function

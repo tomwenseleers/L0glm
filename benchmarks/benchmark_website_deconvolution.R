@@ -27,7 +27,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
     times <- numeric(3L)
     for (run in seq_along(times)) {
       gc()
-      times[run] <- system.time(fit <- L0glm.fit(sim$X, sim$y,
+      times[run] <- system.time(fit <- l0glmFit(sim$X, sim$y,
         family=poisson("identity"), lambda="gic", nonnegative=TRUE,
         intercept=FALSE, relaxed=TRUE, grouped=TRUE,
         parallelize=TRUE, ncores=ncores))[["elapsed"]]
@@ -37,7 +37,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
     list(fit=fit, seconds=median(times), repeats=times)
   })
   gic <- lapply(c("lasso", "relaxed_lasso"), function(method) checkpoint(method,
-    sparseglm(sim, family=poisson("identity"), method=method,
+    sparseGLM(sim, family=poisson("identity"), method=method,
       tune="gic", nlambda=10L, nonnegative=TRUE, intercept=FALSE, screen="none",
       approximation=if (case=="single") "wls" else "wls_grouped")))
   stopifnot(all(vapply(gic, function(z) all(z$timings$status=="ok"), logical(1))))
@@ -115,7 +115,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
   }
   result$timings <- timing
   result$foldid <- folds
-  scores <- L0glm.metrics(result)
+  scores <- l0glmMetrics(result)
   timing$tuning_score[1L] <- scores$gic[1L]
   result$timings <- timing
   scores$tuning_score[1L] <- timing$tuning_score[1L]

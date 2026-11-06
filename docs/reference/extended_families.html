@@ -9,7 +9,7 @@ See the separate mathematical help pages for each family."><meta property="og:im
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,7 +57,7 @@ See the separate mathematical help pages for each family.</p>
 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Use <code>L0glm.fit(X,y,family=mgcv::nb())</code> for estimated-shape NB,
+    <p>Use <code>l0glmFit(X,y,family=mgcv::nb())</code> for estimated-shape NB,
 <code>family=mgcv::nb(theta=2)</code> for fixed shape, or
 <code>family=mgcv::nb(theta=-2)</code> to estimate from a starting shape of 2.
 Each NB channel has its own shape parameter; scale dispersion is one.
@@ -140,7 +140,7 @@ responses, but not for Cox, ungrouped fits or single-channel NB. Each pass uses
 candidate and within CV training folds before scoring; pilot fits are unrelaxed.
 The reported L0 objective is a target for a heuristic, not a global certificate.
 There is no reference category in multinomial fitting or selection.</p>
-<p><code>L0glm.metrics</code> reports exact family likelihoods when mu_floor=0, the
+<p><code>l0glmMetrics</code> reports exact family likelihoods when mu_floor=0, the
 family deviance, the target L0 objective, row GIC and parameter-count ICs.
 Object metrics and <code>logLik</code> use exact likelihoods. External NB scoring
 defaults to a mean floor of 1e-8. Cox deviance is -2 times partial log likelihood,
@@ -167,8 +167,8 @@ Cross-validation in survival analysis. Statistics in Medicine 12, 2305–2314.</
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="L0glm.fit.html">L0glm.fit</a></code>, <code><a href="L0glm.tune.html">L0glm.tune</a></code>,
-<code><a href="L0glm.metrics.html">L0glm.metrics</a></code>, <code><a href="L0glm_negative_binomial.html">L0glm_negative_binomial</a></code>,
+    <div class="dont-index"><p><code><a href="l0glmFit.html">l0glmFit</a></code>, <code><a href="l0glmTune.html">l0glmTune</a></code>,
+<code><a href="l0glmMetrics.html">l0glmMetrics</a></code>, <code><a href="L0glm_negative_binomial.html">L0glm_negative_binomial</a></code>,
 <code><a href="L0glm_multinomial.html">L0glm_multinomial</a></code>, <code><a href="L0glm_cox.html">L0glm_cox</a></code></p></div>
     </div>
 

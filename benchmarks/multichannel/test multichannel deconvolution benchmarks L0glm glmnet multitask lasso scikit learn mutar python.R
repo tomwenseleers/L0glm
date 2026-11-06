@@ -11,7 +11,7 @@ s <- 0.1 # sparsity (% of timepoints where there is a peak)
 p <- 500 # 500 variables
 # simulate multichannel blurred spike train with Gaussian noise
 sd_noise <- 1
-sim <- simulate_spike_train(n=p, p=p, k=round(s*p), 
+sim <- simulateSpikeTrain(n=p, p=p, k=round(s*p),
                             mean_beta = 10000,
                             sd_logbeta = 1,
                             family="gaussian",

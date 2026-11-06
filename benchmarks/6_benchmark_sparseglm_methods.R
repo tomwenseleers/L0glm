@@ -63,10 +63,10 @@ for (name in names(cases)) for (criterion in c("gic", "cv")) {
   message(name, ": ", criterion)
   data <- cases[[name]]
   nonnegative <- isTRUE(data$nonnegative)
-  result <- sparseglm(data, method = "all", tune = criterion,
+  result <- sparseGLM(data, method = "all", tune = criterion,
     nlambda = nlambda, nfolds = nfolds, support.size = 0:8,
     nonnegative = nonnegative, approximation = if (nonnegative) "wls" else "none")
-  table <- L0glm.metrics(result)
+  table <- l0glmMetrics(result)
   stopifnot(!any(table$status == "error"))
   key <- paste(name, criterion, sep = "_")
   scores[[key]] <- cbind(case = name, table)

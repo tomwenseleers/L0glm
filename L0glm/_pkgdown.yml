@@ -89,19 +89,19 @@ articles:
     contents: [articles/algorithm, articles/performance]
 reference:
   - title: Fit, tune and compare sparse models
-    contents: [L0glm.fit, L0glm.tune, L0nnpois, sparseglm, L0glm.metrics, preclustering, compulsory_terms]
+    contents: [l0glmFit, l0glmTune, l0nnPois, sparseGLM, l0glmMetrics, preclustering, compulsory_terms]
   - title: Predictions, summaries and information criteria
-    contents: [model_predictions, model_summary, model_criteria, information_criteria, preset.lambda]
+    contents: [model_predictions, model_summary, model_criteria, information_criteria, presetLambda]
   - title: Special families
     contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
   - title: Screening, simulations and solvers
-    contents: [sis_glm, simul, simulate_spike_train, lmridge, control.solver.gen]
+    contents: [sisGLM, simul, simulateSpikeTrain, lmRidge, controlSolverGen]
   - title: Signal noise and dispersion
-    contents: [signal_families, temporal_dispersion]
+    contents: [signal_families, temporalDispersion]
   - title: Visualization and outcome clustering
-    contents: [plotmat, plot_L0glm_benchmark, glm_cluster, glm_dist]
+    contents: [plotMat, plotL0glmBenchmark, glmCluster, glmDist]
   - title: Example data
-    contents: [simulated_spectra]
+    contents: [simulatedSpectra]
   - title: Likelihood adapters
     contents: [logLik.glmnet, logLik.L0Learn, logLik.L0glm_extended_fit]
 footer:

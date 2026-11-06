@@ -11,9 +11,9 @@ test_that("all Eigen methods solve tall and wide weighted ridge objectives", {
     reference <- as.numeric(solve(G, rhs))
     for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
       for (rowaug in c(FALSE, TRUE)) {
-        control <- control.solver.gen("eigen", method, rowaug = rowaug,
+        control <- controlSolverGen("eigen", method, rowaug = rowaug,
                                       tol = 1e-11, maxit = 3000L)
-        beta <- lmridge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
+        beta <- lmRidge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
                         lambdas = d, prior.mean = center, method = method,
                         control.solver = control)
         expect_equal(beta, reference, tolerance = 1e-6,
@@ -35,12 +35,12 @@ test_that("wide systems use the requested kernel in observation coordinates", {
     original(A, b, start, control, iteration)
   })
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
-    beta <- lmridge(Matrix::Matrix(X, sparse = sparse), rnorm(8),
+    beta <- lmRidge(Matrix::Matrix(X, sparse = sparse), rnorm(8),
                     lambdas = rep(2, 31), method = method)
     call <- calls[[length(calls)]]
     expect_equal(call$dim, c(8L, 8L))
     expect_identical(call$sparse, sparse)
-    expect_identical(call$method, control.solver.gen("eigen", method)$method)
+    expect_identical(call$method, controlSolverGen("eigen", method)$method)
     expect_equal(call$start, 8L)
     expect_length(beta, 31L)
   }
@@ -52,7 +52,7 @@ test_that("unpenalized wide solves return the minimum norm solution", {
   y <- rnorm(8)
   reference <- as.numeric(t(X) %*% solve(tcrossprod(X), y))
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
-    beta <- lmridge(Matrix::Matrix(X, sparse = sparse), y, method = method)
+    beta <- lmRidge(Matrix::Matrix(X, sparse = sparse), y, method = method)
     expect_equal(beta, reference, tolerance = 1e-6)
   }
 })
@@ -73,10 +73,10 @@ test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
   for (sparse in c(FALSE, TRUE)) {
     sim <- simul(method = 1L, n = 500L, p = 500L, sparse = sparse,
                  seed = 1L, options = list(sd_noise = 1))
-    lambda <- preset.lambda("gic", 500, 500)
+    lambda <- presetLambda("gic", 500, 500)
     start <- init_coefs(sim$X, sim$y, mu = sim$y, family = gaussian(), lambda = lambda)
     fits <- lapply(c(1L, 3L), function(method)
-      L0glm.fit(sim$X, sim$y, family = gaussian(), start = start, lambda = lambda,
+      l0glmFit(sim$X, sim$y, family = gaussian(), start = start, lambda = lambda,
         nonnegative = TRUE, relaxed = FALSE, parallelize = FALSE,
         openmp = FALSE, method = method))
     reference <- get.metrics(fits[[1L]]$coefficients, sim$X, sim$y,

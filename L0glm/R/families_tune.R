@@ -27,7 +27,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
     starts[k] <- list(a$start); pilots[k] <- list(initialization$pilot)
     theta[[k]] <- vector("list", length(lambdas))
     for (i in seq_along(lambdas)) {
-      fit <- tryCatch(do.call(L0glm.fit, c(a, list(lambda = lambda_train[i, k]))),
+      fit <- tryCatch(do.call(l0glmFit, c(a, list(lambda = lambda_train[i, k]))),
         error = function(e) stop(sprintf("CV fold %d, lambda %.4g: %s", k, lambdas[i], conditionMessage(e)), call. = FALSE))
       if (i == 1L) preprocessing[[k]] <- fit$preprocessing
       theta[[k]][i] <- list(fit$theta)
@@ -37,7 +37,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
         full <- L0glm_ext_cox_eta(eta, full_response, args$weights[, 1L], full_cache)$loglik
         loss[i, k] <- -2 * (full - as.numeric(logLik(fit)))/fold_weights[k]
       } else {
-        loss[i, k] <- L0glm.metrics(fit, args$X[!train, , drop = FALSE],
+        loss[i, k] <- l0glmMetrics(fit, args$X[!train, , drop = FALSE],
           response[!train, , drop = FALSE], args$weights[!train, , drop = FALSE],
           args$offset[!train, , drop = FALSE], mu_floor)$mean_deviance
       }
@@ -82,16 +82,16 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   do_cv <- tune == "cv"
   if (do_cv) foldid <- L0glm_cv_folds(weights, nfolds, foldid) else
     if (!is.null(foldid)) stop("foldid is only used for CV.", call. = FALSE)
-  lambda_preset <- preset.lambda(if (do_cv) "gic" else tune, max(1, p), max(2, n_ic))
+  lambda_preset <- presetLambda(if (do_cv) "gic" else tune, max(1, p), max(2, n_ic))
   reference <- max(lambda_min, lambda_preset)
   args <- c(list(X = X, y = response$y, family = family, weights = weights,
     offset = offset, dispersion = dispersion, start = if (pilot_start) NULL else start), dots)
   cv_args <- args
   pilot_bounds <- if (pilot_start) c(lambda_min,
-    max(lambda_min, preset.lambda("gic", max(1, p), max(2, n_ic)))) else NULL
+    max(lambda_min, presetLambda("gic", max(1, p), max(2, n_ic)))) else NULL
   initialization <- if (pilot_start) L0glm_pilot_start(args, pilot_bounds) else list(start = start, pilot = NULL)
   args$start <- initialization$start
-  fit_lambda <- function(lambda) do.call(L0glm.fit, c(args, list(lambda = lambda)))
+  fit_lambda <- function(lambda) do.call(l0glmFit, c(args, list(lambda = lambda)))
   preset_fit <- fit_lambda(reference)
   is_zero <- function(fit) fit$metrics$selected == 0
   lambda_max <- 2 * reference
@@ -133,7 +133,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   for (i in seq_along(grid)) {
     lambda <- grid[i]
     fit <- if (lambda == reference) preset_fit else if (lambda == lambda_max) endpoint else fit_lambda(lambda)
-    met <- L0glm.metrics(fit, mu_floor = mu_floor)
+    met <- l0glmMetrics(fit, mu_floor = mu_floor)
     met$support_size_estimated <- met$selected
     if (!is.null(coefs.true)) {
       b <- as.matrix(fit$coefficients); truth <- as.matrix(coefs.true)

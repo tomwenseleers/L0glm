@@ -10,14 +10,14 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
   mu_nb <- exp(.4 + .8*X_special[, 1] - .6*X_special[, 2])
   y_nb <- rnbinom(n, mu=mu_nb, size=2)
   # nb() estimates theta; nb(theta=2) would keep it fixed at two.
-  nb_fit <- L0glm.fit(X_special, y_nb, family=mgcv::nb(),
+  nb_fit <- l0glmFit(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
   nb_fit$theta
   coef(nb_fit)
-  nb_gic <- L0glm.tune(X_special, y_nb, family=mgcv::nb(),
+  nb_gic <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="gic", nlambda=5,
     relaxed=TRUE, maxit=100, tol=1e-8)
-  nb_cv <- L0glm.tune(X_special, y_nb, family=mgcv::nb(),
+  nb_cv <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
     relaxed=TRUE, maxit=100, tol=1e-8)
   c(GIC=nb_gic$lambda_best, CV=nb_cv$lambda_best, CV_1se=nb_cv$lambda_1se)
@@ -30,14 +30,14 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
   probabilities <- probabilities/rowSums(probabilities)
   y_multinomial <- factor(vapply(seq_len(n), function(i)
     sample.int(3, 1, prob=probabilities[i, ]), integer(1)), levels=1:3)
-  multinomial_fit <- L0glm.fit(X_special, y_multinomial,
+  multinomial_fit <- l0glmFit(X_special, y_multinomial,
     family=mgcv::multinom(K=2), lambda="gic", grouped=TRUE,
     relaxed=TRUE, maxit=200, tol=1e-8)
   coef(multinomial_fit)               # original-scale, zero-sum CLR rows
-  multinomial_gic <- L0glm.tune(X_special, y_multinomial,
+  multinomial_gic <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="gic", nlambda=5, grouped=TRUE,
     relaxed=TRUE, maxit=200, tol=1e-8)
-  multinomial_cv <- L0glm.tune(X_special, y_multinomial,
+  multinomial_cv <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="cv", nlambda=5,
     nfolds=3, foldid=folds_special, grouped=TRUE,
     relaxed=TRUE, maxit=200, tol=1e-8)
@@ -51,12 +51,12 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     censor_time <- rexp(n, rate=.4)
     y_cox <- survival::Surv(pmin(event_time, censor_time),
       event_time <= censor_time)
-    cox_fit <- L0glm.fit(X_special, y_cox, family=mgcv::cox.ph(),
+    cox_fit <- l0glmFit(X_special, y_cox, family=mgcv::cox.ph(),
       lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
     coef(cox_fit)
-    cox_gic <- L0glm.tune(X_special, y_cox, family=mgcv::cox.ph(),
+    cox_gic <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
       tune="gic", nlambda=5, relaxed=TRUE, maxit=100, tol=1e-8)
-    cox_cv <- L0glm.tune(X_special, y_cox, family=mgcv::cox.ph(),
+    cox_cv <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
       tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
       relaxed=TRUE, maxit=100, tol=1e-8)
     c(GIC=cox_gic$lambda_best, CV=cox_cv$lambda_best, CV_1se=cox_cv$lambda_1se)

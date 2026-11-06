@@ -8,9 +8,9 @@ test_that("wide ridge profiling agrees with the full normal equations", {
   rhs <- crossprod(X, w * y) + d * center
   reference <- as.numeric(solve(G, rhs))
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
-    beta <- lmridge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
+    beta <- lmRidge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
                     lambdas = d, prior.mean = center, method = method,
-                    control.solver = control.solver.gen("eigen", method, tol = 1e-12))
+                    control.solver = controlSolverGen("eigen", method, tol = 1e-12))
     expect_equal(beta, reference, tolerance = 1e-7)
     expect_lt(max(abs(G %*% beta - rhs)), 1e-7)
   }
@@ -25,7 +25,7 @@ test_that("profiling preserves dense or sparse observation-space systems", {
     original(A, b, start, control, iteration)
   })
   for (sparse in c(FALSE, TRUE)) {
-    lmridge(Matrix::Matrix(X, sparse = sparse), 1:8, lambdas = c(0, rep(1, 31)))
+    lmRidge(Matrix::Matrix(X, sparse = sparse), 1:8, lambdas = c(0, rep(1, 31)))
     call <- seen[[length(seen)]]
     expect_equal(call$dim, c(8L, 8L))
     expect_identical(call$sparse, sparse)
@@ -43,10 +43,10 @@ test_that("native profiling handles wide models with several mandatory terms", {
   G <- crossprod(X, w * X) + diag(d)
   reference <- pmax(0, as.numeric(solve(G, crossprod(X, w * y))))
   for (sparse in c(FALSE, TRUE)) for (natural in c(FALSE, TRUE)) {
-    fit <- L0nnpois(Matrix::Matrix(X, sparse = sparse), y,
+    fit <- l0nnPois(Matrix::Matrix(X, sparse = sparse), y,
                     always.include = 2L, lambda = 2, start = start,
                     maxit = 1L, relaxed = FALSE, thresh = 0, parallelize = FALSE,
-                    control.solver = control.solver.gen("eigen", 1L,
+                    control.solver = controlSolverGen("eigen", 1L,
                                                         NaturalOrdering = natural))
     expect_equal(as.numeric(fit$coefficients), reference, tolerance = 1e-9)
     expect_equal(fit$always.include, 1:2)
@@ -57,22 +57,22 @@ test_that("GIC counts the original selectable pool despite intercepts and masks"
   set.seed(1662)
   X <- matrix(runif(40 * 7), 40, 7)
   y <- rpois(40, 3)
-  for (fitter in list(L0glm.fit, L0nnpois)) for (intercept in c(FALSE, TRUE)) {
+  for (fitter in list(l0glmFit, l0nnPois)) for (intercept in c(FALSE, TRUE)) {
     args <- list(X = X, y = y, family = poisson(identity), lambda = "gic",
                  intercept = intercept, always.include = 2L,
                  start = c(1, 0, rep(0, 5)), maxit = 1L, parallelize = FALSE)
     if (intercept) args$start <- c(0, args$start)
-    if (identical(fitter, L0glm.fit)) args$nonnegative <- TRUE
+    if (identical(fitter, l0glmFit)) args$nonnegative <- TRUE
     fit <- do.call(fitter, args)
     expect_equal(fit$p, 6L)
-    expect_equal(fit$init.lambda, preset.lambda("gic", 6, 40))
+    expect_equal(fit$init.lambda, presetLambda("gic", 6, 40))
   }
   XX <- cbind(Intercept = 1, X)
   met <- get.metrics(matrix(0, 8, 1), XX, matrix(y), family = poisson(identity),
                       always.include = 3L)
   expect_equal(met$p, 6L)
   expect_equal(met$support_size_estimated, 0)
-  expect_equal(met$gic, -2 * met$loglik + preset.lambda("gic", 6, 40) * 2)
+  expect_equal(met$gic, -2 * met$loglik + presetLambda("gic", 6, 40) * 2)
 })
 
 test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", {
@@ -90,7 +90,7 @@ test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", 
     original(A, b, start, control, iteration)
   })
   beta <- eigen_ridge_dual(X, y, penalty, rep(0, ncol(X)),
-                          control.solver.gen("eigen", 1L), 1L)
+                          controlSolverGen("eigen", 1L), 1L)
   expect_s4_class(seen, "sparseMatrix")
   expect_lt(length(seen@x), 6L * n)
   expect_false(any(seen@x == 0))
@@ -109,11 +109,11 @@ test_that("native wide sparse nuisance fits preserve dense and threaded results"
   Y <- matrix(rpois(n * 3L, 5), n, 3L)
   opt <- list(y = Y, lambda = 2, start = 1, maxit = 1L, grouped = FALSE,
               relaxed = FALSE, thresh = 0, parallelize = FALSE)
-  sparse <- do.call(L0nnpois, c(list(X = X), opt))
-  dense <- do.call(L0nnpois, c(list(X = as.matrix(X)), opt))
+  sparse <- do.call(l0nnPois, c(list(X = X), opt))
+  dense <- do.call(l0nnPois, c(list(X = as.matrix(X)), opt))
   expect_equal(as.matrix(sparse$coefficients), as.matrix(dense$coefficients), tolerance = 1e-9)
   opt$parallelize <- TRUE
   opt$ncores <- 2L
-  threaded <- do.call(L0nnpois, c(list(X = X), opt))
+  threaded <- do.call(l0nnPois, c(list(X = X), opt))
   expect_identical(sparse$coefficients, threaded$coefficients)
 })

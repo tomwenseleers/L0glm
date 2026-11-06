@@ -20,7 +20,7 @@ library(L0glm)
 n <- 500 # timepoints
 k_true <- 100 # true rank (nr of compounds)
 peak_width_range <- c(1, 5) # peak width range
-sim <- simulate_GCMS(n = n, 
+sim <- simulateGCMS(n = n,
                      k = k_true,
                      peak_width_range = peak_width_range,
                      mean_beta   = 1e4,
@@ -29,32 +29,32 @@ D = sim$D # n x m with n timepoints and m mass channels
 H_true = sim$H_true
 W_true = sim$W_true
 matplot(W_true, type="l") # true elution profiles
-plotmat(D, xlab="Elution time (min)", ylab="Mass (m/z)") # observed chromatogram
-plotmat(H_true, xlab="Compound", ylab="Mass (m/z)") # true mass spectra
+plotMat(D, xlab="Elution time (min)", ylab="Mass (m/z)") # observed chromatogram
+plotMat(H_true, xlab="Compound", ylab="Mass (m/z)") # true mass spectra
 
 # initialise elution profiles (W matrix)
 # we estimate a sensible starting estimate of the typical PSF using
-# L0glm_blind_deco 
+# l0glmBlindDeco
 # (it would also be possible to estimate it from an alkane ladder standard)
 L = 51 # length of PSF
-g0 = logconNMF::convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
-system.time(fitpsf <- L0glm_blind_deco(y = rowSums(D), # we use TIC 
+g0 = logconNMF::convKernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
+system.time(fitpsf <- l0glmBlindDeco(y = rowSums(D), # we use TIC
                           family = poisson(identity), 
                           baseline = NULL, # or "intercept" or "bspline"
                           L = L,                 # PSF kernel length 
                           kernel_est = g0, 
-                          kernel_smoothfun = function(y) log_conc_smooth(y, nknots=round(L/5)),
+                          kernel_smoothfun = function(y) logConcSmooth(y, nknots=round(L/5)),
                           perc = "mean",         # use centroid centering
                           IC = "gic",
                           plot = TRUE,
                           tol = 1e-3))
 # 3s
-Wstart = logconNMF::convmatrix(fitpsf$g_hat, nrow(D)) # n x n banded convolution matrix
+Wstart = logconNMF::convMatrix(fitpsf$g_hat, nrow(D)) # n x n banded convolution matrix
 
 # this matrix can subsequently be pre-subsetted by doing a best subset
 # regression of the row sums of D
 # (=total ion chromatogram) on our banded covariate matrix Wstart using L0glm
-keep <- (L0glm.fit(X = Wstart, 
+keep <- (l0glmFit(X = Wstart,
                         y = rowSums(D), # n x p data matrix, now regressing on row sums of D (=total ion chromatogram)
                         intercept = FALSE,
                         family = poisson(link=identity),
@@ -68,7 +68,7 @@ Wstart = as.matrix(Wstart[, which(keep), drop=F])
 matplot(Wstart, type="l")
 
 # for faster NMF performance we first cluster & pool correlated mass traces ####
-Dagg <- glm_cluster(D,
+Dagg <- glmCluster(D,
             family   = poisson(identity),
             method   = "poissondist",
             rowbins  = 5)$Y_agg # aggregate together every bin of rowbins=5 subsequent timepoints for extra performance
@@ -115,18 +115,18 @@ matplot(-nmfDagg$W, type="l", lty=1, ylim=c(-max(W_true), max(W_true)), add=TRUE
 # nmfD <- XXX FINISH XXX
 
 
-plotmat(nmf$H) # recovered spectra
-plotmat(H_true) # true spectra
+plotMat(nmf$H) # recovered spectra
+plotMat(H_true) # true spectra
 
-plotmat(nmf$W %*% nmf$H)    # sparse NMF reconstruction in aggregated space
+plotMat(nmf$W %*% nmf$H)    # sparse NMF reconstruction in aggregated space
 
-plotmat(sim$D)              # observed data matrix (with Poisson noise)
-plotmat(sim$D_true)         # ground truth (without Poisson noise)
+plotMat(sim$D)              # observed data matrix (with Poisson noise)
+plotMat(sim$D_true)         # ground truth (without Poisson noise)
 
-# plotmat(nmf$W %*% nmf$H-sim$D_true) # residual against ground truth
+# plotMat(nmf$W %*% nmf$H-sim$D_true) # residual against ground truth
 # range(as.matrix(nmf$W %*% nmf$H-sim$D_true)) # -239.2441  181.8252
 # mean(abs(as.matrix(nmf$W %*% nmf$H-sim$D_true))) # MAE against ground truth = 2.743787
-# plotmat(nmf$W %*% nmf$H-sim$D) # residual against observed signal
+# plotMat(nmf$W %*% nmf$H-sim$D) # residual against observed signal
 # range(as.matrix(nmf$W %*% nmf$H-sim$D)) # -299.5757  211.6712
 
 # TODO: calculate maximum pairwise cosine similarity between each recovered spectrum (rows in nmf$H)
@@ -140,7 +140,7 @@ plotmat(sim$D_true)         # ground truth (without Poisson noise)
 # instead of using global updates as in our L0BestRankGNMF algo. That would have
 # the advantage that unimodality constraints could more easily and be more stably
 # incorporated, e.g. by smoothing the obtained estimates with a log-concave spline
-# fit (see ?log_conc_smooth).
+# fit (see ?logConcSmooth).
 # This would scale better and more stably to large datasets.
 
 # Further extensions for tensor factorisation or simultaneous nonnegative matrix

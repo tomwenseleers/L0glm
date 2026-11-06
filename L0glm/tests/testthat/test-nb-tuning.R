@@ -7,7 +7,7 @@ test_that("NB CV returns reproducible full-data best and one-SE fits", {
   args <- list(X = X, y = y, family = mgcv::nb(), intercept = TRUE,
     grouped = FALSE, relaxed = TRUE, maxit = 100, tol = 1e-7,
     nlambda = 4, plot = FALSE, printbest = FALSE, tune = "cv", foldid = folds)
-  result <- do.call(L0glm.tune, args)
+  result <- do.call(l0glmTune, args)
   expect_identical(result$cv$foldid, as.integer(folds))
   expect_true(result$endpoint_zero)
   expect_equal(result$fit_best$init.lambda, result$lambda_best)
@@ -16,14 +16,14 @@ test_that("NB CV returns reproducible full-data best and one-SE fits", {
   b <- which.min(result$cv$mean)
   expect_equal(result$lambda_1se, max(result$lambdas[result$cv$mean <= result$cv$mean[b] + result$cv$se[b]]))
   expect_equal(result$cv$lambda_train, outer(result$lambdas, rep(2/3, 3)))
-  refit <- do.call(L0glm.fit, c(list(X = X, y = y, lambda = result$lambda_best), result$fit_args))
+  refit <- do.call(l0glmFit, c(list(X = X, y = y, lambda = result$lambda_best), result$fit_args))
   expect_equal(refit$coefficients, result$fit_best$coefficients, tolerance = 1e-10)
   expect_equal(refit$theta, result$fit_best$theta, tolerance = 1e-10)
   train <- folds != 1
   train_args <- result$fit_args
   train_args$weights <- train_args$weights[train, , drop = FALSE]
   train_args$offset <- train_args$offset[train, , drop = FALSE]
-  ref <- do.call(L0glm.fit, c(list(X = X[train, ], y = y[train],
+  ref <- do.call(l0glmFit, c(list(X = X[train, ], y = y[train],
     lambda = result$cv$lambda_train[1, 1]), train_args))
   expect_equal(ref$theta, result$cv$theta[[1]][[1]], tolerance = 1e-10)
   expect_equal(ref$preprocessing, result$cv$preprocessing[[1]])

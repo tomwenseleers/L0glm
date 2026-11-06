@@ -2,25 +2,25 @@ test_that("a supplied common start replays every lambda independently", {
   X <- diag(6); y <- c(4, 1, 0.2, -0.1, 0.1, 0.2)
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
     start = c(1, 0, 1, 1, 0, 1), parallelize = FALSE, relaxed = FALSE)
-  tuned <- do.call(L0glm.tune, c(args, list(nlambda = 4, lambda_min = 0.01,
+  tuned <- do.call(l0glmTune, c(args, list(nlambda = 4, lambda_min = 0.01,
     plot = FALSE, printbest = FALSE)))
   expect_equal(tuned$start, args$start)
   expect_null(tuned$pilot)
   expect_equal(tuned$p, 6L)
   for (i in rev(seq_along(tuned$lambdas))) {
-    direct <- do.call(L0glm.fit, c(list(X = X, y = y, lambda = tuned$lambdas[i]),
+    direct <- do.call(l0glmFit, c(list(X = X, y = y, lambda = tuned$lambdas[i]),
                                    tuned$fit_args))
     expect_equal(direct$coefficients, tuned$coefficients[[i]])
     expect_true(all(direct$coefficients[c(2, 5), ] == 0))
   }
-  replay <- do.call(L0glm.fit, c(list(X = X, y = y, lambda = tuned$lambda_best),
+  replay <- do.call(l0glmFit, c(list(X = X, y = y, lambda = tuned$lambda_best),
                                  tuned$fit_args))
   expect_equal(replay, tuned$fit_best)
 })
 
 test_that("pilot pooling retains opposite signed features and structural zeros", {
   calls <- 0L
-  local_mocked_bindings(L0glm.fit = function(..., lambda) {
+  local_mocked_bindings(l0glmFit = function(..., lambda) {
     calls <<- calls + 1L
     beta <- matrix(c(if (calls %% 2L) 2 else -2, 0, 0, 1), 2, 2)
     list(coefficients = beta, always.include = integer())
@@ -41,10 +41,10 @@ test_that("pilot starts match independent fits and reproduce the full tuning pat
   y <- 1 + 2 * X[, 1] - X[, 3] + rnorm(70)
   args <- list(X = X, y = y, family = gaussian(), intercept = TRUE,
     parallelize = FALSE, relaxed = FALSE)
-  tuned <- do.call(L0glm.tune, c(args, list(start = "pilot", nlambda = 4,
+  tuned <- do.call(l0glmTune, c(args, list(start = "pilot", nlambda = 4,
     plot = FALSE, printbest = FALSE)))
   coefficients <- vapply(tuned$pilot$lambda, function(lambda)
-    as.numeric(do.call(L0glm.fit, c(args, list(lambda = lambda)))$coefficients),
+    as.numeric(do.call(l0glmFit, c(args, list(lambda = lambda)))$coefficients),
     numeric(11))
   direction <- sign(rowMeans(coefficients))
   cancel <- which(direction == 0)
@@ -55,7 +55,7 @@ test_that("pilot starts match independent fits and reproduce the full tuning pat
   expect_equal(nrow(tuned$start), 11L)
   expect_true(tuned$endpoint_zero)
   for (i in rev(seq_along(tuned$lambdas))) {
-    direct <- do.call(L0glm.fit, c(list(X = X, y = y, lambda = tuned$lambdas[i]),
+    direct <- do.call(l0glmFit, c(list(X = X, y = y, lambda = tuned$lambdas[i]),
                                    tuned$fit_args))
     expect_equal(direct$coefficients, tuned$coefficients[[i]])
   }
@@ -69,14 +69,14 @@ test_that("CV builds pilot starts and scales using only each fold's training row
   y <- X[, 1] + rnorm(n)
   folds <- rep(1:3, length.out = n)
   observed <- list()
-  original <- L0glm.fit
-  local_mocked_bindings(L0glm.fit = function(X, y, ...) {
+  original <- l0glmFit
+  local_mocked_bindings(l0glmFit = function(X, y, ...) {
     args <- list(...)
     if (nrow(X) < n) observed[[length(observed) + 1L]] <<-
       list(rows = as.integer(rownames(X)), start = args$start, lambda = args$lambda)
     original(X, y, ...)
   })
-  tuned <- L0glm.tune(X, y, family = gaussian(), start = "pilot", tune = "cv",
+  tuned <- l0glmTune(X, y, family = gaussian(), start = "pilot", tune = "cv",
     foldid = folds, nlambda = 3L, parallelize = FALSE, plot = FALSE, printbest = FALSE)
   expect_length(observed, 3L * 13L)
   for (k in 1:3) {
@@ -99,7 +99,7 @@ test_that("multichannel common starts preserve each channel's restrictions", {
   y <- cbind(c(8, 0, 4, 1, 0, 0), c(0, 6, 2, 0, 0, 1))
   start <- matrix(1, 6, 2); start[c(2, 5), 1] <- 0; start[c(1, 5), 2] <- 0
   for (sparse in c(FALSE, TRUE)) {
-    tuned <- L0glm.tune(Matrix::Matrix(X, sparse = sparse), y,
+    tuned <- l0glmTune(Matrix::Matrix(X, sparse = sparse), y,
       family = poisson(identity), nonnegative = TRUE, grouped = TRUE,
       group.maxit = 2L, start = start, relaxed = TRUE, nlambda = 3L,
       plot = FALSE, printbest = FALSE, parallelize = FALSE)

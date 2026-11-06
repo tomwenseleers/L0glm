@@ -25,7 +25,7 @@ library(GPUmatrix)
 library(tensorflow)
 
 set.seed(1)
-sim = simulate_spike_train(n=10000, p=10000, 
+sim = simulateSpikeTrain(n=10000, p=10000,
                            k=100, sparse=TRUE) # blurred spike train with 10000 timepoints & 200 blurred peaks
 library(Matrix)
 Xs = sim$X # sparse covariate matrix Xs of class dgCMatrix (time-shifted copies of the point spread function)

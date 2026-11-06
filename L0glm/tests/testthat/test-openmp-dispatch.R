@@ -1,5 +1,5 @@
-test_that("eligible L0glm.fit calls forward all fitting controls to L0nnpois", {
-  local_mocked_bindings(L0nnpois = function(...) list(args = list(...)))
+test_that("eligible l0glmFit calls forward all fitting controls to l0nnPois", {
+  local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
   X <- matrix(1, 5, 3)
   y <- cbind(1:5, 2:6)
   args <- list(
@@ -14,24 +14,24 @@ test_that("eligible L0glm.fit calls forward all fitting controls to L0nnpois", {
     # Test the primitive backend dispatch independently of nuisance orchestration.
     control.solver = list(NaturalOrdering = TRUE, .nuisance = FALSE), verbose = TRUE, validation = NULL
   )
-  fit <- do.call(L0glm.fit, args)
+  fit <- do.call(l0glmFit, args)
   expect_setequal(names(fit$args), setdiff(names(args), "nonnegative"))
   expect_equal(fit$args, args[names(fit$args)])
 })
 
 test_that("OpenMP dispatch handles vector responses and family functions", {
-  local_mocked_bindings(L0nnpois = function(...) list(args = list(...)))
-  fit <- L0glm.fit(diag(4), 1:4, nonnegative = TRUE,
+  local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
+  fit <- l0glmFit(diag(4), 1:4, nonnegative = TRUE,
                    family = function() poisson(identity))
   expect_false(fit$args$relaxed)
   expect_false(fit$args$intercept)
   expect_identical(fit$args$family$family, "poisson")
-  # L0glm.fit retains its own public lambda default; dispatch does not change it.
+  # l0glmFit retains its own public lambda default; dispatch does not change it.
   expect_identical(fit$args$lambda, 1)
 })
 
 test_that("fits outside the Poisson specialization use the general driver", {
-  local_mocked_bindings(L0nnpois = function(...) stop("Unexpected dispatch"))
+  local_mocked_bindings(l0nnPois = function(...) stop("Unexpected dispatch"))
   base <- list(X = diag(4), y = c(4, 3, 2, 1), family = poisson(identity),
                nonnegative = TRUE, parallelize = FALSE, grouped = FALSE,
                relaxed = FALSE, lambda = 0.01)
@@ -40,17 +40,17 @@ test_that("fits outside the Poisson specialization use the general driver", {
     list(family = gaussian(identity)), list(family = poisson(log)),
     list(method = 2L), list(method = 3L), list(method = 4L),
     list(method = 5L), list(method = 6L), list(solver = "osqp"),
-    list(control.solver = control.solver.gen("eigen", 2L)),
-    list(control.solver = control.solver.gen("eigen", 5L)),
-    list(control.solver = control.solver.gen("eigen", 1L, rowaug = FALSE))
+    list(control.solver = controlSolverGen("eigen", 2L)),
+    list(control.solver = controlSolverGen("eigen", 5L)),
+    list(control.solver = controlSolverGen("eigen", 1L, rowaug = FALSE))
   )
   for (variant in variants) {
-    fit <- do.call(L0glm.fit, utils::modifyList(base, variant))
+    fit <- do.call(l0glmFit, utils::modifyList(base, variant))
     expect_equal(dim(fit$coefficients), c(4L, 1L))
     expect_true(all(is.finite(fit$coefficients)))
   }
   for (invalid in list(NA, "true", 1, logical(), c(TRUE, FALSE))) {
-    expect_error(L0glm.fit(diag(2), 1:2, openmp = invalid),
+    expect_error(l0glmFit(diag(2), 1:2, openmp = invalid),
                  "openmp must be TRUE or FALSE", fixed = TRUE)
   }
 })
@@ -68,10 +68,10 @@ test_that("dispatched grouped fits agree with direct and R fits", {
                    offset = Matrix::Matrix(0.2, 60, 3),
                    lambda = "gic", grouped = grouped, relaxed = TRUE,
                    parallelize = FALSE, group.maxit = 2L, maxit = 15L)
-      direct <- do.call(L0nnpois, args)
-      dispatched <- do.call(L0glm.fit, c(args, list(
+      direct <- do.call(l0nnPois, args)
+      dispatched <- do.call(l0glmFit, c(args, list(
         family = poisson(identity), nonnegative = TRUE)))
-      general <- do.call(L0glm.fit, c(args, list(
+      general <- do.call(l0glmFit, c(args, list(
         family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
       expect_equal(dispatched, direct)
       expect_equal(as.matrix(dispatched$coefficients), as.matrix(general$coefficients),
@@ -80,18 +80,18 @@ test_that("dispatched grouped fits agree with direct and R fits", {
   }
 })
 
-test_that("L0nnpois defaults to the GIC penalty", {
-  expect_identical(formals(L0nnpois)$lambda, "gic")
-  implicit <- L0nnpois(diag(6), c(0, 3, 0, 5, 0, 0), parallelize = FALSE)
-  explicit <- L0nnpois(diag(6), c(0, 3, 0, 5, 0, 0), lambda = "gic", parallelize = FALSE)
+test_that("l0nnPois defaults to the GIC penalty", {
+  expect_identical(formals(l0nnPois)$lambda, "gic")
+  implicit <- l0nnPois(diag(6), c(0, 3, 0, 5, 0, 0), parallelize = FALSE)
+  explicit <- l0nnPois(diag(6), c(0, 3, 0, 5, 0, 0), lambda = "gic", parallelize = FALSE)
   expect_equal(implicit, explicit)
   expect_equal(implicit$init.lambda, log(6) * log(log(6)))
 })
 
 test_that("Poisson dispatch rejects invalid responses", {
   for (bad in list(c(-1, 2), c(NA, 2), c(Inf, 2))) {
-    expect_error(L0glm.fit(diag(2), bad, family = poisson(identity), nonnegative = TRUE),
+    expect_error(l0glmFit(diag(2), bad, family = poisson(identity), nonnegative = TRUE),
                  "finite and nonnegative")
-    expect_error(L0nnpois(diag(2), bad), "finite and nonnegative")
+    expect_error(l0nnPois(diag(2), bad), "finite and nonnegative")
   }
 })

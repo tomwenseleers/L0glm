@@ -94,7 +94,7 @@ test_that("million-predictor paths draw only varying paths and one zero", {
 test_that("heatmaps stack responses, truth and methods with correct support lines", {
   object <- sparseglm_plot_fixture()
   calls <- lines <- list()
-  testthat::local_mocked_bindings(plotmat=function(M,...) {
+  testthat::local_mocked_bindings(plotMat=function(M,...) {
     calls[[length(calls)+1L]] <<- c(list(M=M,layout=graphics::par("mfrow")),list(...))
     graphics::plot.new();graphics::plot.window(xlim=c(1,nrow(M)),ylim=c(1,ncol(M)))
   }, .package="L0glm")
@@ -144,10 +144,10 @@ test_that("signed heatmaps preserve negatives and one-dimensional image axes wor
   captured <- NULL
   testthat::local_mocked_bindings(image=function(...) {captured <<- list(...)}, .package="graphics")
   M <- matrix(c(-4,0,1,9),2)
-  plotmat(M,gamma=.5,signed=TRUE,axes=FALSE)
+  plotMat(M,gamma=.5,signed=TRUE,axes=FALSE)
   expect_equal(unname(captured$z),matrix(c(-2,0,1,3),2))
-  plotmat(M,gamma=.5,axes=FALSE)
+  plotMat(M,gamma=.5,axes=FALSE)
   expect_equal(unname(captured$z),matrix(c(0,0,1,3),2))
   testthat::local_mocked_bindings(axis=function(...) NULL,box=function(...) NULL,.package="graphics")
-  expect_no_error(plotmat(matrix(0,1,3)))
+  expect_no_error(plotMat(matrix(0,1,3)))
 })

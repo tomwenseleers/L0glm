@@ -22,8 +22,8 @@ Each predictor keeps its original summation order. Workers retain private top-k 
 Usage after rebuilding/reinstalling the package:
 
 ```r
-screen <- sis_glm(X, y, nsis = 160, return_stats = FALSE, nthreads = 8)
-fit <- L0glm.fit(X, y, screen.nthreads = 8, nthreads = 1)
+screen <- sisGLM(X, y, nsis = 160, return_stats = FALSE, nthreads = 8)
+fit <- l0glmFit(X, y, screen.nthreads = 8, nthreads = 1)
 fit$screening$nthreads
 fit$screening$history
 ```

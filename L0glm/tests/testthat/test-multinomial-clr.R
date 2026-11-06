@@ -10,7 +10,7 @@ test_that("CLR elementwise penalties and masks solve the exact equality quadrati
     B <- matrix(0,p,C); D <- matrix(runif(p*C,.5,3),p,C)
     D[1,] <- 0; D[2,1] <- Inf; D[3,1:3] <- Inf
     data$prior <- matrix(rnorm(p*C,sd=.1),p,C); data$prior <- data$prior-rowMeans(data$prior)
-    args <- list(solver="eigen",method=1L,control.solver=control.solver.gen("eigen",1L))
+    args <- list(solver="eigen",method=1L,control.solver=controlSolverGen("eigen",1L))
     candidate <- L0glm_ext_multinomial_working(data,B,D,list(),args)
     H <- kronecker(diag(1/C,C)-matrix(1/C^2,C,C),crossprod(X))
     score <- as.numeric(crossprod(X,data$y-1/C))
@@ -41,10 +41,10 @@ test_that("grouped and CLR elementwise L0 are category permutation invariant", {
   Y <- t(vapply(seq_len(n),function(i)as.numeric(rmultinom(1,2,P[i,])),numeric(C)))
   colnames(Y) <- c("a","b","c")
   for(grouped in c(FALSE,TRUE)) {
-    fit <- L0glm.fit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
+    fit <- l0glmFit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
       relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8)
     for(perm in list(c(3,1,2),c(2,3,1),c(3,2,1),c(2,1,3),c(1,3,2))) {
-      other <- L0glm.fit(X,Y[,perm],family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
+      other <- l0glmFit(X,Y[,perm],family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
         relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8)
       expect_equal(as.matrix(other$coefficients)[,order(perm)],as.matrix(fit$coefficients),tolerance=1e-6)
       expect_equal(other$objective,fit$objective,tolerance=1e-6)
@@ -52,7 +52,7 @@ test_that("grouped and CLR elementwise L0 are category permutation invariant", {
     contrasts <- L0glm_ext_contrasts
     rotation <- matrix(c(cos(.7),sin(.7),-sin(.7),cos(.7)),2,2)
     rotated <- testthat::with_mocked_bindings(
-      L0glm.fit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
+      l0glmFit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
         relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8),
       L0glm_ext_contrasts=function(C) {
         Q <- contrasts(C)
@@ -78,15 +78,15 @@ test_that("binomial multinomial limit, CLR offsets and start values are consiste
   y <- rbinom(250,1,plogis(eta)); off <- runif(250,-.2,.2)
   Y <- cbind(1-y,y)
   offset <- cbind(-off/2,off/2)
-  fit <- L0glm.fit(X,Y,family=mgcv::multinom(K=1),offset=offset,
+  fit <- l0glmFit(X,Y,family=mgcv::multinom(K=1),offset=offset,
     lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
   ref <- glm(y~X+offset(off),family=binomial(),control=glm.control(epsilon=1e-12))
   expect_equal(as.numeric(fit$coefficients[,2]-fit$coefficients[,1]),unname(coef(ref)),tolerance=1e-7)
   expect_equal(fit$metrics$df,5)
   common <- matrix(runif(250),250,2)
-  same <- L0glm.fit(X,Y,family=mgcv::multinom(K=1),offset=offset+common,
+  same <- l0glmFit(X,Y,family=mgcv::multinom(K=1),offset=offset+common,
     lambda=0,relaxed=FALSE,maxit=100,tol=1e-9,start=matrix(1,5,2))
   expect_equal(fit$coefficients,same$coefficients,tolerance=1e-9)
   expect_equal(rowSums(same$offset),rep(0,250),tolerance=1e-13)
-  expect_error(L0glm.fit(X,Y,family=mgcv::multinom(K=1),start=matrix(1,5,1)),"CLR column")
+  expect_error(l0glmFit(X,Y,family=mgcv::multinom(K=1),start=matrix(1,5,1)),"CLR column")
 })

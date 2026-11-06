@@ -5,7 +5,7 @@ test_that("Cox tied weighted offset fits and survival predictions match coxph", 
   event <- rexp(300, .1 * exp(X %*% c(.4, -.3, .2) + off)); censor <- rexp(300, .05)
   time <- round(pmin(event, censor), 1); status <- as.numeric(event <= censor)
   y <- survival::Surv(time, status); w <- sample(1:3, 300, TRUE)
-  fit <- L0glm.fit(X, y, family = mgcv::cox.ph(), weights = w, offset = off,
+  fit <- l0glmFit(X, y, family = mgcv::cox.ph(), weights = w, offset = off,
     lambda = 0, maxit = 100, relaxed = FALSE, tol = 1e-9)
   ref <- survival::coxph(y ~ X + offset(off), weights = w, ties = "breslow",
     control = survival::coxph.control(eps = 1e-11))
@@ -20,11 +20,11 @@ test_that("Cox tied weighted offset fits and survival predictions match coxph", 
   expect_true(all(survival >= 0 & survival <= 1))
   expect_true(all(apply(survival, 1, function(z) all(diff(z) <= 0))))
   index <- sample.int(300)
-  other <- L0glm.fit(Matrix::Matrix(X[index, ], sparse = TRUE), y[index, ],
+  other <- l0glmFit(Matrix::Matrix(X[index, ], sparse = TRUE), y[index, ],
     family = mgcv::cox.ph(), weights = w[index], offset = off[index],
     lambda = 0, maxit = 100, relaxed = FALSE, tol = 1e-9)
   expect_equal(as.matrix(other$coefficients), as.matrix(fit$coefficients), tolerance = 1e-7)
-  expect_error(L0glm.fit(X, survival::Surv(rep(0, 300), time + 1, status),
+  expect_error(l0glmFit(X, survival::Surv(rep(0, 300), time + 1, status),
                          family = mgcv::cox.ph()), "right censoring")
 })
 
@@ -34,7 +34,7 @@ test_that("wide block IRLS and Cox kernel solves match coefficient-space quadrat
   n <- 18; p <- 30
   X <- matrix(rnorm(n * p), n, p)
   y <- factor(rep(1:3, length.out = n))
-  args <- list(solver = "eigen", method = 1L, control.solver = control.solver.gen("eigen", 1L))
+  args <- list(solver = "eigen", method = 1L, control.solver = controlSolverGen("eigen", 1L))
   data <- L0glm_ext_prepare(X, y, mgcv::multinom(K = 2), NULL, NULL,
     FALSE, NULL, FALSE, "none", 1, NULL, list())
   B <- data$B * .1; D <- matrix(3, p, 3)

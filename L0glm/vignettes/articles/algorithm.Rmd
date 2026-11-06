@@ -382,7 +382,7 @@ Its discriminant is nonnegative exactly when
 The relaxed fit removes the remaining ridge shrinkage. This calibration also
 works well approximately for non-orthogonal designs, as supported by the
 simulations of [Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620)
-and the examples here. If desired, `L0glm.tune()` efficiently searches a grid
+and the examples here. If desired, `l0glmTune()` efficiently searches a grid
 around the preset to select the regularization level more accurately for the
 data at hand, using the actual information criterion or cross-validated deviance.
 
@@ -521,7 +521,7 @@ dispersion updates and grouped/relaxed coordination in C++. All Eigen methods
 share their kernels with the R solver interfaces, retain dense or sparse storage
 and share the design across OpenMP threads. OSQP and `bigGlm` enter through their
 R-facing dependency interfaces on the R thread, using independent R workers for
-concurrent channels. Nonnegative identity-link Poisson LLT fits use `L0nnpois`.
+concurrent channels. Nonnegative identity-link Poisson LLT fits use `l0nnPois`.
 
 For ultrahigh dimensions, SIS or offset-based ISIS adds another level of
 dimension reduction. Compiled screening ranks candidates, and joint refitting
@@ -533,7 +533,7 @@ updates the support in small batches. This follows the screening ideas of
 
 The GIC preset is \(\lambda=\log p\log\log n\), motivated by
 [Fan & Tang (2013)](https://doi.org/10.1111/rssb.12001).
-`L0glm.tune()` can instead select candidate fits by an IC or held-out deviance.
+`l0glmTune()` can instead select candidate fits by an IC or held-out deviance.
 CV returns both the minimum-deviance and one-SE full-data models.
 
 Reported `GIC()` uses the model's parameter dimension: ordinary multichannel
@@ -546,8 +546,8 @@ distribution parameters and penalties.
 
 ## Appendix: mathematical pseudocode {#algorithm-appendix}
 
-The following algorithms describe the computations used by `L0glm.fit()` and
-`L0nnpois()`. They share preprocessing, ridge solves and stopping routines.
+The following algorithms describe the computations used by `l0glmFit()` and
+`l0nnPois()`. They share preprocessing, ridge solves and stopping routines.
 Here \(C\) denotes the number of multinomial categories, \(m\) the number of
 ordinary response channels, and \(q\) the number of design columns after adding
 any intercept. The selectable predictor count is \(p\).
@@ -633,7 +633,7 @@ using the selected information criterion. For GIC,
 \(\lambda=\log(p)\log\log(n_{\rm IC})\): ordinary GLMs use the number of rows,
 NB and multinomial use the number of positive-weight rows, and Cox uses the
 weighted number of events. The function defaults are `lambda=1` for
-`L0glm.fit()` and `lambda="gic"` for `L0nnpois()`.
+`l0glmFit()` and `lambda="gic"` for `l0nnPois()`.
 
 ### A.2. Ordinary-family initialization and dispersion {#appendix-initialization}
 
@@ -714,7 +714,7 @@ unit intercept, compute each slope conditional on that intercept. With
 \((r_j-t_jr_0/d_0)/(d_j-t_j^2/d_0)\).
 For Gaussian models multiply the whole seed by
 \(\sum_iW_i^0z_i^0(Xb^0)_i/\sum_iW_i^0(Xb^0)_i^2\), taking zero when its
-denominator vanishes. Clip to the bounds. `L0nnpois()` uses the Poisson
+denominator vanishes. Clip to the bounds. `l0nnPois()` uses the Poisson
 identity-link specialization of these diagonal formulas.
 
 Supplied coefficient starts replace this coefficient-seeding calculation.
@@ -880,7 +880,7 @@ and, when mandatory terms exist, also the prediction-change ratio
 
 Take the larger change. For a Gaussian identity-link dense direct solve,
 the weighted Gram matrix is cached while the active support shrinks.
-`L0nnpois()` specializes Algorithm 1 to nonnegative Poisson identity-link
+`l0nnPois()` specializes Algorithm 1 to nonnegative Poisson identity-link
 fitting: \(\phi=1\), \(W_i=a_i/\mu_i\), \(z_i=y_i-o_i\), with Eigen LLT,
 Woodbury where appropriate and OpenMP across channels.
 
@@ -1200,7 +1200,7 @@ partial-likelihood and prediction conventions.
 SIS ranks each candidate by its efficient score conditional on a nuisance
 model. The null fit includes the supplied offset. The default screening
 nuisance block is an intercept for ordinary, NB and multinomial responses,
-and empty for Cox; standalone `sis_glm()` also accepts a `nuisance` design.
+and empty for Cox; standalone `sisGLM()` also accepts a `nuisance` design.
 This screening nuisance block has its own role alongside the joint model's
 `intercept` and `always.include` terms.
 
@@ -1297,7 +1297,7 @@ from one joint fit remains eligible for a later screening round. The current
 fitted predictor enters the next **screening** offset; every joint fit uses
 the original model offset.
 
-For `L0glm.fit()` the batch/retained-set defaults are
+For `l0glmFit()` the batch/retained-set defaults are
 
 \[
 \begin{aligned}
@@ -1307,10 +1307,10 @@ b_{\rm ISIS}&=\max\left\{1,\ \operatorname{round}
 \end{aligned}
 \]
 
-capped at the available predictor count. Standalone `sis_glm()` defaults to
+capped at the available predictor count. Standalone `sisGLM()` defaults to
 \(\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}\). An explicit `nsis`
 overrides these sizes. The automatic rule \(p_{\mathrm{eligible}}>10n\)
-has no separate minimum sample size or predictor count. `L0glm.tune()` uses
+has no separate minimum sample size or predictor count. `l0glmTune()` uses
 the same dispatch independently for each full-data and CV training fit,
 with \(n\) equal to that fit's training row count.
 
@@ -1363,7 +1363,7 @@ For per-observation validation losses \(l_i\) and normalized response masses
 \(\omega_i\), the candidate SE is
 \(\{\sum_i\omega_i^2(l_i-\overline l)^2/(1-\sum_i\omega_i^2)\}^{1/2}\),
 taking zero when only one positive mass is available.
-`L0glm.tune(tune="cv")` wraps the same fitting routines in training folds;
+`l0glmTune(tune="cv")` wraps the same fitting routines in training folds;
 each fold computes its own initializers and screening.
 
 Returned coefficients always use the original predictor units and original

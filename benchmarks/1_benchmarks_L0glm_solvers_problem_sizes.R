@@ -94,7 +94,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   timed_fit <- withCallingHandlers(
     tryCatch(
       microbenchmark::microbenchmark({
-        fit <- L0glm::L0glm.fit(
+        fit <- L0glm::l0glmFit(
           X = X,
           y = y,
           start = start_values,
@@ -111,7 +111,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
           solver = solver_backend,
           method = solver_method,
           control.solver = do.call(
-            L0glm::control.solver.gen,
+            L0glm::controlSolverGen,
             list(solver = solver_backend, method = solver_method)
           )
         )
@@ -273,7 +273,7 @@ for (family_name in names(family_grid)) {
       y <- sim$y
       beta_true <- sim$beta_true
 
-      lambda_preset <- L0glm:::preset.lambda(
+      lambda_preset <- L0glm:::presetLambda(
         IC = criterion,
         p = ncol(X),
         n = nrow(X)

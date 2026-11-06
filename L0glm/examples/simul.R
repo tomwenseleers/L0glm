@@ -13,13 +13,13 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
 # Standard normal predictors, arbitrary n/p, and signed sparse coefficients.
 regression <- simul("normal", n=150, p=30, n_nonzero=4, intercept=1.5,
   options=list(beta_range=c(-2, 2), error_sd=.5), seed=10)
-fit <- L0glm.fit(regression$X, regression$y, family=regression$family,
+fit <- l0glmFit(regression$X, regression$y, family=regression$family,
   intercept=regression$intercept, nonnegative=FALSE, parallelize=FALSE)
-L0glm.metrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
+l0glmMetrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
 
-# sparseglm reads family, intercept and coefficient truth from the simulation.
-comparison <- sparseglm(regression, method=c("L0glm", "lasso"), nlambda=5)
-L0glm.metrics(comparison)[c("method", "seconds", "gic", "F1_score", "MCC")]
+# sparseGLM reads family, intercept and coefficient truth from the simulation.
+comparison <- sparseGLM(regression, method=c("L0glm", "lasso"), nlambda=5)
+l0glmMetrics(comparison)[c("method", "seconds", "gic", "F1_score", "MCC")]
 
 # ABESS-style correlated predictors and coefficient magnitudes.
 abess_data <- simul("abess", n=200, p=100, n_nonzero=5,

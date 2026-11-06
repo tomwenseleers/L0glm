@@ -5,7 +5,7 @@ test_that("near-square Gaussian pilots retain enough noise to select sparse mode
   beta[round(seq(1, 50, length.out = 5))] <- c(1, -1, 1, -1, 1)
   y <- as.numeric(X %*% beta) + rnorm(50, sd = sqrt(5 / 6))
   rng <- .Random.seed
-  fit <- L0glm.fit(X, y, lambda = "gic", relaxed = TRUE, maxit = 100,
+  fit <- l0glmFit(X, y, lambda = "gic", relaxed = TRUE, maxit = 100,
                    screen = "none", parallelize = FALSE)
   expect_identical(.Random.seed, rng)
   expect_lt(sum((as.numeric(coef(fit)) - beta)^2) / 5, 0.05)
@@ -42,7 +42,7 @@ test_that("a supplied dispersion bypasses the automatic pilot", {
   X <- matrix(rnorm(40 * 40), 40)
   y <- X[, 1] + rnorm(40)
   for (value in c(1, -1)) {
-    fit <- L0glm.fit(X, y, dispersion = value, lambda = "gic",
+    fit <- l0glmFit(X, y, dispersion = value, lambda = "gic",
                      maxit = 1, parallelize = FALSE)
     expect_identical(fit$dispersion, 1)
     expect_true(all(is.finite(coef(fit))))

@@ -3,7 +3,7 @@ model_summary_fixture <- function(m=1L) {
   X <- matrix(rnorm(320),64,5,dimnames=list(NULL,letters[1:5]))
   B <- matrix(rep(c(2,-1,0,0,0),m),5,m)
   y <- X %*% B + matrix(rnorm(64*m,sd=.5),64,m)
-  fit <- L0glm.fit(X,y,lambda=0,thresh=0,intercept=TRUE,
+  fit <- l0glmFit(X,y,lambda=0,thresh=0,intercept=TRUE,
     parallelize=FALSE,relaxed=FALSE)
   list(fit=fit,X=X,y=y,truth=rbind(0,B))
 }
@@ -16,7 +16,7 @@ test_that("fit summaries retain sparse original-scale coefficients and common sc
   expect_identical(details$coefficients,coef(fit))
   expect_identical(coef(details),coef(fit))
   expect_s4_class(details$coefficients,"sparseMatrix")
-  expect_equal(details$metrics,L0glm.metrics(fit,mu_floor=0,beta_true=data$truth))
+  expect_equal(details$metrics,l0glmMetrics(fit,mu_floor=0,beta_true=data$truth))
   expect_equal(c(details$n,details$p,details$m),c(64,5,3))
   expect_equal(details$nobs,nobs(fit))
   expect_equal(details$selected_rows,setdiff(which(Matrix::rowSums(coef(fit)!=0)>0),fit$always.include))
@@ -36,7 +36,7 @@ test_that("fit summaries retain sparse original-scale coefficients and common sc
 
 test_that("printing fits is compact and never evaluates likelihoods", {
   fit <- model_summary_fixture()$fit
-  local_mocked_bindings(L0glm.metrics=function(...) stop("Scoring must not run"))
+  local_mocked_bindings(l0glmMetrics=function(...) stop("Scoring must not run"))
   output <- capture.output(visible <- withVisible(print(fit,digits=3)))
   expect_false(visible$visible)
   expect_identical(visible$value,fit)
@@ -68,12 +68,12 @@ test_that("native summaries distinguish exact scores from optional positive-mean
   set.seed(2502)
   X <- matrix(runif(120),40,3)
   y <- rpois(40,1+X[,1])
-  fit <- L0nnpois(X,y,lambda=2,parallelize=FALSE)
+  fit <- l0nnPois(X,y,lambda=2,parallelize=FALSE)
   fit$coefficients[,] <- 0
   expect_s3_class(summary(fit),"summary.L0glm_fit")
   expect_equal(summary(fit)$metrics$loglik,-Inf)
   floored <- summary(fit,mu_floor=1e-4)
-  expect_equal(floored$metrics,L0glm.metrics(fit,mu_floor=1e-4))
+  expect_equal(floored$metrics,l0glmMetrics(fit,mu_floor=1e-4))
   expect_true(is.finite(floored$metrics$loglik))
   expect_output(print(floored),"Scoring mean floor")
   expect_output(print(fit),"Family: poisson")
@@ -89,12 +89,12 @@ test_that("special families inherit summary methods without losing their coordin
     cox=survival::Surv(rexp(60),rep(c(1,1,0),20)))
   families <- list(nb=mgcv::nb(theta=2),multinomial=mgcv::multinom(K=2),cox=mgcv::cox.ph())
   for (kind in names(families)) {
-    fit <- L0glm.fit(X,responses[[kind]],family=families[[kind]],
+    fit <- l0glmFit(X,responses[[kind]],family=families[[kind]],
       lambda=2,relaxed=FALSE,maxit=30)
     details <- summary(fit)
     expect_s3_class(details,"summary.L0glm_fit")
     expect_identical(details$coefficients,coef(fit))
-    expect_equal(details$metrics,L0glm.metrics(fit,mu_floor=0))
+    expect_equal(details$metrics,l0glmMetrics(fit,mu_floor=0))
     expect_output(print(details),"Fit metrics")
     if (kind == "nb") {
       expect_identical(details$theta,fit$theta)
@@ -109,11 +109,11 @@ test_that("special families inherit summary methods without losing their coordin
 test_that("comparison summaries retain metrics, CV diagnostics and method notes", {
   data <- model_summary_fixture()
   sim <- list(X=data$X,y=data$y,beta_true=data$truth[-1,,drop=FALSE])
-  comparison <- sparseglm(sim,method=c("L0glm","lasso"),tune="cv",nfolds=2,
+  comparison <- sparseGLM(sim,method=c("L0glm","lasso"),tune="cv",nfolds=2,
     nlambda=3,lambda=list(L0glm=c(10,4,2)))
   details <- summary(comparison)
   expect_s3_class(details,"summary.sparseglm")
-  expect_identical(details$metrics,L0glm.metrics(comparison))
+  expect_identical(details$metrics,l0glmMetrics(comparison))
   expect_identical(details$call,comparison$call)
   expect_equal(details$nfolds,2)
   expect_equal(details$tune,"cv")
@@ -124,7 +124,7 @@ test_that("comparison summaries retain metrics, CV diagnostics and method notes"
   expect_false(visible$visible)
   expect_identical(visible$value,details)
   expect_true(all(is.na(summary(comparison,beta_true=NULL)$metrics$MCC)))
-  expect_warning(failed <- sparseglm(sim,method=c("L0glm","lasso"),nlambda=3,
+  expect_warning(failed <- sparseGLM(sim,method=c("L0glm","lasso"),nlambda=3,
     options=list(L0glm=list(solver="invalid"))),"failed")
   expect_equal(summary(failed)$metrics$status,c("error","ok"))
   expect_output(print(summary(failed)),"Method notes")
@@ -134,12 +134,12 @@ test_that("comparison summaries retain metrics, CV diagnostics and method notes"
 
 test_that("summary and print methods never refit models", {
   data <- model_summary_fixture()
-  comparison <- sparseglm(data$X,data$y,method="lasso",nlambda=3)
-  local_mocked_bindings(L0glm.fit=function(...) stop("Must not refit"),
-    L0nnpois=function(...) stop("Must not refit"),L0glm.tune=function(...) stop("Must not tune"))
+  comparison <- sparseGLM(data$X,data$y,method="lasso",nlambda=3)
+  local_mocked_bindings(l0glmFit=function(...) stop("Must not refit"),
+    l0nnPois=function(...) stop("Must not refit"),l0glmTune=function(...) stop("Must not tune"))
   expect_s3_class(summary(data$fit),"summary.L0glm_fit")
   expect_s3_class(summary(comparison),"summary.sparseglm")
-  local_mocked_bindings(L0glm.metrics=function(...) stop("Must not score"))
+  local_mocked_bindings(l0glmMetrics=function(...) stop("Must not score"))
   expect_output(print(comparison),"Sparse GLM comparison")
   expect_output(print(comparison$fits$lasso),"L0glm fit")
 })

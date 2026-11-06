@@ -9,7 +9,7 @@ L0glm_pilot_start <- function(args, bounds) {
   timing <- numeric(length(lambdas))
   support <- integer(length(lambdas))
   for (i in seq_along(lambdas)) {
-    timing[i] <- system.time(fit <- do.call(L0glm.fit,
+    timing[i] <- system.time(fit <- do.call(l0glmFit,
       c(args, list(lambda = lambdas[i]))))[["elapsed"]]
     beta <- as.matrix(fit$coefficients)
     if (is.null(total)) {

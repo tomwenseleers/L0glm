@@ -32,7 +32,7 @@ MBIC(object, ...)
 \method{MBIC}{L0glm_fit}(object, ..., mu_floor = 0)
 }
 \arguments{
-\item{object}{A model returned by \code{\link[=L0glm.fit]{L0glm.fit()}} or \code{\link[=L0nnpois]{L0nnpois()}}.}
+\item{object}{A model returned by \code{\link[=l0glmFit]{l0glmFit()}} or \code{\link[=l0nnPois]{l0nnPois()}}.}
 
 \item{...}{Further arguments. \code{\link[stats:AIC]{stats::AIC()}} and \code{\link[stats:BIC]{stats::BIC()}} also accept
 several fitted models for comparison.}
@@ -48,8 +48,8 @@ criterion sample size.
 }
 \description{
 Extract the fitted log likelihood, parameter-count information criteria,
-coefficient matrix or criterion sample size from \code{\link[=L0glm.fit]{L0glm.fit()}} and
-\code{\link[=L0nnpois]{L0nnpois()}} models, including the special families.
+coefficient matrix or criterion sample size from \code{\link[=l0glmFit]{l0glmFit()}} and
+\code{\link[=l0nnPois]{l0nnPois()}} models, including the special families.
 }
 \details{
 \code{logLik()} evaluates the unpenalized likelihood at the returned
@@ -108,12 +108,12 @@ original scale and with the original coefficient dimensions.
 set.seed(7)
 X <- matrix(rnorm(240), 60, 4)
 y <- 2 * X[, 1] + rnorm(60)
-fit <- L0glm.fit(X, y, lambda = "gic", parallelize = FALSE)
+fit <- l0glmFit(X, y, lambda = "gic", parallelize = FALSE)
 logLik(fit)
 c(AIC = AIC(fit), BIC = BIC(fit), GIC = GIC(fit),
   EBIC = EBIC(fit), MBIC = MBIC(fit))
 coef(fit)
 }
 \seealso{
-\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \link{model_summary}, \link{information_criteria}, \code{\link[stats:AIC]{stats::AIC()}}
+\code{\link[=l0glmMetrics]{l0glmMetrics()}}, \link{model_summary}, \link{information_criteria}, \code{\link[stats:AIC]{stats::AIC()}}
 }

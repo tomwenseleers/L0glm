@@ -3,20 +3,20 @@
 #' @name model_summary
 #' @md
 #' @description
-#' Concise S3 displays for [L0glm.fit()], [L0nnpois()] and [sparseglm()]
+#' Concise S3 displays for [l0glmFit()], [l0nnPois()] and [sparseGLM()]
 #' results, including negative-binomial, multinomial and Cox models.
 #'
-#' @param object An `L0glm_fit` model or `sparseglm` comparison.
+#' @param object An `L0glm_fit` model or `sparseGLM` comparison.
 #' @param x A fitted model, comparison or corresponding summary object.
 #' @param ... Reserved for additional method arguments; currently unused.
 #' @param mu_floor Nonnegative scoring-only mean floor. Model summaries default
 #'   to zero, matching [stats::logLik()] and the criterion methods. Comparison
-#'   summaries use the floor stored by [sparseglm()] to match tuning scores.
+#'   summaries use the floor stored by [sparseGLM()] to match tuning scores.
 #' @param beta_true Optional true coefficients for recovery metrics, with the
 #'   same dimensions as the returned coefficients, including any intercept.
 #'   Comparison summaries default to their saved truth. Use `NULL` to omit it.
 #' @param r2_mu_floor Count-mean floor used only for R-squared working weights,
-#'   default 0.1. See [L0glm.metrics()].
+#'   default 0.1. See [l0glmMetrics()].
 #' @param digits Significant digits for printed numeric values.
 #' @param max.rows,max.cols Maximum coefficient rows and response columns shown
 #'   by `print.summary.L0glm_fit()`, default 20 and 6. Positive integers or `Inf`.
@@ -25,7 +25,7 @@
 #'
 #' @details
 #' Printing a fitted object uses its stored metadata and coefficients; it does
-#' not evaluate likelihoods or refit a model. `summary()` calls [L0glm.metrics()]
+#' not evaluate likelihoods or refit a model. `summary()` calls [l0glmMetrics()]
 #' to obtain likelihood, deviance and information criteria, optionally including
 #' recovery metrics. The full original-dimension sparse coefficient matrix is
 #' retained in the model summary. Coefficients are point estimates; standard
@@ -52,17 +52,17 @@
 #'   indices, dispersion/theta, screening diagnostics when used, and a compact
 #'   convergence table. `print()`
 #'   methods return their input invisibly.
-#' @seealso [L0glm.metrics()], [model_criteria], [sparseglm()]
+#' @seealso [l0glmMetrics()], [model_criteria], [sparseGLM()]
 #' @examples
 #' set.seed(4)
 #' X <- matrix(rnorm(240), 60, 4)
 #' y <- 2 * X[, 1] + rnorm(60)
-#' fit <- L0glm.fit(X, y, lambda="gic", parallelize=FALSE)
+#' fit <- l0glmFit(X, y, lambda="gic", parallelize=FALSE)
 #' print(fit)
 #' details <- summary(fit)
 #' print(details, max.rows=10)
 #' details$metrics
-#' comparison <- sparseglm(X, y, method=c("L0glm","lasso"), nlambda=4,
+#' comparison <- sparseGLM(X, y, method=c("L0glm","lasso"), nlambda=4,
 #'                         lambda=list(L0glm=c(10,4,2)))
 #' summary(comparison)
 NULL
@@ -80,7 +80,7 @@ print.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
 #' @export
 summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_floor=0.1) {
   structure(c(L0glm_model_info(object), list(coefficients=stats::coef(object),
-    metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor),
+    metrics=l0glmMetrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor),
     mu_floor=mu_floor, r2_mu_floor=r2_mu_floor, dispersion=object$dispersion,
     dispersion.estimated=object$dispersion.estimated,
     theta=object$theta, theta.estimated=object$theta.estimated)),

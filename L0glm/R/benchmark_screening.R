@@ -32,7 +32,7 @@ L0glm_benchmark_path <- function(method, data, grid=NULL) {
     cbind(if (data$kind!="cox") matrix(1,n,1L), data$X[,mandatory,drop=FALSE])
   screening_X <- if (length(eligible)==p) data$X else data$X[,eligible,drop=FALSE]
   for (iteration in seq_len(niter)) {
-    proposal <- if (size) sis_glm(screening_X, data$y, family=data$family,
+    proposal <- if (size) sisGLM(screening_X, data$y, family=data$family,
       weights=data$weights, offset=offset, nuisance=nuisance, nsis=size,
       return_stats=FALSE, nonnegative=data$nonnegative,
       nthreads=data$screen.nthreads) else NULL
@@ -43,7 +43,7 @@ L0glm_benchmark_path <- function(method, data, grid=NULL) {
     if (!length(candidates)) {
       B <- Matrix::Matrix(0, p+added, data$m, sparse=TRUE)
       if (added) {
-        null <- L0glm.fit(matrix(1,n,1L), data$y, family=data$family,
+        null <- l0glmFit(matrix(1,n,1L), data$y, family=data$family,
           weights=data$weights, offset=data$offset, lambda=0, nonnegative=data$nonnegative,
           intercept=FALSE, screen="none")
         B[1L,] <- coef(null)
@@ -56,12 +56,12 @@ L0glm_benchmark_path <- function(method, data, grid=NULL) {
       d <- L0glm_benchmark_subset(data, candidates)
       # Preset calibration retains the original search dimension.
       if (method=="L0glm" && is.null(grid)) {
-        preset <- preset.lambda(criterion, data$p, n)
+        preset <- presetLambda(criterion, data$p, n)
         grid <- exp(seq(log(max(2,preset)*100),log(2),length.out=data$nlambda))
       }
       path <- L0glm_benchmark_path_raw(method, d, grid)
       path$metrics <- lapply(path$coefficients,function(B) if (is.null(B)) NULL else
-        L0glm.metrics(L0glm_benchmark_fit(B,d),mu_floor=data$mu_floor))
+        l0glmMetrics(L0glm_benchmark_fit(B,d),mu_floor=data$mu_floor))
       path$coefficients <- lapply(path$coefficients, L0glm_benchmark_expand,
         candidates=candidates, p=p, added=added, m=data$m)
       if (!is.null(path$adaptive)) {
@@ -74,7 +74,7 @@ L0glm_benchmark_path <- function(method, data, grid=NULL) {
       }
     }
     if (is.null(path$metrics)) path$metrics <- lapply(path$coefficients,function(B)
-      L0glm.metrics(L0glm_benchmark_fit(B,data),mu_floor=data$mu_floor))
+      l0glmMetrics(L0glm_benchmark_fit(B,data),mu_floor=data$mu_floor))
     scores <- vapply(path$metrics,function(z) if (is.null(z)) Inf else z[[criterion]],numeric(1))
     available <- !is.na(scores) & scores<Inf
     if (!any(available)) stop("No screened candidate has an available information criterion.",call.=FALSE)

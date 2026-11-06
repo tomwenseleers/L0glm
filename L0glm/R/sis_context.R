@@ -45,7 +45,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
     if (!any(response$status*w[,1L]>0)) stop("Cox screening needs an observed event.",call.=FALSE)
     eta <- off[,1L]
     if (q) {
-      fit <- L0glm.fit(N,y,family=family,weights=w,offset=off,lambda=0,
+      fit <- l0glmFit(N,y,family=family,weights=w,offset=off,lambda=0,
         intercept=FALSE,normalize="auto",maxit=100,tol=1e-10,screen="none")
       eta <- as.numeric(N%*%coef(fit))+eta
     }
@@ -67,7 +67,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
   if (identical(kind,"multinomial")) {
     eta <- off
     if (q) {
-      fit <- L0glm.fit(N,y,family=family,weights=w,offset=off,lambda=0,
+      fit <- l0glmFit(N,y,family=family,weights=w,offset=off,lambda=0,
         intercept=FALSE,normalize="auto",maxit=100,tol=1e-10,screen="none")
       eta <- as.matrix(N%*%coef(fit))+off
     }
@@ -91,7 +91,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
   # Independent channels need q-by-q blocks, not a full channel Hessian.
   inverse <- array(0,c(q,q,m))
   if (identical(kind,"nb") && q) {
-    fit <- L0glm.fit(N,Y,family=family,weights=w,offset=off,lambda=0,
+    fit <- l0glmFit(N,Y,family=family,weights=w,offset=off,lambda=0,
       intercept=FALSE,normalize="auto",maxit=150,tol=1e-9,screen="none")
     context$theta <- fit$theta
   }
@@ -140,7 +140,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
 L0glm_sis_null_fit <- function(N,y,w,offset,family) {
   if (is.function(family$score)) {
     if (!ncol(N)) return(list(linear.predictors=offset,fitted.values=family$linkinv(offset),rank=0L))
-    fit <- L0glm.fit(N,y,family=family,weights=w,offset=offset,lambda=0,
+    fit <- l0glmFit(N,y,family=family,weights=w,offset=offset,lambda=0,
       intercept=FALSE,screen="none",maxit=100,tol=1e-10)
     eta <- as.numeric(N%*%coef(fit))+offset
     return(list(linear.predictors=eta,fitted.values=family$linkinv(eta),rank=ncol(N)))

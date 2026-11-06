@@ -168,13 +168,13 @@ L0overLqnorm # later used to scale lambda with, can be estimated from L0glm fit 
 # NOTE: this is only needed if we would want to set the Lq penalty to q=1 or 2
 # drops out when L0 penalty is used
 # lambda for the Lq penalty (here L0 penalty)
-lambda = preset.lambda(IC = "aic", p=p, n=n) # options aic, bic, gic, ebic, mbic 
+lambda = presetLambda(IC = "aic", p=p, n=n) # options aic, bic, gic, ebic, mbic
 # NOTE: for the L0 penalty lambda we can just use a preset lambda=2 expected to optimise AIC
 # for q other than 0 (1 or 2) I think lambda would still have to be multiplied
 # by 4*(1/2^(2-q_Lq)), but adapt this in code in L0glm_1_fit_internal
 
 # regular L0glm fit without fused ridge penalties & L0 penalty ####
-system.time(L0glmfit <- L0glm.fit( X=as(Matrix(X, sparse=T), "generalMatrix"), y=y,
+system.time(L0glmfit <- l0glmFit( X=as(Matrix(X, sparse=T), "generalMatrix"), y=y,
   # X = X_augm_fusedridge12, y = y_augm12,
   weights = 1/(y+0.1), # TODO: using family=poisson(identity) gives a bug due to NAs in the weights that are produced - fix this
   family = gaussian(identity), # family, 
@@ -320,7 +320,7 @@ w12 = 1/c(as.vector(y)+0.1, rep(1,nrow(X_augm_fusedridge12)-nrow(X)))
 
 
 # L0glm fit with fused ridge penalties here manually added ####
-system.time(L0glmfit_fused <- L0glm.fit(# X=X, y=y,
+system.time(L0glmfit_fused <- l0glmFit(# X=X, y=y,
                                   X = X_augm_fusedridge12, y = y_augm12,
                                   weights = w12, # TODO: using family=poisson(identity) gives a bug due to NAs in the weights that are produced - fix this
                                           family = gaussian(identity), # family, 
@@ -409,7 +409,7 @@ y_augm12 = c(as.vector(y), rep(0,nrow(X_augm_fusedridge12)-nrow(X)))
 
 # new adaptive L0glm fit with fused ridge penalty & updated penalties ####
 start = beta_L0glm_fused # use first L0glm estimates as starting values
-system.time(L0glmfit_fused_ad <- L0glm.fit(# X=X, y=y,
+system.time(L0glmfit_fused_ad <- l0glmFit(# X=X, y=y,
   X = X_augm_fusedridge12, 
   y = y_augm12,
   weights = w12, # TODO: using family=poisson(identity) gives a bug due to NAs in the weights that are produced - fix this

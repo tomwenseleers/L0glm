@@ -3,19 +3,19 @@
 \name{signal_families}
 \alias{signal_families}
 \alias{nb1}
-\alias{Gamma_scale}
-\alias{Gamma_censored}
+\alias{gammaScale}
+\alias{gammaCensored}
 \title{Scalar noise models for nonnegative signals}
 \usage{
 nb1(dispersion = 1, link = "log")
 
-Gamma_scale(scale = 1, link = "log", censor = 0)
+gammaScale(scale = 1, link = "log", censor = 0)
 
-Gamma_censored(dispersion = 1, link = "log", censor = 0.5)
+gammaCensored(dispersion = 1, link = "log", censor = 0.5)
 }
 \arguments{
 \item{dispersion}{Known variance-to-mean ratio for `nb1()` (at least one),
-or known Gamma dispersion for `Gamma_censored()` (strictly positive).}
+or known Gamma dispersion for `gammaCensored()` (strictly positive).}
 
 \item{link}{Link name. Defaults to `"log"`; `"identity"` is useful for
 additive nonnegative signals.}
@@ -32,7 +32,7 @@ A family object containing its fixed noise parameter, likelihood
 }
 \description{
 Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models for
-[L0glm.fit()], [L0glm.tune()], [sis_glm()] and [glm_cluster()]. These adapters
+[l0glmFit()], [l0glmTune()], [sisGLM()] and [glmCluster()]. These adapters
 supply the likelihood score and positive quadratic curvature to the shared
 IRLS loop, with its usual selection, line search and relaxed refitting.
 These adapters are intended for L0glm's score-based IRLS. External fitting
@@ -46,7 +46,7 @@ E(Y)=\mu,\quad\operatorname{Var}(Y)=\phi\mu.}
 \eqn{\{\psi(a)-\psi(a+y)+\log\phi\}/(\phi-1)} and its curvature is
 \eqn{\{\psi_1(a)-\psi_1(a+y)\}/(\phi-1)^2}.
 
-`Gamma_scale()` uses \eqn{Y\sim\operatorname{Gamma}(\mu/b,b)} with fixed
+`gammaScale()` uses \eqn{Y\sim\operatorname{Gamma}(\mu/b,b)} with fixed
 scale \eqn{b}, giving \eqn{\operatorname{Var}(Y)=b\mu}. For a positive
 observation its score is \eqn{\{\psi(\mu/b)+\log b-\log y\}/b} and
 curvature is \eqn{\psi_1(\mu/b)/b^2}. Independent NB1 channels sharing
@@ -54,7 +54,7 @@ curvature is \eqn{\psi_1(\mu/b)/b^2}. Independent NB1 channels sharing
 This property applies to latent Gamma variables; sums of censored recorded
 intensities provide an approximation.
 
-`Gamma_censored()` uses the standard Gamma mean/dispersion model, with shape
+`gammaCensored()` uses the standard Gamma mean/dispersion model, with shape
 \eqn{1/\phi}, scale \eqn{\phi\mu} and variance \eqn{\phi\mu^2}. In either
 Gamma model a zero contributes \eqn{\log P(Y<d;\mu)} and a positive
 observation contributes its log density. The native kernel evaluates the
@@ -71,14 +71,14 @@ because a noiseless mean is not an observed count or censored response.
 
 Clustering uses exact likelihood-ratio distances and a Ward hierarchy, with
 fixed, dynamic or information-criterion cuts. A Bregman hierarchy is available
-for the regular GLM families documented in [glm_cluster()].
+for the regular GLM families documented in [glmCluster()].
 }
 \examples{
 set.seed(6)
 X <- matrix(rnorm(300 * 12), 300, 12)
 mu <- exp(0.5 + X[, 1] * 0.5)
 y <- rnbinom(300, size = mu / 2, mu = mu)
-fit <- L0glm.fit(X, y, family = nb1(3), intercept = TRUE)
+fit <- l0glmFit(X, y, family = nb1(3), intercept = TRUE)
 logLik(fit)
 }
 \references{

@@ -16,12 +16,12 @@ others <- c('abess','L0Learn','MCP','SCAD','lasso','relaxed_lasso',
 results <- list()
 for (mode in c('SIS','ISIS')) {
   size <- if (mode=='SIS') 100L else NULL
-  l0 <- sparseglm(X,y,method='L0glm',screen=mode,nsis=size,tune='gic',
+  l0 <- sparseGLM(X,y,method='L0glm',screen=mode,nsis=size,tune='gic',
     intercept=FALSE,nlambda=10,beta_true=beta,
-    lambda=list(L0glm=preset.lambda('gic',p,n)),options=list(L0glm=list(relaxed=TRUE)))
-  competitors <- sparseglm(X,y,method=others,screen=mode,nsis=size,tune='bic',
+    lambda=list(L0glm=presetLambda('gic',p,n)),options=list(L0glm=list(relaxed=TRUE)))
+  competitors <- sparseGLM(X,y,method=others,screen=mode,nsis=size,tune='bic',
     intercept=FALSE,nlambda=10,support.size=0:100,beta_true=beta)
-  rows <- rbind(L0glm.metrics(l0),L0glm.metrics(competitors))
+  rows <- rbind(l0glmMetrics(l0),l0glmMetrics(competitors))
   stopifnot(all(rows$status=='ok'))
   print(rows[,c('method','screen','tune','seconds','gic','TP','FP','FN','F1_score','MCC')])
   results[[mode]] <- rows

@@ -28,7 +28,7 @@ A preset is often a very effective starting point. Searching a path lets the
 data choose among the candidate sparse models.
 
 ```{r preset, eval=FALSE}
-fit <- L0glm.fit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
+fit <- l0glmFit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
 ```
 
 | Preset | Penalty per selected coefficient |
@@ -45,7 +45,7 @@ gives the parameter-count conventions and literature, including
 [Fan & Tang's GIC](https://doi.org/10.1111/rssb.12001).
 
 ```{r gic, eval=FALSE}
-gic <- L0glm.tune(X, y, family=gaussian(), tune="gic", nlambda=10L,
+gic <- l0glmTune(X, y, family=gaussian(), tune="gic", nlambda=10L,
   prop_range=.25, relaxed=TRUE, coefs.true=sim$beta_true, plot=TRUE)
 c(lambda_best=gic$lambda_best, lambda_preset=gic$lambda_preset)
 ```
@@ -78,7 +78,7 @@ channel. There is no separate minimum sample size or predictor count.
 ```{r cv, eval=FALSE}
 set.seed(10)
 folds <- sample(rep(1:5, length.out=nrow(X)))
-cv <- L0glm.tune(X, y, family=gaussian(), tune="cv", nfolds=5L,
+cv <- l0glmTune(X, y, family=gaussian(), tune="cv", nfolds=5L,
   nlambda=10L, prop_range=.25, foldid=folds, relaxed=TRUE,
   coefs.true=sim$beta_true, plot=TRUE)
 ```
@@ -108,7 +108,7 @@ folds <- rep(1:5, length.out=nrow(X))[order(rep(1:5, length.out=nrow(X)))]
 
 # Venetian blind: odd and even observations alternate
 folds <- rep(1:2, length.out=nrow(X))
-cv <- L0glm.tune(X, y, family=gaussian(), tune="cv",
+cv <- l0glmTune(X, y, family=gaussian(), tune="cv",
   foldid=folds, nlambda=10, relaxed=TRUE)
 ```
 
@@ -117,14 +117,14 @@ will be used. Reserve an independent test set when measuring final predictive ac
 
 ## Compare methods
 
-`sparseglm()` supplies one comparison interface for L0glm, ABESS, L0Learn,
+`sparseGLM()` supplies one comparison interface for L0glm, ABESS, L0Learn,
 LASSO, relaxed LASSO, adaptive variants, MCP and SCAD where supported.
 
 ```{r compare, eval=FALSE}
-comparison <- sparseglm(X, y, family=gaussian(),
+comparison <- sparseGLM(X, y, family=gaussian(),
   method=c("L0glm", "abess", "lasso", "relaxed_lasso"),
   tune="cv", nfolds=5, foldid=sample(rep(1:5, length.out=nrow(X))), nlambda=10)
-L0glm.metrics(comparison)
+l0glmMetrics(comparison)
 ```
 
 `method="all"` expands to supported methods for the requested model.

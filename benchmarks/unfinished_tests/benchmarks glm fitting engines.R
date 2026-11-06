@@ -81,7 +81,7 @@ system.time(m5b <- parglm:::parallelglm(X=X, Y=y,
                                         use_start=FALSE)$coefficients) 
 # 0.45s for n<-1000000, 4.8s for n<-10000000
 
-system.time(m6 <- L0glm.fit(X, y, 
+system.time(m6 <- l0glmFit(X, y,
                             lambda=0, # "aic",
                             family=Gamma(log),
                             normalize=F,
@@ -91,7 +91,7 @@ system.time(m6 <- L0glm.fit(X, y,
 # 104s with parglm for n<-10000000
 # NOTE: for dense n>>p problems parglm:::parallelglm solution could be used
 # as starting values in L0glm
-# TODO: fix L0glm.fit so that it doesn't run out of memory with n<-10000000 & lambda="aic"
+# TODO: fix l0glmFit so that it doesn't run out of memory with n<-10000000 & lambda="aic"
 # check if memory efficiency could be improved & where exactly things are 
 # going wrong
 # 

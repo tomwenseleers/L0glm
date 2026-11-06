@@ -139,7 +139,7 @@ comparisons in a single column.
 ## Native validation and OpenMP
 
 Both drivers can select an IRLS checkpoint by held-out deviance.
-The specialized `L0nnpois` backend evaluates validation in native code and
+The specialized `l0nnPois` backend evaluates validation in native code and
 fits channels in parallel. This example uses 1,000 predictors, 16 channels,
 60 active rows and an independent Poisson replicate for validation. Timings
 are medians of five fits with one BLAS thread.
@@ -147,10 +147,10 @@ are medians of five fits with one BLAS thread.
 | Backend | Outcome threads | Seconds | Validation deviance | GIC | F1 | MCC |
 |---|---:|---:|---:|---:|---:|---:|
 | General driver | 1 | 1.19 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| L0nnpois | 1 | 0.10 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| L0nnpois | 2 | 0.07 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| L0nnpois | 4 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| L0nnpois | 8 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
+| l0nnPois | 1 | 0.10 | 0.357611 | 42687.99 | 0.945 | 0.943 |
+| l0nnPois | 2 | 0.07 | 0.357611 | 42687.99 | 0.945 | 0.943 |
+| l0nnPois | 4 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
+| l0nnPois | 8 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
 
 The fits agree across drivers and thread counts. Run
 [benchmark_native_validation.R](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_native_validation.R)
@@ -162,7 +162,7 @@ to reproduce the comparison.
 * [Million-predictor LASSO benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_million_lasso.R): BIC and five-fold CV comparisons.
 * [Solver/problem-size benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_L0glm_solvers_problem_sizes.R): solvers, families, matrix storage and sizes.
 * [Single/multichannel benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/2_benchmarks_L0glm_single_and_multichannel_vs_other_methods.R): detailed signal examples and alternative methods.
-* [`sparseglm()`](../reference/sparseglm.html): use the same comparison framework on your own data.
+* [`sparseGLM()`](../reference/sparseGLM.html): use the same comparison framework on your own data.
 
 The benchmarks were run on an **HP ZBook Fury 17.3-inch G8 Mobile Workstation**
 with an **11th-generation Intel Core i9-11950H at 2.60 GHz**, **8 physical cores

@@ -9,7 +9,7 @@ The example compares three practical fits on the original seed-1 stratified
 split: 242 training and 80 held-out molecules, with 2,776 descriptors after
 training-only near-invariance filtering.
 
-- **L0glm:** `L0glm.fit(..., family=gaussian(), lambda="gic", intercept=TRUE,
+- **L0glm:** `l0glmFit(..., family=gaussian(), lambda="gic", intercept=TRUE,
   nonnegative=FALSE)`. Default `normalize="auto"` and `start=NULL` handle
   preprocessing and initialization. For this signed Gaussian model, auto uses
   centered columns with L2 norm `sqrt(n)` and returns coefficients in original units.

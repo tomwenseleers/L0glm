@@ -1,4 +1,4 @@
-# Testing basic functionality of the lmridge function
+# Testing basic functionality of the lmRidge function
 #----------------------------------------------------
 
 # Example data for tests
@@ -9,31 +9,31 @@ X <- matrix(rnorm(n * p), n, p)
 y <- X %*% rnorm(p) + rnorm(n)
 
 test_that("Basic functionality test with default settings", {
-  result <- lmridge(X, y, lambdas = rep(1, p))
+  result <- lmRidge(X, y, lambdas = rep(1, p))
   expect_type(result, "double")
   expect_length(result, ncol(X))
 })
 
 test_that("Single lambda value as vector results in correct ridge penalty", {
-  result <- lmridge(X, y, lambdas = rep(5, p))  # Provide lambda as a vector
+  result <- lmRidge(X, y, lambdas = rep(5, p))  # Provide lambda as a vector
   expect_true(!is.null(result))
   expect_equal(length(result), ncol(X))
 })
 
 test_that("Eigen solver returns valid coefficients with vector lambdas", {
-  result <- lmridge(X, y, lambdas = rep(1, p), solver = "eigen")
+  result <- lmRidge(X, y, lambdas = rep(1, p), solver = "eigen")
   expect_true(all(!is.na(result)))
   expect_equal(length(result), ncol(X))
 })
 
 test_that("bigGlm solver returns valid coefficients with vector lambdas", {
-  result <- lmridge(X, y, lambdas = rep(1, p), solver = "bigGlm")
+  result <- lmRidge(X, y, lambdas = rep(1, p), solver = "bigGlm")
   expect_true(all(!is.na(result)))
   expect_equal(length(result), ncol(X))
 })
 
 test_that("OSQP solver with nonnegativity constraints and vector lambdas", {
-  result <- lmridge(X, y, lambdas = rep(1, p), solver = "osqp", nonnegative = TRUE)
+  result <- lmRidge(X, y, lambdas = rep(1, p), solver = "osqp", nonnegative = TRUE)
   expect_true(all(result >= 0))
 })
 
@@ -41,26 +41,26 @@ test_that("OSQP solver with nonnegativity constraints and vector lambdas", {
 test_that("Lower and upper bounds constraints are respected with vector lambdas", {
   lower_bounds <- rep(-0.5, ncol(X))
   upper_bounds <- rep(0.5, ncol(X))
-  result <- lmridge(X, y, lambdas = rep(1, p), lower = lower_bounds, upper = upper_bounds)
+  result <- lmRidge(X, y, lambdas = rep(1, p), lower = lower_bounds, upper = upper_bounds)
   expect_true(all(result >= lower_bounds))
   expect_true(all(result <= upper_bounds))
 })
 
 test_that("Scaling applied correctly to columns of X with vector lambdas", {
   scaling_factors <- rep(0.5, ncol(X))
-  result <- lmridge(X, y, lambdas = rep(1, p), scaling = scaling_factors)
+  result <- lmRidge(X, y, lambdas = rep(1, p), scaling = scaling_factors)
   expect_true(all(abs(result) < 5))  # Expect scaled coefficients
 })
 
 test_that("Prior mean shifts coefficients with vector lambdas", {
   prior_mean <- rep(1, ncol(X))
-  result <- lmridge(X, y, lambdas = rep(1, p), prior.mean = prior_mean)
+  result <- lmRidge(X, y, lambdas = rep(1, p), prior.mean = prior_mean)
   expect_true(any(result > 1))  # Coefficients should be shifted positively
 })
 
 test_that("Handles sparse matrix input correctly with vector lambdas", {
   X_sparse <- Matrix(X, sparse = TRUE)
-  result <- lmridge(X_sparse, y, lambdas = rep(1, p))
+  result <- lmRidge(X_sparse, y, lambdas = rep(1, p))
   expect_true(all(!is.na(result)))
   expect_equal(length(result), ncol(X))
 })
@@ -68,12 +68,12 @@ test_that("Handles sparse matrix input correctly with vector lambdas", {
 test_that("Handles large matrix with 20000 columns and vector lambdas", {
   X_large <- matrix(rnorm(100 * 20000), 100, 20000)
   y_large <- X_large %*% rnorm(20000) + rnorm(100)
-  result <- lmridge(X_large, y_large, lambdas = rep(1, 20000))
+  result <- lmRidge(X_large, y_large, lambdas = rep(1, 20000))
   expect_equal(length(result), ncol(X_large))
 })
 
 test_that("Zero lambdas vector produces least squares solution", {
-  result <- lmridge(X, y, lambdas = rep(0, p))
+  result <- lmRidge(X, y, lambdas = rep(0, p))
   expect_true(all(!is.na(result)))
   expect_equal(length(result), ncol(X))
 })
@@ -81,36 +81,36 @@ test_that("Zero lambdas vector produces least squares solution", {
 test_that("Handles large matrix with 20000 columns and zero lambdas vector", {
   X_large <- matrix(rnorm(100 * 20000), 100, 20000)
   y_large <- X_large %*% rnorm(20000) + rnorm(100)
-  result <- lmridge(X_large, y_large, lambdas = rep(0, 20000))
+  result <- lmRidge(X_large, y_large, lambdas = rep(0, 20000))
   expect_equal(length(result), ncol(X_large))
 })
 
 test_that("Large lambdas vector shrinks coefficients towards zero", {
-  result <- lmridge(X, y, lambdas = rep(1e10, p))
+  result <- lmRidge(X, y, lambdas = rep(1e10, p))
   expect_true(all(abs(result) < 1e-5))  # Expect coefficients close to zero
 })
 
 test_that("Single predictor column in X", {
   X_single <- matrix(rnorm(n), n, 1)
-  result <- lmridge(X_single, y, lambdas = rep(1, 1))
+  result <- lmRidge(X_single, y, lambdas = rep(1, 1))
   expect_length(result, 1)
 })
 
 test_that("Identical lower and upper bounds force coefficients to a specific value", {
   bound_value <- 0.1
-  result <- lmridge(X, y, lambdas = rep(1, p), lower = rep(bound_value, p), upper = rep(bound_value, p))
+  result <- lmRidge(X, y, lambdas = rep(1, p), lower = rep(bound_value, p), upper = rep(bound_value, p))
   expect_true(all(abs(result - bound_value) < 1e-5))
 })
 
 test_that("Lower bounds are respected with vector lambdas", {
   lower_bounds <- rep(-0.5, ncol(X))
-  result <- lmridge(X, y, lambdas = rep(1, p), lower = lower_bounds)
+  result <- lmRidge(X, y, lambdas = rep(1, p), lower = lower_bounds)
   expect_true(all(result >= lower_bounds))
 })
 
 test_that("prior.mean is NULL", {
   # prior.mean is NULL, should default to a vector of zeros
-  result <- lmridge(X, y, lambdas = rep(1, p), prior.mean = NULL)
+  result <- lmRidge(X, y, lambdas = rep(1, p), prior.mean = NULL)
   expect_type(result, "double")
   expect_length(result, ncol(X))
 })
@@ -118,7 +118,7 @@ test_that("prior.mean is NULL", {
 test_that("prior.mean is a single numeric value", {
   # prior.mean is a single value, should expand to a vector of the same length as ncol(X)
   single_value <- 2
-  result <- lmridge(X, y, lambdas = rep(1, p), prior.mean = single_value)
+  result <- lmRidge(X, y, lambdas = rep(1, p), prior.mean = single_value)
   expect_type(result, "double")
   expect_length(result, ncol(X))
 })
@@ -126,19 +126,19 @@ test_that("prior.mean is a single numeric value", {
 test_that("prior.mean has incorrect length", {
   # prior.mean length does not match ncol(X), should raise an error
   incorrect_length_prior <- rep(1, p + 1)  # Length mismatch
-  expect_error(lmridge(X, y, lambdas = rep(1, p), prior.mean = incorrect_length_prior),
+  expect_error(lmRidge(X, y, lambdas = rep(1, p), prior.mean = incorrect_length_prior),
                "Prior.mean needs to be a vector of length p or a numerical.")
 })
 
 test_that("Invalid solver choice produces an error", {
   # Use an invalid solver name to trigger the error
   invalid_solver <- "invalid_solver"
-  expect_error(lmridge(X, y, lambdas = rep(1, p), solver = invalid_solver), "Invalid solver choice")
+  expect_error(lmRidge(X, y, lambdas = rep(1, p), solver = invalid_solver), "Invalid solver choice")
 })
 
 test_that("Else branch is triggered when lambdas is at default of zero", {
   # By omitting lambdas, it defaults to NULL, triggering the else branch
-  result <- lmridge(X, y)
+  result <- lmRidge(X, y)
   expect_type(result, "double")
   expect_length(result, ncol(X))
 })
@@ -146,7 +146,7 @@ test_that("Else branch is triggered when lambdas is at default of zero", {
 test_that("Else branch is triggered when lambdas sum to zero (using zero vector)", {
   # lambdas is a vector of zeros, so Xwaug should be Xw and ywaug should be yw
   zero_lambdas <- rep(0, p)
-  result <- lmridge(X, y, lambdas = zero_lambdas)
+  result <- lmRidge(X, y, lambdas = zero_lambdas)
   expect_type(result, "double")
   expect_length(result, ncol(X))
 })
@@ -162,7 +162,7 @@ test_that("lmridge.osqp handles basic inputs", {
   upper <- c(Inf, Inf)
   start <- c(0, 0)
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   result <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start, control.solver = control.solver)
   
@@ -177,7 +177,7 @@ test_that("lmridge.osqp handles sparse Xw input with rowaug = FALSE", {
   upper <- c(Inf, Inf)
   start <- c(0, 0)
   
-  control.solver <- control.solver.gen(solver = "osqp", rowaug = FALSE)  # Set rowaug to FALSE
+  control.solver <- controlSolverGen(solver = "osqp", rowaug = FALSE)  # Set rowaug to FALSE
   
   # Run the function
   result <- lmridge.osqp(Xw_sparse, yw, lower = lower, upper = upper, start = start, control.solver = control.solver)
@@ -195,7 +195,7 @@ test_that("lmridge.osqp handles non-sparse Xw input with rowaug = FALSE", {
   upper <- c(Inf, Inf)
   start <- c(0, 0)
   
-  control.solver <- control.solver.gen(solver = "osqp", rowaug = FALSE)  # Set rowaug to FALSE
+  control.solver <- controlSolverGen(solver = "osqp", rowaug = FALSE)  # Set rowaug to FALSE
   
   # Run the function
   result <- lmridge.osqp(Xw_dense, yw, lower = lower, upper = upper, start = start, control.solver = control.solver)
@@ -214,7 +214,7 @@ test_that("lmridge.osqp handles edge cases with sparse and non-sparse inputs", {
   start <- c(0, 0)
   lambdas <- c(0.1, 0.2)  # Valid lambdas vector
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   result_sparse <- lmridge.osqp(Xw_sparse, yw, lower = lower, upper = upper, start = start, lambdas = lambdas, control.solver = control.solver)
   
@@ -238,7 +238,7 @@ test_that("lmridge.osqp handles warm_start condition", {
   
   # Test case where start is non-zero (warm_start should be TRUE)
   start_non_zero <- c(1, 1)  # Non-zero start vector
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   result_non_zero <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start_non_zero, lambdas = c(0.1, 0.2), control.solver = control.solver)
   
@@ -270,7 +270,7 @@ test_that("lmridge.osqp handles NULL lambdas", {
   start <- c(0, 0)
   lambdas <- NULL
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   result <- lmridge.osqp(Xw, yw, lambdas = lambdas, lower = lower, upper = upper, start = start, control.solver = control.solver)
   
@@ -285,7 +285,7 @@ test_that("lmridge.osqp handles warm start", {
   upper <- c(Inf, Inf)
   start <- c(0, 0)
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   # Set warm start to TRUE
   control.solver$warm_start <- TRUE
@@ -303,7 +303,7 @@ test_that("lmridge.osqp handles different iterations", {
   upper <- c(Inf, Inf)
   start <- c(0, 0)
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   # Set iteration to 10 (just for testing purposes)
   result <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start, control.solver = control.solver, iteration = 10)
@@ -321,7 +321,7 @@ test_that("lmridge.osqp assigns start to a zero vector when it is NULL", {
   start <- NULL
   
   # Generate control solver
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   # Run the function
   result <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start, control.solver = control.solver)
@@ -342,7 +342,7 @@ test_that("lmridge.osqp does not overwrite start if it is not NULL", {
   # Non-NULL start
   start <- c(0.5, 1.5)  # custom start values
   
-  control.solver <- control.solver.gen(solver = "osqp")
+  control.solver <- controlSolverGen(solver = "osqp")
   
   # Call lmridge.osqp with non-NULL start
   result <- lmridge.osqp(Xw, yw, lower = lower, upper = upper, start = start, control.solver = control.solver)
@@ -447,7 +447,7 @@ test_that("lmridge.glmnet solves targeted ridge via row augmentation", {
     crossprod(X) + diag(lambdas),
     crossprod(X, y) + lambdas * prior_mean
   ))
-  control_solver <- control.solver.gen(
+  control_solver <- controlSolverGen(
     solver = "glmnet", standardize = FALSE,
     abstol = 1e-12, maxit = 1000000
   )
@@ -487,7 +487,7 @@ upper <- rep(10, p)
 test_that("lmridge.eigen works with all solver methods for dense and sparse matrices", {
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Dense matrix test
     coefs_dense <- lmridge.eigen(
@@ -514,7 +514,7 @@ test_that("lmridge.eigen works with all solver methods for dense and sparse matr
 test_that("lmridge.eigen handles zero lambdas correctly", {
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     coefs_dense <- lmridge.eigen(
       Xw = X_dense, yw = yw,
@@ -541,7 +541,7 @@ test_that("lmridge.eigen works with various starting values", {
   start_values <- rep(1, p) # Custom start
   
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Custom starting values
     coefs <- lmridge.eigen(
@@ -570,7 +570,7 @@ test_that("lmridge.eigen works with various starting values", {
 test_that("lmridge.eigen exposes incomplete Cholesky CG and automatic SVD methods", {
   methods <- c(3L, 6L)
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     coefs_dense <- lmridge.eigen(
       Xw = X_dense, yw = yw,
@@ -641,7 +641,7 @@ test_that("targeted ridge uses nonzero prior means even when they sum to zero", 
     crossprod(X, y) + lambdas * prior_mean
   ))
   
-  control_solver <- control.solver.gen(solver = "eigen", method = 1L, rowaug = TRUE)
+  control_solver <- controlSolverGen(solver = "eigen", method = 1L, rowaug = TRUE)
   coefs <- lmridge.eigen(
     Xw = X, yw = y,
     lambdas = lambdas,
@@ -667,7 +667,7 @@ test_that("non-row-augmented Eigen solvers use the symmetric targeted ridge syst
   
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(
+    control_solver <- controlSolverGen(
       solver = "eigen", method = method, rowaug = FALSE,
       tol = 1e-12, maxit = 10000L
     )
@@ -712,7 +712,7 @@ upper <- rep(10, p_high)
 test_that("lmridge.eigen works with non-SVD solver methods for high-dimensional dense and sparse matrices", {
   methods <- 1L:5L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Dense matrix test
     coefs_dense <- lmridge.eigen(
@@ -759,7 +759,7 @@ test_that("lmridge.eigen handles tall matrices (n * 100 >= p) for all methods", 
   
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Test dense matrix
     X_dense <- generate_tall_matrix(n, p, sparse = FALSE)
@@ -804,7 +804,7 @@ test_that("lmridge.eigen handles wide matrices (p > n) for all methods", {
   
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Test dense matrix
     X_dense <- matrix(rnorm(n * p), nrow = n, ncol = p)
@@ -856,7 +856,7 @@ test_that("lmridge.eigen handles row augmentation for all methods", {
   
   methods <- 1L:6L
   for (method in methods) {
-    control_solver <- control.solver.gen(solver = "eigen", method = method)
+    control_solver <- controlSolverGen(solver = "eigen", method = method)
     
     # Test non-zero lambdas (row augmentation should occur)
     coefs_dense_aug <- lmridge.eigen(

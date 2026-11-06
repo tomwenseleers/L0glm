@@ -64,7 +64,7 @@ benchmark <- function(method, fit) {
 # here; no manual centering, scaling, pilot or starting coefficients are needed.
 results <- list()
 results$L0glm <- benchmark("L0glm (GIC preset)", function() {
-  fit <- L0glm::L0glm.fit(X_train, y_train, family = gaussian(),
+  fit <- L0glm::l0glmFit(X_train, y_train, family = gaussian(),
     lambda = "gic", intercept = TRUE, nonnegative = FALSE, nthreads = 1L)
   list(beta = fit$coefficients, fit = fit)
 })

@@ -62,7 +62,7 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     answer$validation <- lapply(passes, `[[`, "validation")
     answer$validation$deviance <- L0glm_validation_loss(args$validation, beta, state = result$state)
   }
-  answer$metrics <- L0glm.metrics(answer, mu_floor = 0)
+  answer$metrics <- l0glmMetrics(answer, mu_floor = 0)
   answer$objective <- answer$metrics$objective
   answer
 }
@@ -79,15 +79,15 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 
 #' Essential fit and recovery metrics for an L0glm model
 #'
-#' @name L0glm.metrics
+#' @name l0glmMetrics
 #' @md
-#' @param object A model returned by [L0glm.fit()] or [L0nnpois()], or a
-#'   comparison from [sparseglm()].
+#' @param object A model returned by [l0glmFit()] or [l0nnPois()], or a
+#'   comparison from [sparseGLM()].
 #' @param newdata New predictor matrix, without an automatically added
 #'   intercept, or \code{NULL} for training data.
 #' @param y Responses for \code{newdata}; required when it is supplied.
 #'   \code{NULL} otherwise uses the training responses. Special-family response
-#'   formats are described in [L0glm.fit()].
+#'   formats are described in [l0glmFit()].
 #' @param weights Optional prior observation weights for scoring. Training
 #'   scores default to the original prior weights, rather than IRLS working
 #'   weights. New data default to unit weights. Supports the fitting family's
@@ -189,7 +189,7 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #'   model-specific objective summaries; supplying \code{beta_true} also
 #'   adds the same recovery metrics. The information criteria are
 #'   \code{aic}, \code{bic}, \code{gic}, \code{ebic} and \code{mbic}.
-#'   For a \code{sparseglm} collection, one row per requested method
+#'   For a \code{sparseGLM} collection, one row per requested method
 #'   includes timings, status, grouping scope, approximation and tuning values.
 #'   Failed methods retain a row with unavailable fit metrics.
 #' @seealso \link{model_criteria}, \link{information_criteria}
@@ -198,23 +198,23 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' X <- matrix(runif(300), 60, 5)
 #' truth <- rbind(c(3, 0, 2), c(0, 4, 1), matrix(0, 3, 3))
 #' y <- matrix(rpois(180, 1 + X %*% truth), 60, 3)
-#' fit <- L0nnpois(X, y, offset = rep(1, 60), parallelize = FALSE)
-#' scores <- L0glm.metrics(fit, beta_true = truth)
+#' fit <- l0nnPois(X, y, offset = rep(1, 60), parallelize = FALSE)
+#' scores <- l0glmMetrics(fit, beta_true = truth)
 #' scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 #' @export
-L0glm.metrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
+l0glmMetrics <- function(object, newdata = NULL, y = NULL, weights = NULL,
                           offset = NULL, mu_floor = 1e-8, beta_true = NULL,
                           r2_mu_floor = 0.1, ...) {
-  UseMethod("L0glm.metrics")
+  UseMethod("l0glmMetrics")
 }
 
-#' @rdname L0glm.metrics
+#' @rdname l0glmMetrics
 #' @export
-L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = NULL,
+l0glmMetrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = NULL,
                           offset = NULL, mu_floor = 1e-8, beta_true = NULL,
                           r2_mu_floor = 0.1, ...) {
   if (!inherits(object, "L0glm_fit"))
-    stop("object must be a model returned by L0glm.fit or L0nnpois.", call. = FALSE)
+    stop("object must be a model returned by l0glmFit or l0nnPois.", call. = FALSE)
   training <- is.null(newdata)
   if (!training && is.null(y))
     stop("Supply y when scoring newdata.", call. = FALSE)
@@ -278,17 +278,17 @@ L0glm.metrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = 
     df, selected, nonzero = elements, mandatory, nuisance,
     prediction,
     objective = -2 * likelihood + object$init.lambda * charge,
-    GIC_rows = -2 * likelihood + preset.lambda("gic", max(1, object$p), max(2, object$n_ic)) * selected,
+    GIC_rows = -2 * likelihood + presetLambda("gic", max(1, object$p), max(2, object$n_ic)) * selected,
     IC, row.names = NULL)
   if (!is.null(beta_true)) scores <- cbind(scores,
     as.data.frame(L0glm_recovery_metrics(beta, beta_true, object$always.include, object$p)))
   scores
 }
 
-#' @rdname L0glm.metrics
+#' @rdname l0glmMetrics
 #' @export
-L0glm.metrics.default <- function(object, ...) {
-  stop("object must be a model returned by L0glm.fit or L0nnpois, or a benchmark result.", call. = FALSE)
+l0glmMetrics.default <- function(object, ...) {
+  stop("object must be a model returned by l0glmFit or l0nnPois, or a benchmark result.", call. = FALSE)
 }
 
 # Ordinary GLMs retain prior weights separately from the final IRLS weights.

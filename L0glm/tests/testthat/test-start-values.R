@@ -1,7 +1,7 @@
 test_that("coefficient mixing is no longer a fitting control", {
-  for (fun in list(L0glm.fit, L0nnpois, L0glm.tune, L0glm.fit.internal))
+  for (fun in list(l0glmFit, l0nnPois, l0glmTune, L0glm.fit.internal))
     expect_false("warm.start" %in% names(formals(fun)))
-  for (fun in list(L0glm.fit, L0nnpois))
+  for (fun in list(l0glmFit, l0nnPois))
     expect_error(do.call(fun, list(X = diag(3), y = 1:3, warm.start = 1)),
                  "unused argument")
 })
@@ -10,7 +10,7 @@ test_that("explicit signed starts set the first ridge penalties without mixing",
   start <- c(-1, 0, 2)
   y <- c(-2, 3, 4)
   for (sparse in c(FALSE, TRUE)) {
-    fit <- L0glm.fit(Matrix::Matrix(diag(3), sparse = sparse), y,
+    fit <- l0glmFit(Matrix::Matrix(diag(3), sparse = sparse), y,
                      family = gaussian(), nonnegative = FALSE,
                      start = start, lambda = 4, dispersion = 1,
                      maxit = 1, thresh = 0, relaxed = FALSE,
@@ -54,7 +54,7 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
                      grouped = FALSE, relaxed = FALSE,
                      parallelize = FALSE, openmp = FALSE)
         for (start in c(1, -2)) {
-          scalar <- do.call(L0glm.fit, c(args, list(start = start)))
+          scalar <- do.call(l0glmFit, c(args, list(start = start)))
           expected_start <- matrix(start, p, m)
           if (start == 1) {
             design <- if (intercept) cbind(Intercept = 1, X) else X
@@ -64,7 +64,7 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
             expected_start <- matrix(1 / scale, p, m)
             if (intercept) expected_start[1L, ] <- 1 - sum(center / scale)
           }
-          explicit <- do.call(L0glm.fit,
+          explicit <- do.call(l0glmFit,
                               c(args, list(start = expected_start)))
           expect_equal(scalar$coefficients, explicit$coefficients, tolerance = 1e-12)
           expect_equal(scalar$lambdas, explicit$lambdas, tolerance = 1e-12)
@@ -88,8 +88,8 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
       args <- list(X = X, y = c(2, 1, 4, 6), family = gaussian(), dispersion = 1,
         lambda = 4, normalize = mode, intercept = intercept, maxit = 1,
         thresh = 0, relaxed = FALSE, parallelize = FALSE, openmp = FALSE)
-      unit <- do.call(L0glm.fit, c(args, list(start = 1)))
-      explicit <- do.call(L0glm.fit, c(args, list(start = matrix(start, ncol = 1))))
+      unit <- do.call(l0glmFit, c(args, list(start = 1)))
+      explicit <- do.call(l0glmFit, c(args, list(start = matrix(start, ncol = 1))))
       expect_equal(unit$coefficients, explicit$coefficients, tolerance = 1e-12)
       expect_equal(unit$lambdas, explicit$lambdas, tolerance = 1e-12)
     }
@@ -98,10 +98,10 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
 
 test_that("a remaining explicit one is not reinterpreted after starting-zero screening", {
   X <- diag(c(2, 3)); y <- c(3, 0)
-  fit <- L0glm.fit(X, y, family = gaussian(), dispersion = 1, normalize = "l2",
+  fit <- l0glmFit(X, y, family = gaussian(), dispersion = 1, normalize = "l2",
     start = c(1, 0), lambda = 4, maxit = 1, thresh = 0, parallelize = FALSE)
   expect_equal(as.numeric(fit$coefficients), c(6 / 5, 0))
-  one_term <- L0glm.fit(matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
+  one_term <- l0glmFit(matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
     normalize = "l2", start = matrix(1, 1, 1), lambda = 4, maxit = 1,
     thresh = 0, parallelize = FALSE)
   expect_equal(as.numeric(one_term$coefficients), 6 / 5)
@@ -118,9 +118,9 @@ test_that("normalized Poisson unit starts agree across general and native channe
       args <- list(X = X, y = y, normalize = mode, intercept = intercept,
         lambda = 1, maxit = 8, grouped = TRUE, relaxed = TRUE,
         group.maxit = 2, parallelize = FALSE)
-      native <- do.call(L0nnpois, c(args, list(start = 1)))
-      reference <- do.call(L0nnpois, c(args, list(start = explicit)))
-      general <- do.call(L0glm.fit, c(args, list(start = 1,
+      native <- do.call(l0nnPois, c(args, list(start = 1)))
+      reference <- do.call(l0nnPois, c(args, list(start = explicit)))
+      general <- do.call(l0glmFit, c(args, list(start = 1,
         family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
       expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-10)
       expect_equal(native$coefficients, general$coefficients, tolerance = 1e-6)
@@ -143,7 +143,7 @@ test_that("scalar Poisson starts cover intercepts, grouping and both backends", 
                        group.maxit = 2, grouped = grouped, relaxed = grouped,
                        parallelize = FALSE)
           for (backend in c("general", "native", "dispatch")) {
-            fitter <- if (backend == "native") L0nnpois else L0glm.fit
+            fitter <- if (backend == "native") l0nnPois else l0glmFit
             controls <- if (backend == "native") list() else
               list(nonnegative = TRUE, openmp = backend == "dispatch")
             scalar <- do.call(fitter, c(args, controls, list(start = 1)))
@@ -168,7 +168,7 @@ test_that("scalar starts survive multichannel parallel job splitting", {
                intercept = TRUE, lambda = 0.5, maxit = 3,
                grouped = TRUE, group.maxit = 2, relaxed = TRUE, ncores = 2L)
   for (backend in c("general", "native")) {
-    fitter <- if (backend == "native") L0nnpois else L0glm.fit
+    fitter <- if (backend == "native") l0nnPois else l0glmFit
     controls <- if (backend == "native") list() else
       list(nonnegative = TRUE, openmp = FALSE)
     serial <- do.call(fitter,
@@ -185,7 +185,7 @@ test_that("Gaussian initialization respects response units with fixed dispersion
   X <- matrix(rnorm(120 * 12), 120)
   beta <- c(-3, 2, rep(0, 10))
   y <- as.numeric(X %*% beta) + rnorm(120, sd = 0.5)
-  fit <- function(scale) L0glm.fit(
+  fit <- function(scale) l0glmFit(
     X, y * scale, family = gaussian(), nonnegative = FALSE,
     dispersion = 0.25 * scale^2, lambda = "gic", maxit = 100,
     relaxed = TRUE, parallelize = FALSE, openmp = FALSE)

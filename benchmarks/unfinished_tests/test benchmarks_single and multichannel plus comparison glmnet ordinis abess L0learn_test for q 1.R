@@ -26,7 +26,7 @@ crit <- "aic" # # choose lambda based on what would be expected to optimise this
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
 ### 1.1.1 L0glm solution ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "poisson", 
@@ -45,11 +45,11 @@ L0overLqnorm = ifelse(q==0, 1, sum(beta_true!=0)/(sum(abs(beta_true)^q)^(1/q)))
 L0overLqnorm # later used to scale lambda with, can be estimated from L0glm fit with q=0
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic
  
 lambda_preset 
 
-system.time(L0glm.out_preset <- L0glm.fit(X, y, 
+system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = lambda_preset*L0overLqnorm*4*(1/2^(2-q)), # when using q = 1 in adaptive penalties this would have to be lambda_preset*L0overL1norm to be roughly on right scale, with L0overL1norm calculated from L0glm fit with q=0?
                                # ridge.center = start, # ridge.center
@@ -173,7 +173,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   lambda <- lambdas[[i]]
   # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0 # slightly faster & stable with this
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                              family = family, 
                              # family = gaussian(identity),
                              # weights = 1/(sim$y+0.1),
@@ -821,7 +821,7 @@ benchmarks_1_1
 # 5 10962.418 11021.602 10679.579 10447.776 11210.913
 
 # TODO: probably best to package some of the above in an individual sparse learning
-# function sparseglm with identical arguments (e.g. method=lasso, alasso, mcp, scad, L0learn,
+# function sparseGLM with identical arguments (e.g. method=lasso, alasso, mcp, scad, L0learn,
 # L0learn_after_lasso, abess, abess_after_lasso, etc with arguments X=, y=, 
 # family=identity link gaussian or poisson, nonnegative=T/F)
 # and coefficients as output & to then make a benchmark function with the same arguments
@@ -841,7 +841,7 @@ benchmarks_1_1
 ## 1.2 Single channel deconvolution assuming Gaussian noise ####
 ### 1.2.1 L0glm solution ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
@@ -855,10 +855,10 @@ dispersion <- sd_noise^2
 W <- rep(1,p) # with Gaussian equal observation weights
 
 # using lambda expected to optimise given IC
-lambda_preset <- preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic 
+lambda_preset <- presetLambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic
 lambda_preset # lambda that would be expected to optimise given IC
 
-system.time(L0glm.out_preset <- L0glm.fit(X, y, 
+system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = lambda_preset, 
                                nonnegative = TRUE,
@@ -908,7 +908,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   
   start <- warmstart*start+(1-warmstart)*start_coefs(X, family)*100
   # start[L0glm.out_preset_coefs==0] <- 0
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                              family = gaussian(identity), 
                              lambda = lambda, 
                              nonnegative = TRUE,
@@ -1518,14 +1518,14 @@ sd_noise <- 5 # SD of noise for Gaussian noise case
 # lambda expected to optimise given IC
 crit <- "bic" # choose lambda based on what would be expected to optimise this IC
 # options in order of increasing regularisation: aic, bic, gic, ebic, mbic
-lambda_preset = preset.lambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic  
+lambda_preset = presetLambda(IC = crit, p=p, n=n) # options aic, bic, gic, ebic, mbic
 lambda_preset 
 
 
 ## 2.1 Multichannel deconvolution assuming Poisson noise ####
 ### 2.1.1 L0glm solution ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = ifelse(round(n/10)<=100, round(n/10), 100),
                             family="poisson", 
@@ -1538,7 +1538,7 @@ family <- poisson(identity)
 m <- ncol(y) # nr of tasks/channels
 
 # relaxed L0 group fit, with preset lambda
-system.time(L0glm.out_preset <- L0glm.fit(X, y, 
+system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = lambda_preset, 
                                grouped = TRUE,
@@ -1589,7 +1589,7 @@ lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]] 
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                              family = family, 
                              lambda = lambda, 
                              grouped = TRUE,
@@ -1713,7 +1713,7 @@ metrics_abess
 ## 2.2 Multichannel deconvolution assuming Gaussian noise ####
 ### 2.2.1 L0glm solution ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = ifelse(round(n/10)<=100, round(n/10), 100),
                             family = "gaussian", 
@@ -1728,7 +1728,7 @@ dispersion <- sd_noise^2
 m <- ncol(y) # nr of tasks/channels
 
 # fit with preset lambda
-system.time(L0glm.out_preset <- L0glm.fit(X, y, 
+system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = lambda_preset, 
                                grouped = TRUE,
@@ -1774,7 +1774,7 @@ lambdas <- 10^seq(round(log10(lambda_preset))-1, log10(maxlam)+1, by=1) #
 coefmat <- Matrix(0, nrow=length(lambdas), ncol=ncol(sim$X)) # matrix with avg coefficients over tasks/channels
 system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) { 
   lambda <- lambdas[[i]]
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                              family = gaussian(identity), 
                              lambda = lambda, 
                              grouped = TRUE,

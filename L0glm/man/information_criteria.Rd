@@ -4,12 +4,12 @@
 \alias{information_criteria}
 \title{Information-criterion presets for sparse GLMs}
 \description{
-Both \code{\link[=L0glm.fit]{L0glm.fit()}} and \code{\link[=L0nnpois]{L0nnpois()}} accept a numeric \code{lambda} or a
+Both \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=l0nnPois]{l0nnPois()}} accept a numeric \code{lambda} or a
 case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 \code{"ebic"}, or \code{"mbic"}.
 For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
-Use \code{\link[=preset.lambda]{preset.lambda()}} to calculate a preset's numeric value directly.
-\code{\link[=L0glm.tune]{L0glm.tune()}} accepts the same names through its \code{tune} argument,
+Use \code{\link[=presetLambda]{presetLambda()}} to calculate a preset's numeric value directly.
+\code{\link[=l0glmTune]{l0glmTune()}} accepts the same names through its \code{tune} argument,
 or \code{tune = "cv"} for cross-validation by held-out deviance.
 }
 \details{
@@ -92,7 +92,7 @@ Gaussian threshold calibration of Frommlet and Nuel (2016). Applying this
 calibration to general GLMs is an approximation. Criterion consistency
 also does not by itself establish consistency of the numerical algorithm.
 \code{relaxed = TRUE} refits selected coefficients with negligible
-penalization; \code{\link[=L0glm.tune]{L0glm.tune()}} searches nearby penalties and evaluates the
+penalization; \code{\link[=l0glmTune]{l0glmTune()}} searches nearby penalties and evaluates the
 requested criterion on the resulting fits.
 
 Reported scores use the fitted likelihood and the package's parameter
@@ -113,10 +113,10 @@ for sample-size and special-family parameter-count conventions.
 set.seed(7)
 X <- matrix(runif(120), nrow = 40, ncol = 3)
 y <- rpois(40, 1 + 3 * X[, 1])
-fit <- L0glm.fit(X, y, family = poisson(identity),
+fit <- l0glmFit(X, y, family = poisson(identity),
   nonnegative = TRUE, intercept = TRUE, lambda = "GIC",
   parallelize = FALSE)
-fast <- L0nnpois(X, y, intercept = TRUE, lambda = "gic",
+fast <- l0nnPois(X, y, intercept = TRUE, lambda = "gic",
   parallelize = FALSE)
 # Both presets use p = 3 selectable predictors, excluding the intercept.
 c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
@@ -158,5 +158,5 @@ regularization. \emph{PLOS ONE}, 11, e0148620.
 \doi{10.1371/journal.pone.0148620}.
 }
 \seealso{
-\code{\link[=preset.lambda]{preset.lambda()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0nnpois]{L0nnpois()}}, \code{\link[=L0glm.tune]{L0glm.tune()}}
+\code{\link[=presetLambda]{presetLambda()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \code{\link[=l0glmTune]{l0glmTune()}}
 }

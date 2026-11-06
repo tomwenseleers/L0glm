@@ -78,7 +78,7 @@ website_plot_examples <- function(cases=c("million", "single", "multi", "selecti
       preset <- read.csv(file.path(output,"selection-metrics.csv"))[fields]
       fits <- list(s$gic$fit_best,s$cv$fit_best,s$cv$fit_1se)
       measures <- do.call(rbind,c(list(preset),lapply(fits,function(f)
-        L0glm.metrics(f,beta_true=s$beta_true)[fields])))
+        l0glmMetrics(f,beta_true=s$beta_true)[fields])))
       measures$method <- c("GIC preset","Tuned GIC","CV minimum","CV one-SE")
       write.csv(measures,file.path(output,"selection-comparison.csv"),row.names=FALSE)
       draw("selection-gic",1700,1000,L0glm:::L0glm_plot_tuning(s$gic,s$beta_true))

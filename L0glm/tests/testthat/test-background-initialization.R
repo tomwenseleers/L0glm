@@ -20,7 +20,7 @@ test_that("automatic identity starts recover peaks above compulsory backgrounds"
   for (sparse in c(FALSE, TRUE)) {
     d <- background_start_fixture(sparse)
     results <- lapply(c("none", "l2", "rms", "sd"), function(mode)
-      L0glm.fit(d$X, d$y, family = poisson(identity), nonnegative = TRUE,
+      l0glmFit(d$X, d$y, family = poisson(identity), nonnegative = TRUE,
         always.include = d$mandatory, lambda = "gic", normalize = mode,
         parallelize = FALSE))
     for (a in results) {
@@ -33,7 +33,7 @@ test_that("automatic identity starts recover peaks above compulsory backgrounds"
       expect_equal(fitted(a), as.matrix(d$X %*% coef(a)), tolerance = 1e-9, ignore_attr = TRUE)
     }
     for (a in results[-1L]) expect_equal(as.numeric(coef(a)), as.numeric(coef(results[[1L]])), tolerance = 1e-6)
-    native <- L0nnpois(d$X, d$y, always.include = d$mandatory, lambda = "gic", parallelize = FALSE)
+    native <- l0nnPois(d$X, d$y, always.include = d$mandatory, lambda = "gic", parallelize = FALSE)
     expect_equal(coef(native), coef(results[[1L]]), tolerance = 0)
   }
 })
@@ -54,9 +54,9 @@ test_that("known-offset automatic starts agree between native and general Poisso
   d <- background_start_fixture()
   X <- d$X[, 1:240, drop = FALSE]
   for (mode in c("none", "l2")) {
-    a <- L0nnpois(X, d$y, offset = d$background, normalize = mode,
+    a <- l0nnPois(X, d$y, offset = d$background, normalize = mode,
       lambda = "gic", parallelize = FALSE)
-    b <- L0glm.fit(X, d$y, family = poisson(identity), nonnegative = TRUE,
+    b <- l0glmFit(X, d$y, family = poisson(identity), nonnegative = TRUE,
       offset = d$background, normalize = mode, openmp = FALSE,
       lambda = "gic", parallelize = FALSE)
     selected <- as.numeric(Matrix::rowSums(coef(a))) > 0
@@ -69,11 +69,11 @@ test_that("known-offset automatic starts agree between native and general Poisso
 test_that("explicit starting zeros and zero-information channels retain their contracts", {
   d <- background_start_fixture()
   S <- matrix(1, ncol(d$X), 3L); S[30, ] <- 0
-  a <- L0nnpois(d$X, d$y, start = S, always.include = d$mandatory, parallelize = FALSE)
+  a <- l0nnPois(d$X, d$y, start = S, always.include = d$mandatory, parallelize = FALSE)
   expect_true(all(coef(a)[30, ] == 0))
   expect_equal(a$nuisance$initializer, "joint")
   d$y[, 3L] <- 0
-  b <- L0nnpois(d$X, d$y, always.include = d$mandatory, parallelize = FALSE)
+  b <- l0nnPois(d$X, d$y, always.include = d$mandatory, parallelize = FALSE)
   expect_true(all(coef(b)[, 3L] == 0))
   expect_equal(dim(coef(b)), c(244L, 3L))
 })

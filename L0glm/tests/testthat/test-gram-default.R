@@ -17,8 +17,8 @@ test_that("default Eigen Gram routing follows numerical sparsity and honors over
       y <- seq_len(nrow(X))/nrow(X)
       for (override in list(NULL, TRUE, FALSE)) {
         before <- augmentations
-        control <- control.solver.gen("eigen", method, rowaug = override)
-        beta <- lmridge(X, y, lambdas = rep(2, ncol(X)), control.solver = control)
+        control <- controlSolverGen("eigen", method, rowaug = override)
+        beta <- lmRidge(X, y, lambdas = rep(2, ncol(X)), control.solver = control)
         expected <- if (is.null(override)) spec$sparse else override
         expect_equal(augmentations - before, as.integer(expected))
         residual <- as.numeric(crossprod(as.matrix(X), as.numeric(X %*% beta) - y)) + 2*beta
@@ -46,7 +46,7 @@ test_that("IRLS resolves the automatic Gram route once per fit", {
     calls <<- calls + 1L
     original(X)
   })
-  fit <- L0glm.fit(X, y, family = binomial(), openmp = FALSE, start = 1,
+  fit <- l0glmFit(X, y, family = binomial(), openmp = FALSE, start = 1,
     normalize = "none", maxit = 5L, relaxed = FALSE)
   expect_gt(max(fit$convergence$iterations), 1L)
   expect_equal(calls, 1L)

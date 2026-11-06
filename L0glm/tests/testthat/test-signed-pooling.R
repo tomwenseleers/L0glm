@@ -20,9 +20,9 @@ test_that("signed multichannel fits are invariant to response channel order", {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), family = gaussian(),
                  dispersion = 0.09, lambda = "gic", grouped = TRUE, relaxed = TRUE,
                  maxit = 50L, parallelize = FALSE)
-    original <- do.call(L0glm.fit, c(args, list(y = Y)))
+    original <- do.call(l0glmFit, c(args, list(y = Y)))
     order <- c(3, 1, 2)
-    shuffled <- do.call(L0glm.fit, c(args, list(y = Y[, order])))
+    shuffled <- do.call(l0glmFit, c(args, list(y = Y[, order])))
     expect_equal(as.matrix(original$coefficients)[, order], as.matrix(shuffled$coefficients), tolerance = 1e-9)
     expect_true(all(Matrix::rowSums(original$coefficients != 0)[1:5] > 0))
   }

@@ -80,8 +80,8 @@ test_that("S3 model and comparison metrics forward the configurable R-squared fl
     data=data,mu_floor=1e-8,beta_true=beta),class="sparseglm")
   for (floor in c(0,.1,.5)) {
     expected <- get.metrics(beta,X,y,family=poisson(identity),r2_mu_floor=floor)$R2_weighted
-    expect_equal(L0glm.metrics(fit,r2_mu_floor=floor)$R2_weighted,expected)
-    expect_equal(L0glm.metrics(comparison,r2_mu_floor=floor)$R2_weighted,expected)
+    expect_equal(l0glmMetrics(fit,r2_mu_floor=floor)$R2_weighted,expected)
+    expect_equal(l0glmMetrics(comparison,r2_mu_floor=floor)$R2_weighted,expected)
     expect_equal(summary(fit,r2_mu_floor=floor)$metrics$R2_weighted,expected)
     expect_equal(summary(comparison,r2_mu_floor=floor)$metrics$R2_weighted,expected)
   }
@@ -142,17 +142,17 @@ test_that("S3 prediction metrics use fitted NB theta and score new observations"
   set.seed(2423)
   X <- matrix(rnorm(160),80,2)
   y <- matrix(rnbinom(160,size=2,mu=exp(1 + X[,1]*.4)),80,2)
-  fit <- L0glm.fit(X,y,family=mgcv::nb(theta=2),intercept=TRUE,
+  fit <- l0glmFit(X,y,family=mgcv::nb(theta=2),intercept=TRUE,
     lambda=2,grouped=FALSE,relaxed=FALSE)
   mu <- fitted(fit)
   w <- mu/(1+mu/2)
   rss <- sum(w*(y-mu)^2)
   tss <- sum(vapply(1:2,function(j)sum(w[,j]*(y[,j]-weighted.mean(y[,j],w[,j]))^2),numeric(1)))
-  scores <- L0glm.metrics(fit)
+  scores <- l0glmMetrics(fit)
   expect_equal(scores$R2_weighted,1-rss/tss)
   k <- sum(coef(fit) != 0) + sum(coef(fit)[1,,drop=FALSE] == 0)
   expect_equal(scores$adj_R2_weighted,1-(rss/tss)*158/(160-k))
-  future <- L0glm.metrics(fit,newdata=X[1:12,],y=y[1:12,])
+  future <- l0glmMetrics(fit,newdata=X[1:12,],y=y[1:12,])
   expect_true(is.finite(future$adj_R2_weighted))
   expect_equal(future$R2_weighted,L0glm_prediction_metrics(y[1:12,],mu[1:12,],matrix(1,12,2),
     fit$families,coef(fit),1L,TRUE)$R2_weighted)

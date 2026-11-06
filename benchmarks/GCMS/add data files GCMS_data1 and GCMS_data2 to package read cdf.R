@@ -29,7 +29,7 @@ library(ncdf4)
 cdf_info <- nc_open(samplefile1) # see https://pjbartlein.github.io/REarthSysSci/netCDF.html how to parse info
 cdf_info
 system.time(raw1 <- readcdf(file=samplefile1)) # 3.9s
-plotmat(raw1) # whole chromatogram
+plotMat(raw1) # whole chromatogram
 # small section containing at 
 # RT 26.84 15-methylnonacosane (diagn ions 224+225)
 # RT 26.91 13-Methylnonacosane (diagn ions 196+225)
@@ -39,7 +39,7 @@ plotmat(raw1) # whole chromatogram
 # RT 27.11 7-Methylnonacosane (diagn ions 112+336)
 section <- as.numeric(rownames(raw1))>26.8&as.numeric(rownames(raw1))<27.2
 raw1_sect <- raw1[section,,drop=F] # small section
-plotmat(raw1_sect)
+plotMat(raw1_sect)
 rownames(raw1_sect)
 colnames(raw1_sect) # m/z 30 to 700
 dim(raw1_sect) # 119 671
@@ -49,14 +49,14 @@ saveRDS(raw1, file="../benchmarks/GCMS/GCMS_data1_full.rds")
 samplefile1_alk = "C:/Users/bherr/Dropbox/gcms_deconvolution_project/christophe/chromatograms/cataglyphis_iberica/alkstandards/STD_AL0001_120716.CDF"
 system.time(raw1_alk <- readcdf(file=samplefile1_alk)) # 3.9s
 saveRDS(raw1_alk, file="../benchmarks/GCMS/GCMS_data1_alk_full.rds")
-plotmat(raw1_alk) # whole chromatogram
+plotMat(raw1_alk) # whole chromatogram
 samplefile1_alk_TIC = rowSums(raw1_alk) # total ion chromatogram
 names(samplefile1_alk_TIC) = rownames(raw1_alk) # RTs
 plot(x=as.numeric(names(samplefile1_alk_TIC)), y=samplefile1_alk_TIC, type="l", 
      xlab="Retention time (min)", ylab="Total ion intensity", main="C9 to C40 alkane ladder") 
-GCMS_data1 <- raw1_sect
-attr(GCMS_data1, "alkanes_TIC") <- samplefile1_alk_TIC # we add the alkane ladder TIC as an attribute to data(GCMS_data1)
-save(GCMS_data1, file="./data/GCMS_data1.rda")
+gcmsData1 <- raw1_sect
+attr(gcmsData1, "alkanes_TIC") <- samplefile1_alk_TIC # we add the alkane ladder TIC as an attribute to data(gcmsData1)
+save(gcmsData1, file="./data/gcmsData1.rda")
 
 
 ## SAMPLE 2 ####
@@ -68,14 +68,14 @@ library(ncdf4)
 cdf_info <- nc_open(samplefile2) # see https://pjbartlein.github.io/REarthSysSci/netCDF.html how to parse info
 cdf_info
 system.time(raw2 <- readcdf(file=samplefile2)) # 3.9s
-plotmat(raw2) # whole chromatogram
+plotMat(raw2) # whole chromatogram
 # raw2 <- readRDS("C:/Users/bherr/Documents/Github/L0glm/benchmarks/GCMS/GCMS_beersample.rds")
 # colnames(raw2) <- as.character(33:550)
 # rownames(raw2) <- seq(20, 30, length.out=nrow(raw2))
 # dim(raw2) # 947 x 518 (time x mass)
 section <- as.numeric(rownames(raw2))>19&as.numeric(rownames(raw2))<25
 raw2_sect <- raw2[section,,drop=F] # small section
-plotmat(raw2_sect)
+plotMat(raw2_sect)
 rownames(raw2_sect) # 19.00 to 25.00 mins
 colnames(raw2_sect) # 33 to 550
 dim(raw2_sect) # 1764  518
@@ -86,11 +86,11 @@ samplefile2_alk = "C:/Users/bherr/Dropbox/gcms_deconvolution_project/christophe/
 system.time(raw2_alk <- readcdf(file=samplefile2_alk)) # 3.9s
 saveRDS(raw2_alk, file="../benchmarks/GCMS/GCMS_data2_alk_full.rds")
 raw2_alk <- raw2_alk[as.numeric(rownames(raw2_alk))>6,,drop=F] # we leave out the overloaded hexane/C6 in the beginning
-plotmat(raw2_alk) # whole chromatogram from RT of 6 mins, with C7 to C22
+plotMat(raw2_alk) # whole chromatogram from RT of 6 mins, with C7 to C22
 samplefile2_alk_TIC = rowSums(raw2_alk) # total ion chromatogram
 names(samplefile2_alk_TIC) = rownames(raw2_alk) # RTs
 plot(x=as.numeric(names(samplefile2_alk_TIC)), y=samplefile2_alk_TIC, type="l", 
      xlab="Retention time (min)", ylab="Total ion intensity", main="C7 to C22 alkane ladder") 
-GCMS_data2 <- raw2_sect
-attr(GCMS_data2, "alkanes_TIC") <- samplefile2_alk_TIC # we add the alkane ladder TIC as an attribute to data(GCMS_data2)
-save(GCMS_data2, file="./data/GCMS_data2.rda")
+gcmsData2 <- raw2_sect
+attr(gcmsData2, "alkanes_TIC") <- samplefile2_alk_TIC # we add the alkane ladder TIC as an attribute to data(gcmsData2)
+save(gcmsData2, file="./data/gcmsData2.rda")

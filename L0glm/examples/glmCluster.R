@@ -1,0 +1,24 @@
+# Native likelihood clustering of response channels
+set.seed(12)
+Y <- matrix(rpois(120*12, rep(c(2, 12), each=120*6)), 120, 12)
+cl <- glmCluster(Y, k.max=6L, nthreads=2L)
+cl$history
+cl$clusterids
+dim(cl$Y_agg)
+
+# A fixed-variance Gaussian example uses exact Bregman likelihood merges.
+Z <- cbind(matrix(rnorm(60*5, -2, .5),60),
+           matrix(rnorm(60*5,  2, .5),60))
+normal <- glmCluster(Z, family=gaussian(), dispersion=.25, k.max=5L)
+normal$clusterids
+
+\donttest{
+demo <- simul(n=400, p=400, n_nonzero=30, m=24)
+Y <- as.matrix(demo$y)
+# Ordered scans allow coarsening for the clustering stage.
+ward <- glmCluster(Y, method="poissondist", linkage="ward",
+                    size_fac=colSums(Y), rowbins=5L, k.max=32L)
+bregman <- glmCluster(Y, method="poissondist", linkage="bregman",
+                       size_fac=colSums(Y), rowbins=5L, k.max=32L)
+matplot(ward$Y_agg^.2,type="l",lty=1,xlab="Scan",ylab="Summed intensity ^ 0.2")
+}

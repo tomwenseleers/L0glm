@@ -1,20 +1,20 @@
 test_that("the public constraint arguments are restricted to the supported API", {
   X <- matrix(seq_len(8), ncol = 1)
   y <- seq_len(8)
-  expect_identical(formals(L0glm.fit)$nonnegative, FALSE)
+  expect_identical(formals(l0glmFit)$nonnegative, FALSE)
   for (arg in c("lower", "upper")) {
-    expect_false(arg %in% names(formals(L0glm.fit)))
-    expect_false(arg %in% names(formals(L0nnpois)))
-    expect_error(do.call(L0glm.fit, c(list(X = X, y = y), setNames(list(0), arg))),
+    expect_false(arg %in% names(formals(l0glmFit)))
+    expect_false(arg %in% names(formals(l0nnPois)))
+    expect_error(do.call(l0glmFit, c(list(X = X, y = y), setNames(list(0), arg))),
                  "unused argument")
-    expect_error(do.call(L0nnpois, c(list(X = X, y = y), setNames(list(0), arg))),
+    expect_error(do.call(l0nnPois, c(list(X = X, y = y), setNames(list(0), arg))),
                  "unused argument")
   }
-  expect_false("nonnegative" %in% names(formals(L0nnpois)))
-  expect_error(L0nnpois(X, y, nonnegative = TRUE), "unused argument")
-  expect_error(L0nnpois(X, y, nonnegative = FALSE), "unused argument")
+  expect_false("nonnegative" %in% names(formals(l0nnPois)))
+  expect_error(l0nnPois(X, y, nonnegative = TRUE), "unused argument")
+  expect_error(l0nnPois(X, y, nonnegative = FALSE), "unused argument")
   for (invalid in list(NA, NULL, logical(), c(TRUE, FALSE), 1, "TRUE")) {
-    expect_error(L0glm.fit(X, y, nonnegative = invalid),
+    expect_error(l0glmFit(X, y, nonnegative = invalid),
                  "nonnegative must be TRUE or FALSE", fixed = TRUE)
   }
 })
@@ -28,7 +28,7 @@ test_that("all ridge backends respect optional nonnegativity including Gaussian 
     for (normalize in c(FALSE, TRUE)) {
       for (i in seq_along(backends)) {
         for (nonnegative in c(FALSE, TRUE)) {
-          fit <- L0glm.fit(
+          fit <- l0glmFit(
             Matrix::Matrix(X, sparse = sparse), y, family = gaussian(),
             intercept = TRUE, nonnegative = nonnegative, normalize = normalize,
             always.include = 2L,
@@ -52,7 +52,7 @@ test_that("binomial intercepts remain free across solvers and explicit intercept
     for (sparse in c(FALSE, TRUE)) {
       for (explicit in c(FALSE, TRUE)) {
         X <- if (explicit) cbind(x, 1) else matrix(x, ncol = 1)
-        fit <- L0glm.fit(
+        fit <- l0glmFit(
           Matrix::Matrix(X, sparse = sparse), y, family = binomial,
           weights = rep(1000, length(y)), intercept = !explicit,
           nonnegative = TRUE, normalize = TRUE, lambda = 1e-12,
@@ -79,14 +79,14 @@ test_that("binomial slopes remain constrained through grouped, relaxed and paral
         family = binomial(), weights = rep(1000, length(x)),
         nonnegative = TRUE, lambda = 1e-8, grouped = grouped, relaxed = relaxed, group.maxit = 2L, maxit = 50L
       )
-      serial <- do.call(L0glm.fit, c(args, list(parallelize = FALSE)))
+      serial <- do.call(l0glmFit, c(args, list(parallelize = FALSE)))
       beta <- as.matrix(serial$coefficients)
       expect_true(all(beta[1, ] < 0))
       expect_true(all(beta[2, ] >= 0))
       expect_gt(beta[2, 1], 0.9)
       expect_equal(unname(beta[2, 2]), 0)
       if (grouped && relaxed) {
-        parallel <- do.call(L0glm.fit, c(args, list(parallelize = TRUE, ncores = 2L)))
+        parallel <- do.call(l0glmFit, c(args, list(parallelize = TRUE, ncores = 2L)))
         expect_equal(parallel$coefficients, serial$coefficients, tolerance = 1e-12)
       }
     }
@@ -100,7 +100,7 @@ test_that("non-binomial intercepts follow nonnegative for other GLM families", {
     # Poisson responses are counts; the other families accept positive real data.
     if (family$family == "poisson") y <- rep(c(0, 1), 20)
     for (nonnegative in c(FALSE, TRUE)) {
-      fit <- L0glm.fit(
+      fit <- l0glmFit(
         X, y, family = family, intercept = TRUE, nonnegative = nonnegative,
         lambda = 1e-10, dispersion = 1, start = c(-1, 0.4),
         parallelize = FALSE, maxit = 60
@@ -112,7 +112,7 @@ test_that("non-binomial intercepts follow nonnegative for other GLM families", {
   }
 })
 
-test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
+test_that("l0nnPois enforces nonnegativity on intercepts, starts and refits", {
   X <- matrix(rep(c(0, 1), 20), ncol = 1)
   y <- 2 + 3 * X[, 1]
   # The positive offset makes the unrestricted intercept negative while all means are valid.
@@ -127,8 +127,8 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
             lambda = 1e-8, start = c(-1, 2), grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,
             parallelize = multichannel && sparse && normalize && relaxed, ncores = 2L
           )
-          fast <- do.call(L0nnpois, args)
-          general <- do.call(L0glm.fit, c(args, list(family = poisson(identity),
+          fast <- do.call(l0nnPois, args)
+          general <- do.call(l0glmFit, c(args, list(family = poisson(identity),
                                                    nonnegative = TRUE, openmp = FALSE)))
           expect_true(all(is.finite(fast$coefficients)))
           expect_true(all(fast$coefficients >= 0))
@@ -139,7 +139,7 @@ test_that("L0nnpois enforces nonnegativity on intercepts, starts and refits", {
       }
     }
   }
-  unrestricted <- L0glm.fit(
+  unrestricted <- l0glmFit(
     X, y, family = poisson(identity), offset = rep(4, length(y)),
     intercept = TRUE, nonnegative = FALSE, lambda = 1e-12, start = c(-1, 2),
      parallelize = FALSE, maxit = 50

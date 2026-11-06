@@ -10,10 +10,10 @@ test_that("native wide ridge updates match the explicit weighted objective", {
   reference <- pmax(0, as.numeric(solve(crossprod(X, w * X) + diag(d),
                                           crossprod(X, w * y) + d * target)))
   for (sparse in c(FALSE, TRUE)) for (natural in c(FALSE, TRUE)) {
-    fit <- L0nnpois(Matrix::Matrix(X, sparse = sparse), y,
+    fit <- l0nnPois(Matrix::Matrix(X, sparse = sparse), y,
                     start = start, prior.mean = target, lambda = 3,
                     maxit = 1L, thresh = 0, parallelize = FALSE,
-                    control.solver = control.solver.gen("eigen", 1L,
+                    control.solver = controlSolverGen("eigen", 1L,
                                                         NaturalOrdering = natural))
     expect_equal(as.numeric(fit$coefficients), reference, tolerance = 1e-10)
     expect_identical(inherits(fit$X, "sparseMatrix"), sparse)
@@ -29,8 +29,8 @@ test_that("native and R wide multichannel fits agree with storage preserved", {
                  family = poisson(identity), lambda = 2, start = 0.5,
                  grouped = grouped, relaxed = TRUE, maxit = 8L,
                  group.maxit = 2L, parallelize = FALSE)
-    native <- do.call(L0nnpois, args)
-    general <- do.call(L0glm.fit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
+    native <- do.call(l0nnPois, args)
+    general <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
     expect_equal(as.matrix(native$coefficients), as.matrix(general$coefficients),
                  tolerance = 1e-7)
     expect_identical(inherits(native$X, "sparseMatrix"), sparse)

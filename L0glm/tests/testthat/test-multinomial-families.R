@@ -10,7 +10,7 @@ test_that("coupled multinomial IRLS handles count matrices and agrees with multi
   ref <- nnet::multinom(Y ~ X, weights = w, trace = FALSE, maxit = 300,
                         abstol = 1e-12, reltol = 1e-12)
   for (mode in c("irls", "bound")) {
-    fit <- L0glm.fit(X, Y, family = mgcv::multinom(K = 2), lambda = 0,
+    fit <- l0glmFit(X, Y, family = mgcv::multinom(K = 2), lambda = 0,
       weights = w, relaxed = FALSE, maxit = 400, tol = 1e-9,
       control.family = list(multinomial = mode))
     ref_clr <- cbind(0, t(coef(ref))); ref_clr <- ref_clr - rowMeans(ref_clr)
@@ -41,16 +41,16 @@ test_that("multinomial CLR normalization respects row masks and free category st
   X <- matrix(rnorm(300 * 4), 300, 4)
   P <- L0glm_ext_softmax(cbind(0, .5 + .6*X[, 1] - .5*X[, 2], -.3 - .5*X[, 1] + .7*X[, 2]))$p
   y <- factor(vapply(seq_len(300), function(i) sample.int(3, 1, prob = P[i, ]), integer(1)))
-  a <- L0glm.fit(X, y, family = mgcv::multinom(K = 2), lambda = 0,
+  a <- l0glmFit(X, y, family = mgcv::multinom(K = 2), lambda = 0,
     relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
   scale <- c(.01, .5, 2, 50)
-  b <- L0glm.fit(sweep(X, 2, scale, "*"), y, family = mgcv::multinom(K = 2),
+  b <- l0glmFit(sweep(X, 2, scale, "*"), y, family = mgcv::multinom(K = 2),
     lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
   expect_equal(predict(a), predict(b), tolerance = 1e-9)
   expect_equal(as.matrix(a$coefficients), as.matrix(b$coefficients) * c(1, scale), tolerance = 1e-8)
   initial <- matrix(1, 5, 3); initial[1, ] <- initial[3, ] <- initial[5, ] <- 0
   initial[2, 1] <- 0
-  fit <- L0glm.fit(X, y, family = mgcv::multinom(K = 2), start = initial,
+  fit <- l0glmFit(X, y, family = mgcv::multinom(K = 2), start = initial,
     always.include = 3L, lambda = 0, grouped = TRUE, relaxed = FALSE,
     maxit = 150, tol = 1e-8)
   expect_equal(dim(fit$coefficients), c(5L, 3L))
@@ -63,10 +63,10 @@ test_that("multinomial CLR normalization respects row masks and free category st
     NULL, FALSE, "l2", 1, NULL, list())
   expect_equal(as.numeric(data$B), rep(0, 15), tolerance = 1e-12)
   expect_true(all(data$allowed))
-  unit <- L0glm.fit(X, y, family = mgcv::multinom(K = 2), start = 1,
+  unit <- l0glmFit(X, y, family = mgcv::multinom(K = 2), start = 1,
     lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
   expect_equal(unit$coefficients, a$coefficients, tolerance = 1e-9)
-  expect_warning(signed <- L0glm.fit(X, y, family = mgcv::multinom(K = 2),
+  expect_warning(signed <- l0glmFit(X, y, family = mgcv::multinom(K = 2),
     nonnegative = TRUE, lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9), "ignored")
   expect_equal(signed$coefficients, a$coefficients, tolerance = 1e-9)
 })
@@ -80,7 +80,7 @@ test_that("CLR quadratic solve obeys equality KKT conditions through OSQP", {
     TRUE, NULL, FALSE, "rms", NULL, NULL, list())
   B <- matrix(0, data$p, data$m); D <- matrix(2, data$p, data$m); D[1, ] <- 0
   args <- list(solver = "osqp", method = 1L,
-    control.solver = control.solver.gen("osqp", abstol = 1e-9, reltol = 1e-9))
+    control.solver = controlSolverGen("osqp", abstol = 1e-9, reltol = 1e-9))
   candidate <- L0glm_ext_multinomial_working(data, B, D, list(), args)
   H <- kronecker(diag(1/3, 3) - matrix(1/9, 3, 3), crossprod(data$Z))
   score <- as.numeric(crossprod(data$Z, data$y - 1/3))

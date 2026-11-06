@@ -68,7 +68,7 @@ crit = "bic"
 # (that one is supposed to control the FWER)
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = family, 
@@ -83,7 +83,7 @@ warm_start = 0.9 # 1 would essentially use MCP as pre-screen
 # 0.9-1 all work well, but 1 should be faster as it should kick out 0 coefficients from the start
 # TODO check in code that it is doing this in an optimal way, from the very start
 
-# TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
+# TODO: add warm_start as option in l0glmFit & use this like below if start!=NULL
 gamma = 2
 start = coefs_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
 start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
@@ -96,7 +96,7 @@ start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
 # implying identical priors on al coefficients (but still allowing 
 # the observed variability in the starting coefficients to affect the chosen
 # constant SD on the implied Gaussian prior of all coefficients).
-system.time(L0glm.out_preset <- L0glm.fit(Xscaled, y, 
+system.time(L0glm.out_preset <- l0glmFit(Xscaled, y,
                                           family = family, 
                                           lambda = lambda_preset, 
                                           # nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -158,7 +158,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
   # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
-  L0glm.out <- L0glm.fit(Xscaled, y, 
+  L0glm.out <- l0glmFit(Xscaled, y,
                          family = gaussian(identity), 
                          lambda = lambda, 
                          # nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -233,29 +233,29 @@ plot(log10(metrics$lambda), metrics$mbic, type="l")
 metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 63.09573
 
 # lambda values that a priori are expected to optimise each IC (with start = NULL)
-# note: using warm starts in the L0glm.fit function would shift the
+# note: using warm starts in the l0glmFit function would shift the
 # empirically observed optimal values
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = y, 
               X = X, 
               family = gaussian(identity),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = y, 
               X = X, 
               family = gaussian(identity),
               dispersion = dispersion) # 1.151293
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = y, 
               X = X, 
               family = gaussian(identity),
               dispersion = dispersion) # 2.302585
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = y, 
               X = X, 
               family = gaussian(identity),
               dispersion = dispersion) # 1.758231
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = y, 
               X = X, 
               family = gaussian(identity),
@@ -320,7 +320,7 @@ family = gaussian(identity)
 
 
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
@@ -332,13 +332,13 @@ y <- sim$y
 family <- gaussian(identity)
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = family) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-L0glm.out_preset <- L0glm.fit(X, y, 
+L0glm.out_preset <- l0glmFit(X, y,
                               family = family, 
                               lambda = lambda_preset, 
                               nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -372,7 +372,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   lambda <- lambdas[[i]]
   start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                          family = gaussian(identity), 
                          lambda = lambda, 
                          nonzero.centered = FALSE, # use nonzero centered ridge regression?
@@ -429,29 +429,29 @@ plot(log10(metrics$lambda), metrics$mbic, type="l")
 metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 223.8721
 
 # lambda values that a priori are expected to optimise each IC (with start = NULL)
-# note: using warm starts in the L0glm.fit function would shift the
+# note: using warm starts in the l0glmFit function would shift the
 # empirically observed optimal values
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(sim$y), 
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(sim$y), 
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 1.151293
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(sim$y), 
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.302585
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(sim$y), 
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 1.758231
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(sim$y), 
               X = Matrix(sim$X, sparse=TRUE), 
               family = gaussian(identity),
@@ -488,7 +488,7 @@ family = gaussian(identity)
 # Error: cannot allocate vector of size XX Gb
 
 # L0 glm fit with pre-chosen lambda chosen to optimise given IC
-lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset_gaus = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                                    y = y,
                                    X = X, 
                                    family = gaussian(identity),
@@ -496,7 +496,7 @@ lambda_preset_gaus = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbi
 ) 
 lambda_preset_gaus 
 
-system.time(L0glm_gaus_presetlambda <- L0glm.fit(X = Matrix(X, sparse=T), 
+system.time(L0glm_gaus_presetlambda <- l0glmFit(X = Matrix(X, sparse=T),
                                                  y = y, 
                                                  family = gaussian(identity), 
                                                  lambda = lambda_preset_gaus,
@@ -562,7 +562,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   start <- (L0glm_gaus_presetlambda$coefficients)*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm_gaus_presetlambda$coefficients==0] <- 0
   
-  L0glm.out <- L0glm.fit(X = X, 
+  L0glm.out <- l0glmFit(X = X,
                          y = y, 
                          family = gaussian(identity), 
                          lambda = lambda, 
@@ -623,30 +623,30 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # with warmstart=0.2 ca 2x lower than the lambda tilde values that 
 # were expected to optimise each IC; close match with expected values
 # for warmstart=0
-# note: as expected using warm starts in the L0glm.fit function shift the
+# note: as expected using warm starts in the l0glmFit function shift the
 # empirically observed optimal values
 
-preset.lambda(IC = "aic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "aic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 0.5
-preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "bic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "ebic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "ebic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.30
-preset.lambda(IC = "gic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "gic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),
               dispersion = dispersion) # 2.56
-preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
               y = as.matrix(data_gaus$y), 
               X = Matrix(data_gaus$X, sparse=TRUE), 
               family = gaussian(identity),

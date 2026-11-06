@@ -1,5 +1,5 @@
 test_that("thresh is the fitting argument and is validated", {
-  for (fun in list(L0glm.fit,L0nnpois)) {
+  for (fun in list(l0glmFit,l0nnPois)) {
     expect_identical(formals(fun)$thresh,1e-5)
     expect_false("delta" %in% names(formals(fun)))
     for (bad in list(-1,NA_real_,Inf,NaN,"1e-20",TRUE,numeric(),c(0,1)))
@@ -21,7 +21,7 @@ test_that("adaptive weights are unsmoothed by default and honor explicit helper 
 
 test_that("selection uses a relative cutoff and preserves exact-zero exclusion", {
   for (sparse in c(FALSE,TRUE)) for (engine in c("native","R")) {
-    fun <- if(engine=="native")L0nnpois else L0glm.fit
+    fun <- if(engine=="native")l0nnPois else l0glmFit
     args <- list(X=Matrix::Matrix(diag(2),sparse=sparse),y=c(1e6,0.02),family=poisson(identity),
                  start=c(1,1),lambda=0,thresh=0.01,
                  grouped=FALSE,relaxed=FALSE,maxit=2,parallelize=FALSE)
@@ -51,7 +51,7 @@ test_that("selection uses a relative cutoff and preserves exact-zero exclusion",
 
 test_that("relaxed fits retain coefficients below both cutoffs in all execution paths", {
   for (sparse in c(FALSE,TRUE)) for (engine in c("native","R")) {
-    fun <- if(engine=="native")L0nnpois else L0glm.fit
+    fun <- if(engine=="native")l0nnPois else l0glmFit
     # Neither column is an intercept: both contribute to the relative cutoff.
     args <- list(X=Matrix::Matrix(matrix(c(1,0,1,1.01),2),sparse=sparse),
                  y=c(1.05,1),family=poisson(identity),start=c(1,1),lambda=1,thresh=0.1,
@@ -82,12 +82,12 @@ test_that("R and native penalties are unsmoothed and cutoffs respect coefficient
   args <- list(X=diag(3),y=c(2,3,4),family=poisson(identity),start=c(1,2,3),lambda=4,
                thresh=0.25,maxit=1,
                grouped=FALSE,relaxed=FALSE,parallelize=FALSE)
-  native <- do.call(L0nnpois,args)
-  general <- do.call(L0glm.fit,c(args,list(nonnegative=TRUE,openmp=FALSE)))
+  native <- do.call(l0nnPois,args)
+  general <- do.call(l0glmFit,c(args,list(nonnegative=TRUE,openmp=FALSE)))
   expect_equal(as.numeric(native$lambdas),1/args$start^2)
   expect_equal(native$lambdas,general$lambdas)
   expect_equal(native$coefficients,general$coefficients,tolerance=1e-12)
-  fit <- L0glm.fit(diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
+  fit <- l0glmFit(diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
                   nonnegative=FALSE,openmp=FALSE,lambda=0,thresh=0.1,
                   start=rep(1,3),dispersion=1,maxit=1,
                   relaxed=FALSE,parallelize=FALSE)

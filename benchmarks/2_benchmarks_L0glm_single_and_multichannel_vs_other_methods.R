@@ -3,7 +3,7 @@
 # Historical numerical tables are retained for comparison. The Poisson table
 # is reproduced by maxit = 25, tol = 1e-10 (the restored fitting defaults).
 # More iterations can improve GIC while worsening recovery against the truth.
-# Current L0glm.tune fits each lambda independently and verifies its numerical
+# Current l0glmTune fits each lambda independently and verifies its numerical
 # zero endpoint. That endpoint is not a global L0 likelihood bound: a zero-mean
 # Poisson model has infinite deviance if any count is positive.
 # Select an IC with tune = "gic" (formerly IC = "gic"). For cross-validation,
@@ -37,7 +37,7 @@ n <- p <- 10000
 npeaks <- 1000
 sim.pois <- simul(method = 2, n = n, p = p, s = npeaks/p, seed = 2)
 
-system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.chol <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", 
                                          nonnegative = TRUE,
@@ -48,7 +48,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois$X, sim.pois$y,
 # The L0glm candidate uses the fastest Eigen Cholesky LLT solver and a lambda GIC preset; 
 # other methods are rescored with the common Poisson GIC. WLS is labelled in the table.
 # glmnet uses 10 lambda values. 
-system.time(comparison.sc.pois <- sparseglm(sim.pois, family = poisson(identity),
+system.time(comparison.sc.pois <- sparseGLM(sim.pois, family = poisson(identity),
   method = comparison_methods, nlambda = 10L,
   tune = "gic", nonnegative = TRUE, intercept = FALSE, approximation = "wls",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
@@ -56,7 +56,7 @@ system.time(comparison.sc.pois <- sparseglm(sim.pois, family = poisson(identity)
   options = list(abess = list(warm.start = TRUE)))) # 2s
 plot(comparison.sc.pois)
 
-benchmarks_1_1 <- L0glm.metrics(comparison.sc.pois)
+benchmarks_1_1 <- l0glmMetrics(comparison.sc.pois)
 benchmarks_1_1 <- benchmarks_1_1[order(benchmarks_1_1[,"MCC"], decreasing = TRUE),]
 benchmarks_1_1[,!colSums(is.na(benchmarks_1_1))]
 #                   method status  scope        approximation tune parameter selected_parameter tuning_score seconds
@@ -88,7 +88,7 @@ benchmarks_1_1[,!colSums(is.na(benchmarks_1_1))]
 # 3 0.4674395    145903.5    139722.3    111667.64     89704.94    159331.7
 # 2 0.1034134 891202271.5 891202243.1 891202114.16 891202013.22 891202333.2
 
-# L0glm.fit is the clear winner
+# l0glmFit is the clear winner
 
 
 
@@ -97,7 +97,7 @@ n <- p <- 10000
 npeaks <- 1000
 sim.gaus <- simul(method = 1, n = n, p = p, s = npeaks/p, seed = 2)
 
-system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.chol <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", 
                                     nonnegative = TRUE,
@@ -107,7 +107,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 
 # The L0glm candidate uses the fastest Eigen Cholesky LLT solver and a lambda GIC preset; 
 # other methods share GIC scoring. glmnet uses 10 lambda values. 
-system.time(comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity),
+system.time(comparison.sc.gaus <- sparseGLM(sim.gaus, family = gaussian(identity),
   method = comparison_methods, nlambda = 10L,
   tune = "gic", nonnegative = TRUE, intercept = FALSE,
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
@@ -115,7 +115,7 @@ system.time(comparison.sc.gaus <- sparseglm(sim.gaus, family = gaussian(identity
   options = list(abess = list(warm.start = TRUE)))) # 2s
 plot(comparison.sc.gaus)
 
-benchmarks_1_2 <- L0glm.metrics(comparison.sc.gaus)
+benchmarks_1_2 <- l0glmMetrics(comparison.sc.gaus)
 benchmarks_1_2 <- benchmarks_1_2[order(benchmarks_1_2[,"MCC"], decreasing = TRUE),]
 benchmarks_1_2[,!colSums(is.na(benchmarks_1_2))]
 #                   method status  scope approximation tune parameter selected_parameter tuning_score seconds path_seconds
@@ -147,7 +147,7 @@ benchmarks_1_2[,!colSums(is.na(benchmarks_1_2))]
 # 3 163974.59 132134.44 107208.29 186229.89
 # 2 190146.89 190027.15 189933.42 190230.58
 
-# L0glm.fit is the clear winner
+# l0glmFit is the clear winner
 
 
 
@@ -156,7 +156,7 @@ n <- p <- 10000
 npeaks <- 1000
 sim.pois.mc <- simul(method = 4, n = n, p = p, s = npeaks/p, seed = 2)
 
-system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.chol.pois <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
@@ -171,7 +171,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 # L0glm fits the exact grouped Poisson model. glmnet uses a
 # labelled Gaussian approximation with shared row weights 1/(rowMeans(y)+0.1).
 # L0Learn uses independent channel-specific WLS; all are scored as Poisson.
-system.time(comparison.mc.pois <- sparseglm(sim.pois.mc, family = poisson(identity),
+system.time(comparison.mc.pois <- sparseGLM(sim.pois.mc, family = poisson(identity),
   method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE,
   intercept = FALSE, approximation = "wls_grouped",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
@@ -183,7 +183,7 @@ plot(comparison.mc.pois, channels = "mean")
 plot(comparison.mc.pois, which = 1, type = "heatmap") # L0glm
 plot(comparison.mc.pois, which = 4, type = "heatmap") # relaxed LASSO
 
-system.time(benchmarks_1_3 <- L0glm.metrics(comparison.mc.pois)) # 7s
+system.time(benchmarks_1_3 <- l0glmMetrics(comparison.mc.pois)) # 7s
 benchmarks_1_3 <- benchmarks_1_3[order(benchmarks_1_3[,"MCC"], decreasing = TRUE),]
 benchmarks_1_3[,!colSums(is.na(benchmarks_1_3))]
 #                   method status       scope            approximation tune parameter selected_parameter tuning_score seconds
@@ -222,7 +222,7 @@ benchmarks_1_3[,!colSums(is.na(benchmarks_1_3))]
 # 3           0.8424372      0.7676552  7413616  7092368 5634316 4492876  8111503
 # 2           0.6211477      0.5898789 10236143 10136593 9684761 9331043 10452409
 
-# L0glm.fit is the clear winner
+# l0glmFit is the clear winner
 
 
 ## 1.4 MULTICHANNEL GAUSSIAN ####
@@ -230,7 +230,7 @@ n <- p <- 10000
 npeaks <- 1000
 sim.gaus.mc <- simul(method = 3, n = n, p = p, s = npeaks/p, seed = 1)
 
-system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", 
                                          nonnegative = TRUE,
@@ -244,7 +244,7 @@ system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 # Auto grouping uses native grouped fits where supported, independent paths
 # otherwise; the table records the scope of every method.
-system.time(comparison.mc.gaus <- sparseglm(sim.gaus.mc, family = gaussian(identity),
+system.time(comparison.mc.gaus <- sparseGLM(sim.gaus.mc, family = gaussian(identity),
   method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE, intercept = FALSE,
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol.gaus$init.lambda),
@@ -255,7 +255,7 @@ plot(comparison.mc.gaus, channels = "mean")
 plot(comparison.mc.gaus, which = 1, type = "heatmap") # L0glm
 plot(comparison.mc.gaus, which = 4, type = "heatmap") # relaxed LASSO
 
-system.time(benchmarks_1_4 <- L0glm.metrics(comparison.mc.gaus)) # 3.49s
+system.time(benchmarks_1_4 <- l0glmMetrics(comparison.mc.gaus)) # 3.49s
 benchmarks_1_4 <- benchmarks_1_4[order(benchmarks_1_4[,"MCC"], decreasing = TRUE),]
 benchmarks_1_4[,!colSums(is.na(benchmarks_1_4))]
 #                   method status       scope approximation tune parameter selected_parameter tuning_score seconds
@@ -294,10 +294,10 @@ benchmarks_1_4[,!colSums(is.na(benchmarks_1_4))]
 # 3           0.5331413      0.2487036 20034062 19393470 16486005 14209888 21425700
 # 2           0.4727635      0.4106558 16633518 16453212 15634855 14994202 17025219
 
-# L0glm.fit is the clear winner
+# l0glmFit is the clear winner
 # TODO timings could still be improved drastically by porting to Rcpp/OpenMP, 
 # maybe make L0nnls Rcpp/OpenMP function for the gaussian case, 
-# or port the whole L0glm.fit function to Rcpp/OpenMP?
+# or port the whole l0glmFit function to Rcpp/OpenMP?
 
 
 
@@ -315,7 +315,7 @@ sim.pois <- simul(method = 2, n = n, p = p, s = npeaks/p, sparse = T)
 
 ## tuning plot (full range)
 # here preset lambda coincides with best lambda
-system.time(tune_full <- L0glm.tune(X=sim.pois$X, 
+system.time(tune_full <- l0glmTune(X=sim.pois$X,
                                     y=sim.pois$y, 
                                     tune = "gic",
                                     nlambda = 10,
@@ -333,7 +333,7 @@ min(tune_full$metrics$gic) # 102185
 
 ## tuning plot (zoomed in)
 # with lambda grid more zoomed in around lambda_preset preset
-system.time(tune_zoomed <- L0glm.tune(X=sim.pois$X, 
+system.time(tune_zoomed <- l0glmTune(X=sim.pois$X,
                                       y=sim.pois$y, 
                                       tune = "gic",
                                       nlambda = 10,
@@ -353,7 +353,7 @@ min(tune_zoomed$metrics$gic) # 102185
 
 # The preset is an approximate calibration. A finer grid can improve GIC;
 # neither the heuristic fitting algorithm nor the coarse grid certifies an optimum.
-L0glm:::preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 20.44997 (lambda preset)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
 tune_zoomed$lambda_best # 12.84577 (best lambda tune)
 
@@ -362,7 +362,7 @@ tune_zoomed$lambda_best # 12.84577 (best lambda tune)
 # size shrinks again if the level of regularisation (lambda) is chosen too small
 # Around the lambda "gic" preset, however, the solution is excellent at a much
 # smaller computational cost.
-system.time(tune_full_bigglm <- L0glm.tune(X=sim.pois$X, 
+system.time(tune_full_bigglm <- l0glmTune(X=sim.pois$X,
                                            y=sim.pois$y, 
                                            tune = "gic",
                                            nlambda = 10,
@@ -375,7 +375,7 @@ system.time(tune_full_bigglm <- L0glm.tune(X=sim.pois$X,
                                            solver = "bigGlm"))
 # 19.50s
 
-system.time(tune_full_osqp <- L0glm.tune(X=sim.pois$X, 
+system.time(tune_full_osqp <- l0glmTune(X=sim.pois$X,
                                          y=sim.pois$y, 
                                          tune = "gic",
                                          nlambda = 10,
@@ -389,7 +389,7 @@ system.time(tune_full_osqp <- L0glm.tune(X=sim.pois$X,
 # 30.94s
 
 # 5-fold cross validation is also supported:
-system.time(tune_zoomed_cv <- L0glm.tune(X=sim.pois$X, 
+system.time(tune_zoomed_cv <- l0glmTune(X=sim.pois$X,
                                          y=sim.pois$y, 
                                          tune = "cv",
                                          nfolds = 5,
@@ -406,7 +406,7 @@ tune_zoomed_cv$lambda_best # 2
 
 
 #### 1.1.1 L0GLM FIT WITH CHOLESKY LLT SOLVER ####
-system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.chol.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -417,7 +417,7 @@ system.time(L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
 # 0.12s
 
 #### 1.1.2 L0GLM FIT WITH CG SOLVER WITH Incomplete Cholesky LLT preconditioner ####
-system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.CG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                        family = poisson(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
@@ -427,7 +427,7 @@ system.time(L0glm.CG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
 # 0.33s
 
 #### 1.1.3 L0GLM FIT WITH preconditioned LSCG SOLVER ####
-system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.LSCG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -437,7 +437,7 @@ system.time(L0glm.LSCG.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
 # 0.78s
 
 #### 1.1.4 L0GLM FIT WITH OSQP SOLVER ####
-system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.osqp.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -446,7 +446,7 @@ system.time(L0glm.osqp.pois <- L0glm.fit(sim.pois$X, sim.pois$y,
 # 4.61s
 
 #### 1.1.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
-system.time(L0glm.bigGlm.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+system.time(L0glm.bigGlm.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                            family = poisson(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
@@ -520,7 +520,7 @@ benchmarks_1_1
 
 ## tuning plot (full range)
 # here preset lambda coincides with best lambda
-system.time(tune_full <- L0glm.tune(X=sim.gaus$X, 
+system.time(tune_full <- l0glmTune(X=sim.gaus$X,
                                     y=sim.gaus$y, 
                                     tune = "gic",
                                     nlambda = 10,
@@ -540,7 +540,7 @@ min(tune_full$metrics$gic) # 82342.78
 
 ## tuning plot (zoomed in)
 # tuning plots - with lambda grid more zoomed in around lambda_preset preset
-system.time(tune_zoomed <- L0glm.tune(X=sim.gaus$X, 
+system.time(tune_zoomed <- l0glmTune(X=sim.gaus$X,
                                       y=sim.gaus$y, 
                                       tune = "gic",
                                       nlambda = 10,
@@ -561,13 +561,13 @@ min(tune_zoomed$metrics$gic) # 81840.43
 
 
 # Compare the empirical grid choice with the approximate preset calibration.
-L0glm:::preset.lambda(IC="gic", p, n) # 20.44997 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 20.44997 (lambda preset)
 tune_zoomed$lambda_best # 34.03505 (best lambda tune)
 tune_zoomed$lambda_preset # 20.44997 (lambda preset)
 
 
 #### 1.2.1 L0GLM FIT WITH Cholesky LLT SOLVER ####
-system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -577,7 +577,7 @@ system.time(L0glm.chol.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 # 0.28s
 
 #### 1.2.2 L0GLM FIT WITH PCG SOLVER WITH Incomplete Cholesky preconditioner ####
-system.time(L0glm.CG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.CG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                        family = gaussian(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
@@ -588,7 +588,7 @@ system.time(L0glm.CG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 
 
 #### 1.2.3 L0GLM FIT WITH PLSCG SOLVER ####
-system.time(L0glm.LSCG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.LSCG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -599,7 +599,7 @@ system.time(L0glm.LSCG.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 
 
 #### 1.2.4 L0GLM FIT WITH OSQP SOLVER ####
-system.time(L0glm.osqp.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.osqp.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
@@ -609,7 +609,7 @@ system.time(L0glm.osqp.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y,
 
 
 #### 1.2.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
-system.time(L0glm.bigGlm.gaus <- L0glm.fit(sim.gaus$X, sim.gaus$y, 
+system.time(L0glm.bigGlm.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                            family = gaussian(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
@@ -680,8 +680,8 @@ benchmarks_1_2
 
 # 2. MULTICHANNEL ####
 
-# TODO: add option precluster = T or F to L0glm.fit?
-# (see ?glm_cluster)
+# TODO: add option precluster = T or F to l0glmFit?
+# (see ?glmCluster)
 
 # Simulate MC n=p=500
 n <- p <- 500
@@ -698,7 +698,7 @@ m <- ncol(sim.pois.mc$y)
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
-system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
+system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -711,11 +711,11 @@ system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     ncores = 4)) # openmp 2.96s
 tune_full$lambda_best # 4.005619 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -728,11 +728,11 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       ncores = 4)) # openmp 3.31s
 tune_zoomed$lambda_best # 8.022493 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -759,7 +759,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -777,7 +777,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
-system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
+system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -790,11 +790,11 @@ system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     ncores = 4)) # openmp 4.47s
 tune_full$lambda_best # 2.830413 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 5x higher than best lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -807,12 +807,12 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       ncores = 4)) # openmp 5.75s
 tune_zoomed$lambda_best # 8.022493 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -827,7 +827,7 @@ system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 
 
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -844,7 +844,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
-system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
+system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -857,11 +857,11 @@ system.time(tune_full <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     ncores = 4)) # openmp 5s
 tune_full$lambda_best # 2 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here preset lambda would be ca 10x higher than best lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -874,11 +874,11 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       ncores = 4)) # openmp 5.66s
 tune_zoomed$lambda_best # 8.022493 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -905,7 +905,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 ## Fit relaxed = TRUE, grouped = TRUE
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -924,7 +924,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.pois.mc$X, sim.pois.mc$y,
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
-system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -938,11 +938,11 @@ system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     solver = "eigen", method = 1L)) # 85s
 tune_full$lambda_best # 11.35348
 tune_full$lambda_preset # 11.35348 
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -956,10 +956,10 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       solver = "eigen", method = 1L)) # 89.75s
 tune_zoomed$lambda_best # 11.35348
 tune_zoomed$lambda_preset # 11.35348 
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -987,7 +987,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -1004,7 +1004,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
-system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -1018,11 +1018,11 @@ system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     solver = "eigen", method = 1L)) # 242.34s
 tune_full$lambda_best # 11.35348
 tune_full$lambda_preset # 11.35348 
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 
 ## tuning plot (zoomed in)
 # here best lambda is identical to preset lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -1036,10 +1036,10 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       solver = "eigen", method = 1L)) # 300.46s
 tune_zoomed$lambda_best # 11.35348
 tune_zoomed$lambda_preset # 11.35348 
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.chol.mc$lambda_best,
                                     nonnegative = TRUE,
@@ -1064,7 +1064,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.osqp.mc$lambda_best,
                                     nonnegative = TRUE,
@@ -1080,7 +1080,7 @@ system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
-system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     tune = "gic",
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
@@ -1094,11 +1094,11 @@ system.time(tune_full <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     solver = "eigen", method = 1L)) # 277.47s
 tune_full$lambda_best # 11.35348 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 ## tuning plot (zoomed in)
 # here best lambda is again very close to preset lambda
-system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y, 
+system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       tune = "gic",
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
@@ -1112,11 +1112,11 @@ system.time(tune_zoomed <- L0glm.tune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       solver = "eigen", method = 1L)) # 281.16s
 tune_zoomed$lambda_best # 3.361205 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
-L0glm:::preset.lambda(IC="gic", p, n) # 11.35348 (lambda preset)
+L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
 
 #### Cholesky LLT ####
-system.time(L0glm.chol <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
@@ -1143,7 +1143,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 
 #### OSQP ####
-system.time(L0glm.osqp <- L0glm.fit(sim.gaus.mc$X, sim.gaus.mc$y, 
+system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,

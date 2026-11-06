@@ -22,7 +22,7 @@ set.seed(11)
 X <- matrix(rnorm(300*12), 300, 12)
 offset <- rep(log(2), 300)
 y <- rpois(300, exp(.5 + .8*X[, 1] + offset))
-fit <- L0glm.fit(X, y, family=poisson("log"), intercept=TRUE,
+fit <- l0glmFit(X, y, family=poisson("log"), intercept=TRUE,
   weights=seq(.8, 1.2, length.out=300), offset=offset,
   lambda="gic", relaxed=TRUE, maxit=100)
 predict(fit, X[1:3, ], offset=offset[1:3])
@@ -48,7 +48,7 @@ formally constrained ridge solves. In the package's
 [deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
 Eigen Cholesky LLT generally gives better support recovery and coefficient
 accuracy than these alternatives, together with much faster fits.
-The native `L0nnpois()` backend specializes in nonnegative identity-link Poisson models.
+The native `l0nnPois()` backend specializes in nonnegative identity-link Poisson models.
 
 ## Starts and normalization
 
@@ -91,7 +91,7 @@ sim <- simul(n=300L, p=300L, n_nonzero=20L, m=4L, seed=7L)
 set.seed(8)
 v <- matrix(rpois(length(sim$y_true), sim$y_true), 300L, 4L)
 
-validated <- L0nnpois(sim$X, sim$y, lambda="gic", ncores=2L,
+validated <- l0nnPois(sim$X, sim$y, lambda="gic", ncores=2L,
   validation=list(X=sim$X, y=v, patience=3L, minit=3L))
 validated$validation$deviance
 validated$validation$selection$history
@@ -111,7 +111,7 @@ Validation weights and offsets follow the response formats; `mu_floor=1e-8`
 is used only for positive-mean validation scoring. Diagnostics include
 `selection`, `relaxed`, iteration histories and the selected start/batch candidate.
 
-The same interface works through `L0glm.fit()` for all supported families.
+The same interface works through `l0glmFit()` for all supported families.
 `validation$rule="1se"` selects a simpler candidate within one empirical
 standard error of the best candidate. Gaussian identity fits can compare default
 and conditional marginal starts; an explicit `start` fixes that choice.

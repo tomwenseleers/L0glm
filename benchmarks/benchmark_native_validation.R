@@ -11,19 +11,19 @@ sim <- simul(n = n, p = p, m = m, n_nonzero = n_nonzero, seed = 201028L)
 set.seed(201029)
 y.validation <- matrix(rpois(length(sim$y_true), sim$y_true), n, m)
 validation <- list(X = sim$X, y = y.validation)
-settings <- data.frame(backend = c("General driver", rep("L0nnpois", 4)),
+settings <- data.frame(backend = c("General driver", rep("l0nnPois", 4)),
   ncores = c(1L, 1L, 2L, 4L, 8L))
 
 fits <- vector("list", nrow(settings))
 results <- lapply(seq_len(nrow(settings)), function(i) {
   args <- list(X = sim$X, y = sim$y, family = poisson("identity"),
     nonnegative = TRUE, lambda = "gic", relaxed = TRUE, group.maxit = 3L,
-    openmp = settings$backend[i] == "L0nnpois", parallelize = settings$ncores[i] > 1L,
+    openmp = settings$backend[i] == "l0nnPois", parallelize = settings$ncores[i] > 1L,
     ncores = settings$ncores[i], validation = validation)
-  fit <- do.call(L0glm.fit, args)
-  seconds <- replicate(repetitions, system.time(fit <- do.call(L0glm.fit, args))[["elapsed"]])
+  fit <- do.call(l0glmFit, args)
+  seconds <- replicate(repetitions, system.time(fit <- do.call(l0glmFit, args))[["elapsed"]])
   fits[[i]] <<- fit
-  metrics <- L0glm.metrics(fit, beta_true = sim$beta_true)
+  metrics <- l0glmMetrics(fit, beta_true = sim$beta_true)
   data.frame(settings[i, ], seconds = median(seconds),
     validation_deviance = fit$validation$deviance,
     metrics[, c("gic", "F1_score", "MCC")])

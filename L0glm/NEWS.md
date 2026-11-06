@@ -1,4 +1,4 @@
-# L0glm 0.2.0
+# L0glm 0.2.0.9000
 
 ## Sparse generalized linear models
 
@@ -17,7 +17,7 @@
 * Shared observation vectors stay compact across channels in fitting, native
   Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,
-  one-standard-error models and coefficient-path plots. `preset.lambda()`
+  one-standard-error models and coefficient-path plots. `presetLambda()`
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
 * Constrained updates for nonnegative compulsory terms and relaxed-fit boundary
   checks use the specified likelihood.
@@ -29,7 +29,7 @@
   All Eigen solvers share their kernels with the R interfaces and parallelize
   channels through OpenMP. OSQP and `bigGlm` use the native driver with their
   R-facing solver interfaces and independent workers for concurrent channels.
-* Nonnegative identity-link Poisson LLT fits use the specialized `L0nnpois`
+* Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening
   (ISIS), with compiled OpenMP screening. Automatic ISIS uses
@@ -42,7 +42,7 @@
 
 ## Simulation, comparison and interpretation
 
-* `sparseglm()` compares supported sparse-regression methods with common
+* `sparseGLM()` compares supported sparse-regression methods with common
   likelihood, prediction, coefficient and support-recovery metrics and timings.
   Shared SIS/ISIS options screen every adapter, with method-specific ISIS
   offsets, original-dimension coefficients and training-only screening for CV.

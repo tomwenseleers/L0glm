@@ -3,8 +3,8 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   if (!is.numeric(niter) || length(niter)!=1L || !is.finite(niter) ||
       niter<1 || niter!=floor(niter)) stop("niter must be a positive integer.",call.=FALSE)
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) ||
-      anyDuplicated(names(options)) || any(!names(options)%in%names(formals(L0glm.fit)))))
-    stop("Use named L0glm.fit arguments for ISIS fitting options.",call.=FALSE)
+      anyDuplicated(names(options)) || any(!names(options)%in%names(formals(l0glmFit)))))
+    stop("Use named l0glmFit arguments for ISIS fitting options.",call.=FALSE)
   started <- proc.time()[["elapsed"]]
   nthreads <- L0glm_sis_threads(nthreads);threads_used <- 1L
   kind <- L0glm_ext_kind(family);n <- nrow(X);p <- ncol(X)
@@ -58,7 +58,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     if (length(eligible)) {
       active <- which(Matrix::rowSums(B!=0)>0)
       eta <- as.matrix(design[,active,drop=FALSE]%*%B[active,,drop=FALSE])+off
-      screen <- sis_glm(screen_X,y,family,weights=w,offset=eta,nsis=min(nsis,length(eligible)),
+      screen <- sisGLM(screen_X,y,family,weights=w,offset=eta,nsis=min(nsis,length(eligible)),
         return_stats=full,nonnegative=nonnegative,nthreads=nthreads)
       threads_used <- max(threads_used,screen$nthreads)
       candidates <- sort(unique(c(selected,mandatory,eligible[screen$indices])))
@@ -70,7 +70,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     fit_args$always.include <- match(mandatory,candidates)
     for (name in c("start","prior.mean")) if (!is.null(args[[name]]) && length(args[[name]])>1L)
       fit_args[[name]] <- args[[name]][rows,,drop=FALSE]
-    fit <- do.call(L0glm.fit,c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
+    fit <- do.call(l0glmFit,c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
       weights=w,offset=off,nonnegative=nonnegative),fit_args))
     if (identical(family$family,"quasipoisson")) {
       if (is.null(quasi_estimated)) {
@@ -79,7 +79,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       }
       fit$dispersion.estimated <- quasi_estimated
     }
-    score <- L0glm.metrics(fit,mu_floor=1e-8)
+    score <- l0glmMetrics(fit,mu_floor=1e-8)
     gic <- get.IC(score$loglik,max(2,n_ic),max(1L,p_total),score$df)$gic
     entry <- summary(methods::as(methods::as(coef(fit),"generalMatrix"),"CsparseMatrix"))
     B <- Matrix::sparseMatrix(i=rows[entry$i],j=entry$j,x=entry$x,dims=c(ncol(design),m),
@@ -109,7 +109,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     value[best$rows] <- fit$preprocessing[[name]];fit$preprocessing[[name]] <- value
   }
   fit$preprocessing$p <- p_total
-  fit$metrics <- L0glm.metrics(fit,mu_floor=1e-8)
+  fit$metrics <- l0glmMetrics(fit,mu_floor=1e-8)
   if (!is.null(fit$objective)) fit$objective <- fit$metrics$objective
   indices <- sort(unique(c(mandatory,which(Matrix::rowSums(fit$coefficients[seq_len(p)+added,,drop=FALSE]!=0)>0))))
   ranking <- stats <- NULL

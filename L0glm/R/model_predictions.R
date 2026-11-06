@@ -4,10 +4,10 @@
 #' @importFrom stats fitted
 #' @md
 #' @description
-#' S3 prediction methods for [L0glm.fit()], [L0nnpois()] and [sparseglm()],
+#' S3 prediction methods for [l0glmFit()], [l0nnPois()] and [sparseGLM()],
 #' including negative-binomial, multinomial and right-censored Cox models.
 #'
-#' @param object A fitted model or `sparseglm` comparison.
+#' @param object A fitted model or `sparseGLM` comparison.
 #' @param newdata Predictor matrix, sparse or dense, or numeric data frame.
 #'   Omit the intercept added by `intercept=TRUE`. Supply all original predictor
 #'   columns, including columns excluded by starting zeroes. Complete unique
@@ -62,21 +62,21 @@
 #'   all link predictions are matrices, including for one response or one row.
 #'   Cox risks are numeric vectors; Cox survival is an observations-by-times
 #'   matrix. Multinomial classes are factors with the stored category levels.
-#'   `sparseglm` methods return named lists in method order, retaining `NULL`
+#'   `sparseGLM` methods return named lists in method order, retaining `NULL`
 #'   entries for failed or unavailable methods.
-#' @seealso [L0glm.fit()], [L0glm.metrics()], [sparseglm()], [model_summary]
+#' @seealso [l0glmFit()], [l0glmMetrics()], [sparseGLM()], [model_summary]
 #' @examples
 #' set.seed(5)
 #' X <- matrix(rnorm(240),60,4)
 #' y <- 2*X[,1] + rnorm(60)
-#' fit <- L0glm.fit(X,y,lambda="gic",parallelize=FALSE)
+#' fit <- l0glmFit(X,y,lambda="gic",parallelize=FALSE)
 #' head(fitted(fit))
 #' predict(fit,X[1:3,,drop=FALSE])
-#' comparison <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)
+#' comparison <- sparseGLM(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)
 #' predict(comparison,X[1:3,,drop=FALSE])
 #' if (requireNamespace("mgcv",quietly=TRUE)) {
 #'   labels <- factor(rep(c("A","B","C"),20))
-#'   multi <- L0glm.fit(X,labels,family=mgcv::multinom(K=2),lambda="gic")
+#'   multi <- l0glmFit(X,labels,family=mgcv::multinom(K=2),lambda="gic")
 #'   predict(multi,X[1:3,,drop=FALSE],type="probabilities")
 #' }
 NULL

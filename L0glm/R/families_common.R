@@ -156,7 +156,7 @@ L0glm_ext_threshold <- function(B, allowed, included, thresh, grouped) {
 L0glm_ext_ridge <- function(X, y, w, D, start, lower, prior, args) {
   active <- is.finite(D)
   beta <- numeric(length(D))
-  if (any(active)) beta[active] <- lmridge(X[, active, drop = FALSE], y,
+  if (any(active)) beta[active] <- lmRidge(X[, active, drop = FALSE], y,
     weights = w, lambdas = D[active], start = start[active], lower = lower[active],
     prior.mean = prior[active], solver = args$solver, method = args$method,
     control.solver = args$control.solver)

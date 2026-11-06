@@ -1,0 +1,3 @@
+\dontrun{
+data(simulatedSpectra)
+}

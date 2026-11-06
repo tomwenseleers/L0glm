@@ -13,7 +13,7 @@ test_that("multichannel parallel fit matches serial fit", {
   mu <- pmax(X %*% beta, 0.1)
   y <- matrix(rpois(n * m, as.vector(mu)), n, m)
 
-  serial <- L0glm.fit(
+  serial <- l0glmFit(
     X, y,
     openmp = FALSE,
     family = poisson(identity),
@@ -27,7 +27,7 @@ test_that("multichannel parallel fit matches serial fit", {
     maxit = 10L,
     group.maxit = 2L)
 
-  parallel <- L0glm.fit(
+  parallel <- l0glmFit(
     X, y,
     openmp = FALSE,
     family = poisson(identity),
@@ -53,7 +53,7 @@ test_that("grouped relaxed fit keeps rows with cancelling channel coefficients",
   X <- diag(3)
   y <- cbind(c(1, 0, 0), c(-1, 0, 0))
 
-  fit <- L0glm.fit(
+  fit <- l0glmFit(
     X, y,
     family = gaussian(identity),
     lambda = 0.01,
@@ -84,7 +84,7 @@ test_that("serial nthreads setting is restored after fit", {
   }, add = TRUE)
 
   sim <- simul(method = 4, n = 40L, p = 40L, s = 0.1, seed = 2)
-  fit <- L0glm.fit(
+  fit <- l0glmFit(
     sim$X, sim$y[, 1L, drop = FALSE],
     openmp = FALSE,
     family = poisson(identity),

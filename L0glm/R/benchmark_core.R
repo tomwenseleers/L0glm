@@ -168,7 +168,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
       full_scores <- path$metrics
       if (is.null(full_scores)) full_scores <- lapply(path$coefficients,
         function(B) if (is.null(B)) NULL else
-          L0glm.metrics(L0glm_benchmark_fit(B, data), mu_floor=mu_floor))
+          l0glmMetrics(L0glm_benchmark_fit(B, data), mu_floor=mu_floor))
       path_seconds <- proc.time()[[3L]] - path_start
       cv <- NULL
       if (tune == "cv") {
@@ -212,7 +212,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     foldid=foldid, beta_true=truth, mu_floor=mu_floor, data=data, call=match.call()),
     class="sparseglm")
   if (any(answer$timings$status != "ok"))
-    warning("Some benchmark methods were unavailable or failed; see L0glm.metrics(result)$status and $note.", call.=FALSE)
+    warning("Some benchmark methods were unavailable or failed; see l0glmMetrics(result)$status and $note.", call.=FALSE)
   if (plot) graphics::plot(answer)
   answer
 }
@@ -292,7 +292,7 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
         eta <- as.numeric(data$X %*% B) + data$offset[, 1L]
         full <- L0glm_ext_cox_eta(eta, data$response, data$weights[, 1L], data$cox.cache)$loglik
         loss[j, k] <- -2 * (full - as.numeric(stats::logLik(fit)))/mass[k]
-      } else loss[j, k] <- L0glm.metrics(fit, newdata=X_valid,
+      } else loss[j, k] <- l0glmMetrics(fit, newdata=X_valid,
           y=data$y[!train, , drop=FALSE], weights=data$weights[!train, , drop=FALSE],
           offset=data$offset[!train, , drop=FALSE], mu_floor=data$mu_floor)$deviance/mass[k]
     }

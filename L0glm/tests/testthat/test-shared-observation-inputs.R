@@ -6,8 +6,8 @@ test_that("shared row weights and offsets stay compact and match channel matrice
   for(openmp in c(FALSE,TRUE))for(grouped in c(FALSE,TRUE)) {
     args<-list(X=X,y=y,family=poisson("identity"),lambda="gic",nonnegative=TRUE,
       openmp=openmp,parallelize=FALSE,grouped=grouped,relaxed=TRUE)
-    a<-do.call(L0glm.fit,c(args,list(weights=w,offset=off)))
-    b<-do.call(L0glm.fit,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
+    a<-do.call(l0glmFit,c(args,list(weights=w,offset=off)))
+    b<-do.call(l0glmFit,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
     expect_equal(coef(a),coef(b),tolerance=1e-8)
     expect_equal(fitted(a),fitted(b),tolerance=1e-8)
     expect_equal(GIC(a),GIC(b),tolerance=1e-8)
@@ -15,9 +15,9 @@ test_that("shared row weights and offsets stay compact and match channel matrice
     expect_equal(dim(a$offset),c(n,1L))
     expect_lt(as.numeric(object.size(a$offset)),as.numeric(object.size(b$offset)))
   }
-  expect_error(L0glm.fit(X,y,weights=numeric(2)),"weights")
-  expect_error(L0nnpois(X,y,offset=numeric(2)),"offset")
-  expect_error(L0nnpois(X,y,weights=-1),"nonnegative")
+  expect_error(l0glmFit(X,y,weights=numeric(2)),"weights")
+  expect_error(l0nnPois(X,y,offset=numeric(2)),"offset")
+  expect_error(l0nnPois(X,y,weights=-1),"nonnegative")
   groups<-Matrix::sparseMatrix(i=1:3,j=c(1L,1L,2L),x=1)
   expect_equal(L0glm_precluster_offset(off,n,m,groups),as.matrix(matrix(off,n,m)%*%groups))
 })
@@ -30,8 +30,8 @@ test_that("tuning preserves compact shared inputs and equivalent CV scores", {
   args<-list(X=X,y=y,family=poisson("identity"),tune="cv",nlambda=3L,
     foldid=rep(1:3,each=n/3),nfolds=3L,nonnegative=TRUE,
     grouped=TRUE,openmp=TRUE,parallelize=FALSE,plot=FALSE,printbest=FALSE)
-  a<-do.call(L0glm.tune,c(args,list(weights=w,offset=off)))
-  b<-do.call(L0glm.tune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
+  a<-do.call(l0glmTune,c(args,list(weights=w,offset=off)))
+  b<-do.call(l0glmTune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
   expect_equal(a$cv$deviance,b$cv$deviance,tolerance=1e-10)
   expect_equal(a$cv$fold_weights,b$cv$fold_weights,tolerance=1e-12)
   expect_equal(a$lambda_best,b$lambda_best)
@@ -51,8 +51,8 @@ test_that("negative-binomial CV accounts for every channel with shared weights",
   args<-list(X=X,y=y,family=mgcv::nb(theta=5,link="log"),tune="cv",
     nlambda=3L,foldid=rep(1:3,each=n/3),nfolds=3L,maxit=15L,
     parallelize=FALSE,plot=FALSE,printbest=FALSE)
-  a<-do.call(L0glm.tune,c(args,list(weights=w,offset=off)))
-  b<-do.call(L0glm.tune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
+  a<-do.call(l0glmTune,c(args,list(weights=w,offset=off)))
+  b<-do.call(l0glmTune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
   expect_equal(a$cv$deviance,b$cv$deviance,tolerance=1e-10)
   expect_equal(a$cv$fold_weights,b$cv$fold_weights,tolerance=1e-12)
   expect_equal(a$lambda_best,b$lambda_best)

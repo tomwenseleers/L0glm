@@ -1,5 +1,5 @@
 test_that("fitting interfaces use a fixed adaptive-ridge exponent", {
-  for (fun in list(L0glm.fit, L0nnpois, L0glm.fit.internal)) {
+  for (fun in list(l0glmFit, l0nnPois, L0glm.fit.internal)) {
     expect_false("gamma" %in% names(formals(fun)))
     expect_error(fun(diag(2), c(2, 3), gamma = 2), "unused argument")
   }

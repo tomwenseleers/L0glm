@@ -67,7 +67,7 @@ validate_thresh <- function(thresh) {
 #' coefficients in a way that gives an intuitive view on the quality of the fit.
 #'
 #' @export
-plot_L0glm_benchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, ...){
+plotL0glmBenchmark <- function(x, y, coefs, fitted, inference = NULL, a.true, ...){
   a.fit <- coefs
   transf <- function(x) return(x)
   plot(x, transf(y), type="l", ylab="Signal", xlab="Time", col = "grey40",

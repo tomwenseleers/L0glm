@@ -1,5 +1,5 @@
-#' @name L0glm.fit
-#' @aliases L0glm.fit
+#' @name l0glmFit
+#' @aliases l0glmFit
 #' @title Fit generalized linear model with \eqn{L_0} or grouped row-\eqn{L_0}
 #'   regularization subject to optional nonnegativity constraints
 #'
@@ -58,7 +58,7 @@
 #' Criterion names are case-insensitive. See \link{information_criteria} for
 #' the penalty formulas, guidance on choosing a criterion and original references.
 #'
-#' The \code{L0glm.fit} function has various advanced features, including
+#' The \code{l0glmFit} function has various advanced features, including
 #' support for both dense and sparse design matrices \emph{\bold{X}}, high
 #' dimensional data (where \emph{p} >> \emph{n}), single or multichannel
 #' outcomes \emph{\bold{y}} (with either independent or grouped variable
@@ -106,8 +106,8 @@
 #'   \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
 #'   categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
 #'   hazards models. See \emph{Special families} under Details.
-#'   Fixed-noise scalar models \code{nb1()}, \code{Gamma_scale()} and
-#'   \code{Gamma_censored()} use the ordinary single- or multichannel response
+#'   Fixed-noise scalar models \code{nb1()}, \code{gammaScale()} and
+#'   \code{gammaCensored()} use the ordinary single- or multichannel response
 #'   formats with exact likelihood-based IRLS; see \link{signal_families}.
 #' @param weights Optional finite, nonnegative prior/case observation weights.
 #'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
@@ -201,8 +201,8 @@
 #'   For example, \code{"GIC"} and \code{"gic"} are equivalent.
 #'   The preset is a per-coefficient penalty on the \eqn{-2\log L} scale:
 #'   AIC uses 2, BIC uses \eqn{\log n}, and GIC uses \eqn{\log p\,\log\log n}.
-#'   Use \code{\link{preset.lambda}} to obtain the numeric value directly,
-#'   for example \code{preset.lambda("gic", p = ncol(X), n = nrow(X))}.
+#'   Use \code{\link{presetLambda}} to obtain the numeric value directly,
+#'   for example \code{presetLambda("gic", p = ncol(X), n = nrow(X))}.
 #'   Here \eqn{p} counts the original selectable predictors, excluding intercepts
 #'   and \code{always.include} terms, before screening by explicit starts.
 #'   A pool with no selectable predictors uses \eqn{p=1} in logarithms.
@@ -210,14 +210,14 @@
 #'   all formulas, intended uses and references. Set \code{lambda = 0} to
 #'   disable penalization. Presets calibrate the adaptive ridge updates to
 #'   the chosen selection criterion.
-#'   In \code{L0glm.fit()}, an omitted penalty is \code{"gic"} with
-#'   screening and 1 otherwise. \code{L0nnpois()} defaults to \code{"gic"}.
+#'   In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
+#'   screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
 #'   be added, and the user must ensure that `X` already contains an intercept
 #'   if needed. Defaults to `TRUE` for binomial models and `FALSE` otherwise
-#'   in `L0glm.fit()`, and to `FALSE` in `L0nnpois()`. With
+#'   in `l0glmFit()`, and to `FALSE` in `l0nnPois()`. With
 #'   `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
 #'   except for binomial and quasibinomial models, where it may have either sign.
 #' @param always.include A vector of coefficient indices that should always be
@@ -236,7 +236,7 @@
 #'   (columns of ones, whether supplied in \code{X} or added by
 #'   \code{intercept = TRUE}) remain unrestricted. If \code{FALSE}, all
 #'   coefficients may have either sign. Defaults to \code{FALSE} in
-#'   \code{L0glm.fit()}. The specialized \code{L0nnpois()} function always
+#'   \code{l0glmFit()}. The specialized \code{l0nnPois()} function always
 #'   enforces nonnegativity and has no \code{nonnegative} argument.
 #'   Unpenalized terms use a constrained conditional solve, while selectable
 #'   coefficients use the chosen ridge solver. See [compulsory_terms].
@@ -250,7 +250,7 @@
 #'   and \code{y} are unchanged. Dense working columns are centered once;
 #'   sparse working columns are shifted only when this adds no stored entries,
 #'   with the other means handled by the intercept. A constrained intercept
-#'   prevents this centering, including in \code{L0nnpois()}. Mandatory terms
+#'   prevents this centering, including in \code{l0nnPois()}. Mandatory terms
 #'   and zero-scale columns use scale one. Penalties, starts, ridge centers and
 #'   bounds are transformed consistently. Returned coefficients and explicit
 #'   vector/matrix starts retain their input units; numeric scalar \code{start=1}
@@ -260,7 +260,7 @@
 #'   changes of predictor units, up to numerical precision. Sparse designs
 #'   remain sparse. The training centers and scales are returned in
 #'   \code{preprocessing}; predictions use the original columns directly.
-#' @param screen Screening strategy in \code{L0glm.fit()}: \code{"auto"}
+#' @param screen Screening strategy in \code{l0glmFit()}: \code{"auto"}
 #'   (default), \code{"none"}, \code{"SIS"} or \code{"ISIS"}, ignoring case.
 #'   Auto enables ISIS exactly when \eqn{p_{\mathrm{eligible}}>10n}, where
 #'   \eqn{n} is the number of rows of \code{X}. The eligible count excludes
@@ -269,7 +269,7 @@
 #'   imposed. Explicit SIS/ISIS works at any size; \code{"none"} disables it.
 #'   SIS screens once; ISIS repeatedly screens using the fitted predictor as
 #'   an offset and refits the original response on the expanded candidate set.
-#'   See Screening under Details and \code{\link{sis_glm}}.
+#'   See Screening under Details and \code{\link{sisGLM}}.
 #' @param nsis Positive integer screening batch size, capped at \code{ncol(X)}.
 #'   By default SIS uses \eqn{2\lfloor n/\log n\rfloor}; ISIS uses
 #'   \eqn{\operatorname{round}\{n/(\log p\,\log\log n)\}}, at least one.
@@ -283,7 +283,7 @@
 #' @param screen.nthreads Positive integer OpenMP thread count for screening.
 #'   \code{NULL} (default) uses the number of physical cores, falling back to
 #'   one if detection is unavailable. Independent of \code{nthreads} (BLAS) and \code{ncores}
-#'   (outcome fitting). See \code{\link{sis_glm}} for caps and serial fallback.
+#'   (outcome fitting). See \code{\link{sisGLM}} for caps and serial fallback.
 #'   Ignored when screening is off.
 #' @param validation Optional list for validation-based IRLS stopping and
 #'   batch/start selection, supported for all families and links. Supply
@@ -347,7 +347,7 @@
 #'   driver, calling their dependency interfaces on the R thread; concurrent
 #'   channels use independent R workers for these two solvers.
 #'   Eligible nonnegative identity-link Poisson LLT fits use the specialized
-#'   \code{\link{L0nnpois}} backend, including native validation stopping.
+#'   \code{\link{l0nnPois}} backend, including native validation stopping.
 #'   Custom family callbacks, general validation stopping and structured
 #'   special-family algorithms retain their R orchestration. Set \code{FALSE}
 #'   to request the general R driver. \code{parallelize} separately controls
@@ -364,14 +364,14 @@
 #'   detected number of physical cores when that can be determined.
 #'   Native Eigen fits use this many OpenMP threads sharing the design matrix;
 #'   OSQP, \code{bigGlm} and the general R path use independent R workers.
-#'   With \code{L0nnpois}, the OpenMP thread count is capped at the logical
+#'   With \code{l0nnPois}, the OpenMP thread count is capped at the logical
 #'   core count.
 #' @param nthreads Optional integer specifying the number of BLAS threads
 #'   to use per fit process. The default \code{NULL} leaves the main R session's
 #'   thread settings unchanged and uses one BLAS thread per parallel
 #'   worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
 #'   tune per-worker threading on systems with a multithreaded BLAS.
-#'   The \code{L0nnpois} backend uses \code{ncores}; it ignores \code{nthreads}.
+#'   The \code{l0nnPois} backend uses \code{ncores}; it ignores \code{nthreads}.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform per channel and fitting pass (default 25). Fits stop
 #'   when the convergence criterion is met; inspect \code{convergence} to
@@ -450,7 +450,7 @@
 #'   and for grouped multinomial models with either factor or count-matrix
 #'   responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
 #'   fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
-#'   Screened \code{L0glm.fit()} models instead default to \code{TRUE},
+#'   Screened \code{l0glmFit()} models instead default to \code{TRUE},
 #'   including single-channel models, unless explicitly overridden.
 #'   Each special-family pass has its own \code{maxit} limit; inspect
 #'   \code{convergence} to assess whether the refit converged.
@@ -527,8 +527,8 @@
 #'   When dispersion is estimated, selection also waits until its
 #'   update has stabilized as described in Details, subject to \code{maxit}.
 #' @param control.solver List of parameters controlling the optimization
-#'   solvers. Auto-initialised with \code{control.solver.gen} when \code{NULL}.
-#'   See \code{?control.solver.gen} for more details on the available parameters
+#'   solvers. Auto-initialised with \code{controlSolverGen} when \code{NULL}.
+#'   See \code{?controlSolverGen} for more details on the available parameters
 #'   for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 #'   \code{control.solver$NaturalOrdering} selects Eigen natural ordering
 #'   (\code{TRUE}) or AMD ordering (\code{FALSE}, default). Sparse QR
@@ -579,7 +579,7 @@
 #' Standard likelihood regularity conditions motivate this approximation
 #' increasingly well as sample size grows on an identifiable active model.
 #' Correlated predictors couple the joint support decisions. If desired,
-#' \code{L0glm.tune()} searches around the preset using the information criterion
+#' \code{l0glmTune()} searches around the preset using the information criterion
 #' or cross-validated deviance. The Algorithm and theory vignette details the
 #' quadratic and large-sample arguments.
 #' Dispersion (the variance for Gaussian models) can be fixed or estimated
@@ -642,7 +642,7 @@
 #' to estimate the residual noise degrees of freedom,
 #' \eqn{\operatorname{tr}\{(I-H)^T(I-H)\}}, where \eqn{H} is the pilot hat matrix.
 #' The caller's random-number state is preserved. The pilot residual scale is
-#' divided by \code{max(1, preset.lambda("gic", p, n))} for a permissive start
+#' divided by \code{max(1, presetLambda("gic", p, n))} for a permissive start
 #' independent of the fitted lambda; its support is never
 #' imposed on the main fit. A supplied negative value bypasses this pilot.
 #' With preprocessing enabled, mandatory terms are profiled out and column
@@ -760,12 +760,12 @@
 #' chosen.
 #'
 #' \subsection{Screening}{
-#' Screening reuses \code{\link{sis_glm}} for all ordinary and special families.
+#' Screening reuses \code{\link{sisGLM}} for all ordinary and special families.
 #' With screening enabled, omitted \code{lambda}, \code{relaxed} and
 #' \code{parallelize} use \code{"gic"}, \code{TRUE} and \code{FALSE},
 #' respectively. Explicit arguments are preserved. Other defaults are unchanged.
 #' This reproduces the small-batch ISIS workflow used in the ultra-wide
-#' Gaussian benchmark with a single \code{L0glm.fit(X, y)} call.
+#' Gaussian benchmark with a single \code{l0glmFit(X, y)} call.
 #'
 #' Each candidate model starts afresh. The original offsets and prior observation
 #' weights are used for refitting; the fitted linear predictor is added to the
@@ -835,7 +835,7 @@
 #' Special-family models additionally inherit from \code{L0glm_extended_fit}.
 #' Use \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()},
 #' \code{GIC()}, \code{EBIC()} and \code{MBIC()} to extract coefficients
-#' and scores; see \link{model_criteria} and \link{L0glm.metrics}.
+#' and scores; see \link{model_criteria} and \link{l0glmMetrics}.
 #' \code{print()} shows a compact overview; \code{summary()} adds fit metrics
 #' and a bounded coefficient display; see \link{model_summary}.
 #' \code{predict()} and \code{fitted()} provide original-scale predictions;
@@ -855,7 +855,7 @@
 #' matrix with the adaptive penalties lambdas.} \item{\code{family}}{The error
 #' structure used to fit the data.}
 #' \item{\code{z}}{a vector or matrix containing the working response in the
-#' final iteration of \code{L0glm.fit}}
+#' final iteration of \code{l0glmFit}}
 #' \item{\code{X}}{design matrix X, including the intercept column if added}
 #' \item{\code{y}}{response vector or matrix y.}
 #' \item{\code{p}}{original number of selectable predictors.}
@@ -880,7 +880,7 @@
 #' number of dispersion updates and number of reactivations after a freeze.
 #' The flag records whether the iterative stopping criterion was met.}
 #'
-#' @example examples/L0glm.fit.R
+#' @example examples/l0glmFit.R
 #' @example examples/L0glm.special-families.R
 #'
 #' @author Tom Wenseleers, Laura Lanzas & Christophe Vanderaa
@@ -922,7 +922,7 @@
 #'   \code{"pcg"}; a scalar LLT threshold applies to both storage types.
 #'   The working-size guard applies to dense direct Cox and multinomial systems,
 #'   not matrix-free Cox products. See the dedicated family help pages.
-L0glm.fit <- function(X, # n x p design matrix (without intercept)
+l0glmFit <- function(X, # n x p design matrix (without intercept)
                       y, # n x m outcome matrix
                       weights       = NULL,
                       family        = gaussian(identity),
@@ -946,7 +946,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
                       prior.mean    = NULL,
                       thresh         = 1e-5,
                       tol           = 1e-10,
-                      control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
+                      control.solver = do.call("controlSolverGen", list(solver = solver, method = method)),
                       verbose       = FALSE,
                       openmp        = TRUE,
                       control.family = list(),
@@ -982,14 +982,14 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
         args$family <- family
         return(L0glm_validated_fit(args))
       }
-      options <- mget(setdiff(names(formals(L0glm.fit)),c("X","y")),envir=environment(),inherits=FALSE)
-      return(L0glm_nuisance_fit(X,y,options,L0glm.fit,supplied))
+      options <- mget(setdiff(names(formals(l0glmFit)),c("X","y")),envir=environment(),inherits=FALSE)
+      return(L0glm_nuisance_fit(X,y,options,l0glmFit,supplied))
     }
   }
   if(precluster) {
     if(!inherits(family,"family")) family<-family()
-    options<-mget(setdiff(names(formals(L0glm.fit)),c("X","y")),envir=environment(),inherits=FALSE)
-    return(L0glm_precluster_fit(X,y,options,L0glm.fit,names(match.call())[-1L]))
+    options<-mget(setdiff(names(formals(l0glmFit)),c("X","y")),envir=environment(),inherits=FALSE)
+    return(L0glm_precluster_fit(X,y,options,l0glmFit,names(match.call())[-1L]))
   }
   if (!is.null(validation) && !inherits(validation, "L0glm_validation")) {
     supplied <- names(match.call())[-1L]
@@ -1038,7 +1038,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
 
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are
-  # applied exactly once by L0nnpois.
+  # applied exactly once by l0nnPois.
   if (openmp && nonnegative && identical(family$family, "poisson") &&
       identical(family$link, "identity") && identical(solver, "eigen") &&
       isTRUE(method == 1L) &&
@@ -1046,7 +1046,7 @@ L0glm.fit <- function(X, # n x p design matrix (without intercept)
       (is.null(control.solver$pivot) || isTRUE(control.solver$pivot == 0L)) &&
       (is.null(control.solver$rowaug) || isTRUE(control.solver$rowaug)) &&
       !is.null(L0glm_native_family(family))) {
-    return(L0nnpois(
+    return(l0nnPois(
       X = X, y = y, weights = weights, family = family,
       dispersion = dispersion, start = start, offset = offset,
       lambda = lambda, intercept = intercept, always.include = always.include,
@@ -1658,7 +1658,7 @@ L0glmfun <- function(cols, lambda, thresh, solver, method,
                      prior.mean = NULL, weights = NULL, dispersion = NULL,
                      start = NULL, lower, upper,
                      verbose = FALSE, maxit, tol, offset, always.include = 0,
-                     control.solver = do.call("control.solver.gen",
+                     control.solver = do.call("controlSolverGen",
                                               list(solver = solver, method = method)),
                      hard_threshold = TRUE, preprocessing = NULL, validation = NULL) {
   

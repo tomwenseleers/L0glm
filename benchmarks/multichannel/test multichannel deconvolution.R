@@ -4,7 +4,7 @@ library(export)
 library(qlcMatrix)
 
 set.seed(1)
-sim <- simulate_spike_train(n=200, p=200, k=20, multichannel=TRUE, sparse=TRUE)
+sim <- simulateSpikeTrain(n=200, p=200, k=20, multichannel=TRUE, sparse=TRUE)
 X <- sim$X
 Y <- sim$y
 true_coefs <- sim$beta_true
@@ -21,7 +21,7 @@ image(X, useRaster=TRUE)
 
 # 1. using basic apply ####
 system.time(beta_wnnls <- apply(sim$y, 2, function(ycol, index) {
-  lmridge(X = sim$X,
+  lmRidge(X = sim$X,
           y = as.vector(ycol),
           lambda = rep(1, ncol(sim$X)),
           #weights = 1/(as.vector(ycol)+0.1),
@@ -47,7 +47,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMin(beta_wnnls)!=0)], col="cyan")
 
 
 system.time(beta_wnnls <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit(X = sim$X,
+  l0glmFit(X = sim$X,
              y = as.vector(ycol),
              lambda = 1,
              #weights = 1 / (as.vector(ycol) + 0.1),
@@ -86,11 +86,11 @@ n_cores <- round(parallel::detectCores()/2)
 system.time({
   # Set up parallel backend
   cl <- parallel::makeCluster(n_cores, type="PSOCK") # NOTE: on Ubuntu & Mac type="FORK" is faster
-  clusterExport(cl, list("sim", "lmridge")) # Export the 'sim' object to the workers
+  clusterExport(cl, list("sim", "lmRidge")) # Export the 'sim' object to the workers
   
   # Run the loop in parallel
   beta_wnnls <- parallel::parApply(cl, sim$y, 2, FUN = function(ycol) {
-    lmridge(X = sim$X,
+    lmRidge(X = sim$X,
             y = as.vector(ycol),
             lambda = rep(0, ncol(sim$X)),
             weights = 1/(as.vector(ycol)+0.1),
@@ -136,18 +136,18 @@ start <- NULL
 verbose <- TRUE
 X.n <- apply(Xblock, 2, norm, type = "2")
 
-system.time(coefs_multi <- lmridge(X = Xwblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
+system.time(coefs_multi <- lmRidge(X = Xwblock, y = yvect, lambda = lambda, lower = lower, upper = upper,
                                    nonnegative = nonnegative, solver = "osqp", method = 1L))
 #0.09s glmnet, 0.61s osqp, 82s nnls, 0.83 eigen.1, 0.15 eigen.4, (n=p=150, m=131) 
 cor(coefs_multi, as.numeric(true_coefs))
 
 
-system.time(fit_multi <- L0glm.fit(X=Xwblock, y=yvect, family = poisson(identity),
+system.time(fit_multi <- l0glmFit(X=Xwblock, y=yvect, family = poisson(identity),
                                     solver = "eigen", method = 1L, block = FALSE,
                                     lambda = 1, nonnegative = TRUE,
                                     control.iwls = do.call("control.iwls.gen", list(maxit = 100)),
                                     control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),
-                                    control.solver = do.call("control.solver.gen", list(solver = "eigen", method = 1L, rowaug = TRUE))))
+                                    control.solver = do.call("controlSolverGen", list(solver = "eigen", method = 1L, rowaug = TRUE))))
 #767.3s osqp,  14.3s glmnet, 767.4s eigen.1 (bad result), 17.8s eigen.56, TOO LONG nnls, (n=p=150, m=131, 100 maxit)
 
 # Turn coefficient vector into matrix
@@ -176,7 +176,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 
 # nonnegative identity link Poisson GLM fitted on each channel independently
 system.time(beta_nnpois <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit(X = sim$X,
+  l0glmFit(X = sim$X,
              y = as.vector(ycol),
              lambda = 0,
              # weights = 1/(as.vector(ycol)+0.1),
@@ -198,7 +198,7 @@ abline(v=(1:nrow(sim$X))[as.vector(rowMax(sim$beta_true)!=0)], col="red")
 
 # nonnegative L0 penalized identity link weighted LS fitted on each channel independently
 system.time(beta_nnL0pois <- apply(sim$y, 2, function(ycol) {
-  L0glm.fit(X = sim$X,
+  l0glmFit(X = sim$X,
              y = as.vector(ycol),
              lambda = 1,
              # weights = 1/(as.vector(ycol)+0.1),
@@ -230,7 +230,7 @@ for (iter in 1:10) {
   nonzero <- as.vector(beta_rowmax>0) # variables that have nonzero coefficients in any of the channels
   lambdas <- lambda*1/beta_rowmax^2
   fitted <- sim$X[,nonzero,drop=F] %*% beta[nonzero,,drop=F]
-  beta[nonzero,,drop=F] <- lmridge(X=X[,nonzero,drop=F],
+  beta[nonzero,,drop=F] <- lmRidge(X=X[,nonzero,drop=F],
                                    y=y,
                                    lambda=lambdas[nonzero],
                                    weights = as.vector(1/(fitted+0.1)),
@@ -247,7 +247,7 @@ for (iter in 1:10) {
                                          sim$y,
                                          2,
                                          function(ycol) {
-                                           L0glm.fit(X = sim$X,
+                                           l0glmFit(X = sim$X,
                                                       y = as.vector(ycol),
                                                       lambda = 1,
                                                       # weights = 1/(ycol+0.1),
@@ -280,7 +280,7 @@ for (channel in 1:m) {
   }
   
   # Fit the model for the current channel
-  beta.matrix[, channel] <- lmridge(
+  beta.matrix[, channel] <- lmRidge(
     X = sim$X,
     y = as.vector(sim$y[, channel]),
     lambda = 1,
@@ -325,7 +325,7 @@ system.time(for (channel in 1:m) {
     start <- NULL
   }
   # Fit the model for the current channel
-  current.fit <-  L0glm.fit(X = sim$X,
+  current.fit <-  l0glmFit(X = sim$X,
                      y = as.vector(sim$y[, channel]),
                      lambda = 1,
                      start = start,
@@ -376,7 +376,7 @@ sum(rowMax(sim$beta_true)!=0)
 sum(rowMax(beta.matrix)!=0)
 
 # 5. Implemented multichannel
-system.time(L0glm_osqp1 <- L0glm.fit(X=sim$X, y=sim$y, family = poisson(identity),
+system.time(L0glm_osqp1 <- l0glmFit(X=sim$X, y=sim$y, family = poisson(identity),
                                       solver = "eigen", method = 3L, lambda = 1, nonnegative = TRUE,
                                       control.iwls = do.call("control.iwls.gen", list(maxit = 200,reltol = 3)),
                                       control.l0 = do.call("control.l0.gen", list(maxit = 100, delta = 1E-10, gamma = 2)),

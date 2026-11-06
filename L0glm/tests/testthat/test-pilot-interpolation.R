@@ -9,7 +9,7 @@ test_that("a virtually interpolating pilot does not initialize at roundoff varia
   rng <- .Random.seed
   phi <- initialize(y)
   expect_identical(.Random.seed, rng)
-  expect_gt(phi, 1e-6 * mean(y^2) / preset.lambda("gic", 80, 80))
+  expect_gt(phi, 1e-6 * mean(y^2) / presetLambda("gic", 80, 80))
   expect_equal(initialize(10 * y), 100 * phi, tolerance = 1e-7)
   expect_true(is.finite(phi))
 })

@@ -219,7 +219,7 @@ L0glm_ic_name <- function(IC, allow_cv = FALSE) {
 }
 
 L0glm_resolve_lambda <- function(lambda, p, n) {
-  if (is.character(lambda)) lambda <- preset.lambda(lambda, p = p, n = n)
+  if (is.character(lambda)) lambda <- presetLambda(lambda, p = p, n = n)
   if (!is.numeric(lambda) || length(lambda) != 1L || !is.finite(lambda)) {
     stop("lambda must be a finite numeric scalar or an information-criterion name; ",
          "see help('information_criteria', package = 'L0glm').", call. = FALSE)
@@ -231,8 +231,8 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 #' Calculate an information-criterion penalty preset
 #'
 #' Return the numeric penalty associated with an information criterion, for
-#' inspection or use as the \code{lambda} argument of \code{\link{L0glm.fit}}
-#' or \code{\link{L0nnpois}}.
+#' inspection or use as the \code{lambda} argument of \code{\link{l0glmFit}}
+#' or \code{\link{l0nnPois}}.
 #'
 #' @param IC Case-insensitive criterion name: \code{"gic"} (default),
 #'   \code{"aic"}, \code{"bic"}, \code{"ebic"} or \code{"mbic"}.
@@ -261,15 +261,15 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 #' supplied here and the resulting penalty passed to a fitter.
 #'
 #' @return A numeric scalar containing the penalty per parameter.
-#' @seealso \code{\link{L0glm.fit}}, \code{\link{L0nnpois}},
-#'   \code{\link{L0glm.tune}}, \link{information_criteria}
+#' @seealso \code{\link{l0glmFit}}, \code{\link{l0nnPois}},
+#'   \code{\link{l0glmTune}}, \link{information_criteria}
 #' @examples
-#' preset.lambda("gic", p = 10000, n = 10000)
-#' vapply(c("aic", "bic", "gic", "ebic", "mbic"), preset.lambda,
+#' presetLambda("gic", p = 10000, n = 10000)
+#' vapply(c("aic", "bic", "gic", "ebic", "mbic"), presetLambda,
 #'        numeric(1), p = 10000, n = 10000)
-#' preset.lambda("ebic", p = 10000, n = 1000, gamma_ebic = 1)
+#' presetLambda("ebic", p = 10000, n = 1000, gamma_ebic = 1)
 #' @export
-preset.lambda <- function(IC="gic", p, n,
+presetLambda <- function(IC="gic", p, n,
                           gamma_ebic = max(0, 1 - log(n)/(2*log(p)))) { # reduces to BIC when p <= sqrt(n)
   IC <- L0glm_ic_name(IC)
   lambda <- switch(IC,

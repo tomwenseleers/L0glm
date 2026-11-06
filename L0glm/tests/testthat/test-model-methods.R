@@ -1,5 +1,5 @@
 expect_model_criteria <- function(fit) {
-  scores <- L0glm.metrics(fit, mu_floor = 0)
+  scores <- l0glmMetrics(fit, mu_floor = 0)
   likelihood <- logLik(fit)
   expect_s3_class(fit, "L0glm_fit")
   expect_s3_class(likelihood, "logLik")
@@ -24,7 +24,7 @@ test_that("Gaussian likelihood methods use prior weights, offsets and profiled s
   y <- 1 + X %*% c(2, -1, .5) + off + rnorm(120, sd = .7/sqrt(w))
   ref <- glm(as.numeric(y) ~ X + offset(off), weights = w, family = gaussian())
   for (design in list(X, Matrix::Matrix(X, sparse = TRUE))) {
-    fit <- L0glm.fit(design, y, weights = w, offset = off, intercept = TRUE,
+    fit <- l0glmFit(design, y, weights = w, offset = off, intercept = TRUE,
       lambda = 0, thresh = 0, relaxed = FALSE, parallelize = FALSE, maxit = 100)
     expect_model_criteria(fit)
     expect_equal(as.numeric(coef(fit)), unname(coef(ref)), tolerance = 1e-8)
@@ -48,7 +48,7 @@ test_that("known and estimated multichannel scales retain their distinct likelih
   off <- matrix(runif(160, -.1, .1), 80, 2)
   B <- matrix(c(1, -1, 0, 2, 0, 1), 3, 2)
   y <- X %*% B + off + matrix(rnorm(160), 80, 2)
-  fit <- L0glm.fit(X, y, weights = w, offset = off, dispersion = c(2, -1),
+  fit <- l0glmFit(X, y, weights = w, offset = off, dispersion = c(2, -1),
     lambda = 0, thresh = 0, grouped = FALSE, relaxed = FALSE, parallelize = FALSE)
   expect_model_criteria(fit)
   mu <- as.matrix(X %*% coef(fit)) + off
@@ -58,7 +58,7 @@ test_that("known and estimated multichannel scales retain their distinct likelih
   expect_equal(attr(logLik(fit), "df"), sum(coef(fit) != 0) + 1)
   expect_identical(fit$dispersion.estimated, c(FALSE, TRUE))
   expect_equal(nobs(fit), 80)
-  expect_equal(L0glm.metrics(fit, beta_true = B)$within_row_TP,
+  expect_equal(l0glmMetrics(fit, beta_true = B)$within_row_TP,
     sum((coef(fit) != 0) & (B != 0)))
 })
 
@@ -71,7 +71,7 @@ test_that("R and native Poisson methods retain channel-specific prior weights", 
   y <- matrix(rpois(120, X %*% B + off), 60, 2)
   for (design in list(X, Matrix::Matrix(X, sparse = TRUE))) {
     for (native in c(FALSE, TRUE)) {
-      fit <- L0glm.fit(design, y, weights = w, offset = off,
+      fit <- l0glmFit(design, y, weights = w, offset = off,
         family = poisson(identity), nonnegative = TRUE, openmp = native,
         lambda = 2, grouped = FALSE, relaxed = FALSE, parallelize = FALSE)
       expect_model_criteria(fit)
@@ -81,24 +81,24 @@ test_that("R and native Poisson methods retain channel-specific prior weights", 
       expect_equal(as.matrix(fit$prior.weights), w)
       expect_equal(as.matrix(fit$offset), off)
       expect_false(any(fit$dispersion.estimated))
-      expect_equal(L0glm.metrics(fit, beta_true = B)$MCC,
+      expect_equal(l0glmMetrics(fit, beta_true = B)$MCC,
         L0glm:::get.metrics(coef(fit), design, y, weights = w, offset = off,
           family = poisson(identity), beta_true = B)$MCC)
     }
   }
-  single <- L0nnpois(X, y[, 1], weights = w[, 1], offset = off[, 1],
+  single <- l0nnPois(X, y[, 1], weights = w[, 1], offset = off[, 1],
     intercept = TRUE, parallelize = FALSE)
   expect_model_criteria(single)
-  expect_true(is.na(L0glm.metrics(single)$within_row_F1_score))
-  expect_equal(L0glm.metrics(single, newdata = X[1:10, ], y = y[1:10, 1],
+  expect_true(is.na(l0glmMetrics(single)$within_row_F1_score))
+  expect_equal(l0glmMetrics(single, newdata = X[1:10, ], y = y[1:10, 1],
     weights = w[1:10, 1], offset = off[1:10, 1])$loglik,
     sum(w[1:10, 1] * dpois(y[1:10, 1], as.numeric(cbind(1, X[1:10, ]) %*%
       coef(single)) + off[1:10, 1], log = TRUE)))
-  expect_error(L0glm.metrics(single, newdata = X), "Supply y")
-  expect_error(L0glm.metrics(single, newdata = X[, 1:2], y = y[, 1]), "dimensions")
-  expect_error(L0glm.metrics(single, weights = rep(-1, 60)), "nonnegative")
-  expect_error(L0glm.metrics(single, mu_floor = -1), "mu_floor")
-  expect_error(L0glm.metrics(list()), "model returned")
+  expect_error(l0glmMetrics(single, newdata = X), "Supply y")
+  expect_error(l0glmMetrics(single, newdata = X[, 1:2], y = y[, 1]), "dimensions")
+  expect_error(l0glmMetrics(single, weights = rep(-1, 60)), "nonnegative")
+  expect_error(l0glmMetrics(single, mu_floor = -1), "mu_floor")
+  expect_error(l0glmMetrics(list()), "model returned")
 })
 
 test_that("binomial and quasi likelihoods follow the family conventions", {
@@ -106,13 +106,13 @@ test_that("binomial and quasi likelihoods follow the family conventions", {
   X <- matrix(rnorm(300), 100, 3)
   off <- runif(100, -.2, .2); trials <- sample(2:6, 100, TRUE)
   y <- rbinom(100, trials, plogis(.2 + X %*% c(.5, -.4, 0) + off))/trials
-  fit <- L0glm.fit(X, y, family = binomial(), weights = trials, offset = off,
+  fit <- l0glmFit(X, y, family = binomial(), weights = trials, offset = off,
     lambda = 0, thresh = 0, parallelize = FALSE, relaxed = FALSE, maxit = 100)
   ref <- glm(y ~ X + offset(off), family = binomial(), weights = trials)
   expect_model_criteria(fit)
   expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-8)
   expect_equal(AIC(fit), AIC(ref), tolerance = 1e-8)
-  quasi <- L0glm.fit(X, y, family = quasibinomial(), weights = trials, offset = off,
+  quasi <- l0glmFit(X, y, family = quasibinomial(), weights = trials, offset = off,
     intercept = TRUE, lambda = 0, parallelize = FALSE, relaxed = FALSE, maxit = 100)
   expect_true(is.na(as.numeric(logLik(quasi))))
   for (criterion in list(AIC, BIC, GIC, EBIC, MBIC)) expect_true(is.na(criterion(quasi)))
@@ -122,7 +122,7 @@ test_that("zero mandatory coefficients and excluded starts keep the correct mode
   set.seed(1905)
   X <- matrix(rnorm(120), 40, 3)
   y <- X[, 1] + rnorm(40)
-  fit <- L0glm.fit(X, y, dispersion = 1, intercept = TRUE,
+  fit <- l0glmFit(X, y, dispersion = 1, intercept = TRUE,
     always.include = 2, start = c(0, 1, 0, 0), lambda = 2,
     relaxed = FALSE, parallelize = FALSE)
   expect_model_criteria(fit)
@@ -143,7 +143,7 @@ test_that("continuous-family scoring retains fixed and estimated dispersion conv
     y <- if (family$family == "Gamma") rgamma(60, shape = 1/phi, scale = mu*phi) else
       statmod::rinvgauss(60, mean = mu, dispersion = phi)
     for (dispersion in list(phi, NULL)) {
-      fit <- L0glm.fit(X, y, family = family, weights = w, dispersion = dispersion,
+      fit <- l0glmFit(X, y, family = family, weights = w, dispersion = dispersion,
         intercept = TRUE, lambda = 2, relaxed = FALSE, parallelize = FALSE, maxit = 100)
       expect_model_criteria(fit)
       fitted_mean <- family$linkinv(as.numeric(cbind(1, X) %*% coef(fit)))
@@ -162,12 +162,12 @@ test_that("continuous-family scoring retains fixed and estimated dispersion conv
 })
 
 test_that("exact likelihood and optional scoring floors are distinguished", {
-  fit <- L0nnpois(matrix(seq(.2, 1, length.out = 10), 10, 1), rep(1, 10),
+  fit <- l0nnPois(matrix(seq(.2, 1, length.out = 10), 10, 1), rep(1, 10),
     lambda = 2, parallelize = FALSE)
   fit$coefficients[,] <- 0
   expect_equal(as.numeric(logLik(fit)), -Inf)
   expect_equal(AIC(fit), Inf)
-  scores <- L0glm.metrics(fit, mu_floor = 1e-4)
+  scores <- l0glmMetrics(fit, mu_floor = 1e-4)
   likelihood <- logLik(fit, mu_floor = 1e-4)
   expect_true(is.finite(as.numeric(likelihood)))
   expect_equal(as.numeric(likelihood), scores$loglik)
@@ -183,7 +183,7 @@ test_that("special-family likelihoods and criteria inherit the common model inte
   X <- matrix(rnorm(240), 80, 3)
   y <- rnbinom(80, mu = exp(.5 + X[, 1]), size = 2)
   for (theta in c(2, -1)) {
-    fit <- L0glm.fit(X, y, family = mgcv::nb(theta = theta), intercept = TRUE,
+    fit <- l0glmFit(X, y, family = mgcv::nb(theta = theta), intercept = TRUE,
       lambda = 2, relaxed = FALSE, maxit = 100)
     expect_model_criteria(fit)
     expect_equal(attr(logLik(fit), "df"), sum(coef(fit) != 0) + (theta < 0))
@@ -192,7 +192,7 @@ test_that("special-family likelihoods and criteria inherit the common model inte
     c(.4, exp(.2 * X[i, 1]), .8)), numeric(3)))
   truth <- rbind(c(.2, -.1, -.1), c(1, -1, 0), c(0, 0, 0), c(0, .3, -.3))
   for (grouped in c(FALSE, TRUE)) {
-    fit <- L0glm.fit(X, counts, family = mgcv::multinom(K = 2), intercept = TRUE,
+    fit <- l0glmFit(X, counts, family = mgcv::multinom(K = 2), intercept = TRUE,
       lambda = 0, grouped = grouped, relaxed = FALSE, maxit = 100)
     expect_model_criteria(fit)
     # A CLR row can have two nonzero entries; its sum constraint leaves one df.
@@ -203,16 +203,16 @@ test_that("special-family likelihoods and criteria inherit the common model inte
     nonzero <- sum(coef(fit)[selectable, , drop = FALSE] != 0)
     expected_df <- if (grouped) 2 * active + 2 else nonzero - active + 2
     expect_equal(attr(logLik(fit), "df"), expected_df)
-    recovery <- L0glm.metrics(fit, beta_true = truth)
+    recovery <- l0glmMetrics(fit, beta_true = truth)
     expect_true(all(c("within_row_F1_score", "within_row_MCC") %in% names(recovery)))
-    expect_equal(recovery$loglik, L0glm.metrics(fit)$loglik)
-    expect_error(L0glm.metrics(fit, newdata = X), "Supply y")
+    expect_equal(recovery$loglik, l0glmMetrics(fit)$loglik)
+    expect_error(l0glmMetrics(fit, newdata = X), "Supply y")
   }
   event <- rexp(80, exp(X[, 1])); censor <- rexp(80, .4)
   response <- survival::Surv(pmin(event, censor), event <= censor)
-  fit <- L0glm.fit(X, response, family = mgcv::cox.ph(), lambda = 2,
+  fit <- l0glmFit(X, response, family = mgcv::cox.ph(), lambda = 2,
     relaxed = FALSE, maxit = 100)
   expect_model_criteria(fit)
   expect_equal(nobs(fit), sum(response[, 2]))
-  expect_true(is.na(L0glm.metrics(fit, beta_true = c(1, 0, 0))$within_row_MCC))
+  expect_true(is.na(l0glmMetrics(fit, beta_true = c(1, 0, 0))$within_row_MCC))
 })

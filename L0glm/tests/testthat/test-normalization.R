@@ -7,17 +7,17 @@ test_that("column scaling preserves the weighted ridge objective for every solve
   reference <- as.numeric(solve(crossprod(X, w * X) + diag(d),
                                 crossprod(X, w * y) + d * target))
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
-    estimate <- lmridge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
+    estimate <- lmRidge(Matrix::Matrix(X, sparse = sparse), y, weights = w,
                         lambdas = d, prior.mean = target, scaling = scaleX(X),
                         start = rep(0.1, 8), method = method,
-                        control.solver = control.solver.gen("eigen", method,
+                        control.solver = controlSolverGen("eigen", method,
                                                             tol = 1e-11))
     expect_equal(estimate, reference, tolerance = 1e-6)
   }
   for (solver in c("osqp", "bigGlm")) {
-    estimate <- lmridge(X, y, weights = w, lambdas = d, prior.mean = target,
+    estimate <- lmRidge(X, y, weights = w, lambdas = d, prior.mean = target,
                         scaling = scaleX(X), solver = solver,
-                        control.solver = control.solver.gen(solver, abstol = 1e-14,
+                        control.solver = controlSolverGen(solver, abstol = 1e-14,
                                                             reltol = 1e-11))
     expect_equal(estimate, reference, tolerance = 1e-6)
   }
@@ -29,11 +29,11 @@ test_that("scaled bounds and ridge targets describe the original coefficients", 
   lower <- c(0, -0.3, 0, 0); upper <- c(0.8, 0.2, 1, Inf)
   expected <- pmin(upper, pmax(lower, (diag(X) * y + d * target) / (diag(X)^2 + d)))
   for (solver in c("eigen", "osqp", "bigGlm")) {
-    beta <- lmridge(X, y, lambdas = d, prior.mean = target, scaling = c(0.5, 1.5, 1, 1),
+    beta <- lmRidge(X, y, lambdas = d, prior.mean = target, scaling = c(0.5, 1.5, 1, 1),
                     lower = lower, upper = upper, solver = solver)
     expect_equal(beta, expected, tolerance = 1e-6)
   }
-  expect_error(lmridge(X, y, scaling = c(1, 0, 1, 1)), "finite positive")
+  expect_error(lmRidge(X, y, scaling = c(1, 0, 1, 1)), "finite positive")
 })
 
 test_that("normalization choices have their stated column norms", {
@@ -54,10 +54,10 @@ test_that("all scaling choices preserve native and general fit coordinates", {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, lambda = 2,
                  start = 0.2, maxit = 5L, relaxed = FALSE, parallelize = FALSE,
                  prior.mean = rep(0.01, 45))
-    reference <- do.call(L0nnpois, args)
+    reference <- do.call(l0nnPois, args)
     for (normalize in list(TRUE, "l2", "rms", "sd", "none")) {
-      native <- do.call(L0nnpois, c(args, list(normalize = normalize)))
-      general <- do.call(L0glm.fit, c(args, list(normalize = normalize,
+      native <- do.call(l0nnPois, c(args, list(normalize = normalize)))
+      general <- do.call(l0glmFit, c(args, list(normalize = normalize,
         family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
       expect_equal(as.numeric(native$coefficients), as.numeric(reference$coefficients), tolerance = 1e-8)
       expect_equal(as.numeric(native$coefficients), as.numeric(general$coefficients), tolerance = 1e-8)

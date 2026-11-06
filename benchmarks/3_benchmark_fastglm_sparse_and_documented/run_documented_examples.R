@@ -208,7 +208,7 @@ for (id in names(examples)) {
         family = d$family$family, intercept = length(d$mandatory) > 0L), timeout = 120)
       search_max <<- result$max_support
       result
-    } else function() L0glm.fit(d$X, d$y, family = if (id == "vignette_nb_challenging") mgcv::nb(theta = 1) else d$family,
+    } else function() l0glmFit(d$X, d$y, family = if (id == "vignette_nb_challenging") mgcv::nb(theta = 1) else d$family,
       weights = d$weights, offset = d$offset, intercept = FALSE, always.include = d$mandatory,
       nonnegative = FALSE, relaxed = FALSE, parallelize = FALSE, nthreads = 1L,
       lambda = switch(method, L0_unpenalized = 0, L0_default = 1, "gic"),

@@ -44,9 +44,9 @@ L0_sparse_deco <- function(y,                            # response to be deconv
   if (!is.null(kernelfunc)&!is.null(L)) { kernel <- kernelfunc(x=1:L) } else { L <- length(kernel) } # kernel to use for deconvolution
   
   if (is.null(X)) { 
-    X <- logconNMF::convmatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf
+    X <- logconNMF::convMatrix(kernel = kernel, n = n)  # covariate matrix with time-shifted versions of kernel / psf
   } else { X <- Matrix(X, sparse = TRUE) }
-  y_deconv <- L0glm.fit(y = y,   # nonnegative L0-norm penalised GLM
+  y_deconv <- l0glmFit(y = y,   # nonnegative L0-norm penalised GLM
                      X = X,  
                      family = family, 
                      intercept = FALSE,
@@ -74,7 +74,7 @@ L0_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) 
                            kernel_est = NULL, # vector with prior estimate of kernel, if available - is always normalised to unit L1 norm before use
                            L = ifelse(!is.null(kernel_est), length(kernel_est), 41), # desired length of  convolution kernel / PSF to be estimated
                            family = poisson(identity),   # noise model, we only support identity link families here
-                           kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
+                           kernel_smoothfun = function (y) logConcSmooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
                            perc = "mean", # shift PSF to centroid
                            IC = "gic") { # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic)  
   if (is.vector(y)) y <- as.matrix(y)
@@ -95,12 +95,12 @@ L0_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) 
   
   kernels <- do.call(rbind, lapply(1:ncol(y), # loop over outcome channels for multivariate case
                                    function (col) {
-   X <- logconNMF::convmatrix(kernel = y_deconv[, col],
+   X <- logconNMF::convMatrix(kernel = y_deconv[, col],
                    n = n,
                    shape = "same",
                    n_cols = L,
                    origin = (L + 1L) %/% 2L)
-   kernel <- L0glm.fit(y = y[, col, drop = FALSE],  # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate 
+   kernel <- l0glmFit(y = y[, col, drop = FALSE],  # nonnegative L0-norm penalised GLM, but now shrinking towards shrink towards prior kernel estimate
                        X = X, 
                        family = family, 
                        intercept = FALSE,
@@ -115,7 +115,7 @@ L0_deco_estkernel <- function(y,     # vector or matrix (for multivariate case) 
     # optional: smooth estimated psf (NOTE: maybe also consider total variation denoiser tvR::denoise1?)
     if (!is.null(kernel_smoothfun)) { kernel <- kernel_smoothfun(y = kernel) }
     # center PSF at given percentile p or with "mean" put centroid in middle
-    kernel <- logconNMF::shift_kernel(kernel,
+    kernel <- logconNMF::shiftKernel(kernel,
                            perc = perc, # put centroid in middle 
                            method = "linear")
     return(kernel/sum(kernel)) # normalise PSF to unit L1 norm
@@ -136,7 +136,7 @@ L0_blind_deco <- function(y,                            # response to be deconvo
                           kernel_est = NULL, # vector with prior estimate of kernel, if available - is always normalised to unit L1 norm before use
                           L = ifelse(!is.null(kernel_est), length(kernel_est), 41), # desired length of  convolution kernel / PSF to be estimated
                           kernelfunc = function(x) gauspeak(x, u = (1+L)/2, w = 6, h = 1),
-                          kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
+                          kernel_smoothfun = function (y) logConcSmooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
                           p = "mean", # center centroid of estimated kernel in middle of vector?
                           IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
                           grouped = FALSE,  # use grouped feature selection (best subset of group selection), only used if outcome y is multivariate
@@ -150,7 +150,7 @@ L0_blind_deco <- function(y,                            # response to be deconvo
   a_start <- NULL
   kernel_est <- kernel_est/sum(kernel_est) # normalise kernel to unit L1 norm
   g_est <- g_est_raw <- kernel_est # starting estimate of peak shape function g
-  X_a <- logconNMF::convmatrix(kernel = kernel_est,
+  X_a <- logconNMF::convMatrix(kernel = kernel_est,
                     n = n)
   
   for (iter in 1:maxiter) {
@@ -179,7 +179,7 @@ L0_blind_deco <- function(y,                            # response to be deconvo
     g_est <- g_fit$kernel/sum(g_fit$kernel)   # normalise estimated PSF to unit L1 norm
     # lines(g_est, type="l", col="purple")
     
-    X_a = logconNMF::convmatrix(kernel = g_est, n = n)  # update covariate matrix with time-shifted versions of estimated psf
+    X_a = logconNMF::convMatrix(kernel = g_est, n = n)  # update covariate matrix with time-shifted versions of estimated psf
     y_hat = as.vector(X_a %*% a_est) # fitted y
     deviance = sum(dev_res(y = y, mu = y_hat+1E-10, wt = rep(1, length(y))))
     deviances = c(deviances, deviance)
@@ -219,7 +219,7 @@ L0_blind_deco <- function(y,                            # response to be deconvo
 #               kernel_est = NULL, # vector with prior estimate of kernel, if available - is always normalised to unit L1 norm before use
 #               L = ifelse(!is.null(kernel_est), length(kernel_est), 41), # desired length of  convolution kernel / PSF to be estimated
 #               kernelfunc = function(x) gauspeak(x, u = (1+L)/2, w = 6, h = 1), # initial width of gaussian psf = 6, 3.3 to 30 all converge to same solution, only can get stuck with too low w0, e.g. < 3.3
-#               kernel_smoothfun = function (y) log_conc_smooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
+#               kernel_smoothfun = function (y) logConcSmooth(y), # NULL or function to smooth estimated kernel with (here we use log-concave spline)
 #               center_kernel = TRUE, # center centroid of estimated kernel in middle of vector?
 #               IC = "gic", # preset L0glm regularisation to approximately optimise this IC, choices aic, bic, gic, mbic or ebic 
 #               grouped = FALSE,
@@ -253,7 +253,7 @@ L = 41 # length of PSF
 g_true = bigauspeak(1:L, u=(1+L)/2, w1=w1[[1]], w2=w2[[1]], h=1) # actual true bigaussian peak used
 centroid(g_true) # 21.00015
 # g_true = gauspeak(1:L, u=(1+L)/2, w=w[[1]], h=1) # bigauspeak(1:L, u=(1+L)/2, w1=w1[[1]], w2=w2[[1]], h=1) # actual true bigaussian peak used
-# g_true = logconNMF::shift_kernel(g_true,
+# g_true = logconNMF::shiftKernel(g_true,
 #                       perc = perc, # "mean", # put centroid in middle, already the case - so not needed here
 #                       method = "linear")
 scaling_g = sum(g_true) # normalise PSF to unit L1 norm
@@ -261,7 +261,7 @@ g_true = g_true/scaling_g
 a_true = a_true*scaling_g
 # plot(g_true, type="l")
 
-X_sim = logconNMF::convmatrix(kernel = g_true, n = n)
+X_sim = logconNMF::convMatrix(kernel = g_true, n = n)
 y_true =  as.vector(X_sim %*% a_true) # true noiseless y, equivalent to gsignal::conv(a_true, g_true, shape="same")
 y = rpois(n = length(y_true), lambda = y_true) # TODO: allow Poisson, Gaussian or Gamma noise
 
@@ -276,15 +276,15 @@ plot(x,y,type="l", main="Simulated sum of bigaussian peaks with Poisson noise")
 
 # real data to test
 # L = 41
-# y = rowSums(GCMS_data1) # real example: Cataglyphis iberica queen cuticular hydrocarbon section
-# y = attr(GCMS_data1, "alkanes_TIC") # alkane ladder
+# y = rowSums(gcmsData1) # real example: Cataglyphis iberica queen cuticular hydrocarbon section
+# y = attr(gcmsData1, "alkanes_TIC") # alkane ladder
 # n = length(y)
 # g_true = NULL
 
 # L = 101 # round(length(y)/5)
-# # y = rowSums(GCMS_data2) # more challenging real beer GC/MS examples with triangular acid peak
+# # y = rowSums(gcmsData2) # more challenging real beer GC/MS examples with triangular acid peak
 # # y = Yagg1[,2] # Yagg1[,1]
-# # y = attr(GCMS_data2, "alkanes_TIC") # alkane ladder
+# # y = attr(gcmsData2, "alkanes_TIC") # alkane ladder
 # # plot(Yagg2[,4] ^ 0.2, type="l")
 # y = Yagg3[,3]
 # y = Yagg3[,2]
@@ -298,20 +298,20 @@ plot(x,y,type="l", main="Simulated sum of bigaussian peaks with Poisson noise")
 w0 = 6 # initial width of gaussian psf, 3.3 to 30 all converge to same solution, only can get stuck with too low w0, e.g. < 3.3
 kernelfunc = function(x) gauspeak(x, u = (1+L)/2, w = w0, h = 1)
 kernel = kernelfunc(x=1:L)
-kernel = logconNMF::shift_kernel(kernel,
+kernel = logconNMF::shiftKernel(kernel,
                       perc = perc,
                       method = "linear")
 kernel = kernel/sum(kernel) # normalise PSF to unit L1 norm
 # plot(kernel, type="l")
 maxiter = 15
-kernel_smoothfun <- function (y) log_conc_smooth(y)
+kernel_smoothfun <- function (y) logConcSmooth(y)
 IC = "gic"
 family = poisson(identity)
 
 deviances = NULL
 a_start = NULL
 g_est <- g_est_raw <- kernel # starting estimate of peak shape function g
-X_a <- logconNMF::convmatrix(kernel = g_est, n = n)  # covariate matrix with time-shifted versions of psf
+X_a <- logconNMF::convMatrix(kernel = g_est, n = n)  # covariate matrix with time-shifted versions of psf
                              
 for (iter in 1:(maxiter+1)) {
   print(iter)
@@ -342,7 +342,7 @@ for (iter in 1:(maxiter+1)) {
   g_est <- g_fit$kernel/sum(g_fit$kernel)   
 # lines(g_est, type="l", col="purple")
 
-X_a = logconNMF::convmatrix(kernel = g_est, n = n) # update covariate matrix with time-shifted versions of estimated psf
+X_a = logconNMF::convMatrix(kernel = g_est, n = n) # update covariate matrix with time-shifted versions of estimated psf
 y_hat = as.vector(X_a %*% a_est) # fitted y
 deviance = sum(family$dev.resids(y = y, mu = y_hat+1E-10, wt = rep(1, length(y))))
 deviances = c(deviances, deviance)

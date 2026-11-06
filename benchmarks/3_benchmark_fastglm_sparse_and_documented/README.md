@@ -1,6 +1,6 @@
 # GLM performance with sparse and dense coefficient truth
 
-These benchmarks compare `fastglm::fastglmPure()` with `L0glm.fit()` on simulated sparse solutions and on the examples in the fastglm README and vignettes. The documented examples also include abess with its default support search and default tuning criterion. Three additional dense Gaussian controls make its default support limit visible; they are explicitly labelled as additional simulations.
+These benchmarks compare `fastglm::fastglmPure()` with `l0glmFit()` on simulated sparse solutions and on the examples in the fastglm README and vignettes. The documented examples also include abess with its default support search and default tuning criterion. Three additional dense Gaussian controls make its default support limit visible; they are explicitly labelled as additional simulations.
 
 Run from the repository root or its `L0glm` package subdirectory:
 

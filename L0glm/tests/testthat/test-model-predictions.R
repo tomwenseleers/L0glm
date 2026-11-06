@@ -16,7 +16,7 @@ test_that("ordinary predictions match glm on training and original-scale new dat
     ref <- glm(y ~ a+b+c+offset(off),data=frame,weights=w,family=family,
       control=glm.control(epsilon=1e-12,maxit=100))
     for (normalization in c("none","rms")) {
-      fit <- L0glm.fit(X,y,family=family,weights=weights,offset=off,intercept=TRUE,
+      fit <- l0glmFit(X,y,family=family,weights=weights,offset=off,intercept=TRUE,
         normalize=normalization,lambda=0,thresh=0,relaxed=FALSE,
         parallelize=FALSE,maxit=100,tol=1e-14)
       expect_equal(as.numeric(fitted(fit)),as.numeric(fitted(ref)),tolerance=1e-6)
@@ -50,7 +50,7 @@ test_that("native multichannel predictions retain offsets, intercepts and respon
   Y <- matrix(rpois(120,as.numeric(X %*% B + off)),60,2,
     dimnames=list(NULL,c("mass1","mass2")))
   for (sparse in c(FALSE,TRUE)) {
-    fit <- L0nnpois(Matrix::Matrix(X,sparse=sparse),Y,offset=off,
+    fit <- l0nnPois(Matrix::Matrix(X,sparse=sparse),Y,offset=off,
       intercept=TRUE,parallelize=FALSE,lambda=2)
     expected <- as.matrix(cbind(1,X) %*% coef(fit)) + off
     expect_equal(fitted(fit),expected,ignore_attr=TRUE)
@@ -62,7 +62,7 @@ test_that("native multichannel predictions retain offsets, intercepts and respon
     expect_equal(as.numeric(fitted(zero,offset=0)),numeric(length(Y)))
   }
   # Manual intercept columns are retained when no intercept was added by the API.
-  manual <- L0glm.fit(cbind(Intercept=1,X),Y,offset=off,family=poisson(identity),
+  manual <- l0glmFit(cbind(Intercept=1,X),Y,offset=off,family=poisson(identity),
     nonnegative=TRUE,intercept=FALSE,lambda=2,parallelize=FALSE)
   expect_equal(predict(manual,cbind(Intercept=1,X)[1:4,],offset=off[1:4,]),
     fitted(manual)[1:4,,drop=FALSE])
@@ -72,7 +72,7 @@ test_that("prediction validates dimensions, names, finite values and zero-start 
   set.seed(2603)
   X <- matrix(rnorm(240),80,3,dimnames=list(NULL,c("a","b","c")))
   y <- X[,1]+rnorm(80)
-  fit <- L0glm.fit(X,y,intercept=TRUE,start=c(0,1,0,0),lambda=2,parallelize=FALSE)
+  fit <- l0glmFit(X,y,intercept=TRUE,start=c(0,1,0,0),lambda=2,parallelize=FALSE)
   expect_equal(as.numeric(coef(fit)[3:4,]),c(0,0))
   expect_equal(as.numeric(predict(fit,X[1:4,])),as.numeric(cbind(1,X[1:4,]) %*% coef(fit)))
   expect_error(predict(fit,X[,1:2]),"prediction columns")
@@ -86,9 +86,9 @@ test_that("prediction validates dimensions, names, finite values and zero-start 
   expect_error(predict(fit,X[1:3,],offset="bad"),"numeric")
   expect_error(predict(fit,type="unknown"),"Prediction type")
   expect_error(fitted(fit,newdata=X),"Use predict")
-  single <- L0glm.fit(X[,1,drop=FALSE],y,lambda=2,parallelize=FALSE)
+  single <- l0glmFit(X[,1,drop=FALSE],y,lambda=2,parallelize=FALSE)
   expect_equal(predict(single,X[1:4,1]),predict(single,X[1:4,1,drop=FALSE]))
-  unnamed <- L0glm.fit(unname(X),y,lambda=2,intercept=TRUE,parallelize=FALSE)
+  unnamed <- l0glmFit(unname(X),y,lambda=2,intercept=TRUE,parallelize=FALSE)
   expect_equal(predict(unnamed,as.data.frame(X[1:4,])),predict(unnamed,unname(X[1:4,])))
 })
 
@@ -98,7 +98,7 @@ test_that("multinomial predictions are stable probabilities and deterministic cl
   X <- matrix(rnorm(360),120,3,dimnames=list(NULL,c("a","b","c")))
   Y <- factor(rep(c("A","B","C"),40))
   off <- matrix(rnorm(360,sd=.1),120,3)
-  fit <- L0glm.fit(X,Y,family=mgcv::multinom(K=2),offset=off,
+  fit <- l0glmFit(X,Y,family=mgcv::multinom(K=2),offset=off,
     intercept=TRUE,lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
   expected_eta <- as.matrix(cbind(1,X) %*% coef(fit)) + off
   expected_eta <- expected_eta-rowMeans(expected_eta)
@@ -110,7 +110,7 @@ test_that("multinomial predictions are stable probabilities and deterministic cl
   expect_equal(probability,predict(fit,offset=off+1000),tolerance=1e-12)
   expect_equal(predict(fit,X[1:5,],offset=off[1:5,]),probability[1:5,,drop=FALSE])
   # Compare against an independently fitted multinomial likelihood without offsets.
-  plain <- L0glm.fit(X,Y,family=mgcv::multinom(K=2),intercept=TRUE,
+  plain <- l0glmFit(X,Y,family=mgcv::multinom(K=2),intercept=TRUE,
     lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
   ref <- nnet::multinom(Y ~ a+b+c,data=data.frame(Y=Y,X),trace=FALSE,
     maxit=300,abstol=1e-12,reltol=1e-12)
@@ -128,13 +128,13 @@ test_that("NB means and Cox risks use the original linear predictor", {
   set.seed(2605)
   X <- matrix(rnorm(300),100,3,dimnames=list(NULL,c("a","b","c")))
   off <- runif(100,-.3,.3)
-  nb <- L0glm.fit(X,rnbinom(100,mu=exp(.2+.4*X[,1]+off),size=2),
+  nb <- l0glmFit(X,rnbinom(100,mu=exp(.2+.4*X[,1]+off),size=2),
     family=mgcv::nb(theta=2),offset=off,lambda=2,intercept=TRUE,relaxed=FALSE)
   expect_equal(fitted(nb),exp(as.matrix(cbind(1,X) %*% coef(nb)) + off),ignore_attr=TRUE)
   expect_equal(predict(nb,X[1:4,],offset=off[1:4]),fitted(nb)[1:4,,drop=FALSE])
   event <- rexp(100,exp(.5*X[,1]+off)); censor <- rexp(100,.3)
   Y <- survival::Surv(pmin(event,censor),event <= censor)
-  fit <- L0glm.fit(X,Y,family=mgcv::cox.ph(),offset=off,lambda=0,
+  fit <- l0glmFit(X,Y,family=mgcv::cox.ph(),offset=off,lambda=0,
     relaxed=FALSE,maxit=100,tol=1e-9)
   ref <- survival::coxph(Y ~ X+offset(off),ties="breslow")
   expected <- exp(as.numeric(X %*% coef(fit)) + off)
@@ -159,7 +159,7 @@ test_that("collection predictions retain method order and unavailable entries wi
   set.seed(2606)
   X <- matrix(rnorm(240),80,3)
   y <- X[,1]+rnorm(80)
-  expect_warning(result <- sparseglm(X,y,offset=1,method=c("L0glm","lasso"),nlambda=3,
+  expect_warning(result <- sparseGLM(X,y,offset=1,method=c("L0glm","lasso"),nlambda=3,
     options=list(L0glm=list(solver="invalid"))),"failed")
   predictions <- predict(result,X[1:5,],offset=2)
   expect_identical(names(predictions),names(result$fits))
@@ -168,8 +168,8 @@ test_that("collection predictions retain method order and unavailable entries wi
   expect_equal(fitted(result),predict(result))
   expect_equal(fitted(result)$lasso,fitted(result$fits$lasso))
   expect_error(fitted(result,newdata=X),"Use predict")
-  local_mocked_bindings(L0glm.fit=function(...) stop("Must not refit"),
-    L0nnpois=function(...) stop("Must not refit"),L0glm.tune=function(...) stop("Must not tune"))
+  local_mocked_bindings(l0glmFit=function(...) stop("Must not refit"),
+    l0nnPois=function(...) stop("Must not refit"),l0glmTune=function(...) stop("Must not tune"))
   expect_equal(predict(result,X[1:5,],offset=2),predictions)
 })
 
@@ -178,14 +178,14 @@ test_that("special-family comparisons provide probabilities, risks and lazy surv
   set.seed(2607)
   X <- matrix(rnorm(240),80,3)
   Y <- factor(rep(1:3,length.out=80))
-  multi <- sparseglm(X,Y,family="multinomial",method=c("abess","lasso"),nlambda=3,support.size=0:2)
+  multi <- sparseGLM(X,Y,family="multinomial",method=c("abess","lasso"),nlambda=3,support.size=0:2)
   for (value in predict(multi,X[1:4,],type="probabilities")) {
     expect_equal(dim(value),c(4L,3L))
     expect_equal(rowSums(value),rep(1,4),tolerance=1e-13)
   }
   event <- rexp(80,exp(.5*X[,1])); censor <- rexp(80,.3)
   Y <- survival::Surv(pmin(event,censor),event<=censor)
-  cox <- sparseglm(X,Y,family="cox",method=c("abess","lasso"),nlambda=3,support.size=0:2)
+  cox <- sparseGLM(X,Y,family="cox",method=c("abess","lasso"),nlambda=3,support.size=0:2)
   risks <- predict(cox,X[1:4,],type="risk")
   expect_true(all(vapply(risks,function(x) length(x)==4 && all(x>0),logical(1))))
   for (method in names(cox$fits)) {

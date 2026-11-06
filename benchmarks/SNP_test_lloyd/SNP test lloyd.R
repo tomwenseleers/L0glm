@@ -646,12 +646,12 @@ X_test_subs2 = X_test2[,preselected_vars] # only main effects
 #                                             data=data.frame(X_test[,preselected_vars])) 
 dim(as.matrix(X_train_subs2))
 colnames(X_train_subs2)
-L0glmfit = L0glm.fit(X=Matrix(cbind(1,X_train_subs2), sparse=T), 
+L0glmfit = l0glmFit(X=Matrix(cbind(1,X_train_subs2), sparse=T),
                      y=logY_train,
                      no.pen=c(1, which(penalty.factor[preselected_vars]==0)+1), # do not penalize intercept & PCA factors & ROR1 SNPs
                      nonnegative = FALSE, # PCA coefficients require unrestricted signs
                      # start = relaxedlassocoefs[c(1,preselected_vars+1)], # using SCAD coefficient estimates as starting estimates
-                     lambda=preset.lambda("aic", 
+                     lambda=presetLambda("aic",
                                           p=p, 
                                           n=n_train),
                      solver="eigen", # eigen or glmnet or osqp all work OK after variable preselection, without preselection use glmnet

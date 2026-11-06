@@ -41,18 +41,18 @@
 
 \item{...}{Reserved for additional method arguments; currently unused.}
 
-\item{object}{An \code{L0glm_fit} model or \code{sparseglm} comparison.}
+\item{object}{An \code{L0glm_fit} model or \code{sparseGLM} comparison.}
 
 \item{mu_floor}{Nonnegative scoring-only mean floor. Model summaries default
 to zero, matching \code{\link[stats:logLik]{stats::logLik()}} and the criterion methods. Comparison
-summaries use the floor stored by \code{\link[=sparseglm]{sparseglm()}} to match tuning scores.}
+summaries use the floor stored by \code{\link[=sparseGLM]{sparseGLM()}} to match tuning scores.}
 
 \item{beta_true}{Optional true coefficients for recovery metrics, with the
 same dimensions as the returned coefficients, including any intercept.
 Comparison summaries default to their saved truth. Use \code{NULL} to omit it.}
 
 \item{r2_mu_floor}{Count-mean floor used only for R-squared working weights,
-default 0.1. See \code{\link[=L0glm.metrics]{L0glm.metrics()}}.}
+default 0.1. See \code{\link[=l0glmMetrics]{l0glmMetrics()}}.}
 
 \item{max.rows, max.cols}{Maximum coefficient rows and response columns shown
 by \code{print.summary.L0glm_fit()}, default 20 and 6. Positive integers or \code{Inf}.
@@ -68,12 +68,12 @@ convergence table. \code{print()}
 methods return their input invisibly.
 }
 \description{
-Concise S3 displays for \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0nnpois]{L0nnpois()}} and \code{\link[=sparseglm]{sparseglm()}}
+Concise S3 displays for \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}} and \code{\link[=sparseGLM]{sparseGLM()}}
 results, including negative-binomial, multinomial and Cox models.
 }
 \details{
 Printing a fitted object uses its stored metadata and coefficients; it does
-not evaluate likelihoods or refit a model. \code{summary()} calls \code{\link[=L0glm.metrics]{L0glm.metrics()}}
+not evaluate likelihoods or refit a model. \code{summary()} calls \code{\link[=l0glmMetrics]{l0glmMetrics()}}
 to obtain likelihood, deviance and information criteria, optionally including
 recovery metrics. The full original-dimension sparse coefficient matrix is
 retained in the model summary. Coefficients are point estimates; standard
@@ -98,15 +98,15 @@ truth is available. No fitted models or adaptive pilots are recomputed.
 set.seed(4)
 X <- matrix(rnorm(240), 60, 4)
 y <- 2 * X[, 1] + rnorm(60)
-fit <- L0glm.fit(X, y, lambda="gic", parallelize=FALSE)
+fit <- l0glmFit(X, y, lambda="gic", parallelize=FALSE)
 print(fit)
 details <- summary(fit)
 print(details, max.rows=10)
 details$metrics
-comparison <- sparseglm(X, y, method=c("L0glm","lasso"), nlambda=4,
+comparison <- sparseGLM(X, y, method=c("L0glm","lasso"), nlambda=4,
                         lambda=list(L0glm=c(10,4,2)))
 summary(comparison)
 }
 \seealso{
-\code{\link[=L0glm.metrics]{L0glm.metrics()}}, \link{model_criteria}, \code{\link[=sparseglm]{sparseglm()}}
+\code{\link[=l0glmMetrics]{l0glmMetrics()}}, \link{model_criteria}, \code{\link[=sparseGLM]{sparseGLM()}}
 }

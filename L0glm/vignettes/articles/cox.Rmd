@@ -29,7 +29,7 @@ event <- rexp(400, exp(.9*X[, 2]-.7*X[, 9]))
 censor <- rexp(400, .3)
 y <- survival::Surv(pmin(event, censor), event <= censor)
 
-fit <- L0glm.fit(X, y, family=mgcv::cox.ph(),
+fit <- l0glmFit(X, y, family=mgcv::cox.ph(),
   lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
 fit
 predict(fit, X[1:5, ], type="risk")
@@ -41,9 +41,9 @@ The implementation uses the Breslow treatment of tied event times.
 ## Tune by GIC or cross-validation
 
 ```{r tuning, eval=FALSE}
-gic <- L0glm.tune(X, y, family=mgcv::cox.ph(), tune="gic",
+gic <- l0glmTune(X, y, family=mgcv::cox.ph(), tune="gic",
   nlambda=10, relaxed=TRUE, maxit=100)
-cv <- L0glm.tune(X, y, family=mgcv::cox.ph(), tune="cv",
+cv <- l0glmTune(X, y, family=mgcv::cox.ph(), tune="cv",
   nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
 ```
 

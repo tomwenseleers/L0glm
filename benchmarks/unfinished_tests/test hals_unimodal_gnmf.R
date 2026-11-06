@@ -28,10 +28,10 @@ W <- sweep(W, 2, s, FUN="*")
 # force log-concavity on columns of W using log-concave spline fit, fit using cobs
 # update objective
 
-# update H via multivariate group L0 penalized GLM / L0glm.fit using starting values provided
+# update H via multivariate group L0 penalized GLM / l0glmFit using starting values provided
 # by updated H with updated k & log-concavity constraints
 
-# update W via L0 penalized GLM / L0glm.fit using starting values
+# update W via L0 penalized GLM / l0glmFit using starting values
 # provided by previous iteration W
 
 
@@ -205,7 +205,7 @@ peak_width <- 2.5 # width / sigma of Gaussian peak shapes
 psf_fun <- function(x, u, w=peak_width) { exp(((x-u)^2)/(-2*(w^2))) } # gaussian point spread / peak shape function
 psf <- psf_fun(x=0:20, u=10) # vector with PSF
 plot(psf, type="o")
-sim.pois.mc <- simulate_spike_train(n = n, k = k_true, family = "poisson", 
+sim.pois.mc <- simulateSpikeTrain(n = n, k = k_true, family = "poisson",
                                     seed = 123,
                                     multichannel = TRUE,
                                     mean_beta = 10000,
@@ -227,10 +227,10 @@ Wstart = sim.pois.mc$X
 
 # this matrix can subsequently be pre-subsetted by regressing the row sums of D
 # (=total ion chromatogram) on our banded covariate matrix Wstart using an
-# L0-penalised nonnegative identity link Poisson fit, fit using L0glm.fit  and with
+# L0-penalised nonnegative identity link Poisson fit, fit using l0glmFit  and with
 # lambda=0, after which we can retain only the columns of Wstart with nonzero
 # coefficients and use this as initialisation for W
-keep <- (L0glm.fit(X = Wstart, 
+keep <- (l0glmFit(X = Wstart,
                    y = rowSums(D), # n x p data matrix, now regressing on row sums of D (=total ion chromatogram)
                    intercept = FALSE,
                    family = poisson(link=identity),

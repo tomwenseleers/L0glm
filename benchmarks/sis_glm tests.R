@@ -84,12 +84,12 @@ y <- y_true + rnorm(n)
 family <- gaussian(identity)
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+lambda_preset = presetLambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
 nonnegative <- FALSE
 
-system.time(sis <- sis_glm(X, y, family, 
+system.time(sis <- sisGLM(X, y, family,
                weights = NULL, 
                offset = NULL, 
                nsis = n, # min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -133,7 +133,7 @@ S <- Snew <- Sknee <- NULL
 # priormean <- rep(0, p)
 disp <- NULL
 timing_SISL0glm <- system.time(for (iter in 1:1) {
-  sis <- sis_glm(X, y, family, 
+  sis <- sisGLM(X, y, family,
                  weights = NULL, 
                  offset = X %*% beta_start,
                  nsis = n, # min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -169,7 +169,7 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
   print(paste("Total size of current SIS set:", length(S)))
   print(paste("Number of true positives in current total SIS set:", length(intersect(S, beta_true_set))))
 #  for (j in 1:1) { # iterated twice to remove some false positives
-    L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+    L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
                                   y = y, 
                                   family = family, 
                                   lambda = lambda_preset,  
@@ -198,7 +198,7 @@ timing_SISL0glm
 # gic & hbic return 31 TPs & 1 FP, ebic returns 29 TPs & 1 FP, while mbic returns only 16 TPs
 # TODO check if it helps to set non-top n coefs to zero in L0glm.fit.internal
 
-# system.time(L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+# system.time(L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
 #                                         y = y, 
 #                                         family = family, 
 #                                         lambda = lambda_preset,  
@@ -239,7 +239,7 @@ y <- sim.pois$y
 family <- poisson(identity)
 nonnegative <- TRUE
 
-system.time(sis <- sis_glm(X, y, family, 
+system.time(sis <- sisGLM(X, y, family,
                            weights = NULL, 
                            offset = NULL, 
                            nsis = n, # min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -283,7 +283,7 @@ S <- Snew <- Sknee <- NULL
 # priormean <- rep(0, p)
 disp <- NULL
 timing_SISL0glm <- system.time(for (iter in 1:10) {
-  system.time(sis <- sis_glm(X, y, family, 
+  system.time(sis <- sisGLM(X, y, family,
                  weights = NULL, 
                  offset = X %*% beta_start,
                  nsis = min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -321,7 +321,7 @@ timing_SISL0glm <- system.time(for (iter in 1:10) {
   print(paste("Total size of current SIS set:", length(S)))
   print(paste("Number of true positives in current total SIS set:", length(intersect(S, beta_true_set))))
   # for (j in 1:1) { # iterated twice to remove some false positives
-    L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+    L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
                                   y = y, 
                                   family = family, 
                                   lambda = IC, # lambda_preset,  
@@ -351,7 +351,7 @@ timing_SISL0glm
 # gic & hbic return 31 TPs & 1 FP, ebic returns 29 TPs & 1 FP, while mbic returns only 16 TPs
 # TODO check if it helps to set non-top n coefs to zero in L0glm.fit.internal
 
-# system.time(L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+# system.time(L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
 #                                         y = y, 
 #                                         family = family, 
 #                                         lambda = lambda_preset,  
@@ -376,7 +376,7 @@ table(beta_SISL0glm!=0, beta_true!=0,
       dnn=c("estimated beta nonzero", "true beta nonzero"))
 
 
-L0glm.chol.pois <- L0glm.fit(sim.pois$X, sim.pois$y, 
+L0glm.chol.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                              family = poisson(identity), 
                              lambda = IC, # or tune_zoomed$lambda_best
                              nonnegative = TRUE,

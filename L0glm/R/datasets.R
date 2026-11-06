@@ -10,7 +10,7 @@
 #'   The 2000 rows correspond to different compounds and the 258 columns correspond 
 #'   to different mass fragments (given as column names). Simulated retention
 #'   times (in mins) and retention indices are given as attributes 
-#'   attr(simulated_spectra, "RT") and attr(simulated_spectra, "RI").
+#'   attr(simulatedSpectra, "RT") and attr(simulatedSpectra, "RI").
 #' }
 #'
 #' @source Tom Wenseleers, derived from actually measured GC/MS spectra.
@@ -20,7 +20,7 @@
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #'
-#' @example examples/simulated_spectra.R
-"simulated_spectra"
+#' @example examples/simulatedSpectra.R
+"simulatedSpectra"
 
 

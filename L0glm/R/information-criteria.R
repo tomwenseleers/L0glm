@@ -3,12 +3,12 @@
 #' @name information_criteria
 #' @md
 #' @description
-#' Both [L0glm.fit()] and [L0nnpois()] accept a numeric \code{lambda} or a
+#' Both [l0glmFit()] and [l0nnPois()] accept a numeric \code{lambda} or a
 #' case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, or \code{"mbic"}.
 #' For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
-#' Use [preset.lambda()] to calculate a preset's numeric value directly.
-#' [L0glm.tune()] accepts the same names through its \code{tune} argument,
+#' Use [presetLambda()] to calculate a preset's numeric value directly.
+#' [l0glmTune()] accepts the same names through its \code{tune} argument,
 #' or \code{tune = "cv"} for cross-validation by held-out deviance.
 #'
 #' @details
@@ -88,7 +88,7 @@
 #' calibration to general GLMs is an approximation. Criterion consistency
 #' also does not by itself establish consistency of the numerical algorithm.
 #' \code{relaxed = TRUE} refits selected coefficients with negligible
-#' penalization; [L0glm.tune()] searches nearby penalties and evaluates the
+#' penalization; [l0glmTune()] searches nearby penalties and evaluates the
 #' requested criterion on the resulting fits.
 #'
 #' Reported scores use the fitted likelihood and the package's parameter
@@ -143,13 +143,13 @@
 #' set.seed(7)
 #' X <- matrix(runif(120), nrow = 40, ncol = 3)
 #' y <- rpois(40, 1 + 3 * X[, 1])
-#' fit <- L0glm.fit(X, y, family = poisson(identity),
+#' fit <- l0glmFit(X, y, family = poisson(identity),
 #'   nonnegative = TRUE, intercept = TRUE, lambda = "GIC",
 #'   parallelize = FALSE)
-#' fast <- L0nnpois(X, y, intercept = TRUE, lambda = "gic",
+#' fast <- l0nnPois(X, y, intercept = TRUE, lambda = "gic",
 #'   parallelize = FALSE)
 #' # Both presets use p = 3 selectable predictors, excluding the intercept.
 #' c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
 #'
-#' @seealso [preset.lambda()], [L0glm.fit()], [L0nnpois()], [L0glm.tune()]
+#' @seealso [presetLambda()], [l0glmFit()], [l0nnPois()], [l0glmTune()]
 NULL

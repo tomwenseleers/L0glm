@@ -7,7 +7,7 @@ test_that("criterion presets match the documented penalties in any case", {
       for (ic in names(expected)) {
         mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
         for (name in c(ic, toupper(ic), mixed)) {
-          expect_equal(L0glm::preset.lambda(name, p = p, n = n),
+          expect_equal(L0glm::presetLambda(name, p = p, n = n),
                        unname(expected[ic]), info = name)
         }
       }
@@ -19,7 +19,7 @@ test_that("criterion presets match the documented penalties in any case", {
       }
     }
   }
-  expect_equal(L0glm::preset.lambda("EBIC", p = 20, n = 100, gamma_ebic = 1),
+  expect_equal(L0glm::presetLambda("EBIC", p = 20, n = 100, gamma_ebic = 1),
                log(100) + 2 * log(20))
 })
 
@@ -31,11 +31,11 @@ test_that("both fitters resolve every named preset before fitting", {
                parallelize = FALSE, grouped = FALSE, relaxed = FALSE,
                maxit = 5)
 
-  for (fitter in list(L0glm.fit, L0nnpois)) {
+  for (fitter in list(l0glmFit, l0nnPois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
     for (ic in c("aic", "bic", "gic", "ebic", "mbic")) {
-      penalty <- L0glm::preset.lambda(ic, p = 4, n = 40)
+      penalty <- L0glm::presetLambda(ic, p = 4, n = 40)
       numeric_fit <- do.call(fitter, c(args, list(lambda = penalty)))
       mixed <- paste0(toupper(substr(ic, 1, 1)), substring(ic, 2))
       for (name in c(ic, toupper(ic), mixed)) {
@@ -61,7 +61,7 @@ test_that("GIC works for sparse grouped and relaxed fits", {
                offset = rep(1, 40), intercept = FALSE,
                grouped = TRUE, parallelize = FALSE, group.maxit = 2,
                maxit = 8)
-  for (fitter in list(L0glm.fit, L0nnpois)) {
+  for (fitter in list(l0glmFit, l0nnPois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
     for (relaxed in c(FALSE, TRUE)) {
@@ -98,23 +98,23 @@ test_that("tuning selects EBIC scores with case-insensitive names", {
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                nlambda = 3, prop_range = 0.2, printbest = FALSE, plot = FALSE,
                grouped = FALSE, parallelize = FALSE, maxit = 20)
-  lower <- do.call(L0glm.tune, c(args, list(tune = "ebic")))
-  upper <- do.call(L0glm.tune, c(args, list(tune = "EBIC")))
+  lower <- do.call(l0glmTune, c(args, list(tune = "ebic")))
+  upper <- do.call(l0glmTune, c(args, list(tune = "EBIC")))
   expect_identical(upper, lower)
   expect_identical(upper$tune, "ebic")
   expect_equal(upper$lambda_preset, log(60))
   expect_equal(upper$lambda_best,
                upper$metrics$lambda[which.min(upper$metrics$ebic)])
   expect_false("mebic" %in% names(upper$metrics))
-  default <- do.call(L0glm.tune, args)
+  default <- do.call(l0glmTune, args)
   expect_identical(default$tune, "gic")
-  expect_error(do.call(L0glm.tune, c(args, list(tune = "HBIC"))),
+  expect_error(do.call(l0glmTune, c(args, list(tune = "HBIC"))),
                "tune must be one of")
 })
 
 test_that("invalid criteria and lambda values fail clearly in both fitters", {
   X <- cbind(1, seq(0, 1, length.out = 12))
-  for (fitter in list(L0glm.fit, L0nnpois)) {
+  for (fitter in list(l0glmFit, l0nnPois)) {
     args <- list(X = X, y = rep(2, 12), parallelize = FALSE)
     for (bad in list("unknown", "hbic", "HBIC", "mebic", "MEBIC", "",
                      NA_character_, c("aic", "bic"))) {
@@ -131,9 +131,9 @@ test_that("invalid criteria and lambda values fail clearly in both fitters", {
 test_that("removed criteria are rejected by preset resolution and tuning", {
   X <- matrix(seq_len(60), 20, 3)
   for (ic in c("mebic", "MEBIC", "MeBiC")) {
-    expect_error(L0glm::preset.lambda(ic, p = 3, n = 20),
+    expect_error(L0glm::presetLambda(ic, p = 3, n = 20),
                  "Information criterion must be one of.*gic.*ebic.*mbic")
-    expect_error(L0glm.tune(X, rep(1, 20), family = gaussian(), tune = ic,
+    expect_error(l0glmTune(X, rep(1, 20), family = gaussian(), tune = ic,
                            plot = FALSE),
                  "tune must be one of.*gic.*ebic.*mbic.*cv")
   }

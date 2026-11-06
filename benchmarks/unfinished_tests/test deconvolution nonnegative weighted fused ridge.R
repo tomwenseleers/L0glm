@@ -114,8 +114,8 @@ y_expected = (X_augm_fusedridge12 %*% as.matrix(nonnegfusedridgefit12$x, ncol=1)
 devtools::load_all(".")
 family = gaussian(identity) # TODO fit gives error with poisson(identity) or when using weights
 # L0glm fit
-lambda_preset = preset.lambda(IC = "aic", p=ncol(X), n=nrow(X)) # options aic, bic, gic, ebic, mbic 
-system.time(L0glmfit <- L0glm.fit(X=Matrix(X_augm_fusedridge12, sparse=T), 
+lambda_preset = presetLambda(IC = "aic", p=ncol(X), n=nrow(X)) # options aic, bic, gic, ebic, mbic
+system.time(L0glmfit <- l0glmFit(X=Matrix(X_augm_fusedridge12, sparse=T),
                                   y=y_augm12, 
                                   weights=w12,
                                   family = family, 

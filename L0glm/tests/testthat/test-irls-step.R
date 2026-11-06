@@ -55,7 +55,7 @@ test_that("an infeasible starting direction can retain the valid null model", {
 test_that("special-family selection retains tiny terms needed for valid means", {
   skip_if_not_installed("mgcv")
   X <- cbind(c(1, 1, 0), c(0, 0, 1))
-  fit <- L0glm.fit(X, c(10, 10, 1), family = mgcv::nb(theta = 2, link = "identity"),
+  fit <- l0glmFit(X, c(10, 10, 1), family = mgcv::nb(theta = 2, link = "identity"),
     start = 1, normalize = "none", nonnegative = TRUE, lambda = .001, thresh = .5)
   expect_true(all(fitted(fit) > 0))
   expect_true(is.finite(as.numeric(logLik(fit))))
@@ -67,8 +67,8 @@ test_that("feasible first solves retain eligible terms from an invalid start", {
   args <- list(X = X, y = y, family = poisson("identity"), start = 1,
     normalize = "none", nonnegative = TRUE, lambda = 1e-4,
     relaxed = FALSE, parallelize = FALSE)
-  a <- do.call(L0glm.fit, c(args, list(openmp = FALSE)))
-  b <- do.call(L0glm.fit, c(args, list(openmp = TRUE)))
+  a <- do.call(l0glmFit, c(args, list(openmp = FALSE)))
+  b <- do.call(l0glmFit, c(args, list(openmp = TRUE)))
   expect_true(all(coef(a) > 0))
   expect_true(all(fitted(a) > 0))
   expect_equal(coef(a), coef(b), tolerance = 1e-7)
@@ -77,7 +77,7 @@ test_that("feasible first solves retain eligible terms from an invalid start", {
 
 test_that("native infeasible starts retain a finite anchor with a warning", {
   X <- matrix(c(1, 0, -1, 1, 0), ncol = 1L)
-  expect_warning(fit <- L0nnpois(X, c(1, 2, 3, 4, 5), start = 1,
+  expect_warning(fit <- l0nnPois(X, c(1, 2, 3, 4, 5), start = 1,
     normalize = "none", lambda = .01, relaxed = FALSE, parallelize = FALSE))
   expect_equal(as.numeric(coef(fit)), 0)
   expect_false(fit$convergence$converged)

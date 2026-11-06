@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -520,7 +520,7 @@ b^2-\widehat b_jb+\frac{\lambda\phi}{4s_j}=0.
 selection boundary. The relaxed fit removes the remaining ridge
 shrinkage. This calibration also works well approximately for
 non-orthogonal designs, as supported by the simulations of <a href="https://doi.org/10.1371/journal.pone.0148620" class="external-link">Frommlet &amp; Nuel
-(2016)</a> and the examples here. If desired, <code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code>
+(2016)</a> and the examples here. If desired, <code><a href="../reference/l0glmTune.html">l0glmTune()</a></code>
 efficiently searches a grid around the preset to select the
 regularization level more accurately for the data at hand, using the
 actual information criterion or cross-validated deviance.</p>
@@ -652,7 +652,7 @@ solver interfaces, retain dense or sparse storage and share the design
 across OpenMP threads. OSQP and <code>bigGlm</code> enter through their
 R-facing dependency interfaces on the R thread, using independent R
 workers for concurrent channels. Nonnegative identity-link Poisson LLT
-fits use <code>L0nnpois</code>.</p>
+fits use <code>l0nnPois</code>.</p>
 <p>For ultrahigh dimensions, SIS or offset-based ISIS adds another level
 of dimension reduction. Compiled screening ranks candidates, and joint
 refitting updates the support in small batches. This follows the
@@ -665,7 +665,7 @@ Wu (2009)</a>.</p>
 </h2>
 <p>The GIC preset is <span class="math inline">\lambda=\log p\log\log
 n</span>, motivated by <a href="https://doi.org/10.1111/rssb.12001" class="external-link">Fan
-&amp; Tang (2013)</a>. <code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> can instead select
+&amp; Tang (2013)</a>. <code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> can instead select
 candidate fits by an IC or held-out deviance. CV returns both the
 minimum-deviance and one-SE full-data models.</p>
 <p>Reported <code><a href="../reference/model_criteria.html">GIC()</a></code> uses the model’s parameter dimension:
@@ -680,7 +680,7 @@ including its fitted distribution parameters and penalties.</p>
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>
 </h2>
 <p>The following algorithms describe the computations used by
-<code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code> and <code><a href="../reference/L0nnpois.html">L0nnpois()</a></code>. They share
+<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> and <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>. They share
 preprocessing, ridge solves and stopping routines. Here <span class="math inline">C</span> denotes the number of multinomial
 categories, <span class="math inline">m</span> the number of ordinary
 response channels, and <span class="math inline">q</span> the number of
@@ -763,8 +763,8 @@ and <code>group.maxit=6</code>. Resolve character penalties using the
 selected information criterion. For GIC, <span class="math inline">\lambda=\log(p)\log\log(n_{\rm IC})</span>: ordinary
 GLMs use the number of rows, NB and multinomial use the number of
 positive-weight rows, and Cox uses the weighted number of events. The
-function defaults are <code>lambda=1</code> for <code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code>
-and <code>lambda="gic"</code> for <code><a href="../reference/L0nnpois.html">L0nnpois()</a></code>.</p>
+function defaults are <code>lambda=1</code> for <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code>
+and <code>lambda="gic"</code> for <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>.</p>
 </div>
 <div class="section level3">
 <h3 id="appendix-initialization">A.2. Ordinary-family initialization and dispersion<a class="anchor" aria-label="anchor" href="#appendix-initialization"></a>
@@ -897,7 +897,7 @@ conditional on that intercept. With <span class="math inline">d_j=\sum_iW_i^0X_{
 by <span class="math inline">(r_j-t_jr_0/d_0)/(d_j-t_j^2/d_0)</span>.
 For Gaussian models multiply the whole seed by <span class="math inline">\sum_iW_i^0z_i^0(Xb^0)_i/\sum_iW_i^0(Xb^0)_i^2</span>,
 taking zero when its denominator vanishes. Clip to the bounds.
-<code><a href="../reference/L0nnpois.html">L0nnpois()</a></code> uses the Poisson identity-link specialization of
+<code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> uses the Poisson identity-link specialization of
 these diagonal formulas.</p>
 <p>Supplied coefficient starts replace this coefficient-seeding
 calculation. The <strong>first working response and weights still use
@@ -1070,7 +1070,7 @@ prediction-change ratio</p>
 </span></p>
 <p>Take the larger change. For a Gaussian identity-link dense direct
 solve, the weighted Gram matrix is cached while the active support
-shrinks. <code><a href="../reference/L0nnpois.html">L0nnpois()</a></code> specializes Algorithm 1 to nonnegative
+shrinks. <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> specializes Algorithm 1 to nonnegative
 Poisson identity-link fitting: <span class="math inline">\phi=1</span>,
 <span class="math inline">W_i=a_i/\mu_i</span>, <span class="math inline">z_i=y_i-o_i</span>, with Eigen LLT, Woodbury where
 appropriate and OpenMP across channels.</p>
@@ -1407,7 +1407,7 @@ partial-likelihood and prediction conventions.</p>
 nuisance model. The null fit includes the supplied offset. The default
 screening nuisance block is an intercept for ordinary, NB and
 multinomial responses, and empty for Cox; standalone
-<code><a href="../reference/sis_glm.html">sis_glm()</a></code> also accepts a <code>nuisance</code> design. This
+<code><a href="../reference/sisGLM.html">sisGLM()</a></code> also accepts a <code>nuisance</code> design. This
 screening nuisance block has its own role alongside the joint model’s
 <code>intercept</code> and <code>always.include</code> terms.</p>
 <div class="section level4 l0-algorithm">
@@ -1512,7 +1512,7 @@ sparse coefficients, support, screening history and timings.</li>
 omitted from one joint fit remains eligible for a later screening round.
 The current fitted predictor enters the next <strong>screening</strong>
 offset; every joint fit uses the original model offset.</p>
-<p>For <code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code> the batch/retained-set defaults are</p>
+<p>For <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> the batch/retained-set defaults are</p>
 <p><span class="math display">
 \begin{aligned}
 b_{\rm SIS}&amp;=\max\{1,\ 2\lfloor n/\log(\max(n,3))\rfloor\},\\
@@ -1521,11 +1521,11 @@ b_{\rm ISIS}&amp;=\max\left\{1,\ \operatorname{round}
 \end{aligned}
 </span></p>
 <p>capped at the available predictor count. Standalone
-<code><a href="../reference/sis_glm.html">sis_glm()</a></code> defaults to <span class="math inline">\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}</span>.
+<code><a href="../reference/sisGLM.html">sisGLM()</a></code> defaults to <span class="math inline">\max\{1,\lfloor n/\log(\max(n,3))\rfloor\}</span>.
 An explicit <code>nsis</code> overrides these sizes. The automatic rule
 <span class="math inline">p_{\mathrm{eligible}}&gt;10n</span> has no
 separate minimum sample size or predictor count.
-<code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> uses the same dispatch independently for each
+<code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> uses the same dispatch independently for each
 full-data and CV training fit, with <span class="math inline">n</span>
 equal to that fit’s training row count.</p>
 <p>GIC comparison uses the <strong>original</strong> <span class="math inline">p</span> and the fitted parameter count, including
@@ -1578,7 +1578,7 @@ losses <span class="math inline">l_i</span> and normalized response
 masses <span class="math inline">\omega_i</span>, the candidate SE is
 <span class="math inline">\{\sum_i\omega_i^2(l_i-\overline
 l)^2/(1-\sum_i\omega_i^2)\}^{1/2}</span>, taking zero when only one
-positive mass is available. <code>L0glm.tune(tune="cv")</code> wraps the
+positive mass is available. <code>l0glmTune(tune="cv")</code> wraps the
 same fitting routines in training folds; each fold computes its own
 initializers and screening.</p>
 <p>Returned coefficients always use the original predictor units and

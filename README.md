@@ -36,7 +36,7 @@ explains the mathematics, regularization presets and full fitting algorithms.
   normalization, original-scale coefficients and optional nonnegativity constraints.
 - **Selection:** a fast GIC preset, information-criterion path selection, or
   cross-validation with minimum-deviance and one-standard-error models.
-- **Comparison:** `sparseglm()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
+- **Comparison:** `sparseGLM()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 
 L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [logconNMF](https://tomwenseleers.github.io/logconNMF/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
@@ -70,8 +70,8 @@ beta[active] <- runif(60L, -.8, .8)
 set.seed(1)
 y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-system.time(fit <- L0glm.fit(X, y, family=gaussian()))
-L0glm.metrics(fit, beta_true=beta)[
+system.time(fit <- l0glmFit(X, y, family=gaussian()))
+l0glmMetrics(fit, beta_true=beta)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
@@ -105,7 +105,7 @@ Screening) is used to iteratively add promising predictors for joint sparse fitt
 The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
 Eligible predictors exclude mandatory terms and predictors excluded by zero
 starts in every response channel. Screening uses all physical cores by default.
-`L0glm.tune()` applies the same rule separately to each full-data or CV training
+`l0glmTune()` applies the same rule separately to each full-data or CV training
 fit, using its training row count. See the
 [high dimensional tutorial](https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html) for the details.
 
@@ -126,14 +126,14 @@ L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 sec
 <!-- BEGIN multi-spectral -->
 Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
 <!-- END multi-spectral -->
-A direct `L0glm.fit()` call uses `lambda="gic"` and four cores.
+A direct `l0glmFit()` call uses `lambda="gic"` and four cores.
 The competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
 
 ```r
 multi <- simul(method=4L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
-fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
+fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
   lambda="gic", nonnegative=TRUE, ncores=4L)
 ```
 
@@ -162,10 +162,10 @@ benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvoluti
 
 For broad or asymmetric peaks, [logconNMF()](https://tomwenseleers.github.io/logconNMF/reference/logconNMF.html)
 recovers log-concave elution profiles and spectra with a smooth background.
-[GCMSdeco()](https://tomwenseleers.github.io/GCMSprime/reference/GCMSdeco.html) runs the
+[gcmsDeco()](https://tomwenseleers.github.io/GCMSprime/reference/gcmsDeco.html) runs the
 workflow directly from an ANDI-MS `.cdf` chromatogram and exports the compound
 spectra to a NIST-compatible `.msp` library.
-[estimate_psf()](https://tomwenseleers.github.io/logconNMF/reference/estimate_psf.html)
+[estimatePSF()](https://tomwenseleers.github.io/logconNMF/reference/estimatePSF.html)
 provides automatic standard or blind calibration and returns a constant or
 smoothly varying sparse PSF design.
 
@@ -178,7 +178,7 @@ candidate peak locations and 1,000 true peaks**.
 ```r
 single <- simul(method=2L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
-fit_single <- L0glm.fit(single$X, single$y, family=poisson("identity"),
+fit_single <- l0glmFit(single$X, single$y, family=poisson("identity"),
   lambda="gic", nonnegative=TRUE, relaxed=TRUE)
 ```
 
@@ -212,9 +212,9 @@ sparse solution straight away. Tuning over a lambda grid or cross-validation
 remains available to refine regularization or optimize out-of-sample prediction.
 
 ```r
-gic <- L0glm.tune(multi$X, multi$y, family=poisson("identity"),
+gic <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
   tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
-cv <- L0glm.tune(multi$X, multi$y, family=poisson("identity"),
+cv <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
   tune="cv", nfolds=5L, nlambda=10L,
   nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
 coef(cv$fit_1se)
@@ -233,9 +233,9 @@ CV for each family:
 fit_and_tune <- function(data) {
   args <- list(X=data$X, y=data$y, family=data$family,
     intercept=data$intercept, relaxed=TRUE, maxit=100L)
-  list(preset=do.call(L0glm.fit, c(args, list(lambda="gic"))),
-    gic=do.call(L0glm.tune, c(args, list(tune="gic", nlambda=10L))),
-    cv=do.call(L0glm.tune, c(args, list(tune="cv", nfolds=5L, nlambda=10L))))
+  list(preset=do.call(l0glmFit, c(args, list(lambda="gic"))),
+    gic=do.call(l0glmTune, c(args, list(tune="gic", nlambda=10L))),
+    cv=do.call(l0glmTune, c(args, list(tune="cv", nfolds=5L, nlambda=10L))))
 }
 
 nb <- fit_and_tune(simul("normal", n=300L, p=20L, n_nonzero=3L,
@@ -298,7 +298,7 @@ evaluate recovery.
 - [Website benchmark runner](benchmarks/benchmark_website_examples.R): GIC-preset fits and deconvolution comparisons.
 - [Million-predictor LASSO comparison](benchmarks/benchmark_million_lasso.R): BIC and five-fold CV workflows.
 - [Published measurements and plotting instructions](benchmarks/plots/website/README.md).
-- [Fit examples](L0glm/examples/L0glm.fit.R) and [tuning examples](L0glm/examples/L0glm.tune.R).
+- [Fit examples](L0glm/examples/l0glmFit.R) and [tuning examples](L0glm/examples/l0glmTune.R).
 
 Run `Rscript benchmarks/render_readme.R` to regenerate this README from the
 shared published benchmark tables and figures. To obtain new measurements,
@@ -312,7 +312,7 @@ appreciate a citation to the package:
 
 Wenseleers T, Lanzas L, Vanderaa C (2026).
 *L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models*.
-R package version 0.2.0,
+R package version 0.2.0.9000,
 <https://tomwenseleers.github.io/L0glm/>.
 
 The [Authors and Citation page](https://tomwenseleers.github.io/L0glm/authors.html#citation) also provides the

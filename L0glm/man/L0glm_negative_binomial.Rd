@@ -3,7 +3,7 @@
 \title{L0-Penalized Negative Binomial Regression}
 \description{
 Fit NB2 count models with a fixed or estimated shape parameter using
-\code{L0glm.fit} and the \code{mgcv::nb} family constructor. Multiple response
+\code{l0glmFit} and the \code{mgcv::nb} family constructor. Multiple response
 channels may share a selected predictor support.
 }
 \details{
@@ -68,7 +68,7 @@ except for intercept/mandatory terms. A grouped refit may recover other entries
 within retained rows. Returned coefficients are sparse and in original units.
 }
 \section{Scoring and tuning}{
-\code{L0glm.metrics} reports the exact log likelihood, saturated-model
+\code{l0glmMetrics} reports the exact log likelihood, saturated-model
 deviance, target objective, row GIC and parameter-count ICs.
 Estimated shapes contribute one degree of freedom per channel to the latter.
 \code{logLik(fit)} and \code{fit$metrics} use exact likelihoods.
@@ -85,14 +85,14 @@ if (requireNamespace("mgcv", quietly = TRUE)) {
   X <- matrix(rnorm(300 * 6), 300, 6)
   mu <- exp(0.4 + 0.8 * X[, 1] - 0.6 * X[, 2])
   y <- rnbinom(300, mu = mu, size = 2)
-  fit_nb <- L0glm.fit(X, y, family = mgcv::nb(), intercept = TRUE,
+  fit_nb <- l0glmFit(X, y, family = mgcv::nb(), intercept = TRUE,
     lambda = "gic", relaxed = TRUE, maxit = 200, tol = 1e-8)
   fit_nb$theta
   fit_nb$coefficients
   fit_nb$convergence
-  L0glm.metrics(fit_nb, mu_floor = 0)
+  l0glmMetrics(fit_nb, mu_floor = 0)
   head(predict(fit_nb, X[1:5, , drop = FALSE]))
 }
 }
-\seealso{\code{\link{L0glm.fit}}, \code{\link{L0glm.tune}},
-\code{\link{L0glm.metrics}}, \code{\link[mgcv]{nb}}}
+\seealso{\code{\link{l0glmFit}}, \code{\link{l0glmTune}},
+\code{\link{l0glmMetrics}}, \code{\link[mgcv]{nb}}}

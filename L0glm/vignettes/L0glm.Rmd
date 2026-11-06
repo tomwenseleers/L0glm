@@ -31,13 +31,13 @@ Windows source installation requires [Rtools](https://cran.r-project.org/bin/win
 
 ## Start with a small model
 
-Pass a design matrix and a response vector to `L0glm.fit()`. A GIC preset
+Pass a design matrix and a response vector to `l0glmFit()`. A GIC preset
 provides a single penalty value for variable selection. A relaxed refit
 then estimates the retained effects with reduced shrinkage.
 
 ```{r small-fit}
 sim <- simul("normal", n=200L, p=80L, n_nonzero=6L, seed=42L)
-small <- L0glm.fit(sim$X, sim$y, family=gaussian(), lambda="gic", relaxed=TRUE)
+small <- l0glmFit(sim$X, sim$y, family=gaussian(), lambda="gic", relaxed=TRUE)
 which(as.numeric(coef(small)) != 0)
 head(fitted(small))
 ```
@@ -64,8 +64,8 @@ beta[active] <- runif(60L, -.8, .8)
 set.seed(1)
 y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-system.time(fit <- L0glm.fit(X, y, family=gaussian()))
-L0glm.metrics(fit, beta_true=beta)[
+system.time(fit <- l0glmFit(X, y, family=gaussian()))
+l0glmMetrics(fit, beta_true=beta)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
@@ -98,7 +98,7 @@ when desired, and often selects a value close to the preset. In this example,
 the best value over the displayed ten-value GIC grid is exactly the preset.
 
 ```{r path, eval=FALSE}
-tuned <- L0glm.tune(X, y, family=gaussian(), tune="gic",
+tuned <- l0glmTune(X, y, family=gaussian(), tune="gic",
   nlambda=10L, prop_range=.25, coefs.true=beta, plot=TRUE)
 c(lambda_best=tuned$lambda_best, lambda_preset=tuned$lambda_preset)
 ```
@@ -128,17 +128,17 @@ applies the model in the original predictor coordinates.
 
 | Task | Main function |
 |---|---|
-| One fast preset fit | `L0glm.fit(X, y, family=...)` |
-| Tune an information criterion | `L0glm.tune(..., tune="gic")` |
-| Cross-validate prediction deviance | `L0glm.tune(..., tune="cv", nfolds=5)` |
-| Compare sparse regression methods | `sparseglm()` |
-| Score predictions and support recovery | `L0glm.metrics()` |
+| One fast preset fit | `l0glmFit(X, y, family=...)` |
+| Tune an information criterion | `l0glmTune(..., tune="gic")` |
+| Cross-validate prediction deviance | `l0glmTune(..., tune="cv", nfolds=5)` |
+| Compare sparse regression methods | `sparseGLM()` |
+| Score predictions and support recovery | `l0glmMetrics()` |
 | Control high dimensional prescreening | `screen="auto"`, `"SIS"` or `"ISIS"` |
 
 The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
 Here `n` is the number of training rows, and `p_eligible` excludes mandatory
 terms and predictors excluded by zero starts in every response channel.
-`L0glm.tune()` applies this rule independently within each full-data or CV
+`l0glmTune()` applies this rule independently within each full-data or CV
 training fit, without a separate minimum sample size or predictor count.
 
 Continue with [SIS / ISIS screening](high-dimensional.html),

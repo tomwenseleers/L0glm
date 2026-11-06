@@ -12,11 +12,11 @@
 # matrix X (here including any intercept), the response variable y, regularization
 # parameters, solver options, and control parameters. The result is a fitted
 # model with coefficients estimated using the specified regularization method
-# and solver. The function is called by the higher level \code{L0glm.fit}.
+# and solver. The function is called by the higher level \code{l0glmFit}.
 #
-# An optional intercept term is already added by the L0glm.fit function. The
+# An optional intercept term is already added by the l0glmFit function. The
 # intercept follows the same nonnegativity constraint as the other coefficients,
-# except for binomial and quasibinomial intercepts. Bounds are derived by L0glm.fit.
+# except for binomial and quasibinomial intercepts. Bounds are derived by l0glmFit.
 # 
 L0glm.fit.internal = function(X, 
                               y, 
@@ -36,7 +36,7 @@ L0glm.fit.internal = function(X,
                               prior.mean = NULL,
                               thresh = 1e-5,
                               tol = 1E-10,
-                              control.solver = do.call("control.solver.gen", list(solver = solver, method = method)),
+                              control.solver = do.call("controlSolverGen", list(solver = solver, method = method)),
                               verbose = FALSE,
                               hard_threshold = TRUE,
                               preprocessing = NULL,
@@ -299,7 +299,7 @@ L0glm.fit.internal = function(X,
         gaussian_gram else list(xx = gaussian_gram$xx[active, active, drop = FALSE],
           xy = gaussian_gram$xy[active, , drop = FALSE])
     }
-    beta_sub <- lmridge(X              = working_X,
+    beta_sub <- lmRidge(X              = working_X,
                         y              = z, # already subsetted to [good]
                         weights        = W, # already subsetted to [good]
                         lambdas        = lambdas[nonzero],

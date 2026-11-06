@@ -13,8 +13,8 @@ test_that("both entry points use the same original-dimension nuisance workflow",
   d<-nuisance_fixture(sparse)
   opt<-list(X=d$X,y=d$y,always.include=d$mandatory,offset=.1,lambda="gic",
    parallelize=FALSE,precluster=cluster,control.precluster=list(k.max=2L))
-  a<-do.call(L0nnpois,opt)
-  b<-do.call(L0glm.fit,c(opt,list(family=poisson(identity),nonnegative=TRUE)))
+  a<-do.call(l0nnPois,opt)
+  b<-do.call(l0glmFit,c(opt,list(family=poisson(identity),nonnegative=TRUE)))
   expect_equal(coef(a),coef(b),tolerance=0)
   expect_equal(dim(coef(a)),c(ncol(d$X),ncol(d$y)))
   expect_identical(inherits(a$X,"sparseMatrix"),sparse)
@@ -22,21 +22,21 @@ test_that("both entry points use the same original-dimension nuisance workflow",
   expect_equal(fitted(a),as.matrix(d$X%*%coef(a))+.1,ignore_attr=TRUE)
   h<-subset(a$nuisance$history,accepted)
   expect_true(all(diff(h$score)<=1e-8*pmax(1,head(abs(h$score),-1))))
-  expect_equal(tail(h$score,1),L0glm.metrics(a,mu_floor=0)$gic,tolerance=1e-9)
+  expect_equal(tail(h$score,1),l0glmMetrics(a,mu_floor=0)$gic,tolerance=1e-9)
  }
 })
 test_that("starts, normalization, priors, and original offsets survive nuisance fitting", {
  d<-nuisance_fixture(TRUE);p<-ncol(d$X);m<-ncol(d$y)
  S<-matrix(1,p,m);S[4,]<-0;S[2,2]<-0;S[d$mandatory,]<-0
- fit<-L0nnpois(d$X,d$y,start=S,always.include=d$mandatory,lambda="gic",
+ fit<-l0nnPois(d$X,d$y,start=S,always.include=d$mandatory,lambda="gic",
    offset=matrix(seq(.1,.3,length.out=length(d$y)),nrow(d$y),m),
    prior.mean=matrix(.01,p,m),parallelize=FALSE)
  expect_true(all(coef(fit)[4,]==0));expect_equal(as.numeric(coef(fit)[2,2]),0)
  expect_true(any(coef(fit)[d$mandatory,]>0))
  for(mode in c("l2","rms")) {
   prep<-L0glm:::L0glm_preprocessing(d$X,mode,rep(0,p),d$mandatory)
-  a<-L0nnpois(d$X,d$y,start=1,normalize=mode,always.include=d$mandatory,parallelize=FALSE)
-  b<-L0nnpois(d$X,d$y,start=matrix(1/prep$scale,p,m),normalize=mode,
+  a<-l0nnPois(d$X,d$y,start=1,normalize=mode,always.include=d$mandatory,parallelize=FALSE)
+  b<-l0nnPois(d$X,d$y,start=matrix(1/prep$scale,p,m),normalize=mode,
     always.include=d$mandatory,parallelize=FALSE)
   expect_equal(coef(a),coef(b),tolerance=0)
  }
@@ -45,29 +45,29 @@ test_that("single-iteration ridge pilots retain their primitive semantics", {
  d<-nuisance_fixture()
  opt<-list(X=d$X,y=d$y,lambda=2,start=1,always.include=d$mandatory,
   maxit=1L,parallelize=FALSE,relaxed=FALSE)
- a<-do.call(L0nnpois,opt)
- b<-do.call(L0nnpois,c(opt,list(control.solver=list(.nuisance=FALSE))))
+ a<-do.call(l0nnPois,opt)
+ b<-do.call(l0nnPois,c(opt,list(control.solver=list(.nuisance=FALSE))))
  expect_equal(coef(a),coef(b),tolerance=0);expect_null(a$nuisance)
 })
 test_that("Gaussian compulsory solves retain known dispersions and signed binomial intercepts", {
  d<-nuisance_fixture();set.seed(82)
  Y<-as.matrix(d$X[,c(2,8)]%*%matrix(c(2,1,3),2,3,byrow=TRUE))+matrix(rnorm(length(d$y)),nrow(d$y),3)
- fit<-L0glm.fit(d$X,Y,family=gaussian(),nonnegative=TRUE,dispersion=c(1,2,3),
+ fit<-l0glmFit(d$X,Y,family=gaussian(),nonnegative=TRUE,dispersion=c(1,2,3),
    always.include=d$mandatory,lambda="gic",parallelize=FALSE,relaxed=TRUE)
  expect_equal(fit$dispersion,c(1,2,3))
  expect_true(all(coef(fit)>=0))
  set.seed(83);X<-matrix(runif(400*5),400,5)
  y<-rbinom(400,1,plogis(-2+X[,1]+X[,3]))
- b<-L0glm.fit(X,y,family=binomial("logit"),intercept=TRUE,always.include=1L,
+ b<-l0glmFit(X,y,family=binomial("logit"),intercept=TRUE,always.include=1L,
   nonnegative=TRUE,lambda="aic",parallelize=FALSE,relaxed=TRUE)
  expect_lt(coef(b)[1,1],0);expect_true(all(coef(b)[-1,]>=0))
 })
 test_that("zero compulsory columns and automatic intercepts keep valid dimensions", {
  set.seed(84);X<-cbind(matrix(runif(120*4),120,4),zero=0)
  y<-rpois(120,2*X[,1]+1)
- fit<-L0nnpois(X,y,always.include=5L,offset=.5,lambda=2,parallelize=FALSE)
+ fit<-l0nnPois(X,y,always.include=5L,offset=.5,lambda=2,parallelize=FALSE)
  expect_equal(as.numeric(coef(fit)[5,1]),0);expect_true(all(is.finite(fitted(fit))))
- X<-cbind(1,X[,-5]);auto<-L0nnpois(X,y,parallelize=FALSE)
+ X<-cbind(1,X[,-5]);auto<-l0nnPois(X,y,parallelize=FALSE)
  expect_equal(auto$nuisance$terms,1L)
 })
 test_that("negative-binomial shape is optimized without changing the supplied family", {
@@ -75,11 +75,11 @@ test_that("negative-binomial shape is optimized without changing the supplied fa
  B<-splines::bs(seq(0,1,length.out=250),df=4,intercept=TRUE)
  y<-rnbinom(250,mu=as.numeric(B%*%c(2,8,10,3)),size=7)
  f<-mgcv::nb(link="identity");before<-f$getTheta(TRUE)
- fit<-L0glm.fit(B,y,family=f,nonnegative=TRUE,always.include=1:4,lambda="gic",parallelize=FALSE)
+ fit<-l0glmFit(B,y,family=f,nonnegative=TRUE,always.include=1:4,lambda="gic",parallelize=FALSE)
  expect_identical(f$getTheta(TRUE),before)
  expect_true(is.finite(fit$theta)&&fit$theta>0);expect_true(fit$theta.estimated)
  expect_true(all(coef(fit)>=0))
- fixed<-L0glm.fit(B,y,family=mgcv::nb(theta=7,link="identity"),nonnegative=TRUE,
+ fixed<-l0glmFit(B,y,family=mgcv::nb(theta=7,link="identity"),nonnegative=TRUE,
    always.include=1:4,lambda="gic",parallelize=FALSE)
  expect_equal(fixed$theta,7);expect_false(fixed$theta.estimated)
 })
@@ -87,11 +87,11 @@ test_that("Cox nuisance updates retain partial-likelihood predictions", {
  skip_if_not_installed("mgcv");skip_if_not_installed("survival");set.seed(86)
  X<-matrix(runif(140*7),140,7);event<-rexp(140,exp(X[,1]+X[,3]));censor<-rexp(140,.4)
  y<-survival::Surv(pmin(event,censor),event<censor)
- fit<-L0glm.fit(X,y,family=mgcv::cox.ph(),always.include=1L,nonnegative=TRUE,
+ fit<-l0glmFit(X,y,family=mgcv::cox.ph(),always.include=1L,nonnegative=TRUE,
   lambda="aic",parallelize=FALSE,relaxed=TRUE,maxit=40L)
  expect_equal(dim(coef(fit)),c(7L,1L));expect_true(all(coef(fit)>=0))
- expect_true(is.finite(L0glm.metrics(fit)$loglik));expect_true(all(is.finite(predict(fit,X,type="risk"))))
- expect_warning(with_intercept<-L0glm.fit(X,y,family=mgcv::cox.ph(),always.include=1L,
+ expect_true(is.finite(l0glmMetrics(fit)$loglik));expect_true(all(is.finite(predict(fit,X,type="risk"))))
+ expect_warning(with_intercept<-l0glmFit(X,y,family=mgcv::cox.ph(),always.include=1L,
    nonnegative=TRUE,intercept=TRUE,lambda="aic",parallelize=FALSE,relaxed=TRUE,maxit=40L),
    "not identifiable")
  expect_equal(coef(with_intercept),coef(fit),tolerance=0)
@@ -125,7 +125,7 @@ test_that("quasi families and data-frame designs retain valid fitted means", {
   set.seed(973);X<-as.data.frame(matrix(runif(200*6),200,6))
   y<-rpois(200,1+4*X[[2]])
   for(f in list(quasipoisson("identity"),quasipoisson("log"))) {
-    fit<-L0glm.fit(X,y,family=f,nonnegative=TRUE,intercept=TRUE,
+    fit<-l0glmFit(X,y,family=f,nonnegative=TRUE,intercept=TRUE,
       always.include=1L,lambda=2,parallelize=FALSE,relaxed=TRUE)
     expect_true(all(is.finite(fitted(fit))));expect_true(all(coef(fit)>=0))
     expect_true(all(is.finite(fit$dispersion)))

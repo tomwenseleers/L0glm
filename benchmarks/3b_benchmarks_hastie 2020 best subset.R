@@ -66,10 +66,10 @@ range(beta_true)
 
 # NOTE: best possible "oracle" model that would be achievable with L0glm & the gic criterion is
 IC = "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+lambda_preset = presetLambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # using original problem size
                               n = nrow(X))
-system.time(L0glm_bestfit <- L0glm.fit(X = X, # X[,beta_true_set,drop=F], # X
+system.time(L0glm_bestfit <- l0glmFit(X = X, # X[,beta_true_set,drop=F], # X
                           y = y, 
                           family = gaussian(identity), 
                           lambda = lambda_preset, # "bic", # lambda_preset,  
@@ -123,14 +123,14 @@ method="oracle_L0glm"
 # WORKS & RECOVERS BETTER SOLUTION THAN ABESS & MCP BUT FASTER!
 
 # IC = "gic"
-# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+# lambda_preset = presetLambda(IC = IC, # options aic, bic, gic, ebic, mbic
 #                               p = ncol(X), # note that we use original problem size
 #                               n = nrow(X))  
 # # iterating SIS & L0glm:
 # beta_start <- rep(0, ncol(X))
 # S <- NULL
 # timing_SISL0glm <- system.time(for (iter in 1:1) {
-#   sis <- sis_glm(X, y, family, 
+#   sis <- sisGLM(X, y, family,
 #                  weights = NULL, 
 #                  offset = X %*% beta_start,
 #                  nsis = min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -141,7 +141,7 @@ method="oracle_L0glm"
 #   print(paste("Size of new SIS set:", length(Snew)))
 #   print(paste("Total size of current SIS set:", length(S)))
 #   for (j in 1:1) { # iterated twice to remove some false positives
-#   L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+#   L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
 #                                  y = y, 
 #                                  family = family, 
 #                                  lambda = lambda_preset,  
@@ -161,7 +161,7 @@ method="oracle_L0glm"
 # timing_SISL0glm
 # # 28s for 10 iter
 # 
-# system.time(L0glmfit_final <- L0glm.fit(X = X[,S,drop=F], 
+# system.time(L0glmfit_final <- l0glmFit(X = X[,S,drop=F],
 #                               y = y, 
 #                               family = family, 
 #                               lambda = lambda_preset,  
@@ -177,10 +177,10 @@ method="oracle_L0glm"
 
 
 IC <- "gic"
-lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+lambda_preset = presetLambda(IC = IC, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))  
-system.time(sis <- sis_glm(X, y, family, 
+system.time(sis <- sisGLM(X, y, family,
                            weights = NULL, 
                            offset = NULL, 
                            nsis = n, # min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -225,7 +225,7 @@ S <- Snew <- Sknee <- NULL
 # priormean <- rep(0, p)
 disp <- NULL
 timing_SISL0glm <- system.time(for (iter in 1:1) {
-  sis <- sis_glm(X, y, family, 
+  sis <- sisGLM(X, y, family,
                  weights = NULL, 
                  offset = X %*% beta_start,
                  nsis = nsis, # n, # min(n, round(n/(log(log(n))*log(p)))), # max support size in abess = default
@@ -261,7 +261,7 @@ timing_SISL0glm <- system.time(for (iter in 1:1) {
   print(paste("Total size of current SIS set:", length(S)))
   print(paste("Number of true positives in current total SIS set:", length(intersect(S, beta_true_set))))
   #  for (j in 1:1) { # iterated twice to remove some false positives
-  L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+  L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
                                 y = y, 
                                 family = family, 
                                 lambda = lambda_preset,  
@@ -290,7 +290,7 @@ timing_SISL0glm
 # gic & hbic return 31 TPs & 1 FP, ebic returns 29 TPs & 1 FP, while mbic returns only 16 TPs
 # TODO check if it helps to set non-top n coefs to zero in L0glm.fit.internal
 
-# system.time(L0glmfit_updated <- L0glm.fit(X = X[,S,drop=F], 
+# system.time(L0glmfit_updated <- l0glmFit(X = X[,S,drop=F],
 #                                         y = y, 
 #                                         family = family, 
 #                                         lambda = lambda_preset,  
@@ -374,7 +374,7 @@ metrics_ISISL0glm
 # NOTE: Sure Independence Screening via SIS::SIS is very slow
 # and only supports canonical link & a couple of families
 # and only dense design matrices & no support for weights or offset
-# see Example in ?sis_glm
+# see Example in ?sisGLM
 
 # TODO compare performance with simulation scenarios considered in
 # https://www.jstatsoft.org/article/view/v083i02/0
@@ -748,10 +748,10 @@ metrics_ncvreg_SCAD
 # (returns an empty set)
 
 # # we use mbic because original problem is high dimensional
-# lambda_preset = preset.lambda(IC = IC, # options aic, bic, gic, ebic, mbic
+# lambda_preset = presetLambda(IC = IC, # options aic, bic, gic, ebic, mbic
 #                               p = ncol(X),
 #                               n = nrow(X))
-# timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- L0glm.fit(
+# timing_fullL0glm = system.time(fullL0glm_gaus_presetlambda <- l0glmFit(
 #   X = X,
 #   y = y,
 #   family = family,
@@ -761,7 +761,7 @@ metrics_ncvreg_SCAD
 #   normalize = FALSE,
 #   # dispersion = dispersion,
 #   solver = "eigen",
-#   method = 1L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmridge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmridge.R#722
+#   method = 1L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmRidge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmRidge.R#722
 #   relaxed = FALSE))[[3]]
 # timing_fullL0glm
 # # 34s
@@ -822,7 +822,7 @@ timing_abess = system.time(fit_abess_full <- abess(x = X,
                                                 tune.path = "sequence", 
                                                 support.size = 0:min(n, round(4*n/(log(log(n))*log(p))) ), # sum(startcoefs!=0), # 
                                                 lambda = 0,
-                                                ic.scale = (1/log(n))*preset.lambda(IC=IC, p=p, n=n), # to convert BIC criterion to other IC
+                                                ic.scale = (1/log(n))*presetLambda(IC=IC, p=p, n=n), # to convert BIC criterion to other IC
                                                 # init.active.set = as.integer(which(startcoefs!=0)),
                                                 warm.start = TRUE, 
                                                 tune.type = "bic"))[[3]]
@@ -1265,7 +1265,7 @@ benchmarks[benchmarks$method %in% c("abess", "ncvreg_MCP", "ncvreg_SCAD",
 # method = "lq"), DC.VS (fda.usc::fregre.glm.vs)
 # see https://github.com/LauraFreiG/Covariates_selection/blob/main/Linear%20Regression/Real%20data%20sets/script_real_data.R
 # implement ISIS method in L0glm or test if cutoff on coefficients in
-# L0glm.fit, e.g. after 3d or 4th iteration, could already lead to good
+# l0glmFit, e.g. after 3d or 4th iteration, could already lead to good
 # performance out of the box
 
 # TODO : remove benchmarks related to bias on all coefficients, as measures of
@@ -1420,7 +1420,7 @@ system.time(
                                                gamma = gamma_mcp, # default for MCP=1.4
                                                # lower.limits = rep(0, p), # force all coefficients to be positive
                                                penalty.factor = penfact[nonzero],
-                                               lambda = preset.lambda(IC="mbic", p=p, n=n)*L0overL1norm_coefsordinis, # my attempt to convert the LASSO like MCP lambda scale to the lambda scale of L0 penalized regression & then apply a penalty equivalent to that implied by MBIC
+                                               lambda = presetLambda(IC="mbic", p=p, n=n)*L0overL1norm_coefsordinis, # my attempt to convert the LASSO like MCP lambda scale to the lambda scale of L0 penalized regression & then apply a penalty equivalent to that implied by MBIC
                                                nlambda = 1L,
                                                # lambda.min.ratio = 1E-100,
                                                dfmax = n,

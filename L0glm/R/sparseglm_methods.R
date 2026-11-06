@@ -1,8 +1,8 @@
 # S3 extraction and plotting for sparse-method comparisons.
 
-#' @rdname L0glm.metrics
+#' @rdname l0glmMetrics
 #' @export
-L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
+l0glmMetrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
   offset=NULL, mu_floor=object$mu_floor, beta_true=object$beta_true, r2_mu_floor=0.1, ...) {
   if (!is.null(newdata) && is.null(y)) stop("Supply y when scoring newdata.", call.=FALSE)
   rows <- lapply(seq_len(nrow(object$timings)), function(i) {
@@ -18,7 +18,7 @@ L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
       empty$support_size_estimated <- NA_real_
       return(cbind(meta, as.data.frame(empty)))
     }
-    scores <- L0glm.metrics(fit, newdata=newdata, y=y, weights=weights,
+    scores <- l0glmMetrics(fit, newdata=newdata, y=y, weights=weights,
       offset=offset, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor)
     if (!"p" %in% names(scores)) scores$p <- fit$p
     if (!"n" %in% names(scores)) scores$n <- if (is.null(newdata)) nrow(fit$X) else nrow(newdata)
@@ -37,10 +37,10 @@ L0glm.metrics.sparseglm <- function(object, newdata=NULL, y=NULL, weights=NULL,
   result
 }
 
-#' @rdname sparseglm
-#' @param object A \code{sparseglm} result.
+#' @rdname sparseGLM
+#' @param object A \code{sparseGLM} result.
 #' @param ... Further arguments passed to [graphics::plot()] for coefficient
-#'   plots or [plotmat()] for heatmaps; unused by `coef()`.
+#'   plots or [plotMat()] for heatmaps; unused by `coef()`.
 #' @export
 coef.sparseglm <- function(object, ...) {
   lapply(object$fits, function(fit) if (is.null(fit)) NULL else stats::coef(fit))
@@ -66,7 +66,7 @@ summary.sparseglm <- function(object, ..., mu_floor=object$mu_floor, beta_true=o
     n=nrow(object$data$X), p=ncol(object$data$X), m=object$data$m,
     tune=object$data$tune, nfolds=if (is.null(object$foldid)) NULL else max(object$foldid),
     mu_floor=mu_floor, r2_mu_floor=r2_mu_floor,
-    metrics=L0glm.metrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor)),
+    metrics=l0glmMetrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor)),
     class="summary.sparseglm")
 }
 
@@ -96,8 +96,8 @@ L0glm_print_comparison_info <- function(family, n, p, m, tune, nfolds) {
   cat("\n")
 }
 
-#' @rdname sparseglm
-#' @param x A \code{sparseglm} result.
+#' @rdname sparseGLM
+#' @param x A \code{sparseGLM} result.
 #' @param which Numeric method indices, in the order stored in `x$fits`.
 #'   Defaults to all available methods for `type="coefs"` and method 1 for
 #'   `type="heatmap"`. A vector preserves the requested order; unavailable
@@ -232,7 +232,7 @@ L0glm_plot_heatmaps <- function(betas, truth, observed, titles, intercept, dots)
         grDevices::colorRampPalette(c("black", "black", "blue", "green", "yellow", "orange", "red"))(1000)
     }
     rownames(B) <- as.character(seq_len(nrow(B)))
-    do.call(plotmat, c(list(M=B, main=main), panel[setdiff(names(panel), "main")]))
+    do.call(plotMat, c(list(M=B, main=main), panel[setdiff(names(panel), "main")]))
   }
   graphics::par(mfrow=c(length(betas) + 1L + !is.null(observed), 1L),
     mar=c(3, 4, 2.6, 1), mgp=c(1.9, .6, 0))

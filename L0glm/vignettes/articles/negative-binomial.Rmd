@@ -27,7 +27,7 @@ set.seed(21)
 X <- matrix(rnorm(350*20), 350, 20)
 mu <- exp(.4 + X[, 2] - .8*X[, 7])
 y <- rnbinom(350, mu=mu, size=2)
-fit <- L0glm.fit(X, y, family=mgcv::nb(), intercept=TRUE,
+fit <- l0glmFit(X, y, family=mgcv::nb(), intercept=TRUE,
   lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
 fit
 fit$theta
@@ -41,9 +41,9 @@ selected rows. Shapes may be estimated separately by channel.
 ## Tune by GIC or CV
 
 ```{r tuning, eval=FALSE}
-gic <- L0glm.tune(X, y, family=mgcv::nb(), intercept=TRUE,
+gic <- l0glmTune(X, y, family=mgcv::nb(), intercept=TRUE,
   tune="gic", nlambda=10, relaxed=TRUE, maxit=100)
-cv <- L0glm.tune(X, y, family=mgcv::nb(), intercept=TRUE,
+cv <- l0glmTune(X, y, family=mgcv::nb(), intercept=TRUE,
   tune="cv", nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
 predict(cv$fit_1se, X[1:5, ])
 ```

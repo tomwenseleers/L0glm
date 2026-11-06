@@ -75,7 +75,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     yy <- args$y[validation, , drop = FALSE]
     off <- L0glm_observation_broadcast(args$offset[validation, , drop = FALSE])
     for (i in seq_along(lambdas)) {
-      fit <- tryCatch(do.call(L0glm.fit, c(train_args, list(lambda = fold_lambdas[i, k]))),
+      fit <- tryCatch(do.call(l0glmFit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
       if (i == 1L) {

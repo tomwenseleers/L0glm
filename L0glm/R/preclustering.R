@@ -2,10 +2,10 @@
 #' @name preclustering
 #' @md
 #' @description
-#' `L0glm.fit(precluster=TRUE)` and `L0nnpois(precluster=TRUE)` cluster and sum
+#' `l0glmFit(precluster=TRUE)` and `l0nnPois(precluster=TRUE)` cluster and sum
 #' response channels, screen predictors on the reduced responses, then refine
 #' the sparse fit on every original channel. The workflow supports
-#' nonnegative identity-link Poisson models. Standalone [glm_cluster()] also
+#' nonnegative identity-link Poisson models. Standalone [glmCluster()] also
 #' supports scalar-family Bregman/deviance clustering.
 #'
 #' @details
@@ -51,12 +51,12 @@
 #' into the aggregated and original regression stages. Validation uses the
 #' original channels for original-channel refinement; aggregate-only validation
 #' uses the same training-derived membership with summed responses/offsets.
-#' [L0glm.tune()] supports original-channel refinement, learning a partition
+#' [l0glmTune()] supports original-channel refinement, learning a partition
 #' once on the full data and separately in each CV training fold. Training
 #' column totals determine size factors in that fold. Partitions are reused
 #' across lambda values; selection coefficients are initialized independently.
 #' Externally supplied `clusterids` or `size_fac` are reused as provided.
-#' To tune an aggregate-only model, call [glm_aggregate()] first and tune its
+#' To tune an aggregate-only model, call [glmAggregate()] first and tune its
 #' returned responses directly.
 #'
 #' The workflow does not add a background basis or change compulsory terms.
@@ -70,18 +70,18 @@
 #' One-channel original fits, zero-penalty original fits and starts excluding
 #' all selectable rows use the ordinary fitter and record the bypass reason.
 #'
-#' @seealso [glm_cluster()], [glm_aggregate()], [L0glm.fit()], [L0nnpois()]
+#' @seealso [glmCluster()], [glmAggregate()], [l0glmFit()], [l0nnPois()]
 #' @examples
 #' set.seed(8)
 #' X <- diag(80)
 #' B <- matrix(0,80,8)
 #' B[c(12,35,64),] <- matrix(runif(24,2,12),3,8)
 #' Y <- matrix(rpois(80*8, X %*% B + .1),80,8)
-#' fit <- L0nnpois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
+#' fit <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
 #'   parallelize=FALSE,control.precluster=list(k.max=4L))
 #' dim(coef(fit))
 #' fit$preclustering$candidates
-#' agg <- L0nnpois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
+#' agg <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
 #'   cluster.refit=FALSE,parallelize=FALSE,control.precluster=list(k=4L))
 #' dim(coef(agg))
 NULL
@@ -129,7 +129,7 @@ L0glm_precluster_validation<-function(validation,group=NULL,rows=NULL,added=FALS
     return(validation)
   }
   n<-nrow(validation$y);m<-length(group)
-  agg<-glm_aggregate(validation$y,validation$weights,poisson(identity),group)
+  agg<-glmAggregate(validation$y,validation$weights,poisson(identity),group)
   P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,max(group)))
   validation$y<-agg$Y_agg;validation$weights<-agg$weights_agg
   if(!is.null(validation$offset)) validation$offset<-L0glm_precluster_offset(validation$offset,n,m,P)
@@ -146,7 +146,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   begun<-proc.time()[[3L]];family<-options$family
   if(!identical(family$family,"poisson")||!identical(family$link,"identity")||
       !isTRUE(options$nonnegative))
-    stop("precluster currently supports nonnegative identity-link Poisson fits. Use glm_cluster for other scalar families.",call.=FALSE)
+    stop("precluster currently supports nonnegative identity-link Poisson fits. Use glmCluster for other scalar families.",call.=FALSE)
   Y<-L0glm_cluster_matrix(y);n<-nrow(Y);m<-ncol(Y)
   if(nrow(X)!=n||any(Y<0)) stop("X and nonnegative Poisson responses must have compatible rows.",call.=FALSE)
   control<-options$control.precluster
@@ -192,7 +192,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   threads<-if(isTRUE(options$parallelize)) L0glm_sis_threads(control$nthreads) else 1L
   cluster_start<-proc.time()[[3L]]
   if(is.null(control$clusterids)) {
-    cl<-glm_cluster(Y,weights=w,family=family,method="poissondist",
+    cl<-glmCluster(Y,weights=w,family=family,method="poissondist",
       size_fac=if(is.null(control$size_fac)) colSums(Y) else control$size_fac,
       rowbins=control$rowbins,nthreads=threads,linkage=control$linkage,
       criterion=control$criterion,k=control$k,k.max=control$k.max)
@@ -204,7 +204,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   }
   cluster_seconds<-proc.time()[[3L]]-cluster_start;group<-cl$clusterids;k<-max(group)
   P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,k))
-  response<-if(is.null(cl$Y_agg)) glm_aggregate(Y,options$weights,family,group)$Y_agg else cl$Y_agg
+  response<-if(is.null(cl$Y_agg)) glmAggregate(Y,options$weights,family,group)$Y_agg else cl$Y_agg
   opt<-options;opt$lambda<-if(refit) control$screen.factor*lambda else lambda
   opt$dispersion<-if(is.null(options$dispersion)) NULL else 1
   opt$weights<-if(is.null(options$weights)) NULL else w

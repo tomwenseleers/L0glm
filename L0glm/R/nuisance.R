@@ -4,7 +4,7 @@
 #' @description
 #' Supply unpenalized columns through `always.include`, for example a low-df
 #' B-spline basis for a smooth chromatographic background. With `nonnegative=TRUE`,
-#' `L0glm.fit()` and `L0nnpois()` refine these coefficients in a small constrained
+#' `l0glmFit()` and `l0nnPois()` refine these coefficients in a small constrained
 #' block, separately from sparse predictor selection.
 #'
 #' @details
@@ -56,7 +56,7 @@
 #' The fitted object contains `nuisance`, with compulsory indices, candidate rows,
 #' initialization, accepted/rejected scores, conditional KKT residuals and timings.
 #'
-#' @seealso [L0glm.fit()], [L0nnpois()], [preclustering]
+#' @seealso [l0glmFit()], [l0nnPois()], [preclustering]
 NULL
 
 # Conditional handling of nonnegative unpenalized terms.
@@ -359,7 +359,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   } else {
     fit$weights <- W
     if(identical(kind,"cox")) {fit$cox.cache <- cox$cache;fit$baseline <- L0glm_ext_cox_baseline(fit)}
-    fit$metrics <- L0glm.metrics(fit,mu_floor=0);fit$objective <- fit$metrics$objective
+    fit$metrics <- l0glmMetrics(fit,mu_floor=0);fit$objective <- fit$metrics$objective
   }
   penalties <- matrix(Inf,p,m);scale <- matrix(rep(fit$dispersion,each=p),p,m)
   penalties[beta!=0] <- lambda*scale[beta!=0]/4/pmax(beta[beta!=0]^2,.Machine$double.xmin)

@@ -7,7 +7,7 @@
 # source("R/L0glm_1_fit_internal.R")
 # source("R/utils.R")
 # source("R/Lmridge.R")
-# source("R/control.solver.gen.R")
+# source("R/controlSolverGen.R")
 # source("R/RcppExports.R")
 # 
 # Generate synthetic high-dimensional non-negative data

@@ -172,7 +172,7 @@ nonzero = which(mcpmaxcoefs!=0)
 mcpfitted = as.numeric(x %*% mcpmaxcoefs)
 disp_est = sum((mcpfitted - y)^2)/(n - sum(mcpmaxcoefs!=0))
 disp_est # 0.5469727 -  too small as it's overfitted
-system.time(res_nonzero <- L0glm.fit(x[,nonzero,drop=F], y, 
+system.time(res_nonzero <- l0glmFit(x[,nonzero,drop=F], y,
                                      family=gaussian(identity),
                                      start=start[nonzero],
                                      lambda=lambdaGIC,

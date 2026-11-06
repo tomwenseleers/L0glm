@@ -41,7 +41,7 @@
 \method{fitted}{sparseglm}(object, ...)
 }
 \arguments{
-\item{object}{A fitted model or \code{sparseglm} comparison.}
+\item{object}{A fitted model or \code{sparseGLM} comparison.}
 
 \item{newdata}{Predictor matrix, sparse or dense, or numeric data frame.
 Omit the intercept added by \code{intercept=TRUE}. Supply all original predictor
@@ -76,11 +76,11 @@ GLM/NB means, binomial probabilities, multinomial probabilities and
 all link predictions are matrices, including for one response or one row.
 Cox risks are numeric vectors; Cox survival is an observations-by-times
 matrix. Multinomial classes are factors with the stored category levels.
-\code{sparseglm} methods return named lists in method order, retaining \code{NULL}
+\code{sparseGLM} methods return named lists in method order, retaining \code{NULL}
 entries for failed or unavailable methods.
 }
 \description{
-S3 prediction methods for \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0nnpois]{L0nnpois()}} and \code{\link[=sparseglm]{sparseglm()}},
+S3 prediction methods for \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}} and \code{\link[=sparseGLM]{sparseGLM()}},
 including negative-binomial, multinomial and right-censored Cox models.
 }
 \details{
@@ -113,17 +113,17 @@ full-data model; these are not out-of-fold predictions.
 set.seed(5)
 X <- matrix(rnorm(240),60,4)
 y <- 2*X[,1] + rnorm(60)
-fit <- L0glm.fit(X,y,lambda="gic",parallelize=FALSE)
+fit <- l0glmFit(X,y,lambda="gic",parallelize=FALSE)
 head(fitted(fit))
 predict(fit,X[1:3,,drop=FALSE])
-comparison <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)
+comparison <- sparseGLM(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)
 predict(comparison,X[1:3,,drop=FALSE])
 if (requireNamespace("mgcv",quietly=TRUE)) {
   labels <- factor(rep(c("A","B","C"),20))
-  multi <- L0glm.fit(X,labels,family=mgcv::multinom(K=2),lambda="gic")
+  multi <- l0glmFit(X,labels,family=mgcv::multinom(K=2),lambda="gic")
   predict(multi,X[1:3,,drop=FALSE],type="probabilities")
 }
 }
 \seealso{
-\code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0glm.metrics]{L0glm.metrics()}}, \code{\link[=sparseglm]{sparseglm()}}, \link{model_summary}
+\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmMetrics]{l0glmMetrics()}}, \code{\link[=sparseGLM]{sparseGLM()}}, \link{model_summary}
 }

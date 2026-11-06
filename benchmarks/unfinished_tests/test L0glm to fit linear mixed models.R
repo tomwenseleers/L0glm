@@ -123,7 +123,7 @@ hist(u_intercept)
 
 # fit using L0glm
 library(L0glm)
-system.time(fit1_L0glm <- L0glm.fit(X=Matrix(cbind(X, Z_intercept), sparse=T),  # fastest if coded as sparse
+system.time(fit1_L0glm <- l0glmFit(X=Matrix(cbind(X, Z_intercept), sparse=T),  # fastest if coded as sparse
                                     y=data$LOG2_EXPR_HSP_VS_ACTIN, no.pen=1, lambda="aic")) # 0.14s
 fit1_L0glm_fixed = head(coef(fit1_L0glm),-length(levels(data$CLONE)))
 fit1_L0glm_u = tail(coef(fit1_L0glm),length(levels(data$CLONE)))
@@ -188,7 +188,7 @@ hist(u_slope)
 
 # fit using L0glm
 library(L0glm)
-system.time(fit2_L0glm <- L0glm.fit(X=Matrix(cbind(X, Z_intercept, Z_slope), sparse=T),  # fastest if coded as sparse
+system.time(fit2_L0glm <- l0glmFit(X=Matrix(cbind(X, Z_intercept, Z_slope), sparse=T),  # fastest if coded as sparse
                                     y=data2$LOG2_EXPR_HSP_VS_ACTIN, no.pen=c(1,2), lambda="aic")) # 0.20s
 # NOTE/TODO solution with "aic" best - with "gic" some artefacts in random effect coefficients (some shrunk to zero)
 # maybe prior centers should be updated after each IRLS iteration for random effect coefficients to

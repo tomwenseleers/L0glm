@@ -2,8 +2,8 @@
 #'
 #' @description
 #' Generate blurred spike trains or regression data with Gaussian predictors.
-#' Returned data and ground truth can be passed to [sparseglm()], or to
-#' [L0glm.fit()] and [L0glm.tune()] with the returned family and intercept flag.
+#' Returned data and ground truth can be passed to [sparseGLM()], or to
+#' [l0glmFit()] and [l0glmTune()] with the returned family and intercept flag.
 #'
 #' @param method Setup: `"deconvolution"`, `"normal"`, `"abess"`, or
 #'   `"bestsubset"`. Numeric values 1/2 select single-channel
@@ -46,7 +46,7 @@
 #'   use a single slope vector shared across categories.
 #'
 #' @details
-#' **Deconvolution.** Options are arguments of [simulate_spike_train()], including
+#' **Deconvolution.** Options are arguments of [simulateSpikeTrain()], including
 #' `mean_beta`, `sd_logbeta`, `sd_noise`, `psf`, `thresh`, `theta`, `clip`,
 #' `spectra` and `channel.sparsity`. Gaussian responses are untruncated by default.
 #' Numeric setups 1/3 clip negative responses to zero by default; set
@@ -126,7 +126,7 @@
 #' ABESS source: \url{https://github.com/abess-team/abess/blob/master/R-package/R/generate.data.R}.
 #' Hastie, Tibshirani and Tibshirani, best-subset source:
 #' \url{https://github.com/ryantibs/best-subset/blob/master/bestsubset/R/sim.R}.
-#' @seealso [simulate_spike_train()], [L0glm.fit()], [sparseglm()]
+#' @seealso [simulateSpikeTrain()], [l0glmFit()], [sparseGLM()]
 #' @importFrom statmod rinvgauss
 #' @importFrom stats gaussian plogis poisson qlogis rbinom rgamma rpois runif
 #' @importFrom methods as is
@@ -174,7 +174,7 @@ simul <- function(method = "deconvolution", n = 500, p = 500, s = 0.1,
     args <- options[setdiff(names(options), c("n_nonzero", "support.size"))]
     if (missing(m) && !is.null(options$spectra)) m <- ncol(options$spectra)
     if (!is.null(m)) m <- L0glm_sim_integer(m, "m", 1)
-    return(do.call(simulate_spike_train, c(list(n=n, p=p, k=n_nonzero,
+    return(do.call(simulateSpikeTrain, c(list(n=n, p=p, k=n_nonzero,
       family=if (is.null(family)) "poisson" else family, sparse=sparse, seed=seed,
       intercept=intercept, multichannel=is.null(m) || m > 1L, m=m), args)))
   }

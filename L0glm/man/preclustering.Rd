@@ -4,10 +4,10 @@
 \alias{preclustering}
 \title{Preclustering response channels before sparse Poisson fitting}
 \description{
-\code{L0glm.fit(precluster=TRUE)} and \code{L0nnpois(precluster=TRUE)} cluster and sum
+\code{l0glmFit(precluster=TRUE)} and \code{l0nnPois(precluster=TRUE)} cluster and sum
 response channels, screen predictors on the reduced responses, then refine
 the sparse fit on every original channel. The workflow supports
-nonnegative identity-link Poisson models. Standalone \code{\link[=glm_cluster]{glm_cluster()}} also
+nonnegative identity-link Poisson models. Standalone \code{\link[=glmCluster]{glmCluster()}} also
 supports scalar-family Bregman/deviance clustering.
 }
 \details{
@@ -53,12 +53,12 @@ Clustering uses training response profiles. Observation offsets are carried
 into the aggregated and original regression stages. Validation uses the
 original channels for original-channel refinement; aggregate-only validation
 uses the same training-derived membership with summed responses/offsets.
-\code{\link[=L0glm.tune]{L0glm.tune()}} supports original-channel refinement, learning a partition
+\code{\link[=l0glmTune]{l0glmTune()}} supports original-channel refinement, learning a partition
 once on the full data and separately in each CV training fold. Training
 column totals determine size factors in that fold. Partitions are reused
 across lambda values; selection coefficients are initialized independently.
 Externally supplied \code{clusterids} or \code{size_fac} are reused as provided.
-To tune an aggregate-only model, call \code{\link[=glm_aggregate]{glm_aggregate()}} first and tune its
+To tune an aggregate-only model, call \code{\link[=glmAggregate]{glmAggregate()}} first and tune its
 returned responses directly.
 
 The workflow does not add a background basis or change compulsory terms.
@@ -78,14 +78,14 @@ X <- diag(80)
 B <- matrix(0,80,8)
 B[c(12,35,64),] <- matrix(runif(24,2,12),3,8)
 Y <- matrix(rpois(80*8, X \%*\% B + .1),80,8)
-fit <- L0nnpois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
+fit <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
   parallelize=FALSE,control.precluster=list(k.max=4L))
 dim(coef(fit))
 fit$preclustering$candidates
-agg <- L0nnpois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
+agg <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
   cluster.refit=FALSE,parallelize=FALSE,control.precluster=list(k=4L))
 dim(coef(agg))
 }
 \seealso{
-\code{\link[=glm_cluster]{glm_cluster()}}, \code{\link[=glm_aggregate]{glm_aggregate()}}, \code{\link[=L0glm.fit]{L0glm.fit()}}, \code{\link[=L0nnpois]{L0nnpois()}}
+\code{\link[=glmCluster]{glmCluster()}}, \code{\link[=glmAggregate]{glmAggregate()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}
 }

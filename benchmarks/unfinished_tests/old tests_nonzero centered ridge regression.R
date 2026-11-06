@@ -15,7 +15,7 @@ crit <- "bic" # choose lambda based on what would be expected to optimise this I
 # 1. SINGLE CHANNEL DECONVOLUTION ####
 ## 1.1 Single channel deconvolution assuming Poisson noise ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "poisson", 
@@ -25,20 +25,20 @@ X <- sim$X
 y <- sim$y
 
 # # using lambda 1
-# L0glm.out <- L0glm.fit(X, y, 
+# L0glm.out <- l0glmFit(X, y,
 #                            family = poisson(identity), 
 #                            lambda = 1, 
 #                            nonnegative = TRUE)
 # # points(sim$x, L0glm.out, pch = 16, col= 'blue')
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC with n=p=100, lambda = 1.76 would optimise GIC
 
-# couple of possible coefficient initialisations to use as starting values in L0glm.fit which could be used for start ####
+# couple of possible coefficient initialisations to use as starting values in l0glmFit which could be used for start ####
 weights = 1/(sim$y+0.1) # L0glm_gaus_presetlambda$weights
 Xw = Matrix(Diagonal(x=sqrt(weights)) %*% sim$X, sparse=T) # = X * sqrt(weights)
 Xwaug = Matrix(rbind(Xw, Diagonal(x=sqrt(rep(lambda_preset,ncol(sim$X))))), sparse=T) # row augmented covariate matrix
@@ -60,7 +60,7 @@ plot(beta_init_orthogonal, as.vector(sim$beta_true), pch=16, col="blue")
 
 
 library(microbenchmark)
-system.time(L0glm.out <- L0glm.fit(X, y, 
+system.time(L0glm.out <- l0glmFit(X, y,
                            family = poisson(identity), 
                            lambda = lambda_preset,
                            nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
@@ -91,7 +91,7 @@ plot(x=sim$beta_true, y=L0glm.out,
 
 ## 1.2 Single channel deconvolution assuming Gaussian noise ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
@@ -102,13 +102,13 @@ X <- sim$X
 y <- sim$y
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-system.time(L0glm.out <- L0glm.fit(X, y, 
+system.time(L0glm.out <- l0glmFit(X, y,
                            family = gaussian(identity), 
                            lambda = lambda_preset, 
                            nonzero.centered = TRUE, # gives slightly better solution based on IC, about the same speed or slightly faster
@@ -140,7 +140,7 @@ k = ifelse(round(n/10)<=100, round(n/10), 100) # nr of peaks
 
 ## 2.1 Multichannel deconvolution assuming Poisson noise ####
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "poisson", 
@@ -151,13 +151,13 @@ X <- sim$X
 y <- sim$y
 
 # using lambda expected to optimise given IC (lambda = 1.15)
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X, 
                               family = poisson(identity)) 
 lambda_preset # lambda = 1.15 would be expected to optimise BIC, lambda = 1.76 would optimise GIC
 
-system.time(L0glm.out <- L0glm.fit(X, y, 
+system.time(L0glm.out <- l0glmFit(X, y,
                            family = poisson(identity), 
                            lambda = lambda_preset,
                            nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster
@@ -190,7 +190,7 @@ plot(x=sim$beta_true, y=L0glm.out,
 
 
 ## 2.2 Multichannel deconvolution assuming Gaussian noise ####
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
@@ -202,13 +202,13 @@ X <- sim$X
 y <- sim$y
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               y = y, 
                               X = X,  
                               family = gaussian(identity)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-system.time(L0glm.out <- L0glm.fit(X, y, 
+system.time(L0glm.out <- l0glmFit(X, y,
                            family = gaussian(identity), 
                            lambda = lambda_preset, 
                            nonzero.centered = FALSE, # gives slightly better solution based on IC, about the same speed or slightly faster

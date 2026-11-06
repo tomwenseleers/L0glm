@@ -29,7 +29,7 @@ prob <- exp(eta-apply(eta, 1, max)); prob <- prob/rowSums(prob)
 y <- factor(vapply(seq_len(nrow(X)), function(i)
   sample.int(3, 1, prob=prob[i, ]), integer(1)), levels=1:3)
 
-fit <- L0glm.fit(X, y, family=mgcv::multinom(K=2),
+fit <- l0glmFit(X, y, family=mgcv::multinom(K=2),
   lambda="gic", grouped=TRUE, relaxed=TRUE, maxit=150, tol=1e-8)
 predict(fit, X[1:5, ], type="response")
 ```
@@ -60,9 +60,9 @@ in CLR space and does not lock out every predictor.
 ## Tune the grouped model
 
 ```{r tuning, eval=FALSE}
-gic <- L0glm.tune(X, y, family=mgcv::multinom(2), tune="gic",
+gic <- l0glmTune(X, y, family=mgcv::multinom(2), tune="gic",
   nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
-cv <- L0glm.tune(X, y, family=mgcv::multinom(2), tune="cv",
+cv <- l0glmTune(X, y, family=mgcv::multinom(2), tune="cv",
   nfolds=5, nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
 predict(cv$fit_1se, X[1:5, ], type="response")
 ```

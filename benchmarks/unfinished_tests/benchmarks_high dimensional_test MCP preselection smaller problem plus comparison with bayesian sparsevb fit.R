@@ -268,7 +268,7 @@ system.time(
                                                gamma = gamma_mcp, # default for MCP=1.4
                                                # lower.limits = rep(0, p), # force all coefficients to be positive
                                                penalty.factor = penfact[nonzero],
-                                               lambda = preset.lambda(IC="mbic", p=p, n=n)*L0overL1norm_coefsordinis, # my attempt to convert the LASSO like MCP lambda scale to the lambda scale of L0 penalized regression & then apply a penalty equivalent to that implied by MBIC
+                                               lambda = presetLambda(IC="mbic", p=p, n=n)*L0overL1norm_coefsordinis, # my attempt to convert the LASSO like MCP lambda scale to the lambda scale of L0 penalized regression & then apply a penalty equivalent to that implied by MBIC
                                                nlambda = 100L,
                                                # lambda.min.ratio = 1E-100,
                                                dfmax = n/log(n),
@@ -385,11 +385,11 @@ cutoff = quantile(abs(priormean)[priormean!=0], 0.5)
 priormean[abs(priormean)<=cutoff] = 0 # we shrink small coefficients to zero & keep larger ones at their original value
 
 nonzero = startcoefs!=0
-lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))
 
-system.time(L0glm_gaus_presetlambda <- L0glm.fit(
+system.time(L0glm_gaus_presetlambda <- l0glmFit(
   X = X[, nonzero, drop=F], 
   y = y, 
   family = family, 
@@ -466,11 +466,11 @@ cutoff = quantile(abs(priormean)[priormean!=0], 0.5)
 priormean[abs(priormean)<=cutoff] = 0 # we shrink small coefficients to zero & keep larger ones at their original value
 
 nonzero = startcoefs!=0
-lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
                               p = ncol(X), # note that we use original problem size
                               n = nrow(X))
 
-system.time(L0glm_gaus_presetlambda_full <- L0glm.fit(
+system.time(L0glm_gaus_presetlambda_full <- l0glmFit(
   X = X, # [, nonzero, drop=F], 
   y = y, 
   family = family, 
@@ -570,11 +570,11 @@ system.time({
     sel = startcoefs!=0
     
     # we use mbic because original problem is high dimensional
-    lambda_preset = preset.lambda(IC = "mbic", # options aic, bic, gic, ebic, mbic 
+    lambda_preset = presetLambda(IC = "mbic", # options aic, bic, gic, ebic, mbic
                                   p = ncol(X), # note that we use original problem size
                                   n = nrow(X))
     
-    system.time(L0glm.out_updated <- L0glm.fit(X = X[,sel,drop=F], 
+    system.time(L0glm.out_updated <- l0glmFit(X = X[,sel,drop=F],
                                                y = y, 
                                                family = gaussian(identity), 
                                                lambda = lambda_preset,  
@@ -696,7 +696,7 @@ system.time(fit_abessafterMCP_selcoefs <- abess(x = X[,selcoefs,drop=F],
                                                 tune.path = "sequence", 
                                                 support.size = c(1:(p_selcoefs-1)),
                                                 lambda = 0,
-                                                ic.scale = (1/log(n))*preset.lambda(IC="mbic", p=p, n=n), # to convert BIC criterion to MBIC
+                                                ic.scale = (1/log(n))*presetLambda(IC="mbic", p=p, n=n), # to convert BIC criterion to MBIC
                                                 warm.start = TRUE, 
                                                 tune.type = "bic"))  # or bic, ebic, aic or cv
 # 2.78s
@@ -1158,7 +1158,7 @@ maxlam <- maxlambda(X=X,
 maxlam # 
 mincoef <- min(abs(L0glm.out_updated$coefficients))
 
-lambda_preset = preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = "bic", # options aic, bic, gic, ebic, mbic
                               p = ncol(X),
                               n = nrow(X))
 # lambdas <- 10^seq(log10(lambda_preset/10), log10(maxlam), length.out=10)
@@ -1170,7 +1170,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   # start <- (L0glm_gaus_presetlambda$coefficients)*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm_gaus_presetlambda$coefficients==0] <- 0
   
-  L0glm.out <- L0glm.fit(X = X, 
+  L0glm.out <- l0glmFit(X = X,
                          y = y, 
                          family = gaussian(identity), 
                          lambda = lambda, 
@@ -1243,7 +1243,7 @@ metrics$lambda[which(metrics$mbic==min(metrics$mbic))] # 1.995262
 # with warmstart=0.2 ca 2x lower than the lambda tilde values that 
 # were expected to optimise each IC; close match with expected values
 # for warmstart=0
-# note: as expected using warm starts in the L0glm.fit function shift the
+# note: as expected using warm starts in the l0glmFit function shift the
 # empirically observed optimal values
 
 
@@ -1313,7 +1313,7 @@ family = gaussian(identity)
 crit = "mbic" # works best for high dimensional case
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               p = ncol(X),
                               n = nrow(X))
 lambda_preset # 31.07304
@@ -1324,7 +1324,7 @@ lambda_preset # 31.07304
 # Error: cannot allocate vector of size XX Gb for large p
 
 
-system.time(L0glm_gaus_presetlambda <- L0glm.fit(
+system.time(L0glm_gaus_presetlambda <- l0glmFit(
   X = X, # Matrix(X, sparse=T), 
   y = y, 
   family = family, 
@@ -1358,7 +1358,7 @@ metrics_gaus
 
 # for high dimensional case a better solution is obtained by using the 1st iteration
 # solution as starting values
-L0glm.out_2nditeration <- L0glm.fit(X = X, 
+L0glm.out_2nditeration <- l0glmFit(X = X,
                                     y = y, 
                                     family = gaussian(identity), 
                                     lambda = "mbic", 
@@ -1408,7 +1408,7 @@ crit = "bic"
 selected = which(coefs_ordinis[-1]!=0)
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               p = ncol(X),
                               n = nrow(X))
 lambda_preset # 6.214608
@@ -1417,7 +1417,7 @@ warm_start =  0.9 # 0.9 # 1 would essentially use MCP as pre-screen
 # 0.9-1 all work well, but 1 should be faster as it should kick out 0 coefficients from the start
 # TODO check in code that it is doing this in an optimal way, from the very start
 
-# TODO: add warm_start as option in L0glm.fit & use this like below if start!=NULL
+# TODO: add warm_start as option in l0glmFit & use this like below if start!=NULL
 gamma = 2
 start = coefs_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L0glm.fit.internal
 # start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
@@ -1430,7 +1430,7 @@ start = coefs_ordinis[-1]*scaling # TODO incorporate scaling if normalize=T in L
 # implying identical priors on al coefficients (but still allowing 
 # the observed variability in the starting coefficients to affect the chosen
 # constant SD on the implied Gaussian prior of all coefficients).
-system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F], 
+system.time(L0glm.out_preset <- l0glmFit(Xscaled[,selected,drop=F],
                                           y, 
                                           family = family, 
                                           lambda = 1E-10, # *lambda_preset, 
@@ -1443,7 +1443,7 @@ system.time(L0glm.out_preset <- L0glm.fit(Xscaled[,selected,drop=F],
                                           thresh = 1E-30, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                                           maxit = 100,
                                           tol = 1E-30
-                                          # control.solver = modifyList(do.call("control.solver.gen", 
+                                          # control.solver = modifyList(do.call("controlSolverGen",
                                           #                                     list(solver = "eigen", 
                                           #                                          method = 4L)), 
                                           #                             list(rowaug=TRUE))
@@ -1485,7 +1485,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
   start = warm_start*start + (1-warm_start)*rep(sd(start)^(1/gamma), ncol(X))
   # start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
-  L0glm.out <- L0glm.fit(Xscaled[,selected,drop=F], y, 
+  L0glm.out <- l0glmFit(Xscaled[,selected,drop=F], y,
                          family = gaussian(identity), 
                          lambda = lambda, 
                          # prior.mean = FALSE, # use nonzero centered ridge regression?
@@ -1644,7 +1644,7 @@ family = gaussian(identity)
 
 
 set.seed(1)
-sim <- simulate_spike_train(n = n, 
+sim <- simulateSpikeTrain(n = n,
                             p = p,
                             k = k,
                             family = "gaussian", 
@@ -1656,12 +1656,12 @@ y <- sim$y
 family <- gaussian(identity)
 
 # using lambda expected to optimise given IC
-lambda_preset = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic 
+lambda_preset = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                               p = ncol(X), 
                               n = nrow(X)) 
 lambda_preset # lambda that would be expected to optimise given IC
 
-L0glm.out_preset <- L0glm.fit(X, y, 
+L0glm.out_preset <- l0glmFit(X, y,
                               family = family, 
                               lambda = lambda_preset, 
                               nonnegative = TRUE,
@@ -1693,7 +1693,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
   lambda <- lambdas[[i]]
   start <- L0glm.out_preset_coefs*warmstart+start_coefs(X, family)*(1-warmstart)
   # start[L0glm.out_preset_coefs==0] <- 0
-  L0glm.out <- L0glm.fit(X, y, 
+  L0glm.out <- l0glmFit(X, y,
                          family = gaussian(identity), 
                          lambda = lambda, 
                          nonnegative = TRUE,

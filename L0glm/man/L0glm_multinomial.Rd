@@ -139,14 +139,14 @@ if (requireNamespace("mgcv", quietly = TRUE)) {
   P <- P / rowSums(P)
   y <- factor(vapply(seq_len(nrow(X)), function(i)
     sample.int(3, 1, prob = P[i, ]), integer(1)))
-  fit_multinomial <- L0glm.fit(X, y, family = mgcv::multinom(K = 2),
+  fit_multinomial <- l0glmFit(X, y, family = mgcv::multinom(K = 2),
     lambda = "gic", grouped = TRUE, relaxed = TRUE,
     maxit = 200, tol = 1e-8)
   fit_multinomial$coefficients
   fit_multinomial$convergence
   max(abs(Matrix::rowSums(fit_multinomial$coefficients)))
   head(predict(fit_multinomial))
-  L0glm.metrics(fit_multinomial)
+  l0glmMetrics(fit_multinomial)
 }
 }
 \references{
@@ -154,5 +154,5 @@ Krishnapuram, B., Carin, L., Figueiredo, M. A. T. and Hartemink, A. J. (2005).
 Sparse multinomial logistic regression: Fast algorithms and generalization bounds.
 IEEE TPAMI 27(6), 957--968.
 }
-\seealso{\code{\link{L0glm.fit}}, \code{\link{L0glm.tune}},
-\code{\link{L0glm.metrics}}, \code{\link[mgcv]{multinom}}}
+\seealso{\code{\link{l0glmFit}}, \code{\link{l0glmTune}},
+\code{\link{l0glmMetrics}}, \code{\link[mgcv]{multinom}}}

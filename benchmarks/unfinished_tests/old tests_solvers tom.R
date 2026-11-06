@@ -39,7 +39,7 @@ n <- 10000
 p <- 10000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
-sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
+sim <- simulateSpikeTrain(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
 
 system.time(Matrix::crossprod(sim$X)) # 0.02s for n=p=10000
 
@@ -60,7 +60,7 @@ thresh <- 1E-3 # coefficients below this value are set to zero in each iteration
 beta <- start <- rep(1, ncol(X))
 
 # # we use starting values starting from a nonnegative weighted LS fit (fit using osqp)
-# system.time(start <- lmridge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights = weights,
+# system.time(start <- lmRidge(X=Xsp, y, lambda = rep(1E-5, ncol(Xsp)), weights = weights,
 #                              lower = lower, upper = upper, nonnegative = nonnegative,
 #                              solver="osqp") / X.n) # 4.64s for n=p=10000
 # start[abs(start)<thresh] <- 0
@@ -168,15 +168,15 @@ system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(X
 # 0.03s for n=p=10000, cf. Liu & Li 2016 eqn (10)
 cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
 
-# using row augmentation & default Cholesky decomposition -> slower than lmridge eigen solver
+# using row augmentation & default Cholesky decomposition -> slower than lmRidge eigen solver
 system.time(coefs_cholsolve_rowaug_dense <- as.vector(chol.solve(Xwaug,
                                                                  ywaug,
                                                                  tol=2*.Machine$double.eps))) 
-# 7.83s for n=p=10000 with Intel MKL, slower than lmridge eigen above
+# 7.83s for n=p=10000 with Intel MKL, slower than lmRidge eigen above
 system.time(coefs_cholsolve_rowaug_sparse <- as.vector(chol.solve(Xwaugsp,
                                                                   ywaug,
                                                                   tol=2*.Machine$double.eps))) 
-# 1.24s for n=p=10000 with Intel MKL, slower than lmridge eigen above
+# 1.24s for n=p=10000 with Intel MKL, slower than lmRidge eigen above
 cor(coefs_cholsolve_rowaug_sparse, coefs_solve_sparse) # 1
 
 
@@ -213,9 +213,9 @@ cor(coefs_cholsolve_rowaug_sparse, coefs_solve_sparse) # 1
 
 
 
-# sparse Cholesky solver when called via lmridge function ####
+# sparse Cholesky solver when called via lmRidge function ####
 # EXCELLENT TIMINGS BOTH FOR SPARSE & DENSE CASE
-microbenchmark(coefs_cholsolve_sparse_lmridge <- lmridge(X=Xsp, y=y, lambdas=lambdas,
+microbenchmark(coefs_cholsolve_sparse_lmridge <- lmRidge(X=Xsp, y=y, lambdas=lambdas,
                                                          weights = weights,
                                                          lower = lower,
                                                          upper = upper,
@@ -226,7 +226,7 @@ microbenchmark(coefs_cholsolve_sparse_lmridge <- lmridge(X=Xsp, y=y, lambdas=lam
                                                          method = 1L,
                                                          start = rep(0, ncol(X)),
                                                          control.solver = 
-                                                           modifyList(do.call("control.solver.gen", 
+                                                           modifyList(do.call("controlSolverGen",
                                                                               list(solver = "eigen", 
                                                                                    method = 1L)),
                                                                       list(rowaug=TRUE)) )
@@ -241,8 +241,8 @@ system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(X
 # gets to 0.03s for n=p=10000, so should still be possible to get this slightly faster?
 cor(coefs_cholsolve_sparse, coefs_solve_sparse) # 1
 
-# dense Cholesky solver when called via lmridge function
-system.time(coefs_cholsolve_dense_lmridge <- lmridge(X=X, y=y, lambdas=lambdas,
+# dense Cholesky solver when called via lmRidge function
+system.time(coefs_cholsolve_dense_lmridge <- lmRidge(X=X, y=y, lambdas=lambdas,
                                                      weights = weights,
                                                      lower = lower,
                                                      upper = upper,
@@ -253,7 +253,7 @@ system.time(coefs_cholsolve_dense_lmridge <- lmridge(X=X, y=y, lambdas=lambdas,
                                                      method = 1L,
                                                      start = rep(0, ncol(X)),
                                                      control.solver = 
-                                                       modifyList(do.call("control.solver.gen", 
+                                                       modifyList(do.call("controlSolverGen",
                                                                           list(solver = "eigen", 
                                                                                method = 1L)),
                                                                   list(rowaug=FALSE)) )
@@ -275,7 +275,7 @@ system.time(coefs_eigenCGsolve_dense <- as.vector(solve_dense_CG(D %*% crossprod
                                                                  maxit=0,
                                                                  precond = 0L)$coefficients)) 
 # 15s for p=n=10000, 1.23s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-# slower than lmridge cholesky though
+# slower than lmRidge cholesky though
 system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(Dsp %*% crossprod(Xwsp) +
                                                                          .sparseDiagonal(sum(nonzero), lambda),
                                                                        as.matrix(Dsp %*% crossprod(Xwsp,yw)),
@@ -284,7 +284,7 @@ system.time(coefs_eigenCGsolve_sparse <- as.vector(solve_sparse_CG(Dsp %*% cross
                                                                        maxit=0,
                                                                        precond = 1L)$coefficients)) 
 # 0.05s for p=n=10000, 2.66s for p=5000 & n=1000, cf. Liu & Li 2016 eqn (10)
-# slower than lmridge cholesky
+# slower than lmRidge cholesky
 coefs_eigenCGsolve_sparse
 # sometimes returns NULL
 cor(coefs_eigenCGsolve_sparse, coefs_solve_sparse) # 1
@@ -409,7 +409,7 @@ cor(coefs_solveCG_largep_sparse, coefs_solve_sparse) # 1
 
 ## 1.3.1 FOR SPARSE CASE ####
 ### 1.3.1.1 CG ####
-system.time(coefs_CG <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_CG <- lmRidge(X=Xsp[,nonzero,drop=F],
                                 y=y, 
                                 lambdas=lambdas[nonzero],
         weights = weights,
@@ -422,7 +422,7 @@ system.time(coefs_CG <- lmridge(X=Xsp[,nonzero,drop=F],
         method = 3L,
         start = rep(0, ncol(X))[nonzero],
         control.solver = 
-          modifyList(do.call("control.solver.gen", 
+          modifyList(do.call("controlSolverGen",
                              list(solver = "eigen", 
                                   method = 3L)),
                      list(rowaug=FALSE)) )) # best with rowaug=FALSE here for sparse case?
@@ -443,7 +443,7 @@ system.time(coefs_cgsolve_sparse <- as.vector(solve_sparse_CG(A=as(crossprod(Xwa
 
 
 ### 1.3.1.2 LSCG ####
-system.time(coefs_LSCG <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_LSCG <- lmRidge(X=Xsp[,nonzero,drop=F],
                                 y=y, 
                                 lambdas=lambdas[nonzero],
                                 weights = weights,
@@ -456,7 +456,7 @@ system.time(coefs_LSCG <- lmridge(X=Xsp[,nonzero,drop=F],
                                 method = 4L,
                                 start = rep(0, ncol(X))[nonzero],
                                 control.solver = 
-                                  modifyList(do.call("control.solver.gen", 
+                                  modifyList(do.call("controlSolverGen",
                                                      list(solver = "eigen", 
                                                           method = 4L)),
                                              list(rowaug=TRUE)) )) # fastest with rowaug=TRUE - TODO set rowaug always to TRUE with this solver
@@ -468,7 +468,7 @@ cor(coefs_LSCG, coefs_solve_sparse) # 0.9965962
 
 
 ### 1.3.1.3 Cholesky ####
-system.time(coefs_chol <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_chol <- lmRidge(X=Xsp[,nonzero,drop=F],
                                   y=y, 
                                   lambdas=lambdas[nonzero],
                                   weights = weights,
@@ -481,7 +481,7 @@ system.time(coefs_chol <- lmridge(X=Xsp[,nonzero,drop=F],
                                   method = 1L,
                                   start = rep(0, ncol(X))[nonzero],
                                   control.solver = 
-                                    modifyList(do.call("control.solver.gen", 
+                                    modifyList(do.call("controlSolverGen",
                                                        list(solver = "eigen", 
                                                             method = 1L)),
                                                list(rowaug=TRUE)) )) # fastest with rowaug=TRUE here
@@ -496,7 +496,7 @@ system.time(coefs_cholsolve_sparse <- as.vector(solve_sparse_chol(as(crossprod(X
 
 
 ### 1.3.1.4 QR ####
-system.time(coefs_qr <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_qr <- lmRidge(X=Xsp[,nonzero,drop=F],
                                   y=y, 
                                   lambdas=lambdas[nonzero],
                                   weights = weights,
@@ -509,7 +509,7 @@ system.time(coefs_qr <- lmridge(X=Xsp[,nonzero,drop=F],
                                   method = 5L,
                                   start = rep(0, ncol(X))[nonzero],
                                   control.solver = 
-                                    modifyList(do.call("control.solver.gen", 
+                                    modifyList(do.call("controlSolverGen",
                                                        list(solver = "eigen", 
                                                             method = 5L)),
                                                list(rowaug=FALSE)) )) # fastest with rowaug=FALSE for sparse case
@@ -520,7 +520,7 @@ cor(coefs_qr, coefs_solve_sparse) # 0.9965996
 
 
 ### 1.3.1.5 osqp ####
-system.time(coefs_osqp <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_osqp <- lmRidge(X=Xsp[,nonzero,drop=F],
                                 y=y, 
                                 lambdas=lambdas[nonzero],
                                 weights = weights,
@@ -532,7 +532,7 @@ system.time(coefs_osqp <- lmridge(X=Xsp[,nonzero,drop=F],
                                 solver = "osqp",
                                 start = rep(0, ncol(X))[nonzero],
                                 control.solver = 
-                                  modifyList(do.call("control.solver.gen", 
+                                  modifyList(do.call("controlSolverGen",
                                                      list(solver = "osqp")),
                                              list(rowaug=TRUE,
                                                   eps_abs=1E-8,
@@ -542,7 +542,7 @@ cor(coefs_osqp, coefs_solve_sparse) # 0.9844926
 
 
 ### 1.3.1.6 glmnet / bigglm ####
-system.time(coefs_bigglm <- lmridge(X=Xsp[,nonzero,drop=F], 
+system.time(coefs_bigglm <- lmRidge(X=Xsp[,nonzero,drop=F],
                                 y=y, 
                                 lambdas=lambdas[nonzero],
                                 weights = weights,
@@ -554,7 +554,7 @@ system.time(coefs_bigglm <- lmridge(X=Xsp[,nonzero,drop=F],
                                 solver = "glmnet",
                                 start = rep(0, ncol(X))[nonzero],
                                 control.solver = 
-                                  modifyList(do.call("control.solver.gen", 
+                                  modifyList(do.call("controlSolverGen",
                                                      list(solver = "glmnet")),
                                              list(thresh=1E-7)) )) # quite a bit faster with lower thresh
 # 0.01s for n=p=10000
@@ -578,7 +578,7 @@ cor(coefs, coefs_solve_sparse) # 0.9844928
 
 ### 1.3.1.7 nnls ####
 # SUPER SLOOOOW....
-system.time(coefs_nnls <- lmridge(X=Xsp[,nonzero,drop=F], y,
+system.time(coefs_nnls <- lmRidge(X=Xsp[,nonzero,drop=F], y,
                                   lambdas[nonzero],
                                   weights,
                                   lower=rep(0,sum(nonzero)),
@@ -731,5 +731,5 @@ L0glm1 <- L0glm(formula = "y ~ X + .",
                 nonnegative = TRUE, 
                 normalize = FALSE)
 
-# plot_L0glm_benchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
+# plotL0glmBenchmark(x = sim$x, y = y, fit = L0glm1, a.true = sim$a,
 #                      main="Ground truth vs L0glm estimates")

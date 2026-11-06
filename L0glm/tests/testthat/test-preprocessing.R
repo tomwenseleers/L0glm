@@ -30,7 +30,7 @@ test_that("a constant training predictor cannot create enormous held-out estimat
   X <- cbind(rep(0.123456789, 60), rnorm(60), rnorm(60))
   y <- 1 + 2 * X[, 2] + rnorm(60)
   for (sparse in c(FALSE, TRUE)) {
-    fit <- L0glm.fit(Matrix::Matrix(X, sparse = sparse), y, family = gaussian(),
+    fit <- l0glmFit(Matrix::Matrix(X, sparse = sparse), y, family = gaussian(),
       intercept = TRUE, parallelize = FALSE, lambda = "gic")
     expect_equal(as.numeric(fit$coefficients)[2], 0)
     expect_equal(fit$preprocessing$scale[2], 1)
@@ -48,7 +48,7 @@ test_that("nearly constant free-intercept columns have a stable working origin",
   fits <- list()
   for (sparse in c(FALSE, TRUE)) {
     Z <- Matrix::Matrix(X, sparse = sparse)
-    expect_warning(fit <- L0glm.fit(Z, y, family = gaussian(), intercept = TRUE,
+    expect_warning(fit <- l0glmFit(Z, y, family = gaussian(), intercept = TRUE,
       lambda = "gic", parallelize = FALSE), NA)
     expect_gt(abs(as.numeric(fit$coefficients)[2]), 1e8)
     expect_lt(mean((y - as.numeric(fit$X %*% fit$coefficients))^2), 0.1)
@@ -91,9 +91,9 @@ test_that("free-intercept automatic Gaussian fits are invariant to predictor uni
   args <- list(y = y, family = gaussian(), intercept = TRUE, maxit = 100,
                parallelize = FALSE, relaxed = FALSE, lambda = "gic")
   for (sparse in c(FALSE, TRUE)) {
-    original <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = sparse)), args))
+    original <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = sparse)), args))
     Z <- sweep(sweep(X, 2, origin, "-"), 2, units, "/")
-    transformed <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(Z, sparse = sparse)), args))
+    transformed <- do.call(l0glmFit, c(list(X = Matrix::Matrix(Z, sparse = sparse)), args))
     recovered <- as.numeric(transformed$coefficients)
     recovered[-1] <- recovered[-1] / units
     recovered[1] <- recovered[1] - sum(origin * recovered[-1])
@@ -103,7 +103,7 @@ test_that("free-intercept automatic Gaussian fits are invariant to predictor uni
                  as.numeric(original$X %*% original$coefficients), tolerance = 1e-7)
     expect_identical(inherits(original$X, "sparseMatrix"), sparse)
     expect_s4_class(original$coefficients, "dgCMatrix")
-    shifted <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = sparse)),
+    shifted <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = sparse)),
                                    modifyList(args, list(y = y + 100))))
     expected <- as.numeric(original$coefficients); expected[1] <- expected[1] + 100
     expect_equal(as.numeric(shifted$coefficients), expected, tolerance = 1e-7)
@@ -115,18 +115,18 @@ test_that("centering preserves nonnegative slopes with a free intercept only", {
   X <- cbind(Intercept = 1, x = x)
   centered <- cbind(Intercept = 1, x = x - mean(x))
   for (solver in c("eigen", "osqp", "bigGlm")) {
-    control <- control.solver.gen(solver, abstol = 1e-16, reltol = 1e-11)
-    a <- lmridge(X, y, lambdas = c(0, 1), lower = c(-Inf, 0), solver = solver,
+    control <- controlSolverGen(solver, abstol = 1e-16, reltol = 1e-11)
+    a <- lmRidge(X, y, lambdas = c(0, 1), lower = c(-Inf, 0), solver = solver,
                  control.solver = control)
-    b <- lmridge(centered, y, lambdas = c(0, 1), lower = c(-Inf, 0), solver = solver,
+    b <- lmRidge(centered, y, lambdas = c(0, 1), lower = c(-Inf, 0), solver = solver,
                  control.solver = control)
     b[1] <- b[1] - mean(x) * b[2]
     expect_equal(b, a, tolerance = 1e-6)
   }
   # Imposing the same nonnegative intercept bound after centering changes the
   # feasible set: this back-transformed fit has a forbidden negative intercept.
-  a <- lmridge(X, y, lambdas = 0, lower = c(0, 0), solver = "osqp")
-  b <- lmridge(centered, y, lambdas = 0, lower = c(0, 0), solver = "osqp")
+  a <- lmRidge(X, y, lambdas = 0, lower = c(0, 0), solver = "osqp")
+  b <- lmRidge(centered, y, lambdas = 0, lower = c(0, 0), solver = "osqp")
   b[1] <- b[1] - mean(x) * b[2]
   expect_gte(a[1], -1e-7)
   expect_lt(b[1], -1)
@@ -139,8 +139,8 @@ test_that("nonnegative binomial slopes permit centered initialization", {
   y <- rbinom(200, 1, plogis(-1 + 1.5 * X[, 1]))
   args <- list(y = y, family = binomial(), nonnegative = TRUE, intercept = TRUE,
                lambda = 2, parallelize = FALSE, maxit = 100, relaxed = FALSE)
-  a <- do.call(L0glm.fit, c(list(X = X), args))
-  b <- do.call(L0glm.fit, c(list(X = sweep(X, 2, c(2, -1, 3, -2), "-")), args))
+  a <- do.call(l0glmFit, c(list(X = X), args))
+  b <- do.call(l0glmFit, c(list(X = sweep(X, 2, c(2, -1, 3, -2), "-")), args))
   recovered <- as.numeric(b$coefficients)
   recovered[1] <- recovered[1] - sum(c(2, -1, 3, -2) * recovered[-1])
   expect_true(a$preprocessing$centered)
@@ -154,8 +154,8 @@ test_that("free intercepts are reprofiled after clipping or thresholding slopes"
   y <- rbinom(120, 1, plogis(-1 + 3 * X[, 1] - 3 * X[, 2]))
   args <- list(y = y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
     start = 1, lambda = 2, maxit = 1L, parallelize = FALSE, relaxed = FALSE)
-  dense <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = FALSE)), args))
-  sparse <- do.call(L0glm.fit, c(list(X = Matrix::Matrix(X, sparse = TRUE)), args))
+  dense <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = FALSE)), args))
+  sparse <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = TRUE)), args))
   expect_equal(as.numeric(dense$coefficients), as.numeric(sparse$coefficients), tolerance = 1e-7)
   expect_true(any(dense$coefficients[-1, ] == 0))
   expect_true(all(dense$coefficients[-1, ] >= 0))
@@ -171,8 +171,8 @@ test_that("canonical Poisson initialization agrees between native and R paths", 
       family = poisson(identity),
       normalize = mode, relaxed = TRUE, grouped = TRUE, group.maxit = 2,
       parallelize = FALSE, maxit = 30, lambda = 2)
-    a <- do.call(L0nnpois, args)
-    b <- do.call(L0glm.fit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
+    a <- do.call(l0nnPois, args)
+    b <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
     expect_equal(a$coefficients, b$coefficients, tolerance = 1e-7)
     expect_equal(a$preprocessing, b$preprocessing)
     expect_false(a$preprocessing$centered)

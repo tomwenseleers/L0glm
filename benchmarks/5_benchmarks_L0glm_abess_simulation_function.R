@@ -50,7 +50,7 @@ system.time(abess_fit_mc <- abess(
   fit.intercept=FALSE,
   tune.path="sequence",
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
+  ic.scale = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 20s with support.size=1:(n-1), 0.31s with support.size=1:round(n*0.2) 
@@ -94,7 +94,7 @@ table(rowMeans(coef_real_mc)!=0,
 
 ## 1.2 Multichannel Gaussian L0glm fit ####
 
-# system.time(tune.chol.mgaus <- L0glm.tune(X=data.mc.gaus$x, y=data.mc.gaus$y, 
+# system.time(tune.chol.mgaus <- l0glmTune(X=data.mc.gaus$x, y=data.mc.gaus$y,
 #                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_mc, 
 #                                        grouped = TRUE,
@@ -110,7 +110,7 @@ table(rowMeans(coef_real_mc)!=0,
 # # In addition: There were 50 or more warnings (use warnings() to see the first 50)
 
 # just using a preset lambda, preset to optimise the given IC
-system.time(L0glm.chol.mgaus <- L0glm.fit(data.mc.gaus$x, data.mc.gaus$y, 
+system.time(L0glm.chol.mgaus <- l0glmFit(data.mc.gaus$x, data.mc.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = crit,
                                          start = NULL, # TODO try different possible initialisations
@@ -201,7 +201,7 @@ system.time(abess_fit_sc <- abess(
   tune.path = "sequence",
   # tune.type = "cv", num.threads = 5 # slower this tuning based on IC
   tune.type = "bic", # trick to support any IC that L0glm supports
-  ic.scale = preset.lambda(IC = crit, # options aic, bic, gic, ebic, mbic
+  ic.scale = presetLambda(IC = crit, # options aic, bic, gic, ebic, mbic
                            p = p, 
                            n = n)/log(n) # trick to support any IC that L0glm supports
 )) # 21s with support.size=1:(n-1), 0.2s with support.size=1:round(n*0.2)
@@ -231,7 +231,7 @@ table(coef_abess_sc!=0,
 
 ## 2.2 Single channel L0glm fit ####
 
-# system.time(tune.chol.gaus <- L0glm.tune(X=data.sc.gaus$x, y=data.sc.gaus$y, 
+# system.time(tune.chol.gaus <- l0glmTune(X=data.sc.gaus$x, y=data.sc.gaus$y,
 #                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_sc, 
 #                                        grouped = FALSE,
@@ -247,7 +247,7 @@ table(coef_abess_sc!=0,
 # # In addition: There were 50 or more warnings (use warnings() to see the first 50)
 
 # just using a preset lambda, preset to optimise the given IC
-system.time(L0glm.chol.gaus <- L0glm.fit(data.sc.gaus$x, data.sc.gaus$y, 
+system.time(L0glm.chol.gaus <- l0glmFit(data.sc.gaus$x, data.sc.gaus$y,
                                           family = gaussian(identity), 
                                           lambda = crit,
                                           start = NULL, # rep(1, p), # NULL, # TODO try different possible initialisations

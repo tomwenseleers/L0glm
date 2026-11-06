@@ -5,10 +5,10 @@
 #' @md
 #' @description
 #' Extract the fitted log likelihood, parameter-count information criteria,
-#' coefficient matrix or criterion sample size from [L0glm.fit()] and
-#' [L0nnpois()] models, including the special families.
+#' coefficient matrix or criterion sample size from [l0glmFit()] and
+#' [l0nnPois()] models, including the special families.
 #'
-#' @param object A model returned by [L0glm.fit()] or [L0nnpois()].
+#' @param object A model returned by [l0glmFit()] or [l0nnPois()].
 #' @param ... Further arguments. [stats::AIC()] and [stats::BIC()] also accept
 #'   several fitted models for comparison.
 #' @param mu_floor Nonnegative scoring-only floor for positive-family means.
@@ -71,12 +71,12 @@
 #'   \code{df} and \code{nobs} attributes. Each criterion returns a numeric
 #'   score; \code{coef()} returns a sparse matrix; \code{nobs()} returns the
 #'   criterion sample size.
-#' @seealso [L0glm.metrics()], \link{model_summary}, \link{information_criteria}, [stats::AIC()]
+#' @seealso [l0glmMetrics()], \link{model_summary}, \link{information_criteria}, [stats::AIC()]
 #' @examples
 #' set.seed(7)
 #' X <- matrix(rnorm(240), 60, 4)
 #' y <- 2 * X[, 1] + rnorm(60)
-#' fit <- L0glm.fit(X, y, lambda = "gic", parallelize = FALSE)
+#' fit <- l0glmFit(X, y, lambda = "gic", parallelize = FALSE)
 #' logLik(fit)
 #' c(AIC = AIC(fit), BIC = BIC(fit), GIC = GIC(fit),
 #'   EBIC = EBIC(fit), MBIC = MBIC(fit))
@@ -86,7 +86,7 @@ NULL
 #' @rdname model_criteria
 #' @export
 logLik.L0glm_fit <- function(object, ..., mu_floor = 0) {
-  scores <- L0glm.metrics(object, mu_floor = mu_floor)
+  scores <- l0glmMetrics(object, mu_floor = mu_floor)
   structure(scores$loglik, df = scores$df,
     nobs = nobs.L0glm_fit(object), quasi = identical(object$family$family, "quasipoisson"), class = "logLik")
 }

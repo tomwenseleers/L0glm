@@ -10,7 +10,7 @@ library(export)
 # simulated dataset: blurred superimposed spike train (spike train convolution with given point spread function)
 # with Poisson noise on it
 set.seed(1)
-sim <- simulate_spike_train(n = 100, # nr of observations 
+sim <- simulateSpikeTrain(n = 100, # nr of observations
                             p = p, # nr of variables
                             k = 10, # true nr of nonzero coefficients
                             family = "poisson", 
@@ -23,9 +23,9 @@ y_true <- sim$y_true # true underlying signal without Poisson noise
 weights_true <- 1/y_true # true 1/variance weights for identity link Poisson case
 
 # coefficients estimated by L0 glm (approximating GLM that optimises BIC, i.e. best subset)
-coefs <- L0glm.fit(X, y, 
+coefs <- l0glmFit(X, y,
                        family = poisson(identity), 
-                       lambda = preset.lambda(IC = crit, # use lambda that optimises given IC, options aic, bic, gic, ebic, mbic
+                       lambda = presetLambda(IC = crit, # use lambda that optimises given IC, options aic, bic, gic, ebic, mbic
                                               y = y,
                                               X = X,
                                               family = poisson(identity)),

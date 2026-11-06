@@ -29,9 +29,9 @@ test_that("public SIS/ISIS threading preserves results and does not alter BLAS s
   skip_if_not_installed("mgcv");skip_if_not_installed("survival")
   set.seed(2712);X <- matrix(rnorm(100*160),100,160);y <- X[,1]*2+rnorm(100)
   blas <- RhpcBLASctl::blas_get_num_procs();omp <- RhpcBLASctl::omp_get_max_threads()
-  first <- sis_glm(X,y,nthreads=1L)
+  first <- sisGLM(X,y,nthreads=1L)
   for (threads in c(2L,4L,8L)) {
-    fit <- sis_glm(X,y,nthreads=threads)
+    fit <- sisGLM(X,y,nthreads=threads)
     expect_identical(fit[names(fit)!="nthreads"],first[names(first)!="nthreads"])
     expect_equal(RhpcBLASctl::blas_get_num_procs(),blas)
     expect_equal(RhpcBLASctl::omp_get_max_threads(),omp)
@@ -43,20 +43,20 @@ test_that("public SIS/ISIS threading preserves results and does not alter BLAS s
         switch(f$family,gaussian=y,poisson=rpois(100,2),binomial=rbinom(100,1,.5),rnbinom(100,mu=2,size=2))
     A <- if (f$family=="poisson") abs(X) else X
     included_intercept <- !identical(kind,"cox")
-    reference <- L0glm.fit(A,yy,family=f,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=1,
+    reference <- l0glmFit(A,yy,family=f,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=1,
       intercept=included_intercept,nonnegative=f$family=="poisson")
     for (threads in c(2L,4L,8L)) {
-      actual <- L0glm.fit(A,yy,family=f,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=threads,
+      actual <- l0glmFit(A,yy,family=f,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=threads,
         intercept=included_intercept,nonnegative=f$family=="poisson")
       expect_identical(coef(actual),coef(reference));expect_identical(actual$screening$history,reference$screening$history)
       expect_identical(fitted(actual),fitted(reference))
       expect_gte(actual$screening$nthreads,1L);expect_lte(actual$screening$nthreads,threads)
     }
   }
-  standalone <- sis_glm(X,y,nsis=10,iterative=TRUE,niter=2,nthreads=4)
-  main <- L0glm.fit(X,y,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=4)
+  standalone <- sisGLM(X,y,nsis=10,iterative=TRUE,niter=2,nthreads=4)
+  main <- l0glmFit(X,y,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=4)
   expect_identical(coef(standalone$fit),coef(main));expect_identical(standalone$history,main$screening$history)
-  cv <- L0glm.tune(X,y,family=gaussian(),tune="cv",nlambda=3,nfolds=3,screen="SIS",nsis=10,
+  cv <- l0glmTune(X,y,family=gaussian(),tune="cv",nlambda=3,nfolds=3,screen="SIS",nsis=10,
     screen.nthreads=4,plot=FALSE,printbest=FALSE)
   expect_true(is.finite(cv$lambda_best));expect_gte(cv$fit_best$screening$nthreads,1L)
 })
@@ -64,8 +64,8 @@ test_that("public SIS/ISIS threading preserves results and does not alter BLAS s
 test_that("threaded screening reports errors on the main thread and validates counts", {
   set.seed(2713);X <- matrix(rnorm(40*20),40,20);y <- rnorm(40)
   for (bad in list(0,-1,1.2,NA,Inf,"4",c(1,2),TRUE,1e15)) {
-    expect_error(sis_glm(X,y,nthreads=bad),"nthreads must be a positive integer")
-    expect_error(L0glm.fit(X,y,screen="SIS",screen.nthreads=bad),"nthreads must be a positive integer")
+    expect_error(sisGLM(X,y,nthreads=bad),"nthreads must be a positive integer")
+    expect_error(l0glmFit(X,y,screen="SIS",screen.nthreads=bad),"nthreads must be a positive integer")
   }
   context <- L0glm_sis_context(y,gaussian(),40,NULL,NULL,NULL)
   for (value in c(NA_real_,NaN,Inf,-Inf)) {
@@ -86,8 +86,8 @@ test_that("screening defaults to physical cores with a serial fallback", {
   expect_identical(L0glm_sis_threads(2L),2L)
   testthat::local_mocked_bindings(L0glm_detect_physical_cores=function() NA_integer_)
   expect_identical(L0glm_sis_threads(NULL),1L)
-  expect_null(formals(L0glm.fit)$screen.nthreads)
-  expect_null(formals(sis_glm)$nthreads)
+  expect_null(formals(l0glmFit)$screen.nthreads)
+  expect_null(formals(sisGLM)$nthreads)
 })
 
 test_that("automatic thread counts preserve default and explicitly screened fits", {
@@ -99,12 +99,12 @@ test_that("automatic thread counts preserve default and explicitly screened fits
       if (identical(kind,"cox")) survival::Surv(rexp(80),rbinom(80,1,.7)) else
         if (identical(kind,"nb")) rnbinom(80,mu=2,size=2) else
           switch(family$family,gaussian=y,poisson=rpois(80,2),binomial=rbinom(80,1,.5))
-    serial <- sis_glm(X,response,family=family,nthreads=1L)
-    automatic <- sis_glm(X,response,family=family)
+    serial <- sisGLM(X,response,family=family,nthreads=1L)
+    automatic <- sisGLM(X,response,family=family)
     expect_identical(automatic[names(automatic)!="nthreads"],serial[names(serial)!="nthreads"])
   }
-  serial <- L0glm.fit(X,y,screen="ISIS",nsis=5,screen.maxit=2,screen.nthreads=1L)
-  automatic <- L0glm.fit(X,y,screen="ISIS",nsis=5,screen.maxit=2)
+  serial <- l0glmFit(X,y,screen="ISIS",nsis=5,screen.maxit=2,screen.nthreads=1L)
+  automatic <- l0glmFit(X,y,screen="ISIS",nsis=5,screen.maxit=2)
   expect_identical(coef(automatic),coef(serial))
   expect_identical(automatic$screening$history,serial$screening$history)
 })

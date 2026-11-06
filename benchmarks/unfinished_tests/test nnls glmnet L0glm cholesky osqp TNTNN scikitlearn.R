@@ -122,7 +122,7 @@ print(paste0("Nonzero coefs FAST-NNLS: ", nonzero_fastnnls))
 
 
 # Solve using osqp ####
-t <- system.time( fit_osqp <- L0glm.fit(
+t <- system.time( fit_osqp <- l0glmFit(
   X = X_train_sp, y = y_train,
   start = rep(1, ncol(X_train)),
   family = gaussian(link="identity"), 
@@ -142,7 +142,7 @@ print(paste0("Nonzero coefs osqp: ", nonzero_osqp))
 
 
 # Solve using L0glm via LSCG ####
-t <- system.time( fit_L0glm_LSCG <- L0glm.fit(
+t <- system.time( fit_L0glm_LSCG <- l0glmFit(
   X = Matrix(X_train, sparse=T), # note: due to recent change in Matrix package error when using dense X Error in as(Matrix(rbind(Xw, Diagonal(x = sqrt(lambdas))), sparse = T),  : no method or default for coercing “dgRMatrix” to “dgCMatrix” 
   y = y_train,
   start = rep(1, ncol(X_train)),
@@ -166,7 +166,7 @@ print(paste0("Nonzero coefs L0glm LSCG: ", nonzero_L0glm_LSCG))
 
 
 # Solve using L0glm via Cholesky LLT ####
-# t <- system.time( fit_L0glm_chol <- L0glm.fit(
+# t <- system.time( fit_L0glm_chol <- l0glmFit(
 #   X = Matrix(X_train, sparse=T), y = y_train,
 #   start = rep(1, ncol(X_train)),
 #   family = gaussian(link="identity"),
@@ -188,7 +188,7 @@ print(paste0("Nonzero coefs L0glm LSCG: ", nonzero_L0glm_LSCG))
 
 
 # Solve using L0glm via glmnet ####
-t <- system.time( fit_L0glm_glmnet <- L0glm.fit(
+t <- system.time( fit_L0glm_glmnet <- l0glmFit(
   X = X_train, y = y_train,
   start = rep(1, ncol(X_train)), # slightly faster with coefs_cd[-1]
   family = gaussian(link="identity"), 
@@ -211,7 +211,7 @@ print(paste0("Nonzero coefs L0glm glmnet: ", nonzero_L0glm_glmnet))
 
 
 # Solve using L0glm via osqp ####
-t <- system.time( fit_L0glm_osqp <- L0glm.fit(
+t <- system.time( fit_L0glm_osqp <- l0glmFit(
   X = X_train_sp, y = y_train,
   start = rep(1, ncol(X_train)),
   family = gaussian(link="identity"), 
@@ -312,11 +312,11 @@ image(matrix(reconstruction_nnls^3,
       axes=FALSE)
 
 # Use L0glm to solve for x
-system.time(reconstruction_L0glm_osqp <- L0glm.fit(
+system.time(reconstruction_L0glm_osqp <- l0glmFit(
   X = A, y = y,
   start = rep(1, ncol(A)),
   family = gaussian(link="identity"), 
-  lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
+  lambda = presetLambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,
   solver = "osqp", # 0.22s with LSCG, 3.41s with osqp, 12s with glmnet
   method = 4L)$coefficients)
@@ -326,11 +326,11 @@ image(matrix(reconstruction_L0glm_osqp^3,
       col=grey.colors(256), useRaster=T,
       axes=FALSE)
 
-system.time(reconstruction_L0glm_LSCG <- L0glm.fit(
+system.time(reconstruction_L0glm_LSCG <- l0glmFit(
   X = A, y = y,
   start = rep(1, ncol(A)),
   family = gaussian(link="identity"), 
-  lambda = preset.lambda(IC="gic", p=ncol(A), n=nrow(A)),
+  lambda = presetLambda(IC="gic", p=ncol(A), n=nrow(A)),
   nonnegative = TRUE,
   solver = "eigen", # 0.22s with LSCG, 3.41s with osqp, 12s with glmnet
   method = 4L)$coefficients)  # = LSCG

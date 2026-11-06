@@ -6,7 +6,7 @@ Additional likelihood families using existing ridge kernels and family-specific 
 See the separate mathematical help pages for each family.
 }
 \details{
-Use \code{L0glm.fit(X,y,family=mgcv::nb())} for estimated-shape NB,
+Use \code{l0glmFit(X,y,family=mgcv::nb())} for estimated-shape NB,
 \code{family=mgcv::nb(theta=2)} for fixed shape, or
 \code{family=mgcv::nb(theta=-2)} to estimate from a starting shape of 2.
 Each NB channel has its own shape parameter; scale dispersion is one.
@@ -97,7 +97,7 @@ candidate and within CV training folds before scoring; pilot fits are unrelaxed.
 The reported L0 objective is a target for a heuristic, not a global certificate.
 There is no reference category in multinomial fitting or selection.
 
-\code{L0glm.metrics} reports exact family likelihoods when mu_floor=0, the
+\code{l0glmMetrics} reports exact family likelihoods when mu_floor=0, the
 family deviance, the target L0 objective, row GIC and parameter-count ICs.
 Object metrics and \code{logLik} use exact likelihoods. External NB scoring
 defaults to a mean floor of 1e-8. Cox deviance is -2 times partial log likelihood,
@@ -123,6 +123,6 @@ IEEE TPAMI 27(6), 957--968.
 Verweij, P. J. M. and van Houwelingen, H. C. (1993).
 Cross-validation in survival analysis. Statistics in Medicine 12, 2305--2314.
 }
-\seealso{\code{\link{L0glm.fit}}, \code{\link{L0glm.tune}},
-\code{\link{L0glm.metrics}}, \code{\link{L0glm_negative_binomial}},
+\seealso{\code{\link{l0glmFit}}, \code{\link{l0glmTune}},
+\code{\link{l0glmMetrics}}, \code{\link{L0glm_negative_binomial}},
 \code{\link{L0glm_multinomial}}, \code{\link{L0glm_cox}}}

@@ -171,12 +171,12 @@ for(i in 1:simu){
   #                          # gamma = 3.7, # default 3 for mcp, 3.7 for scad
   #                          family = "binomial")
   # reg.coef = predict(fit_ncvreg, type = "coefficients", lambda = cv_ncvreg$lambda.min)
-  lambda_preset <- preset.lambda(IC = "bic", # options aic, bic, gic, ebic, mbic 
+  lambda_preset <- presetLambda(IC = "bic", # options aic, bic, gic, ebic, mbic
                                   y = (y1=="yes")*1, 
                                   X = cbind(1, X), 
                                   family = binomial(logit)) 
 # preset lambda to optimise given IC in iterative adaptive ridge L0 glm algo
-  reg.coef = L0glm.fit(X=Matrix(cbind(1, X), sparse=T), 
+  reg.coef = l0glmFit(X=Matrix(cbind(1, X), sparse=T),
                        y=(y1=="yes")*1, 
                                family = binomial(logit), 
                                lambda = lambda_preset, 
@@ -187,7 +187,7 @@ for(i in 1:simu){
                                solver = "eigen", # solver to use
                                method = 1L, # Cholesky
                                thresh = 1E-20,
-                               control.solver = modifyList(do.call("control.solver.gen", 
+                               control.solver = modifyList(do.call("controlSolverGen",
                                                         list(solver = "eigen", 
                                                              method = 1L)),
                                                 list(rowaug=TRUE)) 

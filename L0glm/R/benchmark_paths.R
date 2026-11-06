@@ -102,9 +102,9 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
     fixed <- list(X=original$X, y=original$y, weights=original$weights, offset=original$offset,
       family=original$family, dispersion=original$dispersion, intercept=original$intercept,
       nonnegative=original$nonnegative, start=NULL,
-      lambda=preset.lambda("gic", original$p, nrow(original$X)), maxit=1,
+      lambda=presetLambda("gic", original$p, nrow(original$X)), maxit=1,
       grouped=FALSE, relaxed=FALSE, thresh=0, parallelize=FALSE, screen="none")
-    pilot <- do.call(L0glm.fit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
+    pilot <- do.call(l0glmFit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
     B <- as.matrix(pilot$coefficients)
     if (data$intercept) B <- B[-1L, , drop=FALSE]
     magnitude <- if (joint) sqrt(rowMeans(B^2)) else abs(B)
@@ -119,16 +119,16 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
       intercept=data$intercept, nonnegative=data$nonnegative, grouped=grouped,
       parallelize=FALSE, screen="none"), options, keep.null=TRUE)
     if (is.null(grid) && !grepl("^quasi", data$family$family)) {
-      fit <- do.call(L0glm.tune, c(args, list(tune=if (data$tune == "cv") "gic" else data$tune, nlambda=data$nlambda,
+      fit <- do.call(l0glmTune, c(args, list(tune=if (data$tune == "cv") "gic" else data$tune, nlambda=data$nlambda,
         plot=FALSE, printbest=FALSE, mu_floor=data$mu_floor)))
       path <- list(grid=fit$lambdas, coefficients=fit$coefficients)
     } else {
       if (is.null(grid)) {
-        preset <- preset.lambda("gic", max(1, ncol(data$X)), nrow(data$X))
+        preset <- presetLambda("gic", max(1, ncol(data$X)), nrow(data$X))
         grid <- exp(seq(log(max(2, preset)*100), log(2), length.out=data$nlambda))
       }
       path <- list(grid=grid, coefficients=lapply(grid, function(value)
-        do.call(L0glm.fit, c(args, list(lambda=value)))$coefficients))
+        do.call(l0glmFit, c(args, list(lambda=value)))$coefficients))
     }
     path$parameter <- "lambda"
   } else {

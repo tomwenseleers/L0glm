@@ -41,7 +41,7 @@ seconds <- numeric()
 
 message("Full L0glm")
 seconds["Full L0glm"] <- system.time(
-  fits_high_dimensional[["Full L0glm"]] <- L0glm.fit(X, y,
+  fits_high_dimensional[["Full L0glm"]] <- l0glmFit(X, y,
     family = gaussian(), lambda = lambda_gic, intercept = FALSE,
     nonnegative = FALSE, start = NULL, normalize = "auto", relaxed = TRUE,
     solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L,
@@ -57,7 +57,7 @@ for (name in c("SIS", "ISIS")) {
   label <- paste(name, "+ L0glm")
   message(label)
   seconds[label] <- system.time(
-    fits_high_dimensional[[label]] <- L0glm.fit(X, y, family = gaussian(), screen = name,
+    fits_high_dimensional[[label]] <- l0glmFit(X, y, family = gaussian(), screen = name,
       nsis = if (name == "SIS") nsis else nsis_isis,
       screen.maxit = isis_rounds, lambda = lambda_gic, intercept = FALSE,
       nonnegative = FALSE, start = NULL, normalize = "auto", relaxed = TRUE,
@@ -74,7 +74,7 @@ for (name in c("SIS", "ISIS")) {
 # Timings include screening/fitting and, for competitors, path tuning/refitting.
 message("ABESS and relaxed LASSO")
 invisible(gc()) # Release large temporary design copies before native allocation.
-comparison <- sparseglm(X, y, family = gaussian(), beta_true = beta_true,
+comparison <- sparseGLM(X, y, family = gaussian(), beta_true = beta_true,
   method = c("abess", "relaxed_lasso"), tune = "gic", nlambda = nlambda,
   intercept = FALSE, nonnegative = FALSE,
   support.size = 0:abess_max_support,
@@ -87,10 +87,10 @@ columns <- c("method", "status", "seconds", "gic", "F1_score", "MCC",
 scores <- lapply(names(fits_high_dimensional), function(name) {
   row <- cbind(data.frame(method = name, status = "ok", seconds = seconds[[name]],
                          note = ""),
-               L0glm.metrics(fits_high_dimensional[[name]], beta_true = beta_true))
+               l0glmMetrics(fits_high_dimensional[[name]], beta_true = beta_true))
   row[columns]
 })
-competitor_scores <- L0glm.metrics(comparison)
+competitor_scores <- l0glmMetrics(comparison)
 competitor_scores$method <- c(abess = "ABESS", relaxed_lasso = "Relaxed LASSO")[
   competitor_scores$method]
 benchmarks_high_dimensional <- rbind(do.call(rbind, scores), competitor_scores[columns])
@@ -105,7 +105,7 @@ if (any(nzchar(benchmarks_high_dimensional$note)))
         row.names = FALSE)
 
 # Returned models retain the original dimensions; use coef(), predict(), GIC()
-# or L0glm.metrics(). ISIS diagnostics: screening$ISIS$history / $best_iteration.
+# or l0glmMetrics(). ISIS diagnostics: screening$ISIS$history / $best_iteration.
 fits_high_dimensional <- c(fits_high_dimensional,
   setNames(comparison$fits, c("ABESS", "Relaxed LASSO")))
 # Optional export (choose a path appropriate to the current working directory):

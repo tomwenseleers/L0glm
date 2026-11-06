@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,12 +104,12 @@ one fitting interface.</p>
 <h2 id="start-with-a-small-model">Start with a small model<a class="anchor" aria-label="anchor" href="#start-with-a-small-model"></a>
 </h2>
 <p>Pass a design matrix and a response vector to
-<code><a href="../reference/L0glm.fit.html">L0glm.fit()</a></code>. A GIC preset provides a single penalty value
+<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code>. A GIC preset provides a single penalty value
 for variable selection. A relaxed refit then estimates the retained
 effects with reduced shrinkage.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span><span class="st">"normal"</span>, n<span class="op">=</span><span class="fl">200L</span>, p<span class="op">=</span><span class="fl">80L</span>, n_nonzero<span class="op">=</span><span class="fl">6L</span>, seed<span class="op">=</span><span class="fl">42L</span><span class="op">)</span></span>
-<span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1]  9 26 33 45 47 57</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span></span>
@@ -144,8 +144,8 @@ GB; data generation is excluded from the fitting time.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span>, <span class="va">active</span><span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span><span class="op">[</span><span class="va">active</span><span class="op">]</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.fit.html">L0glm.fit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/L0glm.metrics.html">L0glm.metrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <!-- BEGIN million-metrics -->
 <table class="table">
@@ -206,7 +206,7 @@ available when desired, and often selects a value close to the preset.
 In this example, the best value over the displayed ten-value GIC grid is
 exactly the preset.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/L0glm.tune.html">L0glm.tune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
+<code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda_best<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_best</span>, lambda_preset<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_preset</span><span class="op">)</span></span></code></pre></div>
 <p><img src="../million-path.png" alt="Coefficient paths and GIC for the million-predictor example; the best lambda equals the preset." width="100%"></p>
@@ -245,23 +245,23 @@ predictor coordinates.</p>
 <tbody>
 <tr class="odd">
 <td>One fast preset fit</td>
-<td><code>L0glm.fit(X, y, family=...)</code></td>
+<td><code>l0glmFit(X, y, family=...)</code></td>
 </tr>
 <tr class="even">
 <td>Tune an information criterion</td>
-<td><code>L0glm.tune(..., tune="gic")</code></td>
+<td><code>l0glmTune(..., tune="gic")</code></td>
 </tr>
 <tr class="odd">
 <td>Cross-validate prediction deviance</td>
-<td><code>L0glm.tune(..., tune="cv", nfolds=5)</code></td>
+<td><code>l0glmTune(..., tune="cv", nfolds=5)</code></td>
 </tr>
 <tr class="even">
 <td>Compare sparse regression methods</td>
-<td><code><a href="../reference/sparseglm.html">sparseglm()</a></code></td>
+<td><code><a href="../reference/sparseGLM.html">sparseGLM()</a></code></td>
 </tr>
 <tr class="odd">
 <td>Score predictions and support recovery</td>
-<td><code><a href="../reference/L0glm.metrics.html">L0glm.metrics()</a></code></td>
+<td><code><a href="../reference/l0glmMetrics.html">l0glmMetrics()</a></code></td>
 </tr>
 <tr class="even">
 <td>Control high dimensional prescreening</td>
@@ -276,7 +276,7 @@ predictor coordinates.</p>
 <code>p_eligible &gt; 10*n</code>. Here <code>n</code> is the number of
 training rows, and <code>p_eligible</code> excludes mandatory terms and
 predictors excluded by zero starts in every response channel.
-<code><a href="../reference/L0glm.tune.html">L0glm.tune()</a></code> applies this rule independently within each
+<code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> applies this rule independently within each
 full-data or CV training fit, without a separate minimum sample size or
 predictor count.</p>
 <p>Continue with <a href="high-dimensional.html">SIS / ISIS

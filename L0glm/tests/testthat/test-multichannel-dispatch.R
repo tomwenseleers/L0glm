@@ -19,8 +19,8 @@ test_that("uneven parallel chunks preserve channel inputs through selection and 
       always.include = 5L, dispersion = c(0.3, -2, -0.5), lambda = "gic",
       grouped = grouped, relaxed = TRUE, group.maxit = 3L, nthreads = 1L,
       openmp = FALSE, parallelize = FALSE)
-    serial <- do.call(L0glm.fit, args)
-    parallel <- do.call(L0glm.fit, modifyList(args, list(parallelize = TRUE, ncores = 2L)))
+    serial <- do.call(l0glmFit, args)
+    parallel <- do.call(l0glmFit, modifyList(args, list(parallelize = TRUE, ncores = 2L)))
     for (name in c("coefficients", "lambdas", "weights", "z", "dispersion"))
       expect_identical(parallel[[name]], serial[[name]])
     expect_equal(dim(coef(serial)), c(p + 1L, m))
@@ -42,8 +42,8 @@ test_that("empty multichannel supports retain their original sparse dimensions",
   args <- list(X = X, y = y, family = gaussian(), start = 0,
     grouped = TRUE, relaxed = TRUE, parallelize = FALSE, nthreads = 1L,
     openmp = FALSE)
-  serial <- do.call(L0glm.fit, args)
-  parallel <- do.call(L0glm.fit, modifyList(args, list(parallelize = TRUE, ncores = 2L)))
+  serial <- do.call(l0glmFit, args)
+  parallel <- do.call(l0glmFit, modifyList(args, list(parallelize = TRUE, ncores = 2L)))
   expect_s4_class(coef(serial), "sparseMatrix")
   expect_equal(dim(coef(serial)), c(3L, 3L))
   expect_true(all(coef(serial) == 0))

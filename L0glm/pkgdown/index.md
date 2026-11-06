@@ -40,7 +40,7 @@ where it matters, producing sparse models with excellent support recovery.
 <div><span class="l0-feature-number">01 / MODELS</span><h3>One fitting interface</h3><p>Gaussian, Poisson, binomial, Gamma and inverse Gaussian GLMs; negative binomial with estimated shape; joint multinomial regression; and Cox proportional hazards.</p></div>
 <div><span class="l0-feature-number">02 / SCALE</span><h3>Built for sparse signals</h3><p>Dense or sparse matrices, tall or wide systems, grouped multichannel selection, and compiled SIS/ISIS screening for ultrahigh dimensions.</p></div>
 <div><span class="l0-feature-number">03 / CONTROL</span><h3>Fit the model you need</h3><p>Observation weights, offsets, nonnegative coefficients, unpenalized terms, normalization and original-scale estimates. Native OpenMP accelerates nonnegative identity-link Poisson fits.</p></div>
-<div><span class="l0-feature-number">04 / SELECTION</span><h3>Choose your workflow</h3><p>Start with a fast GIC preset, tune an information criterion, or use cross-validation with minimum-deviance and one-standard-error models. Compare methods with <code>sparseglm()</code>.</p></div>
+<div><span class="l0-feature-number">04 / SELECTION</span><h3>Choose your workflow</h3><p>Start with a fast GIC preset, tune an information criterion, or use cross-validation with minimum-deviance and one-standard-error models. Compare methods with <code>sparseGLM()</code>.</p></div>
 </div>
 
 ## Fit a sparse model
@@ -61,8 +61,8 @@ beta[active] <- runif(60L, -.8, .8)
 set.seed(1)
 y <- as.numeric(X[, active] %*% beta[active]) + rnorm(n)
 
-system.time(fit <- L0glm.fit(X, y, family=gaussian()))
-L0glm.metrics(fit, beta_true=beta)[
+system.time(fit <- l0glmFit(X, y, family=gaussian()))
+l0glmMetrics(fit, beta_true=beta)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
@@ -97,14 +97,14 @@ L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 sec
 <!-- BEGIN multi-spectral -->
 Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
 <!-- END multi-spectral -->
-A direct `L0glm.fit()` call uses `lambda="gic"` and four cores.
+A direct `l0glmFit()` call uses `lambda="gic"` and four cores.
 The competing methods select lambda from a ten-value grid using GIC or
 five-fold cross-validation.
 
 ```r
 multi <- simul(method=4L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
-fit_multi <- L0glm.fit(multi$X, multi$y, family=poisson("identity"),
+fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
   lambda="gic", nonnegative=TRUE, ncores=4L)
 ```
 
@@ -171,7 +171,7 @@ appreciate a citation to the package:
 
 Wenseleers T, Lanzas L, Vanderaa C (2026).
 *L0glm: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models*.
-R package version 0.2.0,
+R package version 0.2.0.9000,
 <https://tomwenseleers.github.io/L0glm/>.
 
 The [Authors and Citation page](authors.html#citation) also provides the

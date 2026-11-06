@@ -12,7 +12,7 @@ s <- 0.1 # sparsity (% of timepoints where there is a peak / variables that are 
 p <- 200 # nr of variables
 # simulate multichannel blurred spike train with Gaussian noise
 sd_noise <- 10
-sim <- simulate_spike_train(n=p, p=p, k=round(s*p), 
+sim <- simulateSpikeTrain(n=p, p=p, k=round(s*p),
                             mean_beta = 10000,
                             sd_logbeta = 1,
                             family="gaussian", # alt option "poisson" for nonnegative identity link poisson
@@ -37,30 +37,30 @@ family <- gaussian(identity)
 # (NOTE: with high dispersion/variance these come out way too high though,  except if sd_noise=1 - check this)
 
 # if dispersion/variance is known
-lambda_preset_aic_knowndisp = preset.lambda(IC="aic", y=Y, X=X, dispersion=sd_noise^2)  
+lambda_preset_aic_knowndisp = presetLambda(IC="aic", y=Y, X=X, dispersion=sd_noise^2)
 lambda_preset_aic_knowndisp 
-lambda_preset_bic_knowndisp = preset.lambda(IC="bic", y=Y, X=X, dispersion=sd_noise^2)
+lambda_preset_bic_knowndisp = presetLambda(IC="bic", y=Y, X=X, dispersion=sd_noise^2)
 lambda_preset_bic_knowndisp
-lambda_preset_gic_knowndisp = preset.lambda(IC="gic", y=Y, X=X, dispersion=sd_noise^2)  
+lambda_preset_gic_knowndisp = presetLambda(IC="gic", y=Y, X=X, dispersion=sd_noise^2)
 lambda_preset_gic_knowndisp 
-lambda_preset_ebic_knowndisp = preset.lambda(IC="ebic", y=Y, X=X, dispersion=sd_noise^2) 
+lambda_preset_ebic_knowndisp = presetLambda(IC="ebic", y=Y, X=X, dispersion=sd_noise^2)
 lambda_preset_ebic_knowndisp
-lambda_preset_ebic_knowndisp = preset.lambda(IC="mbic", y=Y, X=X, dispersion=sd_noise^2) 
+lambda_preset_ebic_knowndisp = presetLambda(IC="mbic", y=Y, X=X, dispersion=sd_noise^2)
 lambda_preset_ebic_knowndisp
 # NOTE: if dispersion/variance is not known it can first be estimated
-lambda_preset_aic = preset.lambda(IC="aic", y=Y, X=X, 
+lambda_preset_aic = presetLambda(IC="aic", y=Y, X=X,
               family=gaussian(identity))  
 lambda_preset_aic 
-lambda_preset_bic = preset.lambda(IC="bic", y=Y, X=X, 
+lambda_preset_bic = presetLambda(IC="bic", y=Y, X=X,
               family=gaussian(identity))
 lambda_preset_bic 
-lambda_preset_gic = preset.lambda(IC="gic", y=Y, X=X, 
+lambda_preset_gic = presetLambda(IC="gic", y=Y, X=X,
               family=gaussian(identity))
 lambda_preset_gic 
-lambda_preset_ebic = preset.lambda(IC="ebic", y=Y, X=X, 
+lambda_preset_ebic = presetLambda(IC="ebic", y=Y, X=X,
               family=gaussian(identity))
 lambda_preset_ebic 
-lambda_preset_mbic = preset.lambda(IC="mbic", y=Y, X=X, 
+lambda_preset_mbic = presetLambda(IC="mbic", y=Y, X=X,
               family=gaussian(identity))  
 lambda_preset_mbic 
 
@@ -80,7 +80,7 @@ lambdas = 10^seq((round(log10(lambda_preset_aic))-3), round(log10(maxlambda))+1,
 
 library(parallel)
 library(qlcMatrix)
-system.time(warmup <- L0glm.fit(X = X, y = Y,
+system.time(warmup <- l0glmFit(X = X, y = Y,
                                family = gaussian(identity), # poisson(identity),
                                lambda = min(lambdas), #  # or 0.1 or 1
                                start = rep(1, ncol(X)),
@@ -100,7 +100,7 @@ no_warm_start = matrix(1, nrow=nrow(warm_start), ncol=ncol(warm_start))
 
 w = 0.9 # 0 = no warm starts, 1 = full warm starts
 system.time(coefficients <- lapply(lambdas, function (lambda) {
-                                new_coefs <- L0glm.fit(X = sim$X, y = sim$y, 
+                                new_coefs <- l0glmFit(X = sim$X, y = sim$y,
                                                                             family = gaussian(identity), # poisson(identity),
                                                                             start = w*warm_start+(1-w)*no_warm_start*1, # use warm starts
                                                                             lambda = lambda, # needs to be larger with larger sd_noise for family=gaussian, e.g. 0.5 with sd_noise=1 & 5 with sd_noise=5 
@@ -128,7 +128,7 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        beta_true=sim$beta_true)))) 
 
 
-system.time(metrics2 <- L0glm.tune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, tune = "aic", group.maxit = 6, plot = T, grouped = T, relaxed = T, parallellize=T))
+system.time(metrics2 <- l0glmTune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, tune = "aic", group.maxit = 6, plot = T, grouped = T, relaxed = T, parallellize=T))
 
 
 # best empirical lambda based on calculated GIC over lambda sequence:
@@ -278,7 +278,7 @@ system.time({
   set.seed(1)
   for (i in 1:B) { 
     sampled = sample(sim$x, replace=T) # sampled observations
-    beta_relaxedgroupL0_boot[[i]] = L0glm.fit(X = sim$X[sampled,,drop=F], y = sim$y[sampled,,drop=F], 
+    beta_relaxedgroupL0_boot[[i]] = l0glmFit(X = sim$X[sampled,,drop=F], y = sim$y[sampled,,drop=F],
                                   family = gaussian(identity), # poisson(identity),
                                   # start = w*warm_start+(1-w)*no_warm_start, # to use warm starts
                                   lambda = bestlambda, 

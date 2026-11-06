@@ -3,9 +3,9 @@
 # The examples use n = p = 10000, 200 m/z mass channels and npeaks = 1000 by default. Timings include
 # regularisation selection for glmnet. All paths
 # are scored with observed-data Poisson GIC. L0glm uses lambda = "gic",
-# which applies the GIC preset directly inside L0glm.fit and therefore avoids a
-# separate tuning pass. Eligible fits use the compiled L0nnpois backend through
-# L0glm.fit(openmp = TRUE). Set cfg$openmp to FALSE to compare the R backend.
+# which applies the GIC preset directly inside l0glmFit and therefore avoids a
+# separate tuning pass. Eligible fits use the compiled l0nnPois backend through
+# l0glmFit(openmp = TRUE). Set cfg$openmp to FALSE to compare the R backend.
 #
 # Local outputs are written to codex_sandbox/readme_benchmarks/ (Git-ignored).
 # Run interactively with source(), or execute sections after editing cfg below.
@@ -102,14 +102,14 @@ as_sparse_matrix <- function(x) {
 }
 
 make_kernel_design <- function(n, p) {
-  kernel <- logconNMF::convkernel("bigaussian", 51L, params = list(sigma1 = 1.25, sigma2 = 5), perc = 0)
-  X <- logconNMF::convmatrix(kernel, n = n, n_cols = p)
+  kernel <- logconNMF::convKernel("bigaussian", 51L, params = list(sigma1 = 1.25, sigma2 = 5), perc = 0)
+  X <- logconNMF::convMatrix(kernel, n = n, n_cols = p)
   dimnames(X) <- list(paste0("t", seq_len(n)), paste0("x", seq_len(p)))
   X
 }
 
 simulate_single <- function(n, p, npeaks, seed) {
-  sim <- simulate_spike_train(n = n, p = p, k = npeaks, family = "poisson",
+  sim <- simulateSpikeTrain(n = n, p = p, k = npeaks, family = "poisson",
                               multichannel = FALSE, mean_beta = 2000,
                               sparse = TRUE, seed = seed)
   sim$y <- as.vector(sim$y)
@@ -123,7 +123,7 @@ simulate_single <- function(n, p, npeaks, seed) {
 }
 
 simulate_multi <- function(n, p, npeaks, m, seed) {
-  sim <- simulate_spike_train(
+  sim <- simulateSpikeTrain(
     n = n, p = p, k = npeaks,
     family = "poisson",
     multichannel = TRUE,
@@ -496,7 +496,7 @@ single_fits <- list()
 multi_fits <- list()
 tuning_paths <- list()
 
-l0_single <- safe_time("single L0glm", L0glm.fit(
+l0_single <- safe_time("single L0glm", l0glmFit(
   single$X, single$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE, relaxed = FALSE,
@@ -528,7 +528,7 @@ if (cfg$run_glmnet && requireNamespace("glmnet", quietly = TRUE)) {
 }
 
 l0_multi <- safe_time("multichannel grouped L0glm",
-                      L0glm.fit(
+                      l0glmFit(
   multi$X, multi$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE, grouped = TRUE, relaxed = TRUE,

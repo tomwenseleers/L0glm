@@ -125,7 +125,7 @@ plot(coefs4, beta)
 
 
 # fit nonnegative L0 penalized identity link Poisson GLM, fit using an iterative adaptive ridge procedure ####
-system.time(L0glmfit <- L0glm.fit(X=X, y=Y, 
+system.time(L0glmfit <- l0glmFit(X=X, y=Y,
                       family=poisson(identity), 
                       nonnegative=TRUE, 
                       start = coefs3[-1],
@@ -140,7 +140,7 @@ table(beta[-1]!=0, coefs5!=0)
 plot(coefs5, beta[-1])
 # BEST SOLUTION, but best solution obtained if initialised with coefs1 or coefs3 (which is slow)
 
-system.time(L0glmfit <- L0glm.fit(X=X, y=Y, 
+system.time(L0glmfit <- l0glmFit(X=X, y=Y,
                                   family=poisson(identity), 
                                   nonnegative=TRUE, 
                                   start = rep(1, ncol(X)), 
@@ -158,7 +158,7 @@ plot(coefs5b, beta[-1])
 
 
 # fit nonnegative L0 penalized weighted least square GLM, fit using an iterative adaptive ridge procedure ####
-system.time(L0glmfit2 <- L0glm.fit(X=X, y=Y, weights=(1/(Y+0.1)), 
+system.time(L0glmfit2 <- l0glmFit(X=X, y=Y, weights=(1/(Y+0.1)),
                                   family=gaussian(identity), 
                                   nonnegative=TRUE, 
                                   start = coefs3[-1], # NULL, # rep(1, ncol(X)), # 

@@ -14,7 +14,7 @@ test_that("wide Gaussian relaxation agrees with native glmnet on each support", 
       family=if(m==1L)"gaussian" else "mgaussian",weights=weights,
       lambda=grid,intercept=intercept,relax=TRUE,standardize.response=FALSE,
       lower.limits=if(nonnegative)0 else -Inf))$relaxed
-    result <- sparseglm(A,y,weights=weights,offset=offset,method="relaxed_lasso",
+    result <- sparseGLM(A,y,weights=weights,offset=offset,method="relaxed_lasso",
       grouped=m>1L,intercept=intercept,nonnegative=nonnegative,lambda=grid,tune="bic")
     expect_equal(result$timings$status,"ok")
     j <- result$tuning$relaxed_lasso$index
@@ -39,7 +39,7 @@ test_that("wide refits use only selected columns and preserve adaptive penalties
     if(identical(args$lambda,0)) refit_widths <<- c(refit_widths,ncol(x))
     native(x,y,...)
   },.package="glmnet")
-  fit <- sparseglm(X,y,method="adaptive_relaxed_lasso",tune="cv",nfolds=3L,
+  fit <- sparseGLM(X,y,method="adaptive_relaxed_lasso",tune="cv",nfolds=3L,
     foldid=rep(1:3,20),nlambda=5L,intercept=FALSE)
   expect_equal(fit$timings$status,"ok")
   expect_gt(length(refit_widths),0L)
@@ -57,7 +57,7 @@ test_that("shared Gaussian CV matrices agree with explicit training subsets", {
   offset <- runif(60,-.3,.3)
   y <- .4+1.5*X[,1]+rnorm(60,sd=.5)+offset
   grid <- c(3,1,.3)
-  fit <- sparseglm(X,y,method=c("lasso","relaxed_lasso"),tune="cv",
+  fit <- sparseGLM(X,y,method=c("lasso","relaxed_lasso"),tune="cv",
     lambda=grid,foldid=folds,weights=weights,offset=offset,intercept=TRUE)
   expect_true(all(fit$timings$status=="ok"))
   for(method in names(fit$fits)) for(k in 1:3) {

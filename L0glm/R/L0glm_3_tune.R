@@ -1,11 +1,11 @@
-#' @name L0glm.tune
-#' @aliases L0glm.tune
+#' @name l0glmTune
+#' @aliases l0glmTune
 #' @title Tunes the regularisation parameter lambda of an L0glm fit
 #'
 #' @importFrom qlcMatrix colMax colMin
 #' 
 #' @description
-#' Tunes the lambda parameter for the \code{\link{L0glm.fit}} 
+#' Tunes the lambda parameter for the \code{\link{l0glmFit}}
 #' function. It uses a sequence of penalty parameter values (\code{lambda}) to fit 
 #' L0-penalized GLMs, and selects the best lambda by an information criterion
 #' or held-out deviance from cross-validation. It can handle multiple output variables (channels),
@@ -48,8 +48,8 @@
 #'   \code{mgcv::multinom(K)} for multinomial regression with \code{K+1}
 #'   categories, and \code{mgcv::cox.ph()} for right-censored Cox proportional
 #'   hazards models. See \emph{Special families} under Details.
-#'   Fixed-noise scalar models \code{nb1()}, \code{Gamma_scale()} and
-#'   \code{Gamma_censored()} use the ordinary single- or multichannel response
+#'   Fixed-noise scalar models \code{nb1()}, \code{gammaScale()} and
+#'   \code{gammaCensored()} use the ordinary single- or multichannel response
 #'   formats with exact likelihood-based IRLS; see \link{signal_families}.
 #' @param weights Optional finite, nonnegative prior/case observation weights.
 #'   For ordinary GLMs, supply a vector of length \code{n} or an \code{n} by
@@ -84,7 +84,7 @@
 #'   \item \code{mgcv::cox.ph()}: use a scalar, length-\code{n} vector or
 #'   \code{n} by \code{1} matrix of offsets on the log-relative-hazard scale.
 #'   }
-#' @param dispersion Passed to \code{L0glm.fit}: \code{NULL} automatically
+#' @param dispersion Passed to \code{l0glmFit}: \code{NULL} automatically
 #' initializes and estimates dispersion, a positive value fixes it, and a negative
 #' value supplies its absolute value as an initial estimate. A vector can specify
 #' separate values for the response channels. Fixed-scale families retain their
@@ -132,7 +132,7 @@
 #' whereas scalar \code{0} excludes all selectable rows. Intercepts and
 #' \code{always.include} terms remain eligible. These restrictions also apply
 #' during relaxed refits, and output coefficients retain their original sparse
-#' dimensions. See \code{L0glm.fit} for further starting-value details.
+#' dimensions. See \code{l0glmFit} for further starting-value details.
 #' Use \code{"pilot"} to build a common seed from ten independent unrelaxed
 #' fits at log-spaced penalties between \code{lambda_min} and the GIC preset
 #' (or one fit when these bounds coincide). The magnitude is the mean absolute
@@ -160,11 +160,11 @@
 #' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 #' observations and makes scores finite when a fitted mean is zero. Set to zero
 #' for exact likelihood scoring, which can give infinite criteria.
-#' @param ... Other arguments passed to \code{L0glm.fit}, including:
+#' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
 #' \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
 #' the screening strategy, candidate batch size, outer iteration limit and
-#' OpenMP screening thread count from \code{L0glm.fit()}.
+#' OpenMP screening thread count from \code{l0glmFit()}.
 #' The default \code{screen="auto"} enables ISIS exactly when
 #' \eqn{p_{\mathrm{eligible}}>10n}. Here \eqn{n} is the number of training
 #' rows in the current fit, and the eligible count excludes mandatory terms
@@ -193,7 +193,7 @@
 #' multichannel ordinary GLMs and NB, and grouped multinomial models with either
 #' factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
 #' other single-channel fits. Set it explicitly to refit an ungrouped model.
-#' With screening enabled the default is \code{TRUE}, as in \code{L0glm.fit()}.
+#' With screening enabled the default is \code{TRUE}, as in \code{l0glmFit()}.
 #' \item \code{thresh}: relative hard cutoff during selection (default
 #' \code{1e-5}), applied to working coefficient row norms for grouped
 #' multichannel NB/multinomial fits and individual magnitudes for ungrouped or
@@ -205,7 +205,7 @@
 #' \item \code{prior.mean}: ridge-penalty centers in original input coefficient
 #' units.
 #' }
-#' See Special families below and \code{\link{L0glm.fit}} for support restrictions
+#' See Special families below and \code{\link{l0glmFit}} for support restrictions
 #' and further details of these arguments.
 #'
 #' @details For \code{prior.mean = NULL} or an explicitly all-zero prior mean,
@@ -324,7 +324,7 @@
 #' }
 #'
 #' @return
-#' \code{L0glm.tune} returns a list containing the following elements:
+#' \code{l0glmTune} returns a list containing the following elements:
 #' \item{\code{tune}}{chosen selection method.}
 #' \item{\code{p}}{original number of selectable predictors, retained despite
 #' structural starting zeros and pilot support restriction.}
@@ -334,7 +334,7 @@
 #' or \code{NULL} when no pilot was requested.}
 #' \item{\code{fit_args}}{fitting arguments, including the resolved common
 #' start, excluding \code{X}, \code{y} and \code{lambda}. For example,
-#' \code{do.call(L0glm.fit, c(list(X = X, y = y, lambda = result$lambda_best),
+#' \code{do.call(l0glmFit, c(list(X = X, y = y, lambda = result$lambda_best),
 #' result$fit_args))} reproduces \code{fit_best} with the same package version.}
 #' \item{\code{preprocessing}}{training preprocessing of the full-data fit.}
 #' \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
@@ -371,13 +371,13 @@
 #' full-data partition and cut diagnostics, and \code{cv$preclustering} retains
 #' the corresponding training-only diagnostics for every fold.
 #'
-#' @example examples/L0glm.tune.R
+#' @example examples/l0glmTune.R
 #' @example examples/L0glm.special-families.R
 #' @seealso \link{signal_families} for NB1, common-scale Gamma and censored
 #'   Gamma models supported by both information-criterion tuning and CV.
 #'
 #' @export
-L0glm.tune <- function(X, y,
+l0glmTune <- function(X, y,
                        family,
                        weights      = NULL,
                        offset       = NULL,
@@ -406,7 +406,7 @@ L0glm.tune <- function(X, y,
       !identical(family$link, "identity") || !isTRUE(dots$nonnegative)))
     stop("precluster currently supports nonnegative identity-link Poisson fits.", call. = FALSE)
   if (precluster && !cluster.refit)
-    stop("L0glm.tune requires cluster.refit=TRUE. To tune cluster outcomes, first use glm_aggregate and pass its response directly.", call. = FALSE)
+    stop("l0glmTune requires cluster.refit=TRUE. To tune cluster outcomes, first use glmAggregate and pass its response directly.", call. = FALSE)
   if (!is.null(L0glm_ext_kind(family))) return(L0glm_ext_tune(
     X, y, family, if (missing(weights)) NULL else weights,
     if (missing(offset)) NULL else offset, dispersion, tune, nlambda, prop_range,
@@ -426,7 +426,7 @@ L0glm.tune <- function(X, y,
       !is.finite(mu_floor) || mu_floor < 0)
     stop("mu_floor must be a finite nonnegative number.", call. = FALSE)
   if ("IC" %in% names(dots))
-    stop("IC was renamed to tune in L0glm.tune; use tune = \"gic\" or tune = \"cv\".",
+    stop("IC was renamed to tune in l0glmTune; use tune = \"gic\" or tune = \"cv\".",
          call. = FALSE)
   pilot_start <- identical(start, "pilot")
   if (is.character(start) && !pilot_start)
@@ -441,7 +441,7 @@ L0glm.tune <- function(X, y,
   } else if (!is.null(foldid)) stop("foldid is only used with tune = \"cv\".", call. = FALSE)
   intercept <- if (is.null(dots$intercept)) family$family == "binomial" else dots$intercept
   p <- L0glm_predictor_count(X, intercept, dots$always.include)
-  lambda_preset <- preset.lambda(IC = if (do_cv) "gic" else tune, p = max(1L, p), n = n)
+  lambda_preset <- presetLambda(IC = if (do_cv) "gic" else tune, p = max(1L, p), n = n)
   lambda_reference <- if (do_cv && (!is.finite(lambda_preset) || lambda_preset <= 0))
     2 else lambda_preset
   if (!is.finite(lambda_reference) || lambda_reference <= 0)
@@ -453,13 +453,13 @@ L0glm.tune <- function(X, y,
                  start = if (pilot_start) NULL else start), dots)
   cv_args <- args
   pilot_bounds <- if (pilot_start) c(lambda_min,
-    max(lambda_min, preset.lambda("gic", p = max(1L, p), n = n))) else NULL
+    max(lambda_min, presetLambda("gic", p = max(1L, p), n = n))) else NULL
   initialization <- if (pilot_start) L0glm_pilot_start(args, pilot_bounds) else
     list(start = start, pilot = NULL)
   args$start <- initialization$start
   quasi_estimated <- NULL
   fit_lambda <- function(lambda) {
-    fit <- do.call(L0glm.fit, c(args, list(lambda = lambda)))
+    fit <- do.call(l0glmFit, c(args, list(lambda = lambda)))
     if (!is.null(quasi_estimated)) fit$dispersion.estimated <- quasi_estimated
     fit
   }

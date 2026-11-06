@@ -11,8 +11,8 @@ L0glm and glmnet omit an intercept; SIS::SIS fits its native free intercept.
 
 | Screening routine | Seconds |
 |:--|--:|
-| `sis_glm()`, eight physical cores | **0.24** |
-| `sis_glm(nthreads=1)` | 0.74 |
+| `sisGLM()`, eight physical cores | **0.24** |
+| `sisGLM(nthreads=1)` | 0.74 |
 | SIS Gaussian screen (`obtain.ix0`) | 2.00 |
 
 All complete million-predictor rankings were identical in every repetition.
@@ -25,26 +25,26 @@ unchanged. `timings.csv` contains all repetitions.
 | Predictors | Screen | Complete model | Seconds | GIC | TP | FP | F1 | MCC |
 |--:|:--|:--|--:|--:|--:|--:|--:|--:|
 | 1,000,000 | SIS | SIS::SIS + BIC LASSO | 7.31 | 4407 | 12 | 86 | 0.152 | 0.156 |
-| 1,000,000 | SIS | L0glm.fit, GIC preset | 0.30 | 2793 | 7 | 1 | 0.206 | 0.319 |
-| 1,000,000 | SIS | sparseglm LASSO, BIC grid | 1.57 | 4414 | 12 | 87 | 0.151 | 0.156 |
-| 1,000,000 | SIS | sparseglm relaxed LASSO, BIC grid | 1.56 | 4240 | 12 | 80 | 0.158 | 0.161 |
-| 1,000,000 | ISIS | L0glm.fit, GIC preset | 2.36 | 2583 | 40 | 3 | 0.777 | 0.787 |
-| 1,000,000 | ISIS | sparseglm LASSO, BIC grid | 4.65 | 4402 | 9 | 191 | 0.069 | 0.082 |
-| 1,000,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 4.70 | 4187 | 9 | 185 | 0.071 | 0.083 |
+| 1,000,000 | SIS | l0glmFit, GIC preset | 0.30 | 2793 | 7 | 1 | 0.206 | 0.319 |
+| 1,000,000 | SIS | sparseGLM LASSO, BIC grid | 1.57 | 4414 | 12 | 87 | 0.151 | 0.156 |
+| 1,000,000 | SIS | sparseGLM relaxed LASSO, BIC grid | 1.56 | 4240 | 12 | 80 | 0.158 | 0.161 |
+| 1,000,000 | ISIS | l0glmFit, GIC preset | 2.36 | 2583 | 40 | 3 | 0.777 | 0.787 |
+| 1,000,000 | ISIS | sparseGLM LASSO, BIC grid | 4.65 | 4402 | 9 | 191 | 0.069 | 0.082 |
+| 1,000,000 | ISIS | sparseGLM relaxed LASSO, BIC grid | 4.70 | 4187 | 9 | 185 | 0.071 | 0.083 |
 | 5,000 | ISIS | SIS::SIS + BIC LASSO | 23.04 | 2883 | 42 | 57 | 0.528 | 0.538 |
-| 5,000 | ISIS | L0glm.fit, GIC preset | 0.07 | 2180 | 46 | 0 | 0.868 | 0.874 |
-| 5,000 | ISIS | sparseglm LASSO, BIC grid | 0.24 | 4581 | 47 | 228 | 0.281 | 0.352 |
-| 5,000 | ISIS | sparseglm relaxed LASSO, BIC grid | 0.27 | 2939 | 47 | 71 | 0.528 | 0.552 |
+| 5,000 | ISIS | l0glmFit, GIC preset | 0.07 | 2180 | 46 | 0 | 0.868 | 0.874 |
+| 5,000 | ISIS | sparseGLM LASSO, BIC grid | 0.24 | 4581 | 47 | 228 | 0.281 | 0.352 |
+| 5,000 | ISIS | sparseGLM relaxed LASSO, BIC grid | 0.27 | 2939 | 47 | 71 | 0.528 | 0.552 |
 
 L0glm uses its default GIC preset; LASSO variants use BIC-selected paths because
-GIC commonly chooses the null LASSO model in this example. `sparseglm`
+GIC commonly chooses the null LASSO model in this example. `sparseGLM`
 uses ten lambda values and includes common path scoring and diagnostics.
 SIS::SIS uses its native LASSO path. Million-predictor ISIS uses the default
 GIC-based batch and ten rounds. The public SIS-package ISIS comparison uses
 5,000 predictors and three rounds; `nsis=100` is an added-candidate batch
 size for L0glm and a total support cap for SIS. `models.csv` contains all
 repetitions and GIC/BIC scores as well as recovery metrics.
-Standalone L0glm.fit selects its best ISIS round by GIC; the LASSO adapters use
+Standalone l0glmFit selects its best ISIS round by GIC; the LASSO adapters use
 BIC for their outer searches. The default million-predictor fit reproduces GIC
 2582.75, TP=40, FP=3, FN=20, TN=999937, F1=0.776699 and MCC=0.787489.
 The recorded homepage timing is 3.49 s; the current median is 2.36 s.

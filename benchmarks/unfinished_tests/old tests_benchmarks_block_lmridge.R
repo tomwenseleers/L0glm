@@ -6,8 +6,8 @@ n <- 1000
 p <- 1000
 s <- 0.1 # sparsity as proportion of p that have nonzero coefficients // p*s == #of peaks
 k <- round(p*s) # nr of nonzero covariates
-sim <- simulate_spike_train(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
-# sim <- simulate_spike_train()
+sim <- simulateSpikeTrain(n=n, p=p, k=k, mean_beta = 1000, sd_logbeta = 1, family="poisson")
+# sim <- simulateSpikeTrain()
 coefs_true <- as.vector(sim$beta_true)
 
 Xsp <- sim$X
@@ -34,16 +34,16 @@ system.time(L0glm_osqp <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                      control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE)))) #1.09s for n=p=1000
+                                      control.solver = do.call("controlSolverGen", list(solver = "osqp", rowaug = TRUE)))) #1.09s for n=p=1000
 
 system.time(L0glm_block_osqp <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                       solver = "osqp", lambda = 1, nonnegative = TRUE, block = TRUE,
                                       control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                       control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                       control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                      control.solver = do.call("control.solver.gen", list(solver = "osqp", rowaug = TRUE)))) #3.93s for n=p=1000 and block.size = 300
+                                      control.solver = do.call("controlSolverGen", list(solver = "osqp", rowaug = TRUE)))) #3.93s for n=p=1000 and block.size = 300
 
-plot_L0glm_benchmark(x = sim$x, y = y,
+plotL0glmBenchmark(x = sim$x, y = y,
                      coefs = L0glm_block_osqp$coefficients / X.n,
                      fitted = L0glm_block_osqp$fitted.values,
                      a.true = sim$beta_true,
@@ -62,16 +62,16 @@ system.time(L0glm_glmnet <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                      control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                      control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                      control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                     control.solver = do.call("control.solver.gen", list(solver = "glmnet")))) #34.81 for n=p=3000
+                                     control.solver = do.call("controlSolverGen", list(solver = "glmnet")))) #34.81 for n=p=3000
 
 system.time(L0glm_block_glmnet <- L0glm.fit2(X=Xsp, y=y, family = poisson(identity),
                                            solver = "glmnet", lambda = 1, nonnegative = TRUE, block = TRUE,
                                            control.iwls = do.call("control.iwls.gen2", list(maxit = 100)),
                                            control.l0 = do.call("control.l0.gen2", list(maxit = 100, delta = 1E-10, gamma = 2)),
                                            control.fit = do.call("control.fit.gen2", list(maxit = 100, block.size = block.size)),
-                                           control.solver = do.call("control.solver.gen", list(solver = "glmnet"))))
+                                           control.solver = do.call("controlSolverGen", list(solver = "glmnet"))))
 
-plot_L0glm_benchmark(x = sim$x, y = y,
+plotL0glmBenchmark(x = sim$x, y = y,
                      coefs = L0glm_block_glmnet$coefficients / X.n,
                      fitted = L0glm_block_glmnet$fitted.values,
                      a.true = sim$beta_true,

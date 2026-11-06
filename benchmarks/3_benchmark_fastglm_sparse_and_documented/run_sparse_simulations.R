@@ -71,7 +71,7 @@ score <- function(beta, sim, name, identifiable = TRUE) {
   dev_true <- sum(sim$family$dev.resids(sim$mu, mu, rep(1, length(mu))))
   if (name == "nb_log") {
     LL <- sum(dnbinom(sim$y, size = 2, mu = mu, log = TRUE))
-    GIC <- -2*LL + preset.lambda("gic", ncol(sim$X), nrow(sim$X))*(sum(estimated)+1L)
+    GIC <- -2*LL + presetLambda("gic", ncol(sim$X), nrow(sim$X))*(sum(estimated)+1L)
   } else {
     met <- get.metrics(beta, cbind(1, sim$X), matrix(sim$y), family = sim$family,
       beta_true = sim$beta, always.include = 1L, mu_floor = 1e-8)
@@ -97,7 +97,7 @@ for (i in seq_len(nrow(cases))) for (name in if (length(args) > 1L) args[-1L] el
     run <- if (method == "fastglmPure") function() fastglm::fastglmPure(
       cbind(1, sim$X), sim$y, family = sim$family,
       method = if (wide && cfg$storage == "dense") 0L else 2L, tol = 1e-10, maxit = 25L) else
-      function() L0glm.fit(sim$X, sim$y, family = if (name == "nb_log") mgcv::nb(theta = 2) else sim$family,
+      function() l0glmFit(sim$X, sim$y, family = if (name == "nb_log") mgcv::nb(theta = 2) else sim$family,
         intercept = TRUE, nonnegative = FALSE, lambda = if (method == "L0_gic") "gic" else 0,
         thresh = if (method == "L0_gic") 1e-5 else 0,
         relaxed = FALSE, maxit = 25L, tol = 1e-10, nthreads = 1L, parallelize = FALSE)

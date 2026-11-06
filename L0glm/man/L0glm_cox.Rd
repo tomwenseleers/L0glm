@@ -124,7 +124,7 @@ if (requireNamespace("mgcv", quietly = TRUE) &&
   Xtr <- X[train, , drop = FALSE]
   ytr <- y[train, , drop = FALSE]
   foldid <- sample(rep(1:3, length.out = length(train)))
-  time_l0 <- system.time(tune_cox <- L0glm.tune(Xtr, ytr,
+  time_l0 <- system.time(tune_cox <- l0glmTune(Xtr, ytr,
     family = mgcv::cox.ph(), tune = "cv", foldid = foldid,
     nlambda = 6, plot = FALSE, printbest = FALSE, relaxed = TRUE,
     maxit = 200, tol = 1e-8))[["elapsed"]]
@@ -163,5 +163,5 @@ The comparison example uses data from the glmnet
 Verweij, P. J. M. and van Houwelingen, H. C. (1993).
 Cross-validation in survival analysis. Statistics in Medicine 12, 2305--2314.
 }
-\seealso{\code{\link{L0glm.fit}}, \code{\link{L0glm.tune}},
-\code{\link{L0glm.metrics}}, \code{\link[mgcv]{cox.ph}}}
+\seealso{\code{\link{l0glmFit}}, \code{\link{l0glmTune}},
+\code{\link{l0glmMetrics}}, \code{\link[mgcv]{cox.ph}}}

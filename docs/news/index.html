@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,32 +47,32 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="l0glm-020">L0glm 0.2.0<a class="anchor" aria-label="anchor" href="#l0glm-020"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0.9000" id="l0glm-0209000">L0glm 0.2.0.9000<a class="anchor" aria-label="anchor" href="#l0glm-0209000"></a></h2>
 <div class="section level3">
-<h3 id="sparse-generalized-linear-models-0-2-0">Sparse generalized linear models<a class="anchor" aria-label="anchor" href="#sparse-generalized-linear-models-0-2-0"></a></h3>
+<h3 id="sparse-generalized-linear-models-0-2-0-9000">Sparse generalized linear models<a class="anchor" aria-label="anchor" href="#sparse-generalized-linear-models-0-2-0-9000"></a></h3>
 <ul><li>L0 and grouped L0 variable selection through adaptive-ridge IRLS, with relaxed refitting on the selected support.</li>
 <li>Standard GLM families and links, negative binomial with fixed or estimated shape, joint multinomial models in CLR coordinates, and Cox proportional hazards models with direct or matrix-free quadratic updates.</li>
 <li>NB1, common-scale Gamma and censored Gamma signal models; quasi families expose scaled likelihood kernels and quasi-information criteria.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="model-specification-and-selection-0-2-0">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0"></a></h3>
+<h3 id="model-specification-and-selection-0-2-0-9000">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9000"></a></h3>
 <ul><li>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</li>
 <li>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</li>
-<li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/preset.lambda.html">preset.lambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.</li>
+<li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.</li>
 <li>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="high-dimensional-and-multichannel-computation-0-2-0">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0"></a></h3>
+<h3 id="high-dimensional-and-multichannel-computation-0-2-0-9000">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0-9000"></a></h3>
 <ul><li>Dense and sparse designs and tall or wide systems. A native scalar-family driver performs initialization, dispersion updates and grouped/relaxed passes. All Eigen solvers share their kernels with the R interfaces and parallelize channels through OpenMP. OSQP and <code>bigGlm</code> use the native driver with their R-facing solver interfaces and independent workers for concurrent channels.</li>
-<li>Nonnegative identity-link Poisson LLT fits use the specialized <code>L0nnpois</code> backend, including native validation stopping.</li>
+<li>Nonnegative identity-link Poisson LLT fits use the specialized <code>l0nnPois</code> backend, including native validation stopping.</li>
 <li>Sure Independence Screening (SIS) and Iterative Sure Independence Screening (ISIS), with compiled OpenMP screening. Automatic ISIS uses <code>p_eligible &gt; 10*n</code>, excluding mandatory predictors and rows locked out by zero starts. Tuning applies the same rule to each training fold.</li>
 <li>Single and multichannel fitting, shared predictor-row selection and optional Poisson outcome aggregation followed by original-channel refitting.</li>
 <li>Size-adjusted Poisson and scalar-family likelihood clustering with native distances, pooled-likelihood merge costs and IC-scored cuts.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="simulation-comparison-and-interpretation-0-2-0">Simulation, comparison and interpretation<a class="anchor" aria-label="anchor" href="#simulation-comparison-and-interpretation-0-2-0"></a></h3>
+<h3 id="simulation-comparison-and-interpretation-0-2-0-9000">Simulation, comparison and interpretation<a class="anchor" aria-label="anchor" href="#simulation-comparison-and-interpretation-0-2-0-9000"></a></h3>
 <ul><li>
-<code><a href="../reference/sparseglm.html">sparseglm()</a></code> compares supported sparse-regression methods with common likelihood, prediction, coefficient and support-recovery metrics and timings. Shared SIS/ISIS options screen every adapter, with method-specific ISIS offsets, original-dimension coefficients and training-only screening for CV.</li>
+<code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> compares supported sparse-regression methods with common likelihood, prediction, coefficient and support-recovery metrics and timings. Shared SIS/ISIS options screen every adapter, with method-specific ISIS offsets, original-dimension coefficients and training-only screening for CV.</li>
 <li>Prediction, fitted-value, summary, likelihood and information-criterion methods, including within-row multichannel sparsity metrics.</li>
 <li>Generic simulations, fixed-PSF deconvolution examples, visualization tools, reproducible benchmarks and a mathematical algorithm appendix.</li>
 </ul></div>

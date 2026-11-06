@@ -3,13 +3,13 @@ test_that("independent tuning can recover features excluded at the preset", {
   y <- c(4, 1, .2, -.1, .1, .2)
   args <- list(X=X, y=y, family=gaussian(), dispersion=1,
                parallelize=FALSE, grouped=FALSE, relaxed=FALSE, maxit=100)
-  tuned <- do.call(L0glm.tune, c(args, list(tune="aic", lambda_min=.01, nlambda=5, plot=FALSE,
+  tuned <- do.call(l0glmTune, c(args, list(tune="aic", lambda_min=.01, nlambda=5, plot=FALSE,
                                          printbest=FALSE)))
-  preset <- do.call(L0glm.fit, c(args, list(lambda=tuned$lambda_preset)))
+  preset <- do.call(l0glmFit, c(args, list(lambda=tuned$lambda_preset)))
   expect_equal(as.numeric(preset$coefficients)[2], 0)
   expect_gt(abs(as.numeric(tuned$coefficients[[1]])[2]), 0)
   for (i in seq_along(tuned$lambdas)) {
-    direct <- do.call(L0glm.fit, c(args, list(lambda=tuned$lambdas[i])))
+    direct <- do.call(l0glmFit, c(args, list(lambda=tuned$lambdas[i])))
     expect_equal(tuned$coefficients[[i]], direct$coefficients)
   }
   expect_true(tuned$endpoint_zero)
@@ -24,46 +24,46 @@ test_that("tuning bounds the full grid and preserves unique endpoints and anchor
     family = gaussian(), dispersion = 1, tune = "aic", parallelize = FALSE,
     plot = FALSE, printbest = FALSE)
   for (count in c(2L, 3L, 10L)) {
-    fit <- do.call(L0glm.tune, c(args, list(nlambda = count)))
+    fit <- do.call(l0glmTune, c(args, list(nlambda = count)))
     expect_length(unique(fit$lambdas), count)
     expect_identical(fit$lambda_min, 2)
     expect_identical(fit$lambdas[1], 2)
     expect_identical(tail(fit$lambdas, 1), fit$lambda_max)
     expect_true(all(diff(fit$lambdas) > 0))
   }
-  weak <- do.call(L0glm.tune, c(args, list(lambda_min = .01, nlambda = 5)))
+  weak <- do.call(l0glmTune, c(args, list(lambda_min = .01, nlambda = 5)))
   expect_identical(weak$lambdas[1], .01)
   expect_equal(sum(weak$lambdas == weak$lambda_preset), 1)
-  zoom <- do.call(L0glm.tune, c(args, list(lambda_min = .01, nlambda = 5, prop_range = .25)))
+  zoom <- do.call(l0glmTune, c(args, list(lambda_min = .01, nlambda = 5, prop_range = .25)))
   expect_gt(min(zoom$lambdas), .01)
   expect_lt(max(zoom$lambdas), zoom$lambda_max)
   expect_equal(sum(zoom$lambdas == zoom$lambda_reference), 1)
 
   args$tune <- "gic"
-  below <- do.call(L0glm.tune, c(args, list(nlambda = 5)))
+  below <- do.call(l0glmTune, c(args, list(nlambda = 5)))
   expect_lt(below$lambda_preset, 2)
   expect_identical(below$lambda_reference, 2)
   expect_length(unique(below$lambdas), 5)
-  above <- do.call(L0glm.tune, c(args, list(lambda_min = 20, nlambda = 5)))
+  above <- do.call(l0glmTune, c(args, list(lambda_min = 20, nlambda = 5)))
   expect_identical(above$lambdas[1], 20)
   expect_identical(above$lambda_reference, 20)
   expect_identical(above$lambda_preset, below$lambda_preset)
   for (bad in list(0, -1, NA_real_, Inf, "x", numeric(), c(1, 2)))
-    expect_error(do.call(L0glm.tune, c(args, list(lambda_min = bad))), "lambda_min")
+    expect_error(do.call(l0glmTune, c(args, list(lambda_min = bad))), "lambda_min")
 })
 
 test_that("automatic scale does not cancel a large fitted penalty", {
   set.seed(41)
   X <- matrix(rnorm(100*8),100)
   y <- 3*X[,1] + rnorm(100)
-  a <- L0glm.fit(X,y,family=gaussian(),lambda="gic",parallelize=FALSE)
-  b <- L0glm.fit(X,y,family=gaussian(),lambda=1e10,parallelize=FALSE)
+  a <- l0glmFit(X,y,family=gaussian(),lambda="gic",parallelize=FALSE)
+  b <- l0glmFit(X,y,family=gaussian(),lambda=1e10,parallelize=FALSE)
   expect_gt(sum(a$coefficients!=0),0)
   expect_equal(sum(b$coefficients!=0),0)
 })
 
 test_that("Poisson null likelihood is infinite rather than floored during tuning", {
-  tuned <- L0glm.tune(diag(6), c(30,10,2,0,1,0), family=poisson(identity),
+  tuned <- l0glmTune(diag(6), c(30,10,2,0,1,0), family=poisson(identity),
     nonnegative=TRUE, nlambda=4, maxit=100, plot=FALSE, printbest=FALSE,
     parallelize=FALSE, mu_floor=0)
   expect_true(tuned$endpoint_zero)
@@ -74,7 +74,7 @@ test_that("Poisson null likelihood is infinite rather than floored during tuning
 test_that("default Poisson tuning scores zero predictions in every channel", {
   X <- rbind(diag(6),rep(0,6))
   y <- cbind(c(30,10,2,0,1,0,1),c(0,8,0,2,0,1,2))
-  tuned <- L0glm.tune(X,y,family=poisson(identity),nonnegative=TRUE,
+  tuned <- l0glmTune(X,y,family=poisson(identity),nonnegative=TRUE,
     grouped=FALSE,parallelize=FALSE,nlambda=4,plot=FALSE,printbest=FALSE)
   expect_true(all(is.finite(tuned$metrics$gic)))
   expect_true(tuned$lambda_best %in% tuned$lambdas)
@@ -83,20 +83,20 @@ test_that("default Poisson tuning scores zero predictions in every channel", {
   expected <- sum(dpois(y,lambda=pmax(as.matrix(X %*% b),1e-8),log=TRUE))
   expect_equal(tuned$metrics$loglik[which.min(tuned$metrics$gic)],expected)
   expect_equal(tuned$mu_floor,1e-8)
-  expect_error(L0glm.tune(X,y,family=poisson(identity),nonnegative=TRUE,
+  expect_error(l0glmTune(X,y,family=poisson(identity),nonnegative=TRUE,
     grouped=FALSE,parallelize=FALSE,nlambda=2,plot=FALSE,printbest=FALSE,
     mu_floor=0),"positive mu_floor")
 })
 
 test_that("endpoint refinement removes a conservative working-model bound", {
   testthat::local_mocked_bindings(maxlambda=function(...) 1e12)
-  tuned <- L0glm.tune(diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
+  tuned <- l0glmTune(diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
     dispersion=1,tune="aic",nlambda=3,maxit=100,parallelize=FALSE,
     plot=FALSE,printbest=FALSE)
   expect_lt(tuned$lambda_max,100)
   expect_true(tuned$endpoint_zero)
   expect_lte(tuned$lambda_max/tuned$lambda_nonzero,1.05)
-  nonzero <- L0glm.fit(diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
+  nonzero <- l0glmFit(diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
     dispersion=1,lambda=tuned$lambda_nonzero,maxit=100,parallelize=FALSE)
   expect_gt(sum(nonzero$coefficients!=0),0)
   expect_equal(sum(tail(tuned$coefficients,1)[[1]]!=0),0)
@@ -107,13 +107,13 @@ test_that("weighted offset tuning scores the fitted Gaussian model", {
   X <- matrix(rnorm(80*3),80)
   w <- seq(.5,2,length.out=80); off <- seq(3,6,length.out=80)
   y <- off + X[,1]*2 + rnorm(80)/sqrt(w)
-  tuned <- L0glm.tune(X,y,family=gaussian(),dispersion=2,weights=w,offset=off,
+  tuned <- l0glmTune(X,y,family=gaussian(),dispersion=2,weights=w,offset=off,
     nlambda=3,prop_range=.2,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   for(i in seq_along(tuned$lambdas)) {
     b <- tuned$coefficients[[i]]
     ll <- sum(dnorm(y,as.numeric(X %*% b)+off,sd=sqrt(2/w),log=TRUE))
     expect_equal(tuned$metrics$loglik[i],ll)
-    expect_equal(tuned$metrics$gic[i],-2*ll+preset.lambda("gic",3,80)*sum(b!=0))
+    expect_equal(tuned$metrics$gic[i],-2*ll+presetLambda("gic",3,80)*sum(b!=0))
   }
 })
 
@@ -125,7 +125,7 @@ test_that("Gaussian likelihood profiles scale once per channel and counts p corr
   expected <- sum(dnorm(y[,1],0,1,log=TRUE)) + sum(dnorm(y[,2],0,2,log=TRUE))
   expect_equal(met$p,1)
   expect_equal(met$loglik,expected)
-  expect_equal(met$gic,-2*expected+preset.lambda("gic",1,30)*4)
+  expect_equal(met$gic,-2*expected+presetLambda("gic",1,30)*4)
   expect_equal(met$aic,-2*expected+2*4)
 })
 
@@ -137,7 +137,7 @@ test_that("scoring retains channel dimensions through nonidentity inverse links"
   y <- round(w*prob)/w
   met <- get.metrics(b,X,y,weights=w,family=binomial())
   expect_equal(met$loglik,sum(dbinom(round(w*y),size=w,prob=prob,log=TRUE)))
-  expect_equal(met$gic,-2*met$loglik+preset.lambda("gic",1,12)*sum(b!=0))
+  expect_equal(met$gic,-2*met$loglik+presetLambda("gic",1,12)*sum(b!=0))
   yy <- exp(X %*% b) + .2
   phi <- c(.5,.8)
   met <- get.metrics(b,X,yy,family=Gamma(log),dispersion=phi)
@@ -165,17 +165,17 @@ test_that("tuning handles an empty preset, intercepts, and invalid controls", {
   args <- list(X=matrix(seq(-1,1,length.out=30),ncol=1), y=rep(1,30),
                family=gaussian(), dispersion=1, parallelize=FALSE,
                plot=FALSE,printbest=FALSE,tune="aic",nlambda=2)
-  a <- do.call(L0glm.tune,args)
+  a <- do.call(l0glmTune,args)
   expect_true(a$endpoint_zero)
-  b <- do.call(L0glm.tune,c(args,list(intercept=TRUE)))
+  b <- do.call(l0glmTune,c(args,list(intercept=TRUE)))
   expect_equal(nrow(b$coefficients[[1]]),2)
   expect_equal(b$metrics$p,rep(1,2))
-  supplied <- do.call(L0glm.tune, c(args, list(start = 1)))
+  supplied <- do.call(l0glmTune, c(args, list(start = 1)))
   expect_identical(supplied$start, 1)
   args$nlambda <- 1
-  expect_error(do.call(L0glm.tune,args),"at least 2")
+  expect_error(do.call(l0glmTune,args),"at least 2")
   args$nlambda <- 3; args$prop_range <- 0
-  expect_error(do.call(L0glm.tune,args),"prop_range")
+  expect_error(do.call(l0glmTune,args),"prop_range")
   args$prop_range <- 1; args$mu_floor <- -1
-  expect_error(do.call(L0glm.tune,args),"mu_floor")
+  expect_error(do.call(l0glmTune,args),"mu_floor")
 })

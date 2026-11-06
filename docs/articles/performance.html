@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -450,7 +450,7 @@ all-channel coefficient comparisons in a single column.</p>
 <h2 id="native-validation-and-openmp">Native validation and OpenMP<a class="anchor" aria-label="anchor" href="#native-validation-and-openmp"></a>
 </h2>
 <p>Both drivers can select an IRLS checkpoint by held-out deviance. The
-specialized <code>L0nnpois</code> backend evaluates validation in native
+specialized <code>l0nnPois</code> backend evaluates validation in native
 code and fits channels in parallel. This example uses 1,000 predictors,
 16 channels, 60 active rows and an independent Poisson replicate for
 validation. Timings are medians of five fits with one BLAS thread.</p>
@@ -484,7 +484,7 @@ validation. Timings are medians of five fits with one BLAS thread.</p>
 <td align="right">0.943</td>
 </tr>
 <tr class="even">
-<td>L0nnpois</td>
+<td>l0nnPois</td>
 <td align="right">1</td>
 <td align="right">0.10</td>
 <td align="right">0.357611</td>
@@ -493,7 +493,7 @@ validation. Timings are medians of five fits with one BLAS thread.</p>
 <td align="right">0.943</td>
 </tr>
 <tr class="odd">
-<td>L0nnpois</td>
+<td>l0nnPois</td>
 <td align="right">2</td>
 <td align="right">0.07</td>
 <td align="right">0.357611</td>
@@ -502,7 +502,7 @@ validation. Timings are medians of five fits with one BLAS thread.</p>
 <td align="right">0.943</td>
 </tr>
 <tr class="even">
-<td>L0nnpois</td>
+<td>l0nnPois</td>
 <td align="right">4</td>
 <td align="right">0.05</td>
 <td align="right">0.357611</td>
@@ -511,7 +511,7 @@ validation. Timings are medians of five fits with one BLAS thread.</p>
 <td align="right">0.943</td>
 </tr>
 <tr class="odd">
-<td>L0nnpois</td>
+<td>l0nnPois</td>
 <td align="right">8</td>
 <td align="right">0.05</td>
 <td align="right">0.357611</td>
@@ -541,7 +541,7 @@ benchmark</a>: solvers, families, matrix storage and sizes.</li>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/2_benchmarks_L0glm_single_and_multichannel_vs_other_methods.R" class="external-link">Single/multichannel
 benchmark</a>: detailed signal examples and alternative methods.</li>
 <li>
-<a href="../reference/sparseglm.html"><code>sparseglm()</code></a>:
+<a href="../reference/sparseGLM.html"><code>sparseGLM()</code></a>:
 use the same comparison framework on your own data.</li>
 </ul>
 <p>The benchmarks were run on an <strong>HP ZBook Fury 17.3-inch G8

@@ -30,7 +30,7 @@ test_that("high-dispersion inverse-Gaussian tuning retains finite models", {
   sim <- simul("normal", n=180, p=10, n_nonzero=3,
     family=inverse.gaussian("log"), intercept=.5,
     options=list(beta_range=c(-.8, .8)), seed=21)
-  expect_no_warning(tuned <- L0glm.tune(sim$X, sim$y, family=sim$family,
+  expect_no_warning(tuned <- l0glmTune(sim$X, sim$y, family=sim$family,
     weights=sim$weights, intercept=TRUE, nonnegative=FALSE, tune="gic",
     nlambda=3, maxit=200, tol=1e-8, parallelize=FALSE, plot=FALSE))
   expect_true(all(is.finite(tuned$fit_best$coefficients)))
@@ -44,10 +44,10 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
     family=inverse.gaussian("log"), intercept=.5,
     options=list(beta_range=c(-.8, .8)), seed=21)
   solves <- halvings <- 0L
-  original_solve <- lmridge
+  original_solve <- lmRidge
   original_step <- L0glm_step
   testthat::local_mocked_bindings(
-    lmridge=function(...) {
+    lmRidge=function(...) {
       solves <<- solves+1L
       original_solve(...)
     },
@@ -56,12 +56,12 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
       halvings <<- halvings+answer$halvings
       answer
     })
-  fit <- L0glm.fit(sim$X, sim$y, family=sim$family, weights=sim$weights,
+  fit <- l0glmFit(sim$X, sim$y, family=sim$family, weights=sim$weights,
     intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
     relaxed=FALSE, parallelize=FALSE, openmp=FALSE)
   expect_gt(halvings, 0L)
   expect_equal(solves, sum(fit$convergence$iterations))
-  native <- L0glm.fit(sim$X, sim$y, family=sim$family, weights=sim$weights,
+  native <- l0glmFit(sim$X, sim$y, family=sim$family, weights=sim$weights,
     intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
     relaxed=FALSE, parallelize=FALSE)
   expect_equal(native$coefficients, fit$coefficients, tolerance=1e-7)
@@ -86,7 +86,7 @@ test_that("unpenalized inverse-Gaussian IRLS agrees with likelihood optimization
   expect_equal(reference$convergence, 0)
   for (sparse in c(FALSE, TRUE)) {
     design <- if (sparse) Matrix::Matrix(sim$X, sparse=TRUE) else sim$X
-    expect_no_warning(fit <- L0glm.fit(design, y, family=sim$family,
+    expect_no_warning(fit <- l0glmFit(design, y, family=sim$family,
       weights=w, offset=offset, intercept=TRUE, lambda=0, thresh=0,
       maxit=200, tol=1e-9, parallelize=FALSE))
     expect_true(all(fit$convergence$converged))
@@ -98,7 +98,7 @@ test_that("unpenalized inverse-Gaussian IRLS agrees with likelihood optimization
 test_that("the initial inverse-Gaussian working fit cannot falsely converge", {
   y <- exp(seq(-2, 2, length.out=80))
   w <- seq(.5, 1.5, length.out=80)
-  fit <- L0glm.fit(matrix(numeric(), 80, 0), y, weights=w,
+  fit <- l0glmFit(matrix(numeric(), 80, 0), y, weights=w,
     family=inverse.gaussian("log"), intercept=TRUE, dispersion=1,
     lambda=0, maxit=100, tol=1e-9, parallelize=FALSE)
   expect_gt(fit$convergence$iterations, 1L)
@@ -114,8 +114,8 @@ test_that("grouped inverse-Gaussian channels preserve masks on both execution pa
   args <- list(X=sim$X, y=sim$y, family=sim$family, intercept=TRUE,
     start=start, lambda="gic", grouped=TRUE, relaxed=TRUE,
     group.maxit=2, maxit=200, tol=1e-8)
-  expect_no_warning(serial <- do.call(L0glm.fit, c(args, list(parallelize=FALSE))))
-  expect_no_warning(parallel <- do.call(L0glm.fit, c(args, list(parallelize=TRUE, ncores=2))))
+  expect_no_warning(serial <- do.call(l0glmFit, c(args, list(parallelize=FALSE))))
+  expect_no_warning(parallel <- do.call(l0glmFit, c(args, list(parallelize=TRUE, ncores=2))))
   expect_equal(parallel$coefficients, serial$coefficients)
   expect_equal(parallel$dispersion, serial$dispersion)
   expect_equal(dim(serial$coefficients), c(6L, 3L))
@@ -130,7 +130,7 @@ test_that("inverse-Gaussian damping respects exclusions, constraints and refits"
     options=list(beta_range=c(.2, .6), dispersion=2), seed=7)
   start <- rep(.1, 9); start[c(3, 5)] <- 0
   for (normalize in c("none", "rms")) {
-    expect_no_warning(fit <- L0glm.fit(sim$X, sim$y, family=sim$family,
+    expect_no_warning(fit <- l0glmFit(sim$X, sim$y, family=sim$family,
       intercept=TRUE, start=start, prior.mean=rep(.01, 9),
       nonnegative=TRUE, normalize=normalize, lambda="gic", relaxed=TRUE,
       maxit=200, tol=1e-8, parallelize=FALSE))

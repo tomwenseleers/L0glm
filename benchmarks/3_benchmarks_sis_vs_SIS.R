@@ -30,8 +30,8 @@ screening <- list(); reference_rank <- NULL
 for (repetition in seq_len(repetitions)) for (method in c("sis_glm_1","sis_glm_auto","SIS_screen")) {
   gc()
   seconds <- system.time(fit <- switch(method,
-    sis_glm_1=sis_glm(sim$X,sim$y,nsis=nsis,nthreads=1L),
-    sis_glm_auto=sis_glm(sim$X,sim$y,nsis=nsis),
+    sis_glm_1=sisGLM(sim$X,sim$y,nsis=nsis,nthreads=1L),
+    sis_glm_auto=sisGLM(sim$X,sim$y,nsis=nsis),
     SIS_screen=sis_screen(sim$X,sim$y,s1=NULL,s2=NULL,family="gaussian",
       nsis=nsis,iter=FALSE,varISIS="vanilla",perm=FALSE,q=1,
       greedy=FALSE,greedy.size=1L,iterind=0L)))[["elapsed"]]
@@ -61,7 +61,7 @@ wrap_sis <- function(fit,sim) {
 # LASSO variants use BIC because GIC often selects a null LASSO model here.
 # The million-predictor ISIS L0glm call is exactly the homepage default fit.
 run_models <- function(sim,screen,repetitions,
-  methods=c("SIS_package","L0glm.fit","sparseglm_lasso","sparseglm_relaxed_lasso"),
+  methods=c("SIS_package","l0glmFit","sparseglm_lasso","sparseglm_relaxed_lasso"),
   batch=nsis,rounds=3L) {
   p <- ncol(sim$X); result <- list()
   for (repetition in seq_len(repetitions)) {
@@ -71,17 +71,17 @@ run_models <- function(sim,screen,repetitions,
         SIS_package=SIS::SIS(sim$X,sim$y,family="gaussian",nsis=nsis,
           iter=screen=="ISIS",iter.max=rounds,penalty="lasso",tune="bic",
           standardize=FALSE,parallel=FALSE,seed=123L),
-        L0glm.fit=if (p==1000000L && screen=="ISIS" && is.null(batch) && rounds==10L)
-          L0glm.fit(sim$X,sim$y,family=gaussian()) else
-          L0glm.fit(sim$X,sim$y,family=gaussian(),screen=screen,nsis=batch,screen.maxit=rounds),
-        sparseglm_lasso=sparseglm(sim,method="lasso",screen=screen,nsis=batch,
+        l0glmFit=if (p==1000000L && screen=="ISIS" && is.null(batch) && rounds==10L)
+          l0glmFit(sim$X,sim$y,family=gaussian()) else
+          l0glmFit(sim$X,sim$y,family=gaussian(),screen=screen,nsis=batch,screen.maxit=rounds),
+        sparseglm_lasso=sparseGLM(sim,method="lasso",screen=screen,nsis=batch,
           screen.maxit=rounds,tune="bic",nlambda=10L),
-        sparseglm_relaxed_lasso=sparseglm(sim,method="relaxed_lasso",screen=screen,
+        sparseglm_relaxed_lasso=sparseGLM(sim,method="relaxed_lasso",screen=screen,
           nsis=batch,screen.maxit=rounds,tune="bic",nlambda=10L)))[["elapsed"]]
       model <- if (method=="SIS_package") wrap_sis(fit,sim) else
         if (inherits(fit,"sparseglm")) fit$fits[[1L]] else fit
       truth <- if (nrow(coef(model))==p+1L) c(0,sim$beta_true) else sim$beta_true
-      scores <- L0glm.metrics(model,beta_true=truth)
+      scores <- l0glmMetrics(model,beta_true=truth)
       row <- cbind(data.frame(n,p,screen,method,repetition,seconds),
         scores[c("gic","bic","TP","FP","FN","F1_score","MCC")])
       result[[length(result)+1L]] <- row
@@ -93,7 +93,7 @@ run_models <- function(sim,screen,repetitions,
 }
 models <- list(run_models(sim,"SIS",repetitions))
 models[[2L]] <- run_models(sim,"ISIS",repetitions,
-  methods=c("L0glm.fit","sparseglm_lasso","sparseglm_relaxed_lasso"),batch=NULL,rounds=10L)
+  methods=c("l0glmFit","sparseglm_lasso","sparseglm_relaxed_lasso"),batch=NULL,rounds=10L)
 rm(sim);gc()
 # Conditional per-predictor fits in SIS::SIS(iter=TRUE) are much more costly
 # than its first correlation screen, so test both complete ISIS pipelines on

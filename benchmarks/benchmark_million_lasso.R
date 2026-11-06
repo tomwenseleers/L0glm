@@ -14,9 +14,9 @@ benchmark_million_lasso <- function(n=500L, p=1000000L, n_nonzero=60L,
   y <- as.numeric(X[, active, drop=FALSE] %*% beta[active]) + rnorm(n)
   methods <- c("lasso", "relaxed_lasso")
 
-  comparison <- sparseglm(X, y, family=gaussian(), method=methods,
+  comparison <- sparseGLM(X, y, family=gaussian(), method=methods,
     tune="bic", nlambda=nlambda, intercept=FALSE, beta_true=beta, screen="none")
-  bic <- L0glm.metrics(comparison)
+  bic <- l0glmMetrics(comparison)
   stopifnot(all(bic$status == "ok"))
   bic$method <- paste0(methods, "_bic")
   bic$tune <- "BIC path"
@@ -25,11 +25,11 @@ benchmark_million_lasso <- function(n=500L, p=1000000L, n_nonzero=60L,
   set.seed(42)
   folds <- sample(rep(seq_len(nfolds), length.out=n))
   path_options <- list(control=list(pmax=2*n+20L))
-  comparison <- sparseglm(X, y, family=gaussian(), method=methods,
+  comparison <- sparseGLM(X, y, family=gaussian(), method=methods,
     tune="cv", nfolds=nfolds, foldid=folds, nlambda=nlambda,
     intercept=FALSE, beta_true=beta, screen="none",
     options=list(lasso=path_options, relaxed_lasso=path_options))
-  cv <- L0glm.metrics(comparison)
+  cv <- l0glmMetrics(comparison)
   stopifnot(all(cv$status == "ok"))
   cv$method <- paste0(methods, "_cv")
   cv$tune <- paste0(nfolds, "-fold CV")

@@ -60,12 +60,12 @@ L0BestRankGNMF <- function(D,
   if (!is.null(Wstart)) { k <- ncol(Wstart) }
   
   ## --- translate target IC to numeric lambda values --------------------------
-  lambdaH <- preset.lambda(IC = IC, p = k, n = n)
-  lambdaW <- preset.lambda(IC = IC, p = k, n = p)
+  lambdaH <- presetLambda(IC = IC, p = k, n = n)
+  lambdaW <- presetLambda(IC = IC, p = k, n = p)
   
   ## --- initialise W and H ----------------------------------------------------
   if (!is.null(Wstart)) { W <- Wstart # n x k_init matrix
-         suppressWarnings(H <- L0glm.fit(X = W, 
+         suppressWarnings(H <- l0glmFit(X = W,
                                          y = D, # n x p data matrix, now regressing on columns of D
                                          intercept = FALSE,
                                          family = family,
@@ -98,7 +98,7 @@ L0BestRankGNMF <- function(D,
   
   for (iter in 1:max_iter) {
     ## --- update W -------------------------------------------------------
-    suppressWarnings(W <- t(L0glm.fit(
+    suppressWarnings(W <- t(l0glmFit(
                      X = t(H), # p x k matrix
                      y = Dt, # p x n data matrix, now regressing on rows of D
                      intercept = FALSE,
@@ -115,7 +115,7 @@ L0BestRankGNMF <- function(D,
       return(list(W = NULL, H = NULL, dev = obj, k = 0, iter = iter, obj = obj_vect)) }
     
     ## --- update H -------------------------------------------------------
-    suppressWarnings(H <- L0glm.fit(
+    suppressWarnings(H <- l0glmFit(
                    X = W, # n x k matrix
                    y = D, # n x p data matrix, now regressing on columns of D
                    intercept = FALSE,
@@ -164,7 +164,7 @@ n <- 100 # timepoints
 k_true <- 20 # true rank (nr of compounds)
 psf_fun <- function(x, u, w=2.5) { exp(((x-u)^2)/(-2*(w^2))) } # gaussian point spread / peak shape function
 psf <- psf_fun(x=1:n/5, u=n/2) # vector with PSF
-sim.pois.mc <- simulate_spike_train(n = n, k = k_true, family = "poisson", 
+sim.pois.mc <- simulateSpikeTrain(n = n, k = k_true, family = "poisson",
                                     seed = 123,
                                     multichannel = TRUE,
                                     mean_beta = 10000,
@@ -188,7 +188,7 @@ Wstart = sim.pois.mc$X
 # our banded covariate matrix Wstart using an unpenalised nnls fit, after which 
 # we can retain only the columns of Wstart with nonzero coefficients 
 # and use this as initialisation for W
-peak_coefs <- L0glm.fit(X = Wstart, 
+peak_coefs <- l0glmFit(X = Wstart,
                         y = rowSums(D), # n x p data matrix, now regressing on row sums of D (=total ion chromatogram)
                         intercept = FALSE,
                         family = family,
