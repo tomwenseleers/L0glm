@@ -1,5 +1,5 @@
 ---
-title: "Sparse Cox proportional hazards models"
+title: "Cox proportional hazards models"
 description: "Right-censored survival data with adaptive ridge and scalable risk-set calculations."
 output: rmarkdown::html_document
 ---

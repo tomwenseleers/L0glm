@@ -1,5 +1,6 @@
 # Offset screening is an outer support search; every candidate fit starts afresh.
-L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,nthreads=NULL) {
+L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,
+                       nthreads=NULL,fixed_candidates=NULL) {
   if (!is.numeric(niter) || length(niter)!=1L || !is.finite(niter) ||
       niter<1 || niter!=floor(niter)) stop("niter must be a positive integer.",call.=FALSE)
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) ||
@@ -50,12 +51,15 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   allowed <- if (is.null(args$start)) rep(TRUE,p) else if (length(args$start)==1L)
     rep(args$start!=0,p) else rowSums(args$start[seq_len(p)+added,,drop=FALSE]!=0)>0
   allowed[mandatory] <- TRUE;eligible <- which(allowed)
-  screen_X <- if (length(eligible)==p) X else X[,eligible,drop=FALSE]
+  screen_X <- if (is.null(fixed_candidates) && length(eligible)<p) X[,eligible,drop=FALSE] else X
   B <- Matrix::Matrix(0,ncol(design),m,sparse=TRUE)
   selected <- mandatory;previous <- NULL;best <- NULL;history <- list();converged <- FALSE
   quasi_estimated <- NULL
   for (iteration in seq_len(niter)) {
-    if (length(eligible)) {
+    if (!is.null(fixed_candidates)) {
+      screen <- NULL
+      candidates <- sort(unique(c(mandatory, fixed_candidates[allowed[fixed_candidates]])))
+    } else if (length(eligible)) {
       active <- which(Matrix::rowSums(B!=0)>0)
       eta <- as.matrix(design[,active,drop=FALSE]%*%B[active,,drop=FALSE])+off
       screen <- sisGLM(screen_X,y,family,weights=w,offset=eta,nsis=min(nsis,length(eligible)),
@@ -95,7 +99,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       best <- list(fit=fit,coefficients=B,candidates=candidates,rows=rows,screen=screen,gic=gic,
         criterion=criterion,iteration=iteration)
     previous <- candidates
-    if (!length(eligible)) {converged <- TRUE;break}
+    if (!is.null(fixed_candidates) || !length(eligible)) {converged <- TRUE;break}
   }
   fit <- best$fit;fit$coefficients <- best$coefficients;fit$X <- design
   fit$p <- p_total;fit$always.include <- included

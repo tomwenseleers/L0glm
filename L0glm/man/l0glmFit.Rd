@@ -536,15 +536,16 @@ candidate within one empirical standard error of the minimum.
 The default \code{NULL} fits to the usual numerical stopping criterion.}
 
 \item{precluster}{Enable response-channel preclustering, default \code{FALSE}.
-Currently supports nonnegative identity-link Poisson models. See
+Supports identity-link Gaussian and nonnegative identity-link Poisson,
+quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 \code{\link{preclustering}} for the fitting sequence and mathematical model.}
 
 \item{cluster.refit}{With preclustering, refine selection on every original
-channel (default \code{TRUE}). \code{FALSE} returns a model of summed cluster outcomes
+channel (default \code{TRUE}). \code{FALSE} returns a model of aggregated cluster outcomes
 at the requested lambda. This is separate from \code{relaxed}.}
 
 \item{control.precluster}{Named advanced settings for clustering and
-screening. Defaults include at most 32 groups, Ward Poisson clustering,
+screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 \code{\link{preclustering}} for all entries.}
 }

@@ -160,6 +160,11 @@
 #' positive-mean families, such as Poisson (default \code{1e-8}). It retains all
 #' observations and makes scores finite when a fitted mean is zero. Set to zero
 #' for exact likelihood scoring, which can give infinite criteria.
+#' @param screen.path With ISIS screening, use \code{"independent"} (default)
+#'   to search at each lambda or \code{"preset"} to reuse the candidate pool
+#'   from the preset fit. Each lambda estimates its own coefficients and can
+#'   select any subset of the pool. In CV, each training fold learns its own
+#'   pool at the grid point nearest the preset, scaled to that fold.
 #' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
 #' \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
@@ -358,6 +363,9 @@
 #' \item{\code{mu_floor}}{prediction floor used for scoring.}
 #' \item{\code{coefficients}}{list of coefficient matrices in lambda order.}
 #' \item{\code{fit_best}}{the fitted model at \code{lambda_best}.}
+#' \item{\code{screen.candidates}}{the predictor indices in the screening
+#' design for the shared ISIS pool, when requested and used. CV pools are recorded in
+#' \code{cv$screen.candidates}.}
 #' \item{\code{fit_1se}}{the full-data fitted model at \code{lambda_1se}, or
 #' \code{NULL} for information-criterion tuning.}
 #' \item{\code{cv}}{CV results, or \code{NULL} for criterion tuning. Contains
@@ -393,18 +401,18 @@ l0glmTune <- function(X, y,
                        foldid       = NULL,
                        lambda_min   = 2,
                        start        = NULL,
-                       ...)
+                       ...,
+                       screen.path  = c("independent", "preset"))
 {
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
+  screen.path <- match.arg(screen.path)
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   dots <- list(...)
   precluster <- if ("precluster" %in% names(dots)) dots$precluster else FALSE
   cluster.refit <- if ("cluster.refit" %in% names(dots)) dots$cluster.refit else TRUE
   L0glm_precluster_flags(precluster, cluster.refit)
-  if (precluster && (!identical(family$family, "poisson") ||
-      !identical(family$link, "identity") || !isTRUE(dots$nonnegative)))
-    stop("precluster currently supports nonnegative identity-link Poisson fits.", call. = FALSE)
+  if (precluster) L0glm_precluster_kind(family, dots$nonnegative)
   if (precluster && !cluster.refit)
     stop("l0glmTune requires cluster.refit=TRUE. To tune cluster outcomes, first use glmAggregate and pass its response directly.", call. = FALSE)
   if (!is.null(L0glm_ext_kind(family))) return(L0glm_ext_tune(
@@ -412,7 +420,7 @@ l0glmTune <- function(X, y,
     if (missing(offset)) NULL else offset, dispersion, tune, nlambda, prop_range,
     coefs.true, printbest, plot, mu_floor,
     if (missing(nfolds) && !is.null(foldid)) NULL else nfolds,
-    foldid, lambda_min, start, dots))
+    foldid, lambda_min, start, dots, screen.path))
   if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
       nlambda < 2 || nlambda != as.integer(nlambda))
     stop("nlambda must be an integer of at least 2.", call. = FALSE)
@@ -473,6 +481,7 @@ l0glmTune <- function(X, y,
   }
   # Reuse memberships only: every lambda still estimates its own support.
   args <- L0glm_precluster_reuse(args, preset_fit)
+  args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
   included <- preset_fit$always.include
   penalized <- setdiff(seq_len(ncol(preset_fit$X)), included)
   is_zero <- function(fit) all(fit$coefficients[penalized, , drop = FALSE] == 0)
@@ -533,7 +542,7 @@ l0glmTune <- function(X, y,
   if (anyDuplicated(lambda_grid))
     stop("prop_range is too small to produce distinct lambda values.", call. = FALSE)
   cv <- if (do_cv) L0glm_cross_validate(cv_args, preset_fit$X, lambda_grid,
-                                       foldid, family, mu_floor, pilot_bounds) else NULL
+    foldid, family, mu_floor, pilot_bounds, screen.path, lambda_reference) else NULL
   if (do_cv && !any(is.finite(cv$mean)))
     stop("No lambda has finite cross-validated deviance; check predictions or use a positive mu_floor.",
          call. = FALSE)
@@ -627,6 +636,7 @@ l0glmTune <- function(X, y,
        fit_1se      = fit_1se,
        cv           = cv)
   if (precluster) result$preclustering <- preset_fit$preclustering
+  result$screen.candidates <- args$control.solver$.screen.candidates
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result
 }

@@ -22,7 +22,8 @@ l0glmTune(
   foldid = NULL,
   lambda_min = 2,
   start = NULL,
-  ...
+  ...,
+  screen.path = c("independent", "preset")
 )
 }
 \arguments{
@@ -227,6 +228,12 @@ units.
 }
 See Special families below and \code{\link{l0glmFit}} for support restrictions
 and further details of these arguments.}
+
+\item{screen.path}{With ISIS screening, use \code{"independent"} (default)
+to search at each lambda or \code{"preset"} to reuse the candidate pool
+from the preset fit. Each lambda estimates its own coefficients and can
+select any subset of the pool. In CV, each training fold learns its own
+pool at the grid point nearest the preset, scaled to that fold.}
 }
 \value{
 \code{l0glmTune} returns a list containing the following elements:
@@ -263,6 +270,9 @@ penalized coefficients.}
 \item{\code{mu_floor}}{prediction floor used for scoring.}
 \item{\code{coefficients}}{list of coefficient matrices in lambda order.}
 \item{\code{fit_best}}{the fitted model at \code{lambda_best}.}
+\item{\code{screen.candidates}}{the predictor indices in the screening
+design for the shared ISIS pool, when requested and used. CV pools are recorded in
+\code{cv$screen.candidates}.}
 \item{\code{fit_1se}}{the full-data fitted model at \code{lambda_1se}, or
 \code{NULL} for information-criterion tuning.}
 \item{\code{cv}}{CV results, or \code{NULL} for criterion tuning. Contains

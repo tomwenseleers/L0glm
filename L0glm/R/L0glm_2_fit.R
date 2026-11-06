@@ -400,13 +400,14 @@
 #'   Mandatory terms are unpenalized. Starting-value exclusions remain in force;
 #'   the returned sparse coefficient matrix keeps all original dimensions.
 #' @param precluster Enable response-channel preclustering, default \code{FALSE}.
-#'   Currently supports nonnegative identity-link Poisson models. See
+#'   Supports identity-link Gaussian and nonnegative identity-link Poisson,
+#'   quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 #'   \code{\link{preclustering}} for the fitting sequence and mathematical model.
 #' @param cluster.refit With preclustering, refine selection on every original
-#'   channel (default \code{TRUE}). \code{FALSE} returns a model of summed cluster outcomes
+#'   channel (default \code{TRUE}). \code{FALSE} returns a model of aggregated cluster outcomes
 #'   at the requested lambda. This is separate from \code{relaxed}.
 #' @param control.precluster Named advanced settings for clustering and
-#'   screening. Defaults include at most 32 groups, Ward Poisson clustering,
+#'   screening. Defaults include at most 32 groups, Ward clustering,
 #'   GIC cut selection, unit row bins and a screening factor of 0.1. See
 #'   \code{\link{preclustering}} for all entries.
 #' @param group.maxit Integer  specifying the maximum number of iterations to
@@ -1018,9 +1019,12 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     supplied <- setdiff(names(match.call())[-1L], c("X", "y", "family", "weights",
       "offset", "nonnegative", "screen", "nsis", "screen.maxit", "screen.nthreads"))
     options <- mget(supplied, envir = environment(), inherits = FALSE)
+    candidates <- options$control.solver$.screen.candidates
+    if (!is.null(candidates)) options$control.solver$.screen.candidates <- NULL
     options$intercept <- screen_intercept
     return(L0glm_screen_fit(X, y, family, weights, offset, nonnegative,
-      screen_method, tolower(screen) == "auto", nsis, screen.maxit, options, screen.nthreads))
+      screen_method, tolower(screen) == "auto", nsis, screen.maxit, options, screen.nthreads,
+      candidates))
   }
   if (identical(kind,"nb") && L0glm_signal_family(family) && nonnegative && is.null(start) &&
       !isTRUE(intercept) && maxit > 1L && !is.null(offset) && any(offset != 0)) {

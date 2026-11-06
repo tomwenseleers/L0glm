@@ -27,12 +27,13 @@ each pair at its precision-weighted mean and sums their unit deviances."><meta p
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial</a></li>
-    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial</a></li>
-    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
+    <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
+    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -172,7 +173,7 @@ Clustering with Bregman Divergences. JMLR 6, 1705–1749.
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">demo</span><span class="op">$</span><span class="va">y</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span> <span class="co"># 1764 timepoints x 518 m/z mass traces</span></span>
 <span><span class="co"># we aggregate together every bin of 10 subsequent timepoints for extra performance:</span></span>
-<span><span class="va">Y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="glmCluster.html">glmAggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, </span>
+<span><span class="va">Y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="glmCluster.html">glmAggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>,</span>
 <span>                    family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, </span>
 <span>                    clusterids <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">ceiling</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">/</span><span class="fl">10</span><span class="op">)</span>, each<span class="op">=</span><span class="fl">10</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">Y_agg</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Y2</span><span class="op">)</span> <span class="co"># 177 time bins x 518 m/z mass channels</span></span>
@@ -199,3 +200,4 @@ Clustering with Bregman Divergences. JMLR 6, 1705–1749.
 
 
   </body></html>
+

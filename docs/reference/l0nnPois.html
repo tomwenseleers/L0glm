@@ -73,12 +73,13 @@ if coefficients of either sign are required."><meta property="og:image" content=
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial</a></li>
-    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial</a></li>
-    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
+    <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
+    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -582,19 +583,20 @@ or relaxed-refit checkpoint. Validation predictors are shared across threads.</p
 
 <dt id="arg-precluster">precluster<a class="anchor" aria-label="anchor" href="#arg-precluster"></a></dt>
 <dd><p>Enable response-channel preclustering, default <code>FALSE</code>.
-Currently supports nonnegative identity-link Poisson models. See
+Supports identity-link Gaussian and nonnegative identity-link Poisson,
+quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 <code><a href="preclustering.html">preclustering</a></code> for the fitting sequence and mathematical model.</p></dd>
 
 
 <dt id="arg-cluster-refit">cluster.refit<a class="anchor" aria-label="anchor" href="#arg-cluster-refit"></a></dt>
 <dd><p>With preclustering, refine selection on every original
-channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of summed cluster outcomes
+channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of aggregated cluster outcomes
 at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
 
 
 <dt id="arg-control-precluster">control.precluster<a class="anchor" aria-label="anchor" href="#arg-control-precluster"></a></dt>
 <dd><p>Named advanced settings for clustering and
-screening. Defaults include at most 32 groups, Ward Poisson clustering,
+screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 <code><a href="preclustering.html">preclustering</a></code> for all entries.</p></dd>
 
@@ -696,3 +698,4 @@ GIC cut selection, unit row bins and a screening factor of 0.1. See
 
 
   </body></html>
+

@@ -1,37 +1,54 @@
-#' Preclustering response channels before sparse Poisson fitting
+#' Preclustering response channels before sparse GLM fitting
 #' @name preclustering
 #' @md
 #' @description
-#' `l0glmFit(precluster=TRUE)` and `l0nnPois(precluster=TRUE)` cluster and sum
+#' `l0glmFit(precluster=TRUE)` clusters and aggregates
 #' response channels, screen predictors on the reduced responses, then refine
-#' the sparse fit on every original channel. The workflow supports
-#' nonnegative identity-link Poisson models. Standalone [glmCluster()] also
-#' supports scalar-family Bregman/deviance clustering.
+#' the sparse fit on every original channel. The identity-link workflow
+#' supports Gaussian models with or without nonnegativity, and nonnegative
+#' Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
+#' includes [gammaScale()] and [gammaCensored()]. `l0nnPois(precluster=TRUE)`
+#' provides the same workflow for nonnegative identity-link Poisson models.
 #'
 #' @details
 #' For conditionally independent Poisson channels with an identity link,
 #' \deqn{Y^A_{ig}=\sum_{j\in G_g}Y_{ij}\sim
 #' \mathrm{Poisson}(x_i^T\Gamma_g+o^A_{ig}),\qquad
 #' \Gamma_g=\sum_{j\in G_g}\beta_j,\quad o^A_{ig}=\sum_{j\in G_g}o_{ij}.}
-#' Nonnegativity preserves row support under summation. The cluster screen
-#' uses raw counts and a permissive `screen.factor * lambda` (default `0.1`).
+#' Nonnegativity preserves row support under summation. Gaussian channels
+#' use arithmetic means and multiply each group's case weights by its size.
+#' Signed effects can cancel within a Gaussian group, so group fits may miss
+#' predictors with opposing channel effects. Sums preserve the count law for
+#' independent Poisson and common-dispersion NB1, and the continuous law for
+#' uncensored common-scale Gamma. In the other count and positive families
+#' the summed mean is retained and the variance is estimated or approximated.
+#' For supplied scales, typical channel intensity shares `r` are computed
+#' from weighted column totals. The working scale of a sum uses
+#' \eqn{\sum_j\phi_j r_j^q}, with \eqn{q=1,2,3} for quasipoisson, Gamma and
+#' inverse Gaussian variance, respectively. NB2 uses the corresponding
+#' moment-matched starting or fixed shape, taking a median across groups
+#' because the aggregate family specifies one shape. Censored Gamma sums
+#' approximate the observed censoring process.
+#'
+#' The cluster screen uses a permissive `screen.factor * lambda` (default `0.1`).
 #' Original-channel refinement uses the requested penalty, calculated once
 #' from the original predictor universe. Its default is two grouped passes;
 #' an explicitly supplied `group.maxit` takes precedence unless
 #' `control.precluster$refit.passes` is supplied. `relaxed` retains its usual
 #' selected-support coefficient-refitting meaning.
 #'
-#' With `start=NULL`, original-channel refinement broadcasts each candidate's
-#' summed aggregate coefficient divided by the original channel count.
+#' With `start=NULL`, Poisson refinement broadcasts each candidate's summed
+#' aggregate coefficient divided by the original channel count. Other families
+#' use their usual initialization on the reduced predictor set.
 #' Explicit starts retain their original coefficient-coordinate meaning;
 #' scalar `1` is expanded in normalized coordinates before summation.
 #' Starting zeroes remain excluded in their original channels; compulsory
 #' terms remain eligible. Coefficients always retain the original predictor
-#' dimensions, with excluded rows zero. Shared observation weights remain
-#' unchanged; offsets and coefficient prior centres are summed across groups.
-#' This workflow requires weights shared across channels.
+#' dimensions, with excluded rows zero. This workflow requires training
+#' weights shared across channels. Offsets and coefficient prior centres use
+#' the same aggregation as the response.
 #'
-#' With `cluster.refit=FALSE`, the returned model fits summed cluster outcomes
+#' With `cluster.refit=FALSE`, the returned model fits aggregated cluster outcomes
 #' at the requested `lambda`. Its coefficients/predictions have one column per
 #' cluster and its metrics describe those aggregated outcomes. This differs
 #' from the permissive screening model retained inside an original-channel fit.
@@ -40,17 +57,20 @@
 #'
 #' `control.precluster` is a named list. Supported entries are `k.max=32L`,
 #' `k=NULL`, `linkage="ward"`, `criterion="gic"`, `rowbins=1L`,
-#' `size_fac=NULL` (use training column totals), `nthreads=NULL` (physical
+#' `size_fac=NULL` (use training column totals for count responses), `nthreads=NULL` (physical
 #' cores), `screen.factor=0.1`, `refit.passes=2L` and `clusterids=NULL`.
 #' Supplied cluster labels reuse a partition; responses are always aggregated
 #' afresh. Clustering threads are serial when `parallelize=FALSE`.
 #' Five-row binning is useful for ordered chromatographic scans; the general
-#' default of one row avoids dependence on arbitrary observation order.
+#' default of one row avoids dependence on arbitrary observation order. Count
+#' responses use size-adjusted Poisson clustering. Gaussian and positive
+#' continuous responses use their own likelihood or deviance distances.
+#' The specialized Gamma adapters use Ward clustering.
 #'
 #' Clustering uses training response profiles. Observation offsets are carried
 #' into the aggregated and original regression stages. Validation uses the
 #' original channels for original-channel refinement; aggregate-only validation
-#' uses the same training-derived membership with summed responses/offsets.
+#' uses the same training-derived membership and aggregation.
 #' [l0glmTune()] supports original-channel refinement, learning a partition
 #' once on the full data and separately in each CV training fold. Training
 #' column totals determine size factors in that fold. Partitions are reused
@@ -64,9 +84,10 @@
 #' background. Its nonnegative coefficients are refined separately from the
 #' selected peaks on the original channels; see [compulsory_terms].
 #'
-#' The returned ordinary `L0glm_fit` gains `preclustering`: memberships,
+#' The returned fit gains `preclustering`: memberships,
 #' channel names, candidates, screening coefficients, actual penalties,
-#' initialization, clustering settings, cut history and phase timings.
+#' initialization, clustering settings, aggregate family and approximation,
+#' cut history and phase timings.
 #' One-channel original fits, zero-penalty original fits and starts excluding
 #' all selectable rows use the ordinary fitter and record the bypass reason.
 #'
@@ -91,12 +112,25 @@ L0glm_precluster_flags<-function(precluster,cluster.refit) {
     stop("precluster and cluster.refit must be TRUE or FALSE.",call.=FALSE)
 }
 
-L0glm_precluster_coef<-function(value,name,X,added,mandatory,normalize,m) {
+L0glm_precluster_kind <- function(family, nonnegative) {
+  kind <- tolower(family$family)
+  if (startsWith(kind, "negative binomial")) kind <- "nb2"
+  supported <- c("gaussian", "poisson", "quasipoisson", "nb1", "nb2",
+    "gamma", "gamma_scale", "gamma_censored", "inverse.gaussian")
+  if (!identical(family$link,"identity") || !kind %in% supported ||
+      (kind != "gaussian" && !isTRUE(nonnegative)))
+    stop("precluster requires identity-link Gaussian, or nonnegative identity-link Poisson, quasipoisson, negative binomial, Gamma or inverse Gaussian fits.",
+      call. = FALSE)
+  kind
+}
+
+L0glm_precluster_coef<-function(value,name,X,added,mandatory,normalize,m,nonnegative) {
   if(is.null(value)) return(NULL)
   p<-ncol(X)
   if(!(is.numeric(value)||inherits(value,"dMatrix"))) stop(name," must contain numeric coefficients.",call.=FALSE)
   if(name=="start"&&is.null(dim(value))&&length(value)==1L&&isTRUE(value==1)) {
-    prep<-L0glm_preprocessing(X,normalize,rep(0,p),mandatory)
+    lower<-rep(if(nonnegative) 0 else -.Machine$double.xmax,p)
+    prep<-L0glm_preprocessing(X,normalize,lower,mandatory)
     value<-L0glm_unit_start(value,X,prep,1L)
   } else if(length(value)==1L) value<-matrix(as.numeric(value),p,1L) else {
     if(is.null(dim(value))) value<-matrix(value,ncol=1L)
@@ -104,7 +138,7 @@ L0glm_precluster_coef<-function(value,name,X,added,mandatory,normalize,m) {
   }
   if(nrow(value)!=p||!ncol(value)%in%c(1L,m)||any(!is.finite(value)))
     stop(name," must match the original coefficient dimensions and be finite.",call.=FALSE)
-  if(name=="start") value[value<0]<-0
+  if(name=="start"&&nonnegative) value[value<0]<-0
   value
 }
 
@@ -114,9 +148,10 @@ L0glm_precluster_sumcoef<-function(value,P) {
   as.matrix(value%*%P)
 }
 
-L0glm_precluster_validation<-function(validation,group=NULL,rows=NULL,added=FALSE,predictor_names=NULL) {
+L0glm_precluster_validation<-function(validation,group=NULL,groups=NULL,rows=NULL,added=FALSE,
+                                     predictor_names=NULL,family=NULL,dispersion=NULL) {
   if(is.null(validation)) return(NULL)
-  if(is.null(group)) {
+  if(is.null(groups)) {
     if(inherits(validation,"L0glm_validation")) return(L0glm_subset_validation(validation,rows))
     if(!is.null(predictor_names)&&!is.null(colnames(validation$X))) {
       if(anyDuplicated(predictor_names)||anyDuplicated(colnames(validation$X))||
@@ -128,28 +163,79 @@ L0glm_precluster_validation<-function(validation,group=NULL,rows=NULL,added=FALS
     colnames(validation$X)<-NULL
     return(validation)
   }
-  n<-nrow(validation$y);m<-length(group)
+  n<-nrow(validation$y);m<-nrow(groups);k<-ncol(groups)
+  # Sums use the same case weights as the original responses.
   agg<-glmAggregate(validation$y,validation$weights,poisson(identity),group)
-  P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,max(group)))
-  validation$y<-agg$Y_agg;validation$weights<-agg$weights_agg
-  if(!is.null(validation$offset)) validation$offset<-L0glm_precluster_offset(validation$offset,n,m,P)
+  average<-family$family=="gaussian"
+  validation$y<-if(average) as.matrix(as.matrix(validation$y)%*%groups) else agg$Y_agg
+  validation$weights<-if(average) {
+    w<-if(is.null(agg$weights_agg)) matrix(1,n,k) else agg$weights_agg
+    sweep(w,2L,tabulate(group,k),`*`)
+  } else agg$weights_agg
+  if(!is.null(validation$offset)) validation$offset<-L0glm_precluster_offset(validation$offset,n,m,groups)
   if(inherits(validation,"L0glm_validation")) {
-    validation$m<-max(group);validation$mass<-rowSums(validation$weights)
-    validation$response<-list(y=validation$y,m=validation$m)
-    for(name in c("baseline","refit_baseline")) if(!is.null(validation[[name]])) validation[[name]]<-as.matrix(validation[[name]]%*%P)
-    validation$baseline_dispersion<-rep(1,validation$m)
+    validation$m<-k;validation$mass<-rowSums(validation$weights)
+    validation$family<-family
+    validation$response<-if(identical(validation$kind,"nb"))
+      L0glm_ext_nb_response(validation$y,family,n) else list(y=validation$y,m=k)
+    for(name in c("baseline","refit_baseline")) if(!is.null(validation[[name]])) validation[[name]]<-as.matrix(validation[[name]]%*%groups)
+    validation$baseline_dispersion<-rep_len(if(is.null(dispersion)) 1 else abs(dispersion),k)
+    if(identical(validation$kind,"nb"))
+      validation$baseline_state<-list(theta=validation$response$theta)
   }
   validation
 }
 
+# Match the variance of an independent sum at the typical channel proportions.
+L0glm_precluster_noise <- function(kind, family, phi, Y, w, P, group) {
+  fit <- list(family=family, dispersion=phi, approximation=NULL)
+  if (kind %in% c("poisson", "nb1", "gamma_scale")) {
+    if (kind == "gamma_scale" && family$scalar$censor > 0)
+      fit$approximation <- "censored recorded intensities"
+    return(fit)
+  }
+  degree <- switch(kind, quasipoisson=1, gamma=2, gamma_censored=2, nb2=2,
+    inverse.gaussian=3, gaussian=0)
+  k <- ncol(P)
+  if (kind != "gaussian") fit$approximation <- "aggregate variance model"
+  if (is.null(phi) && !kind %in% c("nb2", "gamma_censored")) return(fit)
+  if (degree == 0) {
+    share <- 1/tabulate(group,k)[group]
+  } else {
+    totals <- as.numeric(crossprod(rep_len(w,nrow(Y)),Y))
+    mass <- as.numeric(totals %*% P)[group]
+    share <- ifelse(mass > 0, totals/pmax(mass,.Machine$double.xmin),
+      1/tabulate(group,k)[group])
+  }
+  group_sum <- function(value) as.numeric(value %*% P)
+  if (kind == "nb2") {
+    theta <- L0glm_cluster_family(family)$theta / stats::median(group_sum(share^2))
+    fit$family <- if (identical(L0glm_ext_kind(family),"nb"))
+      mgcv::nb(theta=if(isTRUE(family$n.theta>0)) -theta else theta, link="identity") else
+      MASS::negative.binomial(theta,link="identity")
+  } else if (kind == "gamma_censored") {
+    scale <- family$scalar$parameter * stats::median(group_sum(share^2))
+    fit$family <- gammaCensored(scale, link="identity", censor=family$scalar$censor)
+  } else if (!is.null(phi)) {
+    fit$dispersion <- group_sum(abs(phi) * share^max(1,degree))
+    estimate <- group_sum(phi < 0) > 0
+    fit$dispersion[estimate] <- -fit$dispersion[estimate]
+  }
+  fit
+}
+
 L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   begun<-proc.time()[[3L]];family<-options$family
-  if(!identical(family$family,"poisson")||!identical(family$link,"identity")||
-      !isTRUE(options$nonnegative))
-    stop("precluster currently supports nonnegative identity-link Poisson fits. Use glmCluster for other scalar families.",call.=FALSE)
+  kind<-L0glm_precluster_kind(family,options$nonnegative)
   Y<-L0glm_cluster_matrix(y);n<-nrow(Y);m<-ncol(Y)
-  if(nrow(X)!=n||any(Y<0)) stop("X and nonnegative Poisson responses must have compatible rows.",call.=FALSE)
+  if(nrow(X)!=n) stop("X and the responses must have compatible rows.",call.=FALSE)
+  if(kind!="gaussian"&&any(Y<0)) stop("This family requires nonnegative responses.",call.=FALSE)
+  if(kind%in%c("gamma","inverse.gaussian")&&any(Y<=0))
+    stop("This family requires positive responses.",call.=FALSE)
+  if(is.function(family$validate_response)&&!family$validate_response(Y))
+    stop("Responses lie outside the family domain.",call.=FALSE)
   control<-options$control.precluster
+  size_adjusted<-kind%in%c("poisson","quasipoisson","nb1","nb2")
   defaults<-list(k.max=32L,k=NULL,linkage="ward",criterion="gic",rowbins=1L,
     size_fac=NULL,nthreads=NULL,screen.factor=.1,refit.passes=if("group.maxit"%in%supplied) options$group.maxit else 2L,clusterids=NULL)
   if(!is.list(control)||length(control)&&(is.null(names(control))||any(!nzchar(names(control)))||
@@ -167,8 +253,8 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   lambda<-L0glm_resolve_lambda(options$lambda,max(1L,p_total),n)
   phi<-L0glm_dispersion(options$dispersion,family,m)
   if(!is.null(options$dispersion)) options$dispersion<-phi
-  original_start<-L0glm_precluster_coef(options$start,"start",Z,added,mandatory,options$normalize,m)
-  prior<-L0glm_precluster_coef(options$prior.mean,"prior.mean",Z,added,mandatory,options$normalize,m)
+  original_start<-L0glm_precluster_coef(options$start,"start",Z,added,mandatory,options$normalize,m,options$nonnegative)
+  prior<-L0glm_precluster_coef(options$prior.mean,"prior.mean",Z,added,mandatory,options$normalize,m,options$nonnegative)
   allowed<-if(is.null(original_start)) rep(TRUE,p) else as.numeric(Matrix::rowSums(original_start!=0))>0
   allowed[mandatory]<-TRUE
   call_fit<-function(design,response,opt) {
@@ -191,9 +277,12 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   }
   threads<-if(isTRUE(options$parallelize)) L0glm_sis_threads(control$nthreads) else 1L
   cluster_start<-proc.time()[[3L]]
+  sizes<-if(size_adjusted) if(is.null(control$size_fac)) colSums(Y) else control$size_fac
+  if(!size_adjusted&&!is.null(control$size_fac))
+    stop("Preclustering size factors apply to count responses.",call.=FALSE)
   if(is.null(control$clusterids)) {
-    cl<-glmCluster(Y,weights=w,family=family,method="poissondist",
-      size_fac=if(is.null(control$size_fac)) colSums(Y) else control$size_fac,
+    cl<-glmCluster(Y,weights=w,family=if(size_adjusted) poisson(identity) else family,
+      method=if(size_adjusted) "poissondist" else "deviance",size_fac=sizes,
       rowbins=control$rowbins,nthreads=threads,linkage=control$linkage,
       criterion=control$criterion,k=control$k,k.max=control$k.max)
   } else {
@@ -204,13 +293,20 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   }
   cluster_seconds<-proc.time()[[3L]]-cluster_start;group<-cl$clusterids;k<-max(group)
   P<-Matrix::sparseMatrix(i=seq_len(m),j=group,x=1,dims=c(m,k))
-  response<-if(is.null(cl$Y_agg)) glmAggregate(Y,options$weights,family,group)$Y_agg else cl$Y_agg
+  noise<-L0glm_precluster_noise(kind,family,if(is.null(options$dispersion)) NULL else phi,Y,w,P,group)
+  sizes_by_group<-tabulate(group,k)
+  if(kind=="gaussian") P<-P%*%Matrix::Diagonal(x=1/sizes_by_group)
+  response<-if(size_adjusted&&!is.null(cl$Y_agg)) cl$Y_agg else as.matrix(Y%*%P)
+  dimnames(response)<-list(rownames(Y),paste0("cluster_",seq_len(k)))
   opt<-options;opt$lambda<-if(refit) control$screen.factor*lambda else lambda
-  opt$dispersion<-if(is.null(options$dispersion)) NULL else 1
-  opt$weights<-if(is.null(options$weights)) NULL else w
+  opt$family<-noise$family;opt$dispersion<-noise$dispersion
+  if(kind%in%c("poisson","nb1","nb2","gamma_scale","gamma_censored")&&!is.null(phi))
+    opt$dispersion<-1
+  opt$weights<-if(kind=="gaussian") outer(rep_len(w,n),sizes_by_group) else if(!is.null(options$weights)) w
   opt$offset<-if(is.null(options$offset)) NULL else L0glm_precluster_offset(options$offset,n,m,P)
   opt$start<-L0glm_precluster_sumcoef(original_start,P);opt$prior.mean<-L0glm_precluster_sumcoef(prior,P)
-  opt$validation<-if(refit) NULL else L0glm_precluster_validation(options$validation,group=group)
+  opt$validation<-if(refit) NULL else L0glm_precluster_validation(options$validation,group=group,groups=P,
+    family=opt$family,dispersion=opt$dispersion)
   selected_start<-proc.time()[[3L]];reduced<-call_fit(X,response,opt)
   selection_seconds<-proc.time()[[3L]]-selected_start
   C<-coef(reduced);candidates<-sort(unique(c(mandatory,which(Matrix::rowSums(abs(C))>0))))
@@ -218,11 +314,11 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   if(refit) {
     opt<-options;opt$lambda<-lambda;opt$intercept<-FALSE;opt$always.include<-match(mandatory,candidates)
     opt$group.maxit<-control$refit.passes;opt$screen<-"none"
-    if(is.null(original_start)) {
+    if(is.null(original_start)&&kind=="poisson") {
       mean_start<-as.numeric(Matrix::rowSums(C[candidates,,drop=FALSE]))/m
       initialization<-list(method="aggregate_row_mean",rows=candidates,values=mean_start)
       opt$start<-matrix(mean_start,length(candidates),m)
-    } else {
+    } else if(!is.null(original_start)) {
       opt$start<-original_start[candidates,,drop=FALSE]
       initialization<-list(method="supplied",rows=candidates,values=opt$start)
     }
@@ -242,19 +338,26 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
       }
       fit$X<-reduced$X;fit$p<-p_total;fit$always.include<-mandatory;fit$added_intercept<-added
       fit$preprocessing<-reduced$preprocessing
+      if(!is.null(fit$metrics)) {
+        fit$metrics<-l0glmMetrics(fit,mu_floor=1e-8)
+        fit$objective<-fit$metrics$objective
+      }
     }
     refit_seconds<-proc.time()[[3L]]-refit_start
   } else fit<-reduced
   # Refresh working quantities at the returned mean after all coefficient updates.
-  mu<-fitted(fit);W<-L0glm_observation_broadcast(fit$prior.weights)/pmax(mu,.Machine$double.eps)
-  fit$weights<-if(ncol(mu)==1L) as.numeric(W) else Matrix::Matrix(W,sparse=TRUE)
-  used_sizes<-if(is.null(cl$size_fac)) if(is.null(control$size_fac)) colSums(Y) else control$size_fac else cl$size_fac
+  if(kind=="poisson") {
+    mu<-fitted(fit);W<-L0glm_observation_broadcast(fit$prior.weights)/pmax(mu,.Machine$double.eps)
+    fit$weights<-if(ncol(mu)==1L) as.numeric(W) else Matrix::Matrix(W,sparse=TRUE)
+  }
+  used_sizes<-if(is.null(cl$size_fac)) sizes else cl$size_fac
   control$clusterids<-NULL;control$size_fac<-NULL
   fit$preclustering<-list(used=TRUE,refitted=refit,clusterids=group,
     original_channels=m,channel_names=colnames(Y),clusters=k,candidates=candidates,
     screen.coefficients=if(refit) C else NULL,lambda.screen=if(refit) control$screen.factor*lambda else NULL,
     lambda.target=lambda,initialization=initialization,history=cl$history,
     size_fac=used_sizes,screening=reduced$screening,
+    aggregate.family=noise$family$family,aggregate.approximation=noise$approximation,
     control=control,nthreads=threads,
     seconds=c(clustering=cluster_seconds,selection=selection_seconds,refit=refit_seconds,total=proc.time()[[3L]]-begun))
   fit

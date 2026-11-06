@@ -5,7 +5,7 @@
 <div class="l0-hero-copy">
 <p class="l0-eyebrow">SPARSE REGRESSION · GENERALIZED LINEAR MODELS</p>
 <h1>Fast variable selection.<br><span>Parsimonious models.</span></h1>
-<p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to multinomial and survival models.</p>
+<p class="l0-lead">Fast L<sub>0</sub> and grouped L<sub>0</sub> regression to approximate best subset and best subset of groups selection. Accurate effects, cleaner supports, and one interface from ordinary GLMs to negative binomial, multinomial and survival models.</p>
 <div class="l0-actions"><a class="btn btn-primary" href="articles/L0glm.html">Get started <span aria-hidden="true">↗</span></a><a class="btn btn-outline-light" href="articles/performance.html">Explore the benchmarks</a></div>
 <p class="l0-hero-note">R · Dense & sparse designs · Single & multiple responses</p>
 </div>
@@ -47,6 +47,10 @@ where it matters, producing sparse models with excellent support recovery.
 
 <!-- BEGIN million-intro -->
 This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.55 seconds** and recovers **40 true effects with 3 false positives**.
+
+That is about twice the sensitivity of five-fold-CV LASSO and relaxed LASSO,
+which recover 17 and 20 true effects and select 50 and 252 false positives,
+respectively. [See the full benchmark](articles/performance.html#one-million-predictor-example).
 <!-- END million-intro -->
 
 ```r
@@ -143,6 +147,7 @@ chromatogram files, quantification and spectral library search.
 | Fit a model and make predictions | [Get started](articles/L0glm.html) |
 | Choose a penalty by GIC or cross-validation | [Model selection](articles/selection.html) |
 | Use weights, constraints or held-out early stopping | [Fitting controls](articles/controls.html) |
+| Fit standard GLMs | [Regular GLM models](articles/regular-glm.html) |
 | Fit counts, classes or survival outcomes | [Negative binomial](articles/negative-binomial.html) · [Multinomial](articles/multinomial.html) · [Cox](articles/cox.html) |
 | Search a very large predictor set | [SIS / ISIS](articles/high-dimensional.html) |
 | Understand the mathematics | [Algorithm & theory](articles/algorithm.html) |

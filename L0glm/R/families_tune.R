@@ -1,6 +1,7 @@
 # Extended-family tuning is isolated from the ordinary-GLM path. Each fit starts
 # independently, including theta and preprocessing inside every training fold.
-L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
+L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
+                        screen.path, reference) {
   response <- args$y
   mass <- switch(kind, nb = rowSums(args$weights) * ncol(response)/ncol(args$weights),
     multinomial = args$weights[, 1L] * rowSums(response),
@@ -17,6 +18,9 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   lambda_train <- outer(lambdas, fractions)
   loss <- matrix(NA_real_, length(lambdas), K)
   starts <- pilots <- preprocessing <- theta <- vector("list", K)
+  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
+  candidates <- vector("list", K)
+  preclustering <- if (isTRUE(args$precluster)) vector("list", K) else NULL
   for (k in seq_len(K)) {
     train <- foldid != k
     a <- args
@@ -26,10 +30,16 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
     a$start <- initialization$start
     starts[k] <- list(a$start); pilots[k] <- list(initialization$pilot)
     theta[[k]] <- vector("list", length(lambdas))
-    for (i in seq_along(lambdas)) {
+    for (i in path_order) {
       fit <- tryCatch(do.call(l0glmFit, c(a, list(lambda = lambda_train[i, k]))),
         error = function(e) stop(sprintf("CV fold %d, lambda %.4g: %s", k, lambdas[i], conditionMessage(e)), call. = FALSE))
-      if (i == 1L) preprocessing[[k]] <- fit$preprocessing
+      if (i == path_order[1L]) {
+        preprocessing[[k]] <- fit$preprocessing
+        if (!is.null(preclustering)) preclustering[[k]] <- fit$preclustering
+        a <- L0glm_precluster_reuse(a, fit)
+        a <- L0glm_path_screen_reuse(a, fit, screen.path)
+        candidates[k] <- list(a$control.solver$.screen.candidates)
+      }
       theta[[k]][i] <- list(fit$theta)
       if (kind == "cox") {
         # Verweij--van Houwelingen subtraction retains the full risk sets.
@@ -47,16 +57,19 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds) {
   means <- as.numeric(loss %*% proportions)
   centered <- sweep(loss, 1L, means, "-")
   se <- sqrt(as.numeric(centered^2 %*% proportions)/(K - 1L))
-  list(lambda = lambdas, mean = means, se = se, deviance = loss, foldid = foldid,
+  result <- list(lambda = lambdas, mean = means, se = se, deviance = loss, foldid = foldid,
     nfolds = K, fold_weights = fold_weights, lambda_train = lambda_train,
     starts = starts, pilots = pilots, preprocessing = preprocessing, theta = theta,
     scoring = if (kind == "cox") "Cox partial-likelihood subtraction per held-out event" else
       "held-out deviance per weighted response/trial")
+  if (!is.null(preclustering)) result$preclustering <- preclustering
+  if (screen.path == "preset") result$screen.candidates <- candidates
+  result
 }
 
 L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
                             nlambda, prop_range, coefs.true, printbest, plot,
-                            mu_floor, nfolds, foldid, lambda_min, start, dots) {
+                            mu_floor, nfolds, foldid, lambda_min, start, dots, screen.path) {
   if (length(nlambda) != 1L || !is.finite(nlambda) || nlambda < 2 || nlambda != floor(nlambda) ||
       length(prop_range) != 1L || !is.finite(prop_range) || prop_range <= 0 || prop_range > 1 ||
       length(lambda_min) != 1L || !is.finite(lambda_min) || lambda_min <= 0 ||
@@ -93,6 +106,8 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   args$start <- initialization$start
   fit_lambda <- function(lambda) do.call(l0glmFit, c(args, list(lambda = lambda)))
   preset_fit <- fit_lambda(reference)
+  args <- L0glm_precluster_reuse(args, preset_fit)
+  args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
   is_zero <- function(fit) fit$metrics$selected == 0
   lambda_max <- 2 * reference
   endpoint <- fit_lambda(lambda_max)
@@ -122,7 +137,8 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   if (nlambda > 2L || low == r) grid[which.min(abs(log10(grid) - r))] <- reference
   if (prop_range == 1) grid[c(1L, length(grid))] <- c(lambda_min, lambda_max)
   if (anyDuplicated(grid)) stop("prop_range is too small for distinct lambda values.", call. = FALSE)
-  cv <- if (do_cv) L0glm_ext_cv(cv_args, grid, foldid, kind, mu_floor, pilot_bounds) else NULL
+  cv <- if (do_cv) L0glm_ext_cv(cv_args, grid, foldid, kind, mu_floor, pilot_bounds,
+    screen.path, reference) else NULL
   if (do_cv && !any(is.finite(cv$mean))) stop("No finite CV score.", call. = FALSE)
   cv_best <- if (do_cv) which.min(cv$mean) else NULL
   lambda_1se <- if (do_cv) max(grid[is.finite(cv$mean) & cv$mean <= cv$mean[cv_best] + cv$se[cv_best]]) else NULL
@@ -169,6 +185,8 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     coefficients = coefficients, theta = theta, fit_best = fit_best, fit_1se = fit_1se,
     cv = cv, criterion_support = if (preset_fit$grouped) "rows" else "coefficients")
   if (kind == "multinomial") result$coordinates <- "clr"
+  result$preclustering <- preset_fit$preclustering
+  result$screen.candidates <- args$control.solver$.screen.candidates
   if (printbest) message(sprintf("Best lambda by %s = %.4g", toupper(tune), grid[best]))
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result

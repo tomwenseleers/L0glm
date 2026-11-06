@@ -47,12 +47,13 @@
 <li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial</a></li>
-    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial</a></li>
-    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
+    <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
+    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -170,28 +171,7 @@ GB; data generation is excluded from the fitting time.</p>
 <td align="right">0.787</td>
 </tr></tbody>
 </table>
-<!-- END million-metrics --><p>The corresponding support confusion matrix is:</p>
-<!-- BEGIN million-confusion -->
-<table class="table">
-<thead><tr class="header">
-<th>Ground truth</th>
-<th align="right">Selected</th>
-<th align="right">Excluded</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Nonzero effects</td>
-<td align="right">40 TP</td>
-<td align="right">20 FN</td>
-</tr>
-<tr class="even">
-<td>Zero effects</td>
-<td align="right">3 FP</td>
-<td align="right">999937 TN</td>
-</tr>
-</tbody>
-</table>
-<!-- END million-confusion --><p><img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%"></p>
+<!-- END million-metrics --><p><img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%"></p>
 <p>The true coefficients are used to evaluate recovery. Fitting uses
 only <code>X</code> and <code>y</code>. Returned coefficients retain all
 one million rows in a sparse matrix. The default automatic screening
@@ -201,22 +181,26 @@ for serial screening.</p>
 <div class="section level2">
 <h2 id="tune-a-regularization-path">Tune a regularization path<a class="anchor" aria-label="anchor" href="#tune-a-regularization-path"></a>
 </h2>
-<p>The preset already gives a strong sparse model. Detailed tuning is
-available when desired, and often selects a value close to the preset.
-In this example, the best value over the displayed ten-value GIC grid is
-exactly the preset.</p>
+<p>The preset already gives a strong sparse model. This tuning path uses
+the predictor pool found by ISIS at the preset. Each lambda fits its own
+model within that pool, so the graph shows how the penalty changes
+selection on a common set of candidates. The best grid value is 26.78,
+close to the preset of 25.24. Both recover 40 true effects. The selected
+grid fit has one false positive, compared with three at the preset.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
-<span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, screen.path<span class="op">=</span><span class="st">"preset"</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda_best<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_best</span>, lambda_preset<span class="op">=</span><span class="va">tuned</span><span class="op">$</span><span class="va">lambda_preset</span><span class="op">)</span></span></code></pre></div>
-<p><img src="../million-path.png" alt="Coefficient paths and GIC for the million-predictor example; the best lambda equals the preset." width="100%"></p>
+<p><img src="../million-path.png" alt="Coefficient paths and GIC for a shared ISIS candidate pool in the million-predictor example." width="100%"></p>
 <p>The graph uses a reversed <code>log10(lambda)</code> axis, with
 strong regularization on the left and support sizes above the panels.
 <code>prop_range=.25</code> focuses on the preset; use
-<code>prop_range=1</code> to explore the full numerical path. For
-five-fold cross-validation use <code>tune="cv", nfolds=5L</code>. See <a href="selection.html">model selection and cross-validation</a> for a
-larger signal-rich example, confidence bars and the one-standard-error
-model.</p>
+<code>prop_range=1</code> to explore the full numerical path. Use
+<code>screen.path="independent"</code> to rerun ISIS at each penalty and
+allow the candidate set to change. For five-fold cross-validation use
+<code>tune="cv", nfolds=5L</code>. See <a href="selection.html">model
+selection and cross-validation</a> for a larger signal-rich example,
+confidence bars and the one-standard-error model.</p>
 </div>
 <div class="section level2">
 <h2 id="predict-and-inspect">Predict and inspect<a class="anchor" aria-label="anchor" href="#predict-and-inspect"></a>

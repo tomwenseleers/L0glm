@@ -1,6 +1,8 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://tomwenseleers.github.io/L0glm/404.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/algorithm.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/articles/articles/gcms-deconvolution.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/articles/articles/log-concave-nmf.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/controls.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/cox.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/deconvolution.html</loc></url>
@@ -12,6 +14,7 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/multinomial.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/negative-binomial.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/performance.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/articles/regular-glm.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/selection.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/authors.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/index.html</loc></url>

@@ -39,7 +39,7 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
       saveRDS(list(coefficients=B, beta_true=beta, metrics=scores,
         screening=fit$screening), file.path(cache, "million-summary.rds"))
       elapsed_path <- system.time(path <- l0glmTune(X, y, family=gaussian(),
-        tune="gic", nlambda=10L, prop_range=.25, plot=FALSE,
+        tune="gic", nlambda=10L, prop_range=.25, screen.path="preset", plot=FALSE,
         printbest=FALSE, coefs.true=beta))[["elapsed"]]
       path$fit_best$X <- NULL
       if (!is.null(path$fit_1se)) path$fit_1se$X <- NULL

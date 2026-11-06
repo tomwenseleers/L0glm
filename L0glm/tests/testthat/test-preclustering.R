@@ -117,7 +117,7 @@ test_that("validation retains original channels or the requested aggregate scale
 
 test_that("preclustering rejects unsupported specifications without changing other families",{
   d<-precluster_fixture()
-  expect_error(l0glmFit(d$X,d$y,precluster=TRUE),"Poisson")
+  expect_error(l0glmFit(d$X,d$y,family=binomial(),precluster=TRUE),"identity-link")
   expect_error(l0glmFit(d$X,d$y,family=poisson("log"),nonnegative=TRUE,precluster=TRUE),"identity")
   expect_error(l0nnPois(d$X,d$y,precluster="yes"),"TRUE or FALSE")
   expect_error(l0nnPois(d$X,d$y,precluster=TRUE,cluster.refit=NA),"TRUE or FALSE")
@@ -211,11 +211,11 @@ test_that("preclustering tuning explains unsupported response targets", {
   expect_error(l0glmTune(d$X,d$y,family=poisson(identity),
     nonnegative=TRUE,precluster=TRUE,cluster.refit=FALSE),
     "requires cluster.refit=TRUE")
-  expect_error(l0glmTune(d$X,d$y,family=gaussian(),precluster=TRUE),
-    "nonnegative identity-link Poisson")
+  expect_error(l0glmTune(d$X,d$y,family=gaussian("log"),precluster=TRUE),
+    "identity-link")
   expect_error(l0glmTune(d$X,d$y,family=poisson(identity),precluster=1),
     "TRUE or FALSE")
   if (requireNamespace("mgcv",quietly=TRUE))
     expect_error(l0glmTune(d$X,d$y,family=mgcv::nb(),
-      nonnegative=TRUE,precluster=TRUE), "nonnegative identity-link Poisson")
+      nonnegative=TRUE,precluster=TRUE), "identity-link")
 })

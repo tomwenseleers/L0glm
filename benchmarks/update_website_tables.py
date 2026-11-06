@@ -89,9 +89,6 @@ content = {
     "million-comparison": table(million_display, fields, bold_first=True),
     "million-speed": f'L0glm is **{ratio:.0f}× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.',
     "million-metrics": table([million], fields[2:]),
-    "million-confusion": "| Ground truth | Selected | Excluded |\n|---|---:|---:|\n"
-        f"| Nonzero effects | {million['TP']} TP | {million['FN']} FN |\n"
-        f"| Zero effects | {million['FP']} FP | {million['TN']} TN |",
     "single-metrics": table(single, fields),
     "multi-metrics": table(multi_display, fields + ["within_row_F1_score", "within_row_MCC"]),
     "multi-home": table(multi_display, ["method","tune","seconds","gic","TP","FP","F1_score","MCC"]),

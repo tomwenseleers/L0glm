@@ -1,0 +1,109 @@
+---
+title: "Regular GLM models"
+description: "Sparse examples for the standard R GLM families and two Gamma variance models."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE)
+library(L0glm)
+```
+
+Supply the same family object you would use in `glm()`. These examples use
+a common design with three active predictors and a GIC penalty. An
+unpenalized intercept is included in each fit. The helper returns the
+selected predictor indices, with indexing starting at the first column of
+`X`.
+
+```{r design}
+set.seed(34)
+n <- 300L
+X <- matrix(rnorm(n * 20L), n, 20L)
+eta <- 0.4 + 0.6 * X[, 2] - 0.5 * X[, 7] + 0.4 * X[, 12]
+fit <- function(y, family) {
+  l0glmFit(X, y, family=family, intercept=TRUE, lambda="gic", relaxed=TRUE)
+}
+selected <- function(model) which(as.numeric(coef(model))[-1L] != 0)
+```
+
+## Gaussian and quasi with constant variance
+
+Use an identity link for a sparse linear model. A quasi family lets you
+specify a link and variance function directly. Here a constant variance
+gives the same mean model as Gaussian regression.
+
+```{r gaussian}
+y <- eta + rnorm(n, sd=0.5)
+gaussian_fit <- fit(y, gaussian())
+quasi_fit <- fit(y, quasi(link="identity", variance="constant"))
+selected(gaussian_fit)
+selected(quasi_fit)
+```
+
+## Binomial and quasibinomial
+
+A binary response can be given as zeroes and ones. For proportions
+calculated from trial counts, pass the number of trials as weights.
+Quasibinomial allows extra variability around the binomial mean.
+
+```{r binomial}
+prob <- plogis(1.5 * eta)
+binary <- fit(rbinom(n, 1, prob), binomial())
+trials <- rep(12, n)
+successes <- rbinom(n, trials, plogis(qlogis(prob) + rnorm(n, sd=0.5)))
+quasi_binary <- l0glmFit(X, successes / trials, weights=trials,
+  family=quasibinomial(), intercept=TRUE, lambda="gic", relaxed=TRUE)
+selected(binary)
+selected(quasi_binary)
+```
+
+## Poisson and quasipoisson
+
+The log link gives multiplicative effects on the mean. With quasipoisson,
+the variance is a fitted or supplied multiple of the mean. The
+[negative binomial tutorial](negative-binomial.html) covers two likelihood
+models for overdispersed counts.
+
+```{r poisson}
+mu <- exp(eta)
+counts <- fit(rpois(n, mu), poisson())
+overdispersed <- fit(rnbinom(n, mu=mu, size=2), quasipoisson())
+selected(counts)
+selected(overdispersed)
+```
+
+## Gamma with fixed shape or common scale
+
+Use `Gamma(link="log")` for positive continuous responses with
+\(\operatorname{Var}(Y_i)=\phi\mu_i^2\). Its Gamma shape is \(1/\phi\).
+Use `gammaScale()` when the variance is proportional to the mean. It
+uses a common scale \(b\), shape \(\mu_i/b\), and variance \(b\mu_i\).
+
+```{r gamma}
+fixed_shape <- fit(rgamma(n, shape=8, scale=mu / 8), Gamma(link="log"))
+b <- 0.2
+common_scale <- fit(rgamma(n, shape=mu / b, scale=b), gammaScale(scale=b))
+selected(fixed_shape)
+selected(common_scale)
+```
+
+When recorded zeroes denote intensities below a detection limit,
+`gammaCensored(dispersion=1/8, censor=0.5)` retains the fixed-shape model
+and includes those observations through their lower-tail probabilities.
+`gammaScale()` also accepts a detection limit. [Signal families reference](../reference/signal_families.html)
+
+## Inverse Gaussian
+
+This model is useful for positive outcomes whose variance grows cubically
+with the mean, \(\operatorname{Var}(Y_i)=\phi\mu_i^3\).
+
+```{r inverse-gaussian}
+duration <- statmod::rinvgauss(n, mean=mu, dispersion=0.08)
+inverse_gaussian <- fit(duration, inverse.gaussian(link="log"))
+selected(inverse_gaussian)
+predict(inverse_gaussian, X[1:4, ], type="response")
+```
+
+See the [R family reference](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/family.html)
+for the available links and the [model selection tutorial](selection.html)
+for tuning by information criteria or cross-validation.

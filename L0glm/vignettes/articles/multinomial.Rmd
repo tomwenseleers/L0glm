@@ -1,5 +1,5 @@
 ---
-title: "Sparse multinomial classification"
+title: "Multinomial models"
 description: "Joint class probabilities, CLR coefficients and grouped predictor selection."
 output: rmarkdown::html_document
 ---

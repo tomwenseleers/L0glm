@@ -2,38 +2,55 @@
 % Please edit documentation in R/preclustering.R
 \name{preclustering}
 \alias{preclustering}
-\title{Preclustering response channels before sparse Poisson fitting}
+\title{Preclustering response channels before sparse GLM fitting}
 \description{
-\code{l0glmFit(precluster=TRUE)} and \code{l0nnPois(precluster=TRUE)} cluster and sum
+\code{l0glmFit(precluster=TRUE)} clusters and aggregates
 response channels, screen predictors on the reduced responses, then refine
-the sparse fit on every original channel. The workflow supports
-nonnegative identity-link Poisson models. Standalone \code{\link[=glmCluster]{glmCluster()}} also
-supports scalar-family Bregman/deviance clustering.
+the sparse fit on every original channel. The identity-link workflow
+supports Gaussian models with or without nonnegativity, and nonnegative
+Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
+includes \code{\link[=gammaScale]{gammaScale()}} and \code{\link[=gammaCensored]{gammaCensored()}}. \code{l0nnPois(precluster=TRUE)}
+provides the same workflow for nonnegative identity-link Poisson models.
 }
 \details{
 For conditionally independent Poisson channels with an identity link,
 \deqn{Y^A_{ig}=\sum_{j\in G_g}Y_{ij}\sim
 \mathrm{Poisson}(x_i^T\Gamma_g+o^A_{ig}),\qquad
 \Gamma_g=\sum_{j\in G_g}\beta_j,\quad o^A_{ig}=\sum_{j\in G_g}o_{ij}.}
-Nonnegativity preserves row support under summation. The cluster screen
-uses raw counts and a permissive \code{screen.factor * lambda} (default \code{0.1}).
+Nonnegativity preserves row support under summation. Gaussian channels
+use arithmetic means and multiply each group's case weights by its size.
+Signed effects can cancel within a Gaussian group, so group fits may miss
+predictors with opposing channel effects. Sums preserve the count law for
+independent Poisson and common-dispersion NB1, and the continuous law for
+uncensored common-scale Gamma. In the other count and positive families
+the summed mean is retained and the variance is estimated or approximated.
+For supplied scales, typical channel intensity shares \code{r} are computed
+from weighted column totals. The working scale of a sum uses
+\eqn{\sum_j\phi_j r_j^q}, with \eqn{q=1,2,3} for quasipoisson, Gamma and
+inverse Gaussian variance, respectively. NB2 uses the corresponding
+moment-matched starting or fixed shape, taking a median across groups
+because the aggregate family specifies one shape. Censored Gamma sums
+approximate the observed censoring process.
+
+The cluster screen uses a permissive \code{screen.factor * lambda} (default \code{0.1}).
 Original-channel refinement uses the requested penalty, calculated once
 from the original predictor universe. Its default is two grouped passes;
 an explicitly supplied \code{group.maxit} takes precedence unless
 \code{control.precluster$refit.passes} is supplied. \code{relaxed} retains its usual
 selected-support coefficient-refitting meaning.
 
-With \code{start=NULL}, original-channel refinement broadcasts each candidate's
-summed aggregate coefficient divided by the original channel count.
+With \code{start=NULL}, Poisson refinement broadcasts each candidate's summed
+aggregate coefficient divided by the original channel count. Other families
+use their usual initialization on the reduced predictor set.
 Explicit starts retain their original coefficient-coordinate meaning;
 scalar \code{1} is expanded in normalized coordinates before summation.
 Starting zeroes remain excluded in their original channels; compulsory
 terms remain eligible. Coefficients always retain the original predictor
-dimensions, with excluded rows zero. Shared observation weights remain
-unchanged; offsets and coefficient prior centres are summed across groups.
-This workflow requires weights shared across channels.
+dimensions, with excluded rows zero. This workflow requires training
+weights shared across channels. Offsets and coefficient prior centres use
+the same aggregation as the response.
 
-With \code{cluster.refit=FALSE}, the returned model fits summed cluster outcomes
+With \code{cluster.refit=FALSE}, the returned model fits aggregated cluster outcomes
 at the requested \code{lambda}. Its coefficients/predictions have one column per
 cluster and its metrics describe those aggregated outcomes. This differs
 from the permissive screening model retained inside an original-channel fit.
@@ -42,17 +59,20 @@ different data and should be compared on their own response scales.
 
 \code{control.precluster} is a named list. Supported entries are \code{k.max=32L},
 \code{k=NULL}, \code{linkage="ward"}, \code{criterion="gic"}, \code{rowbins=1L},
-\code{size_fac=NULL} (use training column totals), \code{nthreads=NULL} (physical
+\code{size_fac=NULL} (use training column totals for count responses), \code{nthreads=NULL} (physical
 cores), \code{screen.factor=0.1}, \code{refit.passes=2L} and \code{clusterids=NULL}.
 Supplied cluster labels reuse a partition; responses are always aggregated
 afresh. Clustering threads are serial when \code{parallelize=FALSE}.
 Five-row binning is useful for ordered chromatographic scans; the general
-default of one row avoids dependence on arbitrary observation order.
+default of one row avoids dependence on arbitrary observation order. Count
+responses use size-adjusted Poisson clustering. Gaussian and positive
+continuous responses use their own likelihood or deviance distances.
+The specialized Gamma adapters use Ward clustering.
 
 Clustering uses training response profiles. Observation offsets are carried
 into the aggregated and original regression stages. Validation uses the
 original channels for original-channel refinement; aggregate-only validation
-uses the same training-derived membership with summed responses/offsets.
+uses the same training-derived membership and aggregation.
 \code{\link[=l0glmTune]{l0glmTune()}} supports original-channel refinement, learning a partition
 once on the full data and separately in each CV training fold. Training
 column totals determine size factors in that fold. Partitions are reused
@@ -66,9 +86,10 @@ Include a low-df B-spline basis through \code{always.include} for a smooth
 background. Its nonnegative coefficients are refined separately from the
 selected peaks on the original channels; see \link{compulsory_terms}.
 
-The returned ordinary \code{L0glm_fit} gains \code{preclustering}: memberships,
+The returned fit gains \code{preclustering}: memberships,
 channel names, candidates, screening coefficients, actual penalties,
-initialization, clustering settings, cut history and phase timings.
+initialization, clustering settings, aggregate family and approximation,
+cut history and phase timings.
 One-channel original fits, zero-penalty original fits and starts excluding
 all selectable rows use the ordinary fitter and record the bypass reason.
 }

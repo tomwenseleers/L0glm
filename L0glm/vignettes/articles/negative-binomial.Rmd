@@ -1,6 +1,6 @@
 ---
-title: "Sparse negative binomial regression"
-description: "Overdispersed counts with a fixed or estimated NB2 shape parameter."
+title: "Negative binomial models"
+description: "Sparse regression for overdispersed counts with NB1 or NB2 variance."
 output: rmarkdown::html_document
 ---
 
@@ -20,7 +20,7 @@ The Poisson limit is approached as `theta` increases. `mgcv::nb()` estimates
 theta alongside the coefficients; `mgcv::nb(theta=2)` keeps it fixed.
 The default link is log.
 
-## Fit counts with a sparse signal
+## NB2 with fixed or estimated shape
 
 ```{r fit}
 set.seed(21)
@@ -32,11 +32,29 @@ fit <- l0glmFit(X, y, family=mgcv::nb(), intercept=TRUE,
 fit
 fit$theta
 predict(fit, X[1:5, ], type="response")
+fixed <- l0glmFit(X, y, family=mgcv::nb(theta=2), intercept=TRUE,
+  lambda="gic", relaxed=TRUE)
+coef(fixed)[c(1, 3, 8), , drop=FALSE]
 ```
 
 For multichannel counts, supply an observation-by-channel matrix. `grouped=TRUE`
 selects predictor rows jointly; `relaxed=TRUE` refits eligible coefficients in the
 selected rows. Shapes may be estimated separately by channel.
+
+## NB1 with a constant variance-to-mean ratio
+
+Use `nb1(dispersion=phi)` when the variance grows in proportion to the mean,
+\(\operatorname{Var}(Y_i)=\phi\mu_i\), for a supplied \(\phi\ge 1\). With
+\(\phi>1\), the equivalent negative binomial size for observation \(i\) is
+\(\mu_i/(\phi-1)\). At \(\phi=1\), the family reduces to Poisson.
+
+```{r nb1}
+phi <- 2
+y1 <- rnbinom(nrow(X), mu=mu, size=mu/(phi - 1))
+fit1 <- l0glmFit(X, y1, family=nb1(dispersion=phi), intercept=TRUE,
+  lambda="gic", relaxed=TRUE)
+predict(fit1, X[1:5, ], type="response")
+```
 
 ## Tune by GIC or CV
 

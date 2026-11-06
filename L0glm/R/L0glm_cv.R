@@ -45,7 +45,8 @@ L0glm_cv_folds <- function(weights, nfolds, foldid) {
 # Dividing the total likelihood by total prior weight shows that a training fit
 # needs lambda * (training weight / full weight) on the fitter's sum-loss scale.
 L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor,
-                                pilot_bounds = NULL) {
+                                pilot_bounds = NULL, screen.path = "independent",
+                                reference = NULL) {
   nfolds <- max(foldid)
   fold_weights <- vapply(seq_len(nfolds), function(k)
     sum(args$weights[foldid == k, , drop = FALSE]), numeric(1))
@@ -55,6 +56,8 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
                      dimnames = list(NULL, paste0("Fold", seq_len(nfolds))))
   starts <- pilots <- preprocessing <- vector("list", nfolds)
+  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
+  candidates <- vector("list", nfolds)
   preclustering <- if (isTRUE(args$precluster)) vector("list", nfolds) else NULL
   large <- as.double(nrow(args$X))*ncol(args$X) > 1e8
   if (large) invisible(gc())
@@ -74,14 +77,16 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     w <- args$weights[validation, , drop = FALSE]
     yy <- args$y[validation, , drop = FALSE]
     off <- L0glm_observation_broadcast(args$offset[validation, , drop = FALSE])
-    for (i in seq_along(lambdas)) {
+    for (i in path_order) {
       fit <- tryCatch(do.call(l0glmFit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
-      if (i == 1L) {
+      if (i == path_order[1L]) {
         preprocessing[[k]] <- fit$preprocessing
         if (!is.null(preclustering)) preclustering[[k]] <- fit$preclustering
         train_args <- L0glm_precluster_reuse(train_args, fit)
+        train_args <- L0glm_path_screen_reuse(train_args, fit, screen.path)
+        candidates[k] <- list(train_args$control.solver$.screen.candidates)
       }
       active <- which(Matrix::rowSums(abs(fit$coefficients)) != 0)
       eta <- as.matrix(design[validation, active, drop = FALSE] %*%
@@ -113,5 +118,13 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
        starts = starts, pilots = pilots, preprocessing = preprocessing,
        lambda_train = fold_lambdas)
   if (!is.null(preclustering)) result$preclustering <- preclustering
+  if (screen.path == "preset") result$screen.candidates <- candidates
   result
+}
+
+L0glm_cv_path_order <- function(lambdas, screen.path, reference) {
+  indices <- seq_along(lambdas)
+  if (screen.path != "preset") return(indices)
+  anchor <- which.min(abs(log(lambdas) - log(reference)))
+  c(anchor, indices[-anchor])
 }

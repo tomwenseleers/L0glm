@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Sparse negative binomial regression • L0glm</title>
+<title>Negative binomial models • L0glm</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,9 +17,9 @@
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
-<meta property="og:title" content="Sparse negative binomial regression">
-<meta name="description" content="Overdispersed counts with a fixed or estimated NB2 shape parameter.">
-<meta property="og:description" content="Overdispersed counts with a fixed or estimated NB2 shape parameter.">
+<meta property="og:title" content="Negative binomial models">
+<meta name="description" content="Sparse regression for overdispersed counts with NB1 or NB2 variance.">
+<meta property="og:description" content="Sparse regression for overdispersed counts with NB1 or NB2 variance.">
 <meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png">
 <meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels">
 </head>
@@ -47,12 +47,13 @@
 <li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial</a></li>
-    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial</a></li>
-    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
+    <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
+    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
@@ -77,7 +78,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Sparse negative binomial regression</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Negative binomial models</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/negative-binomial.Rmd" class="external-link"><code>vignettes/articles/negative-binomial.Rmd</code></a></small>
@@ -95,7 +96,7 @@ E(Y_i)=\mu_i,\qquad \operatorname{Var}(Y_i)=\mu_i+\mu_i^2/\theta.
 <code>mgcv::nb(theta=2)</code> keeps it fixed. The default link is
 log.</p>
 <div class="section level2">
-<h2 id="fit-counts-with-a-sparse-signal">Fit counts with a sparse signal<a class="anchor" aria-label="anchor" href="#fit-counts-with-a-sparse-signal"></a>
+<h2 id="nb2-with-fixed-or-estimated-shape">NB2 with fixed or estimated shape<a class="anchor" aria-label="anchor" href="#nb2-with-fixed-or-estimated-shape"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21</span><span class="op">)</span></span>
@@ -122,16 +123,44 @@ log.</p>
 <span><span class="co">#&gt; [2,] 1.875</span></span>
 <span><span class="co">#&gt; [3,] 0.320</span></span>
 <span><span class="co">#&gt; [4,] 4.392</span></span>
-<span><span class="co">#&gt; [5,] 0.557</span></span></code></pre></div>
+<span><span class="co">#&gt; [5,] 0.557</span></span>
+<span><span class="va">fixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span>theta<span class="op">=</span><span class="fl">2</span><span class="op">)</span>, intercept<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fixed</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">8</span><span class="op">)</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="co">#&gt; 3 x 1 sparse Matrix of class "dgCMatrix"</span></span>
+<span><span class="co">#&gt;                 </span></span>
+<span><span class="co">#&gt; Intercept  0.362</span></span>
+<span><span class="co">#&gt;            1.000</span></span>
+<span><span class="co">#&gt;           -0.746</span></span></code></pre></div>
 <p>For multichannel counts, supply an observation-by-channel matrix.
 <code>grouped=TRUE</code> selects predictor rows jointly;
 <code>relaxed=TRUE</code> refits eligible coefficients in the selected
 rows. Shapes may be estimated separately by channel.</p>
 </div>
 <div class="section level2">
+<h2 id="nb1-with-a-constant-variance-to-mean-ratio">NB1 with a constant variance-to-mean ratio<a class="anchor" aria-label="anchor" href="#nb1-with-a-constant-variance-to-mean-ratio"></a>
+</h2>
+<p>Use <code>nb1(dispersion=phi)</code> when the variance grows in
+proportion to the mean, <span class="math inline">\operatorname{Var}(Y_i)=\phi\mu_i</span>, for a
+supplied <span class="math inline">\phi\ge 1</span>. With <span class="math inline">\phi&gt;1</span>, the equivalent negative binomial
+size for observation <span class="math inline">i</span> is <span class="math inline">\mu_i/(\phi-1)</span>. At <span class="math inline">\phi=1</span>, the family reduces to Poisson.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">phi</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span><span class="va">y1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/NegBinomial.html" class="external-link">rnbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, mu<span class="op">=</span><span class="va">mu</span>, size<span class="op">=</span><span class="va">mu</span><span class="op">/</span><span class="op">(</span><span class="va">phi</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y1</span>, family<span class="op">=</span><span class="fu"><a href="../reference/signal_families.html">nb1</a></span><span class="op">(</span>dispersion<span class="op">=</span><span class="va">phi</span><span class="op">)</span>, intercept<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit1</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       [,1]</span></span>
+<span><span class="co">#&gt; [1,] 3.885</span></span>
+<span><span class="co">#&gt; [2,] 2.138</span></span>
+<span><span class="co">#&gt; [3,] 0.362</span></span>
+<span><span class="co">#&gt; [4,] 4.888</span></span>
+<span><span class="co">#&gt; [5,] 0.613</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="tune-by-gic-or-cv">Tune by GIC or CV<a class="anchor" aria-label="anchor" href="#tune-by-gic-or-cv"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span><span class="op">)</span>, intercept<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>  tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">10</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span><span class="op">)</span>, intercept<span class="op">=</span><span class="cn">TRUE</span>,</span>

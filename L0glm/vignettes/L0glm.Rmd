@@ -75,15 +75,6 @@ l0glmMetrics(fit, beta_true=beta)[
 | 2.55 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
 <!-- END million-metrics -->
 
-The corresponding support confusion matrix is:
-
-<!-- BEGIN million-confusion -->
-| Ground truth | Selected | Excluded |
-|---|---:|---:|
-| Nonzero effects | 40 TP | 20 FN |
-| Zero effects | 3 FP | 999937 TN |
-<!-- END million-confusion -->
-
 <img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%">
 
 The true coefficients are used to evaluate recovery. Fitting uses only `X` and
@@ -93,21 +84,26 @@ The default automatic screening uses the available physical cores; set
 
 ## Tune a regularization path
 
-The preset already gives a strong sparse model. Detailed tuning is available
-when desired, and often selects a value close to the preset. In this example,
-the best value over the displayed ten-value GIC grid is exactly the preset.
+The preset already gives a strong sparse model. This tuning path uses the
+predictor pool found by ISIS at the preset. Each lambda fits its own model
+within that pool, so the graph shows how the penalty changes selection
+on a common set of candidates. The best grid value is 26.78, close to
+the preset of 25.24. Both recover 40 true effects. The selected grid
+fit has one false positive, compared with three at the preset.
 
 ```{r path, eval=FALSE}
 tuned <- l0glmTune(X, y, family=gaussian(), tune="gic",
-  nlambda=10L, prop_range=.25, coefs.true=beta, plot=TRUE)
+  nlambda=10L, prop_range=.25, screen.path="preset", coefs.true=beta, plot=TRUE)
 c(lambda_best=tuned$lambda_best, lambda_preset=tuned$lambda_preset)
 ```
 
-<img src="../million-path.png" alt="Coefficient paths and GIC for the million-predictor example; the best lambda equals the preset." width="100%">
+<img src="../million-path.png" alt="Coefficient paths and GIC for a shared ISIS candidate pool in the million-predictor example." width="100%">
 
 The graph uses a reversed `log10(lambda)` axis, with strong regularization on
 the left and support sizes above the panels. `prop_range=.25` focuses on the
 preset; use `prop_range=1` to explore the full numerical path.
+Use `screen.path="independent"` to rerun ISIS at each penalty and allow
+the candidate set to change.
 For five-fold cross-validation use `tune="cv", nfolds=5L`. See
 [model selection and cross-validation](selection.html) for a larger signal-rich
 example, confidence bars and the one-standard-error model.

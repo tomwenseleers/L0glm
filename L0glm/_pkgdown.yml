@@ -57,17 +57,19 @@ navbar:
         - text: Weights, constraints and validation
           href: articles/controls.html
         - text: "---"
-        - text: Negative binomial
+        - text: Regular GLM models
+          href: articles/regular-glm.html
+        - text: Negative binomial models
           href: articles/negative-binomial.html
-        - text: Multinomial
+        - text: Multinomial models
           href: articles/multinomial.html
-        - text: Cox proportional hazards
+        - text: Cox proportional hazards models
           href: articles/cox.html
+        - text: SIS / ISIS screening for high dimensional models
+          href: articles/high-dimensional.html
         - text: "---"
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
-        - text: SIS / ISIS screening for high dimensional models
-          href: articles/high-dimensional.html
     algorithm:
       text: Algorithm & theory
       href: articles/algorithm.html
@@ -82,11 +84,13 @@ articles:
   - title: Get started
     contents: [L0glm, articles/selection, articles/controls]
   - title: Model families
-    contents: [articles/negative-binomial, articles/multinomial, articles/cox]
-  - title: Applications and scale
-    contents: [articles/deconvolution, articles/high-dimensional]
+    contents: [articles/regular-glm, articles/negative-binomial, articles/multinomial, articles/cox]
+  - title: Screening at scale
+    contents: [articles/high-dimensional]
   - title: Algorithms and evidence
     contents: [articles/algorithm, articles/performance]
+  - title: Applications
+    contents: [articles/deconvolution]
 reference:
   - title: Fit, tune and compare sparse models
     contents: [l0glmFit, l0glmTune, l0nnPois, sparseGLM, l0glmMetrics, preclustering, compulsory_terms]

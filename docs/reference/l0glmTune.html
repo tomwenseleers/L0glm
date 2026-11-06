@@ -51,12 +51,13 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial</a></li>
-    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial</a></li>
-    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards</a></li>
+    <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
+    <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
+    <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../articles/algorithm.html">Algorithm &amp; theory</a></li>
 <li class="nav-item"><a class="nav-link" href="../articles/performance.html">Benchmarks</a></li>
@@ -116,7 +117,8 @@ estimates that retain shrinkage.</p>
 <span>  foldid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lambda_min <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  <span class="va">...</span>,</span>
+<span>  screen.path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"independent"</span>, <span class="st">"preset"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -351,6 +353,14 @@ units.</p></li>
 </ul><p>See Special families below and <code><a href="l0glmFit.html">l0glmFit</a></code> for support restrictions
 and further details of these arguments.</p></dd>
 
+
+<dt id="arg-screen-path">screen.path<a class="anchor" aria-label="anchor" href="#arg-screen-path"></a></dt>
+<dd><p>With ISIS screening, use <code>"independent"</code> (default)
+to search at each lambda or <code>"preset"</code> to reuse the candidate pool
+from the preset fit. Each lambda estimates its own coefficients and can
+select any subset of the pool. In CV, each training fold learns its own
+pool at the grid point nearest the preset, scaled to that fold.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -425,6 +435,11 @@ penalized coefficients.</p></dd>
 
 <dt><code>fit_best</code></dt>
 <dd><p>the fitted model at <code>lambda_best</code>.</p></dd>
+
+<dt><code>screen.candidates</code></dt>
+<dd><p>the predictor indices in the screening
+design for the shared ISIS pool, when requested and used. CV pools are recorded in
+<code>cv$screen.candidates</code>.</p></dd>
 
 <dt><code>fit_1se</code></dt>
 <dd><p>the full-data fitted model at <code>lambda_1se</code>, or
@@ -741,3 +756,4 @@ after tuning.</p>
 
 
   </body></html>
+
