@@ -39,7 +39,7 @@ explains the mathematics, regularization presets and full fitting algorithms.
 - **Comparison:** `sparseglm()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 
-L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [L0nmf](https://tomwenseleers.github.io/L0nmf/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
+L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [logconNMF](https://tomwenseleers.github.io/logconNMF/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
 
 ## Installation
 
@@ -160,12 +160,12 @@ weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
 
-For broad or asymmetric peaks, [splogconNMF()](https://tomwenseleers.github.io/L0nmf/reference/splogconNMF.html)
+For broad or asymmetric peaks, [logconNMF()](https://tomwenseleers.github.io/logconNMF/reference/logconNMF.html)
 recovers log-concave elution profiles and spectra with a smooth background.
 [GCMSdeco()](https://tomwenseleers.github.io/GCMSprime/reference/GCMSdeco.html) runs the
 workflow directly from an ANDI-MS `.cdf` chromatogram and exports the compound
 spectra to a NIST-compatible `.msp` library.
-[estimate_psf()](https://tomwenseleers.github.io/L0nmf/reference/estimate_psf.html)
+[estimate_psf()](https://tomwenseleers.github.io/logconNMF/reference/estimate_psf.html)
 provides automatic standard or blind calibration and returns a constant or
 smoothly varying sparse PSF design.
 

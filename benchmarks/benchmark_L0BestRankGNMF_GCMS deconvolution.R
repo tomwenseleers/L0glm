@@ -1,4 +1,4 @@
-library(L0nmf)
+library(logconNMF)
 
 ## BENCHMARK OF GC-MS DECONVOLUTION USING THE L0BestRankGNMF ALGORITHM & COMPARISON WITH MCR-ALS (ANNLS) #### 
 
@@ -37,7 +37,7 @@ plotmat(H_true, xlab="Compound", ylab="Mass (m/z)") # true mass spectra
 # L0glm_blind_deco 
 # (it would also be possible to estimate it from an alkane ladder standard)
 L = 51 # length of PSF
-g0 = L0nmf::convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
+g0 = logconNMF::convkernel("gaussian", L, list(sigma = 6))  # initial guess for PSF
 system.time(fitpsf <- L0glm_blind_deco(y = rowSums(D), # we use TIC 
                           family = poisson(identity), 
                           baseline = NULL, # or "intercept" or "bspline"
@@ -49,7 +49,7 @@ system.time(fitpsf <- L0glm_blind_deco(y = rowSums(D), # we use TIC
                           plot = TRUE,
                           tol = 1e-3))
 # 3s
-Wstart = L0nmf::convmatrix(fitpsf$g_hat, nrow(D)) # n x n banded convolution matrix
+Wstart = logconNMF::convmatrix(fitpsf$g_hat, nrow(D)) # n x n banded convolution matrix
 
 # this matrix can subsequently be pre-subsetted by doing a best subset
 # regression of the row sums of D

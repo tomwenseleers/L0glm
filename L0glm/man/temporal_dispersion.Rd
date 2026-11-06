@@ -74,5 +74,5 @@ y <- matrix(rnorm(3000, sd=3), 500, 6)
 temporal_dispersion(y, gaussian(), method="moment")$pooled
 }
 \seealso{
-[L0nmf::splogconNMF()]
+[logconNMF::logconNMF()]
 }

@@ -1,4 +1,4 @@
-library(L0nmf)
+library(logconNMF)
 
 # simulate some data to benchmark our sparse NMF algo
 # right now only Gaussian with identity link supported, could do other identity link noise families too

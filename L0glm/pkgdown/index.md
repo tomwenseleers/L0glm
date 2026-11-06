@@ -130,10 +130,10 @@ weighted-Gaussian approximation with shared observation weights; CV uses four
 parallel workers. [Explore the deconvolution examples and full
 benchmark tables →](articles/deconvolution.html)
 
-When peaks have different shapes, L0nmf can estimate a response dictionary
+When peaks have different shapes, logconNMF can estimate a response dictionary
 and then fit a log-concave profile for each component. GCMSprime handles
 chromatogram files, quantification and spectral library search.
-[L0nmf deconvolution](https://tomwenseleers.github.io/L0nmf/articles/log-concave-nmf.html) ·
+[logconNMF deconvolution](https://tomwenseleers.github.io/logconNMF/articles/log-concave-nmf.html) ·
 [GCMSprime workflow](https://tomwenseleers.github.io/GCMSprime/articles/gcms-deconvolution.html)
 
 ## Choose a starting point

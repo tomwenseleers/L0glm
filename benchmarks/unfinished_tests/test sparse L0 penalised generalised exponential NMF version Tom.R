@@ -1,4 +1,4 @@
-library(L0nmf)
+library(logconNMF)
 
 # L0 or grouped L0 penalised generalised exponential-amily NMF with automatic best rank discovery
 # with applications for the deconvolution of overlapping peaks in GC/MS chromatography
