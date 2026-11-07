@@ -1,4 +1,4 @@
-# L0glm 0.2.0.9000
+# L0glm 0.2.0.9001
 
 ## Sparse generalized linear models
 
@@ -21,6 +21,8 @@
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
 * Constrained updates for nonnegative compulsory terms and relaxed-fit boundary
   checks use the specified likelihood.
+* The shared native quadratic solver offers checked Cholesky solves with
+  iterative refinement and a rank-revealing fallback for profile-shape updates.
 
 ## High-dimensional and multichannel computation
 
