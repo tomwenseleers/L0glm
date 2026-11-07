@@ -5,15 +5,22 @@
 #include <cmath>
 namespace L0glm {
 inline Eigen::VectorXd nuisance_qp(const Eigen::MatrixXd& G,const Eigen::VectorXd& h,
-                                  const std::vector<char>& bounded,bool cholesky=false) {
+                                  const std::vector<char>& bounded,bool cholesky=false,
+                                  const Eigen::VectorXd* initial=nullptr) {
  using Eigen::MatrixXd;using Eigen::VectorXd;const int q=h.size();
  if(!q) return VectorXd();
  if(q==1) return VectorXd::Constant(1,G(0,0)>0 ? (bounded[0] ? std::max(0.0,h[0]/G(0,0)) : h[0]/G(0,0)) : 0);
  VectorXd d=G.diagonal().cwiseMax(1e-300).cwiseSqrt();
  MatrixXd A=d.cwiseInverse().asDiagonal()*G*d.cwiseInverse().asDiagonal();
  VectorXd b=h.cwiseQuotient(d),x=VectorXd::Zero(q);
+ const bool have_start=initial && initial->size()==q && initial->allFinite();
+ bool start_pending=have_start;
+ if(have_start) {
+   x=d.cwiseProduct(*initial);
+   for(int j=0;j<q;++j)if(bounded[j])x[j]=std::max(0.,x[j]);
+ }
  std::vector<char> passive(q,0);
- for(int j=0;j<q;++j) passive[j]=!bounded[j];
+ for(int j=0;j<q;++j)passive[j]=!bounded[j]||(have_start&&x[j]>0);
  auto solve=[&]() {
    std::vector<int> free;for(int j=0;j<q;++j) if(passive[j]) free.push_back(j);
    MatrixXd H(free.size(),free.size());VectorXd c(free.size()),z=VectorXd::Zero(q);
@@ -46,13 +53,14 @@ inline Eigen::VectorXd nuisance_qp(const Eigen::MatrixXd& G,const Eigen::VectorX
      for(int a=0;a<(int)free.size();++a) z[free[a]]=v[a];}
    return z;
  };
- x=solve();
+ if(!have_start)x=solve();
  const double tol=1e-12*std::max(std::numeric_limits<double>::min(),b.lpNorm<Eigen::Infinity>());
  for(int outer=0;outer<10*q*q;++outer) {
    VectorXd gradient=b-A*x;int enter=-1;double best=tol;
    for(int j=0;j<q;++j) if(!passive[j]&&gradient[j]>best) {best=gradient[j];enter=j;}
-   if(enter<0) break;
-   passive[enter]=1;
+   if(enter<0 && !start_pending)break;
+   if(enter>=0)passive[enter]=1;
+   start_pending=false;
    for(int inner=0;inner<10*q;++inner) {
      VectorXd z=solve();bool positive=true;
      for(int j=0;j<q;++j) if(passive[j]&&bounded[j]&&z[j]<=0) positive=false;

@@ -1,4 +1,4 @@
-# L0glm 0.2.0.9001
+# L0glm 0.2.0.9002
 
 ## Sparse generalized linear models
 
@@ -23,6 +23,7 @@
   checks use the specified likelihood.
 * The shared native quadratic solver offers checked Cholesky solves with
   iterative refinement and a rank-revealing fallback for profile-shape updates.
+  Optional feasible starting values accelerate repeated quadratic subproblems.
 
 ## High-dimensional and multichannel computation
 
