@@ -26,3 +26,26 @@ for(j in 1:3) {
  expect_equal(-sum(W[,j]*dpois(Y[,j],S[,j]+a$background[,j],log=TRUE)),ref$value,tolerance=1e-7)
 }
 })
+
+test_that("localized Poisson refits support shared weights and collinear profiles", {
+ set.seed(815);n<-120L;q<-9L;m<-3L
+ B<-matrix(0,n,q);B[,1]<-1
+ for(j in 2:q) {
+   at<-seq.int(1L+(j-2L)*12L,length.out=20L)
+   B[at,j]<-sin(seq(0,pi,length.out=20L))^2
+ }
+ B[,q]<-B[,q-1L]
+ signal<-matrix(.2,n,m);alpha<-matrix(runif(q*m),q,m)
+ Y<-matrix(as.numeric(rpois(n*m,signal+B%*%alpha)),n,m)
+ W<-matrix(runif(n,.2,2),n,1L)
+ a<-L0glm:::nuisance_poisson_cpp(B,Y,signal,W,alpha,80L,1e-8,1L)
+ b<-L0glm:::nuisance_poisson_cpp(B,Y,signal,W[,rep(1L,m),drop=FALSE],alpha,80L,1e-8,4L)
+ expect_identical(a,b)
+ expect_true(all(a$coefficients>=0))
+ for(j in seq_len(m)) {
+   objective<-function(v)-sum(W[,1]*dpois(Y[,j],signal[,j]+B%*%v,log=TRUE))
+   reference<-optim(alpha[,j],objective,method="L-BFGS-B",lower=0,
+     control=list(factr=1e3,pgtol=1e-9,maxit=1000L))
+   expect_lte(objective(a$coefficients[,j]),reference$value+1e-6)
+ }
+})

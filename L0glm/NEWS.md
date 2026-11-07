@@ -24,6 +24,8 @@
 * The shared native quadratic solver offers checked Cholesky solves with
   iterative refinement and a rank-revealing fallback for profile-shape updates.
   Optional feasible starting values accelerate repeated quadratic subproblems.
+* Conditional Poisson refits reuse their preceding active sets and cache fixed
+  gradient scales; sparse weighted products accelerate local profile designs.
 
 ## High-dimensional and multichannel computation
 

@@ -43,12 +43,23 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
   if(!B.allFinite() || !Y.allFinite() || !Signal.allFinite() || !Prior.allFinite() || !Start.allFinite() ||
      B.minCoeff()<0 || Y.minCoeff()<0 || Signal.minCoeff()<0 || Prior.minCoeff()<0 || Start.minCoeff()<0)
     Rcpp::stop("Nonnegative finite mean components and weights required.");
+  // Sparse products pay off when overlapping local profiles leave most entries zero.
+  double sparse_work=0;
+  for(int i=0;i<n;++i) {
+    int count=0;for(int j=0;j<q;++j)count+=B(i,j)!=0;
+    sparse_work+=(double)count*count;
+  }
+  const bool sparse_gram=4*sparse_work<(double)n*q*q;
+  Eigen::SparseMatrix<double> sparse_B;
+  if(sparse_gram)sparse_B=B.sparseView();
   MatrixXd coefficients=Start,background(n,m);VectorXd iterations=VectorXd::Zero(m),kkt=VectorXd::Zero(m);
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) num_threads(nthreads) if(nthreads>1 && m>1)
 #endif
   for(int channel=0;channel<m;++channel) {
     VectorXd y=Y.col(channel),signal=Signal.col(channel),prior=Prior.col(Prior.cols()==1?0:channel),a=Start.col(channel);
+    VectorXd gradient_scale(q);
+    for(int j=0;j<q;++j)gradient_scale[j]=std::max(1.0,prior.dot(B.col(j)));
     VectorXd mu=signal+B*a;
     double old=sx_b_loss(y,mu,prior);
     if(!std::isfinite(old)) {
@@ -62,10 +73,17 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
         const double mean=std::max(mu[i],std::numeric_limits<double>::epsilon());
         w[i]=y[i]>0 ? prior[i]*(y[i]/mean)/mean : 0;score[i]=prior[i]*(1-y[i]/mean);
       }
-      MatrixXd BW=B.array().colwise()*w.array();
-      MatrixXd G=B.transpose()*BW;
-      VectorXd gradient=B.transpose()*score,h=G*a-gradient;
-      VectorXd proposal=L0glm::nuisance_qp(G,h,std::vector<char>(q,1)),next=a,pred=mu;
+      MatrixXd G;VectorXd gradient;
+      if(sparse_gram) {
+        Eigen::SparseMatrix<double> BW=w.asDiagonal()*sparse_B;BW.prune(0.);
+        G=sparse_B.transpose()*BW;gradient=sparse_B.transpose()*score;
+      } else {
+        MatrixXd BW=B.array().colwise()*w.array();
+        G=B.transpose()*BW;gradient=B.transpose()*score;
+      }
+      VectorXd h=G*a-gradient;
+      VectorXd proposal=L0glm::nuisance_qp(G,h,std::vector<char>(q,1),
+        iter>0,iter>0?&a:nullptr),next=a,pred=mu;
       bool accepted=false;
       for(int attempt=0;attempt<2 && !accepted;++attempt) {
         if(attempt) for(int j=0;j<q;++j)
@@ -91,7 +109,7 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
       double residual=0;
       for(int j=0;j<q;++j) residual=std::max(residual,
         (a[j]>0 ? std::abs(gradient_final[j]) : std::max(0.0,-gradient_final[j]))/
-          std::max(1.0,prior.dot(B.col(j))));
+          gradient_scale[j]);
       if(residual<tol) break;
     }
     VectorXd score(n);
@@ -102,7 +120,7 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
     VectorXd g=B.transpose()*score;
     double residual=0,scale=1;
     for(int j=0;j<q;++j) {
-      const double mass=prior.dot(B.col(j));scale=std::max(scale,mass);
+      scale=std::max(scale,gradient_scale[j]);
       residual=std::max(residual,a[j]>0 ? std::abs(g[j]) : std::max(0.0,-g[j]));
     }
     coefficients.col(channel)=a;background.col(channel)=B*a;kkt[channel]=residual/scale;
