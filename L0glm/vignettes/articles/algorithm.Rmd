@@ -749,6 +749,27 @@ coverage near selection thresholds needs care ([Leeb and Poetscher,
 2008](https://doi.org/10.1016/j.jeconom.2007.05.017)). The
 [inference tutorial](inference.html) explains both approaches and their controls.
 
+## Memory-bounded designs
+
+For a file-backed design, one nuisance/null fit supplies the efficient-score
+context. SIS reads blocks of predictors and merges their top statistics, breaking
+ties by original column order. Packed BED genotypes are decoded directly inside
+the native score reduction. ISIS repeats this calculation with the current
+fitted linear predictor in the screening offset. Each retained support is fitted
+by the existing family engine, with the original \(p\) retained in the criterion.
+
+Training-only genotype means define the imputed design. Every CV fold and
+bootstrap replicate learns its own means; held-out prediction reuses those
+training values. Working matrices and requested outputs have explicit memory
+guards. The [file-backed tutorial](file-backed.html) describes the supported
+backends and the retained-design fitting workflow.
+
+Ward outcome clustering can likewise accumulate distances over row blocks.
+Its profiled cluster means are separate for each observation row, so the
+cut loss satisfies \(L(\mathcal G)=\sum_b L_b(\mathcal G)\). The allocation
+term and complexity penalty are added once after summing block losses and
+degrees of freedom. This preserves the full-data cut criterion.
+
 ## Appendix: mathematical pseudocode {#algorithm-appendix}
 
 The following algorithms describe the computations used by `l0glmFit()` and

@@ -1,5 +1,6 @@
 // Efficient-score screening without design-sized squares or channel Hessians.
 #include "eigen_diagnostics.h"
+#include "bed_input.h"
 #include <queue>
 #include <algorithm>
 #include <exception>
@@ -232,6 +233,85 @@ List sis_score_cpp(SEXP design,List context,int nsis,bool full,int nthreads=1) {
     }
     for (const auto& error:errors) if (error) std::rethrow_exception(error);
     checkUserInterrupt();first=last;
+  }
+  return result.finish(used);
+}
+
+// [[Rcpp::export]]
+List sis_bed_score_cpp(std::string path,int n,int p,IntegerVector samples,
+  IntegerVector columns,IntegerVector imputation_rows,List context,int nsis,
+  bool full,int nthreads=1,bool mean_impute=true) {
+  SisContext c(context);BedInput file(path,n,p);
+  const int count=columns.size();
+  if(samples.size()!=c.n||!count||nsis<1||nthreads<1)stop("Invalid BED screening dimensions.");
+  for(int row:samples)if(row<1||row>n)stop("BED sample index out of range.");
+  for(int row:imputation_rows)if(row<1||row>n)stop("BED imputation index out of range.");
+  for(int col:columns)if(col<1||col>p)stop("BED variant index out of range.");
+  int threads=1,used=1;
+#ifdef _OPENMP
+  threads=std::min(nthreads,std::min(count,omp_get_num_procs()));
+#endif
+  SisResults result(count,nsis,full,threads);
+  std::vector<unsigned char> buffer;
+  std::vector<std::exception_ptr> errors(threads);
+  const int* rows=samples.begin();const int* impute=imputation_rows.begin();
+  const int ni=imputation_rows.size();
+  const bool scalar=!c.cox&&!c.multinomial&&c.r==1&&c.q<=1;
+  for(int first=0;first<count;) {
+    int width=1;
+    while(first+width<count&&width<4096&&columns[first+width]==columns[first]+width)++width;
+    file.read(columns[first]-1,width,buffer);
+    const unsigned char* bytes=buffer.data();const std::uint64_t stride=file.stride;
+#ifdef _OPENMP
+#pragma omp parallel num_threads(threads) if(threads>1)
+#endif
+    {
+      int thread=0,team=1;
+#ifdef _OPENMP
+      thread=omp_get_thread_num();team=omp_get_num_threads();
+#endif
+      if(thread==0)used=std::max(used,team);
+      const int begin=static_cast<long long>(width)*thread/team;
+      const int end=static_cast<long long>(width)*(thread+1)/team;
+      try {
+        SisFeature feature(c);
+        for(int j=begin;j<end;++j) {
+          const unsigned char* column=bytes+j*stride;
+          bool missing=false;
+          for(std::uint64_t k=0;k<stride&&!missing;++k)
+            missing=((column[k]&0x55)&~((column[k]>>1)&0x55))!=0;
+          double mean=0;
+          if(missing&&mean_impute) {
+            double sum=0;int observed=0;
+            for(int i=0;i<ni;++i) {
+              const int r=impute[i]-1;const int code=(column[r/4]>>(2*(r%4)))&3;
+              if(code!=1) {sum+=(code==2?1:code==0?2:0);++observed;}
+            }
+            mean=observed?sum/observed:0;
+          }
+          const double lookup[4]={2,mean,1,0};double U=0,I=0,A=0;
+          feature.reset();
+          for(int i=0;i<c.n;++i) {
+            const int r=rows[c.rows[i]-1]-1;
+            const int code=(column[r/4]>>(2*(r%4)))&3;
+            if(code==1&&!mean_impute)throw std::runtime_error("Missing genotypes require missing=mean.");
+            const double v=lookup[code];
+            if(scalar) {
+              U+=v*c.score(i,0);I+=v*v*c.weight(i,0);
+              if(c.q)A+=v*c.weight(i,0)*c.nuisance(i,0);
+            } else feature.add(i,v);
+          }
+          if(scalar) {
+            const double cutoff=I*1e-12;
+            if(c.q) {U-=A*c.correction(0,0);I-=A*A*c.inverse[0];}
+            const double u=c.one_sided?std::max(0.0,U):U;
+            result.add(thread,first+j,{I>cutoff?u*u/I:0,(U>0)-(U<0)});
+          } else result.add(thread,first+j,feature.finish());
+        }
+      } catch(...) {errors[thread]=std::current_exception();}
+    }
+    for(const auto& error:errors)if(error)std::rethrow_exception(error);
+    checkUserInterrupt();first+=width;
   }
   return result.finish(used);
 }

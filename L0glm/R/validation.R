@@ -11,7 +11,7 @@ L0glm_validation_context <- function(validation, X, y, family, intercept) {
     stop("Use named validation entries: ", paste(fields, collapse = ", "), ".", call. = FALSE)
   V <- validation$X
   if (is.data.frame(V)) V <- as.matrix(V)
-  if (!(is.numeric(V) || inherits(V, "dMatrix")) || length(dim(V)) != 2L ||
+  if (!(is.numeric(V) || inherits(V, "dMatrix") || inherits(V,'L0glm_data')) || length(dim(V)) != 2L ||
       ncol(V) != ncol(X) || !nrow(V))
     stop("Validation X and y must have compatible finite numeric dimensions.", call. = FALSE)
   n <- nrow(V)
@@ -26,8 +26,9 @@ L0glm_validation_context <- function(validation, X, y, family, intercept) {
   if (!is.numeric(v) || nrow(v) != n || (kind != "cox" && ncol(v) != m) ||
       any(!is.finite(v)))
     stop("Validation X and y must have compatible finite numeric dimensions.", call. = FALSE)
-  entries <- if (inherits(V, "sparseMatrix")) V@x else V
-  if (any(!is.finite(entries))) stop("Validation predictors must be finite.", call. = FALSE)
+  entries <- if(inherits(V,'L0glm_data'))numeric()else if (inherits(V, "sparseMatrix")) V@x else V
+  if (if(inherits(X,'L0glm_data') && X$missing=='mean')any(is.infinite(entries))else any(!is.finite(entries)))
+    stop("Validation predictors must be finite.", call. = FALSE)
   if (!is.null(colnames(X)) && !is.null(colnames(V))) {
     if (anyDuplicated(colnames(X)) || anyDuplicated(colnames(V)) ||
         !setequal(colnames(X), colnames(V)))
@@ -66,7 +67,9 @@ L0glm_validation_context <- function(validation, X, y, family, intercept) {
     if (identical(kind, "multinomial")) w[, 1L] * rowSums(v) else rowSums(w)
   if (!is.finite(sum(mass)) || sum(mass) <= 0)
     stop("Validation needs positive response mass (observed events for Cox).", call. = FALSE)
-  if (intercept) V <- cbind(Intercept = 1, V)
+  if(inherits(X,'L0glm_data'))V <- L0glm_data_validation(V,X)
+  if(inherits(V,'L0glm_data'))V <- L0glm_design_view(V,intercept=intercept,
+    names=if(is.null(colnames(V)))rep('',ncol(V))else colnames(V))else if (intercept) V <- cbind(Intercept = 1, V)
   structure(list(X = V, y = v, weights = w, offset = off, mass = mass,
     family = family, kind = kind, m = m, response = response, mu_floor = mu_floor,
     cox.cache = if (identical(kind, "cox")) L0glm_ext_cox_cache(response, w[, 1L]) else NULL,
@@ -77,7 +80,7 @@ L0glm_validation_errors <- function(context, beta, shift = NULL, intercept = int
   beta <- matrix(as.numeric(beta), ncol(context$X), context$m)
   if (length(intercept)) beta[intercept, ] <- beta[intercept, ] - as.numeric(crossprod(shift, beta))
   active <- which(rowSums(beta != 0) > 0)
-  eta <- as.matrix(if (length(active) > nrow(beta) / 2) context$X %*% beta else
+  eta <- as.matrix(if (!inherits(context$X,'L0glm_design') && length(active) > nrow(beta) / 2) context$X %*% beta else
     context$X[, active, drop = FALSE] %*% beta[active, , drop = FALSE]) + context$offset
   tryCatch(L0glm_validation_terms(context, eta, state), error = function(e) rep(Inf, nrow(eta)))
 }
@@ -148,6 +151,7 @@ L0glm_subset_validation <- function(context, columns = NULL, channels = NULL) {
 # Conditional marginal slopes avoid the global prediction calibration used by
 # the default Gaussian initializer. They provide a second, training-only start.
 L0glm_marginal_start <- function(X, y, weights, offset, intercept, always.include) {
+  if(inherits(X,'L0glm_data'))return(L0glm_data_marginal(X,y,weights,offset,intercept,always.include))
   if (NCOL(y) > 1L) {
     y <- as.matrix(y); m <- ncol(y)
     w <- L0glm_ext_matrix(weights, nrow(X), m, 1, "weights")

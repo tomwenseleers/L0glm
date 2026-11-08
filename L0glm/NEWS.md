@@ -26,6 +26,7 @@
   and support for ordinary GLMs, negative binomial, multinomial and Cox models.
 * Shared observation vectors stay compact across channels in fitting, native
   Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
+
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,
   one-standard-error models and coefficient-path plots. `presetLambda()`
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
@@ -65,6 +66,18 @@
   Poisson outcome aggregation followed by original-channel refitting.
 * Size-adjusted Poisson and scalar-family likelihood clustering with native
   distances, pooled-likelihood merge costs and IC-scored cuts.
+
+## Memory-bounded data access
+
+* `l0glmData()` provides lazy subsets of bigmemory, delayed/HDF5 single-cell
+  assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2
+  conversion cache, including expected dosages.
+* All-family SIS/ISIS streams predictor columns; BED screening reduces packed
+  two-bit genotypes directly with OpenMP. Retained-design fitting preserves
+  original coefficient dimensions and criterion calibration. Training-only
+  imputation is reused for prediction and relearned inside CV and bootstraps.
+* Ward outcome clustering streams row blocks, including its cut losses and
+  aggregation. Explicit memory guards bound working matrices and outputs.
 
 ## Simulation, comparison and interpretation
 

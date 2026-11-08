@@ -21,7 +21,8 @@ sisGLM(
 )
 }
 \arguments{
-\item{X}{Numeric predictor matrix, dense or sparse, with observations in rows.}
+\item{X}{Numeric predictor matrix, dense or sparse, with observations in rows.
+A \code{\link[=l0glmData]{l0glmData()}} descriptor streams columns, including packed BED genotypes.}
 
 \item{y}{Response as in \code{\link[=l0glmFit]{l0glmFit()}}: a numeric vector or independent-channel
 matrix for ordinary/NB models; factors, class labels or count matrices for

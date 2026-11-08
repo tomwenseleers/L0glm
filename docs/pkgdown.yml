@@ -7,6 +7,7 @@ articles:
   articles/controls: controls.html
   articles/cox: cox.html
   articles/deconvolution: deconvolution.html
+  articles/file-backed: file-backed.html
   articles/high-dimensional: high-dimensional.html
   articles/inference: inference.html
   articles/interactions: interactions.html
@@ -16,7 +17,7 @@ articles:
   articles/predictor-groups: predictor-groups.html
   articles/regular-glm: regular-glm.html
   articles/selection: selection.html
-last_built: 2026-11-08T21:38Z
+last_built: 2026-11-08T22:46Z
 urls:
   reference: https://tomwenseleers.github.io/L0glm/reference
   article: https://tomwenseleers.github.io/L0glm/articles

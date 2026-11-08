@@ -22,8 +22,9 @@
 #' Path tuning can improve its fit for correlated predictors or unrelaxed
 #' estimates that retain shrinkage.
 #' 
-#' @param X 
-#' A matrix of predictor variables.
+#' @param X A dense or sparse predictor matrix, or a memory-bounded
+#'   \code{\link{l0glmData}} descriptor. File-backed screening and imputation
+#'   are repeated independently within each CV training fold.
 #' @param y Response data with \code{n} observations, aligned with the rows of
 #'   \code{X}. For ordinary GLMs, a vector of length \code{n} or an
 #'   \code{n} by \code{m} matrix of response variables (tasks/channels).
@@ -517,13 +518,12 @@ l0glmTune <- function(X, y,
   args <- L0glm_precluster_reuse(args, preset_fit)
   args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
   included <- preset_fit$always.include
-  penalized <- setdiff(seq_len(ncol(preset_fit$X)), included)
   is_zero <- function(fit) all(fit$coefficients[
     setdiff(seq_len(nrow(fit$coefficients)),fit$always.include),,drop=FALSE]==0)
 
   # A working-model threshold only seeds the search. Verify the endpoint by
   # fitting it, using exactly the same initialization and controls as the path.
-  lambda_max <- if(interactions)2*lambda_reference else max(2 * lambda_reference, maxlambda(preset_fit$X,
+  lambda_max <- if(interactions||inherits(X,'L0glm_data'))2*lambda_reference else max(2 * lambda_reference, maxlambda(preset_fit$X,
     weights = preset_fit$weights, z = preset_fit$z, dispersion = preset_fit$dispersion,
     always.include = included, coefs = preset_fit$coefficients, family = family,
     nonnegative = isTRUE(dots$nonnegative)))

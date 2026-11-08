@@ -33,6 +33,7 @@ dense and sparse matrices stay sparse."><meta property="og:image" content="https
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -85,7 +86,8 @@ dense and sparse matrices stay sparse.</p>
 
 
 <dl><dt id="arg-x">X<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>Numeric predictor matrix, dense or sparse, with observations in rows.</p></dd>
+<dd><p>Numeric predictor matrix, dense or sparse, with observations in rows.
+A <code><a href="l0glmData.html">l0glmData()</a></code> descriptor streams columns, including packed BED genotypes.</p></dd>
 
 
 <dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>

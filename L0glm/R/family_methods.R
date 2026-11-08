@@ -306,7 +306,15 @@ L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, bet
                               r2_mu_floor=0.1) {
   training <- is.null(newdata)
   X <- if (training) object$X else newdata
+  original <- if(inherits(object$X,'L0glm_design'))object$X$data else object$X
+  if(!training && inherits(original,'L0glm_data')) {
+    X <- L0glm_data_newdata(X,original)
+    if(is.null(object$interactions))X <- L0glm_design_view(X,
+      names=if(is.null(colnames(X)))rep('',ncol(X))else colnames(X))
+  }
   if(!training && !is.null(object$interactions))X <- L0glm_interaction_newdata(X,object$interactions)
+  if(!training && inherits(X,'L0glm_data'))X <- L0glm_design_view(X,
+    names=if(is.null(colnames(X)))rep('',ncol(X))else colnames(X))
   if (!training && object$added_intercept) {
     if(inherits(X,'L0glm_design'))X$intercept <- TRUE else X <- cbind(Intercept = 1, X)
   }

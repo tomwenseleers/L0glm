@@ -73,6 +73,8 @@ navbar:
           href: articles/cox.html
         - text: SIS / ISIS screening for high dimensional models
           href: articles/high-dimensional.html
+        - text: File-backed data and GWAS
+          href: articles/file-backed.html
         - text: "---"
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
@@ -92,7 +94,7 @@ articles:
   - title: Model families
     contents: [articles/regular-glm, articles/negative-binomial, articles/multinomial, articles/cox]
   - title: Screening at scale
-    contents: [articles/high-dimensional]
+    contents: [articles/high-dimensional, articles/file-backed]
   - title: Algorithms and evidence
     contents: [articles/algorithm, articles/performance]
   - title: Applications
@@ -105,7 +107,7 @@ reference:
   - title: Special families
     contents: [extended_families, L0glm_negative_binomial, L0glm_multinomial, L0glm_cox]
   - title: Screening, simulations and solvers
-    contents: [sisGLM, simul, simulateSpikeTrain, lmRidge, controlSolverGen]
+    contents: [sisGLM, l0glmData, simul, simulateSpikeTrain, lmRidge, controlSolverGen]
   - title: Signal noise and dispersion
     contents: [signal_families, temporalDispersion]
   - title: Visualization and outcome clustering

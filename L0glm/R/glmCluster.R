@@ -90,6 +90,10 @@
 #' Gaussian and NB, the returned summaries do not generally have the same
 #' fitted GLM family/link/dispersion. Clustering support therefore does not
 #' imply that automatic response aggregation is valid for every GLM.
+#' A [l0glmData()] response descriptor streams Ward distances, cut losses and
+#' aggregation over row blocks. The pairwise distance array and returned
+#' aggregates must satisfy its memory guard. Bregman agglomeration uses a
+#' bounded materialized matrix.
 #'
 #' @return `glmCluster()` returns a list with `D` (packed distances for Ward),
 #'   `hc` (hierarchy; `NULL` for one channel), `clusterids`, `Y_agg`,
@@ -118,6 +122,17 @@
                        method=if(family$family=="poisson") "poissondist" else "deviance",
                        size_fac=colSums(Y),rowbins=1L,nthreads=NULL,
                        linkage=NULL,criterion=NULL,k=NULL,k.max=32L,dispersion=1) {
+  if(inherits(Y,'L0glm_data')) {
+    if(!inherits(family,'family'))family <- family()
+    info <- L0glm_cluster_family(family)
+    selected.method <- if(missing(method))if(family$family=='poisson')'poissondist'else 'deviance'else method
+    if(is.null(linkage))linkage <- if(selected.method=='poissondist'||!info$likelihood||
+      !is.null(info$scalar)||grepl('^quasi',family$family))'ward'else 'bregman'
+    if(linkage=='ward')return(L0glm_data_cluster(Y,weights,family,
+      selected.method,if(missing(size_fac))NULL else size_fac,
+      rowbins,nthreads,linkage,criterion,k,k.max,dispersion))
+    Y <- L0glm_data_matrix(Y)
+  }
   Y<-L0glm_cluster_matrix(Y);n<-nrow(Y);m<-ncol(Y)
   if(!inherits(family,"family")) family<-family()
   method<-match.arg(method,c("deviance","poissondist"));info<-L0glm_cluster_family(family)

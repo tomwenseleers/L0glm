@@ -82,6 +82,9 @@
 #'   \code{p} being the number of predictor columns. Use \code{intercept = TRUE}
 #'   to add an intercept, or include a column of ones in \code{X} and set
 #'   \code{intercept = FALSE}.
+#'   A \code{\link{l0glmData}} descriptor provides memory-bounded access to
+#'   file-backed matrices and packed genotypes. Screening streams the source;
+#'   fitting materializes the retained working design.
 #' @param y Response data with \code{n} observations, aligned with the rows of
 #'   \code{X}. For ordinary GLMs, a vector of length \code{n} or an
 #'   \code{n} by \code{m} matrix of response variables (tasks/channels).
@@ -979,6 +982,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       local.search = "auto",
                       control.local = list(), group = NULL, group.multiplier = NULL,
                       interactions = 0L, control.interactions = list()) {
+  if(inherits(X,'L0glm_data') && as.double(nrow(X))*ncol(X)<=X$control$max.cells && tolower(screen)%in%c('auto','none') &&
+      (tolower(screen)=='none'||ncol(X)<=10*nrow(X)))X <- L0glm_data_matrix(X)
   interactions <- L0glm_interaction_order(interactions)
   if(interactions>0L) {
     supplied <- names(match.call())[-1L]
@@ -1001,7 +1006,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   L0glm_precluster_flags(precluster,cluster.refit)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)
-  nuisance <- isTRUE(nonnegative) && isTRUE(maxit>1L) && !isFALSE(control.solver$.nuisance)
+  nuisance <- !inherits(X,'L0glm_data') && isTRUE(nonnegative) && isTRUE(maxit>1L) && !isFALSE(control.solver$.nuisance)
   if(nuisance) {
     if(is.data.frame(X)) X <- as.matrix(X)
     if(!inherits(family,"family")) family <- family()
@@ -1064,6 +1069,11 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     return(L0glm_screen_fit(X, y, family, weights, offset, nonnegative,
       screen_method, tolower(screen) == "auto", nsis, screen.maxit, options, screen.nthreads,
       candidates))
+  }
+  if(inherits(X,'L0glm_data')) {
+    if(as.double(nrow(X))*ncol(X)>X$control$max.cells && !is.null(start))
+      return(L0glm_data_restricted_fit(mget(names(match.call())[-1L],environment(),inherits=FALSE)))
+    X <- L0glm_data_matrix(X)
   }
   if (identical(kind,"nb") && L0glm_signal_family(family) && nonnegative && is.null(start) &&
       !isTRUE(intercept) && maxit > 1L && !is.null(offset) && any(offset != 0)) {

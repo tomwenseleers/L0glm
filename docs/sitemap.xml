@@ -6,6 +6,7 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/controls.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/cox.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/deconvolution.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/articles/file-backed.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/gcms-deconvolution.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/articles/index.html</loc></url>
@@ -36,6 +37,7 @@
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/index.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/information_criteria.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/interaction_models.html</loc></url>
+<url><loc>https://tomwenseleers.github.io/L0glm/reference/l0glmData.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/l0glmFit.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/l0glmMetrics.html</loc></url>
 <url><loc>https://tomwenseleers.github.io/L0glm/reference/l0glmTune.html</loc></url>

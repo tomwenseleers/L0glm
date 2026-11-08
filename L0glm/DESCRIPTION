@@ -42,6 +42,11 @@ License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
 Suggests: 
+    bigmemory,
+    DelayedArray,
+    HDF5Array,
+    rhdf5,
+    pgenlibr,
     MASS,
     mgcv,
     grpreg,

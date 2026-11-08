@@ -160,6 +160,9 @@ L0glm_predict <- function(object, newdata, type, offset, times) {
 
 L0glm_prediction_eta <- function(object, newdata, offset) {
   beta <- stats::coef(object)
+  training <- if(inherits(object$X,'L0glm_design'))object$X$data else object$X
+  if(inherits(training,'L0glm_data') && !is.null(newdata))
+    newdata <- L0glm_data_newdata(newdata,training)
   if(!is.null(object$interactions) && !is.null(newdata))
     newdata <- L0glm_interaction_newdata(newdata,object$interactions)
   if (is.null(newdata)) {
@@ -175,7 +178,7 @@ L0glm_prediction_eta <- function(object, newdata, offset) {
     if (is.null(dim(X)) && is.numeric(X)) {
       X <- if (p == 1L) matrix(X,ncol=1L) else matrix(X,nrow=1L,dimnames=list(NULL,names(X)))
     }
-    if (!(is.matrix(X) || inherits(X,"Matrix") || inherits(X,'L0glm_design')) || ncol(X) != p)
+    if (!(is.matrix(X) || inherits(X,"Matrix") || inherits(X,'L0glm_design') || inherits(X,'L0glm_data')) || ncol(X) != p)
       stop("Wrong number of prediction columns; supply all original predictors without an added intercept.",call.=FALSE)
     expected <- colnames(object$X)
     if (isTRUE(object$added_intercept)) expected <- expected[-1L]
@@ -189,11 +192,13 @@ L0glm_prediction_eta <- function(object, newdata, offset) {
       } else if (!identical(expected,provided))
         stop("Prediction columns with ambiguous names must follow their training order.",call.=FALSE)
     }
-    entries <- if(inherits(X,'L0glm_design'))numeric()else if (inherits(X,"Matrix")) {
+    entries <- if(inherits(X,'L0glm_design')||inherits(X,'L0glm_data'))numeric()else if (inherits(X,"Matrix")) {
       if ("x" %in% methods::slotNames(X)) X@x else numeric()
     } else X
     if ((!is.numeric(entries) && !is.logical(entries)) || any(!is.finite(entries)))
       stop("newdata must contain finite numeric predictors.",call.=FALSE)
+    if(inherits(X,'L0glm_data'))X <- L0glm_design_view(X,
+      names=if(is.null(colnames(X)))rep('',ncol(X))else colnames(X))
     if (isTRUE(object$added_intercept)) {
       if(inherits(X,'L0glm_design'))X$intercept <- TRUE else X <- cbind(Intercept=rep(1,nrow(X)),X)
     }

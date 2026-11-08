@@ -104,6 +104,7 @@ l0nnPois <- function(X,
                      control.local = list(), group = NULL, group.multiplier = NULL,
                      interactions = 0L, control.interactions = list()) {
   interactions <- L0glm_interaction_order(interactions)
+  if(inherits(X,'L0glm_data'))X <- L0glm_data_matrix(X)
   if(interactions>0L) {
     if(!inherits(family,'family'))family <- family()
     if(family$family!='poisson' || family$link!='identity')

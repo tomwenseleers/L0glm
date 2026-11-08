@@ -33,6 +33,9 @@ explains the mathematics, regularization presets and full fitting algorithms.
 - **Data:** dense or sparse, tall or wide designs; single or multiple responses;
   [predictor-group and shared-row selection](https://tomwenseleers.github.io/L0glm/articles/predictor-groups.html);
   SIS/ISIS screening for ultrahigh dimensions.
+- **Large files:** [file-backed screening and fitting](https://tomwenseleers.github.io/L0glm/articles/file-backed.html)
+  for bigmemory, HDF5 single-cell assays and packed PLINK genotypes, with
+  training-only imputation and original-dimension sparse coefficients.
 - **Controls:** observation weights, offsets, unpenalized terms, starting values,
   normalization, original-scale coefficients and optional nonnegativity constraints.
 - **Selection:** a fast GIC preset, information-criterion path selection, or

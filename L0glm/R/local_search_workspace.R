@@ -2,12 +2,14 @@
 # those coordinates, preserving fit$p for every likelihood-complexity charge.
 L0glm_local_workspace <- function(fit, args, control) {
   candidates <- fit$screening$candidates
-  if (control$scope == "all" || !length(candidates)) return(NULL)
+  source <- inherits(args$X,'L0glm_data')
+  if (!source && (control$scope == "all" || !length(candidates))) return(NULL)
   added <- as.integer(isTRUE(fit$added_intercept))
   beta <- coef(fit)
   rows <- sort(unique(c(fit$always.include, L0glm_local_pattern(fit)$rows,
                         candidates + added)))
-  if (length(rows) > nrow(beta) / 2) return(NULL)
+  if(source && (control$scope=='all'||!length(candidates)))rows <- seq_len(nrow(beta))
+  if (!source && length(rows) > nrow(beta) / 2) return(NULL)
   original <- fit
   fit$X <- fit$X[, rows, drop=FALSE]
   fit$coefficients <- beta[rows, , drop=FALSE]
@@ -25,7 +27,7 @@ L0glm_local_workspace <- function(fit, args, control) {
       context <- L0glm_validation_context(context, args$X, fit$y, fit$family, added == 1L)
     args$validation <- L0glm_subset_validation(context, columns=rows)
   }
-  args$X <- args$X[, (rows - added)[rows > added], drop=FALSE]
+  args$X <- L0glm_data_matrix(args$X[, (rows - added)[rows > added], drop=FALSE])
   if (!is.null(args$start) && length(args$start) > 1L) {
     start <- as.matrix(args$start)
     if (added && nrow(start) == nrow(beta) - 1L) start <- rbind(0, start)

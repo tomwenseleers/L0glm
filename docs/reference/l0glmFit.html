@@ -143,6 +143,7 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -280,7 +281,10 @@ quadratic programming solver.</p>
 <code>p</code>, with <code>n</code> corresponding to the number of observations and
 <code>p</code> being the number of predictor columns. Use <code>intercept = TRUE</code>
 to add an intercept, or include a column of ones in <code>X</code> and set
-<code>intercept = FALSE</code>.</p></dd>
+<code>intercept = FALSE</code>.
+A <code><a href="l0glmData.html">l0glmData</a></code> descriptor provides memory-bounded access to
+file-backed matrices and packed genotypes. Screening streams the source;
+fitting materializes the retained working design.</p></dd>
 
 
 <dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>

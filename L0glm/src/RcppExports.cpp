@@ -182,6 +182,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// l0glm_bed_read_cpp
+Rcpp::NumericMatrix l0glm_bed_read_cpp(std::string path, int n, int p, Rcpp::IntegerVector rows, Rcpp::IntegerVector columns, int nthreads);
+RcppExport SEXP _L0glm_l0glm_bed_read_cpp(SEXP pathSEXP, SEXP nSEXP, SEXP pSEXP, SEXP rowsSEXP, SEXP columnsSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type p(pSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type columns(columnsSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(l0glm_bed_read_cpp(path, n, p, rows, columns, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // glm_native_cpp
 List glm_native_cpp(SEXP design, List contexts, int family, int link, double theta, int scalar, double parameter, double censor, int nthreads, NumericVector probes, int max_passes, bool relaxed, bool nonnegative, List solver_control, SEXP solver_bridge, SEXP executor);
 RcppExport SEXP _L0glm_glm_native_cpp(SEXP designSEXP, SEXP contextsSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP thetaSEXP, SEXP scalarSEXP, SEXP parameterSEXP, SEXP censorSEXP, SEXP nthreadsSEXP, SEXP probesSEXP, SEXP max_passesSEXP, SEXP relaxedSEXP, SEXP nonnegativeSEXP, SEXP solver_controlSEXP, SEXP solver_bridgeSEXP, SEXP executorSEXP) {
@@ -461,6 +477,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sis_bed_score_cpp
+List sis_bed_score_cpp(std::string path, int n, int p, IntegerVector samples, IntegerVector columns, IntegerVector imputation_rows, List context, int nsis, bool full, int nthreads, bool mean_impute);
+RcppExport SEXP _L0glm_sis_bed_score_cpp(SEXP pathSEXP, SEXP nSEXP, SEXP pSEXP, SEXP samplesSEXP, SEXP columnsSEXP, SEXP imputation_rowsSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP, SEXP mean_imputeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type path(pathSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type p(pSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type columns(columnsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type imputation_rows(imputation_rowsSEXP);
+    Rcpp::traits::input_parameter< List >::type context(contextSEXP);
+    Rcpp::traits::input_parameter< int >::type nsis(nsisSEXP);
+    Rcpp::traits::input_parameter< bool >::type full(fullSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type mean_impute(mean_imputeSEXP);
+    rcpp_result_gen = Rcpp::wrap(sis_bed_score_cpp(path, n, p, samples, columns, imputation_rows, context, nsis, full, nthreads, mean_impute));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solve_sparse_QR
 Rcpp::List solve_sparse_QR(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_QR(SEXP ASEXP, SEXP bSEXP, SEXP orderingSEXP) {
@@ -658,6 +695,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_bregman_tree_cpp", (DL_FUNC) &_L0glm_L0glm_bregman_tree_cpp, 6},
     {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
+    {"_L0glm_l0glm_bed_read_cpp", (DL_FUNC) &_L0glm_l0glm_bed_read_cpp, 6},
     {"_L0glm_glm_native_cpp", (DL_FUNC) &_L0glm_glm_native_cpp, 16},
     {"_L0glm_glm_native_pass_cpp", (DL_FUNC) &_L0glm_glm_native_pass_cpp, 11},
     {"_L0glm_signal_start_cpp", (DL_FUNC) &_L0glm_signal_start_cpp, 7},
@@ -669,6 +707,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_scalar_profile_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_profile_cpp, 7},
     {"_L0glm_L0glm_scalar_dist_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_dist_cpp, 6},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
+    {"_L0glm_sis_bed_score_cpp", (DL_FUNC) &_L0glm_sis_bed_score_cpp, 11},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},

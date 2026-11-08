@@ -29,7 +29,9 @@ l0glmTune(
 )
 }
 \arguments{
-\item{X}{A matrix of predictor variables.}
+\item{X}{A dense or sparse predictor matrix, or a memory-bounded
+\code{\link{l0glmData}} descriptor. File-backed screening and imputation
+are repeated independently within each CV training fold.}
 
 \item{y}{Response data with \code{n} observations, aligned with the rows of
 \code{X}. For ordinary GLMs, a vector of length \code{n} or an

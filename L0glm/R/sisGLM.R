@@ -6,6 +6,7 @@
 #' without fitting a separate model for every predictor. Dense matrices stay
 #' dense and sparse matrices stay sparse.
 #' @param X Numeric predictor matrix, dense or sparse, with observations in rows.
+#'   A [l0glmData()] descriptor streams columns, including packed BED genotypes.
 #' @param y Response as in [l0glmFit()]: a numeric vector or independent-channel
 #'   matrix for ordinary/NB models; factors, class labels or count matrices for
 #'   multinomial; or `survival::Surv(time, status)` for right-censored Cox models.
@@ -120,6 +121,7 @@ sisGLM <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
                     nsis=NULL, return_stats=TRUE, nuisance=NULL, nonnegative=FALSE,
                     iterative=FALSE, niter=10L, nthreads=NULL, ...) {
   X <- L0glm_sis_design(X)
+  if(inherits(X,'L0glm_data'))X <- L0glm_data_training(X,weights)
   if (!inherits(family,"family")) family <- family()
   if (!is.logical(return_stats) || length(return_stats)!=1L || is.na(return_stats) ||
       !is.logical(nonnegative) || length(nonnegative)!=1L || is.na(nonnegative) ||
@@ -137,7 +139,8 @@ sisGLM <- function(X, y, family=gaussian(), weights=NULL, offset=NULL,
   }
   if (length(list(...))) stop("Additional fitting arguments require iterative=TRUE.",call.=FALSE)
   context <- L0glm_sis_context(y,family,n,weights,offset,nuisance,nonnegative)
-  result <- sis_score_cpp(X,context,nsis,return_stats,nthreads)
+  result <- if(inherits(X,'L0glm_data'))L0glm_data_score(X,context,nsis,return_stats,nthreads)else
+    sis_score_cpp(X,context,nsis,return_stats,nthreads)
   ranking <- stats <- NULL
   if (return_stats) {
     ranking <- order(result$statistics,decreasing=TRUE,method="radix")
@@ -161,6 +164,10 @@ L0glm_sis_threads <- function(nthreads) {
 }
 
 L0glm_sis_design <- function(X) {
+  if(inherits(X,'L0glm_data')) {
+    if(nrow(X)<2L||ncol(X)<1L)stop('X needs at least two observations and one predictor.',call.=FALSE)
+    return(X)
+  }
   if (inherits(X,"sparseMatrix"))
     X <- methods::as(methods::as(methods::as(X,"dMatrix"),"generalMatrix"),"CsparseMatrix")
   else {

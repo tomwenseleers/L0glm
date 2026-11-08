@@ -75,6 +75,9 @@
  glmDist <- function(Y, weights=NULL, family=poisson(identity),
                       method=c("deviance","poissondist"),
                       size_fac=colSums(Y), nthreads=NULL) {
+  if(inherits(Y,'L0glm_data'))return(L0glm_data_cluster(Y,weights,family,
+    match.arg(method),if(missing(size_fac))NULL else size_fac,1L,nthreads,'ward',
+    'dynamic',1L,1L,1,distance.only=TRUE))
   method<-match.arg(method)
   Y<-L0glm_cluster_matrix(Y)
   w<-L0glm_cluster_weights(weights,nrow(Y),ncol(Y))

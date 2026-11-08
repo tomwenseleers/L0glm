@@ -33,6 +33,7 @@ Native OpenMP kernels calculate distances, Bregman merges and profile losses."><
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -230,7 +231,11 @@ including the supplied dispersion in those precisions.
 Binomial proportions use trial-weighted proportions. For Gamma, inverse
 Gaussian and NB, the returned summaries do not generally have the same
 fitted GLM family/link/dispersion. Clustering support therefore does not
-imply that automatic response aggregation is valid for every GLM.</p>
+imply that automatic response aggregation is valid for every GLM.
+A <code><a href="l0glmData.html">l0glmData()</a></code> response descriptor streams Ward distances, cut losses and
+aggregation over row blocks. The pairwise distance array and returned
+aggregates must satisfy its memory guard. Bregman agglomeration uses a
+bounded materialized matrix.</p>
     </div>
     <div class="section level2">
     <h2 id="functions">Functions<a class="anchor" aria-label="anchor" href="#functions"></a></h2>

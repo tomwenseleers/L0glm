@@ -37,6 +37,10 @@ L0glm_column_moments_cpp <- function(X, weights = NULL) {
     .Call('_L0glm_L0glm_column_moments_cpp', PACKAGE = 'L0glm', X, weights)
 }
 
+l0glm_bed_read_cpp <- function(path, n, p, rows, columns, nthreads = 1L) {
+    .Call('_L0glm_l0glm_bed_read_cpp', PACKAGE = 'L0glm', path, n, p, rows, columns, nthreads)
+}
+
 glm_native_cpp <- function(design, contexts, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, nthreads = 1L, probes = numeric(), max_passes = 1L, relaxed = FALSE, nonnegative = FALSE, solver_control = NULL, solver_bridge = NULL, executor = NULL) {
     .Call('_L0glm_glm_native_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, nthreads, probes, max_passes, relaxed, nonnegative, solver_control, solver_bridge, executor)
 }
@@ -79,6 +83,10 @@ L0glm_scalar_dist_cpp <- function(y, weights, family, phi, censor, nthreads = 1L
 
 sis_score_cpp <- function(design, context, nsis, full, nthreads = 1L) {
     .Call('_L0glm_sis_score_cpp', PACKAGE = 'L0glm', design, context, nsis, full, nthreads)
+}
+
+sis_bed_score_cpp <- function(path, n, p, samples, columns, imputation_rows, context, nsis, full, nthreads = 1L, mean_impute = TRUE) {
+    .Call('_L0glm_sis_bed_score_cpp', PACKAGE = 'L0glm', path, n, p, samples, columns, imputation_rows, context, nsis, full, nthreads, mean_impute)
 }
 
 solve_sparse_QR <- function(A, b, ordering = 1L) {

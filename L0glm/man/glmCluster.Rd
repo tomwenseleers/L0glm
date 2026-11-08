@@ -150,6 +150,10 @@ Binomial proportions use trial-weighted proportions. For Gamma, inverse
 Gaussian and NB, the returned summaries do not generally have the same
 fitted GLM family/link/dispersion. Clustering support therefore does not
 imply that automatic response aggregation is valid for every GLM.
+A \code{\link[=l0glmData]{l0glmData()}} response descriptor streams Ward distances, cut losses and
+aggregation over row blocks. The pairwise distance array and returned
+aggregates must satisfy its memory guard. Bregman agglomeration uses a
+bounded materialized matrix.
 }
 \section{Functions}{
 \itemize{

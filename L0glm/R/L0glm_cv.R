@@ -94,7 +94,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
         if(is.null(interaction_terms[[k]]))interaction_terms[[k]] <- vector('list',length(lambdas))
         interaction_terms[[k]][i] <- list(fit$interactions$terms)
       }
-      eta <- if(!is.null(fit$interactions))predict(fit,args$X[validation,,drop=FALSE],
+      eta <- if(!is.null(fit$interactions)||inherits(args$X,'L0glm_data'))predict(fit,args$X[validation,,drop=FALSE],
         type='link',offset=off) else as.matrix(design[validation, active, drop = FALSE] %*%
         fit$coefficients[active, , drop = FALSE]) + off
       mu <- family$linkinv(eta)

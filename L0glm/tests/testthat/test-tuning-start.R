@@ -25,7 +25,7 @@ test_that("pilot pooling retains opposite signed features and structural zeros",
     calls <<- calls + 1L
     beta <- matrix(c(if (calls %% 2L) 2 else -2, 0, 0, 1), 2, 2)
     list(coefficients = beta, always.include = integer())
-  })
+  },.package='L0glm')
   result <- L0glm_pilot_start(list(), c(2, 20))
   expect_equal(result$start, matrix(c(2, 0, 0, 1), 2, 2))
   expect_equal(nrow(result$pilot), 10L)
@@ -76,7 +76,7 @@ test_that("CV builds pilot starts and scales using only each fold's training row
     if (nrow(X) < n) observed[[length(observed) + 1L]] <<-
       list(rows = as.integer(rownames(X)), start = args$start, lambda = args$lambda)
     original(X, y, ...)
-  })
+  },.package='L0glm')
   tuned <- l0glmTune(local.search=FALSE, X, y, family = gaussian(), start = "pilot", tune = "cv",
     foldid = folds, nlambda = 3L, parallelize = FALSE, plot = FALSE, printbest = FALSE)
   expect_length(observed, 3L * 13L)
@@ -92,7 +92,7 @@ test_that("CV builds pilot starts and scales using only each fold's training row
   }
   replay <- do.call(original, c(list(X = X, y = y, lambda = tuned$lambda_1se),
                                 tuned$fit_args))
-  expect_equal(replay, tuned$fit_1se)
+  expect_equal(without_fit_specification(replay),without_fit_specification(tuned$fit_1se))
 })
 
 test_that("multichannel common starts preserve each channel's restrictions", {

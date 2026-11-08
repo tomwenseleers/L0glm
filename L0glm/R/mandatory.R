@@ -1,6 +1,7 @@
 # Recognize an explicit intercept without constructing a dense logical copy of X.
 L0glm_intercepts <- function(X) {
   named <- grep("intercept", colnames(X), ignore.case = TRUE)
+  if(inherits(X,'L0glm_data'))return(named)
   if (length(named) || !nrow(X)) return(named)
   candidates <- which(as.numeric(X[1L, , drop = FALSE]) == 1)
   for (j in candidates) if (all(X[, j, drop = FALSE] == 1)) return(j)

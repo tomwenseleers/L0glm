@@ -55,7 +55,10 @@ l0glmFit(
 \code{p}, with \code{n} corresponding to the number of observations and
 \code{p} being the number of predictor columns. Use \code{intercept = TRUE}
 to add an intercept, or include a column of ones in \code{X} and set
-\code{intercept = FALSE}.}
+\code{intercept = FALSE}.
+A \code{\link{l0glmData}} descriptor provides memory-bounded access to
+file-backed matrices and packed genotypes. Screening streams the source;
+fitting materializes the retained working design.}
 
 \item{y}{Response data with \code{n} observations, aligned with the rows of
 \code{X}. For ordinary GLMs, a vector of length \code{n} or an

@@ -21,7 +21,8 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     args$intercept <- FALSE
   }
   added <- as.integer(args$intercept)
-  design <- if (added) cbind(Intercept=1,X) else X
+  design <- if(inherits(X,'L0glm_data'))L0glm_design_view(X,intercept=added==1L,
+    names=if(is.null(colnames(X)))rep('',p)else colnames(X))else if (added) cbind(Intercept=1,X) else X
   included <- L0glm_mandatory(design,if (added) c(1L,args$always.include+1L) else args$always.include)
   mandatory <- included[included>added]-added
   if (identical(kind,"cox") && length(L0glm_intercepts(design)))

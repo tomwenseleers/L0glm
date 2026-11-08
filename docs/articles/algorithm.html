@@ -55,6 +55,7 @@
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -883,6 +884,30 @@ on the chosen model. Bootstrap selection frequencies quantify stability;
 nominal coverage near selection thresholds needs care (<a href="https://doi.org/10.1016/j.jeconom.2007.05.017" class="external-link">Leeb and Poetscher,
 2008</a>). The <a href="inference.html">inference tutorial</a> explains
 both approaches and their controls.</p>
+</div>
+<div class="section level2">
+<h2 id="memory-bounded-designs">Memory-bounded designs<a class="anchor" aria-label="anchor" href="#memory-bounded-designs"></a>
+</h2>
+<p>For a file-backed design, one nuisance/null fit supplies the
+efficient-score context. SIS reads blocks of predictors and merges their
+top statistics, breaking ties by original column order. Packed BED
+genotypes are decoded directly inside the native score reduction. ISIS
+repeats this calculation with the current fitted linear predictor in the
+screening offset. Each retained support is fitted by the existing family
+engine, with the original <span class="math inline">p</span> retained in
+the criterion.</p>
+<p>Training-only genotype means define the imputed design. Every CV fold
+and bootstrap replicate learns its own means; held-out prediction reuses
+those training values. Working matrices and requested outputs have
+explicit memory guards. The <a href="file-backed.html">file-backed
+tutorial</a> describes the supported backends and the retained-design
+fitting workflow.</p>
+<p>Ward outcome clustering can likewise accumulate distances over row
+blocks. Its profiled cluster means are separate for each observation
+row, so the cut loss satisfies <span class="math inline">L(\mathcal
+G)=\sum_b L_b(\mathcal G)</span>. The allocation term and complexity
+penalty are added once after summing block losses and degrees of
+freedom. This preserves the full-data cut criterion.</p>
 </div>
 <div class="section level2">
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>

@@ -44,8 +44,8 @@ print.L0glm_design <- function(x,...) {
   original <- columns-added
   product <- original[original>p]-p
   needed <- sort(unique(c(original[original>0 & original<=p],unlist(x$terms[product]))))
-  A <- x$data[rows,needed,drop=FALSE]
-  sparse <- inherits(x$data,'sparseMatrix')
+  A <- L0glm_data_matrix(x$data[rows,needed,drop=FALSE])
+  sparse <- inherits(A,'sparseMatrix')
   if(!sparse)A <- as.matrix(A)
   values <- lapply(original,function(k) {
     if(k==0L) {
@@ -56,7 +56,7 @@ print.L0glm_design <- function(x,...) {
       Reduce(`*`,lapply(factors,function(q)A[,q,drop=FALSE]))
     }
   })
-  result <- if(length(values))do.call(cbind,values)else x$data[rows,integer(),drop=FALSE]
+  result <- if(length(values))do.call(cbind,values)else L0glm_data_matrix(x$data[rows,integer(),drop=FALSE])
   dimnames(result) <- list(rownames(x$data)[rows],colnames(x)[columns])
   if(x$check && any(!is.finite(if(inherits(result,'sparseMatrix'))result@x else result)))
     stop('Selected predictors and their interaction products must be finite.',call.=FALSE)
@@ -68,7 +68,7 @@ L0glm_interaction_newdata <- function(X,recipe) {
   if(is.data.frame(X))X <- as.matrix(X)
   if(is.null(dim(X)) && is.numeric(X))X <- if(p==1L)matrix(X,ncol=1L)else
     matrix(X,nrow=1L,dimnames=list(NULL,names(X)))
-  if(!(is.matrix(X)||inherits(X,'Matrix')) || ncol(X)!=p)
+  if(!(is.matrix(X)||inherits(X,'Matrix')||inherits(X,'L0glm_data')) || ncol(X)!=p)
     stop('Supply all original main-effect predictors for interaction prediction.',call.=FALSE)
   expected <- recipe$input.names;provided <- colnames(X)
   if(!is.null(expected) && !is.null(provided)) {

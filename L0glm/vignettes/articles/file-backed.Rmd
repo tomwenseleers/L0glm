@@ -1,0 +1,127 @@
+---
+title: "File-backed data and GWAS"
+description: "Stream screening from packed genotypes and large assay matrices."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment='#>',message=FALSE,warning=FALSE)
+```
+
+`l0glmData()` separates matrix storage from model selection. SIS/ISIS reads
+predictors in bounded blocks, then L0glm fits the retained working design using
+its ordinary or special-family engine. The original predictor count determines
+the GIC preset and score, and returned coefficients retain the original sparse
+dimensions. This works with Gaussian and other GLMs, negative binomial,
+multinomial and Cox models, including weights and offsets.
+
+## One interface for large matrices
+
+```{r source}
+library(L0glm)
+set.seed(18)
+X <- matrix(rnorm(100*2000),100,2000)
+y <- 2*X[,1]-2*X[,2]+rnorm(100)
+source <- l0glmData(X,control=list(block.cells=20000,max.cells=30000))
+fit <- l0glmFit(source,y,screen='SIS',nsis=20L,lambda='gic')
+coef(fit)[which(Matrix::rowSums(coef(fit)!=0)>0),,drop=FALSE]
+```
+
+For a large file, replace the constructor while keeping the model call:
+
+```{r backends, eval=FALSE}
+genotype <- l0glmData('genotypes.bed',n=4000L,p=1733480L)
+fit <- l0glmFit(genotype,case_status,family=binomial(),screen='SIS',nsis=1000L)
+
+assay <- l0glmData('cells.h5ad',dataset='counts')
+fit <- l0glmFit(assay,response,family=poisson())
+
+assay <- l0glmData('cells.h5seurat',dataset='assays/RNA/counts')
+assay <- l0glmData('cells.loom')
+source <- l0glmData(bigmemory::attach.big.matrix('matrix.desc'))
+```
+
+H5AD, h5Seurat and loom adapters put observations in rows and genes in columns.
+Generic HDF5 datasets retain their supplied orientation; `transpose` can be set
+explicitly. Sparse HDF5/DelayedArray assays retain sparse working blocks.
+HDF5Array, DelayedArray, rhdf5 and bigmemory are optional dependencies.
+
+Subsetting with `drop=FALSE` creates a view. `as.matrix()` makes an explicit
+bounded read. An unscreened working design, the retained fit matrix and requested
+outputs must fit the configurable `max.cells` guard. Full-design IRLS on an
+arbitrarily large tall matrix still requires a dedicated streamed solver; the
+current interface keeps that memory requirement explicit.
+
+## Packed genotypes
+
+PLINK 1 variant-major BED stores four hardcalls per byte. The native screening
+kernel computes the same family-specific scores directly from these two-bit
+calls, with deterministic OpenMP reduction across predictors. The selected
+genotypes are decoded only for the smaller fitting problem.
+
+A logistic throughput example uses 4,000 samples and 1,733,480 predictors:
+**1.73 GB on disk**, compared with **55.47 GB as doubles**. The fit uses 3,200
+training samples, weights from 1 to 3, known offsets, five nonzero effects and
+a 1,000-predictor SIS pool. The complete screen-and-fit results are:
+
+| Screening threads | Seconds | GIC | TP | FP | F1 | MCC |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 17.14 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
+| 2 | 9.54 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
+| 4 | 5.95 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
+| 8 | 5.00 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
+
+Coefficients are identical across thread counts. These are synthetic independent
+genotypes for throughput testing; Windows may cache the file. Timings were
+measured on an HP ZBook Fury G8 with an Intel i9-11950H, eight physical cores and
+16 logical processors. The [reproducible benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked.R)
+also runs ISIS and records held-out prediction loss.
+
+PGEN uses the official [pgenlibr](https://github.com/chrchang/plink-ng/tree/master/2.0/pgenlibr)
+reader, retaining continuous ALT dosages. BED coefficients count BIM allele 1;
+PGEN coefficients count ALT dosage, combining ALT alleles for multiallelic records.
+
+```{r vcf, eval=FALSE}
+source <- l0glmData('variants.pgen')
+source <- l0glmData('variants.vcf.gz',control=list(
+  plink='C:/tools/plink2.exe',cache='C:/analysis/cache/genotypes',dosage='DS'))
+```
+
+VCF conversion uses PLINK 2 and an explicit output prefix. A provenance record
+identifies the input used by a reusable cache. `dosage='DS'` preserves expected
+dosages; omitting it imports GT hardcalls.
+
+## Imputation, prediction and resampling
+
+BED/PGEN use training-mean imputation by default; other formats require an
+explicit `missing='mean'`. Only nonmissing training rows with positive weight
+in at least one channel enter each mean. An all-missing column becomes zero.
+Cross-validation relearns these means in each training fold. Prediction reuses
+the fitted training means, including when predictor columns are reordered by
+name. Bootstrap row views repeat the fitting pipeline with replicate-specific
+training means.
+
+```{r cv, eval=FALSE}
+tuned <- l0glmTune(source,response,family=binomial(),tune='cv',nfolds=5L,
+  nlambda=10L,screen='SIS',nsis=1000L)
+predict(tuned$fit_best,source[test_rows,,drop=FALSE])
+```
+
+Keep the source files at their saved paths. File-backed intercepts can be added
+with `intercept=TRUE`; existing constant columns should be named or declared
+with `always.include`. Numeric starts, compulsory terms, predictor groups and
+interaction terms retain their usual eligibility and screening rules.
+
+## Streamed outcome clustering
+
+Ward distances and cut losses add over observation blocks, so `glmCluster()` can
+cluster file-backed responses without making a full dense outcome copy:
+
+```{r cluster, eval=FALSE}
+channels <- l0glmData('chromatogram.h5',dataset='intensity')
+clustered <- glmCluster(channels,family=poisson(identity),linkage='ward',k.max=32L)
+```
+
+The pairwise channel distances and returned centres/aggregates must satisfy the
+memory guard. Size factors use whole-channel totals, computed in a streamed
+pass when omitted. Bregman agglomeration retains its bounded-matrix route.

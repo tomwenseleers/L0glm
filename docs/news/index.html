@@ -29,6 +29,7 @@
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
     <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -60,16 +61,16 @@
 </ul></div>
 <div class="section level3">
 <h3 id="model-specification-and-selection-0-2-0-9002">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9002"></a></h3>
-<ul><li>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</li>
-<li>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</li>
-<li>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</li>
-<li>Optional selected-support standard errors and case-bootstrap coefficient intervals through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, with reselection frequencies, sparse draws, and support for ordinary GLMs, negative binomial, multinomial and Cox models.</li>
-<li>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</li>
-<li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</li>
-<li>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</li>
-<li>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</li>
-<li>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</li>
-<li>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</li>
+<ul><li><p>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</p></li>
+<li><p>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</p></li>
+<li><p>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</p></li>
+<li><p>Optional selected-support standard errors and case-bootstrap coefficient intervals through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, with reselection frequencies, sparse draws, and support for ordinary GLMs, negative binomial, multinomial and Cox models.</p></li>
+<li><p>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</p></li>
+<li><p>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</p></li>
+<li><p>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</p></li>
+<li><p>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</p></li>
+<li><p>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</p></li>
+<li><p>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="high-dimensional-and-multichannel-computation-0-2-0-9002">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0-9002"></a></h3>
@@ -78,6 +79,13 @@
 <li>Sure Independence Screening (SIS) and Iterative Sure Independence Screening (ISIS), with compiled OpenMP screening. Automatic ISIS uses <code>p_eligible &gt; 10*n</code>, excluding mandatory predictors and rows locked out by zero starts. Tuning applies the same rule to each training fold.</li>
 <li>Single and multichannel fitting, shared predictor-row selection and optional Poisson outcome aggregation followed by original-channel refitting.</li>
 <li>Size-adjusted Poisson and scalar-family likelihood clustering with native distances, pooled-likelihood merge costs and IC-scored cuts.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="memory-bounded-data-access-0-2-0-9002">Memory-bounded data access<a class="anchor" aria-label="anchor" href="#memory-bounded-data-access-0-2-0-9002"></a></h3>
+<ul><li>
+<code><a href="../reference/l0glmData.html">l0glmData()</a></code> provides lazy subsets of bigmemory, delayed/HDF5 single-cell assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2 conversion cache, including expected dosages.</li>
+<li>All-family SIS/ISIS streams predictor columns; BED screening reduces packed two-bit genotypes directly with OpenMP. Retained-design fitting preserves original coefficient dimensions and criterion calibration. Training-only imputation is reused for prediction and relearned inside CV and bootstraps.</li>
+<li>Ward outcome clustering streams row blocks, including its cut losses and aggregation. Explicit memory guards bound working matrices and outputs.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="simulation-comparison-and-interpretation-0-2-0-9002">Simulation, comparison and interpretation<a class="anchor" aria-label="anchor" href="#simulation-comparison-and-interpretation-0-2-0-9002"></a></h3>

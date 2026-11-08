@@ -5,9 +5,10 @@ L0glm_bootstrap_inference <- function(object,control) {
     stop('Bootstrap original-channel fits or aggregate responses before fitting.',call.=FALSE)
   n <- nrow(object$X);added <- as.integer(object$added_intercept)
   original <- if(is.null(object$interactions))ncol(object$X)-added else object$interactions$p.original
-  if(as.double(n)*original>control$max.cells)
+  source <- inherits(object$X,'L0glm_design') && inherits(object$X$data,'L0glm_data')
+  if(!source && as.double(n)*original>control$max.cells)
     stop('Bootstrap row resampling exceeds control.inference$max.cells.',call.=FALSE)
-  X <- if(!is.null(object$interactions))object$X$data else if(added)
+  X <- if(source||!is.null(object$interactions))object$X$data else if(added)
     object$X[,-1L,drop=FALSE]else object$X
   y <- object$y;options <- object$specification
   options <- utils::modifyList(options,control$refit.args,keep.null=TRUE)
