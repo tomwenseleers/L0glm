@@ -79,85 +79,6 @@ LASSO rows evaluates folds serially. Standalone benchmarks that call
 See the
 [million-predictor tutorial](high-dimensional.html) for the complete data setup.
 
-## Simulations from the abess documentation
-
-The [abess power tutorial](https://abess-team.github.io/abess/articles/v11-power-of-abess.html)
-uses Gaussian and logistic regression with 1,000 predictors and ten true effects.
-We use its generator for both families. The low-correlation design is AR(1)
-with parameter 0.1. The high-correlation design has pairwise correlation 0.7.
-Each family and correlation setting uses ten independent simulations and a fresh
-test set of the same size as the training set. There are 500 observations per
-Gaussian dataset and 1,000 per logistic dataset.
-
-L0glm uses the GIC preset, a relaxed refit and the default automatic local
-support refinement. The other methods select from
-their fitted paths using the common GIC in `sparseGLM()`. ABESS searches support
-sizes 0 to 60. The other paths use up to 40 values. These are GIC comparisons
-on the abess simulation designs. The abess tutorial uses a different tuning
-protocol. Test RMSE or AUC, sensitivity, false-positive rate and MCC are means
-over the ten replications. Seconds are median elapsed fitting and selection
-time with one BLAS thread. [Reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R) · [Per-run data](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/abess-simulations-runs.csv)
-
-### Gaussian regression
-
-<!-- BEGIN abess-gaussian -->
-| Correlation | Method | Test RMSE | Sensitivity | FPR | MCC | Seconds |
-|:--|:--|--:|--:|--:|--:|--:|
-| 0.1 | L0glm | 1.019 | 100% | 0.08% | 0.964 | 0.26 |
-| 0.1 | ABESS | 1.019 | 100% | 0.08% | 0.964 | 0.51 |
-| 0.1 | L0Learn | 1.019 | 100% | 0.08% | 0.964 | 0.22 |
-| 0.1 | LASSO | 2.766 | 100% | 0.00% | 1.000 | 0.25 |
-| 0.1 | Relaxed LASSO | 1.010 | 100% | 0.00% | 1.000 | 0.27 |
-| 0.1 | Adaptive LASSO | 10.590 | 87% | 0.00% | 0.932 | 0.29 |
-| 0.1 | Adaptive relaxed LASSO | 7.108 | 87% | 0.00% | 0.932 | 0.30 |
-| 0.1 | MCP | 1.459 | 95% | 0.00% | 0.974 | 0.25 |
-| 0.1 | SCAD | 3.203 | 95% | 0.00% | 0.974 | 0.25 |
-| 0.7 | L0glm | 1.020 | 100% | 0.04% | 0.982 | 0.23 |
-| 0.7 | ABESS | 1.017 | 100% | 0.03% | 0.986 | 0.50 |
-| 0.7 | L0Learn | 1.018 | 100% | 0.02% | 0.991 | 0.11 |
-| 0.7 | LASSO | 3.885 | 100% | 0.98% | 0.738 | 0.26 |
-| 0.7 | Relaxed LASSO | 1.186 | 99% | 0.09% | 0.961 | 0.28 |
-| 0.7 | Adaptive LASSO | 17.517 | 81% | 0.00% | 0.898 | 0.29 |
-| 0.7 | Adaptive relaxed LASSO | 9.168 | 81% | 0.00% | 0.898 | 0.30 |
-| 0.7 | MCP | 31.728 | 56% | 0.00% | 0.745 | 0.24 |
-| 0.7 | SCAD | 39.230 | 61% | 0.00% | 0.776 | 0.27 |
-<!-- END abess-gaussian -->
-
-
-### Logistic regression
-
-<!-- BEGIN abess-binomial -->
-| Correlation | Method | Test AUC | Sensitivity | FPR | MCC | Seconds |
-|:--|:--|--:|--:|--:|--:|--:|
-| 0.1 | L0glm | 0.991 | 100% | 0.06% | 0.973 | 0.61 |
-| 0.1 | ABESS | 0.991 | 100% | 0.06% | 0.973 | 2.50 |
-| 0.1 | L0Learn | 0.991 | 100% | 0.06% | 0.973 | 5.94 |
-| 0.1 | LASSO | 0.987 | 100% | 0.23% | 0.907 | 0.62 |
-| 0.1 | Relaxed LASSO | 0.991 | 100% | 0.03% | 0.986 | 2.05 |
-| 0.1 | Adaptive LASSO | 0.990 | 99% | 0.08% | 0.958 | 0.57 |
-| 0.1 | Adaptive relaxed LASSO | 0.991 | 99% | 0.00% | 0.995 | 1.72 |
-| 0.1 | MCP | 0.991 | 100% | 0.00% | 1.000 | 0.70 |
-| 0.1 | SCAD | 0.990 | 100% | 0.07% | 0.969 | 0.40 |
-| 0.7 | L0glm | 0.995 | 82% | 0.09% | 0.862 | 1.07 |
-| 0.7 | ABESS | 0.996 | 84% | 0.37% | 0.775 | 2.04 |
-| 0.7 | L0Learn | 0.997 | 80% | 0.09% | 0.849 | 1.28 |
-| 0.7 | LASSO | 0.996 | 89% | 3.84% | 0.404 | 0.57 |
-| 0.7 | Relaxed LASSO | 0.991 | 47% | 0.36% | 0.519 | 4.47 |
-| 0.7 | Adaptive LASSO | 0.990 | 50% | 1.55% | 0.347 | 0.56 |
-| 0.7 | Adaptive relaxed LASSO | 0.987 | 35% | 0.76% | 0.327 | 2.38 |
-| 0.7 | MCP | 0.993 | 60% | 0.05% | 0.747 | 46.88 |
-| 0.7 | SCAD | 0.996 | 88% | 3.49% | 0.416 | 1.63 |
-<!-- END abess-binomial -->
-
-L0glm recovers all ten Gaussian effects on average, with test RMSE close to
-the noise standard deviation of one, in about a quarter of a second. L0Learn
-is faster on these Gaussian designs, while L0glm takes about half the time of
-ABESS. In the strongly correlated logistic design, L0glm recovers 82% of the
-true effects with a 0.09% false-positive rate and MCC 0.862, taking 1.07 s.
-ABESS recovers 84% with a 0.37% false-positive rate and MCC 0.775, taking 2.04 s.
-L0Learn gives the highest test AUC there. Support recovery and prediction
-measure different aspects of these fitted models.
-
 ## Single channel deconvolution
 
 A realistic blurred Poisson spike train has **10,000 observations, 10,000
@@ -311,3 +232,82 @@ CV uses four parallel workers. Single-channel fits use one fitting thread.
 Timings will vary with hardware and tuning choices. F1 and MCC evaluate the known simulated
 support; it is never used to select models. Likelihood floors and approximation
 labels are explicit in the benchmark source.
+
+## Simulations from the abess documentation
+
+The [abess power tutorial](https://abess-team.github.io/abess/articles/v11-power-of-abess.html)
+uses Gaussian and logistic regression with 1,000 predictors and ten true effects.
+We use its generator for both families. The low-correlation design is AR(1)
+with parameter 0.1. The high-correlation design has pairwise correlation 0.7.
+Each family and correlation setting uses ten independent simulations and a fresh
+test set of the same size as the training set. There are 500 observations per
+Gaussian dataset and 1,000 per logistic dataset.
+
+L0glm uses the GIC preset, a relaxed refit and the default automatic local
+support refinement. The other methods select from
+their fitted paths using the common GIC in `sparseGLM()`. ABESS searches support
+sizes 0 to 60. The other paths use up to 40 values. These are GIC comparisons
+on the abess simulation designs. The abess tutorial uses a different tuning
+protocol. Test RMSE or AUC, sensitivity, false-positive rate and MCC are means
+over the ten replications. Seconds are median elapsed fitting and selection
+time with one BLAS thread. [Reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R) · [Per-run data](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/abess-simulations-runs.csv)
+
+### Gaussian regression
+
+<!-- BEGIN abess-gaussian -->
+| Correlation | Method | Test RMSE | Sensitivity | FPR | MCC | Seconds |
+|:--|:--|--:|--:|--:|--:|--:|
+| 0.1 | L0glm | 1.019 | 100% | 0.08% | 0.964 | 0.26 |
+| 0.1 | ABESS | 1.019 | 100% | 0.08% | 0.964 | 0.51 |
+| 0.1 | L0Learn | 1.019 | 100% | 0.08% | 0.964 | 0.22 |
+| 0.1 | LASSO | 2.766 | 100% | 0.00% | 1.000 | 0.25 |
+| 0.1 | Relaxed LASSO | 1.010 | 100% | 0.00% | 1.000 | 0.27 |
+| 0.1 | Adaptive LASSO | 10.590 | 87% | 0.00% | 0.932 | 0.29 |
+| 0.1 | Adaptive relaxed LASSO | 7.108 | 87% | 0.00% | 0.932 | 0.30 |
+| 0.1 | MCP | 1.459 | 95% | 0.00% | 0.974 | 0.25 |
+| 0.1 | SCAD | 3.203 | 95% | 0.00% | 0.974 | 0.25 |
+| 0.7 | L0glm | 1.020 | 100% | 0.04% | 0.982 | 0.23 |
+| 0.7 | ABESS | 1.017 | 100% | 0.03% | 0.986 | 0.50 |
+| 0.7 | L0Learn | 1.018 | 100% | 0.02% | 0.991 | 0.11 |
+| 0.7 | LASSO | 3.885 | 100% | 0.98% | 0.738 | 0.26 |
+| 0.7 | Relaxed LASSO | 1.186 | 99% | 0.09% | 0.961 | 0.28 |
+| 0.7 | Adaptive LASSO | 17.517 | 81% | 0.00% | 0.898 | 0.29 |
+| 0.7 | Adaptive relaxed LASSO | 9.168 | 81% | 0.00% | 0.898 | 0.30 |
+| 0.7 | MCP | 31.728 | 56% | 0.00% | 0.745 | 0.24 |
+| 0.7 | SCAD | 39.230 | 61% | 0.00% | 0.776 | 0.27 |
+<!-- END abess-gaussian -->
+
+
+### Logistic regression
+
+<!-- BEGIN abess-binomial -->
+| Correlation | Method | Test AUC | Sensitivity | FPR | MCC | Seconds |
+|:--|:--|--:|--:|--:|--:|--:|
+| 0.1 | L0glm | 0.991 | 100% | 0.06% | 0.973 | 0.61 |
+| 0.1 | ABESS | 0.991 | 100% | 0.06% | 0.973 | 2.50 |
+| 0.1 | L0Learn | 0.991 | 100% | 0.06% | 0.973 | 5.94 |
+| 0.1 | LASSO | 0.987 | 100% | 0.23% | 0.907 | 0.62 |
+| 0.1 | Relaxed LASSO | 0.991 | 100% | 0.03% | 0.986 | 2.05 |
+| 0.1 | Adaptive LASSO | 0.990 | 99% | 0.08% | 0.958 | 0.57 |
+| 0.1 | Adaptive relaxed LASSO | 0.991 | 99% | 0.00% | 0.995 | 1.72 |
+| 0.1 | MCP | 0.991 | 100% | 0.00% | 1.000 | 0.70 |
+| 0.1 | SCAD | 0.990 | 100% | 0.07% | 0.969 | 0.40 |
+| 0.7 | L0glm | 0.995 | 82% | 0.09% | 0.862 | 1.07 |
+| 0.7 | ABESS | 0.996 | 84% | 0.37% | 0.775 | 2.04 |
+| 0.7 | L0Learn | 0.997 | 80% | 0.09% | 0.849 | 1.28 |
+| 0.7 | LASSO | 0.996 | 89% | 3.84% | 0.404 | 0.57 |
+| 0.7 | Relaxed LASSO | 0.991 | 47% | 0.36% | 0.519 | 4.47 |
+| 0.7 | Adaptive LASSO | 0.990 | 50% | 1.55% | 0.347 | 0.56 |
+| 0.7 | Adaptive relaxed LASSO | 0.987 | 35% | 0.76% | 0.327 | 2.38 |
+| 0.7 | MCP | 0.993 | 60% | 0.05% | 0.747 | 46.88 |
+| 0.7 | SCAD | 0.996 | 88% | 3.49% | 0.416 | 1.63 |
+<!-- END abess-binomial -->
+
+L0glm recovers all ten Gaussian effects on average, with test RMSE close to
+the noise standard deviation of one, in about a quarter of a second. L0Learn
+is faster on these Gaussian designs, while L0glm takes about half the time of
+ABESS. In the strongly correlated logistic design, L0glm recovers 82% of the
+true effects with a 0.09% false-positive rate and MCC 0.862, taking 1.07 s.
+ABESS recovers 84% with a 0.37% false-positive rate and MCC 0.775, taking 2.04 s.
+L0Learn gives the highest test AUC there. Support recovery and prediction
+measure different aspects of these fitted models.
