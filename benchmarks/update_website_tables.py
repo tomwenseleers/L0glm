@@ -112,19 +112,18 @@ def difficulty_table(model):
                ("lasso", "gic"), ("relaxed_lasso", "gic"),
                ("adaptive_lasso", "gic"), ("adaptive_relaxed_lasso", "gic"),
                ("MCP", "gic"), ("SCAD", "gic"), ("lasso", "cv"), ("relaxed_lasso", "cv"))
-    data = {(int(r["p"]), r["method"], r["tune"]): r
-            for r in rows("support-difficulty.csv") if r["model"] == model}
+    data = {(r["method"], r["tune"]): r for r in rows("support-difficulty.csv")
+            if r["model"] == model and int(r["p"]) == 20000}
     prediction = "Test RMSE" if model == "gaussian" else "Test AUC"
-    lines = [f"| Predictors | Method | Selection | {prediction} | TP | FP | F1 | MCC | Seconds |",
-             "|--:|:--|:--|--:|--:|--:|--:|--:|--:|"]
-    for p in sorted({key[0] for key in data}):
-        for method, tune in methods:
-            r = data[p, method, tune]
-            selection = "5-fold CV" if tune == "cv" else "GIC preset" if method == "L0glm" else "GIC path"
-            lines.append(f'| {p:,} | {LABELS.get(method, method)} | {selection} | '
-                         f'{float(r["prediction"]):.3f} | {float(r["TP"]):.1f} | '
-                         f'{float(r["FP"]):.1f} | {float(r["F1"]):.3f} | '
-                         f'{float(r["MCC"]):.3f} | {float(r["seconds"]):.2f} |')
+    lines = [f"| Method | Selection | {prediction} | TP | FP | F1 | MCC | Seconds |",
+             "|:--|:--|--:|--:|--:|--:|--:|--:|"]
+    for method, tune in methods:
+        r = data[method, tune]
+        selection = "5-fold CV" if tune == "cv" else "GIC preset" if method == "L0glm" else "GIC path"
+        lines.append(f'| {LABELS.get(method, method)} | {selection} | '
+                     f'{float(r["prediction"]):.3f} | {float(r["TP"]):.1f} | '
+                     f'{float(r["FP"]):.1f} | {float(r["F1"]):.3f} | '
+                     f'{float(r["MCC"]):.3f} | {float(r["seconds"]):.2f} |')
     return "\n".join(lines)
 
 

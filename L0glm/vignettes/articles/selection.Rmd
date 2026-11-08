@@ -120,7 +120,7 @@ after the initial fit. For grouped multichannel fits, each selected row counts
 its channel dimensions; multinomial rows have one fewer dimension because of
 their zero-sum constraint. The limit is set with `control.local$size.max`.
 `"auto"` is the default; `FALSE` disables refinement. See the [controls](../reference/local_search.html)
-and [paired benchmarks](performance.html#local-support-refinement).
+and [benchmark examples](performance.html#abess-benchmark-problems).
 
 IC paths rank ordinary and special-family models using the same counts as
 `GIC()`, `AIC()` and the other criterion methods. CV independently refines each

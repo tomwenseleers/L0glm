@@ -1,6 +1,6 @@
 ---
 title: "Speed, support recovery and reproducible benchmarks"
-description: "Compare variable selection on a million predictors, the abess simulations and Poisson deconvolution."
+description: "Compare L0glm on one million predictors, higher-dimensional Abess benchmark problems and Poisson deconvolution."
 output: rmarkdown::html_document
 ---
 
@@ -9,21 +9,21 @@ knitr::opts_chunk$set(collapse=TRUE, comment="#>", message=FALSE, warning=FALSE,
   fig.width=9, fig.height=4.2, dpi=160)
 ```
 
-L0glm's shrinking active set, compiled solvers and fast GIC preset can deliver
-striking gains in both speed and support recovery. These examples compare
-complete fitting and selection workflows. Each table identifies the tuning rule,
-and reports support recovery separately from elapsed time. The deconvolution examples use the
-[website benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_examples.R).
-The [million-predictor comparison](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_million_lasso.R)
-reproduces the LASSO workflows. The README and this page share the same published measurements.
+L0glm combines a fast GIC preset with compiled adaptive-ridge solvers to recover
+sparse models with accurate effects and few false positives. These examples
+compare complete fitting and selection workflows, with known simulated truth
+used to assess both speed and recovery.
 
 ## One million predictor example
 
-The design has 500 observations, one million standard-normal predictors and
-60 nonzero coefficients of either sign. L0glm uses GIC-preset ISIS plus a relaxed
-refit. LASSO and fully relaxed LASSO are tuned by BIC or five-fold CV on the
-unscreened design. The [screening tutorial](high-dimensional.html#compare-screening-and-complete-models-with-sis)
-compares complete models when all methods use SIS or ISIS.
+<!-- BEGIN million-intro -->
+This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
+<!-- END million-intro -->
+
+L0glm uses its default GIC preset with ISIS screening and relaxed fitting.
+LASSO and fully relaxed LASSO search paths of up to 40 lambda values, selected
+by BIC or five-fold CV. BIC is included because GIC can select an empty LASSO
+model at this dimension; all methods are also evaluated using the common GIC.
 
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
@@ -64,26 +64,75 @@ title("Fewer false positives", adj=0, cex.main=1.1)
 layout(1)
 ```
 
-In this simulation L0glm is **42 times faster than five-fold-CV LASSO** and
-recovers more true effects with fewer false positives. The L0glm timing includes
-screening and one preset fit; the other methods evaluate up to 40 native path
-values, with paths refitted in each CV training fold. BIC is shown alongside CV
-because GIC can select a null LASSO model at this dimension. All rows retain GIC
-as a common evaluation score. Five-fold comparisons use the same random folds.
+<!-- BEGIN million-speed -->
+L0glm is **42× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+<!-- END million-speed -->
 
-Simulation is excluded from timings. The documented run uses one BLAS thread
-and eight screening threads; the design is held in memory. The L0glm time is
-the median of three runs. The common-scoring CV implementation used for the
-LASSO rows evaluates folds serially. Standalone benchmarks that call
-`cv.glmnet()` use parallel folds through `cv_glmnet_parallel()`.
-See the
-[million-predictor tutorial](high-dimensional.html) for the complete data setup.
+See the [high-dimensional tutorial](high-dimensional.html) for the data setup
+and comparisons with SIS/ISIS screening applied to the other methods too.
 
-## Single channel deconvolution
+## Abess benchmark problems
 
-A realistic blurred Poisson spike train has **10,000 observations, 10,000
-predictors and 1,000 true peaks**. Every fit is evaluated using the original
-Poisson likelihood and a common GIC.
+These higher-dimensional extensions of the Gaussian and logistic examples in
+the [abess documentation](https://abess-team.github.io/abess/articles/v11-power-of-abess.html)
+use **20,000 predictors** with AR(1) correlation 0.3 and signed effects of
+absolute size 0.35–0.8. Test scores and recovery metrics are means across three
+independent replications; elapsed times are medians.
+
+L0glm uses its GIC preset and automatically applies a
+[local support search](../reference/local_search.html) to small initial
+solutions with **50 or fewer coefficient dimensions**. The other methods
+select from paths of up to 40 lambda values using the common GIC; ABESS searches
+support sizes 0–100. LASSO and fully relaxed LASSO are also tuned by five-fold CV.
+
+**Gaussian regression: 500 observations and 40 true effects.** L0glm matches
+ABESS's GIC and support recovery in **0.37 s versus 1.80 s**. Compared with
+CV LASSO, it recovers all 40 effects with an average of just 0.7 false positives
+and lower test RMSE.
+
+<!-- BEGIN difficulty-gaussian -->
+| Method | Selection | Test RMSE | TP | FP | F1 | MCC | Seconds |
+|:--|:--|--:|--:|--:|--:|--:|--:|
+| L0glm | GIC preset | 1.037 | 40.0 | 0.7 | 0.992 | 0.992 | 0.37 |
+| ABESS | GIC path | 1.037 | 40.0 | 0.7 | 0.992 | 0.992 | 1.80 |
+| L0Learn | GIC path | 1.060 | 40.0 | 0.3 | 0.996 | 0.996 | 0.78 |
+| LASSO | GIC path | 3.781 | 0.0 | 0.0 | 0.000 | 0.000 | 0.97 |
+| Relaxed LASSO | GIC path | 2.276 | 24.0 | 7.3 | 0.663 | 0.684 | 1.30 |
+| Adaptive LASSO | GIC path | 3.552 | 5.3 | 0.0 | 0.190 | 0.211 | 1.75 |
+| Adaptive relaxed LASSO | GIC path | 2.942 | 13.7 | 0.3 | 0.496 | 0.570 | 1.64 |
+| MCP | GIC path | 1.019 | 40.0 | 0.0 | 1.000 | 1.000 | 1.29 |
+| SCAD | GIC path | 2.020 | 26.7 | 2.7 | 0.635 | 0.636 | 1.87 |
+| LASSO | 5-fold CV | 1.899 | 39.7 | 282.3 | 0.219 | 0.347 | 5.86 |
+| Relaxed LASSO | 5-fold CV | 1.727 | 39.0 | 188.0 | 0.364 | 0.460 | 6.55 |
+<!-- END difficulty-gaussian -->
+
+**Logistic regression: 1,000 observations and 20 true effects.** L0glm fits in
+**0.54 s** with no false calls in these replications. CV LASSO takes 10.11 s
+and retains an average of 217.3 false positives. ABESS and L0Learn recover
+slightly more true effects, with longer fitting times.
+
+<!-- BEGIN difficulty-binomial -->
+| Method | Selection | Test AUC | TP | FP | F1 | MCC | Seconds |
+|:--|:--|--:|--:|--:|--:|--:|--:|
+| L0glm | GIC preset | 0.862 | 14.7 | 0.0 | 0.838 | 0.852 | 0.54 |
+| ABESS | GIC path | 0.871 | 16.3 | 0.3 | 0.886 | 0.893 | 8.64 |
+| L0Learn | GIC path | 0.871 | 16.3 | 0.3 | 0.886 | 0.893 | 11.85 |
+| LASSO | GIC path | 0.605 | 3.7 | 0.3 | 0.229 | 0.237 | 1.79 |
+| Relaxed LASSO | GIC path | 0.863 | 15.0 | 0.7 | 0.833 | 0.842 | 9.43 |
+| Adaptive LASSO | GIC path | 0.850 | 15.7 | 0.7 | 0.850 | 0.863 | 2.52 |
+| Adaptive relaxed LASSO | GIC path | 0.856 | 14.0 | 0.0 | 0.819 | 0.834 | 7.65 |
+| MCP | GIC path | 0.842 | 13.7 | 0.0 | 0.808 | 0.824 | 3.02 |
+| SCAD | GIC path | 0.675 | 3.7 | 0.3 | 0.229 | 0.237 | 5.55 |
+| LASSO | 5-fold CV | 0.847 | 19.7 | 217.3 | 0.159 | 0.289 | 10.11 |
+| Relaxed LASSO | 5-fold CV | 0.846 | 14.3 | 1.0 | 0.812 | 0.821 | 49.45 |
+<!-- END difficulty-binomial -->
+
+## Single sample deconvolution
+
+A blurred Poisson spike train has **10,000 observations, 10,000 candidate peak
+positions and 1,000 true peaks**. L0glm achieves **F1 0.845 in 0.14 s** with
+one GIC preset. Fully relaxed LASSO tuned by five-fold CV takes 2.77 s and
+achieves F1 0.534.
 
 <!-- BEGIN single-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
@@ -95,20 +144,21 @@ Poisson likelihood and a common GIC.
 | Relaxed LASSO | 5-fold CV | 2.77 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
 <!-- END single-metrics -->
 
-L0glm uses one GIC preset with a relaxed refit. LASSO and relaxed LASSO search
-ten explicit lambda values using GIC or five-fold CV, with a weighted-Gaussian
-approximation and observation weights `1/(y+0.1)`. CV selects glmnet's minimum
-weighted prediction error using four parallel workers. ABESS is omitted from
-this large example.
-The [deconvolution tutorial](deconvolution.html) shows mirrored signals and
-true-versus-estimated coefficient plots.
+All fits are evaluated with the original Poisson likelihood. LASSO uses a
+weighted Gaussian approximation with weights `1/(y+0.1)`, searching ten lambda
+values by GIC or five-fold CV. The [deconvolution tutorial](deconvolution.html)
+shows fitted signals and coefficient comparisons.
 
 ## Multichannel deconvolution
 
-The GC/MS-style simulation also has **10,000 rows, 10,000 candidate peak
-locations and 1,000 true peaks**, with **all 226 informative mass channels**
-retained. Shared chromatographic peak times correspond to active coefficient
-rows; within-row coefficients describe the mass spectra.
+The GC/MS-style problem has **10,000 scans, 10,000 candidate peak positions,
+1,000 true peaks and all 226 informative mass channels**. Joint row selection
+recovers peak times, while coefficients within each row describe the mass
+spectrum.
+
+<!-- BEGIN multi-speed -->
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
+<!-- END multi-speed -->
 
 <!-- BEGIN multi-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Within-row F1 | Within-row MCC |
@@ -120,319 +170,32 @@ rows; within-row coefficients describe the mass spectra.
 | Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
 <!-- END multi-metrics -->
 
-Row F1 and MCC measure peak recovery. Within-row F1 and MCC assess spectral
-sparsity among correctly recovered true-positive peaks. L0glm uses the full
-Poisson likelihood with channel-specific working weights. Grouped glmnet
-uses shared row weights `1/(rowMeans(y)+0.1)` for its labelled Gaussian
-approximation. GIC selection scores ten lambda values using the original
-Poisson likelihood; five-fold CV selects the minimum weighted prediction error
-on the same lambda grid. Fully relaxed fits use `gamma=0`. L0glm uses
-`lambda="gic"` and four outcome-fitting threads; CV uses four parallel workers.
-Timings include the complete fitting and selection workflow, including worker
-startup for CV. The preset time is the median of three runs with matching
-coefficients. Simulation and final metric reporting are excluded.
-
-The [deconvolution tutorial](deconvolution.html) stacks observed data, ground
-truth and fitted coefficient heatmaps, and shows all-channel coefficient
-comparisons in a single column.
-
-## Local support refinement {#local-support-refinement}
-
-`local.search` refines a completed adaptive-ridge fit by testing predictor
-additions, deletions and small exchanges. Its parameter-count objective uses
-the same conventions as `GIC()` and the tuning functions. The default `"auto"` applies
-the search to initial supports with at most 50 coefficient dimensions, after
-any SIS/ISIS screening. The [reference](../reference/local_search.html) gives
-the computational-size rule, controls and returned diagnostics.
-
-```{r local-search, eval=FALSE}
-fit <- l0glmFit(X, y, family=binomial(), lambda="gic",
-  local.search="auto")
-fit$local.search$history
-```
-
-The paired comparison below uses the same 40 datasets as the abess-design
-benchmark: ten replications for each family and correlation. GIC, TP, FP and
-MCC are means; timings are medians. Both variants use the same GIC preset
-and relaxed fitting option. Elapsed time here measures `l0glmFit()` itself;
-the nine-method comparison includes the common `sparseGLM()` scoring workflow.
-Model selection uses only the training data.
-
-<!-- BEGIN local-search-comparison -->
-| Family | Correlation | Local search | GIC | TP | FP | MCC | Seconds |
-|:--|--:|:--|--:|--:|--:|--:|--:|
-| Gaussian | 0.1 | FALSE | 1799.1 | 9.5 | 0.0 | 0.974 | 0.05 |
-| Gaussian | 0.1 | auto | 1563.5 | 10.0 | 0.8 | 0.964 | 0.19 |
-| Gaussian | 0.7 | FALSE | 1767.5 | 9.5 | 0.0 | 0.974 | 0.05 |
-| Gaussian | 0.7 | auto | 1563.1 | 10.0 | 0.4 | 0.982 | 0.18 |
-| Logistic | 0.1 | FALSE | 362.7 | 9.8 | 0.0 | 0.990 | 0.12 |
-| Logistic | 0.1 | auto | 357.4 | 10.0 | 0.6 | 0.973 | 0.51 |
-| Logistic | 0.7 | FALSE | 320.3 | 3.7 | 2.1 | 0.482 | 0.17 |
-| Logistic | 0.7 | auto | 222.0 | 8.2 | 0.9 | 0.862 | 0.96 |
-<!-- END local-search-comparison -->
-
-The refinement substantially improves Gaussian prediction and recovery of
-correlated logistic effects. In the Gaussian examples, mean test RMSE falls
-from 1.46–1.48 to 1.02. For correlated logistic predictors, mean MCC rises
-from 0.482 to 0.862. The extra work is concentrated on small models: additions,
-deletions and exchanges are accepted only when they improve the chosen
-training criterion.
-
-[Reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_local_search.R) ·
-[Per-run comparisons](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/local-search-runs.csv)
-
-Large multichannel deconvolution models exceed this automatic size limit.
-Their initial coefficients are retained. `TRUE` explicitly requests refinement
-for larger supports, and `FALSE` disables it.
-
-For example, a 10,000-predictor, 228-channel Poisson control fit took 5.73 s
-with `"auto"` and 5.85 s with `FALSE`, with identical coefficients. Explicitly
-requesting three search rounds improved GIC from 5,525,411 to 5,494,470 and
-within-row MCC from 0.870 to 0.878, taking 34.36 s. The default size limit
-preserves the fast fitting path for models of this size. Run
-`benchmark_local_deconvolution()` from the reproduction script to repeat
-these [deconvolution controls](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/local-search-deconvolution.csv).
-
-### Computation on the retained screening pool
-
-For screened fits, local search works directly with the retained candidate
-columns. In the million-predictor example this gives 59 working columns.
-The original predictor count still determines the information-criterion
-penalty, and the output retains all one million coefficient rows.
-
-This paired implementation check runs the same search in original and reduced
-coordinates, alternating their execution order across three repetitions.
-Both evaluate the same 24 candidates and return matching coefficients,
-proposals and accepted moves. Reducing the working arrays greatly lowers
-allocation and bookkeeping costs.
-
-<!-- BEGIN local-coordinate-comparison -->
-| Search coordinates | Total seconds | Local-search seconds | GIC | TP | FP | F1 | MCC |
-|:--|--:|--:|--:|--:|--:|--:|--:|
-| Original predictor space | 6.08 | 3.26 | 2579.2 | 40 | 2 | 0.784 | 0.797 |
-| Retained screening pool | 2.94 | 0.11 | 2579.2 | 40 | 2 | 0.784 | 0.797 |
-<!-- END local-coordinate-comparison -->
-
-Run `benchmark_local_million()` from the
-[local-search benchmark script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_local_search.R)
-to reproduce these [paired measurements](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/local-search-million-runs.csv).
-The opening example reports a separate three-run median using the default
-screened-coordinate implementation.
-
-## Native validation and OpenMP
-
-Both drivers can select an IRLS checkpoint by held-out deviance.
-The specialized `l0nnPois` backend evaluates validation in native code and
-fits channels in parallel. This example uses 1,000 predictors, 16 channels,
-60 active rows and an independent Poisson replicate for validation. Timings
-are medians of five fits with one BLAS thread.
-
-| Backend | Outcome threads | Seconds | Validation deviance | GIC | F1 | MCC |
-|---|---:|---:|---:|---:|---:|---:|
-| General driver | 1 | 1.19 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| l0nnPois | 1 | 0.10 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| l0nnPois | 2 | 0.07 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| l0nnPois | 4 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-| l0nnPois | 8 | 0.05 | 0.357611 | 42687.99 | 0.945 | 0.943 |
-
-The fits agree across drivers and thread counts. Run
-[benchmark_native_validation.R](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_native_validation.R)
-to reproduce the comparison.
+Within-row F1 and MCC assess spectral sparsity among correctly recovered peaks.
+L0glm fits the Poisson model with channel-specific working weights. Group LASSO
+uses a Gaussian approximation with shared row weights `1/(rowMeans(y)+0.1)`;
+ten lambda values are selected by GIC or five-fold CV. Fully relaxed fits use
+`gamma=0`. See the [deconvolution tutorial](deconvolution.html) for heatmaps,
+coefficient plots and complete code.
 
 ## Reproduce and extend
 
-* [Website benchmark source](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_examples.R): preset fits, comparisons and plots.
-* [Million-predictor LASSO benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_million_lasso.R): BIC and five-fold CV comparisons.
-* [Gaussian/logistic benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R): matched comparisons with ABESS, L0Learn, LASSO variants, MCP and SCAD.
-* [Local support refinement](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_local_search.R): paired comparisons with refinement enabled or disabled.
-* [Support recovery as dimension increases](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_support_difficulty.R): fixed effects and outcomes with additional null predictors.
-* [Solver/problem-size benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_L0glm_solvers_problem_sizes.R): solvers, families, matrix storage and sizes.
-* [Single/multichannel benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/2_benchmarks_L0glm_single_and_multichannel_vs_other_methods.R): detailed signal examples and alternative methods.
-* [`sparseGLM()`](../reference/sparseGLM.html): use the same comparison framework on your own data.
+* [Million-predictor example and plots](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_examples.R)
+  and [LASSO comparison workflows](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_million_lasso.R).
+* [Higher-dimensional Abess benchmark problems](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_support_difficulty.R)
+  and [complete results and fitting notes](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/support-difficulty-runs.csv).
+* [Single and multichannel deconvolution workflows](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R).
+* [`sparseGLM()`](../reference/sparseGLM.html) applies the same comparison framework to your own data.
 
-The benchmarks were run on an **HP ZBook Fury 17.3-inch G8 Mobile Workstation**
-with an **11th-generation Intel Core i9-11950H at 2.60 GHz**, **8 physical cores
-and 16 logical cores**, running Windows and R 4.5.0 with OpenBLAS. BLAS uses one
-thread. Screening in the million-predictor example uses eight physical cores.
-Multichannel deconvolution uses four outcome-fitting threads, and deconvolution
-CV uses four parallel workers. Single-channel fits use one fitting thread.
-Timings will vary with hardware and tuning choices. F1 and MCC evaluate the known simulated
-support; it is never used to select models. Likelihood floors and approximation
-labels are explicit in the benchmark source.
+Benchmarks were run on an **HP ZBook Fury 17.3-inch G8 Mobile Workstation**
+with an **Intel Core i9-11950H at 2.60 GHz**, **8 physical and 16 logical cores**,
+using Windows, R 4.5.0 and OpenBLAS. BLAS uses one thread. The million-predictor
+example uses eight screening threads, with CV folds evaluated serially.
+The Abess benchmark problems use one thread throughout. Multichannel
+deconvolution uses four fitting threads and deconvolution CV uses four parallel
+workers; single channel fitting uses one thread.
 
-## Adding null predictors with fixed effects
-
-This comparison increases the number of predictors while retaining exactly
-the same observations, true effects and test outcomes. A design with 1,000
-columns is embedded in a design with 20,000 columns by adding null predictors.
-Columns follow a standard-normal AR(1) design with correlation parameter 0.3.
-The nonzero effects have random signs and absolute values between 0.35 and 0.8.
-There are three independent replications per family, each with an independent
-test set of the same size as the training set.
-
-L0glm uses its GIC preset, relaxed fitting and automatic local support search;
-automatic ISIS applies at 20,000 predictors. The comparator paths use the
-original full design and a common GIC, with up to 40 lambda values or ABESS support
-sizes 0–100. LASSO and fully relaxed LASSO are also evaluated with five-fold CV,
-using the same folds across the two design sizes. All fitting, screening and
-BLAS operations use one thread. Test scores, counts, F1 and MCC are means;
-timings are medians. Simulation and evaluation of the independent test set
-are excluded from timings.
-
-### Gaussian outcomes: 500 observations and 40 true effects
-
-The noise standard deviation is one. At 20,000 predictors, L0glm and ABESS
-return the same GIC and support recovery in these replications; median fitting
-time is 0.37 s for L0glm and 1.80 s for ABESS. MCP achieves perfect support
-recovery in 1.29 s. CV LASSO recovers almost all true effects while retaining
-many additional predictors.
-
-<!-- BEGIN difficulty-gaussian -->
-| Predictors | Method | Selection | Test RMSE | TP | FP | F1 | MCC | Seconds |
-|--:|:--|:--|--:|--:|--:|--:|--:|--:|
-| 1,000 | L0glm | GIC preset | 1.026 | 40.0 | 0.7 | 0.992 | 0.992 | 0.13 |
-| 1,000 | ABESS | GIC path | 1.016 | 40.0 | 0.0 | 1.000 | 1.000 | 0.86 |
-| 1,000 | L0Learn | GIC path | 1.026 | 40.0 | 0.7 | 0.992 | 0.992 | 0.35 |
-| 1,000 | LASSO | GIC path | 1.488 | 40.0 | 19.3 | 0.806 | 0.814 | 0.39 |
-| 1,000 | Relaxed LASSO | GIC path | 1.082 | 39.3 | 5.0 | 0.933 | 0.932 | 0.72 |
-| 1,000 | Adaptive LASSO | GIC path | 1.173 | 39.3 | 2.7 | 0.959 | 0.958 | 0.38 |
-| 1,000 | Adaptive relaxed LASSO | GIC path | 1.067 | 39.3 | 0.3 | 0.987 | 0.987 | 0.47 |
-| 1,000 | MCP | GIC path | 1.016 | 40.0 | 0.0 | 1.000 | 1.000 | 0.42 |
-| 1,000 | SCAD | GIC path | 1.061 | 40.0 | 1.0 | 0.988 | 0.988 | 0.40 |
-| 1,000 | LASSO | 5-fold CV | 1.226 | 40.0 | 118.0 | 0.406 | 0.472 | 2.06 |
-| 1,000 | Relaxed LASSO | 5-fold CV | 1.056 | 40.0 | 11.3 | 0.878 | 0.880 | 3.52 |
-| 20,000 | L0glm | GIC preset | 1.037 | 40.0 | 0.7 | 0.992 | 0.992 | 0.37 |
-| 20,000 | ABESS | GIC path | 1.037 | 40.0 | 0.7 | 0.992 | 0.992 | 1.80 |
-| 20,000 | L0Learn | GIC path | 1.060 | 40.0 | 0.3 | 0.996 | 0.996 | 0.78 |
-| 20,000 | LASSO | GIC path | 3.781 | 0.0 | 0.0 | 0.000 | 0.000 | 0.97 |
-| 20,000 | Relaxed LASSO | GIC path | 2.276 | 24.0 | 7.3 | 0.663 | 0.684 | 1.30 |
-| 20,000 | Adaptive LASSO | GIC path | 3.552 | 5.3 | 0.0 | 0.190 | 0.211 | 1.75 |
-| 20,000 | Adaptive relaxed LASSO | GIC path | 2.942 | 13.7 | 0.3 | 0.496 | 0.570 | 1.64 |
-| 20,000 | MCP | GIC path | 1.019 | 40.0 | 0.0 | 1.000 | 1.000 | 1.29 |
-| 20,000 | SCAD | GIC path | 2.020 | 26.7 | 2.7 | 0.635 | 0.636 | 1.87 |
-| 20,000 | LASSO | 5-fold CV | 1.899 | 39.7 | 282.3 | 0.219 | 0.347 | 5.86 |
-| 20,000 | Relaxed LASSO | 5-fold CV | 1.727 | 39.0 | 188.0 | 0.364 | 0.460 | 6.55 |
-<!-- END difficulty-gaussian -->
-
-### Logistic outcomes: 1,000 observations and 20 true effects
-
-Increasing the predictor count makes distinguishing the true effects harder.
-At 20,000 predictors, L0glm averages 14.7 true effects with no false calls in
-0.54 s. ABESS and L0Learn recover 16.3 true effects with 0.3 false calls, taking
-8.64 s and 11.85 s respectively. CV LASSO retains 19.7 true effects alongside
-217.3 false positives. The tables show the resulting speed, sensitivity and
-sparsity trade-offs across all methods.
-
-<!-- BEGIN difficulty-binomial -->
-| Predictors | Method | Selection | Test AUC | TP | FP | F1 | MCC | Seconds |
-|--:|:--|:--|--:|--:|--:|--:|--:|--:|
-| 1,000 | L0glm | GIC preset | 0.898 | 19.3 | 0.3 | 0.975 | 0.975 | 0.63 |
-| 1,000 | ABESS | GIC path | 0.898 | 19.3 | 0.3 | 0.975 | 0.975 | 6.08 |
-| 1,000 | L0Learn | GIC path | 0.898 | 19.3 | 0.3 | 0.975 | 0.975 | 9.40 |
-| 1,000 | LASSO | GIC path | 0.875 | 19.0 | 2.0 | 0.927 | 0.926 | 0.65 |
-| 1,000 | Relaxed LASSO | GIC path | 0.892 | 19.0 | 1.3 | 0.942 | 0.941 | 3.30 |
-| 1,000 | Adaptive LASSO | GIC path | 0.884 | 19.0 | 2.7 | 0.912 | 0.911 | 0.58 |
-| 1,000 | Adaptive relaxed LASSO | GIC path | 0.891 | 18.7 | 0.3 | 0.956 | 0.956 | 3.86 |
-| 1,000 | MCP | GIC path | 0.895 | 19.7 | 3.0 | 0.924 | 0.926 | 2.00 |
-| 1,000 | SCAD | GIC path | 0.860 | 16.7 | 3.0 | 0.827 | 0.838 | 1.26 |
-| 1,000 | LASSO | 5-fold CV | 0.881 | 20.0 | 102.0 | 0.283 | 0.384 | 3.32 |
-| 1,000 | Relaxed LASSO | 5-fold CV | 0.892 | 19.0 | 1.3 | 0.942 | 0.941 | 22.19 |
-| 20,000 | L0glm | GIC preset | 0.862 | 14.7 | 0.0 | 0.838 | 0.852 | 0.54 |
-| 20,000 | ABESS | GIC path | 0.871 | 16.3 | 0.3 | 0.886 | 0.893 | 8.64 |
-| 20,000 | L0Learn | GIC path | 0.871 | 16.3 | 0.3 | 0.886 | 0.893 | 11.85 |
-| 20,000 | LASSO | GIC path | 0.605 | 3.7 | 0.3 | 0.229 | 0.237 | 1.79 |
-| 20,000 | Relaxed LASSO | GIC path | 0.863 | 15.0 | 0.7 | 0.833 | 0.842 | 9.43 |
-| 20,000 | Adaptive LASSO | GIC path | 0.850 | 15.7 | 0.7 | 0.850 | 0.863 | 2.52 |
-| 20,000 | Adaptive relaxed LASSO | GIC path | 0.856 | 14.0 | 0.0 | 0.819 | 0.834 | 7.65 |
-| 20,000 | MCP | GIC path | 0.842 | 13.7 | 0.0 | 0.808 | 0.824 | 3.02 |
-| 20,000 | SCAD | GIC path | 0.675 | 3.7 | 0.3 | 0.229 | 0.237 | 5.55 |
-| 20,000 | LASSO | 5-fold CV | 0.847 | 19.7 | 217.3 | 0.159 | 0.289 | 10.11 |
-| 20,000 | Relaxed LASSO | 5-fold CV | 0.846 | 14.3 | 1.0 | 0.812 | 0.821 | 49.45 |
-<!-- END difficulty-binomial -->
-
-[Reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_support_difficulty.R) ·
-[Complete runs and fitting notes](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/support-difficulty-runs.csv)
-
-The support counts use a common coefficient cutoff of \(10^{-5}\). Some
-glmnet path/refit candidates produce convergence warnings; these are retained
-in the per-run notes together with the returned selected models. The same
-predefined design sizes and replications are reported for every method.
-
-## Simulations from the abess documentation
-
-The [abess power tutorial](https://abess-team.github.io/abess/articles/v11-power-of-abess.html)
-uses Gaussian and logistic regression with 1,000 predictors and ten true effects.
-We use its generator for both families. The low-correlation design is AR(1)
-with parameter 0.1. The high-correlation design has pairwise correlation 0.7.
-Each family and correlation setting uses ten independent simulations and a fresh
-test set of the same size as the training set. There are 500 observations per
-Gaussian dataset and 1,000 per logistic dataset.
-
-L0glm uses the GIC preset, a relaxed refit and the default automatic local
-support refinement. The other methods select from
-their fitted paths using the common GIC in `sparseGLM()`. ABESS searches support
-sizes 0 to 60. The other paths use up to 40 values. These are GIC comparisons
-on the abess simulation designs. The abess tutorial uses a different tuning
-protocol. Test RMSE or AUC, sensitivity, false-positive rate and MCC are means
-over the ten replications. Seconds are median elapsed fitting and selection
-time with one BLAS thread. [Reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R) · [Per-run data](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/abess-simulations-runs.csv)
-
-### Gaussian regression
-
-<!-- BEGIN abess-gaussian -->
-| Correlation | Method | Test RMSE | Sensitivity | FPR | MCC | Seconds |
-|:--|:--|--:|--:|--:|--:|--:|
-| 0.1 | L0glm | 1.019 | 100% | 0.08% | 0.964 | 0.26 |
-| 0.1 | ABESS | 1.019 | 100% | 0.08% | 0.964 | 0.51 |
-| 0.1 | L0Learn | 1.019 | 100% | 0.08% | 0.964 | 0.22 |
-| 0.1 | LASSO | 2.766 | 100% | 0.00% | 1.000 | 0.25 |
-| 0.1 | Relaxed LASSO | 1.010 | 100% | 0.00% | 1.000 | 0.27 |
-| 0.1 | Adaptive LASSO | 10.590 | 87% | 0.00% | 0.932 | 0.29 |
-| 0.1 | Adaptive relaxed LASSO | 7.108 | 87% | 0.00% | 0.932 | 0.30 |
-| 0.1 | MCP | 1.459 | 95% | 0.00% | 0.974 | 0.25 |
-| 0.1 | SCAD | 3.203 | 95% | 0.00% | 0.974 | 0.25 |
-| 0.7 | L0glm | 1.020 | 100% | 0.04% | 0.982 | 0.23 |
-| 0.7 | ABESS | 1.017 | 100% | 0.03% | 0.986 | 0.50 |
-| 0.7 | L0Learn | 1.018 | 100% | 0.02% | 0.991 | 0.11 |
-| 0.7 | LASSO | 3.885 | 100% | 0.98% | 0.738 | 0.26 |
-| 0.7 | Relaxed LASSO | 1.186 | 99% | 0.09% | 0.961 | 0.28 |
-| 0.7 | Adaptive LASSO | 17.517 | 81% | 0.00% | 0.898 | 0.29 |
-| 0.7 | Adaptive relaxed LASSO | 9.168 | 81% | 0.00% | 0.898 | 0.30 |
-| 0.7 | MCP | 31.728 | 56% | 0.00% | 0.745 | 0.24 |
-| 0.7 | SCAD | 39.230 | 61% | 0.00% | 0.776 | 0.27 |
-<!-- END abess-gaussian -->
-
-
-### Logistic regression
-
-<!-- BEGIN abess-binomial -->
-| Correlation | Method | Test AUC | Sensitivity | FPR | MCC | Seconds |
-|:--|:--|--:|--:|--:|--:|--:|
-| 0.1 | L0glm | 0.991 | 100% | 0.06% | 0.973 | 0.61 |
-| 0.1 | ABESS | 0.991 | 100% | 0.06% | 0.973 | 2.50 |
-| 0.1 | L0Learn | 0.991 | 100% | 0.06% | 0.973 | 5.94 |
-| 0.1 | LASSO | 0.987 | 100% | 0.23% | 0.907 | 0.62 |
-| 0.1 | Relaxed LASSO | 0.991 | 100% | 0.03% | 0.986 | 2.05 |
-| 0.1 | Adaptive LASSO | 0.990 | 99% | 0.08% | 0.958 | 0.57 |
-| 0.1 | Adaptive relaxed LASSO | 0.991 | 99% | 0.00% | 0.995 | 1.72 |
-| 0.1 | MCP | 0.991 | 100% | 0.00% | 1.000 | 0.70 |
-| 0.1 | SCAD | 0.990 | 100% | 0.07% | 0.969 | 0.40 |
-| 0.7 | L0glm | 0.995 | 82% | 0.09% | 0.862 | 1.07 |
-| 0.7 | ABESS | 0.996 | 84% | 0.37% | 0.775 | 2.04 |
-| 0.7 | L0Learn | 0.997 | 80% | 0.09% | 0.849 | 1.28 |
-| 0.7 | LASSO | 0.996 | 89% | 3.84% | 0.404 | 0.57 |
-| 0.7 | Relaxed LASSO | 0.991 | 47% | 0.36% | 0.519 | 4.47 |
-| 0.7 | Adaptive LASSO | 0.990 | 50% | 1.55% | 0.347 | 0.56 |
-| 0.7 | Adaptive relaxed LASSO | 0.987 | 35% | 0.76% | 0.327 | 2.38 |
-| 0.7 | MCP | 0.993 | 60% | 0.05% | 0.747 | 46.88 |
-| 0.7 | SCAD | 0.996 | 88% | 3.49% | 0.416 | 1.63 |
-<!-- END abess-binomial -->
-
-L0glm recovers all ten Gaussian effects on average, with test RMSE close to
-the noise standard deviation of one, in about a quarter of a second. L0Learn
-is faster on these Gaussian designs, while L0glm takes about half the time of
-ABESS. In the strongly correlated logistic design, L0glm recovers 82% of the
-true effects with a 0.09% false-positive rate and MCC 0.862, taking 1.07 s.
-ABESS recovers 84% with a 0.37% false-positive rate and MCC 0.775, taking 2.04 s.
-L0Learn gives the highest test AUC there. Support recovery and prediction
-measure different aspects of these fitted models.
+Timings include fitting and selection, including CV worker startup, and exclude
+simulation and final metric reporting. The million-predictor L0glm timing is
+the median of three runs. CV comparisons use shared folds. Known coefficients
+are used only for evaluation. The reproduction scripts specify scoring floors,
+approximation choices and all simulation settings.

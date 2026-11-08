@@ -216,7 +216,7 @@ coefficient dimensions through predictor additions, removals and small exchanges
 after any SIS/ISIS screening. `TRUE` enables refinement for larger models and
 `FALSE` returns the adaptive-ridge fit directly. See the
 [controls and diagnostics](https://tomwenseleers.github.io/L0glm/reference/local_search.html)
-and [paired benchmarks](https://tomwenseleers.github.io/L0glm/articles/performance.html#local-support-refinement).
+and [benchmark examples](https://tomwenseleers.github.io/L0glm/articles/performance.html#abess-benchmark-problems).
 The option is available in `l0glmFit()`, `l0nnPois()` and `l0glmTune()`, including
 CV training fits.
 

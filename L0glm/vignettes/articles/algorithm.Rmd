@@ -688,8 +688,8 @@ coefficient dimensions after fitting. Grouped rows count their response
 dimensions, multinomial rows have \(C-1\), and mandatory coordinates are
 included. The computational size excludes noise parameters. `"auto"` is
 the default, with one-iteration pilots and unpenalized fits retained directly;
-the [benchmarks](performance.html#local-support-refinement) show
-both the optimisation gains and their computational cost.
+the [benchmark examples](performance.html#abess-benchmark-problems) illustrate
+support recovery and complete fitting times.
 
 Use `TRUE` to request the search regardless of this size limit, or `FALSE` to
 return the adaptive-ridge result directly. The returned `fit$local.search`
