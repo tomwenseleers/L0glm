@@ -61,7 +61,7 @@
 <li>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</li>
 <li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</li>
 <li>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</li>
-<li>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement.</li>
+<li>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</li>
 <li>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</li>
 <li>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</li>
 </ul></div>
@@ -100,4 +100,3 @@
 
 
   </body></html>
-

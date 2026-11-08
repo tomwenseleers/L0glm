@@ -514,34 +514,6 @@ prunes small coefficients explicitly. This construction explains the
 hierarchical connection while preserving the package’s
 likelihood-and-information-criterion formulation.</p>
 </div>
-<div class="section level3">
-<h3 id="uncertainty-after-selection">Uncertainty after selection<a class="anchor" aria-label="anchor" href="#uncertainty-after-selection"></a>
-</h3>
-<p>With a selected support <span class="math inline">S</span> and fixed
-Gaussian prior precision <span class="math inline">D_S</span>, a local
-Gaussian posterior approximation has covariance <span class="math display">
-V_S=\{\mathcal I_S(\widehat\beta)+D_S\}^{-1},
-</span> where <span class="math inline">\mathcal I_S</span> is
-likelihood information, including dispersion. This conditions on the
-support and prior weights learned from the data. Accounting for their
-uncertainty requires a declared hierarchical model and a valid posterior
-sampler. Random perturbations of the adaptive-ridge updates alone do not
-define such a sampler. A support refinement can be followed by
-conditional likelihood or posterior calculations on the returned
-support; the initial adaptive-ridge coefficients and penalties are
-retained separately in <code>local.search$initial.fit</code>.</p>
-<p>A full-pipeline bootstrap can rerun initialization, screening,
-tuning, dispersion estimation and local search to measure selection
-frequencies and prediction stability. Resampling should retain the
-relevant dependence: observation rows jointly across channels, subject
-records for survival data, or suitable blocks for temporally dependent
-signals. Coefficient intervals near selection thresholds require
-calibration because selection introduces nonregular behaviour; see <a href="https://doi.org/10.1017/S0266466608080158" class="external-link">Leeb &amp; Pötscher
-(2008)</a>. Independent sample splitting offers a direct way to separate
-selection and subsequent inference. These are directions for inference
-extensions; the current functions return fitted coefficients and model
-diagnostics.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="the-factor-of-one-quarter">The factor of one quarter<a class="anchor" aria-label="anchor" href="#the-factor-of-one-quarter"></a>
@@ -724,13 +696,19 @@ including its fitted distribution parameters and penalties.</p>
 <div class="section level2">
 <h2 id="local-support-refinement">Optional local support refinement<a class="anchor" aria-label="anchor" href="#local-support-refinement"></a>
 </h2>
-<p><code>local.search=TRUE</code> adds a finite search after the
-adaptive-ridge fit, including SIS/ISIS, compulsory-block updates and
-preclustering refits. It draws on the support-exchange ideas of <a href="https://doi.org/10.1073/pnas.2014241117" class="external-link">Zhu et al. (2020)</a> and
+<p>The default <code>local.search="auto"</code> adds a discrete support
+search to small completed models. It runs after adaptive ridge,
+SIS/ISIS, compulsory-block updates and any original-channel
+preclustering refit. It draws on the support-exchange ideas of <a href="https://doi.org/10.1073/pnas.2014241117" class="external-link">Zhu et al. (2020)</a> and
 the local combinatorial search of <a href="https://doi.org/10.1287/opre.2019.1919" class="external-link">Hazimeh &amp; Mazumder
 (2020)</a>. The implementation combines these ideas with the package’s
-family-specific scores, likelihoods, constraints and refitting
-engines.</p>
+family-specific scores, likelihoods, constraints and refitting engines.
+Adaptive ridge supplies an initial sparse model; the support search
+tests whether another small set of predictors improves the specified
+objective.</p>
+<div class="section level3">
+<h3 id="objective-and-candidate-pool">Objective and candidate pool<a class="anchor" aria-label="anchor" href="#objective-and-candidate-pool"></a>
+</h3>
 <p>For the default target, each candidate is compared using <span class="math display">
 Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),
 </span> with the fitted lambda, original predictor universe and
@@ -739,6 +717,101 @@ uses the selected-row charge for grouped models, or the entry count for
 ungrouped models. A supplied independent validation set selects moves by
 its held-out deviance. CV applies the search within training folds
 before evaluating their held-out rows.</p>
+<p>After SIS or ISIS, the default search pool consists of the retained
+screening candidates, mandatory predictors and current active terms.
+Otherwise it contains all eligible predictors.
+<code>control.local$scope="all"</code> requests the entire eligible
+design even after screening. Coefficients explicitly excluded by zero
+starting values stay excluded; mandatory terms retain their compulsory
+status. Predictors eliminated by adaptive ridge may re-enter through the
+local search if they belong to this pool.</p>
+<p>For a fixed pool <span class="math inline">C</span>, the calculations
+use <span class="math inline">X_C</span> and coefficients <span class="math inline">B_C</span>. Let <span class="math inline">\iota_C(B_C)</span> insert zero rows outside <span class="math inline">C</span>. Then <span class="math display">
+X_C B_C+O=X\iota_C(B_C)+O.
+</span> The likelihood, coefficient constraints and parameter count are
+preserved. Keeping the original <span class="math inline">p</span> in
+the IC preset therefore gives the same objective for every candidate in
+either coordinate system. The full coefficient dimensions and diagnostic
+predictor indices are restored once after the search.</p>
+</div>
+<div class="section level3">
+<h3 id="rank-promising-additions-and-removals">Rank promising additions and removals<a class="anchor" aria-label="anchor" href="#rank-promising-additions-and-removals"></a>
+</h3>
+<p>An exhaustive search over supports would be expensive. Each round
+first ranks inactive predictors by their local likelihood improvement.
+For an ordinary GLM, write the current observation score and expected
+information weights as</p>
+<p><span class="math display">
+r_i=\frac{w_i(y_i-\mu_i)\mu'_i}{\phi V(\mu_i)},\qquad
+h_i=\frac{w_i(\mu'_i)^2}{\phi V(\mu_i)}.
+</span></p>
+<p>For candidate column <span class="math inline">x_j</span>, the
+unadjusted score and information are <span class="math inline">U_j=x_j^\top r</span> and <span class="math inline">I_{jj}=x_j^\top\operatorname{diag}(h)x_j</span>. For
+a small adjustment block <span class="math inline">A</span> of fitted
+terms, the efficient quantities are</p>
+<p><span class="math display">
+\widetilde U_j=U_j-I_{jA}I_{AA}^{+}U_A,\qquad
+\widetilde I_{jj}=I_{jj}-I_{jA}I_{AA}^{+}I_{Aj}.
+</span></p>
+<p>The quadratic approximation to the decrease in negative twice log
+likelihood is <span class="math inline">\widetilde U_j^2/\widetilde
+I_{jj}</span>. For a nonnegative coefficient, replace <span class="math inline">\widetilde U_j</span> by <span class="math inline">\max(0,\widetilde U_j)</span>. Independent response
+channels contribute summed gains. Multinomial scoring uses its joint
+category information in the zero-sum subspace, and Cox scoring uses the
+full risk sets. Only small adjustment blocks are formed; the default
+limit is 24 predictor rows and 64 coefficient coordinates, falling back
+to mandatory terms for larger models.</p>
+<p>Removal candidates are ordered by a Wald-type cost: squared fitted
+coefficients times their conditional information, summed across
+channels. When the full active information block is unavailable,
+diagonal curvature provides the ordering. Multinomial removals use the
+squared CLR row norm. These scores shortlist moves; the actual objective
+is evaluated after refitting each trial.</p>
+</div>
+<div class="section level3">
+<h3 id="refit-candidate-supports-and-accept-the-best-move">Refit candidate supports and accept the best move<a class="anchor" aria-label="anchor" href="#refit-candidate-supports-and-accept-the-best-move"></a>
+</h3>
+<p>With the default controls, a round tests the two highest-ranked
+additions, the two lowest-ranked removals, one-for-one swaps and a
+two-term exchange. Following a tentative removal, a fresh conditional
+score scan proposes replacements that may have been masked by that term.
+Multichannel fits also test promising individual coefficient additions
+and small-entry deletions. Multinomial trials preserve CLR zero sums and
+require at least two eligible entries in a nonzero row.</p>
+<p>Every trial is refitted on its proposed support without the
+adaptive-ridge penalty, retaining its observation weights, offsets,
+mandatory terms and coefficient constraints. The current coefficients
+initialize the restricted fit; newly admitted ordinary coefficients
+receive a small nonzero seed of <span class="math inline">10^{-6}</span>, and excluded entries stay zero.
+Multinomial starts are recentered to CLR coordinates with their entry
+masks imposed explicitly. Unconstrained Gaussian identity-link trials
+use a direct least-squares solve; other trials use the appropriate GLM,
+negative-binomial, multinomial or Cox engine. Free Gaussian scale is
+profiled in scoring, estimated NB shapes are updated in refitting, and
+quasi models use a common dispersion for comparisons.</p>
+<p>Small supports are refitted jointly. For substantially larger
+supports, a trial updates a small affected block and places the
+remaining fitted contribution in a link-scale offset. Unchanged
+independent channels reuse their coefficient fits. Identical support
+masks share their trial result within a round. The final model receives
+a full-support polishing refit.</p>
+<p>Among the tested candidates, accept the best only if</p>
+<p><span class="math display">
+Q_{\mathrm{trial}}&lt;Q_t-\epsilon\max\{1,|Q_t|\},\qquad
+\epsilon=10^{-8}\ \text{by default}.
+</span></p>
+<p>The initial restricted refit and final polishing refit use the same
+acceptance rule. Consequently the returned objective cannot exceed that
+of the initial adaptive-ridge model under the recorded scoring
+convention. The search stops when no tested move improves the objective,
+or its budget is exhausted: 12 rounds and 160 candidate refits by
+default, with at most one additional final polishing refit. The
+shortlist and budget define the neighbourhood examined; the procedure
+does not certify a global optimum.</p>
+</div>
+<div class="section level3">
+<h3 id="automatic-policy-and-returned-diagnostics">Automatic policy and returned diagnostics<a class="anchor" aria-label="anchor" href="#automatic-policy-and-returned-diagnostics"></a>
+</h3>
 <p><code>local.search="auto"</code> runs the search for initial models
 with at most 50 coefficient dimensions after fitting. Grouped rows count
 their response dimensions, multinomial rows have <span class="math inline">C-1</span>, and mandatory coordinates are included.
@@ -746,6 +819,16 @@ The computational size excludes noise parameters. <code>"auto"</code> is
 the default, with one-iteration pilots and unpenalized fits retained
 directly; the <a href="performance.html#local-support-refinement">benchmarks</a> show
 both the optimisation gains and their computational cost.</p>
+<p>Use <code>TRUE</code> to request the search regardless of this size
+limit, or <code>FALSE</code> to return the adaptive-ridge result
+directly. The returned <code>fit$local.search</code> records initial and
+final objectives, proposed and accepted moves, candidate counts, elapsed
+times, the search pool and stopping reason. Its <code>initial.fit</code>
+component retains the initial coefficients, ridge penalties and noise
+parameters. See the <a href="../reference/local_search.html">control
+reference</a> and <a href="#appendix-local-search">Appendix A.11</a> for
+the complete interface and pseudocode.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>
@@ -1709,8 +1792,9 @@ search controls.</p>
 dimension exceeds <code>size.max</code>. Choose the retained SIS/ISIS
 pool when available, or all eligible predictors;
 <code>scope="all"</code> explicitly permits a full scan. Mandatory terms
-always remain eligible and explicit starting exclusions are
-preserved.</li>
+always remain eligible and explicit starting exclusions are preserved.
+When this is a fixed screened pool, reduce the working design,
+coefficients and masks to its columns while retaining the original <span class="math inline">p</span> in the IC.</li>
 <li>Evaluate <span class="math inline">Q_0</span>. For free Gaussian
 scale use the profile likelihood; update estimated NB shapes in
 candidate refits. Quasi comparisons use one common dispersion.
@@ -1840,6 +1924,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search.R" class="external-link">local_search.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_context.R" class="external-link">local_search_context.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_refit.R" class="external-link">local_search_refit.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_workspace.R" class="external-link">local_search_workspace.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_dispatch.R" class="external-link">local_search_dispatch.R</a>
 </td>
 </tr>
@@ -1896,9 +1981,6 @@ for best-subset selection problem</a>. <em>PNAS</em>, 117,
 <li>Hazimeh, H. &amp; Mazumder, R. (2020). <a href="https://doi.org/10.1287/opre.2019.1919" class="external-link">Fast best subset
 selection: Coordinate descent and local combinatorial optimization
 algorithms</a>. <em>Operations Research</em>, 68, 1517–1537.</li>
-<li>Leeb, H. &amp; Pötscher, B. M. (2008). <a href="https://doi.org/10.1017/S0266466608080158" class="external-link">Can one estimate the
-unconditional distribution of post-model-selection estimators?</a>
-<em>Econometric Theory</em>, 24, 338–376.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
