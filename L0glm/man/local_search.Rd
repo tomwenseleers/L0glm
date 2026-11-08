@@ -13,6 +13,13 @@ Set \code{local.search=TRUE} to run additions, deletions, single exchanges and
 small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 compulsory-term fitting and any original-channel preclustering refit finish
 first. Their internal fits do not run local search. \code{FALSE} is the default.
+\code{local.search="auto"} runs refinement when the initial support has at most
+50 free coefficient coordinates, including mandatory terms. A grouped
+multichannel row contributes \code{m} coordinates; a multinomial row contributes
+\code{m-1}. Ungrouped fits count active entries, subtracting the CLR row constraint
+for multinomial. Noise parameters are excluded from this computational size.
+The decision is taken after screening and refitting, separately for each
+training model. Increase \code{control.local$size.max} to change the limit.
 
 The default target is
 \deqn{Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),}
@@ -41,6 +48,8 @@ returned.
 
 \code{control.local} is a named list. Main controls are:
 \describe{
+\item{\code{size.max}}{Maximum initial coefficient dimension for \code{"auto"},
+default 50. This limits automatic refinement independently of IC counts.}
 \item{\code{maxit}, \code{max.evals}}{At most 12 search rounds and 160 candidate solves
 by default. The final full-support polish may add one solve.}
 \item{\code{top}, \code{drop}, \code{max.swap}}{Two shortlisted additions, removals and
@@ -84,6 +93,8 @@ y <- 2 * X[, 1] - X[, 2] + rnorm(120)
 fit <- l0glmFit(X, y, lambda="gic", local.search=TRUE,
                 parallelize=FALSE)
 fit$local.search$history
+automatic <- l0glmFit(X, y, local.search="auto", parallelize=FALSE)
+automatic$local.search[c("applied", "initial.size", "stopping")]
 }
 \seealso{
 \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \link{model_criteria}

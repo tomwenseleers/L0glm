@@ -12,6 +12,13 @@
 #' small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 #' compulsory-term fitting and any original-channel preclustering refit finish
 #' first. Their internal fits do not run local search. `FALSE` is the default.
+#' `local.search="auto"` runs refinement when the initial support has at most
+#' 50 free coefficient coordinates, including mandatory terms. A grouped
+#' multichannel row contributes `m` coordinates; a multinomial row contributes
+#' `m-1`. Ungrouped fits count active entries, subtracting the CLR row constraint
+#' for multinomial. Noise parameters are excluded from this computational size.
+#' The decision is taken after screening and refitting, separately for each
+#' training model. Increase `control.local$size.max` to change the limit.
 #'
 #' The default target is
 #' \deqn{Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),}
@@ -40,6 +47,8 @@
 #'
 #' `control.local` is a named list. Main controls are:
 #' \describe{
+#' \item{`size.max`}{Maximum initial coefficient dimension for `"auto"`,
+#' default 50. This limits automatic refinement independently of IC counts.}
 #' \item{`maxit`, `max.evals`}{At most 12 search rounds and 160 candidate solves
 #' by default. The final full-support polish may add one solve.}
 #' \item{`top`, `drop`, `max.swap`}{Two shortlisted additions, removals and
@@ -84,11 +93,25 @@
 #' fit <- l0glmFit(X, y, lambda="gic", local.search=TRUE,
 #'                 parallelize=FALSE)
 #' fit$local.search$history
+#' automatic <- l0glmFit(X, y, local.search="auto", parallelize=FALSE)
+#' automatic$local.search[c("applied", "initial.size", "stopping")]
 NULL
 
 L0glm_local_mode <- function(value) {
   if (is.logical(value) && length(value)==1L && !is.na(value)) return(value)
-  stop("local.search must be TRUE or FALSE.", call.=FALSE)
+  if (is.character(value) && length(value)==1L && !is.na(value) &&
+      tolower(value)=="auto") return("auto")
+  stop('local.search must be TRUE, FALSE or "auto".', call.=FALSE)
+}
+
+L0glm_local_size <- function(fit) {
+  beta <- coef(fit)
+  m <- ncol(beta)-as.integer(identical(fit$kind,"multinomial"))
+  selected <- setdiff(which(Matrix::rowSums(beta!=0)>0),fit$always.include)
+  slopes <- if(isTRUE(fit$grouped)) length(selected)*m else
+    sum(beta[selected,,drop=FALSE]!=0)-
+      if(identical(fit$kind,"multinomial"))length(selected)else 0L
+  slopes+length(fit$always.include)*m
 }
 
 # The outer call owns refinement. Capture only supplied arguments so the
@@ -100,6 +123,13 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   fit <- do.call(fit.fun, arguments)
   elapsed <- proc.time()[[3L]]-started
   if (isFALSE(mode)) return(fit)
+  size <- L0glm_local_size(fit)
+  if (identical(mode,"auto") && size>control$size.max) {
+    fit$local.search <- list(requested=mode,applied=FALSE,initial.size=size,
+      size.max=control$size.max,stopping="size_limit",initial.seconds=elapsed,
+      seconds=0,total.seconds=elapsed)
+    return(fit)
+  }
   original <- fit
   if (!is.null(nonnegative)) arguments$nonnegative <- nonnegative
   if (identical(fit$kind,"multinomial")) arguments$nonnegative <- FALSE
@@ -107,6 +137,8 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   fit <- L0glm_local_refine(fit, arguments, control)
   fit$local.search$requested <- mode
   fit$local.search$applied <- TRUE
+  fit$local.search$initial.size <- size
+  fit$local.search$size.max <- control$size.max
   fit$local.search$initial.seconds <- elapsed
   fit$local.search$initial.fit <- original[c("coefficients","lambdas","dispersion",
     "dispersion.estimated","theta","theta.estimated","init.lambda","preprocessing")]
@@ -149,7 +181,7 @@ L0glm_local_preprocessing <- function(fit, args) {
 }
 
 L0glm_local_control <- function(control, args=list()) {
-  defaults <- list(top=2L,drop=2L,maxit=12L,max.evals=160L,max.swap=2L,
+  defaults <- list(size.max=50L,top=2L,drop=2L,maxit=12L,max.evals=160L,max.swap=2L,
     nthreads=if(is.null(args$screen.nthreads))1L else args$screen.nthreads,
     ncores=if(is.null(args$ncores))L0glm_default_ncores(!isFALSE(args$parallelize))else args$ncores,
     adjust.max=24L,scope="auto",target="IC",criterion=NULL,
@@ -160,10 +192,10 @@ L0glm_local_control <- function(control, args=list()) {
       any(!nzchar(names(control))) || anyDuplicated(names(control)))) ||
       any(!names(control)%in%names(defaults))) stop("Use named control.local entries; see ?local_search.",call.=FALSE)
   defaults[names(control)] <- control
-  for (name in c("top","drop","maxit","max.evals","max.swap","nthreads","ncores","refit.maxit","adjust.max")) {
+  for (name in c("top","drop","maxit","max.evals","max.swap","nthreads","ncores","refit.maxit","adjust.max","size.max")) {
     value <- defaults[[name]]
     if (!is.numeric(value) || length(value)!=1L || !is.finite(value) ||
-        value<as.integer(name!="adjust.max") || value!=floor(value))
+        value<as.integer(!name%in%c("adjust.max","size.max")) || value!=floor(value))
       stop("Invalid control.local integer: ",name,call.=FALSE)
   }
   for (name in c("tol","mu.floor","refit.tol")) {

@@ -237,7 +237,9 @@ from the preset fit. Each lambda estimates its own coefficients and can
 select any subset of the pool. In CV, each training fold learns its own
 pool at the grid point nearest the preset, scaled to that fold.}
 
-\item{local.search}{Logical, default \code{FALSE}. Apply optional support
+\item{local.search}{\code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+The automatic size decision is made independently within each fit.
+Apply optional support
 refinement after each complete full-data or CV training fit, including
 SIS/ISIS screening. Pilot initializers do not run it. See
 \code{\link{local_search}} for moves, targets and diagnostics.}

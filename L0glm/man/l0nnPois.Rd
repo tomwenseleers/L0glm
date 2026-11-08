@@ -442,7 +442,10 @@ screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 \code{\link{preclustering}} for all entries.}
 
-\item{local.search}{Logical, default \code{FALSE}. After fitting, including
+\item{local.search}{\code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+The automatic option refines initial models with at most 50 coefficient
+dimensions; see \link{local_search} for multichannel counting.
+After fitting, including
 SIS/ISIS and any original-channel refit, optionally refine the support by
 additions, deletions and small exchanges. See \link{local_search}.}
 

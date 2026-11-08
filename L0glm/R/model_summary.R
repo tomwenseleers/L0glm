@@ -174,6 +174,9 @@ L0glm_print_model_info <- function(x, digits) {
   if (isTRUE(x$local.search$applied))
     cat(sprintf("Local search: %d accepted steps   %d candidate refits   %.3g s\n",
       nrow(x$local.search$history)-1L,x$local.search$evaluations,x$local.search$seconds))
+  else if (identical(x$local.search$stopping,"size_limit"))
+    cat(sprintf("Local search: skipped (initial dimension %d exceeds %d)\n",
+      x$local.search$initial.size,x$local.search$size.max))
   if (!is.null(x$screening)) {
     cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d",
       x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))

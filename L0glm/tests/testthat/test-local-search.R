@@ -109,3 +109,31 @@ test_that('local search is disabled for pilot-only initialization fits', {
   expect_equal(calls,0L)
   expect_equal(nrow(pilot$pilot),10)
 })
+
+test_that('automatic search uses independent coefficient dimensions', {
+  set.seed(8807)
+  X <- matrix(rnorm(120*8),120,8);y <- 2*X[,1]+rnorm(120)
+  a <- list(X=X,y=y,parallelize=FALSE)
+  plain <- do.call(l0glmFit,a)
+  automatic <- do.call(l0glmFit,c(a,list(local.search='auto',control.local=local_budget)))
+  on <- do.call(l0glmFit,c(a,list(local.search=TRUE,control.local=local_budget)))
+  expect_true(automatic$local.search$applied)
+  expect_identical(coef(automatic),coef(on))
+  off <- do.call(l0glmFit,c(a,list(local.search='auto',
+    control.local=c(local_budget,list(size.max=0L)))))
+  expect_false(off$local.search$applied)
+  expect_identical(coef(off),coef(plain))
+  expect_identical(off$local.search$stopping,'size_limit')
+  expect_output(print(off),'skipped')
+  fake <- plain;fake$coefficients <- Matrix::Matrix(matrix(c(1,0,1,0,0,1),2,3),sparse=TRUE)
+  fake$always.include <- integer();fake$grouped <- TRUE
+  expect_equal(L0glm_local_size(fake),6)
+  fake$kind <- 'multinomial'
+  expect_equal(L0glm_local_size(fake),4)
+  fake$grouped <- FALSE
+  expect_equal(L0glm_local_size(fake),1)
+  expect_error(l0glmFit(X,y,local.search='auto',control.local=list(size.max=-1)),'size.max')
+  tune <- l0glmTune(X,y,family=gaussian(),nlambda=3,prop_range=.1,
+    local.search='auto',control.local=local_budget,parallelize=FALSE,plot=FALSE,printbest=FALSE)
+  expect_true(tune$fit_best$local.search$applied)
+})
