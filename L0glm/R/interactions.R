@@ -180,7 +180,7 @@ L0glm_interaction_fit <- function(args,interactions,control) {
   })
   score <- if(is.null(validation))vapply(seq_along(models),function(i) {
     value <- metrics[[i]][[control$criterion]]
-    if(is.na(value) && identical(base$family$family,'quasibinomial')) {
+    if(is.na(value) && startsWith(base$family$family,'quasi')) {
       model <- models[[i]];mu <- predict(model)
       loss <- sum(vapply(seq_len(m),function(j)sum(base$family$dev.resids(model$y[,j],mu[,j],
         L0glm_observation_column(model$prior.weights,j)))/base$dispersion[j],1))

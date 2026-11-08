@@ -75,6 +75,15 @@ test_that('interaction starts preserve channel masks and compulsory main effects
     expect_equal(as.numeric(coef(fit)[7L+i,1]),0)
 })
 
+test_that('generic quasi families can select interaction stages', {
+  set.seed(92);X <- matrix(rnorm(150*5),150,5)
+  y <- 1+2*X[,1]-2*X[,2]+X[,1]*X[,2]+rnorm(150)
+  fit <- l0glmFit(X,y,family=quasi('identity','constant'),lambda='gic',
+    interactions=1L,intercept=TRUE,relaxed=TRUE,local.search=FALSE)
+  expect_true(all(is.finite(fit$interactions$history$score)))
+  expect_true(all(is.finite(predict(fit,X))))
+})
+
 test_that('native Poisson interactions accept compact weights, offsets and preclustering', {
   set.seed(144);n <- 160L;X <- matrix(runif(n*5),n,5)
   mu <- 1+5*X[,1]+5*X[,2]+20*X[,1]*X[,2]

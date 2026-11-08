@@ -107,7 +107,11 @@ and the usual free-coefficient degrees of freedom. With predictor groups,
 products are grouped by the tuple of their parent group labels; named
 presets use coefficient-dimension group costs, as in
 <a href="predictor_groups.html">predictor_groups</a>. With independent validation data, its deviance
-selects the stage and generation stops when this deviance worsens.</p>
+selects the stage and generation stops when this deviance worsens.
+For quasi families with unavailable absolute likelihood criteria, stage
+selection uses scaled quasi-deviance plus the criterion's parameter penalty,
+holding the main-effect dispersion fixed. Their public likelihood criteria
+retain the availability reported by the supplied family.</p>
 <p>Scalar starts retain their usual interpretation at every stage. Explicit
 original-coordinate vectors or matrices supply main-effect starts; new
 products are seeded at one in normalized coefficient coordinates, or a
