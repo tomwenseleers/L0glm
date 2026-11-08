@@ -40,6 +40,11 @@
 #' a conditional block can be omitted from its coefficient solve for fixed
 #' noise parameters; full-data likelihood scoring and Cox risk sets are retained.
 #'
+#' A fixed screening pool is fitted in reduced predictor coordinates. This
+#' avoids allocating original-design coefficient arrays for every candidate.
+#' All criteria retain the original predictor count, and final coefficients,
+#' eligibility masks and diagnostic indices use the original coordinates.
+#'
 #' Explicit starting-zero exclusions and mandatory terms retain their meaning.
 #' Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 #' refits use the existing family engines; nonnegative identity-Poisson fits
@@ -87,6 +92,8 @@
 #' accepted history, candidate counts, timings, stopping reason and compact
 #' `initial.fit` coefficients, adaptive penalties and noise parameters. These
 #' preserve the adaptive-ridge state separately from the refined estimates.
+#' When reduced coordinates are used, `workspace` reports original and working
+#' coefficient-row counts.
 #' A bounded search reports its tested neighbourhood and budget; it does not
 #' certify a global optimum. Lower training IC can trade additional false
 #' positives for better prediction. The size rule limits automatic refinement;
@@ -144,7 +151,13 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   if (!is.null(nonnegative)) arguments$nonnegative <- nonnegative
   if (identical(fit$kind,"multinomial")) arguments$nonnegative <- FALSE
   arguments <- L0glm_local_arguments(fit, arguments)
-  fit <- L0glm_local_refine(fit, arguments, control)
+  refinement.started <- proc.time()[[3L]]
+  workspace <- L0glm_local_workspace(fit, arguments, control)
+  if (is.null(workspace)) fit <- L0glm_local_refine(fit, arguments, control) else {
+    fit <- L0glm_local_refine(workspace$fit, workspace$args, control)
+    fit <- L0glm_local_restore(fit, workspace)
+  }
+  fit$local.search$seconds <- proc.time()[[3L]] - refinement.started
   fit$local.search$requested <- mode
   fit$local.search$applied <- TRUE
   fit$local.search$initial.size <- size

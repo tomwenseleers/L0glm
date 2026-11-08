@@ -30,6 +30,8 @@
   The default `local.search="auto"` applies it to initial supports of at most
   50 coefficient dimensions, preserving one-iteration ridge pilots and
   unpenalized fits. `FALSE` disables refinement.
+  Screened searches operate directly on the retained candidate pool while
+  preserving original-dimension coefficients and information criteria.
 * The shared native quadratic solver offers checked Cholesky solves with
   iterative refinement and a rank-revealing fallback for profile-shape updates.
   Optional feasible starting values accelerate repeated quadratic subproblems.

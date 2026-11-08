@@ -41,6 +41,11 @@ coefficient solves when their support changes. Sparse observations outside
 a conditional block can be omitted from its coefficient solve for fixed
 noise parameters; full-data likelihood scoring and Cox risk sets are retained.
 
+A fixed screening pool is fitted in reduced predictor coordinates. This
+avoids allocating original-design coefficient arrays for every candidate.
+All criteria retain the original predictor count, and final coefficients,
+eligibility masks and diagnostic indices use the original coordinates.
+
 Explicit starting-zero exclusions and mandatory terms retain their meaning.
 Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 refits use the existing family engines; nonnegative identity-Poisson fits
@@ -88,6 +93,8 @@ The returned \code{local.search} component contains initial and final scores,
 accepted history, candidate counts, timings, stopping reason and compact
 \code{initial.fit} coefficients, adaptive penalties and noise parameters. These
 preserve the adaptive-ridge state separately from the refined estimates.
+When reduced coordinates are used, \code{workspace} reports original and working
+coefficient-row counts.
 A bounded search reports its tested neighbourhood and budget; it does not
 certify a global optimum. Lower training IC can trade additional false
 positives for better prediction. The size rule limits automatic refinement;

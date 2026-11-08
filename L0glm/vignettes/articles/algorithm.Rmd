@@ -594,6 +594,16 @@ starting values stay excluded; mandatory terms retain their compulsory status.
 Predictors eliminated by adaptive ridge may re-enter through the local search
 if they belong to this pool.
 
+For a fixed pool \(C\), the calculations use \(X_C\) and coefficients \(B_C\).
+Let \(\iota_C(B_C)\) insert zero rows outside \(C\). Then
+\[
+X_C B_C+O=X\iota_C(B_C)+O.
+\]
+The likelihood, coefficient constraints and parameter count are preserved.
+Keeping the original \(p\) in the IC preset therefore gives the same objective
+for every candidate in either coordinate system. The full coefficient dimensions
+and diagnostic predictor indices are restored once after the search.
+
 ### Rank promising additions and removals
 
 An exhaustive search over supports would be expensive. Each round first ranks
@@ -1557,6 +1567,8 @@ mandatory rows, starting-value eligibility masks and search controls.
    Choose the retained SIS/ISIS pool when available, or all eligible predictors;
    `scope="all"` explicitly permits a full scan. Mandatory terms always remain
    eligible and explicit starting exclusions are preserved.
+   When this is a fixed screened pool, reduce the working design, coefficients
+   and masks to its columns while retaining the original \(p\) in the IC.
 2. Evaluate \(Q_0\). For free Gaussian scale use the profile likelihood;
    update estimated NB shapes in candidate refits. Quasi comparisons use one
    common dispersion. Positive-mean likelihood scoring uses a configurable
@@ -1614,7 +1626,7 @@ source:
 | Special-family passes | [families_common.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R), [family_nb.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_nb.R), [family_multinomial.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_multinomial.R), [family_cox.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox.R), [family_cox_pcg.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R) |
 | Screening and outer ISIS | [sis_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R), [sis.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp), [isis_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R), [screening.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R) |
 | Backtracking and validation | [irls.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/irls.R), [validation.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/validation.R) |
-| Optional support refinement | [local_search.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search.R), [local_search_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_context.R), [local_search_refit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_refit.R), [local_search_dispatch.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_dispatch.R) |
+| Optional support refinement | [local_search.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search.R), [local_search_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_context.R), [local_search_refit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_refit.R), [local_search_workspace.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_workspace.R), [local_search_dispatch.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_dispatch.R) |
 
 ## References
 
