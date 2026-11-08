@@ -849,6 +849,8 @@
 #' and scores; see \link{model_criteria} and \link{l0glmMetrics}.
 #' \code{print()} shows a compact overview; \code{summary()} adds fit metrics
 #' and a bounded coefficient display; see \link{model_summary}.
+#' Optional selected-support standard errors and bootstrap selection frequencies
+#' are available through \code{summary()}; see \link{coefficient_inference}.
 #' \code{predict()} and \code{fitted()} provide original-scale predictions;
 #' see \link{model_predictions} for new data, offsets and special-family types.
 #' \item{\code{coefficients}}{a sparse dgCmatrix with the fitted coefficients
@@ -1734,3 +1736,6 @@ L0glmfun <- function(cols, lambda, thresh, solver, method,
   })
 }
   
+
+L0glm_fit_kernel <- l0glmFit
+l0glmFit <- L0glm_recorded_fitter(L0glm_fit_kernel,'l0glmFit')

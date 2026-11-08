@@ -44,7 +44,7 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
   expect_equal(tuned$fit_best$coefficients,full$coefficients)
   expect_equal(tuned$fit_best$dispersion,full$dispersion)
   full_1se <- do.call(l0glmFit,utils::modifyList(c(args,list(lambda=tuned$lambda_1se)), list(local.search=FALSE)))
-  expect_equal(tuned$fit_1se,full_1se)
+  expect_equal(without_fit_specification(tuned$fit_1se),without_fit_specification(full_1se))
   expect_equal(tuned$fit_1se$coefficients,
                tuned$coefficients[[match(tuned$lambda_1se,tuned$lambdas)]])
 })

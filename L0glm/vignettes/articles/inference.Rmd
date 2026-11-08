@@ -1,0 +1,85 @@
+---
+title: "Coefficient inference"
+description: "Selected-support refits, standard errors and bootstrap selection stability."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment='#>',message=FALSE,warning=FALSE)
+```
+
+L0glm can report ordinary selected-model uncertainty, or repeat the fitting
+pipeline under bootstrap resampling to assess variability and selection stability.
+These optional calculations are requested in `summary()`.
+
+## Selected-support standard errors
+
+```{r conditional}
+library(L0glm)
+set.seed(51)
+X <- matrix(rnorm(200*10),200,10)
+y <- 1+2*X[,1]-2*X[,2]+rnorm(200)
+fit <- l0glmFit(X,y,intercept=TRUE,lambda='gic',relaxed=TRUE)
+details <- summary(fit,inference='conditional')
+details$inference$coefficients
+```
+
+The selected coefficients are refitted without a sparsity penalty, with their
+observation weights, offsets and coefficient constraints retained. The table
+includes both the selected point estimates and the refitted estimates, standard
+errors, intervals and Wald tests. The original fitted model is preserved.
+
+Gaussian and other ordinary GLMs use model-based information; estimated scales
+use selected-model Pearson dispersion. Negative binomial models retain fixed
+shape or reestimate it as specified. Multinomial covariance is computed on its
+selected zero-sum subspace and returned in CLR coordinates. Cox inference uses
+weighted Breslow partial-likelihood information. Nonnegative boundaries and
+singular information receive unavailable ordinary Wald standard errors.
+
+The nominal fixed-model interpretation treats the chosen support as given.
+When support recovery is reliable, it approaches the ordinary inference problem
+with the correct model. Selection itself can add substantial uncertainty near
+detection thresholds.
+
+## Bootstrap selection stability
+
+```{r bootstrap, eval=FALSE}
+uncertainty <- summary(fit,inference='bootstrap',
+  control.inference=list(nboot=199L,seed=1))
+uncertainty$inference$coefficients
+uncertainty$inference$diagnostics
+```
+
+Each replicate resamples observation rows and their weights and offsets, then
+reruns the saved fit specification, including SIS/ISIS, interaction generation
+and local support refinement. Starting exclusions remain fixed as specified.
+Intervals include zero estimates when a coefficient is absent. Sparse draws and
+selection frequencies retain every original predictor, with a shared union of
+generated interaction terms. Failed fits, solver warnings, convergence and
+timings are recorded.
+
+A supplied seed preserves the caller's random-number state. The default memory
+guard prevents large dense row-resampling blocks; `max.cells` can be set explicitly
+when the required memory is available. Predictors are kept eligible throughout
+the resampling procedure according to their original starting restrictions.
+
+A model extracted from `l0glmTune()` retains its chosen penalty for this bootstrap.
+A `refit` callback can repeat tuning within each replicate:
+
+```{r retune, eval=FALSE}
+retune <- function(args) {
+  args$lambda <- NULL
+  args$family <- gaussian()
+  do.call(l0glmTune,c(args,list(tune='cv',nfolds=5L,nlambda=10L,
+    plot=FALSE,printbest=FALSE)))$fit_best
+}
+uncertainty <- summary(fit,inference='bootstrap',
+  control.inference=list(nboot=199L,seed=1,refit=retune))
+```
+
+Bootstrap intervals describe resampling variability. Near selection thresholds,
+ordinary bootstrap and fixed-model intervals can have imperfect nominal coverage;
+selection frequencies are useful stability diagnostics, rather than a proof that
+the selected support is correct. See the
+[reference page](../reference/coefficient_inference.html) for covariance formulas,
+controls and the discussion by [Leeb and Poetscher (2008)](https://doi.org/10.1016/j.jeconom.2007.05.017).

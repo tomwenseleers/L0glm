@@ -22,6 +22,7 @@
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
+    <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -62,6 +63,7 @@
 <ul><li>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</li>
 <li>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</li>
 <li>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</li>
+<li>Optional selected-support standard errors and case-bootstrap coefficient intervals through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, with reselection frequencies, sparse draws, and support for ordinary GLMs, negative binomial, multinomial and Cox models.</li>
 <li>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</li>
 <li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</li>
 <li>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</li>

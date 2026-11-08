@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
+    <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -853,6 +854,35 @@ degrees of freedom, or by independent validation deviance.
 Cross-validation repeats main-effect selection and product generation
 within each training fold. See the <a href="interactions.html">interaction tutorial</a> and <a href="../reference/interaction_models.html">reference</a> for the
 recipe, prediction and memory controls.</p>
+</div>
+<div class="section level2">
+<h2 id="optional-coefficient-inference">Optional coefficient inference<a class="anchor" aria-label="anchor" href="#optional-coefficient-inference"></a>
+</h2>
+<p><code>summary(fit, inference="conditional")</code> refits the
+selected coefficients and compulsory terms without the sparsity penalty.
+For an ordinary GLM with selected design <span class="math inline">X_J</span>, its model-based covariance is</p>
+<p><span class="math display">
+\widehat{\operatorname{Var}}(\widehat\beta_J)
+=\widehat\phi(X_J^T W X_J)^{-1},\qquad
+W_{ii}=w_i\frac{\{\mu'(\eta_i)\}^2}{V(\mu_i)}.
+</span></p>
+<p>Fixed dispersion stays fixed; estimated dispersion is updated on the
+selected model. Negative binomial, multinomial and Cox use their
+corresponding likelihood information. Multinomial covariance is mapped
+from independent contrasts to the displayed zero-sum CLR coefficients.
+Singular information and coefficients on nonnegative boundaries receive
+unavailable ordinary Wald standard errors.</p>
+<p><code>inference="bootstrap"</code> instead resamples observation
+rows, weights and offsets and repeats the fitting pipeline, including
+screening, interaction generation and local support refinement. Sparse
+draws include zero estimates when a coefficient is absent, giving
+selection frequencies and zero-inclusive percentile intervals. A
+callback can repeat lambda tuning within each replicate.</p>
+<p>Selected-support intervals have the usual interpretation conditional
+on the chosen model. Bootstrap selection frequencies quantify stability;
+nominal coverage near selection thresholds needs care (<a href="https://doi.org/10.1016/j.jeconom.2007.05.017" class="external-link">Leeb and Poetscher,
+2008</a>). The <a href="inference.html">inference tutorial</a> explains
+both approaches and their controls.</p>
 </div>
 <div class="section level2">
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>

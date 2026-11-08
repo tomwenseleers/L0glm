@@ -75,7 +75,7 @@ test_that("dispatched grouped fits agree with direct and R fits", {
         family = poisson(identity), nonnegative = TRUE)), list(local.search=FALSE)))
       general <- do.call(l0glmFit, utils::modifyList(c(args, list(
         family = poisson(identity), nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
-      expect_equal(dispatched, direct)
+      expect_equal(without_fit_specification(dispatched), without_fit_specification(direct))
       expect_equal(as.matrix(dispatched$coefficients), as.matrix(general$coefficients),
                    tolerance = 1e-8)
     }
@@ -86,7 +86,7 @@ test_that("l0nnPois defaults to the GIC penalty", {
   expect_identical(formals(l0nnPois)$lambda, "gic")
   implicit <- l0nnPois(local.search=FALSE, diag(6), c(0, 3, 0, 5, 0, 0), parallelize = FALSE)
   explicit <- l0nnPois(local.search=FALSE, diag(6), c(0, 3, 0, 5, 0, 0), lambda = "gic", parallelize = FALSE)
-  expect_equal(implicit, explicit)
+  expect_equal(without_fit_specification(implicit), without_fit_specification(explicit))
   expect_equal(implicit$init.lambda, log(6) * log(log(6)))
 })
 

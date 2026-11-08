@@ -1,0 +1,115 @@
+#' Coefficient inference after sparse selection
+#'
+#' @name coefficient_inference
+#' @description
+#' Optional selected-support inference or case-bootstrap uncertainty summaries
+#' for ordinary GLMs, negative binomial, multinomial and Cox models.
+#' Request these calculations through \code{summary(fit, inference=...)}.
+#'
+#' @details
+#' With \code{inference="conditional"}, the selected coefficients and compulsory
+#' terms are refitted without a sparsity penalty, keeping the model family,
+#' observation weights, offsets and coefficient constraints. The original fitted
+#' object and its coefficients are preserved. Reported estimates and standard
+#' errors refer to this selected-support refit. Its original penalized estimates
+#' are also retained in the coefficient table.
+#'
+#' For ordinary GLMs, the model-based covariance is
+#' \deqn{\widehat{\mathrm{Var}}(\widehat\beta_J)
+#'   =\widehat\phi(X_J^T W X_J)^{-1},\qquad
+#'   W_{ii}=w_i\{\mu'(\eta_i)\}^2/V(\mu_i).}
+#' Supplied fixed dispersion is respected. Estimated dispersion uses the
+#' selected-model Pearson scale and residual degrees of freedom. Unknown-scale
+#' ordinary-family intervals use a Student t reference; known-scale, negative
+#' binomial, multinomial and Cox intervals use a normal reference. NB shape is
+#' reestimated when it was estimated in the fit, using plug-in expected
+#' coefficient information. Fixed-noise scalar families use observed likelihood
+#' information. Cox uses weighted Breslow partial-likelihood information.
+#'
+#' Multinomial inference works on the selected zero-sum coefficient subspace.
+#' If \eqn{M} maps independent contrasts into the displayed CLR coefficients,
+#' \deqn{\widehat{\mathrm{Var}}(\mathrm{vec}\widehat B)
+#'   =M(M^T\mathcal I M)^{-1}M^T.}
+#' Grouped selection refits the complete CLR rows. Ungrouped selection preserves
+#' individual selected CLR entries and the row-sum constraint. Structurally
+#' excluded coefficients remain zero. Cholesky inversion uses diagonal
+#' equilibration; singular information and coefficients on nonnegative boundaries
+#' receive unavailable ordinary Wald standard errors.
+#'
+#' These are fixed-model intervals after selection: their nominal interpretation
+#' treats the selected model as given. Selection itself contributes uncertainty.
+#' Strong-signal settings with reliable support recovery approach the usual
+#' fixed-model setting; a finite bootstrap cannot certify perfect support recovery.
+#'
+#' With \code{inference="bootstrap"}, observation rows are sampled with
+#' replacement, together with their weights and offsets. Every replicate reruns
+#' the saved fitting specification, including its screening, interactions, relaxed
+#' fitting and local refinement. Independent validation data remain fixed.
+#' Explicit starting exclusions and externally supplied screening or clustering
+#' settings retain their specified meanings. A fit extracted from tuning keeps
+#' its chosen lambda; a custom \code{refit} callback can repeat tuning as well.
+#'
+#' Bootstrap standard errors and percentile intervals include zero estimates in
+#' replicates where a coefficient is absent. Selection frequencies are reported
+#' for all coefficients selected in the original fit or any replicate. Predictors
+#' are retained in every search according to the original fitting specification;
+#' there is no pruning based on nonselection in a limited number of replicates.
+#' The bootstrap describes variability and selection stability. Discontinuities
+#' at selection thresholds can affect nominal interval coverage; see Leeb and
+#' Poetscher (2008).
+#'
+#' @section Controls:
+#' \code{control.inference} is a named list with:
+#' \describe{
+#' \item{\code{level=.95}}{Interval probability.}
+#' \item{\code{maxit=100L}, \code{tol=1e-10}}{Selected-support refit controls.}
+#' \item{\code{max.parameters=1000L}, \code{rank.tol=1e-10}}{Information-matrix
+#' dimension guard and numerical rank tolerance.}
+#' \item{\code{nboot=199L}, \code{seed=NULL}}{Bootstrap replicate count and
+#' optional seed. A supplied seed preserves the caller's random-number state.}
+#' \item{\code{max.cells=5e7}}{Memory guard for row resampling and dense bootstrap
+#' summary blocks. Coefficient draws are stored sparsely.}
+#' \item{\code{refit.args=list()}}{Overrides to the saved fitting options for
+#' bootstrap replicates.}
+#' \item{\code{refit=NULL}}{Optional function receiving a fitting-argument list
+#' and returning a fitted L0glm model, or a tuning result with \code{fit_best}.}
+#' }
+#'
+#' @section Returned quantities:
+#' \code{summary(fit)$coefficients} retains the original sparse point estimates.
+#' With inference requested, \code{summary(fit)$inference$coefficients} is the
+#' coefficient table, including estimates, standard errors, interval limits and
+#' either Wald tests or bootstrap selection frequencies. Original row and channel
+#' indices identify each coefficient. Conditional inference also returns the
+#' selected-support refit, covariance matrices and convergence diagnostics.
+#'
+#' Bootstrap output retains sparse \code{draws}, a sparse original-dimension
+#' \code{selection.frequency} matrix (extended by the union of generated
+#' interaction terms), any generated interaction terms and
+#' per-replicate \code{diagnostics} with failures, convergence, warnings and
+#' timings. Draw rows flatten coefficient matrices in column-major order.
+#' \code{replicates} identifies successful columns; failed fits are reported and
+#' excluded explicitly. At least two successful fits are required.
+#' Covariance matrices follow the selected terms in each channel's table;
+#' multinomial covariance uses column-major CLR order on \code{covariance.rows}.
+#' Fitted models retain evaluated options in \code{specification}, excluding
+#' copies of the design and response; \code{engine} identifies the fitter.
+#'
+#' @seealso \code{\link{model_summary}}, \code{\link{l0glmFit}}
+#' @references
+#' Leeb, H. and Poetscher, B. M. (2008). Sparse estimators and the oracle property,
+#' or the return of Hodges' estimator. Journal of Econometrics, 142, 201-211.
+#' \doi{10.1016/j.jeconom.2007.05.017}.
+#' @examples
+#' set.seed(51)
+#' X <- matrix(rnorm(200*10),200,10)
+#' y <- 1+2*X[,1]-2*X[,2]+rnorm(200)
+#' fit <- l0glmFit(X,y,intercept=TRUE,lambda="gic",relaxed=TRUE)
+#' details <- summary(fit,inference="conditional")
+#' details$inference$coefficients
+#' \dontrun{
+#' uncertainty <- summary(fit,inference="bootstrap",
+#'   control.inference=list(nboot=199L,seed=1))
+#' uncertainty$inference$coefficients
+#' }
+NULL

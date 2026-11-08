@@ -12,7 +12,15 @@
 \usage{
 \method{print}{L0glm_fit}(x, digits = max(3L, getOption("digits") - 3L), ...)
 
-\method{summary}{L0glm_fit}(object, ..., mu_floor = 0, beta_true = NULL, r2_mu_floor = 0.1)
+\method{summary}{L0glm_fit}(
+  object,
+  ...,
+  mu_floor = 0,
+  beta_true = NULL,
+  r2_mu_floor = 0.1,
+  inference = c("none", "conditional", "bootstrap"),
+  control.inference = list()
+)
 
 \method{print}{summary.L0glm_fit}(
   x,
@@ -54,6 +62,16 @@ Comparison summaries default to their saved truth. Use \code{NULL} to omit it.}
 \item{r2_mu_floor}{Count-mean floor used only for R-squared working weights,
 default 0.1. See \code{\link[=l0glmMetrics]{l0glmMetrics()}}.}
 
+\item{inference}{Optional coefficient inference for fitted models:
+\code{"none"} (default), \code{"conditional"} for selected-support
+unpenalized refits and model-based standard errors, or \code{"bootstrap"}
+for repeated case-resampling of the saved fitting specification.
+See \link{coefficient_inference} for assumptions and returned tables.}
+
+\item{control.inference}{Named advanced inference controls, including
+\code{level=.95}, \code{nboot=199L} and \code{seed=NULL}.
+See \link{coefficient_inference}. Ignored with \code{inference="none"}.}
+
 \item{max.rows, max.cols}{Maximum coefficient rows and response columns shown
 by \code{print.summary.L0glm_fit()}, default 20 and 6. Positive integers or \code{Inf}.
 Only nonzero or mandatory coefficient rows are displayed. These limits do
@@ -64,7 +82,8 @@ not subset the coefficients retained in the summary.}
 \code{summary.sparseglm}. Both contain \code{metrics} and model dimensions. Model
 summaries also contain the full sparse \code{coefficients}, selected row
 indices, dispersion/theta, screening diagnostics when used, and a compact
-convergence table. \code{print()}
+convergence table. Requested inference adds an \code{inference} component with
+a coefficient table and covariance or bootstrap diagnostics. \code{print()}
 methods return their input invisibly.
 }
 \description{
@@ -76,8 +95,8 @@ Printing a fitted object uses its stored metadata and coefficients; it does
 not evaluate likelihoods or refit a model. \code{summary()} calls \code{\link[=l0glmMetrics]{l0glmMetrics()}}
 to obtain likelihood, deviance and information criteria, optionally including
 recovery metrics. The full original-dimension sparse coefficient matrix is
-retained in the model summary. Coefficients are point estimates; standard
-errors and Wald tests are not calculated for the selected penalized model.
+retained in the model summary. Optional inference adds a separate coefficient
+table without changing the fitted model; see \link{coefficient_inference}.
 Screened fits display the screening method, number of rounds, chosen round,
 batch size and screening thread count; summaries retain their complete
 \code{screening} diagnostics.

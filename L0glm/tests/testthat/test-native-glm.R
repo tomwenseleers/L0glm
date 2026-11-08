@@ -86,7 +86,8 @@ test_that("Poisson identity retains its specialization and custom callbacks rema
   fit <- l0glmFit(local.search=FALSE, X, y, family = poisson("identity"), nonnegative = TRUE,
     lambda = "gic", parallelize = FALSE)
   direct <- l0nnPois(local.search=FALSE, X, y, lambda = "gic", parallelize = FALSE)
-  expect_equal(fit[setdiff(names(fit), "family")], direct[setdiff(names(direct), "family")])
+  actual <- without_fit_specification(fit);expected <- without_fit_specification(direct)
+  expect_equal(actual[setdiff(names(actual), "family")], expected[setdiff(names(expected), "family")])
   expect_identical(fit$family$family, direct$family$family)
   expect_identical(fit$family$link, direct$family$link)
   family <- gaussian(); family$variance <- function(mu) rep(2, length(mu))

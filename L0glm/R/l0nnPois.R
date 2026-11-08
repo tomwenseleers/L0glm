@@ -373,3 +373,6 @@ l0nnPois <- function(X,
   }
   result
 }
+
+L0glm_nnpois_kernel <- l0nnPois
+l0nnPois <- L0glm_recorded_fitter(L0glm_nnpois_kernel,'l0nnPois')

@@ -719,6 +719,36 @@ and product generation within each training fold. See the
 [interaction tutorial](interactions.html) and [reference](../reference/interaction_models.html)
 for the recipe, prediction and memory controls.
 
+## Optional coefficient inference
+
+`summary(fit, inference="conditional")` refits the selected coefficients and
+compulsory terms without the sparsity penalty. For an ordinary GLM with selected
+design \(X_J\), its model-based covariance is
+
+\[
+\widehat{\operatorname{Var}}(\widehat\beta_J)
+=\widehat\phi(X_J^T W X_J)^{-1},\qquad
+W_{ii}=w_i\frac{\{\mu'(\eta_i)\}^2}{V(\mu_i)}.
+\]
+
+Fixed dispersion stays fixed; estimated dispersion is updated on the selected
+model. Negative binomial, multinomial and Cox use their corresponding likelihood
+information. Multinomial covariance is mapped from independent contrasts to the
+displayed zero-sum CLR coefficients. Singular information and coefficients on
+nonnegative boundaries receive unavailable ordinary Wald standard errors.
+
+`inference="bootstrap"` instead resamples observation rows, weights and offsets
+and repeats the fitting pipeline, including screening, interaction generation and
+local support refinement. Sparse draws include zero estimates when a coefficient
+is absent, giving selection frequencies and zero-inclusive percentile intervals.
+A callback can repeat lambda tuning within each replicate.
+
+Selected-support intervals have the usual interpretation conditional on the
+chosen model. Bootstrap selection frequencies quantify stability; nominal
+coverage near selection thresholds needs care ([Leeb and Poetscher,
+2008](https://doi.org/10.1016/j.jeconom.2007.05.017)). The
+[inference tutorial](inference.html) explains both approaches and their controls.
+
 ## Appendix: mathematical pseudocode {#algorithm-appendix}
 
 The following algorithms describe the computations used by `l0glmFit()` and

@@ -18,6 +18,14 @@
 #' @param r2_mu_floor Count-mean floor used only for R-squared working weights,
 #'   default 0.1. See [l0glmMetrics()].
 #' @param digits Significant digits for printed numeric values.
+#' @param inference Optional coefficient inference for fitted models:
+#'   \code{"none"} (default), \code{"conditional"} for selected-support
+#'   unpenalized refits and model-based standard errors, or \code{"bootstrap"}
+#'   for repeated case-resampling of the saved fitting specification.
+#'   See \link{coefficient_inference} for assumptions and returned tables.
+#' @param control.inference Named advanced inference controls, including
+#'   \code{level=.95}, \code{nboot=199L} and \code{seed=NULL}.
+#'   See \link{coefficient_inference}. Ignored with \code{inference="none"}.
 #' @param max.rows,max.cols Maximum coefficient rows and response columns shown
 #'   by `print.summary.L0glm_fit()`, default 20 and 6. Positive integers or `Inf`.
 #'   Only nonzero or mandatory coefficient rows are displayed. These limits do
@@ -28,8 +36,8 @@
 #' not evaluate likelihoods or refit a model. `summary()` calls [l0glmMetrics()]
 #' to obtain likelihood, deviance and information criteria, optionally including
 #' recovery metrics. The full original-dimension sparse coefficient matrix is
-#' retained in the model summary. Coefficients are point estimates; standard
-#' errors and Wald tests are not calculated for the selected penalized model.
+#' retained in the model summary. Optional inference adds a separate coefficient
+#' table without changing the fitted model; see \link{coefficient_inference}.
 #' Screened fits display the screening method, number of rounds, chosen round,
 #' batch size and screening thread count; summaries retain their complete
 #' `screening` diagnostics.
@@ -52,7 +60,8 @@
 #'   `summary.sparseglm`. Both contain `metrics` and model dimensions. Model
 #'   summaries also contain the full sparse `coefficients`, selected row
 #'   indices, dispersion/theta, screening diagnostics when used, and a compact
-#'   convergence table. `print()`
+#'   convergence table. Requested inference adds an `inference` component with
+#'   a coefficient table and covariance or bootstrap diagnostics. `print()`
 #'   methods return their input invisibly.
 #' @seealso [l0glmMetrics()], [model_criteria], [sparseGLM()]
 #' @examples
@@ -80,13 +89,21 @@ print.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
 #' @rdname model_summary
 #' @method summary L0glm_fit
 #' @export
-summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_floor=0.1) {
-  structure(c(L0glm_model_info(object), list(coefficients=stats::coef(object),
+summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_floor=0.1,
+  inference=c('none','conditional','bootstrap'),control.inference=list()) {
+  inference <- match.arg(inference)
+  answer <- structure(c(L0glm_model_info(object), list(coefficients=stats::coef(object),
     metrics=l0glmMetrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor),
     mu_floor=mu_floor, r2_mu_floor=r2_mu_floor, dispersion=object$dispersion,
     dispersion.estimated=object$dispersion.estimated,
     theta=object$theta, theta.estimated=object$theta.estimated)),
     class="summary.L0glm_fit")
+  if(inference!='none') {
+    control <- L0glm_inference_control(control.inference)
+    answer$inference <- if(inference=='conditional')L0glm_conditional_inference(object,control)else
+      L0glm_bootstrap_inference(object,control)
+  }
+  answer
 }
 
 #' @rdname model_summary
@@ -120,6 +137,17 @@ print.summary.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L),
     if (length(index) < length(scale)) cat("Remaining channels omitted.\n")
   }
   rows <- sort(unique(c(x$selected_rows, x$mandatory_rows)))
+  if(!is.null(x$inference)) {
+    cat(if(x$inference$method=='conditional')'\nSelected-support coefficient inference:\n'else
+      '\nBootstrap coefficient inference:\n')
+    table <- x$inference$coefficients
+    keep <- table$row%in%head(rows,max.rows) & table$column<=max.cols
+    print(table[keep,setdiff(names(table),c('row','column')),drop=FALSE],digits=digits,row.names=FALSE)
+    if(x$inference$method=='conditional')
+      cat('Selection is treated as fixed. Refit converged:',x$inference$converged,'\n')else
+      cat(x$inference$successful,'of',x$inference$nboot,'bootstrap fits succeeded.\n')
+    return(invisible(x))
+  }
   cat("\nCoefficient estimates:\n")
   if (!length(rows)) cat("No selected coefficients.\n") else {
     shown <- rows[seq_len(min(length(rows), max.rows))]

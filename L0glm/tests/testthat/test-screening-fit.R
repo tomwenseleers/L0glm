@@ -45,7 +45,8 @@ test_that("screened defaults reproduce the small-batch GIC relaxed workflow", {
 
 test_that("auto uses eligible rows and does not screen ordinary designs or masked small problems", {
   set.seed(2612);X <- matrix(rnorm(80*15),80,15);y <- rnorm(80)
-  expect_identical(l0glmFit(local.search=FALSE, X,y),l0glmFit(local.search=FALSE, X,y,screen="none"))
+  expect_identical(without_fit_specification(l0glmFit(local.search=FALSE, X,y)),
+    without_fit_specification(l0glmFit(local.search=FALSE, X,y,screen="none")))
   expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,20,9999,sparse=TRUE),NULL,FALSE,NULL),"ISIS")
   expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,20,200,sparse=TRUE),NULL,FALSE,NULL),"none")
   expect_identical(L0glm_screen_method("auto",Matrix::Matrix(0,5,51,sparse=TRUE),NULL,FALSE,NULL),"ISIS")

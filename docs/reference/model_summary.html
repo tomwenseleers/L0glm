@@ -24,6 +24,7 @@ results, including negative-binomial, multinomial and Cox models."><meta propert
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
+    <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -63,7 +64,15 @@ results, including negative-binomial, multinomial and Cox models.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, digits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"digits"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">3L</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'L0glm_fit'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, mu_floor <span class="op">=</span> <span class="fl">0</span>, beta_true <span class="op">=</span> <span class="cn">NULL</span>, r2_mu_floor <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  mu_floor <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  beta_true <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  r2_mu_floor <span class="op">=</span> <span class="fl">0.1</span>,</span>
+<span>  inference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"conditional"</span>, <span class="st">"bootstrap"</span><span class="op">)</span>,</span>
+<span>  control.inference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'summary.L0glm_fit'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span></span>
@@ -127,6 +136,20 @@ Comparison summaries default to their saved truth. Use <code>NULL</code> to omit
 default 0.1. See <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code>.</p></dd>
 
 
+<dt id="arg-inference">inference<a class="anchor" aria-label="anchor" href="#arg-inference"></a></dt>
+<dd><p>Optional coefficient inference for fitted models:
+<code>"none"</code> (default), <code>"conditional"</code> for selected-support
+unpenalized refits and model-based standard errors, or <code>"bootstrap"</code>
+for repeated case-resampling of the saved fitting specification.
+See <a href="coefficient_inference.html">coefficient_inference</a> for assumptions and returned tables.</p></dd>
+
+
+<dt id="arg-control-inference">control.inference<a class="anchor" aria-label="anchor" href="#arg-control-inference"></a></dt>
+<dd><p>Named advanced inference controls, including
+<code>level=.95</code>, <code>nboot=199L</code> and <code>seed=NULL</code>.
+See <a href="coefficient_inference.html">coefficient_inference</a>. Ignored with <code>inference="none"</code>.</p></dd>
+
+
 <dt id="arg-max-rows-max-cols">max.rows, max.cols<a class="anchor" aria-label="anchor" href="#arg-max-rows-max-cols"></a></dt>
 <dd><p>Maximum coefficient rows and response columns shown
 by <code>print.summary.L0glm_fit()</code>, default 20 and 6. Positive integers or <code>Inf</code>.
@@ -140,7 +163,8 @@ not subset the coefficients retained in the summary.</p></dd>
 <code>summary.sparseglm</code>. Both contain <code>metrics</code> and model dimensions. Model
 summaries also contain the full sparse <code>coefficients</code>, selected row
 indices, dispersion/theta, screening diagnostics when used, and a compact
-convergence table. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>
+convergence table. Requested inference adds an <code>inference</code> component with
+a coefficient table and covariance or bootstrap diagnostics. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>
 methods return their input invisibly.</p>
     </div>
     <div class="section level2">
@@ -149,8 +173,8 @@ methods return their input invisibly.</p>
 not evaluate likelihoods or refit a model. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> calls <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code>
 to obtain likelihood, deviance and information criteria, optionally including
 recovery metrics. The full original-dimension sparse coefficient matrix is
-retained in the model summary. Coefficients are point estimates; standard
-errors and Wald tests are not calculated for the selected penalized model.
+retained in the model summary. Optional inference adds a separate coefficient
+table without changing the fitted model; see <a href="coefficient_inference.html">coefficient_inference</a>.
 Screened fits display the screening method, number of rounds, chosen round,
 batch size and screening thread count; summaries retain their complete
 <code>screening</code> diagnostics.

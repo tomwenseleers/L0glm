@@ -39,6 +39,9 @@ explains the mathematics, regularization presets and full fitting algorithms.
   cross-validation with minimum-deviance and one-standard-error models;
   [staged interaction selection](https://tomwenseleers.github.io/L0glm/articles/interactions.html)
   using `interactions=1L` for pairwise terms or `2L` for three-way terms.
+- **Inference:** optional [selected-support standard errors and bootstrap
+  selection stability](https://tomwenseleers.github.io/L0glm/articles/inference.html)
+  through `summary(fit, inference="conditional")` or `"bootstrap"`.
 - **Comparison:** `sparseGLM()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 

@@ -136,6 +136,7 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
+    <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -884,6 +885,8 @@ Use <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef
 and scores; see <a href="model_criteria.html">model_criteria</a> and <a href="l0glmMetrics.html">l0glmMetrics</a>.
 <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> shows a compact overview; <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> adds fit metrics
 and a bounded coefficient display; see <a href="model_summary.html">model_summary</a>.
+Optional selected-support standard errors and bootstrap selection frequencies
+are available through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>; see <a href="coefficient_inference.html">coefficient_inference</a>.
 <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> and <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code> provide original-scale predictions;
 see <a href="model_predictions.html">model_predictions</a> for new data, offsets and special-family types.</p>
 <dl><dt><code>coefficients</code></dt>

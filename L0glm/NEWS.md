@@ -21,6 +21,9 @@
   generation independently within every training fold.
 * Observation weights, offsets, intercepts, mandatory predictors, nonnegative
   coefficients, normalization, starting values and optional validation stopping.
+* Optional selected-support standard errors and case-bootstrap coefficient
+  intervals through `summary()`, with reselection frequencies, sparse draws,
+  and support for ordinary GLMs, negative binomial, multinomial and Cox models.
 * Shared observation vectors stay compact across channels in fitting, native
   Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,

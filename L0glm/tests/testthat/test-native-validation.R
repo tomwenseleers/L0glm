@@ -90,7 +90,7 @@ test_that("OpenMP native validation preserves explicit masks and checkpoint hist
       # Timing diagnostics vary across worker counts.
       fit$validation$starts$seconds <- reference$validation$starts$seconds
       if(!is.null(fit$nuisance)) fit$nuisance$seconds <- reference$nuisance$seconds
-      expect_equal(fit, reference, tolerance = 1e-12)
+      expect_equal(without_fit_specification(fit), without_fit_specification(reference), tolerance = 1e-12)
       expect_equal(dim(coef(fit)), c(14L, 3L))
       expect_s4_class(coef(fit), "sparseMatrix")
       expect_equal(as.numeric(coef(fit)[4, ]), numeric(3))
