@@ -18,6 +18,8 @@ test_that("screened local search preserves its original-coordinate search", {
   expect_equal(fast$local.search$history,slow$local.search$history)
   expect_equal(fast$local.search$proposals,slow$local.search$proposals)
   expect_equal(fast$local.search$pool,slow$local.search$pool)
+  expect_equal(fast$lambdas,slow$lambdas)
+  expect_equal(fast$nuisance,slow$nuisance)
   expect_identical(fast$p,slow$p)
   expect_identical(fast$always.include,slow$always.include)
   expect_equal(GIC(fast),GIC(slow),tolerance=1e-10)
@@ -81,4 +83,24 @@ test_that("special-family compact searches retain original IC dimensions", {
     expect_equal(l0glmMetrics(fast)$p,l0glmMetrics(slow)$p)
     expect_identical(dim(coef(fast)),dim(coef(slow)))
   }
+})
+
+test_that("an unchanged compact model retains its initial nuisance state", {
+  set.seed(9714)
+  X <- matrix(rexp(140*70),140,70)
+  y <- rpois(140,3+2*X[,2])
+  args <- list(X=X,y=y,family=poisson("identity"),nonnegative=TRUE,
+    intercept=TRUE,always.include=4L,lambda=10000,screen="SIS",nsis=8L,
+    screen.nthreads=1L,parallelize=FALSE,local.search=TRUE,
+    control.local=list(maxit=1L,max.evals=8L,tol=1e-4))
+  fast <- do.call(l0glmFit,args)
+  slow <- local({
+    local_mocked_bindings(.package="L0glm",L0glm_local_workspace=function(...)NULL)
+    do.call(l0glmFit,args)
+  })
+  expect_equal(nrow(fast$local.search$history),1L)
+  expect_equal(coef(fast),coef(slow))
+  expect_equal(fast$lambdas,slow$lambdas)
+  keys <- setdiff(names(slow$nuisance),"seconds")
+  expect_equal(fast$nuisance[keys],slow$nuisance[keys])
 })

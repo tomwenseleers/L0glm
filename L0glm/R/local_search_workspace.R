@@ -43,7 +43,9 @@ L0glm_local_restore <- function(fit, workspace) {
     mandatory=original$always.include, grouped=isTRUE(original$grouped), kind=kind,
     estimated=original$dispersion.estimated,
     common.phi=if(quasi) pmax(abs(original$dispersion), 1e-8) else numeric())
-  fit <- L0glm_local_remap(fit, rows, d, original)
+  search <- fit$local.search
+  fit <- if (nrow(search$history)>1L) L0glm_local_remap(fit, rows, d, original) else original
+  fit$local.search <- search
   move <- function(value) vapply(strsplit(value, ":", fixed=TRUE), function(parts) {
     positions <- if (parts[1L] == "swap") 2:3 else
       if (parts[1L] %in% c("add", "drop", "add_entry", "drop_entry")) 2L else integer()
