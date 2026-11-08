@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "benchmarks/plots/website"
 LABELS = {"L0glm": "L0glm", "lasso_bic": "LASSO", "relaxed_lasso_bic": "Relaxed LASSO",
           "lasso_gic": "LASSO", "relaxed_lasso_gic": "Relaxed LASSO",
-          "lasso_cv": "LASSO", "relaxed_lasso_cv": "Relaxed LASSO"}
+          "lasso_cv": "LASSO", "relaxed_lasso_cv": "Relaxed LASSO",
+          "abess": "ABESS", "lasso": "LASSO", "relaxed_lasso": "Relaxed LASSO",
+          "adaptive_lasso": "Adaptive LASSO", "adaptive_relaxed_lasso": "Adaptive relaxed LASSO"}
 
 def rows(name):
     with (DATA / name).open(encoding="utf-8-sig", newline="") as stream:
@@ -71,6 +73,39 @@ def deconvolution_speed(data, grouped=False):
             f'**{relaxed_ratio:.0f}× faster than relaxed {name} tuned by five-fold CV**.')
 
 
+def abess_table(model):
+    methods = ("L0glm", "abess", "L0Learn", "lasso", "relaxed_lasso",
+               "adaptive_lasso", "adaptive_relaxed_lasso", "MCP", "SCAD")
+    data = { (r["rho"], r["method"]): r for r in rows("abess-simulations.csv")
+             if r["model"] == model }
+    prediction = "Test RMSE" if model == "gaussian" else "Test AUC"
+    lines = [f"| Correlation | Method | {prediction} | Sensitivity | FPR | MCC | Seconds |",
+             "|:--|:--|--:|--:|--:|--:|--:|"]
+    for rho in ("0.1", "0.7"):
+        for method in methods:
+            r = data[rho, method]
+            lines.append(f'| {rho} | {LABELS.get(method, method)} | '
+                         f'{float(r["prediction"]):.3f} | {100*float(r["TPR"]):.0f}% | '
+                         f'{100*float(r["FPR"]):.2f}% | {float(r["MCC"]):.3f} | '
+                         f'{float(r["seconds"]):.2f} |')
+    return "\n".join(lines)
+
+
+def local_search_table():
+    data = { (r["model"], r["rho"], r["variant"]): r for r in rows("local-search.csv") }
+    lines = ["| Family | Correlation | Local search | GIC | TP | FP | MCC | Seconds |",
+             "|:--|--:|:--|--:|--:|--:|--:|--:|"]
+    for model, label in (("gaussian", "Gaussian"), ("binomial", "Logistic")):
+        for rho in ("0.1", "0.7"):
+            for variant in ("disabled", "auto"):
+                r = data[model, rho, variant]
+                lines.append(f'| {label} | {rho} | {"FALSE" if variant == "disabled" else "auto"} | '
+                             f'{float(r["GIC"]):.1f} | {float(r["TP"]):.1f} | '
+                             f'{float(r["FP"]):.1f} | {float(r["MCC"]):.3f} | '
+                             f'{float(r["seconds"]):.2f} |')
+    return "\n".join(lines)
+
+
 content = {
     "million-intro": (
         "This Gaussian simulation has **one million predictors**, 500 observations and "
@@ -102,6 +137,9 @@ content = {
     "selection-metrics": table(selection, ["method", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]),
     "speed-stat": f'<a href="articles/performance.html#one-million-predictor-example"><strong>{ratio:.0f}× faster</strong><span>than five-fold-CV LASSO in that example</span></a>',
     "multi-stat": f'<a href="articles/performance.html#multichannel-deconvolution"><strong>{multi[0]["TP"]} / {multi[0]["support_size_true"]}</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>{multi_relaxed_ratio:.0f}× faster</b> than GIC-tuned relaxed group LASSO</span></a>',
+    "abess-gaussian": abess_table("gaussian"),
+    "abess-binomial": abess_table("binomial"),
+    "local-search-comparison": local_search_table(),
 }
 paths = [ROOT/"README.Rmd", ROOT/"README.md", ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))

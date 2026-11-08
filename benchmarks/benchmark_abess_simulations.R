@@ -1,12 +1,16 @@
 # Reproduce the Gaussian and logistic data designs in the abess power vignette.
 # Use one common GIC for support selection and an independently drawn test set.
 benchmark_abess_simulations <- function(output = "benchmarks/plots/website",
-                                        repetitions = 10L) {
+                                        repetitions = 10L,
+                                        methods = c("L0glm", "abess", "L0Learn", "lasso", "relaxed_lasso",
+                                          "adaptive_lasso", "adaptive_relaxed_lasso", "MCP", "SCAD"),
+                                        local.search = "auto", control.local = list()) {
   stopifnot(requireNamespace("abess", quietly = TRUE))
+  rng <- RNGkind()
+  on.exit(do.call(RNGkind, as.list(rng)), add = TRUE)
+  RNGkind("Mersenne-Twister", "Inversion", "Rejection")
   RhpcBLASctl::blas_set_num_threads(1L)
   RhpcBLASctl::omp_set_num_threads(1L)
-  methods <- c("L0glm", "abess", "L0Learn", "lasso", "relaxed_lasso",
-    "adaptive_lasso", "adaptive_relaxed_lasso", "MCP", "SCAD")
   auc <- function(y, mu) {
     positive <- y == 1
     m <- sum(positive)
@@ -25,10 +29,13 @@ benchmark_abess_simulations <- function(output = "benchmarks/plots/website",
       for (seed in seq_len(repetitions)) {
         train <- do.call(abess::generate.data, c(generator, list(support.size = 10L, seed = seed)))
         test <- do.call(abess::generate.data, c(generator, list(beta = train$beta, seed = seed + 100L)))
+        data_hash <- digest::digest(list(train$x, train$y, train$beta, test$x, test$y),
+          algo = "xxhash64")
         fit <- L0glm::sparseGLM(train$x, train$y, family = family, method = methods,
           tune = "gic", nlambda = 40L, support.size = 0:60, intercept = TRUE,
           lambda = list(L0glm = L0glm::presetLambda("gic", p, n)),
-          options = list(L0glm = list(relaxed = TRUE, ncores = 1L),
+          options = list(L0glm = list(relaxed = TRUE, ncores = 1L,
+              local.search = local.search, control.local = control.local),
             abess = list(thread = 1L)))
         metrics <- L0glm::l0glmMetrics(fit)
         if (any(metrics$status != "ok")) {
@@ -47,7 +54,7 @@ benchmark_abess_simulations <- function(output = "benchmarks/plots/website",
           fn <- sum(active & !found)
           tn <- sum(!active & !found)
           mcc_denom <- sqrt(as.double(tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-          data.frame(model, rho, seed, method = names(fit$fits)[i],
+          data.frame(model, rho, seed, data_hash, method = names(fit$fits)[i],
             seconds = metrics$seconds[i], GIC = metrics$gic[i], TP = tp, FP = fp,
             TPR = tp / sum(active), FPR = fp / sum(!active),
             MCC = if (mcc_denom > 0) (tp * tn - fp * fn) / mcc_denom else 0,

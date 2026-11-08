@@ -1,3 +1,8 @@
+RNGkind: Mersenne-Twister / Inversion / Rejection
+One BLAS and OpenMP fitting thread. Seeds 1:10; test seeds 101:110.
+All nine methods verified against identical train/test data hashes.
+
+L0glm and ABESS
 R version 4.5.0 (2025-04-11 ucrt)
 Platform: x86_64-w64-mingw32/x64
 Running under: Windows 11 x64 (build 26300)
@@ -6,14 +11,47 @@ Matrix products: default
   LAPACK version 3.12.0
 
 locale:
-[1] LC_COLLATE=en_US.UTF-8  LC_CTYPE=en_US.UTF-8    LC_MONETARY=en_US.UTF-8
-[4] LC_NUMERIC=C            LC_TIME=en_US.UTF-8
+[1] C
+system code page: 65001
 
 time zone: Europe/Brussels
 tzcode source: internal
 
 attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] L0glm_0.2.0.9002
+
+loaded via a namespace (and not attached):
+ [1] digest_0.6.39         Matrix_1.7-6          lattice_0.23-1
+ [4] sparsesvd_0.2-3       parallel_4.5.0        RhpcBLASctl_0.23-42
+ [7] docopt_0.7.2          dynamicTreeCut_1.63-1 qlcMatrix_0.9.9
+[10] grid_4.5.0            statmod_1.5.2         slam_0.1-56
+[13] compiler_4.5.0        fastcluster_1.3.0     abess_0.4.11
+[16] tools_4.5.0           Rcpp_1.1.2            MASS_7.3-66
+
+
+Other comparators
+R version 4.5.0 (2025-04-11 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26300)
+
+Matrix products: default
+  LAPACK version 3.12.0
+
+locale:
+[1] C
+system code page: 65001
+
+time zone: Europe/Brussels
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] L0glm_0.2.0.9002
 
 loaded via a namespace (and not attached):
  [1] Matrix_1.7-6          glmnet_5.1            gtable_0.3.6
@@ -28,7 +66,7 @@ loaded via a namespace (and not attached):
 [28] pillar_1.11.1         RColorBrewer_1.1-3    rlang_1.3.0
 [31] stringi_1.8.9         L0Learn_2.1.0         S7_0.2.2
 [34] cli_3.6.6             magrittr_2.0.5        foreach_1.5.2
-[37] grid_4.5.0            L0glm_0.2.0.9000      fastcluster_1.3.0
+[37] digest_0.6.39         grid_4.5.0            fastcluster_1.3.0
 [40] docopt_0.7.2          lifecycle_1.0.5       vctrs_0.7.3
 [43] sparsesvd_0.2-3       glue_1.8.1            farver_2.1.2
 [46] codetools_0.2-20      survival_3.8-12       reshape2_1.4.5
