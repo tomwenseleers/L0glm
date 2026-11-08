@@ -937,6 +937,7 @@
 #'   The working-size guard applies to dense direct Cox and multinomial systems,
 #'   not matrix-free Cox products. See the dedicated family help pages.
 #' @inheritParams predictor_groups
+#' @inheritParams interaction_models
 l0glmFit <- function(X, # n x p design matrix (without intercept)
                       y, # n x m outcome matrix
                       weights       = NULL,
@@ -974,7 +975,13 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       cluster.refit = TRUE,
                       control.precluster = list(),
                       local.search = "auto",
-                      control.local = list(), group = NULL, group.multiplier = NULL) {
+                      control.local = list(), group = NULL, group.multiplier = NULL,
+                      interactions = 0L, control.interactions = list()) {
+  interactions <- L0glm_interaction_order(interactions)
+  if(interactions>0L) {
+    supplied <- names(match.call())[-1L]
+    return(L0glm_interaction_fit(mget(supplied,environment(),inherits=FALSE),interactions,control.interactions))
+  }
   if (!is.null(group)) {
     if(!inherits(family,'family'))family <- family()
     args <- mget(names(formals(l0glmFit)),environment(),inherits=FALSE)
@@ -1128,7 +1135,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
   upper <- rep(.Machine$double.xmax, p)
   always.include <- L0glm_mandatory(X, always.include)
-  p_selectable <- p - length(always.include)
+  p_selectable <- L0glm_criterion_size(p-length(always.include),control.solver)
   if (nonnegative && family$family %in% c("binomial", "quasibinomial")) {
     # Recognize intercepts supplied explicitly in X as well as the added column.
     lower[L0glm_intercepts(X)] <- -.Machine$double.xmax

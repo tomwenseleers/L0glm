@@ -101,7 +101,19 @@ l0nnPois <- function(X,
                      cluster.refit = TRUE,
                      control.precluster = list(),
                      local.search = "auto",
-                     control.local = list(), group = NULL, group.multiplier = NULL) {
+                     control.local = list(), group = NULL, group.multiplier = NULL,
+                     interactions = 0L, control.interactions = list()) {
+  interactions <- L0glm_interaction_order(interactions)
+  if(interactions>0L) {
+    if(!inherits(family,'family'))family <- family()
+    if(family$family!='poisson' || family$link!='identity')
+      stop('l0nnPois is only defined for family = poisson(identity).',call.=FALSE)
+    supplied <- names(match.call())[-1L]
+    args <- mget(supplied,environment(),inherits=FALSE)
+    args$family <- family;args$nonnegative <- TRUE;args$screen <- 'none'
+    if(missing(lambda))args$lambda <- 'gic'
+    return(L0glm_interaction_fit(args,interactions,control.interactions))
+  }
   if (!is.null(group)) {
     if(!inherits(family,'family'))family <- family()
     if(family$family!='poisson' || family$link!='identity')
@@ -173,7 +185,7 @@ l0nnPois <- function(X,
     return(do.call(l0glmFit, args))
   }
   if (!is.null(nthreads) && verbose) {
-    message("l0nnPois uses ncores for OpenMP outcome-level threading; nthreads is ignored.")
+    message("l0nnPois uses ncores for OpenMP outcome-interactions threading; nthreads is ignored.")
   }
   natural_ordering <- FALSE
   if (!is.null(control.solver)) {
@@ -217,7 +229,7 @@ l0nnPois <- function(X,
   }
   p <- ncol(X)
   always.include <- L0glm_mandatory(X, always.include)
-  p_selectable <- p - length(always.include)
+  p_selectable <- L0glm_criterion_size(p-length(always.include),control.solver)
   preprocessing <- L0glm_preprocessing(X, normalize, rep(0, p), always.include)
   lambda <- L0glm_resolve_lambda(lambda, p = max(1L, p_selectable), n = n)
   init.lambda <- lambda

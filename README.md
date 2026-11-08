@@ -36,7 +36,9 @@ explains the mathematics, regularization presets and full fitting algorithms.
 - **Controls:** observation weights, offsets, unpenalized terms, starting values,
   normalization, original-scale coefficients and optional nonnegativity constraints.
 - **Selection:** a fast GIC preset, information-criterion path selection, or
-  cross-validation with minimum-deviance and one-standard-error models.
+  cross-validation with minimum-deviance and one-standard-error models;
+  [staged interaction selection](https://tomwenseleers.github.io/L0glm/articles/interactions.html)
+  using `interactions=1L` for pairwise terms or `2L` for three-way terms.
 - **Comparison:** `sparseGLM()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
 

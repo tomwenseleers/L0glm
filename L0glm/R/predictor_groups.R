@@ -170,14 +170,15 @@ L0glm_group_cost <- function(label,m,grouped,kind,dimension,multiplier=NULL,esti
 L0glm_group_tune_cost <- function(X,y,family,args) {
   if(is.null(args[["group"]]))return(args)
   if(is.null(args$control.local$target))args$control.local$target <- 'IC'
-  if(!is.null(args$group.multiplier))return(args)
   label <- L0glm_group_labels(args[["group"]],ncol(X))
   included <- union(L0glm_mandatory(X,args$always.include),which(label=='0'))
   label[included] <- '0';args$always.include <- included
+  if(!is.null(args$group.multiplier))return(args)
   kind <- L0glm_ext_kind(family)
   m <- if(identical(kind,'multinomial'))family$nlp+1L else NCOL(y)
   grouped <- if(is.null(args$grouped))TRUE else args$grouped
   args$group.multiplier <- L0glm_group_cost(label,m,grouped,kind,TRUE)
+  attr(args$group.multiplier,'dimension_based') <- TRUE
   args
 }
 
@@ -206,7 +207,7 @@ L0glm_group_metrics <- function(object,scores) {
 L0glm_group_fit <- function(args) {
   mode <- L0glm_local_mode(args$local.search)
   if(is.null(args$control.local$target))args$control.local$target <-
-    if(is.character(args$lambda))'IC'else'L0'
+    if(is.character(args$lambda) || isTRUE(attr(args$group.multiplier,'dimension_based')))'IC'else'L0'
   if(!isFALSE(mode))return(L0glm_local_fit(l0glmFit,args,mode,args$control.local))
   family <- args$family
   if(!inherits(family,'family'))family <- family()
@@ -234,6 +235,7 @@ L0glm_group_fit <- function(args) {
   if(args$intercept)include <- include+1L
   data <- L0glm_ext_prepare(args$X,args$y,family,args$weights,args$offset,args$intercept,
     include,args$nonnegative,args$normalize,args$start,args$prior.mean,args$control.family,kind=kind)
+  data$p_selectable <- L0glm_criterion_size(data$p_selectable,args$control.solver)
   structural <- which(L0glm_moments(data$Z)$ss==0)
   data$allowed[structural,] <- FALSE;data$B[structural,] <- 0
   data$included <- setdiff(data$included,structural)
@@ -286,6 +288,9 @@ L0glm_group_fit <- function(args) {
   fit$coefficients <- methods::as(methods::as(fit$coefficients,'generalMatrix'),'CsparseMatrix')
   fit[["group"]] <- label
   fit$group.multiplier <- multiplier
+  fit$group.cost.type <- if(is.character(args$lambda) ||
+    isTRUE(attr(args$group.multiplier,'dimension_based')))'dimensions'else'specified'
+  attr(fit$group.multiplier,'dimension_based') <- fit$group.cost.type=='dimensions'
   fit$group.allowed <- data$allowed
   fit$group.active <- L0glm_group_active(result$B,data$allowed,data$included,args$grouped,data$groups)
   fit$metrics <- l0glmMetrics(fit,mu_floor=0)

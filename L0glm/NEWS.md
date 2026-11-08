@@ -15,7 +15,10 @@
 * Predictor-variable groups use norm-based block L0 penalties, with group 0
   unpenalized, dimension-calibrated IC presets, explicit numeric group costs,
   group-aware thresholding, relaxed refits and cross-validation.
-
+* Staged interaction selection generates products among selected main effects:
+  `interactions=1L` for pairwise and `2L` for up to three-way terms. Prediction
+  reconstructs products from original columns, and CV repeats candidate
+  generation independently within every training fold.
 * Observation weights, offsets, intercepts, mandatory predictors, nonnegative
   coefficients, normalization, starting values and optional validation stopping.
 * Shared observation vectors stay compact across channels in fitting, native

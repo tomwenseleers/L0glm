@@ -699,6 +699,26 @@ component retains the initial coefficients, ridge penalties and noise parameters
 See the [control reference](../reference/local_search.html) and
 [Appendix A.11](#appendix-local-search) for the complete interface and pseudocode.
 
+## Staged interaction selection
+
+`interactions=1L` adds pairwise products of selected main effects; `2L` also
+considers three-way products. The default `0L` fits main
+effects. Each stage runs the same family-specific sparse fitting algorithm on
+the selected original main effects, compulsory terms and generated products.
+SIS/ISIS can select the starting main effects. Products are generated only among
+selected original predictors, with each predictor appearing once in a product.
+Compulsory terms remain main effects.
+
+At stage $s\geq1$, let $S_{s-1}$ contain the selected original main effects. Generate
+$\{\prod_{j\in A}X_j:A\subseteq S_{s-1}, |A|=s+1\}$, retain the existing product
+candidates and refit. A named preset uses the original selectable dimension
+plus the products generated so far. The best stage is chosen by a common IC
+using the final candidate count and free-coefficient degrees of freedom, or by
+independent validation deviance. Cross-validation repeats main-effect selection
+and product generation within each training fold. See the
+[interaction tutorial](interactions.html) and [reference](../reference/interaction_models.html)
+for the recipe, prediction and memory controls.
+
 ## Appendix: mathematical pseudocode {#algorithm-appendix}
 
 The following algorithms describe the computations used by `l0glmFit()` and

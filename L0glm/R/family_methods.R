@@ -306,7 +306,10 @@ L0glm_metrics_glm <- function(object, newdata, y, weights, offset, mu_floor, bet
                               r2_mu_floor=0.1) {
   training <- is.null(newdata)
   X <- if (training) object$X else newdata
-  if (!training && object$added_intercept) X <- cbind(Intercept = 1, X)
+  if(!training && !is.null(object$interactions))X <- L0glm_interaction_newdata(X,object$interactions)
+  if (!training && object$added_intercept) {
+    if(inherits(X,'L0glm_design'))X$intercept <- TRUE else X <- cbind(Intercept = 1, X)
+  }
   if (is.null(y)) y <- object$y
   if (is.null(weights) && training) weights <- object$prior.weights
   if (is.null(offset) && training) offset <- object$offset

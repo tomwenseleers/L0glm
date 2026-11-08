@@ -176,6 +176,11 @@
 #'   \code{mu.floor} inherits \code{mu_floor} for consistent scoring.
 #' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
+#' \item \code{interactions}, \code{control.interactions}: staged products of
+#' selected main effects. \code{interactions=1L} adds pairwise terms and
+#' \code{2L} also considers three-way terms; \code{0L} (default)
+#' fits main effects only. CV repeats candidate generation within each training
+#' fold. See \link{interaction_models} for starts, prediction and path output.
 #' \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
 #' the screening strategy, candidate batch size, outer iteration limit and
 #' OpenMP screening thread count from \code{l0glmFit()}.
@@ -425,6 +430,11 @@ l0glmTune <- function(X, y,
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   dots <- L0glm_group_tune_cost(X,y,family,list(...))
+  interactions <- !is.null(dots$interactions) && L0glm_interaction_order(dots$interactions)>0L
+  if(interactions && identical(start,'pilot'))
+    stop('Interaction tuning uses start=NULL or numeric starts; pilot starts require a fixed feature space.',call.=FALSE)
+  if(interactions && is.null(dots$control.interactions$criterion))
+    dots$control.interactions$criterion <- if(do_cv)'gic'else tune
   local.search <- L0glm_local_mode(local.search)
   dots$local.search <- local.search
   if (!identical(local.search, FALSE)) {
@@ -508,11 +518,12 @@ l0glmTune <- function(X, y,
   args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
   included <- preset_fit$always.include
   penalized <- setdiff(seq_len(ncol(preset_fit$X)), included)
-  is_zero <- function(fit) all(fit$coefficients[penalized, , drop = FALSE] == 0)
+  is_zero <- function(fit) all(fit$coefficients[
+    setdiff(seq_len(nrow(fit$coefficients)),fit$always.include),,drop=FALSE]==0)
 
   # A working-model threshold only seeds the search. Verify the endpoint by
   # fitting it, using exactly the same initialization and controls as the path.
-  lambda_max <- max(2 * lambda_reference, maxlambda(preset_fit$X,
+  lambda_max <- if(interactions)2*lambda_reference else max(2 * lambda_reference, maxlambda(preset_fit$X,
     weights = preset_fit$weights, z = preset_fit$z, dispersion = preset_fit$dispersion,
     always.include = included, coefs = preset_fit$coefficients, family = family,
     nonnegative = isTRUE(dots$nonnegative)))
@@ -578,6 +589,7 @@ l0glmTune <- function(X, y,
   }
   metric_rows <- vector("list", length(lambda_grid))     # each element numeric
   coefficients <- vector("list", length(lambda_grid))
+  models <- if(interactions)vector('list',length(lambda_grid))else NULL
   fit_best <- NULL
   fit_1se <- NULL
   best_score <- Inf
@@ -592,13 +604,14 @@ l0glmTune <- function(X, y,
     
     beta_hat <- fit$coefficients                           # p x m (sparse)
     coefficients[[i]] <- beta_hat
+    if(interactions)models[[i]] <- fit
     
     ## quality metrics --------------------------------------------------------
     met <- get.metrics(beta = beta_hat,
                        X = fit$X, y = y, family = family,
                        weights = weights, offset = offset,
                        dispersion = dispersion, mu_floor = mu_floor,
-                       beta_true = coefs.true, p = p,
+                       beta_true = if(interactions)NULL else coefs.true, p = p,
                        always.include = included)
     score <- if (do_cv) cv$mean[i] else met[[tune]]
     if (!is.na(score) && score < best_score) {
@@ -661,6 +674,10 @@ l0glmTune <- function(X, y,
        cv           = cv)
   if (precluster) result$preclustering <- preset_fit$preclustering
   result$screen.candidates <- args$control.solver$.screen.candidates
+  if(interactions) {
+    aligned <- L0glm_interaction_finish_path(result,models,X,p,coefs.true,mu_floor)
+    result <- aligned$result;coefs.true <- aligned$truth
+  }
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result
 }

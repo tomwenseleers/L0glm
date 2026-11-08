@@ -20,6 +20,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
   starts <- pilots <- preprocessing <- theta <- vector("list", K)
   path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
   candidates <- vector("list", K)
+  interaction_terms <- if(!is.null(args$interactions) && args$interactions>0L)vector('list',K)else NULL
   preclustering <- if (isTRUE(args$precluster)) vector("list", K) else NULL
   for (k in seq_len(K)) {
     train <- foldid != k
@@ -41,6 +42,10 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
         candidates[k] <- list(a$control.solver$.screen.candidates)
       }
       theta[[k]][i] <- list(fit$theta)
+      if(!is.null(interaction_terms)) {
+        if(is.null(interaction_terms[[k]]))interaction_terms[[k]] <- vector('list',length(lambdas))
+        interaction_terms[[k]][i] <- list(fit$interactions$terms)
+      }
       if (kind == "cox") {
         # Verweij--van Houwelingen subtraction retains the full risk sets.
         eta <- as.numeric(predict(fit, args$X, type = "link", offset = args$offset))
@@ -63,6 +68,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
     scoring = if (kind == "cox") "Cox partial-likelihood subtraction per held-out event" else
       "held-out deviance per weighted response/trial")
   if (!is.null(preclustering)) result$preclustering <- preclustering
+  if(!is.null(interaction_terms))result$interaction_terms <- interaction_terms
   if (screen.path == "preset") result$screen.candidates <- candidates
   result
 }
@@ -143,16 +149,19 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   cv_best <- if (do_cv) which.min(cv$mean) else NULL
   lambda_1se <- if (do_cv) max(grid[is.finite(cv$mean) & cv$mean <= cv$mean[cv_best] + cv$se[cv_best]]) else NULL
   rows <- coefficients <- theta <- vector("list", length(grid))
+  interactions <- !is.null(dots$interactions) && dots$interactions>0L
+  models <- if(interactions)vector('list',length(grid))else NULL
   fit_best <- fit_1se <- NULL
   best_score <- Inf; best <- NA_integer_
   # Keep coefficient paths, not one large design matrix for every lambda.
   for (i in seq_along(grid)) {
     lambda <- grid[i]
     fit <- if (lambda == reference) preset_fit else if (lambda == lambda_max) endpoint else fit_lambda(lambda)
+    if(interactions)models[[i]] <- fit
     met <- l0glmMetrics(fit, mu_floor = mu_floor)
     met$support_size_estimated <- met$selected
-    if (!is.null(coefs.true)) {
-      b <- as.matrix(fit$coefficients); truth <- as.matrix(coefs.true)
+    if (!is.null(coefs.true) && !interactions) {
+      b <- as.matrix(fit$coefficients); truth <- as.matrix(L0glm_interaction_truth(coefs.true,fit))
       if (!identical(dim(b), dim(truth))) stop("coefs.true must have returned coefficient dimensions.", call. = FALSE)
       if (kind == "multinomial") truth <- truth - rowMeans(truth)
       keep <- setdiff(seq_len(nrow(b)), fit$always.include)
@@ -186,6 +195,10 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   if (kind == "multinomial") result$coordinates <- "clr"
   result$preclustering <- preset_fit$preclustering
   result$screen.candidates <- args$control.solver$.screen.candidates
+  if(interactions) {
+    aligned <- L0glm_interaction_finish_path(result,models,X,p,coefs.true,mu_floor)
+    result <- aligned$result;coefs.true <- aligned$truth
+  }
   if (printbest) message(sprintf("Best lambda by %s = %.4g", toupper(tune), grid[best]))
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result

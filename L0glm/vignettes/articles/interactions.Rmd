@@ -1,0 +1,91 @@
+---
+title: "Select interaction effects"
+description: "Staged interaction generation, information criteria, prediction and cross-validation."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment='#>',message=FALSE,warning=FALSE)
+```
+
+Interaction effects describe how one predictor's association with the response
+depends on another predictor. L0glm can generate these terms after selecting the
+main effects, then repeat sparse selection on the expanded candidate set. This
+keeps the working design manageable when there are many original predictors.
+
+## Fit a model with interaction effects
+
+`interactions` controls the stages of interaction generation:
+
+| Setting | Candidate terms |
+| --- | --- |
+| `0L` | Main effects |
+| `1L` | Main effects and pairwise products |
+| `2L` | Also three-way products |
+
+The default is `0L`. The following example includes signed main effects, a
+pairwise interaction and a three-way interaction.
+
+```{r interaction-fit}
+library(L0glm)
+set.seed(171)
+X <- matrix(rnorm(300*12),300,12,dimnames=list(NULL,letters[1:12]))
+y <- 1+2*X[,1]-2*X[,2]+2*X[,3]+2*X[,1]*X[,2]+
+  2*X[,1]*X[,2]*X[,3]+rnorm(300)
+fit <- l0glmFit(X,y,family=gaussian(),intercept=TRUE,lambda='gic',
+  interactions=2L,relaxed=TRUE,dispersion=1)
+fit$interactions$history
+coef(fit)[which(Matrix::rowSums(coef(fit)!=0)>0),,drop=FALSE]
+```
+
+Only selected original main effects generate products. The two-way stage forms
+pairwise products, and the next stage forms three-way products among the original
+main effects still selected. Each predictor appears once per product. Intercepts
+and compulsory terms remain main effects. All generated terms stay available in
+subsequent stages, and subsequent selection can discard a parent main effect.
+
+For named presets, the penalty is recalculated from the original selectable
+predictor count plus the generated products. Stage scores use a common final
+candidate count and the usual free-coefficient degrees of freedom. The best
+stage is retained. A numeric `lambda` remains fixed across stages.
+
+## Prediction and reproducibility
+
+Prediction accepts the original main-effect columns and creates the products
+it needs. Sparse inputs retain sparse storage. The model keeps a lightweight
+training-design view, avoiding a second copy of all original columns.
+
+```{r interaction-prediction}
+predict(fit,X[1:5,])
+fit$interactions$terms
+```
+
+The recipe includes the fitting specification, so the complete pipeline can be
+repeated with the original data:
+
+```{r interaction-repeat, eval=FALSE}
+repeated <- do.call(l0glmFit,c(list(X=X,y=y),fit$interactions$specification))
+```
+
+Explicit starting-zero exclusions also constrain products in the corresponding
+response channel. New products receive normalized-coordinate starts and prior
+mean zero. Predictor groups are supported; products with the same tuple of
+parent group labels form an interaction group.
+
+## Cross-validation and validation stopping
+
+```{r interaction-cv, eval=FALSE}
+cv <- l0glmTune(X,y,family=gaussian(),intercept=TRUE,interactions=2L,
+  tune='cv',nfolds=5L,nlambda=10L,relaxed=TRUE)
+predict(cv$fit_1se,X[1:5,])
+```
+
+Every training fold selects its own main effects and generates its own products.
+Full-data paths share a union of product rows for plotting, with zeros for terms
+absent from a fit. Independent validation data can also choose the best stage:
+pass `validation=list(X=V,y=v)`, using the original main-effect columns. Generation
+stops when validation deviance worsens.
+
+`control.interactions` bounds the candidate count and working-design size before
+products are constructed. See [interaction models](../reference/interaction_models.html)
+for the mathematical convention, controls and returned recipe.

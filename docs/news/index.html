@@ -21,6 +21,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
+    <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -58,14 +59,15 @@
 </ul></div>
 <div class="section level3">
 <h3 id="model-specification-and-selection-0-2-0-9002">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9002"></a></h3>
-<ul><li><p>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</p></li>
-<li><p>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</p></li>
-<li><p>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</p></li>
-<li><p>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</p></li>
-<li><p>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</p></li>
-<li><p>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</p></li>
-<li><p>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</p></li>
-<li><p>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</p></li>
+<ul><li>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</li>
+<li>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</li>
+<li>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</li>
+<li>Shared observation vectors stay compact across channels in fitting, native Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.</li>
+<li>Automatic information-criterion presets, lambda-path tuning, n-fold CV, one-standard-error models and coefficient-path plots. <code><a href="../reference/presetLambda.html">presetLambda()</a></code> returns AIC, BIC, GIC, EBIC or mBIC penalty values directly. Ordinary and special-family IC paths use the parameter counts reported by the S3 criterion methods, including multinomial zero-sum constraints.</li>
+<li>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</li>
+<li>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</li>
+<li>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</li>
+<li>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="high-dimensional-and-multichannel-computation-0-2-0-9002">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0-9002"></a></h3>

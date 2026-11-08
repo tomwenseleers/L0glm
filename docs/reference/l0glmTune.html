@@ -51,6 +51,7 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
+    <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -311,7 +312,12 @@ initialize the next fit.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Other arguments passed to <code>l0glmFit</code>, including:</p><ul><li><p><code>screen</code>, <code>nsis</code>, <code>screen.maxit</code>, <code>screen.nthreads</code>:
+<dd><p>Other arguments passed to <code>l0glmFit</code>, including:</p><ul><li><p><code>interactions</code>, <code>control.interactions</code>: staged products of
+selected main effects. <code>interactions=1L</code> adds pairwise terms and
+<code>2L</code> also considers three-way terms; <code>0L</code> (default)
+fits main effects only. CV repeats candidate generation within each training
+fold. See <a href="interaction_models.html">interaction_models</a> for starts, prediction and path output.</p></li>
+<li><p><code>screen</code>, <code>nsis</code>, <code>screen.maxit</code>, <code>screen.nthreads</code>:
 the screening strategy, candidate batch size, outer iteration limit and
 OpenMP screening thread count from <code><a href="l0glmFit.html">l0glmFit()</a></code>.
 The default <code>screen="auto"</code> enables ISIS exactly when

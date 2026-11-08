@@ -19,7 +19,7 @@ L0glm_group_refine <- function(fit,args,d,control) {
     s
   }
   decorate <- function(model) {
-    for(name in c('group','group.multiplier','group.allowed'))model[[name]] <- fit[[name]]
+    for(name in c('group','group.multiplier','group.allowed','group.cost.type'))model[[name]] <- fit[[name]]
     model$group.active <- L0glm_group_active(as.matrix(coef(model)),d$allowed,d$mandatory,d$grouped,groups)
     model$metrics <- model$objective <- NULL
     model

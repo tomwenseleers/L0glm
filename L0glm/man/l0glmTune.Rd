@@ -185,6 +185,11 @@ initialize the next fit.}
 
 \item{...}{Other arguments passed to \code{l0glmFit}, including:
 \itemize{
+\item \code{interactions}, \code{control.interactions}: staged products of
+selected main effects. \code{interactions=1L} adds pairwise terms and
+\code{2L} also considers three-way terms; \code{0L} (default)
+fits main effects only. CV repeats candidate generation within each training
+fold. See \link{interaction_models} for starts, prediction and path output.
 \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
 the screening strategy, candidate batch size, outer iteration limit and
 OpenMP screening thread count from \code{l0glmFit()}.

@@ -283,6 +283,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state), add = TRUE)
   data <- L0glm_ext_prepare(X, y, family, weights, offset, intercept, always.include,
                             nonnegative, normalize, start, prior.mean, control.family)
+  data$p_selectable <- L0glm_criterion_size(data$p_selectable,control.solver)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))
   args <- list(solver = solver, method = method, control.solver = control.solver, validation = validation)
   if (data$kind == "cox" && data$control$cox == "pcg" &&

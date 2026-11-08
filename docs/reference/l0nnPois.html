@@ -73,6 +73,7 @@ if coefficients of either sign are required."><meta property="og:image" content=
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
+    <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -166,7 +167,9 @@ if coefficients of either sign are required.</p>
 <span>  local.search <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  control.local <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  group.multiplier <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  group.multiplier <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  interactions <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  control.interactions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -638,6 +641,26 @@ By default, named IC presets charge each group's coefficient dimension;
 a numeric <code>lambda</code> charges once per group. Returned <code>group.multiplier</code>
 values reproduce the preset when reusing its numeric lambda. Tuning uses
 dimension-based multipliers throughout its path and training folds.</p></dd>
+
+
+<dt id="arg-interactions">interactions<a class="anchor" aria-label="anchor" href="#arg-interactions"></a></dt>
+<dd><p>Nonnegative integer controlling staged interaction
+generation. The default <code>0L</code> fits main effects.
+<code>1L</code> also considers pairwise products of selected main effects;
+<code>2L</code> then considers three-way products, and so on. Each product contains distinct
+original predictors. Intercepts, <code>always.include</code> and predictor
+group-0 terms remain as compulsory main effects. See Details.</p></dd>
+
+
+<dt id="arg-control-interactions">control.interactions<a class="anchor" aria-label="anchor" href="#arg-control-interactions"></a></dt>
+<dd><p>Named advanced controls: <code>max.terms=10000L</code>
+bounds the total number of generated products; <code>max.cells=5e7</code>
+bounds rows times columns in a working design; <code>tol=1e-8</code> is the
+relative tolerance for stopping when validation deviance worsens; and
+<code>criterion=NULL</code> chooses the information criterion used to select
+the final stage. A named <code>lambda</code> supplies that criterion; otherwise
+GIC is used. With <code>l0glmTune</code>, the tuning criterion is used, or GIC
+inside each CV training fit. Limits are checked before forming products.</p></dd>
 
 </dl></div>
     <div class="section level2">

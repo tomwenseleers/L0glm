@@ -58,6 +58,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   starts <- pilots <- preprocessing <- vector("list", nfolds)
   path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
   candidates <- vector("list", nfolds)
+  interaction_terms <- if(!is.null(args$interactions) && args$interactions>0L)vector('list',nfolds)else NULL
   preclustering <- if (isTRUE(args$precluster)) vector("list", nfolds) else NULL
   large <- as.double(nrow(args$X))*ncol(args$X) > 1e8
   if (large) invisible(gc())
@@ -89,7 +90,12 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
         candidates[k] <- list(train_args$control.solver$.screen.candidates)
       }
       active <- which(Matrix::rowSums(abs(fit$coefficients)) != 0)
-      eta <- as.matrix(design[validation, active, drop = FALSE] %*%
+      if(!is.null(interaction_terms)) {
+        if(is.null(interaction_terms[[k]]))interaction_terms[[k]] <- vector('list',length(lambdas))
+        interaction_terms[[k]][i] <- list(fit$interactions$terms)
+      }
+      eta <- if(!is.null(fit$interactions))predict(fit,args$X[validation,,drop=FALSE],
+        type='link',offset=off) else as.matrix(design[validation, active, drop = FALSE] %*%
         fit$coefficients[active, , drop = FALSE]) + off
       mu <- family$linkinv(eta)
       dim(mu) <- dim(eta)
@@ -118,6 +124,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
        starts = starts, pilots = pilots, preprocessing = preprocessing,
        lambda_train = fold_lambdas)
   if (!is.null(preclustering)) result$preclustering <- preclustering
+  if(!is.null(interaction_terms))result$interaction_terms <- interaction_terms
   if (screen.path == "preset") result$screen.candidates <- candidates
   result
 }

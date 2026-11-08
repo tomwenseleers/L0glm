@@ -47,6 +47,7 @@
 <li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
+    <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -830,6 +831,28 @@ parameters. See the <a href="../reference/local_search.html">control
 reference</a> and <a href="#appendix-local-search">Appendix A.11</a> for
 the complete interface and pseudocode.</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="staged-interaction-selection">Staged interaction selection<a class="anchor" aria-label="anchor" href="#staged-interaction-selection"></a>
+</h2>
+<p><code>interactions=1L</code> adds pairwise products of selected main
+effects; <code>2L</code> also considers three-way products. The default
+<code>0L</code> fits main effects. Each stage runs the same
+family-specific sparse fitting algorithm on the selected original main
+effects, compulsory terms and generated products. SIS/ISIS can select
+the starting main effects. Products are generated only among selected
+original predictors, with each predictor appearing once in a product.
+Compulsory terms remain main effects.</p>
+<p>At stage <span class="math inline">s\geq1</span>, let <span class="math inline">S_{s-1}</span> contain the selected original main
+effects. Generate <span class="math inline">\{\prod_{j\in
+A}X_j:A\subseteq S_{s-1}, |A|=s+1\}</span>, retain the existing product
+candidates and refit. A named preset uses the original selectable
+dimension plus the products generated so far. The best stage is chosen
+by a common IC using the final candidate count and free-coefficient
+degrees of freedom, or by independent validation deviance.
+Cross-validation repeats main-effect selection and product generation
+within each training fold. See the <a href="interactions.html">interaction tutorial</a> and <a href="../reference/interaction_models.html">reference</a> for the
+recipe, prediction and memory controls.</p>
 </div>
 <div class="section level2">
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>

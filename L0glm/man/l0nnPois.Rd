@@ -37,7 +37,9 @@ l0nnPois(
   local.search = "auto",
   control.local = list(),
   group = NULL,
-  group.multiplier = NULL
+  group.multiplier = NULL,
+  interactions = 0L,
+  control.interactions = list()
 )
 }
 \arguments{
@@ -469,6 +471,22 @@ By default, named IC presets charge each group's coefficient dimension;
 a numeric \code{lambda} charges once per group. Returned \code{group.multiplier}
 values reproduce the preset when reusing its numeric lambda. Tuning uses
 dimension-based multipliers throughout its path and training folds.}
+
+\item{interactions}{Nonnegative integer controlling staged interaction
+generation. The default \code{0L} fits main effects.
+\code{1L} also considers pairwise products of selected main effects;
+\code{2L} then considers three-way products, and so on. Each product contains distinct
+original predictors. Intercepts, \code{always.include} and predictor
+group-0 terms remain as compulsory main effects. See Details.}
+
+\item{control.interactions}{Named advanced controls: \code{max.terms=10000L}
+bounds the total number of generated products; \code{max.cells=5e7}
+bounds rows times columns in a working design; \code{tol=1e-8} is the
+relative tolerance for stopping when validation deviance worsens; and
+\code{criterion=NULL} chooses the information criterion used to select
+the final stage. A named \code{lambda} supplies that criterion; otherwise
+GIC is used. With \code{l0glmTune}, the tuning criterion is used, or GIC
+inside each CV training fit. Limits are checked before forming products.}
 }
 \value{
 An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:

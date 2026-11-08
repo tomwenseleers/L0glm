@@ -58,6 +58,8 @@ navbar:
           href: articles/controls.html
         - text: Groups of predictors
           href: articles/predictor-groups.html
+        - text: Interaction effects
+          href: articles/interactions.html
         - text: "---"
         - text: Regular GLM models
           href: articles/regular-glm.html
@@ -84,7 +86,7 @@ navbar:
       aria-label: Source code on GitHub
 articles:
   - title: Get started
-    contents: [L0glm, articles/selection, articles/controls, articles/predictor-groups]
+    contents: [L0glm, articles/selection, articles/controls, articles/predictor-groups, articles/interactions]
   - title: Model families
     contents: [articles/regular-glm, articles/negative-binomial, articles/multinomial, articles/cox]
   - title: Screening at scale
@@ -95,7 +97,7 @@ articles:
     contents: [articles/deconvolution]
 reference:
   - title: Fit, tune and compare sparse models
-    contents: [l0glmFit, l0glmTune, l0nnPois, sparseGLM, l0glmMetrics, preclustering, compulsory_terms, predictor_groups, local_search]
+    contents: [l0glmFit, l0glmTune, l0nnPois, sparseGLM, l0glmMetrics, preclustering, compulsory_terms, predictor_groups, interaction_models, local_search]
   - title: Predictions, summaries and information criteria
     contents: [model_predictions, model_summary, model_criteria, information_criteria, presetLambda]
   - title: Special families
