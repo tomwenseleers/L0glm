@@ -111,7 +111,7 @@ The [full comparison](https://tomwenseleers.github.io/L0glm/articles/performance
 also includes L0Learn, MCP, SCAD and adaptive LASSO variants on these harder
 Gaussian and logistic problems.
 
-## Single sample deconvolution
+## Single channel sparse deconvolution
 
 A blurred Poisson spike train has **10,000 observations, 10,000 candidate peak
 positions and 1,000 true peaks**.
@@ -124,7 +124,7 @@ See the [single-sample comparison](https://tomwenseleers.github.io/L0glm/article
 and [deconvolution tutorial](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
 for fitted signals, coefficient plots and code.
 
-## Application: sparse deconvolution
+## Application: sparse multichannel deconvolution to separate overlapping GC/MS peaks
 
 In **GC/MS analysis**, overlapping chromatographic peaks have distinct mass
 spectra. Regressing the observed signals on shifted copies of a peak-shape
