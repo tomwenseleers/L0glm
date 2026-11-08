@@ -49,9 +49,11 @@ million_cv = {row["method"]: row for row in million_lasso if row["tune"] == "5-f
 single = rows("single-metrics.csv")
 multi = rows("multi-metrics.csv")
 selection = rows("selection-comparison.csv")
+single_by_method = {row["method"]: row for row in single}
 multi_by_method = {row["method"]: row for row in multi}
 multi_relaxed_ratio = float(multi_by_method["relaxed_lasso_gic"]["seconds"]) / float(multi_by_method["L0glm"]["seconds"])
 fields = ["method", "tune", "seconds", "gic", "TP", "FP", "FN", "TN", "F1_score", "MCC"]
+highlight_fields = [f for f in fields if f not in {"FN", "TN"}]
 ratio = float(million_cv["lasso_cv"]["seconds"]) / float(million["seconds"])
 def group_label(raw):
     label = LABELS[raw].replace("LASSO", "group LASSO")
@@ -127,6 +129,21 @@ def difficulty_table(model):
     return "\n".join(lines)
 
 
+def abess_highlight():
+    data = {(r["model"], r["method"]): r for r in rows("support-difficulty.csv")
+            if int(r["p"]) == 20000 and r["tune"] == "gic"}
+    gaussian = data["gaussian", "L0glm"]
+    abess = data["gaussian", "abess"]
+    logistic = data["binomial", "L0glm"]
+    false_positives = ("no false positives" if float(logistic["FP"]) == 0
+                       else f'{float(logistic["FP"]):.1f} false positives')
+    return (f'With **20,000 predictors**, L0glm matches ABESS\'s Gaussian GIC and support recovery '
+            f'in **{float(gaussian["seconds"]):.2f} s versus {float(abess["seconds"]):.2f} s**. '
+            f'Its logistic fit takes **{float(logistic["seconds"]):.2f} s**, recovering '
+            f'**{float(logistic["TP"]):.1f} of {int(logistic["k"])} true effects** with '
+            f'**{false_positives}** on average across three replications.')
+
+
 def local_coordinate_table():
     data = rows("local-search-million-runs.csv")
     lines = ["| Search coordinates | Total seconds | Local-search seconds | GIC | TP | FP | F1 | MCC |",
@@ -158,11 +175,26 @@ content = {
         'The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.'
     ),
     "million-comparison": table(million_display, fields, bold_first=True),
+    "readme-million-comparison": table(
+        [million_display[0], million_cv["lasso_cv"], million_cv["relaxed_lasso_cv"]],
+        highlight_fields, bold_first=True),
     "million-speed": f'L0glm is **{ratio:.0f}× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.',
     "million-metrics": table([million], fields[2:]),
     "single-metrics": table(single, fields),
     "multi-metrics": table(multi_display, fields + ["within_row_F1_score", "within_row_MCC"]),
     "multi-home": table(multi_display, ["method","tune","seconds","gic","TP","FP","F1_score","MCC"]),
+    "readme-multi-comparison": table(
+        [{**multi_by_method[method], "method": group_label(method)}
+         for method in ("L0glm", "relaxed_lasso_gic", "relaxed_lasso_cv")],
+        highlight_fields, bold_first=True),
+    "readme-single-highlight": (
+        f'L0glm achieves **F1 {float(single[0]["F1_score"]):.3f} in {float(single[0]["seconds"]):.2f} s** '
+        'with its GIC preset, compared with '
+        f'**F1 {float(single_by_method["relaxed_lasso_cv"]["F1_score"]):.3f} '
+        f'in {float(single_by_method["relaxed_lasso_cv"]["seconds"]):.2f} s** '
+        'for fully relaxed LASSO tuned by five-fold CV.'
+    ),
+    "readme-abess-highlight": abess_highlight(),
     "multi-spectral": (
         'Among correctly located peaks, the recovered mass spectra have a within-row F1 of '
         f'**{float(multi[0]["within_row_F1_score"]):.3f}** and MCC of '

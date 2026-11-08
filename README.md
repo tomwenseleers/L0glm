@@ -52,7 +52,7 @@ The source package is in `L0glm/`. Windows source installation requires
 [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
 The special-family examples use `mgcv`; Cox also uses `survival`.
 
-## A one million predictor example
+## One million predictor example
 
 <!-- BEGIN million-intro -->
 This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
@@ -75,60 +75,59 @@ l0glmMetrics(fit, beta_true=beta)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
-<!-- BEGIN million-comparison -->
-| Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.84** | **2579** | **40** | **2** | **20** | **999938** | **0.784** | **0.797** |
-| LASSO | BIC path | 23.42 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
-| Relaxed LASSO | BIC path | 22.47 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
-| LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
-| Relaxed LASSO | 5-fold CV | 99.24 | 7413 | 20 | 252 | 40 | 999688 | 0.120 | 0.156 |
-<!-- END million-comparison -->
+<!-- BEGIN readme-million-comparison -->
+| Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **L0glm + ISIS** | **GIC preset** | **2.84** | **2579** | **40** | **2** | **0.784** | **0.797** |
+| LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 0.268 | 0.268 |
+| Relaxed LASSO | 5-fold CV | 99.24 | 7413 | 20 | 252 | 0.120 | 0.156 |
+<!-- END readme-million-comparison -->
 
 <!-- BEGIN million-speed -->
 L0glm is **42× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
 <!-- END million-speed -->
-L0glm uses ISIS, a GIC preset and a relaxed refit. Here LASSO and fully relaxed
-LASSO search up to 40 lambda values on the unscreened design using BIC or five-fold CV. BIC is included
-because GIC can select a null LASSO model at this dimension; all methods are
-also evaluated with the same GIC. CV uses common random folds.
 
+L0glm uses its GIC preset with automatic ISIS screening and relaxed fitting.
+Both LASSO methods use five-fold CV on paths of up to 40 lambda values.
 The recovered coefficients are close to their true values.
 
 ![Recovered versus true effects in the million-predictor example.](benchmarks/plots/website/million-coefficients.png)
 
-The dense design occupies about 4 GB. The [getting-started guide](https://tomwenseleers.github.io/L0glm/articles/L0glm.html)
-explains the example and prediction methods.
+See the [full comparison, including BIC-tuned LASSO](https://tomwenseleers.github.io/L0glm/articles/performance.html#one-million-predictor-example)
+and the [SIS/ISIS tutorial](https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html).
+The dense design occupies about 4 GB. ISIS is enabled automatically when
+`p_eligible > 10*n` and uses all physical cores by default.
 
-For high dimensional datasets like this, **ISIS** (Iterative Sure Independence
-Screening) is used to iteratively add promising predictors for joint sparse fitting.
-The default `screen="auto"` enables ISIS exactly when `p_eligible > 10*n`.
-Eligible predictors exclude mandatory terms and predictors excluded by zero
-starts in every response channel. Screening uses all physical cores by default.
-`l0glmTune()` applies the same rule separately to each full-data or CV training
-fit, using its training row count. See the
-[high dimensional tutorial](https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html) for the details.
+## Abess benchmark problems
+
+<!-- BEGIN readme-abess-highlight -->
+With **20,000 predictors**, L0glm matches ABESS's Gaussian GIC and support recovery in **0.37 s versus 1.80 s**. Its logistic fit takes **0.54 s**, recovering **14.7 of 20 true effects** with **no false positives** on average across three replications.
+<!-- END readme-abess-highlight -->
+
+The [full comparison](https://tomwenseleers.github.io/L0glm/articles/performance.html#abess-benchmark-problems)
+also includes L0Learn, MCP, SCAD and adaptive LASSO variants on these harder
+Gaussian and logistic problems.
+
+## Single sample deconvolution
+
+A blurred Poisson spike train has **10,000 observations, 10,000 candidate peak
+positions and 1,000 true peaks**.
+
+<!-- BEGIN readme-single-highlight -->
+L0glm achieves **F1 0.845 in 0.14 s** with its GIC preset, compared with **F1 0.534 in 2.77 s** for fully relaxed LASSO tuned by five-fold CV.
+<!-- END readme-single-highlight -->
+
+See the [single-sample comparison](https://tomwenseleers.github.io/L0glm/articles/performance.html#single-sample-deconvolution)
+and [deconvolution tutorial](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
+for fitted signals, coefficient plots and code.
 
 ## Application: sparse deconvolution
 
 In **GC/MS analysis**, overlapping chromatographic peaks have distinct mass
-spectra. Recovering their peak times and spectra together is a natural application
-of grouped L₀ regression. This Poisson simulation has **10,000 observations,
-10,000 candidate peak locations, 1,000 true peaks and 226 mass channels**.
-
-By regressing the observed signal on a design matrix consisting of shifted
-copies of the peak-shape function (or "point spread function"), L0glm recovers
-the underlying peaks and their mass spectra in a highly efficient and accurate way.
-
-<!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
-<!-- END multi-speed -->
-<!-- BEGIN multi-spectral -->
-Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
-<!-- END multi-spectral -->
-A direct `l0glmFit()` call uses `lambda="gic"` and four cores.
-The competing methods select lambda from a ten-value grid using GIC or
-five-fold cross-validation.
+spectra. Regressing the observed signals on shifted copies of a peak-shape
+function lets L0glm select peak times jointly across mass channels and recover
+their spectra. This Poisson simulation has **10,000 scans, 10,000 candidate peak
+positions, 1,000 true peaks and all 226 informative mass channels**.
 
 ```r
 multi <- simul(method=4L, n=10000L, p=10000L,
@@ -137,73 +136,37 @@ fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
   lambda="gic", nonnegative=TRUE, ncores=4L)
 ```
 
-<!-- BEGIN multi-home -->
+<!-- BEGIN multi-speed -->
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
+<!-- END multi-speed -->
+
+<!-- BEGIN readme-multi-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 0.690 | 0.685 |
+| **L0glm** | **GIC preset** | **8.03** | **5606331** | **944** | **11** | **0.966** | **0.962** |
 | Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 0.820 | 0.802 |
-| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
 | Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 0.781 | 0.769 |
-<!-- END multi-home -->
+<!-- END readme-multi-comparison -->
 
-![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](benchmarks/plots/website/deconvolution-multi-large.png)
-
-The coefficient comparison shows how closely L0glm recovers the individual
-mass-spectral intensities. GIC tuned relaxed group LASSO is the strongest alternative in
-this benchmark, but is 94 times slower and has a 28 times higher false positive rate.
+The coefficient comparison shows how closely L0glm recovers individual
+mass-spectral intensities.
 
 ![True versus estimated coefficients across all channels for L0glm and relaxed group LASSO.](benchmarks/plots/website/deconvolution-multi-home-coefficients.png)
 
-L0glm fits the multivariate Poisson model directly. The group-LASSO methods use a
-weighted-Gaussian approximation with shared observation weights; CV uses four
-parallel workers. [Explore the deconvolution examples and full
-benchmark tables →](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
+<!-- BEGIN multi-spectral -->
+Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
+<!-- END multi-spectral -->
 
-For broad or asymmetric peaks, [logconNMF()](https://tomwenseleers.github.io/logconNMF/reference/logconNMF.html)
-recovers log-concave elution profiles and spectra with a smooth background.
-[gcmsDeco()](https://tomwenseleers.github.io/GCMSprime/reference/gcmsDeco.html) runs the
-workflow directly from an ANDI-MS `.cdf` chromatogram and exports the compound
-spectra to a NIST-compatible `.msp` library.
-[estimatePSF()](https://tomwenseleers.github.io/logconNMF/reference/estimatePSF.html)
-provides automatic standard or blind calibration and returns a constant or
-smoothly varying sparse PSF design.
+L0glm fits the Poisson model directly with four cores. The group-LASSO methods
+use a weighted Gaussian approximation and select from ten lambda values;
+deconvolution CV uses four parallel workers.
+See the [full multichannel comparison](https://tomwenseleers.github.io/L0glm/articles/performance.html#multichannel-deconvolution)
+and [heatmaps and fitted signals](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html).
 
-<details>
-<summary><strong>Single channel deconvolution</strong></summary>
-
-The single-channel Poisson example also has **10,000 observations, 10,000
-candidate peak locations and 1,000 true peaks**.
-
-```r
-single <- simul(method=2L, n=10000L, p=10000L,
-  n_nonzero=1000L, seed=2L)
-fit_single <- l0glmFit(single$X, single$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, relaxed=TRUE)
-```
-
-<!-- BEGIN single-speed -->
-L0glm recovers **845 of 1,000 true peaks with 154 false positives** in **0.14 seconds**. In this benchmark it is **1.7× faster than GIC-tuned LASSO** and **20× faster than relaxed LASSO tuned by five-fold CV**.
-<!-- END single-speed -->
-
-<!-- BEGIN single-metrics -->
-| Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 0.14 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
-| LASSO | GIC path | 0.24 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
-| Relaxed LASSO | GIC path | 0.42 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
-| LASSO | 5-fold CV | 2.72 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
-| Relaxed LASSO | 5-fold CV | 2.77 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
-<!-- END single-metrics -->
-
-![True versus estimated coefficients in single-channel Poisson deconvolution.](benchmarks/plots/website/deconvolution-single-coefficients-large.png)
-
-LASSO and relaxed LASSO use Gaussian weighted least squares with observation
-weights `1/(y+0.1)`. They search ten lambda values using GIC or five-fold CV;
-L0glm uses one GIC preset. The [deconvolution tutorial](https://tomwenseleers.github.io/L0glm/articles/deconvolution.html)
-also shows a readable zoom of the observed and fitted signals.
-
-</details>
+For compound-specific peak shapes, [logconNMF](https://tomwenseleers.github.io/logconNMF/)
+fits log-concave profiles and spectra with a smooth background;
+[GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the complete
+chromatogram-to-spectra workflow.
 
 ## Model selection and special families
 
@@ -288,30 +251,20 @@ each ridge step estimates a Gaussian-prior MAP, then the prior scales adapt to
 the fitted effects. Zero-centered skeptical priors tighten around small effects
 and relax around strong ones.
 
-## Benchmarks and reproducibility
+## Reproduce and extend
 
-These tables and figures use the same measurements as the
-[website benchmarks](https://tomwenseleers.github.io/L0glm/articles/performance.html). They were run on an
-**HP ZBook Fury 17.3-inch G8 Mobile Workstation**, with an **Intel Core i9-11950H
-at 2.60 GHz, 8 physical cores and 16 logical cores**, using Windows,
-R 4.5.0 and OpenBLAS with one BLAS thread.
+The [performance page](https://tomwenseleers.github.io/L0glm/articles/performance.html)
+gives the complete comparisons, simulation settings and timing conventions.
+These benchmarks use an **HP ZBook Fury G8**, **Intel Core i9-11950H at 2.60 GHz**,
+**8 physical / 16 logical cores**, Windows, R 4.5.0 and OpenBLAS.
 
-L0glm timings are medians of three matching fits. The million-predictor example
-uses eight screening threads. Multichannel deconvolution uses four fitting
-threads, and deconvolution CV uses four parallel workers, including worker
-startup and the full-data refit in its timings. The million-predictor LASSO
-comparison uses the common-scoring CV loop with serial folds. Simulation and
-final metric reporting are excluded. Known coefficient truth is used only to
-evaluate recovery.
-
-- [Website benchmark runner](benchmarks/benchmark_website_examples.R): GIC-preset fits and deconvolution comparisons.
-- [Million-predictor LASSO comparison](benchmarks/benchmark_million_lasso.R): BIC and five-fold CV workflows.
-- [Published measurements and plotting instructions](benchmarks/plots/website/README.md).
+- [Benchmark scripts and measurements](benchmarks/plots/website/README.md).
 - [Fit examples](L0glm/examples/l0glmFit.R) and [tuning examples](L0glm/examples/l0glmTune.R).
+- Use [`sparseGLM()`](https://tomwenseleers.github.io/L0glm/reference/sparseGLM.html)
+  to compare methods on your own data.
 
-Run `Rscript benchmarks/render_readme.R` to regenerate this README from the
-shared published benchmark tables and figures. To obtain new measurements,
-run the benchmark scripts first.
+Run `Rscript benchmarks/render_readme.R` to regenerate these highlights from
+the shared benchmark measurements and figures.
 
 ## Citation
 
