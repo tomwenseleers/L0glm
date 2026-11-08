@@ -41,7 +41,9 @@ l0glmFit(
   validation = NULL,
   precluster = FALSE,
   cluster.refit = TRUE,
-  control.precluster = list()
+  control.precluster = list(),
+  local.search = FALSE,
+  control.local = list()
 )
 }
 \arguments{
@@ -548,6 +550,13 @@ at the requested lambda. This is separate from \code{relaxed}.}
 screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 \code{\link{preclustering}} for all entries.}
+
+\item{local.search}{Logical, default \code{FALSE}. After fitting, including
+SIS/ISIS and any original-channel refit, optionally refine the support by
+additions, deletions and small exchanges. See \link{local_search}.}
+
+\item{control.local}{Named advanced controls for the optional support search;
+see \link{local_search}. Ignored when \code{local.search=FALSE}.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.
@@ -581,6 +590,9 @@ final iteration of \code{l0glmFit}}
 \item{\code{screening}}{screening method, batch size, candidate/retained rows,
 outer iteration history, best round and stopping information when screening
 is used; otherwise absent (\code{NULL}).}
+\item{\code{local.search}}{when enabled, initial/final target values, accepted
+support moves, candidate counts, timing and the initial adaptive-ridge state;
+see \link{local_search}.}
 \item{\code{validation}}{when requested, validation deviance and separate
 \code{selection} and \code{relaxed} diagnostics, including the best iteration,
 number of attempted iterations, stopping flag and per-iteration history.

@@ -81,6 +81,8 @@ errors and Wald tests are not calculated for the selected penalized model.
 Screened fits display the screening method, number of rounds, chosen round,
 batch size and screening thread count; summaries retain their complete
 \code{screening} diagnostics.
+Refined models also report accepted local-search steps and retain the
+complete \code{local.search} diagnostics in their summaries.
 
 Convergence counts use the last recorded pass for each stage and channel,
 rather than counting intermediate grouped-selection passes as final failures.

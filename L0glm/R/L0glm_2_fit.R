@@ -410,6 +410,11 @@
 #'   screening. Defaults include at most 32 groups, Ward clustering,
 #'   GIC cut selection, unit row bins and a screening factor of 0.1. See
 #'   \code{\link{preclustering}} for all entries.
+#' @param local.search Logical, default \code{FALSE}. After fitting, including
+#'   SIS/ISIS and any original-channel refit, optionally refine the support by
+#'   additions, deletions and small exchanges. See \link{local_search}.
+#' @param control.local Named advanced controls for the optional support search;
+#'   see \link{local_search}. Ignored when \code{local.search=FALSE}.
 #' @param group.maxit Integer  specifying the maximum number of iterations to
 #'   perform for the group penalized fitting procedure when \code{grouped =
 #'   TRUE}. In each iteration, the columns of the response matrix \code{y} will
@@ -863,6 +868,9 @@
 #' \item{\code{screening}}{screening method, batch size, candidate/retained rows,
 #' outer iteration history, best round and stopping information when screening
 #' is used; otherwise absent (\code{NULL}).}
+#' \item{\code{local.search}}{when enabled, initial/final target values, accepted
+#' support moves, candidate counts, timing and the initial adaptive-ridge state;
+#' see \link{local_search}.}
 #' \item{\code{validation}}{when requested, validation deviance and separate
 #' \code{selection} and \code{relaxed} diagnostics, including the best iteration,
 #' number of attempted iterations, stopping flag and per-iteration history.
@@ -958,7 +966,15 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       validation    = NULL,
                       precluster    = FALSE,
                       cluster.refit = TRUE,
-                      control.precluster = list()) {
+                      control.precluster = list(),
+                      local.search = FALSE,
+                      control.local = list()) {
+  if (!identical(local.search, FALSE)) {
+    mode <- L0glm_local_mode(local.search)
+    supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
+    arguments <- mget(supplied, envir=environment(), inherits=FALSE)
+    return(L0glm_local_fit(l0glmFit, arguments, mode, control.local))
+  }
   L0glm_precluster_flags(precluster,cluster.refit)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)

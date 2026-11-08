@@ -165,6 +165,13 @@
 #'   from the preset fit. Each lambda estimates its own coefficients and can
 #'   select any subset of the pool. In CV, each training fold learns its own
 #'   pool at the grid point nearest the preset, scaled to that fold.
+#' @param local.search Logical, default \code{FALSE}. Apply optional support
+#'   refinement after each complete full-data or CV training fit, including
+#'   SIS/ISIS screening. Pilot initializers do not run it. See
+#'   \code{\link{local_search}} for moves, targets and diagnostics.
+#' @param control.local Named list controlling local support refinement;
+#'   see \code{\link{local_search}}. Unless supplied explicitly, its
+#'   \code{mu.floor} inherits \code{mu_floor} for consistent scoring.
 #' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
 #' \item \code{screen}, \code{nsis}, \code{screen.maxit}, \code{screen.nthreads}:
@@ -402,13 +409,23 @@ l0glmTune <- function(X, y,
                        lambda_min   = 2,
                        start        = NULL,
                        ...,
-                       screen.path  = c("independent", "preset"))
+                       screen.path  = c("independent", "preset"),
+                       local.search = FALSE,
+                       control.local = list())
 {
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
   screen.path <- match.arg(screen.path)
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   dots <- list(...)
+  L0glm_local_mode(local.search)
+  if (!identical(local.search, FALSE)) {
+    local_floor_supplied <- "mu.floor"%in%names(control.local)
+    control.local <- L0glm_local_control(control.local,dots)
+    if (!local_floor_supplied) control.local$mu.floor <- mu_floor
+    dots$local.search <- local.search
+    dots$control.local <- control.local
+  }
   precluster <- if ("precluster" %in% names(dots)) dots$precluster else FALSE
   cluster.refit <- if ("cluster.refit" %in% names(dots)) dots$cluster.refit else TRUE
   L0glm_precluster_flags(precluster, cluster.refit)

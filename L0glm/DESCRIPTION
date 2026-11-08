@@ -13,6 +13,7 @@ Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
 Depends: R (>= 3.5.0)
 Imports: Matrix,
          Rcpp,
+         digest,
          abess,
          dynamicTreeCut,
          fastcluster,

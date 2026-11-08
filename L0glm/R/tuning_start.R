@@ -5,6 +5,7 @@ L0glm_pilot_start <- function(args, bounds) {
   lambdas[c(1L, length(lambdas))] <- bounds
   args$start <- NULL
   args$relaxed <- FALSE
+  args$local.search <- FALSE
   total <- absolute <- largest <- direction <- NULL
   timing <- numeric(length(lambdas))
   support <- integer(length(lambdas))

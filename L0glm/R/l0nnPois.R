@@ -99,7 +99,15 @@ l0nnPois <- function(X,
                      validation    = NULL,
                      precluster    = FALSE,
                      cluster.refit = TRUE,
-                     control.precluster = list()) {
+                     control.precluster = list(),
+                     local.search = FALSE,
+                     control.local = list()) {
+  if (!identical(local.search, FALSE)) {
+    mode <- L0glm_local_mode(local.search)
+    supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
+    arguments <- mget(supplied, envir=environment(), inherits=FALSE)
+    return(L0glm_local_fit(l0nnPois, arguments, mode, control.local, nonnegative=TRUE))
+  }
   L0glm_precluster_flags(precluster,cluster.refit)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
     stop("Invalid solver choice; use eigen, bigGlm, or osqp.", call. = FALSE)

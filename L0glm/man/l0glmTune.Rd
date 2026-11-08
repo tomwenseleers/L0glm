@@ -23,7 +23,9 @@ l0glmTune(
   lambda_min = 2,
   start = NULL,
   ...,
-  screen.path = c("independent", "preset")
+  screen.path = c("independent", "preset"),
+  local.search = FALSE,
+  control.local = list()
 )
 }
 \arguments{
@@ -234,6 +236,15 @@ to search at each lambda or \code{"preset"} to reuse the candidate pool
 from the preset fit. Each lambda estimates its own coefficients and can
 select any subset of the pool. In CV, each training fold learns its own
 pool at the grid point nearest the preset, scaled to that fold.}
+
+\item{local.search}{Logical, default \code{FALSE}. Apply optional support
+refinement after each complete full-data or CV training fit, including
+SIS/ISIS screening. Pilot initializers do not run it. See
+\code{\link{local_search}} for moves, targets and diagnostics.}
+
+\item{control.local}{Named list controlling local support refinement;
+see \code{\link{local_search}}. Unless supplied explicitly, its
+\code{mu.floor} inherits \code{mu_floor} for consistent scoring.}
 }
 \value{
 \code{l0glmTune} returns a list containing the following elements:

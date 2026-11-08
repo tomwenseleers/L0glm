@@ -33,6 +33,8 @@
 #' Screened fits display the screening method, number of rounds, chosen round,
 #' batch size and screening thread count; summaries retain their complete
 #' `screening` diagnostics.
+#' Refined models also report accepted local-search steps and retain the
+#' complete \code{local.search} diagnostics in their summaries.
 #'
 #' Convergence counts use the last recorded pass for each stage and channel,
 #' rather than counting intermediate grouped-selection passes as final failures.
@@ -144,6 +146,7 @@ L0glm_model_info <- function(object) {
     selected_rows=selected, mandatory_rows=mandatory,
     nonzero=sum(beta != 0) - sum(beta[mandatory, , drop=FALSE] != 0),
     lambda=object$init.lambda, grouped=object$grouped, screening=object$screening,
+    local.search=object$local.search,
     convergence=L0glm_summary_convergence(object$convergence))
 }
 
@@ -168,6 +171,9 @@ L0glm_print_model_info <- function(x, digits) {
   if (length(x$lambda) && !all(is.na(x$lambda)))
     cat("Lambda:", paste(format(x$lambda, digits=digits), collapse=", "), "\n")
   if (x$m > 1L && !is.null(x$grouped)) cat("Grouped selection:", x$grouped, "\n")
+  if (isTRUE(x$local.search$applied))
+    cat(sprintf("Local search: %d accepted steps   %d candidate refits   %.3g s\n",
+      nrow(x$local.search$history)-1L,x$local.search$evaluations,x$local.search$seconds))
   if (!is.null(x$screening)) {
     cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d",
       x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))

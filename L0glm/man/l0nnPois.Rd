@@ -33,7 +33,9 @@ l0nnPois(
   validation = NULL,
   precluster = FALSE,
   cluster.refit = TRUE,
-  control.precluster = list()
+  control.precluster = list(),
+  local.search = FALSE,
+  control.local = list()
 )
 }
 \arguments{
@@ -427,17 +429,25 @@ retaining OpenMP threading across channels and restoring the best selection
 or relaxed-refit checkpoint. Validation predictors are shared across threads.}
 
 \item{precluster}{Enable response-channel preclustering, default \code{FALSE}.
-Currently supports nonnegative identity-link Poisson models. See
+Supports identity-link Gaussian and nonnegative identity-link Poisson,
+quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 \code{\link{preclustering}} for the fitting sequence and mathematical model.}
 
 \item{cluster.refit}{With preclustering, refine selection on every original
-channel (default \code{TRUE}). \code{FALSE} returns a model of summed cluster outcomes
+channel (default \code{TRUE}). \code{FALSE} returns a model of aggregated cluster outcomes
 at the requested lambda. This is separate from \code{relaxed}.}
 
 \item{control.precluster}{Named advanced settings for clustering and
-screening. Defaults include at most 32 groups, Ward Poisson clustering,
+screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 \code{\link{preclustering}} for all entries.}
+
+\item{local.search}{Logical, default \code{FALSE}. After fitting, including
+SIS/ISIS and any original-channel refit, optionally refine the support by
+additions, deletions and small exchanges. See \link{local_search}.}
+
+\item{control.local}{Named advanced controls for the optional support search;
+see \link{local_search}. Ignored when \code{local.search=FALSE}.}
 }
 \value{
 An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:

@@ -21,6 +21,10 @@
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
 * Constrained updates for nonnegative compulsory terms and relaxed-fit boundary
   checks use the specified likelihood.
+* Optional final support refinement tests additions, deletions and small
+  exchanges after SIS/ISIS and original-channel refitting. It supports the
+  ordinary and special families, respects starting exclusions and constraints,
+  and is available within information-criterion tuning and CV training fits.
 * The shared native quadratic solver offers checked Cholesky solves with
   iterative refinement and a rank-revealing fallback for profile-shape updates.
   Optional feasible starting values accelerate repeated quadratic subproblems.
