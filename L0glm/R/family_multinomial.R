@@ -148,12 +148,24 @@ L0glm_ext_multinomial_basis <- function(D, B, prior) {
     if (s < 2L) next
     Q <- L0glm_ext_contrasts(s); d <- D[j, keep]
     unpenalized <- all(d == 0)
-    R <- if (unpenalized) diag(s - 1L) else chol(crossprod(Q, Q * d))
-    T <- Q %*% backsolve(R, diag(s - 1L))
+    R <- if (unpenalized) diag(s - 1L) else
+      tryCatch(chol(crossprod(Q, Q * d)),error=function(e)NULL)
+    if (is.null(R)) {
+      # Whiten the diagonal penalty before constructing its zero-sum plane.
+      # Householder avoids a numerically singular Q' D Q for extreme AR weights.
+      root <- sqrt(d)
+      v <- 1/root;v <- v/max(v);v <- v/sqrt(sum(v^2));v[1L] <- v[1L]+1
+      U <- (diag(s)-2*tcrossprod(v)/sum(v^2))[,-1L,drop=FALSE]
+      T <- U/root
+      seed <- as.numeric(crossprod(U,root*B[j,keep]))
+    } else {
+      T <- Q %*% backsolve(R, diag(s - 1L))
+      seed <- as.numeric(R %*% crossprod(Q, B[j, keep]))
+    }
     entries <- which(matrix(TRUE, s, s - 1L), arr.ind = TRUE)
     ii <- c(ii, j + (keep[entries[, 1L]] - 1L) * p)
     jj <- c(jj, count + entries[, 2L]); xx <- c(xx, as.numeric(T))
-    start <- c(start, as.numeric(R %*% crossprod(Q, B[j, keep])))
+    start <- c(start, seed)
     center <- c(center, if (unpenalized) numeric(s - 1L) else as.numeric(crossprod(T, d * prior[j, keep])))
     penalty <- c(penalty, rep(if (unpenalized) 0 else 1, s - 1L))
     count <- count + s - 1L

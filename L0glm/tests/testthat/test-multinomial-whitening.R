@@ -1,0 +1,10 @@
+test_that('entrywise CLR whitening remains finite at extreme ridge ratios', {
+  D <- rbind(c(1e38,1,1),c(1,1e38,1),c(1,1,1e38))
+  B <- rbind(c(1e-19,-1,1-1e-19),c(-1,1e-19,1-1e-19),c(-1,1-1e-19,1e-19))
+  result <- L0glm_ext_multinomial_basis(D,B,matrix(0,3,3))
+  T <- as.matrix(result$map)
+  expect_true(all(is.finite(T)))
+  expect_equal(crossprod(T,as.numeric(D)*T),diag(6),tolerance=1e-10)
+  expect_equal(matrix(T%*%result$start,3,3),B,tolerance=1e-10)
+  expect_equal(rowSums(matrix(T%*%result$start,3,3)),rep(0,3),tolerance=1e-10)
+})
