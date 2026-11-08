@@ -652,7 +652,10 @@ entries in a nonzero row.
 Every trial is refitted on its proposed support without the adaptive-ridge
 penalty, retaining its observation weights, offsets, mandatory terms and
 coefficient constraints. The current coefficients initialize the restricted
-fit. Unconstrained Gaussian identity-link trials use a direct least-squares
+fit; newly admitted ordinary coefficients receive a small nonzero seed of
+\(10^{-6}\), and excluded entries stay zero. Multinomial starts are recentered
+to CLR coordinates with their entry masks imposed explicitly.
+Unconstrained Gaussian identity-link trials use a direct least-squares
 solve; other trials use the appropriate GLM, negative-binomial, multinomial or
 Cox engine. Free Gaussian scale is profiled in scoring, estimated NB shapes are
 updated in refitting, and quasi models use a common dispersion for comparisons.

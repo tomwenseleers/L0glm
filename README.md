@@ -55,7 +55,7 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 ## A one million predictor example
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **6.52 seconds** and recovers **40 true effects with 2 false positives**.
+This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
 <!-- END million-intro -->
 
 ```r
@@ -78,7 +78,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **6.52** | **2579** | **40** | **2** | **20** | **999938** | **0.784** | **0.797** |
+| **L0glm + ISIS** | **GIC preset** | **2.84** | **2579** | **40** | **2** | **20** | **999938** | **0.784** | **0.797** |
 | LASSO | BIC path | 23.42 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
 | Relaxed LASSO | BIC path | 22.47 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
 | LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
@@ -86,7 +86,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- END million-comparison -->
 
 <!-- BEGIN million-speed -->
-L0glm is **19× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+L0glm is **42× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
 <!-- END million-speed -->
 L0glm uses ISIS, a GIC preset and a relaxed refit. Here LASSO and fully relaxed
 LASSO search up to 40 lambda values on the unscreened design using BIC or five-fold CV. BIC is included

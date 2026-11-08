@@ -1,6 +1,7 @@
 """Publish the same measured benchmark tables in the website and README."""
 import csv
 import re
+from statistics import median
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -106,6 +107,42 @@ def local_search_table():
     return "\n".join(lines)
 
 
+def difficulty_table(model):
+    methods = (("L0glm", "gic"), ("abess", "gic"), ("L0Learn", "gic"),
+               ("lasso", "gic"), ("relaxed_lasso", "gic"),
+               ("adaptive_lasso", "gic"), ("adaptive_relaxed_lasso", "gic"),
+               ("MCP", "gic"), ("SCAD", "gic"), ("lasso", "cv"), ("relaxed_lasso", "cv"))
+    data = {(int(r["p"]), r["method"], r["tune"]): r
+            for r in rows("support-difficulty.csv") if r["model"] == model}
+    prediction = "Test RMSE" if model == "gaussian" else "Test AUC"
+    lines = [f"| Predictors | Method | Selection | {prediction} | TP | FP | F1 | MCC | Seconds |",
+             "|--:|:--|:--|--:|--:|--:|--:|--:|--:|"]
+    for p in sorted({key[0] for key in data}):
+        for method, tune in methods:
+            r = data[p, method, tune]
+            selection = "5-fold CV" if tune == "cv" else "GIC preset" if method == "L0glm" else "GIC path"
+            lines.append(f'| {p:,} | {LABELS.get(method, method)} | {selection} | '
+                         f'{float(r["prediction"]):.3f} | {float(r["TP"]):.1f} | '
+                         f'{float(r["FP"]):.1f} | {float(r["F1"]):.3f} | '
+                         f'{float(r["MCC"]):.3f} | {float(r["seconds"]):.2f} |')
+    return "\n".join(lines)
+
+
+def local_coordinate_table():
+    data = rows("local-search-million-runs.csv")
+    lines = ["| Search coordinates | Total seconds | Local-search seconds | GIC | TP | FP | F1 | MCC |",
+             "|:--|--:|--:|--:|--:|--:|--:|--:|"]
+    for coordinates, label in (("original", "Original predictor space"),
+                               ("screened", "Retained screening pool")):
+        runs = [r for r in data if r["coordinates"] == coordinates]
+        r = runs[0]
+        lines.append(f'| {label} | {median(float(x["seconds"]) for x in runs):.2f} | '
+                     f'{median(float(x["local_seconds"]) for x in runs):.2f} | '
+                     f'{float(r["gic"]):.1f} | {r["TP"]} | {r["FP"]} | '
+                     f'{float(r["F1_score"]):.3f} | {float(r["MCC"]):.3f} |')
+    return "\n".join(lines)
+
+
 content = {
     "million-intro": (
         "This Gaussian simulation has **one million predictors**, 500 observations and "
@@ -140,6 +177,9 @@ content = {
     "abess-gaussian": abess_table("gaussian"),
     "abess-binomial": abess_table("binomial"),
     "local-search-comparison": local_search_table(),
+    "difficulty-gaussian": difficulty_table("gaussian"),
+    "difficulty-binomial": difficulty_table("binomial"),
+    "local-coordinate-comparison": local_coordinate_table(),
 }
 paths = [ROOT/"README.Rmd", ROOT/"README.md", ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))

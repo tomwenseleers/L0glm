@@ -79,3 +79,43 @@ benchmark_local_deconvolution <- function(output = "benchmarks/plots/website",
   }
   invisible(do.call(rbind, records))
 }
+
+# Compare the same search in original and retained-screening coordinates.
+# testthat supplies a temporary binding change for the full-coordinate control.
+benchmark_local_million <- function(output = "benchmarks/plots/website", repetitions = 3L) {
+  stopifnot(requireNamespace("testthat", quietly = TRUE))
+  dir.create(output, recursive = TRUE, showWarnings = FALSE)
+  RhpcBLASctl::blas_set_num_threads(1L)
+  RhpcBLASctl::omp_set_num_threads(1L)
+  set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
+  n <- 500L; p <- 1000000L
+  X <- matrix(rnorm(n*p), n, p)
+  active <- sample.int(p, 60L)
+  beta <- numeric(p); beta[active] <- runif(60L, -.8, .8)
+  set.seed(1)
+  y <- as.numeric(X[,active] %*% beta[active]) + rnorm(n)
+  records <- list(); reference <- NULL
+  for (repetition in seq_len(repetitions)) {
+    order <- if (repetition %% 2L) c("original", "screened") else c("screened", "original")
+    for (coordinates in order) {
+      gc()
+      seconds <- system.time(fit <- if (coordinates == "original")
+        testthat::with_mocked_bindings(L0glm::l0glmFit(X,y),
+          L0glm_local_workspace=function(...)NULL, .package="L0glm") else
+        L0glm::l0glmFit(X,y))[["elapsed"]]
+      search <- fit$local.search
+      answer <- list(coefficients=coef(fit), history=search$history, proposals=search$proposals)
+      if (is.null(reference)) reference <- answer else
+        stopifnot(isTRUE(all.equal(answer, reference, tolerance=1e-10)))
+      metrics <- L0glm::l0glmMetrics(fit, beta_true=beta)
+      records[[length(records)+1L]] <- data.frame(repetition, coordinates, seconds,
+        local_seconds=search$seconds, screen_seconds=search$screen.seconds,
+        refit_seconds=search$refit.seconds, evaluations=search$evaluations,
+        metrics[c("gic","TP","FP","F1_score","MCC")])
+      write.csv(do.call(rbind, records), file.path(output,"local-search-million-runs.csv"),
+        row.names=FALSE)
+      rm(fit, search, answer)
+    }
+  }
+  invisible(do.call(rbind, records))
+}
