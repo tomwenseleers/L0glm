@@ -38,7 +38,7 @@ within each channel. `grouped=TRUE` pools its coefficients across channels.
 Joint multinomial fits pool the identifiable CLR coefficients across categories.
 
 ```{r grouped-cv, eval=FALSE}
-cv <- l0glmTune(X,y,group=group,intercept=TRUE,relaxed=TRUE,
+cv <- l0glmTune(X,y,family=gaussian(),group=group,intercept=TRUE,relaxed=TRUE,
   tune='cv',nfolds=5,nlambda=10)
 predict(cv$fit_1se,X[1:5,])
 ```
