@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,14 +79,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>The L0glm algorithm and its foundations</h1>
-            
-      
+
+
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/algorithm.Rmd" class="external-link"><code>vignettes/articles/algorithm.Rmd</code></a></small>
       <div class="d-none name"><code>algorithm.Rmd</code></div>
     </div>
 
-    
-    
+
+
 <div class="section level2">
 <h2 id="generalized-linear-models">Generalized linear models<a class="anchor" aria-label="anchor" href="#generalized-linear-models"></a>
 </h2>
@@ -270,6 +270,22 @@ targets</p>
 <p>This objective favours a compact support without the persistent
 linear shrinkage of an L1 penalty. The optional relaxed refit estimates
 effects on the selected support with negligible ridge penalization.</p>
+<p><strong>Selection units and model dimensions.</strong> Grouping
+determines which predictors enter together. Reported information
+criteria charge the dimension of the fitted model: ordinary multichannel
+GLMs and NB count active coefficient entries; a grouped multinomial row
+has <span class="math inline">C-1</span> dimensions for <span class="math inline">C</span> categories. Ungrouped CLR models count
+active entries minus active rows. Mandatory terms and estimated noise
+parameters also contribute dimensions. IC tuning and the default local
+support search use these same counts. The row-count L0 objective is
+retained separately in the metrics.</p>
+<p>For the latent-factor models in <a href="https://tomwenseleers.github.io/logconNMF/" class="external-link">logconNMF</a>, one
+component contributes <span class="math inline">m</span>
+spectrum/amplitude coordinates, giving <span class="math inline">d=mK</span> for <span class="math inline">K</span>
+components and <span class="math inline">m</span> channels. Coupled
+models use <span class="math inline">d=(m-1)G+L</span> for <span class="math inline">G</span> shared unit-sum spectra and <span class="math inline">L</span> sample-component occurrences. For one
+sample with fully populated spectra, this agrees with an <span class="math inline">mK</span>-entry coefficient model. L0glm also
+resolves sparsity within selected predictor rows.</p>
 </div>
 <div class="section level2">
 <h2 id="irls-with-adaptive-ridge">IRLS with adaptive ridge<a class="anchor" aria-label="anchor" href="#irls-with-adaptive-ridge"></a>
@@ -498,6 +514,34 @@ prunes small coefficients explicitly. This construction explains the
 hierarchical connection while preserving the package’s
 likelihood-and-information-criterion formulation.</p>
 </div>
+<div class="section level3">
+<h3 id="uncertainty-after-selection">Uncertainty after selection<a class="anchor" aria-label="anchor" href="#uncertainty-after-selection"></a>
+</h3>
+<p>With a selected support <span class="math inline">S</span> and fixed
+Gaussian prior precision <span class="math inline">D_S</span>, a local
+Gaussian posterior approximation has covariance <span class="math display">
+V_S=\{\mathcal I_S(\widehat\beta)+D_S\}^{-1},
+</span> where <span class="math inline">\mathcal I_S</span> is
+likelihood information, including dispersion. This conditions on the
+support and prior weights learned from the data. Accounting for their
+uncertainty requires a declared hierarchical model and a valid posterior
+sampler. Random perturbations of the adaptive-ridge updates alone do not
+define such a sampler. A support refinement can be followed by
+conditional likelihood or posterior calculations on the returned
+support; the initial adaptive-ridge coefficients and penalties are
+retained separately in <code>local.search$initial.fit</code>.</p>
+<p>A full-pipeline bootstrap can rerun initialization, screening,
+tuning, dispersion estimation and local search to measure selection
+frequencies and prediction stability. Resampling should retain the
+relevant dependence: observation rows jointly across channels, subject
+records for survival data, or suitable blocks for temporally dependent
+signals. Coefficient intervals near selection thresholds require
+calibration because selection introduces nonregular behaviour; see <a href="https://doi.org/10.1017/S0266466608080158" class="external-link">Leeb &amp; Pötscher
+(2008)</a>. Independent sample splitting offers a direct way to separate
+selection and subsequent inference. These are directions for inference
+extensions; the current functions return fitted coefficients and model
+diagnostics.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="the-factor-of-one-quarter">The factor of one quarter<a class="anchor" aria-label="anchor" href="#the-factor-of-one-quarter"></a>
@@ -676,6 +720,32 @@ parameters. A row-count grouped target and a parameter-count reported
 criterion therefore have distinct complexity terms. The <a href="../reference/model_criteria.html">criterion reference</a> records
 the conventions. Validation can also select the best IRLS checkpoint,
 including its fitted distribution parameters and penalties.</p>
+</div>
+<div class="section level2">
+<h2 id="local-support-refinement">Optional local support refinement<a class="anchor" aria-label="anchor" href="#local-support-refinement"></a>
+</h2>
+<p><code>local.search=TRUE</code> adds a finite search after the
+adaptive-ridge fit, including SIS/ISIS, compulsory-block updates and
+preclustering refits. It draws on the support-exchange ideas of <a href="https://doi.org/10.1073/pnas.2014241117" class="external-link">Zhu et al. (2020)</a> and
+the local combinatorial search of <a href="https://doi.org/10.1287/opre.2019.1919" class="external-link">Hazimeh &amp; Mazumder
+(2020)</a>. The implementation combines these ideas with the package’s
+family-specific scores, likelihoods, constraints and refitting
+engines.</p>
+<p>For the default target, each candidate is compared using <span class="math display">
+Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),
+</span> with the fitted lambda, original predictor universe and
+parameter counts above. <code>control.local$target="L0"</code> instead
+uses the selected-row charge for grouped models, or the entry count for
+ungrouped models. A supplied independent validation set selects moves by
+its held-out deviance. CV applies the search within training folds
+before evaluating their held-out rows.</p>
+<p><code>local.search="auto"</code> runs the search for initial models
+with at most 50 coefficient dimensions after fitting. Grouped rows count
+their response dimensions, multinomial rows have <span class="math inline">C-1</span>, and mandatory coordinates are included.
+The computational size excludes noise parameters. <code>"auto"</code> is
+the default, with one-iteration pilots and unpenalized fits retained
+directly; the <a href="performance.html#local-support-refinement">benchmarks</a> show
+both the optimisation gains and their computational cost.</p>
 </div>
 <div class="section level2">
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>
@@ -1626,6 +1696,63 @@ its single-pass definition. Preclustering supplies Poisson candidates;
 all outer scores and final coefficients use the original channels. See
 <a href="../reference/compulsory_terms.html">compulsory terms</a> for
 details.</p>
+</div>
+<div class="section level3">
+<h3 id="appendix-local-search">A.11. Optional local support search<a class="anchor" aria-label="anchor" href="#appendix-local-search"></a>
+</h3>
+<p><strong>Input:</strong> a completed fit <span class="math inline">(B_0,\psi_0)</span>, original design and
+observations, mandatory rows, starting-value eligibility masks and
+search controls.</p>
+<ol style="list-style-type: decimal">
+<li>Resolve lambda using the original predictor count. For
+<code>"auto"</code>, return immediately if the initial coefficient
+dimension exceeds <code>size.max</code>. Choose the retained SIS/ISIS
+pool when available, or all eligible predictors;
+<code>scope="all"</code> explicitly permits a full scan. Mandatory terms
+always remain eligible and explicit starting exclusions are
+preserved.</li>
+<li>Evaluate <span class="math inline">Q_0</span>. For free Gaussian
+scale use the profile likelihood; update estimated NB shapes in
+candidate refits. Quasi comparisons use one common dispersion.
+Positive-mean likelihood scoring uses a configurable floor, while custom
+scalar families retain their boundary conventions.</li>
+<li>At the current fit, calculate efficient scores for inactive
+predictors. For a small adjustment block <span class="math inline">A</span>, use <span class="math display">
+U_{j\mid A}=U_j-I_{jA}I_{AA}^{+}U_A,\qquad
+I_{jj\mid A}=I_{jj}-I_{jA}I_{AA}^{+}I_{Aj}.
+</span> Rank additions by their quadratic score gain; nonnegative slopes
+use one-sided gains. Rank removals by their fitted effects and local
+curvature. After a tentative removal, a conditional scan can propose
+replacements.</li>
+<li>Shortlist additions, deletions, single swaps and small batch
+exchanges. For multichannel models also consider individual entry
+changes. Multinomial trials preserve CLR zero sums and require at least
+two admitted entries in an active CLR row. Refit each proposed support
+without the adaptive penalty, using the existing family engine and
+coefficient constraints.</li>
+<li>For larger active supports, refit a small affected block and
+represent the other terms by a fixed <strong>link-scale offset</strong>.
+Full-data likelihood scoring includes every observation. With fixed
+noise parameters, sparse rows with zero block design may be omitted from
+the coefficient solve; Cox risk sets remain complete. Independent
+channels with unchanged support reuse their coefficient fits. Repeated
+masks share cached candidate results.</li>
+<li>Accept the best tested candidate only when <span class="math display">
+Q_{\rm trial}&lt;Q_t-\epsilon\max\{1,|Q_t|\}.
+</span> Stop when no tested move improves the target, or the
+iteration/evaluation budget is reached. A final full-support refit is
+accepted by the same rule. With validation, replace <span class="math inline">Q</span> throughout the acceptance rule by held-out
+deviance.</li>
+<li>Restore original coefficient dimensions and retain the initial fit
+state, accepted history, final target, timing and stopping reason.</li>
+</ol>
+<p>This gives <span class="math inline">Q_{\rm returned}\le Q_0</span>
+at the stated scoring convention. The finite budget and shortlisted
+neighbourhood bound the work. First-order or KKT conditions describe
+coefficient optimality within a fixed support; support additions and
+exchanges test discrete alternatives. A bounded shortlist search records
+the alternatives it tested and provides no global optimality
+certificate.</p>
 <p><strong>Implementation map.</strong> The equations above can be
 followed directly in the source:</p>
 <table class="table">
@@ -1707,6 +1834,15 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/validation.R" class="external-link">validation.R</a>
 </td>
 </tr>
+<tr class="odd">
+<td align="left">Optional support refinement</td>
+<td align="left">
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search.R" class="external-link">local_search.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_context.R" class="external-link">local_search_context.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_refit.R" class="external-link">local_search_refit.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_dispatch.R" class="external-link">local_search_dispatch.R</a>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1754,6 +1890,15 @@ independence screening for ultrahigh dimensional feature space</a>.
 <li>Fan, J., Samworth, R. &amp; Wu, Y. (2009). <a href="https://www.jmlr.org/papers/v10/fan09a.html" class="external-link">Ultrahigh dimensional
 feature selection: beyond the linear model</a>. <em>JMLR</em>, 10,
 2013–2038.</li>
+<li>Zhu, J., Wen, C., Zhu, J., Zhang, H. &amp; Wang, X. (2020). <a href="https://doi.org/10.1073/pnas.2014241117" class="external-link">A polynomial algorithm
+for best-subset selection problem</a>. <em>PNAS</em>, 117,
+33117–33123.</li>
+<li>Hazimeh, H. &amp; Mazumder, R. (2020). <a href="https://doi.org/10.1287/opre.2019.1919" class="external-link">Fast best subset
+selection: Coordinate descent and local combinatorial optimization
+algorithms</a>. <em>Operations Research</em>, 68, 1517–1537.</li>
+<li>Leeb, H. &amp; Pötscher, B. M. (2008). <a href="https://doi.org/10.1017/S0266466608080158" class="external-link">Can one estimate the
+unconditional distribution of post-model-selection estimators?</a>
+<em>Econometric Theory</em>, 24, 338–376.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

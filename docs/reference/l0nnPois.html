@@ -59,7 +59,7 @@ if coefficients of either sign are required."><meta property="og:image" content=
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -161,7 +161,9 @@ if coefficients of either sign are required.</p>
 <span>  validation <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  precluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cluster.refit <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control.precluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  control.precluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  local.search <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  control.local <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -599,6 +601,20 @@ at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
 screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 <code><a href="preclustering.html">preclustering</a></code> for all entries.</p></dd>
+
+
+<dt id="arg-local-search">local.search<a class="anchor" aria-label="anchor" href="#arg-local-search"></a></dt>
+<dd><p><code>"auto"</code> (default), <code>TRUE</code> or <code>FALSE</code>.
+The automatic option refines initial models with at most 50 coefficient
+dimensions; see <a href="local_search.html">local_search</a> for multichannel counting.
+After fitting, including
+SIS/ISIS and any original-channel refit, optionally refine the support by
+additions, deletions and small exchanges. See <a href="local_search.html">local_search</a>.</p></dd>
+
+
+<dt id="arg-control-local">control.local<a class="anchor" aria-label="anchor" href="#arg-control-local"></a></dt>
+<dd><p>Named advanced controls for the optional support search;
+see <a href="local_search.html">local_search</a>. Ignored when <code>local.search=FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

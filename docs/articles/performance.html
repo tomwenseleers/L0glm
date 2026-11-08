@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,14 +79,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Speed, support recovery and reproducible benchmarks</h1>
-            
-      
+
+
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/performance.Rmd" class="external-link"><code>vignettes/articles/performance.Rmd</code></a></small>
       <div class="d-none name"><code>performance.Rmd</code></div>
     </div>
 
-    
-    
+
+
 <p>L0glm’s shrinking active set, compiled solvers and fast GIC preset
 can deliver striking gains in both speed and support recovery. These
 examples compare complete fitting and selection workflows. Each table
@@ -134,14 +134,14 @@ ISIS.</p>
 <tr class="odd">
 <td><strong>L0glm + ISIS</strong></td>
 <td><strong>GIC preset</strong></td>
-<td align="right"><strong>2.55</strong></td>
-<td align="right"><strong>2583</strong></td>
+<td align="right"><strong>6.52</strong></td>
+<td align="right"><strong>2579</strong></td>
 <td align="right"><strong>40</strong></td>
-<td align="right"><strong>3</strong></td>
+<td align="right"><strong>2</strong></td>
 <td align="right"><strong>20</strong></td>
-<td align="right"><strong>999937</strong></td>
-<td align="right"><strong>0.777</strong></td>
-<td align="right"><strong>0.787</strong></td>
+<td align="right"><strong>999938</strong></td>
+<td align="right"><strong>0.784</strong></td>
+<td align="right"><strong>0.797</strong></td>
 </tr>
 <tr class="even">
 <td>LASSO</td>
@@ -200,7 +200,7 @@ in the million-predictor example. L0glm uses a GIC preset; both LASSO
 methods use five-fold CV. There are 60 true effects.
 </p>
 </div>
-<p>In this simulation L0glm is <strong>47 times faster than five-fold-CV
+<p>In this simulation L0glm is <strong>19 times faster than five-fold-CV
 LASSO</strong> and recovers more true effects with fewer false
 positives. The L0glm timing includes screening and one preset fit; the
 other methods evaluate up to 40 native path values, with paths refitted
@@ -227,19 +227,20 @@ high-correlation design has pairwise correlation 0.7. Each family and
 correlation setting uses ten independent simulations and a fresh test
 set of the same size as the training set. There are 500 observations per
 Gaussian dataset and 1,000 per logistic dataset.</p>
-<p>L0glm uses the GIC preset and a relaxed refit. The other methods
-select from their fitted paths using the common GIC in
-<code><a href="../reference/sparseGLM.html">sparseGLM()</a></code>. ABESS searches support sizes 0 to 60. The
-other paths use up to 40 values. These are GIC comparisons on the abess
-simulation designs. The abess tutorial uses a different tuning protocol.
-Test RMSE or AUC, sensitivity, false-positive rate and MCC are means
-over the ten replications. Seconds are median elapsed fitting and
-selection time with one BLAS thread. <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R" class="external-link">Reproduction
+<p>L0glm uses the GIC preset, a relaxed refit and the default automatic
+local support refinement. The other methods select from their fitted
+paths using the common GIC in <code><a href="../reference/sparseGLM.html">sparseGLM()</a></code>. ABESS searches
+support sizes 0 to 60. The other paths use up to 40 values. These are
+GIC comparisons on the abess simulation designs. The abess tutorial uses
+a different tuning protocol. Test RMSE or AUC, sensitivity,
+false-positive rate and MCC are means over the ten replications. Seconds
+are median elapsed fitting and selection time with one BLAS thread. <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R" class="external-link">Reproduction
 script</a> · <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/abess-simulations-runs.csv" class="external-link">Per-run
 data</a></p>
 <div class="section level3">
 <h3 id="gaussian-regression">Gaussian regression<a class="anchor" aria-label="anchor" href="#gaussian-regression"></a>
 </h3>
+<!-- BEGIN abess-gaussian -->
 <table class="table">
 <thead><tr class="header">
 <th align="left">Correlation</th>
@@ -254,106 +255,106 @@ data</a></p>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">L0glm</td>
-<td align="right">2.672</td>
-<td align="right">93%</td>
-<td align="right">0.00%</td>
-<td align="right">0.963</td>
-<td align="right">0.06</td>
+<td align="right">1.019</td>
+<td align="right">100%</td>
+<td align="right">0.08%</td>
+<td align="right">0.964</td>
+<td align="right">0.26</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">ABESS</td>
-<td align="right">1.021</td>
+<td align="right">1.019</td>
 <td align="right">100%</td>
-<td align="right">0.07%</td>
-<td align="right">0.970</td>
-<td align="right">0.39</td>
+<td align="right">0.08%</td>
+<td align="right">0.964</td>
+<td align="right">0.51</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">L0Learn</td>
-<td align="right">1.022</td>
+<td align="right">1.019</td>
 <td align="right">100%</td>
 <td align="right">0.08%</td>
-<td align="right">0.967</td>
-<td align="right">0.17</td>
+<td align="right">0.964</td>
+<td align="right">0.22</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">LASSO</td>
-<td align="right">2.778</td>
+<td align="right">2.766</td>
 <td align="right">100%</td>
 <td align="right">0.00%</td>
 <td align="right">1.000</td>
-<td align="right">0.22</td>
+<td align="right">0.25</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">Relaxed LASSO</td>
-<td align="right">1.011</td>
+<td align="right">1.010</td>
 <td align="right">100%</td>
 <td align="right">0.00%</td>
 <td align="right">1.000</td>
-<td align="right">0.22</td>
+<td align="right">0.27</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">Adaptive LASSO</td>
-<td align="right">10.453</td>
+<td align="right">10.590</td>
 <td align="right">87%</td>
 <td align="right">0.00%</td>
 <td align="right">0.932</td>
-<td align="right">0.27</td>
+<td align="right">0.29</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">Adaptive relaxed LASSO</td>
-<td align="right">7.122</td>
+<td align="right">7.108</td>
 <td align="right">87%</td>
 <td align="right">0.00%</td>
 <td align="right">0.932</td>
-<td align="right">0.27</td>
+<td align="right">0.30</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">MCP</td>
-<td align="right">1.456</td>
+<td align="right">1.459</td>
 <td align="right">95%</td>
 <td align="right">0.00%</td>
 <td align="right">0.974</td>
-<td align="right">0.22</td>
+<td align="right">0.25</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">SCAD</td>
-<td align="right">3.107</td>
+<td align="right">3.203</td>
 <td align="right">95%</td>
 <td align="right">0.00%</td>
 <td align="right">0.974</td>
-<td align="right">0.22</td>
+<td align="right">0.25</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
 <td align="left">L0glm</td>
-<td align="right">1.493</td>
-<td align="right">94%</td>
-<td align="right">0.00%</td>
-<td align="right">0.969</td>
-<td align="right">0.06</td>
+<td align="right">1.020</td>
+<td align="right">100%</td>
+<td align="right">0.04%</td>
+<td align="right">0.982</td>
+<td align="right">0.23</td>
 </tr>
 <tr class="odd">
 <td align="left">0.7</td>
 <td align="left">ABESS</td>
-<td align="right">1.018</td>
+<td align="right">1.017</td>
 <td align="right">100%</td>
-<td align="right">0.02%</td>
-<td align="right">0.991</td>
-<td align="right">0.38</td>
+<td align="right">0.03%</td>
+<td align="right">0.986</td>
+<td align="right">0.50</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
 <td align="left">L0Learn</td>
-<td align="right">1.017</td>
+<td align="right">1.018</td>
 <td align="right">100%</td>
 <td align="right">0.02%</td>
 <td align="right">0.991</td>
@@ -362,63 +363,65 @@ data</a></p>
 <tr class="odd">
 <td align="left">0.7</td>
 <td align="left">LASSO</td>
-<td align="right">3.907</td>
+<td align="right">3.885</td>
 <td align="right">100%</td>
-<td align="right">0.78%</td>
-<td align="right">0.762</td>
-<td align="right">0.23</td>
-</tr>
-<tr class="even">
-<td align="left">0.7</td>
-<td align="left">Relaxed LASSO</td>
-<td align="right">1.160</td>
-<td align="right">98%</td>
-<td align="right">0.09%</td>
-<td align="right">0.950</td>
-<td align="right">0.25</td>
-</tr>
-<tr class="odd">
-<td align="left">0.7</td>
-<td align="left">Adaptive LASSO</td>
-<td align="right">18.264</td>
-<td align="right">81%</td>
-<td align="right">0.00%</td>
-<td align="right">0.898</td>
+<td align="right">0.98%</td>
+<td align="right">0.738</td>
 <td align="right">0.26</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
-<td align="left">Adaptive relaxed LASSO</td>
-<td align="right">9.523</td>
+<td align="left">Relaxed LASSO</td>
+<td align="right">1.186</td>
+<td align="right">99%</td>
+<td align="right">0.09%</td>
+<td align="right">0.961</td>
+<td align="right">0.28</td>
+</tr>
+<tr class="odd">
+<td align="left">0.7</td>
+<td align="left">Adaptive LASSO</td>
+<td align="right">17.517</td>
 <td align="right">81%</td>
 <td align="right">0.00%</td>
 <td align="right">0.898</td>
-<td align="right">0.27</td>
+<td align="right">0.29</td>
+</tr>
+<tr class="even">
+<td align="left">0.7</td>
+<td align="left">Adaptive relaxed LASSO</td>
+<td align="right">9.168</td>
+<td align="right">81%</td>
+<td align="right">0.00%</td>
+<td align="right">0.898</td>
+<td align="right">0.30</td>
 </tr>
 <tr class="odd">
 <td align="left">0.7</td>
 <td align="left">MCP</td>
-<td align="right">33.288</td>
+<td align="right">31.728</td>
 <td align="right">56%</td>
 <td align="right">0.00%</td>
 <td align="right">0.745</td>
-<td align="right">0.22</td>
+<td align="right">0.24</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
 <td align="left">SCAD</td>
-<td align="right">39.996</td>
-<td align="right">60%</td>
+<td align="right">39.230</td>
+<td align="right">61%</td>
 <td align="right">0.00%</td>
-<td align="right">0.769</td>
-<td align="right">0.23</td>
+<td align="right">0.776</td>
+<td align="right">0.27</td>
 </tr>
 </tbody>
 </table>
+<!-- END abess-gaussian -->
 </div>
 <div class="section level3">
 <h3 id="logistic-regression">Logistic regression<a class="anchor" aria-label="anchor" href="#logistic-regression"></a>
 </h3>
+<!-- BEGIN abess-binomial -->
 <table class="table">
 <thead><tr class="header">
 <th align="left">Correlation</th>
@@ -433,174 +436,176 @@ data</a></p>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">L0glm</td>
-<td align="right">0.992</td>
-<td align="right">98%</td>
-<td align="right">0.00%</td>
-<td align="right">0.990</td>
-<td align="right">0.16</td>
+<td align="right">0.991</td>
+<td align="right">100%</td>
+<td align="right">0.06%</td>
+<td align="right">0.973</td>
+<td align="right">0.61</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">ABESS</td>
-<td align="right">0.992</td>
+<td align="right">0.991</td>
 <td align="right">100%</td>
-<td align="right">0.03%</td>
-<td align="right">0.986</td>
-<td align="right">2.24</td>
+<td align="right">0.06%</td>
+<td align="right">0.973</td>
+<td align="right">2.50</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">L0Learn</td>
-<td align="right">0.992</td>
+<td align="right">0.991</td>
 <td align="right">100%</td>
-<td align="right">0.03%</td>
-<td align="right">0.986</td>
-<td align="right">5.11</td>
+<td align="right">0.06%</td>
+<td align="right">0.973</td>
+<td align="right">5.94</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">LASSO</td>
-<td align="right">0.989</td>
+<td align="right">0.987</td>
 <td align="right">100%</td>
 <td align="right">0.23%</td>
-<td align="right">0.903</td>
-<td align="right">0.45</td>
+<td align="right">0.907</td>
+<td align="right">0.62</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">Relaxed LASSO</td>
-<td align="right">0.992</td>
-<td align="right">100%</td>
-<td align="right">0.02%</td>
 <td align="right">0.991</td>
-<td align="right">1.57</td>
+<td align="right">100%</td>
+<td align="right">0.03%</td>
+<td align="right">0.986</td>
+<td align="right">2.05</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">Adaptive LASSO</td>
-<td align="right">0.992</td>
+<td align="right">0.990</td>
 <td align="right">99%</td>
-<td align="right">0.05%</td>
-<td align="right">0.972</td>
-<td align="right">0.44</td>
+<td align="right">0.08%</td>
+<td align="right">0.958</td>
+<td align="right">0.57</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">Adaptive relaxed LASSO</td>
-<td align="right">0.992</td>
-<td align="right">100%</td>
-<td align="right">0.03%</td>
-<td align="right">0.988</td>
-<td align="right">1.48</td>
+<td align="right">0.991</td>
+<td align="right">99%</td>
+<td align="right">0.00%</td>
+<td align="right">0.995</td>
+<td align="right">1.72</td>
 </tr>
 <tr class="even">
 <td align="left">0.1</td>
 <td align="left">MCP</td>
-<td align="right">0.992</td>
-<td align="right">100%</td>
-<td align="right">0.02%</td>
 <td align="right">0.991</td>
-<td align="right">0.29</td>
+<td align="right">100%</td>
+<td align="right">0.00%</td>
+<td align="right">1.000</td>
+<td align="right">0.70</td>
 </tr>
 <tr class="odd">
 <td align="left">0.1</td>
 <td align="left">SCAD</td>
-<td align="right">0.992</td>
+<td align="right">0.990</td>
 <td align="right">100%</td>
-<td align="right">0.03%</td>
-<td align="right">0.986</td>
-<td align="right">0.47</td>
-</tr>
-<tr class="even">
-<td align="left">0.7</td>
-<td align="left">L0glm</td>
-<td align="right">0.985</td>
-<td align="right">38%</td>
-<td align="right">0.20%</td>
-<td align="right">0.497</td>
-<td align="right">0.21</td>
-</tr>
-<tr class="odd">
-<td align="left">0.7</td>
-<td align="left">ABESS</td>
-<td align="right">0.996</td>
-<td align="right">83%</td>
-<td align="right">0.32%</td>
-<td align="right">0.784</td>
-<td align="right">1.89</td>
-</tr>
-<tr class="even">
-<td align="left">0.7</td>
-<td align="left">L0Learn</td>
-<td align="right">0.995</td>
-<td align="right">70%</td>
-<td align="right">0.15%</td>
-<td align="right">0.755</td>
-<td align="right">1.06</td>
-</tr>
-<tr class="odd">
-<td align="left">0.7</td>
-<td align="left">LASSO</td>
-<td align="right">0.995</td>
-<td align="right">94%</td>
-<td align="right">3.81%</td>
-<td align="right">0.428</td>
-<td align="right">0.41</td>
-</tr>
-<tr class="even">
-<td align="left">0.7</td>
-<td align="left">Relaxed LASSO</td>
-<td align="right">0.988</td>
-<td align="right">43%</td>
-<td align="right">0.47%</td>
-<td align="right">0.447</td>
-<td align="right">4.13</td>
-</tr>
-<tr class="odd">
-<td align="left">0.7</td>
-<td align="left">Adaptive LASSO</td>
-<td align="right">0.988</td>
-<td align="right">41%</td>
-<td align="right">1.52%</td>
-<td align="right">0.287</td>
+<td align="right">0.07%</td>
+<td align="right">0.969</td>
 <td align="right">0.40</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
+<td align="left">L0glm</td>
+<td align="right">0.995</td>
+<td align="right">82%</td>
+<td align="right">0.09%</td>
+<td align="right">0.862</td>
+<td align="right">1.07</td>
+</tr>
+<tr class="odd">
+<td align="left">0.7</td>
+<td align="left">ABESS</td>
+<td align="right">0.996</td>
+<td align="right">84%</td>
+<td align="right">0.37%</td>
+<td align="right">0.775</td>
+<td align="right">2.04</td>
+</tr>
+<tr class="even">
+<td align="left">0.7</td>
+<td align="left">L0Learn</td>
+<td align="right">0.997</td>
+<td align="right">80%</td>
+<td align="right">0.09%</td>
+<td align="right">0.849</td>
+<td align="right">1.28</td>
+</tr>
+<tr class="odd">
+<td align="left">0.7</td>
+<td align="left">LASSO</td>
+<td align="right">0.996</td>
+<td align="right">89%</td>
+<td align="right">3.84%</td>
+<td align="right">0.404</td>
+<td align="right">0.57</td>
+</tr>
+<tr class="even">
+<td align="left">0.7</td>
+<td align="left">Relaxed LASSO</td>
+<td align="right">0.991</td>
+<td align="right">47%</td>
+<td align="right">0.36%</td>
+<td align="right">0.519</td>
+<td align="right">4.47</td>
+</tr>
+<tr class="odd">
+<td align="left">0.7</td>
+<td align="left">Adaptive LASSO</td>
+<td align="right">0.990</td>
+<td align="right">50%</td>
+<td align="right">1.55%</td>
+<td align="right">0.347</td>
+<td align="right">0.56</td>
+</tr>
+<tr class="even">
+<td align="left">0.7</td>
 <td align="left">Adaptive relaxed LASSO</td>
-<td align="right">0.986</td>
-<td align="right">33%</td>
-<td align="right">0.71%</td>
-<td align="right">0.316</td>
-<td align="right">2.35</td>
+<td align="right">0.987</td>
+<td align="right">35%</td>
+<td align="right">0.76%</td>
+<td align="right">0.327</td>
+<td align="right">2.38</td>
 </tr>
 <tr class="odd">
 <td align="left">0.7</td>
 <td align="left">MCP</td>
-<td align="right">0.992</td>
+<td align="right">0.993</td>
 <td align="right">60%</td>
-<td align="right">0.10%</td>
-<td align="right">0.725</td>
-<td align="right">37.67</td>
+<td align="right">0.05%</td>
+<td align="right">0.747</td>
+<td align="right">46.88</td>
 </tr>
 <tr class="even">
 <td align="left">0.7</td>
 <td align="left">SCAD</td>
 <td align="right">0.996</td>
-<td align="right">91%</td>
-<td align="right">3.28%</td>
-<td align="right">0.442</td>
-<td align="right">1.39</td>
+<td align="right">88%</td>
+<td align="right">3.49%</td>
+<td align="right">0.416</td>
+<td align="right">1.63</td>
 </tr>
 </tbody>
 </table>
-<p>L0glm is the quickest workflow in these four settings. For Gaussian
-data, ABESS and L0Learn recover all ten effects on average and are among
-the most accurate on the test sets. In the low-correlation logistic
-design, L0glm recovers an average of 9.8 effects and makes no false
-calls. Strongly correlated logistic predictors are much harder to
-distinguish. ABESS achieves the highest MCC there, while several methods
-still yield similar held-out AUC.</p>
+<!-- END abess-binomial --><p>L0glm recovers all ten Gaussian effects on average, with test RMSE
+close to the noise standard deviation of one, in about a quarter of a
+second. L0Learn is faster on these Gaussian designs, while L0glm takes
+about half the time of ABESS. In the strongly correlated logistic
+design, L0glm recovers 82% of the true effects with a 0.09%
+false-positive rate and MCC 0.862, taking 1.07 s. ABESS recovers 84%
+with a 0.37% false-positive rate and MCC 0.775, taking 2.04 s. L0Learn
+gives the highest test AUC there. Support recovery and prediction
+measure different aspects of these fitted models.</p>
 </div>
 </div>
 <div class="section level2">
@@ -835,6 +840,145 @@ observed data, ground truth and fitted coefficient heatmaps, and shows
 all-channel coefficient comparisons in a single column.</p>
 </div>
 <div class="section level2">
+<h2 id="local-support-refinement">Local support refinement<a class="anchor" aria-label="anchor" href="#local-support-refinement"></a>
+</h2>
+<p><code>local.search</code> refines a completed adaptive-ridge fit by
+testing predictor additions, deletions and small exchanges. Its
+parameter-count objective uses the same conventions as
+<code><a href="../reference/model_criteria.html">GIC()</a></code> and the tuning functions. The default
+<code>"auto"</code> applies the search to initial supports with at most
+50 coefficient dimensions, after any SIS/ISIS screening. The <a href="../reference/local_search.html">reference</a> gives the
+computational-size rule, controls and returned diagnostics.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>,</span>
+<span>  local.search<span class="op">=</span><span class="st">"auto"</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="va">local.search</span><span class="op">$</span><span class="va">history</span></span></code></pre></div>
+<p>The paired comparison below uses the same 40 datasets as the
+abess-design benchmark: ten replications for each family and
+correlation. GIC, TP, FP and MCC are means; timings are medians. Both
+variants use the same GIC preset and relaxed fitting option. Elapsed
+time here measures <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> itself; the nine-method
+comparison includes the common <code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> scoring
+workflow. Model selection uses only the training data.</p>
+<!-- BEGIN local-search-comparison -->
+<table class="table">
+<thead><tr class="header">
+<th align="left">Family</th>
+<th align="right">Correlation</th>
+<th align="left">Local search</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">MCC</th>
+<th align="right">Seconds</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Gaussian</td>
+<td align="right">0.1</td>
+<td align="left">FALSE</td>
+<td align="right">1799.1</td>
+<td align="right">9.5</td>
+<td align="right">0.0</td>
+<td align="right">0.974</td>
+<td align="right">0.05</td>
+</tr>
+<tr class="even">
+<td align="left">Gaussian</td>
+<td align="right">0.1</td>
+<td align="left">auto</td>
+<td align="right">1563.5</td>
+<td align="right">10.0</td>
+<td align="right">0.8</td>
+<td align="right">0.964</td>
+<td align="right">0.19</td>
+</tr>
+<tr class="odd">
+<td align="left">Gaussian</td>
+<td align="right">0.7</td>
+<td align="left">FALSE</td>
+<td align="right">1767.5</td>
+<td align="right">9.5</td>
+<td align="right">0.0</td>
+<td align="right">0.974</td>
+<td align="right">0.05</td>
+</tr>
+<tr class="even">
+<td align="left">Gaussian</td>
+<td align="right">0.7</td>
+<td align="left">auto</td>
+<td align="right">1563.1</td>
+<td align="right">10.0</td>
+<td align="right">0.4</td>
+<td align="right">0.982</td>
+<td align="right">0.18</td>
+</tr>
+<tr class="odd">
+<td align="left">Logistic</td>
+<td align="right">0.1</td>
+<td align="left">FALSE</td>
+<td align="right">362.7</td>
+<td align="right">9.8</td>
+<td align="right">0.0</td>
+<td align="right">0.990</td>
+<td align="right">0.12</td>
+</tr>
+<tr class="even">
+<td align="left">Logistic</td>
+<td align="right">0.1</td>
+<td align="left">auto</td>
+<td align="right">357.4</td>
+<td align="right">10.0</td>
+<td align="right">0.6</td>
+<td align="right">0.973</td>
+<td align="right">0.51</td>
+</tr>
+<tr class="odd">
+<td align="left">Logistic</td>
+<td align="right">0.7</td>
+<td align="left">FALSE</td>
+<td align="right">320.3</td>
+<td align="right">3.7</td>
+<td align="right">2.1</td>
+<td align="right">0.482</td>
+<td align="right">0.17</td>
+</tr>
+<tr class="even">
+<td align="left">Logistic</td>
+<td align="right">0.7</td>
+<td align="left">auto</td>
+<td align="right">222.0</td>
+<td align="right">8.2</td>
+<td align="right">0.9</td>
+<td align="right">0.862</td>
+<td align="right">0.96</td>
+</tr>
+</tbody>
+</table>
+<!-- END local-search-comparison --><p>The refinement substantially improves Gaussian prediction and
+recovery of correlated logistic effects. In the Gaussian examples, mean
+test RMSE falls from 1.46–1.48 to 1.02. For correlated logistic
+predictors, mean MCC rises from 0.482 to 0.862. The extra work is
+concentrated on small models: additions, deletions and exchanges are
+accepted only when they improve the chosen training criterion.</p>
+<p><a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_local_search.R" class="external-link">Reproduction
+script</a> · <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/local-search-runs.csv" class="external-link">Per-run
+comparisons</a></p>
+<p>Large multichannel deconvolution models exceed this automatic size
+limit. Their initial coefficients are retained. <code>TRUE</code>
+explicitly requests refinement for larger supports, and
+<code>FALSE</code> disables it.</p>
+<p>For example, a 10,000-predictor, 228-channel Poisson control fit took
+5.73 s with <code>"auto"</code> and 5.85 s with <code>FALSE</code>, with
+identical coefficients. Explicitly requesting three search rounds
+improved GIC from 5,525,411 to 5,494,470 and within-row MCC from 0.870
+to 0.878, taking 34.36 s. The default size limit preserves the fast
+fitting path for models of this size. Run
+<code>benchmark_local_deconvolution()</code> from the reproduction
+script to repeat these <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/local-search-deconvolution.csv" class="external-link">deconvolution
+controls</a>.</p>
+</div>
+<div class="section level2">
 <h2 id="native-validation-and-openmp">Native validation and OpenMP<a class="anchor" aria-label="anchor" href="#native-validation-and-openmp"></a>
 </h2>
 <p>Both drivers can select an IRLS checkpoint by held-out deviance. The
@@ -922,6 +1066,14 @@ benchmark source</a>: preset fits, comparisons and plots.</li>
 <li>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_million_lasso.R" class="external-link">Million-predictor
 LASSO benchmark</a>: BIC and five-fold CV comparisons.</li>
+<li>
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_abess_simulations.R" class="external-link">Gaussian/logistic
+benchmark</a>: matched comparisons with ABESS, L0Learn, LASSO variants,
+MCP and SCAD.</li>
+<li>
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_local_search.R" class="external-link">Local
+support refinement</a>: paired comparisons with refinement enabled or
+disabled.</li>
 <li>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_L0glm_solvers_problem_sizes.R" class="external-link">Solver/problem-size
 benchmark</a>: solvers, families, matrix storage and sizes.</li>

@@ -9,7 +9,7 @@ results, including negative-binomial, multinomial and Cox models."><meta propert
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -151,7 +151,9 @@ retained in the model summary. Coefficients are point estimates; standard
 errors and Wald tests are not calculated for the selected penalized model.
 Screened fits display the screening method, number of rounds, chosen round,
 batch size and screening thread count; summaries retain their complete
-<code>screening</code> diagnostics.</p>
+<code>screening</code> diagnostics.
+Refined models also report accepted local-search steps and retain the
+complete <code>local.search</code> diagnostics in their summaries.</p>
 <p>Convergence counts use the last recorded pass for each stage and channel,
 rather than counting intermediate grouped-selection passes as final failures.
 Missing backend diagnostics remain unavailable. The printed dispersion is

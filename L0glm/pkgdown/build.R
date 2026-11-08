@@ -19,7 +19,9 @@ destination <- pkgdown::as_pkgdown(package)$dst_path
 # Remove the automatic home header after logo insertion, without freeing nodes.
 home <- file.path(destination, "index.html")
 html <- xml2::read_html(home)
-page_title <- yaml::read_yaml(file.path(package, "_pkgdown.yml"))$home$title
+config <- yaml::yaml.load(paste(readLines(file.path(package, "_pkgdown.yml"),
+  encoding = "UTF-8"), collapse = "\n"))
+page_title <- config$home$title
 title_node <- xml2::xml_find_first(html, ".//head/title")
 xml2::xml_text(title_node) <- page_title
 xml2::xml_set_attr(xml2::xml_find_all(html,

@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,14 +79,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>SIS / ISIS screening for high dimensional models</h1>
-            
-      
+
+
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/high-dimensional.Rmd" class="external-link"><code>vignettes/articles/high-dimensional.Rmd</code></a></small>
       <div class="d-none name"><code>high-dimensional.Rmd</code></div>
     </div>
 
-    
-    
+
+
 <p><strong>SIS</strong> stands for <strong>Sure Independence
 Screening</strong> and <strong>ISIS</strong> for <strong>Iterative Sure
 Independence Screening</strong>. These methods rapidly prescreen the
@@ -165,7 +165,7 @@ occupies about 4 GB.</p>
 <span><span class="fu"><a href="../reference/l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <!-- BEGIN million-screening-summary -->
 <p>The default L0glm fit with ISIS recovers <strong>40 true effects with
-3 false positives</strong> in <strong>2.55 s</strong> using eight
+2 false positives</strong> in <strong>6.52 s</strong> using eight
 physical cores. Five-fold-CV LASSO on the unscreened design takes
 <strong>120.69 s</strong> and recovers 17 true effects with 50 false
 positives. The <a href="performance.html#one-million-predictor-example">benchmark
@@ -208,15 +208,18 @@ times faster</strong> on this machine.</p>
 the <strong>same million-predictor simulation as the homepage</strong>.
 L0glm uses its default GIC preset. LASSO variants use BIC-selected paths
 because GIC commonly selects an empty LASSO model in this example. The
-one-pass comparison retains 100 predictors. On the million-predictor
-design, ISIS uses the default GIC-based batch size and ten rounds. The
-SIS-package ISIS comparison uses a separate 5,000-predictor design and
-three rounds; <code>nsis=100</code> is a batch size in L0glm and a total
-support limit in SIS. Standalone <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> retains its
-best ISIS round by GIC; the LASSO comparisons use the requested BIC for
-their outer searches. The public SIS pipeline fits a free intercept;
-L0glm and glmnet use a zero intercept, matching the simulation. Both ICs
-are saved with the results.</p>
+comparisons below set <code>local.search=FALSE</code> to isolate
+screening and adaptive ridge; the opening example uses the automatic
+final refinement. The one-pass comparison retains 100 predictors. On the
+million-predictor design, ISIS uses the default GIC-based batch size and
+ten rounds. The SIS-package ISIS comparison uses a separate
+5,000-predictor design and three rounds; <code>nsis=100</code> is a
+batch size in L0glm and a total support limit in SIS. Standalone
+<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> retains its best ISIS round by GIC; the LASSO
+comparisons use the requested BIC for their outer searches. The public
+SIS pipeline fits a free intercept; L0glm and glmnet use a zero
+intercept, matching the simulation. Both ICs are saved with the
+results.</p>
 <p>The rows below report median elapsed time over three runs. They
 include screening and variable selection for each fitted model.</p>
 <table style="width:100%;" class="table">

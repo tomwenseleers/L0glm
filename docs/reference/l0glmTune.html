@@ -37,7 +37,7 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -118,7 +118,9 @@ estimates that retain shrinkage.</p>
 <span>  lambda_min <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  screen.path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"independent"</span>, <span class="st">"preset"</span><span class="op">)</span></span>
+<span>  screen.path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"independent"</span>, <span class="st">"preset"</span><span class="op">)</span>,</span>
+<span>  local.search <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  control.local <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -361,6 +363,21 @@ from the preset fit. Each lambda estimates its own coefficients and can
 select any subset of the pool. In CV, each training fold learns its own
 pool at the grid point nearest the preset, scaled to that fold.</p></dd>
 
+
+<dt id="arg-local-search">local.search<a class="anchor" aria-label="anchor" href="#arg-local-search"></a></dt>
+<dd><p><code>"auto"</code> (default), <code>TRUE</code> or <code>FALSE</code>.
+The automatic size decision is made independently within each fit.
+Apply optional support
+refinement after each complete full-data or CV training fit, including
+SIS/ISIS screening. Pilot initializers do not run it. See
+<code><a href="local_search.html">local_search</a></code> for moves, targets and diagnostics.</p></dd>
+
+
+<dt id="arg-control-local">control.local<a class="anchor" aria-label="anchor" href="#arg-control-local"></a></dt>
+<dd><p>Named list controlling local support refinement;
+see <code><a href="local_search.html">local_search</a></code>. Unless supplied explicitly, its
+<code>mu.floor</code> inherits <code>mu_floor</code> for consistent scoring.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -558,12 +575,14 @@ estimated channel shapes. Cox refits selected log-relative-hazard effects.
 Refits apply inside each CV training fold, before validation scoring; full-data
 paths, <code>fit_best</code> and <code>fit_1se</code> contain the corresponding refitted
 models. Pilot initialization fits remain unrelaxed.
-Grouped multinomial IC tuning charges active rows and ungrouped tuning
-charges nonzero CLR entries. Parameter-count ICs account for the zero-sum
-constraint separately from these L0 objective charges.
-Grouped IC tuning charges rows; <code>metrics$tuning_score</code> is the selected
-row criterion plus mandatory/nuisance parameter constants, whereas the
-ordinary <code>gic</code> metric retains its parameter-count definition.
+IC tuning uses the same parameter counts as <code><a href="model_criteria.html">GIC()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code>
+and the other criterion methods. Grouped multinomial rows contribute
+\(K\) parameters for \(K+1\) categories; ungrouped CLR models count
+nonzero entries minus active rows. NB counts active entries. All include
+mandatory and estimated nuisance dimensions. Thus
+<code>metrics$tuning_score</code> equals the requested IC column, or the mean
+held-out deviance for CV. The separate row-count L0 objective is available
+in the fit metrics; see <code><a href="model_criteria.html">model_criteria</a></code>.
 CV trains theta, normalization and pilot starts using training observations
 only. Cox CV uses the difference between full-data and training partial log
 likelihood at training coefficients, divided by held-out event weight;

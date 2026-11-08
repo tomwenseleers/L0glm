@@ -11,7 +11,7 @@ l0nnPois() models, including the special families."><meta property="og:image" co
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -147,7 +147,15 @@ predictor count, excluding mandatory terms and using at least one in
 logarithms. Ordinary multichannel GLMs count coefficient entries, so
 <code>GIC()</code> is distinct from a row-count grouped-selection objective.
 These scores describe the returned fit; penalized or incompletely
-converged fits need not maximize likelihood on their selected support.</p>
+converged fits need not maximize likelihood on their selected support.
+IC tuning and default local support refinement use these parameter counts.
+The row-count objective in <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code> separately records the
+grouped selection target. In sparse matrix factorization, <code>logconNMF</code>
+charges \(mK\) spectrum/amplitude dimensions for \(K\) latent components
+and \(m\) channels, or \((m-1)G+L\) for \(G\) shared spectra and
+\(L\) sample-component occurrences. For a single fully populated
+coefficient support this agrees with the ordinary multichannel parameter
+count; L0glm additionally counts the fitted sparsity within each row.</p>
 <p><code><a href="https://rdrr.io/r/stats/nobs.html" class="external-link">nobs()</a></code> reports the sample size used by the criteria. Existing
 conventions are retained: the number of design rows for ordinary GLMs;
 positive-weight rows for NB and multinomial; and weighted event count
