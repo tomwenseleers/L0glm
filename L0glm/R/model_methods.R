@@ -54,6 +54,14 @@
 #' \code{GIC()} is distinct from a row-count grouped-selection objective.
 #' These scores describe the returned fit; penalized or incompletely
 #' converged fits need not maximize likelihood on their selected support.
+#' IC tuning and default local support refinement use these parameter counts.
+#' The row-count objective in \code{l0glmMetrics()} separately records the
+#' grouped selection target. In sparse matrix factorization, \code{logconNMF}
+#' charges \eqn{mK} spectrum/amplitude dimensions for \eqn{K} latent components
+#' and \eqn{m} channels, or \eqn{(m-1)G+L} for \eqn{G} shared spectra and
+#' \eqn{L} sample-component occurrences. For a single fully populated
+#' coefficient support this agrees with the ordinary multichannel parameter
+#' count; L0glm additionally counts the fitted sparsity within each row.
 #'
 #' \code{nobs()} reports the sample size used by the criteria. Existing
 #' conventions are retained: the number of design rows for ordinary GLMs;

@@ -43,7 +43,10 @@
 #' retain the native [l0nnPois()] backend. Free Gaussian variance is profiled for
 #' comparison, NB theta is re-estimated when requested, and quasi scale is held
 #' common across candidates. The original-dimension sparse coefficients are
-#' returned.
+#' returned. Candidate supports are refitted without the adaptive penalty,
+#' including when the initial fit used `relaxed=FALSE`. For quasibinomial,
+#' refinement uses scaled quasi-deviance plus the complexity charge; its
+#' likelihood-based S3 criteria remain unavailable.
 #'
 #' `control.local` is a named list. Main controls are:
 #' \describe{

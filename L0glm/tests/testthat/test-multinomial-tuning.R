@@ -1,4 +1,4 @@
-test_that("multinomial row criterion, pilot seed, masks and plotting work together", {
+test_that("multinomial parameter criterion, pilot seed, masks and plotting work together", {
   skip_if_not_installed("mgcv")
   set.seed(1811)
   X <- matrix(rnorm(150 * 5), 150, 5)
@@ -7,13 +7,12 @@ test_that("multinomial row criterion, pilot seed, masks and plotting work togeth
   result <- l0glmTune(X, y, family = mgcv::multinom(K = 2), grouped = TRUE,
     relaxed = TRUE, start = "pilot", nlambda = 4, maxit = 100, tol = 1e-7,
     plot = FALSE, printbest = FALSE)
-  expect_equal(result$criterion_support, "rows")
+  expect_equal(result$criterion_support, "parameters")
   expect_identical(result$coordinates, "clr")
   expect_true(result$endpoint_zero)
   expect_equal(as.numeric(rowSums(result$start)), rep(0, 6), tolerance = 1e-12)
   expect_equal(result$metrics$tuning_score,
-    -2 * result$metrics$loglik + result$lambda_preset *
-      (result$metrics$selected + result$metrics$mandatory + result$metrics$nuisance))
+    result$metrics$gic)
   replay <- do.call(l0glmFit, c(list(X = X, y = y, lambda = result$lambda_best), result$fit_args))
   expect_equal(replay$coefficients, result$fit_best$coefficients, tolerance = 1e-10)
   plotfile <- tempfile(fileext = ".pdf")

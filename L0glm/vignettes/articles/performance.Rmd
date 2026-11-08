@@ -208,6 +208,25 @@ The [deconvolution tutorial](deconvolution.html) stacks observed data, ground
 truth and fitted coefficient heatmaps, and shows all-channel coefficient
 comparisons in a single column.
 
+## Local support refinement {#local-support-refinement}
+
+`local.search` refines a completed adaptive-ridge fit by testing predictor
+additions, deletions and small exchanges. Its parameter-count objective uses
+the same conventions as `GIC()` and the tuning functions. `"auto"` applies
+the search to initial supports with at most 50 coefficient dimensions, after
+any SIS/ISIS screening. The [reference](../reference/local_search.html) gives
+the computational-size rule, controls and returned diagnostics.
+
+```{r local-search, eval=FALSE}
+fit <- l0glmFit(X, y, family=binomial(), lambda="gic",
+  local.search="auto")
+fit$local.search$history
+```
+
+Large multichannel deconvolution models exceed this automatic size limit.
+Their initial coefficients are retained. `TRUE` explicitly requests refinement
+for larger supports, and `FALSE` disables it.
+
 ## Native validation and OpenMP
 
 Both drivers can select an IRLS checkpoint by held-out deviance.

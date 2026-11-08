@@ -44,7 +44,10 @@ refits use the existing family engines; nonnegative identity-Poisson fits
 retain the native \code{\link[=l0nnPois]{l0nnPois()}} backend. Free Gaussian variance is profiled for
 comparison, NB theta is re-estimated when requested, and quasi scale is held
 common across candidates. The original-dimension sparse coefficients are
-returned.
+returned. Candidate supports are refitted without the adaptive penalty,
+including when the initial fit used \code{relaxed=FALSE}. For quasibinomial,
+refinement uses scaled quasi-deviance plus the complexity charge; its
+likelihood-based S3 criteria remain unavailable.
 
 \code{control.local} is a named list. Main controls are:
 \describe{

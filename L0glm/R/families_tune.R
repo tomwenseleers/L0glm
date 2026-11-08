@@ -162,10 +162,9 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
       met$F1_score <- if (2*TP + FP + FN > 0) 2*TP/(2*TP + FP + FN) else NA_real_
       met$MCC <- support_mcc(TP, FP, TN, FN)
     }
-    # A group-L0 criterion charges selected rows, not each class contrast.
-    # Mandatory and estimated nuisance terms are a common additive constant.
-    charge <- if (fit$grouped) met$selected else met$nonzero
-    score <- if (do_cv) cv$mean[i] else -2 * met$loglik + lambda_preset * (charge + met$mandatory + met$nuisance)
+    # Match the parameter-count criterion exposed by the public S3 methods.
+    # A grouped CLR row has C-1 free coordinates; NB counts active entries.
+    score <- if (do_cv) cv$mean[i] else met[[tune]]
     met$tuning_score <- score
     rows[[i]] <- cbind(lambda = lambda, met)
     coefficients[[i]] <- fit$coefficients; theta[i] <- list(fit$theta)
@@ -183,7 +182,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     lambda_min = lambda_min, lambda_max = lambda_max, lambda_nonzero = lambda_nonzero,
     endpoint_zero = is_zero(endpoint), mu_floor = mu_floor,
     coefficients = coefficients, theta = theta, fit_best = fit_best, fit_1se = fit_1se,
-    cv = cv, criterion_support = if (preset_fit$grouped) "rows" else "coefficients")
+    cv = cv, criterion_support = "parameters")
   if (kind == "multinomial") result$coordinates <- "clr"
   result$preclustering <- preset_fit$preclustering
   result$screen.candidates <- args$control.solver$.screen.candidates

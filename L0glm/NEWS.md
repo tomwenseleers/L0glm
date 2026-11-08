@@ -19,6 +19,8 @@
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,
   one-standard-error models and coefficient-path plots. `presetLambda()`
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
+  Ordinary and special-family IC paths use the parameter counts reported by
+  the S3 criterion methods, including multinomial zero-sum constraints.
 * Constrained updates for nonnegative compulsory terms and relaxed-fit boundary
   checks use the specified likelihood.
 * Optional final support refinement tests additions, deletions and small

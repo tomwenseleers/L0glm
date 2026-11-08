@@ -418,12 +418,14 @@ estimated channel shapes. Cox refits selected log-relative-hazard effects.
 Refits apply inside each CV training fold, before validation scoring; full-data
 paths, \code{fit_best} and \code{fit_1se} contain the corresponding refitted
 models. Pilot initialization fits remain unrelaxed.
-Grouped multinomial IC tuning charges active rows and ungrouped tuning
-charges nonzero CLR entries. Parameter-count ICs account for the zero-sum
-constraint separately from these L0 objective charges.
-Grouped IC tuning charges rows; \code{metrics$tuning_score} is the selected
-row criterion plus mandatory/nuisance parameter constants, whereas the
-ordinary \code{gic} metric retains its parameter-count definition.
+IC tuning uses the same parameter counts as \code{GIC()}, \code{AIC()}
+and the other criterion methods. Grouped multinomial rows contribute
+\eqn{K} parameters for \eqn{K+1} categories; ungrouped CLR models count
+nonzero entries minus active rows. NB counts active entries. All include
+mandatory and estimated nuisance dimensions. Thus
+\code{metrics$tuning_score} equals the requested IC column, or the mean
+held-out deviance for CV. The separate row-count L0 objective is available
+in the fit metrics; see \code{\link{model_criteria}}.
 CV trains theta, normalization and pilot starts using training observations
 only. Cox CV uses the difference between full-data and training partial log
 likelihood at training coefficients, divided by held-out event weight;

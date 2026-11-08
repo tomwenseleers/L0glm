@@ -211,6 +211,14 @@ An automatic preset such as `lambda="gic"` typically provides a near-optimal
 sparse solution straight away. Tuning over a lambda grid or cross-validation
 remains available to refine regularization or optimize out-of-sample prediction.
 
+Optional `local.search=TRUE` refines a completed fit through predictor
+additions, removals and small exchanges, after any SIS/ISIS screening.
+`local.search="auto"` applies this to initial models with at most 50 coefficient
+dimensions. The default is `FALSE`; [local-search controls and diagnostics](https://tomwenseleers.github.io/L0glm/reference/local_search.html)
+and [benchmarks](https://tomwenseleers.github.io/L0glm/articles/performance.html#local-support-refinement)
+show when the extra refinement is useful. The option is available in
+`l0glmFit()`, `l0nnPois()` and `l0glmTune()`, including CV training fits.
+
 ```r
 gic <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
   tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)

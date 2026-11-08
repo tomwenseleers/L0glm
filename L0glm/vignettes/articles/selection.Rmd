@@ -98,6 +98,35 @@ predict(cv$fit_1se, X[1:5, , drop=FALSE], type="response")
 lambda with mean deviance within one SE of the minimum. The GIC preset remains
 available through `lambda_preset` for comparison.
 
+## Optional local support refinement
+
+Set `local.search=TRUE` to test additions, deletions and small predictor
+exchanges after fitting. Screening, compulsory-term updates and original-channel
+preclustering refits finish first. Every accepted move lowers the fitted
+penalty's parameter-count criterion; a supplied independent `validation` set
+instead selects by held-out deviance. The original starting exclusions and
+coefficient constraints remain in force.
+
+```{r local-support, eval=FALSE}
+fit <- l0glmFit(X, y, lambda="gic", local.search="auto")
+fit$local.search[c("applied", "initial.size", "stopping")]
+fit$local.search$history
+gic <- l0glmTune(X, y, family=gaussian(), tune="gic", nlambda=10L,
+  local.search="auto", prop_range=.25)
+```
+
+`"auto"` limits refinement to models with at most 50 coefficient dimensions
+after the initial fit. For grouped multichannel fits, each selected row counts
+its channel dimensions; multinomial rows have one fewer dimension because of
+their zero-sum constraint. The limit is set with `control.local$size.max`.
+`FALSE` remains the default. See the [controls](../reference/local_search.html)
+and [paired benchmarks](performance.html#local-support-refinement).
+
+IC paths rank ordinary and special-family models using the same counts as
+`GIC()`, `AIC()` and the other criterion methods. CV independently refines each
+training fit before evaluating its held-out fold; validation fold responses
+do not enter the support search.
+
 ## Random, contiguous and Venetian-blind folds
 
 Without `foldid`, folds are randomly assigned. Supply a vector to choose a design:
