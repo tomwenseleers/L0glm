@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("cached Cox products, information and ridge steps equal exact derivatives", {
   skip_if_not_installed("mgcv")
   set.seed(1860)
@@ -40,7 +41,7 @@ test_that("Cox cache is built once and public observation order is preserved", {
   w <- sample(0:2,180,TRUE); off <- rnorm(180,sd=.1)
   original <- L0glm_ext_cox_cache; builds <- 0L
   fit <- testthat::with_mocked_bindings({
-    ans <- l0glmFit(X,y,family=mgcv::cox.ph(),weights=w,offset=off,lambda=2,
+    ans <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=off,lambda=2,
       relaxed=TRUE,maxit=100L,tol=1e-8)
     logLik(ans); l0glmMetrics(ans); L0glm_ext_cox_baseline(ans)
     ans
@@ -92,15 +93,15 @@ test_that("Cox direct, PCG and automatic fits match coxph with weights and offse
   ref <- survival::coxph(y~X+offset(offset),weights=replace(w,w==0,1),subset=w>0,
     ties="breslow",control=survival::coxph.control(eps=1e-11))
   for(mode in c("auto","direct","pcg")) {
-    fit <- l0glmFit(X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
+    fit <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
       lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9,control.family=list(cox=mode))
     expect_equal(as.numeric(fit$coefficients),unname(coef(ref)),tolerance=1e-7)
     expect_equal(as.numeric(logLik(fit)),as.numeric(logLik(ref)),tolerance=1e-7)
     expect_true(all(fit$convergence$converged))
   }
-  shifted <- l0glmFit(X,y,family=mgcv::cox.ph(),weights=w,offset=offset+1000,
+  shifted <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset+1000,
     lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9,control.family=list(cox="pcg"))
-  ordinary <- l0glmFit(X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
+  ordinary <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
     lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9)
   expect_equal(shifted$coefficients,ordinary$coefficients,tolerance=1e-7)
   expect_equal(predict(shifted,type="survival",times=c(0,.1,1,10)),
@@ -111,13 +112,13 @@ test_that("Cox masks, solver routing, guards and failure diagnostics are explici
   skip_if_not_installed("mgcv")
   set.seed(1864)
   X <- matrix(rnorm(120*8),120,8); y <- cbind(rexp(120),rep(c(1,0,1),40))
-  fit <- l0glmFit(X,y,family=mgcv::cox.ph(),start=c(1,1,rep(0,6)),
+  fit <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),start=c(1,1,rep(0,6)),
     always.include=3L,lambda=2,relaxed=TRUE,maxit=100L,tol=1e-8,
     control.family=list(cox="pcg"))
   expect_null(fit$initialization)
   expect_true(all(fit$coefficients[4:8,]==0))
   expect_true(fit$coefficients[3,]!=0)
-  expect_error(l0glmFit(X,y,family=mgcv::cox.ph(),nonnegative=TRUE,
+  expect_error(l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),nonnegative=TRUE,
     control.family=list(cox="pcg")),"unrestricted")
   data <- L0glm_ext_prepare(X,y,mgcv::cox.ph(),NULL,NULL,FALSE,NULL,FALSE,
     "none",1,NULL,list(cox="pcg",cox.cg.maxit=1L))
@@ -142,7 +143,7 @@ test_that("a complete forced-PCG Cox fit never calls a dense or ridge backend", 
   X <- Matrix::rsparsematrix(100,220,.2)
   y <- cbind(rexp(100),rep(c(1,1,0,1),25))
   fit <- testthat::with_mocked_bindings(
-    l0glmFit(X,y,family=mgcv::cox.ph(),lambda=2,relaxed=TRUE,maxit=100L,tol=1e-8,
+    l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=2,relaxed=TRUE,maxit=100L,tol=1e-8,
       control.family=list(cox="pcg",max.working=2L)),
     L0glm_ext_cox_direct=function(...)stop("dense backend called"),
     L0glm_ext_cox_information=function(...)stop("dense Hessian called"),
@@ -159,13 +160,13 @@ test_that("Cox automatic routing respects storage and direct constraint solvers"
   set.seed(1866)
   X <- matrix(rnorm(200*4),200,4)
   y <- cbind(round(rexp(200,exp(.7*X[,1]-.6*X[,2])),2),rep(c(1,1,0,1),50))
-  dense <- l0glmFit(X,y,family=mgcv::cox.ph(),lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9)
-  sparse <- l0glmFit(Matrix::Matrix(X,sparse=TRUE),y,family=mgcv::cox.ph(),lambda=0,
+  dense <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9)
+  sparse <- l0glmFit(local.search=FALSE, Matrix::Matrix(X,sparse=TRUE),y,family=mgcv::cox.ph(),lambda=0,
     relaxed=FALSE,maxit=100L,tol=1e-9)
   expect_true(all(dense$history$selection$backend=="llt"))
   expect_true(all(sparse$history$selection$backend=="pcg"))
   expect_equal(sparse$coefficients,dense$coefficients,tolerance=1e-7)
-  constrained <- l0glmFit(X,y,family=mgcv::cox.ph(),lambda=0,nonnegative=TRUE,
+  constrained <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=0,nonnegative=TRUE,
     solver="osqp",relaxed=FALSE,maxit=100L,tol=1e-8,
     control.solver=controlSolverGen("osqp",abstol=1e-9,reltol=1e-9))
   expect_true(all(constrained$coefficients>=-1e-8))
@@ -184,12 +185,12 @@ test_that("Cox CV and replay are equivalent across hybrid and matrix-free paths"
   y <- cbind(round(rexp(90,exp(.5*X[,1]-.4*X[,2])),2),rep(c(1,1,0),30))
   args <- list(X=X,y=y,family=mgcv::cox.ph(),tune="cv",foldid=rep(1:3,each=30),
     nlambda=3,plot=FALSE,printbest=FALSE,maxit=100L,tol=1e-8)
-  a <- do.call(l0glmTune,c(args,list(control.family=list(cox="auto"))))
-  b <- do.call(l0glmTune,c(args,list(control.family=list(cox="pcg"))))
+  a <- do.call(l0glmTune,utils::modifyList(c(args,list(control.family=list(cox="auto"))), list(local.search=FALSE)))
+  b <- do.call(l0glmTune,utils::modifyList(c(args,list(control.family=list(cox="pcg"))), list(local.search=FALSE)))
   expect_equal(a$lambdas,b$lambdas,tolerance=1e-7)
   expect_equal(a$cv$deviance,b$cv$deviance,tolerance=1e-6)
   expect_equal(a$fit_best$coefficients,b$fit_best$coefficients,tolerance=1e-7)
-  replay <- do.call(l0glmFit,c(list(X=X,y=y,lambda=b$lambda_1se),b$fit_args))
+  replay <- do.call(l0glmFit,utils::modifyList(c(list(X=X,y=y,lambda=b$lambda_1se),b$fit_args), list(local.search=FALSE)))
   expect_equal(replay$coefficients,b$fit_1se$coefficients,tolerance=1e-10)
 })
 

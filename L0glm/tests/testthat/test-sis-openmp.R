@@ -54,7 +54,8 @@ test_that("public SIS/ISIS threading preserves results and does not alter BLAS s
     }
   }
   standalone <- sisGLM(X,y,nsis=10,iterative=TRUE,niter=2,nthreads=4)
-  main <- l0glmFit(X,y,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=4)
+  main <- l0glmFit(X,y,screen="ISIS",nsis=10,screen.maxit=2,screen.nthreads=4,
+    local.search=FALSE)
   expect_identical(coef(standalone$fit),coef(main));expect_identical(standalone$history,main$screening$history)
   cv <- l0glmTune(X,y,family=gaussian(),tune="cv",nlambda=3,nfolds=3,screen="SIS",nsis=10,
     screen.nthreads=4,plot=FALSE,printbest=FALSE)

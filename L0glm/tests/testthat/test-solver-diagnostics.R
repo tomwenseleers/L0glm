@@ -113,6 +113,8 @@ test_that("dense storage of an exactly sparse design preserves native fits", {
   dense <- do.call(l0nnPois, c(list(X = as.matrix(X)), args))
   expect_false(inherits(dense$X, "sparseMatrix"))
   expect_s4_class(sparse$X, "sparseMatrix")
-  for (name in setdiff(names(dense), "X"))
+  # Local-search diagnostics include elapsed times for the different storage paths.
+  for (name in setdiff(names(dense), c("X","local.search")))
     expect_equal(dense[[name]], sparse[[name]], tolerance = 1e-10, info = name)
+  expect_identical(dense$local.search$applied,sparse$local.search$applied)
 })

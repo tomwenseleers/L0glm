@@ -88,7 +88,7 @@ l0glmMetrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "
 ```
 
 <!-- BEGIN million-screening-summary -->
-The default L0glm fit with ISIS recovers **40 true effects with 3 false positives** in **2.55 s** using eight physical cores. Five-fold-CV LASSO on the unscreened design takes **120.69 s** and recovers 17 true effects with 50 false positives. The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.
+The default L0glm fit with ISIS recovers **40 true effects with 2 false positives** in **6.52 s** using eight physical cores. Five-fold-CV LASSO on the unscreened design takes **120.69 s** and recovers 17 true effects with 50 false positives. The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.
 <!-- END million-screening-summary -->
 
 ## Compare screening and complete models with SIS
@@ -111,6 +111,9 @@ Complete screening-and-selection pipelines were timed separately on the
 **same million-predictor simulation as the homepage**. L0glm uses its default
 GIC preset. LASSO variants use BIC-selected paths because GIC commonly selects
 an empty LASSO model in this example. The
+comparisons below set `local.search=FALSE` to isolate screening and adaptive
+ridge; the opening example uses the automatic final refinement.
+The
 one-pass comparison retains 100 predictors. On the million-predictor design,
 ISIS uses the default GIC-based batch size and ten rounds. The SIS-package
 ISIS comparison uses a separate 5,000-predictor design and three rounds;

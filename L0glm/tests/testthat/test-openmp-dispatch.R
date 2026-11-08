@@ -1,8 +1,10 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("eligible l0glmFit calls forward all fitting controls to l0nnPois", {
   local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
   X <- matrix(1, 5, 3)
   y <- cbind(1:5, 2:6)
   args <- list(
+    local.search = FALSE,
     X = X, y = y, family = poisson(identity), nonnegative = TRUE,
     weights = rep(2, 5), dispersion = 1, start = matrix(1, 3, 2),
     offset = rep(0.1, 5), lambda = "bic", intercept = TRUE,
@@ -14,14 +16,14 @@ test_that("eligible l0glmFit calls forward all fitting controls to l0nnPois", {
     # Test the primitive backend dispatch independently of nuisance orchestration.
     control.solver = list(NaturalOrdering = TRUE, .nuisance = FALSE), verbose = TRUE, validation = NULL
   )
-  fit <- do.call(l0glmFit, args)
+  fit <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
   expect_setequal(names(fit$args), setdiff(names(args), "nonnegative"))
   expect_equal(fit$args, args[names(fit$args)])
 })
 
 test_that("OpenMP dispatch handles vector responses and family functions", {
   local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
-  fit <- l0glmFit(diag(4), 1:4, nonnegative = TRUE,
+  fit <- l0glmFit(local.search=FALSE, diag(4), 1:4, nonnegative = TRUE,
                    family = function() poisson(identity))
   expect_false(fit$args$relaxed)
   expect_false(fit$args$intercept)
@@ -45,12 +47,12 @@ test_that("fits outside the Poisson specialization use the general driver", {
     list(control.solver = controlSolverGen("eigen", 1L, rowaug = FALSE))
   )
   for (variant in variants) {
-    fit <- do.call(l0glmFit, utils::modifyList(base, variant))
+    fit <- do.call(l0glmFit, utils::modifyList(utils::modifyList(base, variant), list(local.search=FALSE)))
     expect_equal(dim(fit$coefficients), c(4L, 1L))
     expect_true(all(is.finite(fit$coefficients)))
   }
   for (invalid in list(NA, "true", 1, logical(), c(TRUE, FALSE))) {
-    expect_error(l0glmFit(diag(2), 1:2, openmp = invalid),
+    expect_error(l0glmFit(local.search=FALSE, diag(2), 1:2, openmp = invalid),
                  "openmp must be TRUE or FALSE", fixed = TRUE)
   }
 })
@@ -68,11 +70,11 @@ test_that("dispatched grouped fits agree with direct and R fits", {
                    offset = Matrix::Matrix(0.2, 60, 3),
                    lambda = "gic", grouped = grouped, relaxed = TRUE,
                    parallelize = FALSE, group.maxit = 2L, maxit = 15L)
-      direct <- do.call(l0nnPois, args)
-      dispatched <- do.call(l0glmFit, c(args, list(
-        family = poisson(identity), nonnegative = TRUE)))
-      general <- do.call(l0glmFit, c(args, list(
-        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+      direct <- do.call(l0nnPois, utils::modifyList(args, list(local.search=FALSE)))
+      dispatched <- do.call(l0glmFit, utils::modifyList(c(args, list(
+        family = poisson(identity), nonnegative = TRUE)), list(local.search=FALSE)))
+      general <- do.call(l0glmFit, utils::modifyList(c(args, list(
+        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
       expect_equal(dispatched, direct)
       expect_equal(as.matrix(dispatched$coefficients), as.matrix(general$coefficients),
                    tolerance = 1e-8)
@@ -82,16 +84,16 @@ test_that("dispatched grouped fits agree with direct and R fits", {
 
 test_that("l0nnPois defaults to the GIC penalty", {
   expect_identical(formals(l0nnPois)$lambda, "gic")
-  implicit <- l0nnPois(diag(6), c(0, 3, 0, 5, 0, 0), parallelize = FALSE)
-  explicit <- l0nnPois(diag(6), c(0, 3, 0, 5, 0, 0), lambda = "gic", parallelize = FALSE)
+  implicit <- l0nnPois(local.search=FALSE, diag(6), c(0, 3, 0, 5, 0, 0), parallelize = FALSE)
+  explicit <- l0nnPois(local.search=FALSE, diag(6), c(0, 3, 0, 5, 0, 0), lambda = "gic", parallelize = FALSE)
   expect_equal(implicit, explicit)
   expect_equal(implicit$init.lambda, log(6) * log(log(6)))
 })
 
 test_that("Poisson dispatch rejects invalid responses", {
   for (bad in list(c(-1, 2), c(NA, 2), c(Inf, 2))) {
-    expect_error(l0glmFit(diag(2), bad, family = poisson(identity), nonnegative = TRUE),
+    expect_error(l0glmFit(local.search=FALSE, diag(2), bad, family = poisson(identity), nonnegative = TRUE),
                  "finite and nonnegative")
-    expect_error(l0nnPois(diag(2), bad), "finite and nonnegative")
+    expect_error(l0nnPois(local.search=FALSE, diag(2), bad), "finite and nonnegative")
   }
 })

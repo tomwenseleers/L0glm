@@ -165,7 +165,7 @@
 #'   from the preset fit. Each lambda estimates its own coefficients and can
 #'   select any subset of the pool. In CV, each training fold learns its own
 #'   pool at the grid point nearest the preset, scaled to that fold.
-#' @param local.search \code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+#' @param local.search \code{"auto"} (default), \code{TRUE} or \code{FALSE}.
 #'   The automatic size decision is made independently within each fit.
 #'   Apply optional support
 #'   refinement after each complete full-data or CV training fit, including
@@ -414,7 +414,7 @@ l0glmTune <- function(X, y,
                        start        = NULL,
                        ...,
                        screen.path  = c("independent", "preset"),
-                       local.search = FALSE,
+                       local.search = "auto",
                        control.local = list())
 {
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
@@ -422,12 +422,12 @@ l0glmTune <- function(X, y,
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   dots <- list(...)
-  L0glm_local_mode(local.search)
+  local.search <- L0glm_local_mode(local.search)
+  dots$local.search <- local.search
   if (!identical(local.search, FALSE)) {
     local_floor_supplied <- "mu.floor"%in%names(control.local)
     control.local <- L0glm_local_control(control.local,dots)
     if (!local_floor_supplied) control.local$mu.floor <- mu_floor
-    dots$local.search <- local.search
     dots$control.local <- control.local
   }
   precluster <- if ("precluster" %in% names(dots)) dots$precluster else FALSE

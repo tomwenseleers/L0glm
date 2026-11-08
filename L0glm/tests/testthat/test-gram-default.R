@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("default Eigen Gram routing follows numerical sparsity and honors overrides", {
   set.seed(1831)
   dense <- matrix(rnorm(80 * 12), 80, 12)
@@ -46,7 +47,7 @@ test_that("IRLS resolves the automatic Gram route once per fit", {
     calls <<- calls + 1L
     original(X)
   })
-  fit <- l0glmFit(X, y, family = binomial(), openmp = FALSE, start = 1,
+  fit <- l0glmFit(local.search=FALSE, X, y, family = binomial(), openmp = FALSE, start = 1,
     normalize = "none", maxit = 5L, relaxed = FALSE)
   expect_gt(max(fit$convergence$iterations), 1L)
   expect_equal(calls, 1L)

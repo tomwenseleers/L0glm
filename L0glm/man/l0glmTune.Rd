@@ -24,7 +24,7 @@ l0glmTune(
   start = NULL,
   ...,
   screen.path = c("independent", "preset"),
-  local.search = FALSE,
+  local.search = "auto",
   control.local = list()
 )
 }
@@ -237,7 +237,7 @@ from the preset fit. Each lambda estimates its own coefficients and can
 select any subset of the pool. In CV, each training fold learns its own
 pool at the grid point nearest the preset, scaled to that fold.}
 
-\item{local.search}{\code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+\item{local.search}{\code{"auto"} (default), \code{TRUE} or \code{FALSE}.
 The automatic size decision is made independently within each fit.
 Apply optional support
 refinement after each complete full-data or CV training fit, including

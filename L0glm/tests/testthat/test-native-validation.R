@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 native_validation_data <- function() {
   set.seed(201026)
   X <- matrix(runif(100 * 14), 100, 14)
@@ -21,8 +22,8 @@ test_that("native validation agrees with R for storage, groups, weights and offs
           weights = matrix(seq(.6, 1.3, length.out = 180), 60, 3), offset = .2))
       # The public ordinary-GLM weight/offset format includes a shared vector.
       args$offset <- rep(.3, 100)
-      r <- do.call(l0glmFit, c(args, list(openmp = FALSE)))
-      native <- do.call(l0glmFit, c(args, list(openmp = TRUE)))
+      r <- do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE)))
+      native <- do.call(l0glmFit, utils::modifyList(c(args, list(openmp = TRUE)), list(local.search=FALSE)))
       expect_equal(coef(native), coef(r), tolerance = 1e-7)
       expect_equal(native$validation$deviance, r$validation$deviance, tolerance = 1e-9)
       expect_equal(as.matrix(native$weights), as.matrix(r$weights), tolerance = 1e-7)
@@ -37,10 +38,10 @@ test_that("native stopping restores iteration one and its working weights", {
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(d$X, sparse = sparse), y = y, start = 1,
       lambda = 2, relaxed = FALSE, parallelize = FALSE)
-    first <- do.call(l0nnPois, c(args, list(maxit = 1L)))
+    first <- do.call(l0nnPois, utils::modifyList(c(args, list(maxit = 1L)), list(local.search=FALSE)))
     validation <- list(X = d$V, y = as.numeric(predict(first, d$V)),
       patience = 2L, minit = 3L, tol = 1e-10)
-    stopped <- do.call(l0nnPois, c(args, list(maxit = 30L, validation = validation)))
+    stopped <- do.call(l0nnPois, utils::modifyList(c(args, list(maxit = 30L, validation = validation)), list(local.search=FALSE)))
     expect_equal(coef(stopped), coef(first), tolerance = 1e-10)
     expect_equal(stopped$validation$selection$best_iteration, 1L)
     expect_equal(stopped$validation$selection$iterations, 3L)
@@ -54,17 +55,17 @@ test_that("validation stays in the native backend with default initialization", 
   local_mocked_bindings(L0glm.fit.internal = function(...) stop("R IRLS fallback"),
     L0glm_screen_fit = function(...) stop("Unexpected automatic screening"))
   d <- native_validation_data()
-  fit <- l0nnPois(d$X, d$y, lambda = 2, grouped = TRUE, relaxed = TRUE,
+  fit <- l0nnPois(local.search=FALSE, d$X, d$y, lambda = 2, grouped = TRUE, relaxed = TRUE,
     ncores = 2L, validation = list(X = d$V, y = d$v))
   expect_true(is.finite(fit$validation$deviance))
   expect_true(any(coef(fit) > 0))
-  scalar <- l0nnPois(d$X, d$y, weights = 2, offset = .3, lambda = 2,
+  scalar <- l0nnPois(local.search=FALSE, d$X, d$y, weights = 2, offset = .3, lambda = 2,
     ncores = 2L, validation = list(X = d$V, y = d$v, weights = 2, offset = .3))
-  expanded <- l0nnPois(d$X, d$y, weights = rep(2, 100), offset = rep(.3, 100), lambda = 2,
+  expanded <- l0nnPois(local.search=FALSE, d$X, d$y, weights = rep(2, 100), offset = rep(.3, 100), lambda = 2,
     ncores = 2L, validation = list(X = d$V, y = d$v, weights = rep(2, 60), offset = rep(.3, 60)))
   expect_equal(coef(scalar), coef(expanded), tolerance = 1e-12)
   expect_equal(scalar$validation$deviance, expanded$validation$deviance, tolerance = 1e-12)
-  controlled <- l0nnPois(d$X, d$y, lambda = 2, ncores = 2L,
+  controlled <- l0nnPois(local.search=FALSE, d$X, d$y, lambda = 2, ncores = 2L,
     control.solver = list(rowaug = FALSE, method = "svd", NaturalOrdering = TRUE),
     validation = list(X = d$V, y = d$v))
   expect_equal(coef(controlled), coef(fit), tolerance = 1e-12)
@@ -72,7 +73,7 @@ test_that("validation stays in the native backend with default initialization", 
     expect_identical(screen, "none")
     "none"
   })
-  expect_s3_class(l0nnPois(d$X, d$y, lambda = 2, ncores = 2L,
+  expect_s3_class(l0nnPois(local.search=FALSE, d$X, d$y, lambda = 2, ncores = 2L,
     validation = list(X = d$V, y = d$v)), "L0glm_fit")
 })
 
@@ -83,9 +84,9 @@ test_that("OpenMP native validation preserves explicit masks and checkpoint hist
     args <- list(X = Matrix::Matrix(d$X, sparse = sparse), y = d$y, start = start,
       always.include = 1L, lambda = 2, maxit = 15L, group.maxit = 3L,
       grouped = grouped, relaxed = TRUE, validation = list(X = d$V, y = d$v))
-    reference <- do.call(l0nnPois, c(args, list(parallelize = FALSE)))
+    reference <- do.call(l0nnPois, utils::modifyList(c(args, list(parallelize = FALSE)), list(local.search=FALSE)))
     for (threads in c(1L, 2L, 4L, 8L)) {
-      fit <- do.call(l0nnPois, c(args, list(ncores = threads, parallelize = TRUE)))
+      fit <- do.call(l0nnPois, utils::modifyList(c(args, list(ncores = threads, parallelize = TRUE)), list(local.search=FALSE)))
       # Timing diagnostics vary across worker counts.
       fit$validation$starts$seconds <- reference$validation$starts$seconds
       if(!is.null(fit$nuisance)) fit$nuisance$seconds <- reference$nuisance$seconds
@@ -108,13 +109,13 @@ test_that("native validation handles wide systems, zero weights and mandatory nu
       family = poisson("identity"), lambda = "gic", maxit = 12L, relaxed = TRUE, intercept = TRUE,
       validation = list(X = V, y = rpois(12, V %*% beta + .2),
         weights = c(0, rep(1, 11)), offset = rep(.2, 12)), parallelize = FALSE)
-    fit <- do.call(l0nnPois, args)
-    r <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
+    fit <- do.call(l0nnPois, utils::modifyList(args, list(local.search=FALSE)))
+    r <- do.call(l0glmFit, utils::modifyList(c(args, list(nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
     expect_equal(coef(fit), coef(r), tolerance = 1e-7)
     expect_equal(fit$validation$deviance, r$validation$deviance, tolerance = 1e-8)
     expect_true(all(is.finite(fitted(fit))))
     args$start <- 0
-    null <- do.call(l0nnPois, args)
+    null <- do.call(l0nnPois, utils::modifyList(args, list(local.search=FALSE)))
     expect_equal(as.numeric(coef(null)[-1, ]), numeric(50))
     expect_true(coef(null)[1, ] > 0)
   }

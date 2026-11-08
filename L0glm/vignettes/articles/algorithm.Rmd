@@ -611,8 +611,9 @@ within training folds before evaluating their held-out rows.
 `local.search="auto"` runs the search for initial models with at most 50
 coefficient dimensions after fitting. Grouped rows count their response
 dimensions, multinomial rows have \(C-1\), and mandatory coordinates are
-included. The computational size excludes noise parameters. `FALSE` remains
-the default; the [benchmarks](performance.html#local-support-refinement) show
+included. The computational size excludes noise parameters. `"auto"` is
+the default, with one-iteration pilots and unpenalized fits retained directly;
+the [benchmarks](performance.html#local-support-refinement) show
 both the optimisation gains and their computational cost.
 
 ## Appendix: mathematical pseudocode {#algorithm-appendix}

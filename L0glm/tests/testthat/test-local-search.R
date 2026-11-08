@@ -5,7 +5,7 @@ test_that('local support refinement is opt-in, monotone and reproducible', {
   X <- matrix(rnorm(180*16),180,16)
   y <- 2*X[,1]-1.5*X[,2]+rnorm(180)
   a <- list(X=X,y=y,lambda='gic',intercept=TRUE,relaxed=TRUE,parallelize=FALSE)
-  plain <- do.call(l0glmFit,a)
+  plain <- do.call(l0glmFit,c(a,list(local.search=FALSE)))
   off <- do.call(l0glmFit,c(a,list(local.search=FALSE)))
   fit <- do.call(l0glmFit,c(a,list(local.search=TRUE,control.local=local_budget)))
   expect_identical(coef(off),coef(plain))
@@ -111,10 +111,12 @@ test_that('local search is disabled for pilot-only initialization fits', {
 })
 
 test_that('automatic search uses independent coefficient dimensions', {
+  for (fun in list(l0glmFit,l0nnPois,l0glmTune))
+    expect_identical(formals(fun)$local.search,'auto')
   set.seed(8807)
   X <- matrix(rnorm(120*8),120,8);y <- 2*X[,1]+rnorm(120)
   a <- list(X=X,y=y,parallelize=FALSE)
-  plain <- do.call(l0glmFit,a)
+  plain <- do.call(l0glmFit,c(a,list(local.search=FALSE)))
   automatic <- do.call(l0glmFit,c(a,list(local.search='auto',control.local=local_budget)))
   on <- do.call(l0glmFit,c(a,list(local.search=TRUE,control.local=local_budget)))
   expect_true(automatic$local.search$applied)
@@ -133,7 +135,49 @@ test_that('automatic search uses independent coefficient dimensions', {
   fake$grouped <- FALSE
   expect_equal(L0glm_local_size(fake),1)
   expect_error(l0glmFit(X,y,local.search='auto',control.local=list(size.max=-1)),'size.max')
+  default <- do.call(l0glmFit,c(a,list(control.local=local_budget)))
+  expect_true(default$local.search$applied)
+  expect_identical(coef(default),coef(automatic))
+  pilot <- l0glmFit(X,y,maxit=1L,parallelize=FALSE)
+  expect_identical(pilot$local.search$stopping,'initialization_only')
+  unpenalized <- l0glmFit(X,y,lambda=0,parallelize=FALSE)
+  expect_identical(unpenalized$local.search$stopping,'unpenalized')
   tune <- l0glmTune(X,y,family=gaussian(),nlambda=3,prop_range=.1,
     local.search='auto',control.local=local_budget,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   expect_true(tune$fit_best$local.search$applied)
+  disabled <- l0glmTune(X,y,family=gaussian(),nlambda=3,prop_range=.1,
+    local.search=FALSE,parallelize=FALSE,plot=FALSE,printbest=FALSE)
+  expect_null(disabled$fit_best$local.search)
+})
+
+test_that('default refinement executes once after each complete orchestrated fit', {
+  set.seed(8813)
+  original <- L0glm_local_refine
+  calls <- list()
+  local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control) {
+    calls[[length(calls)+1L]] <<- list(screening=fit$screening,clustering=fit$preclustering)
+    original(fit,args,control)
+  })
+  X <- matrix(rnorm(80*40),80,40);y <- 2*X[,1]+rnorm(80)
+  screened <- l0glmFit(X,y,screen='ISIS',nsis=8,screen.maxit=2,
+    parallelize=FALSE,control.local=local_budget)
+  expect_length(calls,1L)
+  expect_equal(calls[[1]]$screening$method,'ISIS')
+  X <- Matrix::Diagonal(60);y <- matrix(0,60,4);y[c(10,30,50),] <- 20
+  clustered <- l0glmFit(X,y,family=poisson('identity'),nonnegative=TRUE,
+    precluster=TRUE,control.precluster=list(k.max=2),parallelize=FALSE,
+    control.local=local_budget)
+  expect_length(calls,2L)
+  expect_true(calls[[2]]$clustering$refitted)
+  expect_equal(ncol(coef(clustered)),4)
+})
+
+test_that('an unbounded initial likelihood cannot be replaced by a finite score', {
+  fit <- l0glmFit(diag(3),cbind(c(1,0,0),c(-1,0,0)),lambda=.01,
+    grouped=TRUE,relaxed=TRUE,normalize=FALSE,parallelize=FALSE)
+  expect_identical(fit$local.search$stopping,'unbounded_criterion')
+  expect_equal(nrow(fit$local.search$history),1L)
+  expect_identical(fit$local.search$final$value,-Inf)
+  expect_false(L0glm_local_better(0,-Inf,1e-8))
+  expect_true(L0glm_local_better(0,Inf,1e-8))
 })

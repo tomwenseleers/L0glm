@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("thresh is the fitting argument and is validated", {
   for (fun in list(l0glmFit,l0nnPois)) {
     expect_identical(formals(fun)$thresh,1e-5)
@@ -82,12 +83,12 @@ test_that("R and native penalties are unsmoothed and cutoffs respect coefficient
   args <- list(X=diag(3),y=c(2,3,4),family=poisson(identity),start=c(1,2,3),lambda=4,
                thresh=0.25,maxit=1,
                grouped=FALSE,relaxed=FALSE,parallelize=FALSE)
-  native <- do.call(l0nnPois,args)
-  general <- do.call(l0glmFit,c(args,list(nonnegative=TRUE,openmp=FALSE)))
+  native <- do.call(l0nnPois,utils::modifyList(args, list(local.search=FALSE)))
+  general <- do.call(l0glmFit,utils::modifyList(c(args,list(nonnegative=TRUE,openmp=FALSE)), list(local.search=FALSE)))
   expect_equal(as.numeric(native$lambdas),1/args$start^2)
   expect_equal(native$lambdas,general$lambdas)
   expect_equal(native$coefficients,general$coefficients,tolerance=1e-12)
-  fit <- l0glmFit(diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
+  fit <- l0glmFit(local.search=FALSE, diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
                   nonnegative=FALSE,openmp=FALSE,lambda=0,thresh=0.1,
                   start=rep(1,3),dispersion=1,maxit=1,
                   relaxed=FALSE,parallelize=FALSE)

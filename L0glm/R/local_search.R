@@ -3,6 +3,12 @@ L0glm_local_pattern <- function(model) {
   list(matrix=S,rows=S@i[S@x!=0]+1L)
 }
 
+L0glm_local_better <- function(value,current,tol) {
+  if (!is.finite(value)) return(FALSE)
+  if (is.infinite(current)) return(current>0)
+  is.na(current) || value<current-tol*max(1,abs(current))
+}
+
 L0glm_local_eta <- function(B,d) {
   if(isTRUE(d$incremental) && !is.null(d$reference.B)) {
     if(identical(B,d$reference.B))return(d$reference.eta)
@@ -264,7 +270,9 @@ L0glm_local_refine <- function(fit,args,control=list()) {
   history <- list(data.frame(iteration=0L,move="initial",value=score$value,GIC=score$GIC,
     selected=score$selected,nonzero=score$nonzero,evaluations=0L))
   proposals <- list();stop.reason <- "iteration_limit"
-  for(iteration in seq_len(control$maxit)) {
+  unbounded <- is.infinite(score$value) && score$value<0
+  if(unbounded) stop.reason <- "unbounded_criterion"
+  for(iteration in if(unbounded)integer()else seq_len(control$maxit)) {
     cache <- new.env(parent=emptyenv());best <- list(model=current,score=score,move="none")
     base <- as.matrix(coef(current))!=0;base[d$mandatory,] <- TRUE
     active <- which(rowSums(base)>0)
@@ -295,8 +303,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
       proposals[[length(proposals)+1L]] <<- data.frame(iteration,move,value=value$value,
         improves=is.finite(value$value) && value$value<score$value-control$tol,
         selected=value$selected,nonzero=value$nonzero)
-      tolerance <- control$tol*max(1,abs(best$score$value))
-      if(is.finite(value$value) && (!is.finite(best$score$value)||value$value<best$score$value-tolerance)) best <<- trial
+      if(L0glm_local_better(value$value,best$score$value,control$tol)) best <<- trial
       trial
     }
     if(iteration==1L || control$refit.every.round) {
@@ -383,7 +390,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
     if(control$trace) cat(iteration,best$move,format(score$value,digits=12),"\n")
     if(evaluations>=control$max.evals) {stop.reason<-"evaluation_limit";break}
   }
-  if(is.finite(control$block.max) && control$final.refit) {
+  if(!unbounded && is.finite(control$block.max) && control$final.refit) {
     final.control<-control;final.control$block.max<-Inf;final.control$channel.refit<-FALSE
     mask<-as.matrix(coef(current))!=0;mask[d$mandatory,]<-TRUE
     t<-proc.time()[[3L]]
@@ -392,7 +399,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
     refit.seconds<-refit.seconds+proc.time()[[3L]]-t;evaluations<-evaluations+1L
     if(!inherits(refined,"error")) {
       next.score<-L0glm_local_score(refined,d,control)
-      if(is.finite(next.score$value) && next.score$value<score$value-control$tol*max(1,abs(score$value))) {
+      if(L0glm_local_better(next.score$value,score$value,control$tol)) {
         current<-refined;score<-next.score
         history[[length(history)+1L]]<-data.frame(iteration=length(history),move="final_refit",
           value=score$value,GIC=score$GIC,selected=score$selected,nonzero=score$nonzero,evaluations)

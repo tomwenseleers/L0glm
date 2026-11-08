@@ -45,7 +45,7 @@ L0glm_benchmark_path <- function(method, data, grid=NULL) {
       if (added) {
         null <- l0glmFit(matrix(1,n,1L), data$y, family=data$family,
           weights=data$weights, offset=data$offset, lambda=0, nonnegative=data$nonnegative,
-          intercept=FALSE, screen="none")
+          intercept=FALSE, screen="none",local.search=FALSE)
         B[1L,] <- coef(null)
       }
       path <- list(grid=if (is.null(grid)) 0 else grid,

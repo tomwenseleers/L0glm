@@ -11,14 +11,17 @@
 #' Set `local.search=TRUE` to run additions, deletions, single exchanges and
 #' small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 #' compulsory-term fitting and any original-channel preclustering refit finish
-#' first. Their internal fits do not run local search. `FALSE` is the default.
-#' `local.search="auto"` runs refinement when the initial support has at most
+#' first. Their internal fits do not run local search.
+#' The default `local.search="auto"` runs refinement when the initial support has at most
 #' 50 free coefficient coordinates, including mandatory terms. A grouped
 #' multichannel row contributes `m` coordinates; a multinomial row contributes
 #' `m-1`. Ungrouped fits count active entries, subtracting the CLR row constraint
 #' for multinomial. Noise parameters are excluded from this computational size.
 #' The decision is taken after screening and refitting, separately for each
 #' training model. Increase `control.local$size.max` to change the limit.
+#' Automatic refinement skips one-iteration ridge pilots (`maxit=1`) and
+#' unpenalized fits (`lambda=0`). `TRUE` explicitly requests refinement and
+#' `FALSE` disables it.
 #'
 #' The default target is
 #' \deqn{Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),}
@@ -86,7 +89,8 @@
 #' preserve the adaptive-ridge state separately from the refined estimates.
 #' A bounded search reports its tested neighbourhood and budget; it does not
 #' certify a global optimum. Lower training IC can trade additional false
-#' positives for better prediction, so refinement remains optional.
+#' positives for better prediction. The size rule limits automatic refinement;
+#' `FALSE` returns the adaptive-ridge fit directly.
 #'
 #' @seealso [l0glmFit()], [l0nnPois()], [l0glmTune()], [model_criteria]
 #' @examples
@@ -127,9 +131,12 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   elapsed <- proc.time()[[3L]]-started
   if (isFALSE(mode)) return(fit)
   size <- L0glm_local_size(fit)
-  if (identical(mode,"auto") && size>control$size.max) {
+  skip <- if(isTRUE(arguments$maxit==1L)) "initialization_only" else
+    if(isTRUE(fit$init.lambda==0)) "unpenalized" else
+      if(size>control$size.max) "size_limit" else NULL
+  if (identical(mode,"auto") && !is.null(skip)) {
     fit$local.search <- list(requested=mode,applied=FALSE,initial.size=size,
-      size.max=control$size.max,stopping="size_limit",initial.seconds=elapsed,
+      size.max=control$size.max,stopping=skip,initial.seconds=elapsed,
       seconds=0,total.seconds=elapsed)
     return(fit)
   }
@@ -184,6 +191,8 @@ L0glm_local_preprocessing <- function(fit, args) {
 }
 
 L0glm_local_control <- function(control, args=list()) {
+  if (!is.null(args$screen.nthreads) && !"nthreads"%in%names(control))
+    args$screen.nthreads <- L0glm_sis_threads(args$screen.nthreads)
   defaults <- list(size.max=50L,top=2L,drop=2L,maxit=12L,max.evals=160L,max.swap=2L,
     nthreads=if(is.null(args$screen.nthreads))1L else args$screen.nthreads,
     ncores=if(is.null(args$ncores))L0glm_default_ncores(!isFALSE(args$parallelize))else args$ncores,

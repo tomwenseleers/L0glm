@@ -12,14 +12,17 @@ candidate and each cross-validation training fit.
 Set \code{local.search=TRUE} to run additions, deletions, single exchanges and
 small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 compulsory-term fitting and any original-channel preclustering refit finish
-first. Their internal fits do not run local search. \code{FALSE} is the default.
-\code{local.search="auto"} runs refinement when the initial support has at most
+first. Their internal fits do not run local search.
+The default \code{local.search="auto"} runs refinement when the initial support has at most
 50 free coefficient coordinates, including mandatory terms. A grouped
 multichannel row contributes \code{m} coordinates; a multinomial row contributes
 \code{m-1}. Ungrouped fits count active entries, subtracting the CLR row constraint
 for multinomial. Noise parameters are excluded from this computational size.
 The decision is taken after screening and refitting, separately for each
 training model. Increase \code{control.local$size.max} to change the limit.
+Automatic refinement skips one-iteration ridge pilots (\code{maxit=1}) and
+unpenalized fits (\code{lambda=0}). \code{TRUE} explicitly requests refinement and
+\code{FALSE} disables it.
 
 The default target is
 \deqn{Q(B,\psi)=-2\ell(B,\psi)+\lambda d(B,\psi),}
@@ -87,7 +90,8 @@ accepted history, candidate counts, timings, stopping reason and compact
 preserve the adaptive-ridge state separately from the refined estimates.
 A bounded search reports its tested neighbourhood and budget; it does not
 certify a global optimum. Lower training IC can trade additional false
-positives for better prediction, so refinement remains optional.
+positives for better prediction. The size rule limits automatic refinement;
+\code{FALSE} returns the adaptive-ridge fit directly.
 }
 \examples{
 set.seed(42)

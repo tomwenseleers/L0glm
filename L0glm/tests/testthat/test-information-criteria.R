@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("criterion presets match the documented penalties in any case", {
   for (n in c(40, 400)) {
     for (p in c(3, 30)) {
@@ -98,17 +99,17 @@ test_that("tuning selects EBIC scores with case-insensitive names", {
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                nlambda = 3, prop_range = 0.2, printbest = FALSE, plot = FALSE,
                grouped = FALSE, parallelize = FALSE, maxit = 20)
-  lower <- do.call(l0glmTune, c(args, list(tune = "ebic")))
-  upper <- do.call(l0glmTune, c(args, list(tune = "EBIC")))
+  lower <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "ebic")), list(local.search=FALSE)))
+  upper <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "EBIC")), list(local.search=FALSE)))
   expect_identical(upper, lower)
   expect_identical(upper$tune, "ebic")
   expect_equal(upper$lambda_preset, log(60))
   expect_equal(upper$lambda_best,
                upper$metrics$lambda[which.min(upper$metrics$ebic)])
   expect_false("mebic" %in% names(upper$metrics))
-  default <- do.call(l0glmTune, args)
+  default <- do.call(l0glmTune, utils::modifyList(args, list(local.search=FALSE)))
   expect_identical(default$tune, "gic")
-  expect_error(do.call(l0glmTune, c(args, list(tune = "HBIC"))),
+  expect_error(do.call(l0glmTune, utils::modifyList(c(args, list(tune = "HBIC")), list(local.search=FALSE))),
                "tune must be one of")
 })
 
@@ -133,7 +134,7 @@ test_that("removed criteria are rejected by preset resolution and tuning", {
   for (ic in c("mebic", "MEBIC", "MeBiC")) {
     expect_error(L0glm::presetLambda(ic, p = 3, n = 20),
                  "Information criterion must be one of.*gic.*ebic.*mbic")
-    expect_error(l0glmTune(X, rep(1, 20), family = gaussian(), tune = ic,
+    expect_error(l0glmTune(local.search=FALSE, X, rep(1, 20), family = gaussian(), tune = ic,
                            plot = FALSE),
                  "tune must be one of.*gic.*ebic.*mbic.*cv")
   }

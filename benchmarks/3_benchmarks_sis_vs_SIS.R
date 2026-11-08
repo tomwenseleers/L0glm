@@ -59,7 +59,7 @@ wrap_sis <- function(fit,sim) {
 
 # Every row includes screening AND fitting. L0glm uses its default GIC preset;
 # LASSO variants use BIC because GIC often selects a null LASSO model here.
-# The million-predictor ISIS L0glm call is exactly the homepage default fit.
+# Disable final support refinement here to isolate screening and adaptive ridge.
 run_models <- function(sim,screen,repetitions,
   methods=c("SIS_package","l0glmFit","sparseglm_lasso","sparseglm_relaxed_lasso"),
   batch=nsis,rounds=3L) {
@@ -72,8 +72,9 @@ run_models <- function(sim,screen,repetitions,
           iter=screen=="ISIS",iter.max=rounds,penalty="lasso",tune="bic",
           standardize=FALSE,parallel=FALSE,seed=123L),
         l0glmFit=if (p==1000000L && screen=="ISIS" && is.null(batch) && rounds==10L)
-          l0glmFit(sim$X,sim$y,family=gaussian()) else
-          l0glmFit(sim$X,sim$y,family=gaussian(),screen=screen,nsis=batch,screen.maxit=rounds),
+          l0glmFit(sim$X,sim$y,family=gaussian(),local.search=FALSE) else
+          l0glmFit(sim$X,sim$y,family=gaussian(),screen=screen,nsis=batch,screen.maxit=rounds,
+            local.search=FALSE),
         sparseglm_lasso=sparseGLM(sim,method="lasso",screen=screen,nsis=batch,
           screen.maxit=rounds,tune="bic",nlambda=10L),
         sparseglm_relaxed_lasso=sparseGLM(sim,method="relaxed_lasso",screen=screen,

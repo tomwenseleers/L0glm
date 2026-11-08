@@ -72,7 +72,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.55 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
+| 6.52 | 2579 | 40 | 2 | 20 | 999938 | 0.784 | 0.797 |
 <!-- END million-metrics -->
 
 <img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%">

@@ -119,7 +119,7 @@ gic <- l0glmTune(X, y, family=gaussian(), tune="gic", nlambda=10L,
 after the initial fit. For grouped multichannel fits, each selected row counts
 its channel dimensions; multinomial rows have one fewer dimension because of
 their zero-sum constraint. The limit is set with `control.local$size.max`.
-`FALSE` remains the default. See the [controls](../reference/local_search.html)
+`"auto"` is the default; `FALSE` disables refinement. See the [controls](../reference/local_search.html)
 and [paired benchmarks](performance.html#local-support-refinement).
 
 IC paths rank ordinary and special-family models using the same counts as

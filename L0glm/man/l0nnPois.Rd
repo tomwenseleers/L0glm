@@ -34,7 +34,7 @@ l0nnPois(
   precluster = FALSE,
   cluster.refit = TRUE,
   control.precluster = list(),
-  local.search = FALSE,
+  local.search = "auto",
   control.local = list()
 )
 }
@@ -442,7 +442,7 @@ screening. Defaults include at most 32 groups, Ward clustering,
 GIC cut selection, unit row bins and a screening factor of 0.1. See
 \code{\link{preclustering}} for all entries.}
 
-\item{local.search}{\code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+\item{local.search}{\code{"auto"} (default), \code{TRUE} or \code{FALSE}.
 The automatic option refines initial models with at most 50 coefficient
 dimensions; see \link{local_search} for multichannel counting.
 After fitting, including

@@ -28,7 +28,7 @@ compares complete models when all methods use SIS or ISIS.
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.55** | **2583** | **40** | **3** | **20** | **999937** | **0.777** | **0.787** |
+| **L0glm + ISIS** | **GIC preset** | **6.52** | **2579** | **40** | **2** | **20** | **999938** | **0.784** | **0.797** |
 | LASSO | BIC path | 23.42 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
 | Relaxed LASSO | BIC path | 22.47 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
 | LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
@@ -41,7 +41,7 @@ par(mar=c(4, 6.5, 2.8, 1), mgp=c(2.5, .6, 0), family="sans", cex.axis=.85,
   bg="white", col.axis="#34465d", col.lab="#34465d", col.main="#0a1930")
 labels <- c("L0glm + ISIS", "LASSO", "Relaxed LASSO")
 cols <- c("#087e83", "#8b5cc7", "#d04a78")
-seconds <- c(2.55, 120.69, 99.24)
+seconds <- c(6.52, 120.69, 99.24)
 plot(seconds, 3:1, log="x", xlim=c(1, 220), ylim=c(.6, 3.4), pch=21, bg=cols,
   col=cols, cex=2.2, yaxt="n", xlab="Seconds (log scale)", ylab="", bty="n")
 axis(2, at=3:1, labels=labels, las=1, tick=FALSE, cex.axis=.9)
@@ -56,7 +56,7 @@ plot(tp, 3:1, xlim=c(0, 60), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
   cex=2.2, yaxt="n", xlab="True positives (of 60)", ylab="", bty="n")
 text(tp+2, 3:1, tp, pos=4, cex=.9, col="#29455a")
 title("Higher sensitivity", adj=0, cex.main=1.1)
-fp <- c(3, 50, 252)
+fp <- c(2, 50, 252)
 plot(fp, 3:1, xlim=c(0, 310), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
   cex=2.2, yaxt="n", xlab="False positives", ylab="", bty="n")
 text(fp+9, 3:1, fp, pos=4, cex=.9, col="#29455a")
@@ -64,7 +64,7 @@ title("Fewer false positives", adj=0, cex.main=1.1)
 layout(1)
 ```
 
-In this simulation L0glm is **47 times faster than five-fold-CV LASSO** and
+In this simulation L0glm is **19 times faster than five-fold-CV LASSO** and
 recovers more true effects with fewer false positives. The L0glm timing includes
 screening and one preset fit; the other methods evaluate up to 40 native path
 values, with paths refitted in each CV training fold. BIC is shown alongside CV
@@ -212,7 +212,7 @@ comparisons in a single column.
 
 `local.search` refines a completed adaptive-ridge fit by testing predictor
 additions, deletions and small exchanges. Its parameter-count objective uses
-the same conventions as `GIC()` and the tuning functions. `"auto"` applies
+the same conventions as `GIC()` and the tuning functions. The default `"auto"` applies
 the search to initial supports with at most 50 coefficient dimensions, after
 any SIS/ISIS screening. The [reference](../reference/local_search.html) gives
 the computational-size rule, controls and returned diagnostics.

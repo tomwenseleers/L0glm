@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("Gaussian CV matches independent weighted held-out predictions", {
   set.seed(501)
   n <- 36L
@@ -10,8 +11,8 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
   args <- list(X=X,y=y,weights=w,offset=off,family=gaussian(),
     dispersion=c(2,-3),intercept=TRUE,grouped=FALSE,relaxed=TRUE,
     parallelize=FALSE,maxit=40)
-  tuned <- do.call(l0glmTune,c(args,list(tune="cv",foldid=foldid,
-    nlambda=3,prop_range=.1,plot=FALSE,printbest=FALSE)))
+  tuned <- do.call(l0glmTune,utils::modifyList(c(args,list(tune="cv",foldid=foldid,
+    nlambda=3,prop_range=.1,plot=FALSE,printbest=FALSE)), list(local.search=FALSE)))
   expected <- matrix(NA_real_,3,3)
   total <- sum(w)
   fold_weights <- vapply(1:3,function(k)sum(w[foldid==k,,drop=FALSE]),numeric(1))
@@ -21,7 +22,7 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
     a$X <- X[!valid,,drop=FALSE]; a$y <- y[!valid,,drop=FALSE]
     a$weights <- w[!valid,,drop=FALSE]; a$offset <- off[!valid,,drop=FALSE]
     for(i in seq_along(tuned$lambdas)) {
-      fit <- do.call(l0glmFit,c(a,list(lambda=tuned$lambdas[i]*sum(w[!valid,,drop=FALSE])/total)))
+      fit <- do.call(l0glmFit,utils::modifyList(c(a,list(lambda=tuned$lambdas[i]*sum(w[!valid,,drop=FALSE])/total)), list(local.search=FALSE)))
       prediction <- as.matrix(cbind(1,X[valid,,drop=FALSE]) %*% fit$coefficients)+off[valid,,drop=FALSE]
       expected[i,k] <- sum(w[valid,,drop=FALSE]*(y[valid,,drop=FALSE]-prediction)^2)/fold_weights[k]
     }
@@ -39,10 +40,10 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
   expect_identical(tuned$cv$nfolds,3L)
   expect_equal(tuned$lambda_best,tuned$lambdas[which.min(mean)])
   expect_equal(tuned$lambda_preset,presetLambda("gic",ncol(X),n))
-  full <- do.call(l0glmFit,c(args,list(lambda=tuned$lambda_best)))
+  full <- do.call(l0glmFit,utils::modifyList(c(args,list(lambda=tuned$lambda_best)), list(local.search=FALSE)))
   expect_equal(tuned$fit_best$coefficients,full$coefficients)
   expect_equal(tuned$fit_best$dispersion,full$dispersion)
-  full_1se <- do.call(l0glmFit,c(args,list(lambda=tuned$lambda_1se)))
+  full_1se <- do.call(l0glmFit,utils::modifyList(c(args,list(lambda=tuned$lambda_1se)), list(local.search=FALSE)))
   expect_equal(tuned$fit_1se,full_1se)
   expect_equal(tuned$fit_1se$coefficients,
                tuned$coefficients[[match(tuned$lambda_1se,tuned$lambdas)]])
@@ -62,7 +63,7 @@ test_that("CV rows and supplied free dispersion starts stay inside each training
       y=y,dispersion=args$dispersion,start=args$start)
     original(X,y,...)
   })
-  tuned <- l0glmTune(X,y,family=gaussian(),dispersion=-2,tune="cv",
+  tuned <- l0glmTune(local.search=FALSE, X,y,family=gaussian(),dispersion=-2,tune="cv",
     foldid=folds,nlambda=3,prop_range=.1,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   expect_length(seen,9)
   for(k in 1:3) for(i in 1:3) {
@@ -84,14 +85,14 @@ test_that("Poisson CV uses all held-out channels and the numerical scoring floor
   folds <- rep(1:5,4)
   args <- list(X=X,y=y,family=poisson(identity),nonnegative=TRUE,
                grouped=TRUE,group.maxit=2,relaxed=TRUE,parallelize=FALSE)
-  tuned <- do.call(l0glmTune,c(args,list(tune="CV",foldid=folds,nlambda=3,
-    prop_range=.1,plot=FALSE,printbest=FALSE)))
+  tuned <- do.call(l0glmTune,utils::modifyList(c(args,list(tune="CV",foldid=folds,nlambda=3,
+    prop_range=.1,plot=FALSE,printbest=FALSE)), list(local.search=FALSE)))
   expect_identical(tuned$tune,"cv")
   expect_identical(tuned$cv$foldid,folds)
   expect_true(all(is.finite(tuned$cv$deviance)))
   for(k in 1:5) {
     valid <- folds==k
-    fit <- l0glmFit(X[!valid,,drop=FALSE],y[!valid,,drop=FALSE],
+    fit <- l0glmFit(local.search=FALSE, X[!valid,,drop=FALSE],y[!valid,,drop=FALSE],
       family=poisson(identity),nonnegative=TRUE,grouped=TRUE,group.maxit=2,
       relaxed=TRUE,parallelize=FALSE,lambda=tuned$cv$lambda_train[1,k])
     mu <- pmax(as.matrix(X[valid,,drop=FALSE] %*% fit$coefficients),1e-8)
@@ -107,15 +108,15 @@ test_that("default CV folds are balanced, reproducible, and have the usual equal
   args <- list(X=X,y=y,family=gaussian(),dispersion=1,tune="cv",
                nlambda=2,prop_range=.1,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   set.seed(77)
-  a <- do.call(l0glmTune,args)
+  a <- do.call(l0glmTune,utils::modifyList(args, list(local.search=FALSE)))
   set.seed(77)
-  b <- do.call(l0glmTune,args)
+  b <- do.call(l0glmTune,utils::modifyList(args, list(local.search=FALSE)))
   expect_identical(a,b)
   expect_identical(a$cv$nfolds,5L)
   expect_equal(tabulate(a$cv$foldid),rep(6L,5))
   expect_equal(a$cv$mean,rowMeans(a$cv$deviance))
   expect_equal(a$cv$se,apply(a$cv$deviance,1,sd)/sqrt(5))
-  c <- do.call(l0glmTune,c(args,list(foldid=a$cv$foldid)))
+  c <- do.call(l0glmTune,utils::modifyList(c(args,list(foldid=a$cv$foldid)), list(local.search=FALSE)))
   expect_identical(c$cv,a$cv)
 })
 
@@ -124,13 +125,13 @@ test_that("CV supports binomial and quasi families without relying on IC scores"
   X <- matrix(rnorm(30*3),30,3)
   w <- rep(20,30)
   y <- round(w*plogis(-.7+X[,1]))/w
-  bin <- l0glmTune(X,y,weights=w,family=binomial(),tune="cv",nfolds=3,
+  bin <- l0glmTune(local.search=FALSE, X,y,weights=w,family=binomial(),tune="cv",nfolds=3,
     nlambda=2,prop_range=.1,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   expect_true(all(is.finite(bin$cv$mean)))
   expect_equal(nrow(bin$fit_best$coefficients),ncol(X)+1)
   X <- cbind(1,abs(X))
   y <- rpois(30,as.numeric(X %*% c(2,1,0,0)))
-  quasi <- l0glmTune(X,y,family=quasipoisson(identity),dispersion=2,
+  quasi <- l0glmTune(local.search=FALSE, X,y,family=quasipoisson(identity),dispersion=2,
     nonnegative=TRUE,tune="cv",nfolds=3,nlambda=2,prop_range=.1,
     parallelize=FALSE,plot=FALSE,printbest=FALSE)
   expect_true(all(is.finite(quasi$metrics$gic)))
@@ -142,7 +143,7 @@ test_that("quasi-Poisson IC tuning uses a common fitted dispersion", {
   set.seed(508)
   X <- cbind(1, matrix(runif(80 * 4), 80, 4))
   y <- cbind(rpois(80, 2 + 4 * X[, 2]), rpois(80, 3 + X[, 3]))
-  fit <- l0glmTune(X, y, family=quasipoisson(identity), tune="gic",
+  fit <- l0glmTune(local.search=FALSE, X, y, family=quasipoisson(identity), tune="gic",
     nonnegative=TRUE, nlambda=3, prop_range=.1, parallelize=FALSE,
     plot=FALSE, printbest=FALSE)
   expect_true(all(is.finite(fit$metrics$gic)))
@@ -164,32 +165,32 @@ test_that("CV validates fold controls and rejects the removed IC argument clearl
                nlambda=2,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   for(bad in list(1,1.5,11,NA_real_,Inf,"x",numeric())) {
     a <- args; a$nfolds <- bad
-    expect_error(do.call(l0glmTune,a),"nfolds")
+    expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"nfolds")
   }
   for(bad in list(rep(NA,10),rep(0,10),rep(c(1,3),5),1:3)) {
     a <- args; a$foldid <- bad
-    expect_error(do.call(l0glmTune,a),"foldid")
+    expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"foldid")
   }
   a <- args; a$foldid <- rep(1:2,5); a$nfolds <- 3
-  expect_error(do.call(l0glmTune,a),"match")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"match")
   a <- args; a$foldid <- rep(1:2,5); a$weights <- rep(c(0,1),5)
-  expect_error(do.call(l0glmTune,a),"Every fold")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"Every fold")
   a <- args; a$weights <- rep(-1,10)
-  expect_error(do.call(l0glmTune,a),"nonnegative")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"nonnegative")
   a <- args; a$offset <- matrix(0,3,3)
-  expect_error(do.call(l0glmTune,a),"offset")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"offset")
   a <- args; a$tune <- "gic"; a$foldid <- rep(1:2,5)
-  expect_error(do.call(l0glmTune,a),"only used")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"only used")
   a <- args; a$tune <- "unknown"
-  expect_error(do.call(l0glmTune,a),"tune must be one of")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"tune must be one of")
   a <- args; a$IC <- "gic"
-  expect_error(do.call(l0glmTune,a),"IC was renamed to tune")
+  expect_error(do.call(l0glmTune,utils::modifyList(a, list(local.search=FALSE))),"IC was renamed to tune")
 })
 
 test_that("a one-variable CV model retains zero GIC preset with a positive grid reference", {
   X <- matrix(seq(-1,1,length.out=15),ncol=1)
   y <- 2*X[,1]+sin(seq_len(15))
-  tuned <- l0glmTune(X,y,family=gaussian(),tune="cv",nfolds=3,
+  tuned <- l0glmTune(local.search=FALSE, X,y,family=gaussian(),tune="cv",nfolds=3,
     dispersion=1,nlambda=2,prop_range=.1,parallelize=FALSE,plot=FALSE,printbest=FALSE)
   expect_identical(tuned$lambda_preset,0)
   expect_identical(tuned$lambda_reference,2)
@@ -205,7 +206,7 @@ test_that("the one-SE choice uses the minimum's SE and the largest eligible lamb
   args <- list(X = diag(6), y = c(4, 1, .2, -.1, .1, .2),
     family = gaussian(), dispersion = 1, nlambda = 5, nfolds = 2,
     parallelize = FALSE, plot = FALSE, printbest = FALSE)
-  a <- do.call(l0glmTune, c(args, list(tune = "cv")))
+  a <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "cv")), list(local.search=FALSE)))
   # The cutoff is 1 + .25. The last candidate fails despite its large SE,
   # and the fourth qualifies despite the intervening third candidate failing.
   expect_identical(a$lambda_best, a$lambdas[2])
@@ -214,17 +215,17 @@ test_that("the one-SE choice uses the minimum's SE and the largest eligible lamb
 
   means <- c(1.3, 1, 1.2, 1, Inf)
   ses <- c(100, 0, 100, 0, 0)
-  b <- do.call(l0glmTune, c(args, list(tune = "cv")))
+  b <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "cv")), list(local.search=FALSE)))
   # With zero SE only tied minima qualify; choose the largest of those lambdas.
   expect_identical(b$lambda_best, b$lambdas[2])
   expect_identical(b$lambda_1se, b$lambdas[4])
 
   means <- c(1.3, 1, 1.2, 1.1, Inf)
-  tied <- do.call(l0glmTune, c(args, list(tune = "cv")))
+  tied <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "cv")), list(local.search=FALSE)))
   expect_identical(tied$lambda_1se, tied$lambda_best)
   expect_identical(tied$fit_1se, tied$fit_best)
 
-  ic <- do.call(l0glmTune, c(args, list(tune = "gic")))
+  ic <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "gic")), list(local.search=FALSE)))
   expect_null(ic$lambda_1se)
   expect_null(ic$fit_1se)
 })

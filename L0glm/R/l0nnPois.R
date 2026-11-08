@@ -100,11 +100,12 @@ l0nnPois <- function(X,
                      precluster    = FALSE,
                      cluster.refit = TRUE,
                      control.precluster = list(),
-                     local.search = FALSE,
+                     local.search = "auto",
                      control.local = list()) {
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
+    if (isFALSE(parallelize) || NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
     arguments <- mget(supplied, envir=environment(), inherits=FALSE)
     return(L0glm_local_fit(l0nnPois, arguments, mode, control.local, nonnegative=TRUE))
   }

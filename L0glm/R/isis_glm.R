@@ -13,6 +13,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   args <- utils::modifyList(list(lambda="gic",start=NULL,relaxed=TRUE,parallelize=FALSE,
     intercept=identical(kind,"multinomial") || identical(family$family,"binomial")),options,keep.null=TRUE)
   args$screen <- "none" # The outer search owns screening; candidate fits never recurse.
+  args$local.search <- FALSE # The completed l0glmFit call owns support refinement.
   if (!is.logical(args$intercept) || length(args$intercept)!=1L || is.na(args$intercept))
     stop("intercept must be TRUE or FALSE.",call.=FALSE)
   if (identical(kind,"cox") && args$intercept) {

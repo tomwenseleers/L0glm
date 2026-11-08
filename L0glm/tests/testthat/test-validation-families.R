@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 validation_family_sample <- function(family, seed = 9201L) {
   set.seed(seed)
   X <- matrix(rnorm(120 * 6), 120, 6)
@@ -27,7 +28,7 @@ test_that("validation evaluates ordinary family deviances for every standard lin
     list(quasipoisson(), quasibinomial()))
   for (family in families) {
     d <- validation_family_sample(family)
-    fit <- l0glmFit(d$X, d$y, family = family, intercept = TRUE, lambda = "gic",
+    fit <- l0glmFit(local.search=FALSE, d$X, d$y, family = family, intercept = TRUE, lambda = "gic",
       dispersion = 1, relaxed = TRUE, maxit = 100, parallelize = FALSE,
       validation = list(X = d$V, y = d$v))
     mu <- as.numeric(predict(fit, d$V))
@@ -49,7 +50,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   v <- rnbinom(60, mu = exp(.4 + d$V[, 1]), size = 2)
   for (theta in c(-1, 2)) {
     family <- mgcv::nb(theta = theta)
-    fit <- l0glmFit(d$X, y, family = family, intercept = TRUE, lambda = "gic",
+    fit <- l0glmFit(local.search=FALSE, d$X, y, family = family, intercept = TRUE, lambda = "gic",
       relaxed = TRUE, maxit = 80, parallelize = FALSE, validation = list(X = d$V, y = v))
     mu <- as.numeric(predict(fit, d$V))
     saturated <- if (theta < 0) dpois(v, v, log = TRUE) else
@@ -63,7 +64,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   }
   labels <- function(n) factor(sample(letters[1:3], n, TRUE), levels = letters[1:3])
   ym <- labels(120); vm <- labels(60)
-  mn <- l0glmFit(d$X, ym, family = mgcv::multinom(2), lambda = "gic",
+  mn <- l0glmFit(local.search=FALSE, d$X, ym, family = mgcv::multinom(2), lambda = "gic",
     relaxed = TRUE, maxit = 50, validation = list(X = d$V, y = vm))
   expect_equal(mn$validation$deviance,
     l0glmMetrics(mn, newdata = d$V, y = vm)$mean_deviance, tolerance = 1e-8)
@@ -71,7 +72,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   time <- rexp(120, exp(d$X[, 1])); tv <- rexp(60, exp(d$V[, 1]))
   yc <- survival::Surv(pmin(time, 2), time <= 2)
   vc <- survival::Surv(pmin(tv, 2), tv <= 2)
-  cx <- l0glmFit(d$X, yc, family = mgcv::cox.ph(), lambda = "gic",
+  cx <- l0glmFit(local.search=FALSE, d$X, yc, family = mgcv::cox.ph(), lambda = "gic",
     relaxed = TRUE, maxit = 50, validation = list(X = d$V, y = vc, rule = "1se"))
   expect_equal(cx$validation$deviance,
     l0glmMetrics(cx, newdata = d$V, y = vc)$mean_deviance, tolerance = 1e-8)

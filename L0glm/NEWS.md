@@ -27,8 +27,9 @@
   exchanges after SIS/ISIS and original-channel refitting. It supports the
   ordinary and special families, respects starting exclusions and constraints,
   and is available within information-criterion tuning and CV training fits.
-  `local.search="auto"` applies it to initial supports of at most 50
-  coefficient dimensions; the default remains `FALSE`.
+  The default `local.search="auto"` applies it to initial supports of at most
+  50 coefficient dimensions, preserving one-iteration ridge pilots and
+  unpenalized fits. `FALSE` disables refinement.
 * The shared native quadratic solver offers checked Cholesky solves with
   iterative refinement and a rank-revealing fallback for profile-shape updates.
   Optional feasible starting values accelerate repeated quadratic subproblems.

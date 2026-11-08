@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("coefficient mixing is no longer a fitting control", {
   for (fun in list(l0glmFit, l0nnPois, l0glmTune, L0glm.fit.internal))
     expect_false("warm.start" %in% names(formals(fun)))
@@ -10,7 +11,7 @@ test_that("explicit signed starts set the first ridge penalties without mixing",
   start <- c(-1, 0, 2)
   y <- c(-2, 3, 4)
   for (sparse in c(FALSE, TRUE)) {
-    fit <- l0glmFit(Matrix::Matrix(diag(3), sparse = sparse), y,
+    fit <- l0glmFit(local.search=FALSE, Matrix::Matrix(diag(3), sparse = sparse), y,
                      family = gaussian(), nonnegative = FALSE,
                      start = start, lambda = 4, dispersion = 1,
                      maxit = 1, thresh = 0, relaxed = FALSE,
@@ -54,7 +55,7 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
                      grouped = FALSE, relaxed = FALSE,
                      parallelize = FALSE, openmp = FALSE)
         for (start in c(1, -2)) {
-          scalar <- do.call(l0glmFit, c(args, list(start = start)))
+          scalar <- do.call(l0glmFit, utils::modifyList(c(args, list(start = start)), list(local.search=FALSE)))
           expected_start <- matrix(start, p, m)
           if (start == 1) {
             design <- if (intercept) cbind(Intercept = 1, X) else X
@@ -65,7 +66,7 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
             if (intercept) expected_start[1L, ] <- 1 - sum(center / scale)
           }
           explicit <- do.call(l0glmFit,
-                              c(args, list(start = expected_start)))
+                              utils::modifyList(c(args, list(start = expected_start)), list(local.search=FALSE)))
           expect_equal(scalar$coefficients, explicit$coefficients, tolerance = 1e-12)
           expect_equal(scalar$lambdas, explicit$lambdas, tolerance = 1e-12)
         }
@@ -88,8 +89,8 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
       args <- list(X = X, y = c(2, 1, 4, 6), family = gaussian(), dispersion = 1,
         lambda = 4, normalize = mode, intercept = intercept, maxit = 1,
         thresh = 0, relaxed = FALSE, parallelize = FALSE, openmp = FALSE)
-      unit <- do.call(l0glmFit, c(args, list(start = 1)))
-      explicit <- do.call(l0glmFit, c(args, list(start = matrix(start, ncol = 1))))
+      unit <- do.call(l0glmFit, utils::modifyList(c(args, list(start = 1)), list(local.search=FALSE)))
+      explicit <- do.call(l0glmFit, utils::modifyList(c(args, list(start = matrix(start, ncol = 1))), list(local.search=FALSE)))
       expect_equal(unit$coefficients, explicit$coefficients, tolerance = 1e-12)
       expect_equal(unit$lambdas, explicit$lambdas, tolerance = 1e-12)
     }
@@ -98,10 +99,10 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
 
 test_that("a remaining explicit one is not reinterpreted after starting-zero screening", {
   X <- diag(c(2, 3)); y <- c(3, 0)
-  fit <- l0glmFit(X, y, family = gaussian(), dispersion = 1, normalize = "l2",
+  fit <- l0glmFit(local.search=FALSE, X, y, family = gaussian(), dispersion = 1, normalize = "l2",
     start = c(1, 0), lambda = 4, maxit = 1, thresh = 0, parallelize = FALSE)
   expect_equal(as.numeric(fit$coefficients), c(6 / 5, 0))
-  one_term <- l0glmFit(matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
+  one_term <- l0glmFit(local.search=FALSE, matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
     normalize = "l2", start = matrix(1, 1, 1), lambda = 4, maxit = 1,
     thresh = 0, parallelize = FALSE)
   expect_equal(as.numeric(one_term$coefficients), 6 / 5)
@@ -118,10 +119,10 @@ test_that("normalized Poisson unit starts agree across general and native channe
       args <- list(X = X, y = y, normalize = mode, intercept = intercept,
         lambda = 1, maxit = 8, grouped = TRUE, relaxed = TRUE,
         group.maxit = 2, parallelize = FALSE)
-      native <- do.call(l0nnPois, c(args, list(start = 1)))
-      reference <- do.call(l0nnPois, c(args, list(start = explicit)))
-      general <- do.call(l0glmFit, c(args, list(start = 1,
-        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+      native <- do.call(l0nnPois, utils::modifyList(c(args, list(start = 1)), list(local.search=FALSE)))
+      reference <- do.call(l0nnPois, utils::modifyList(c(args, list(start = explicit)), list(local.search=FALSE)))
+      general <- do.call(l0glmFit, utils::modifyList(c(args, list(start = 1,
+        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
       expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-10)
       expect_equal(native$coefficients, general$coefficients, tolerance = 1e-6)
     }
@@ -185,7 +186,7 @@ test_that("Gaussian initialization respects response units with fixed dispersion
   X <- matrix(rnorm(120 * 12), 120)
   beta <- c(-3, 2, rep(0, 10))
   y <- as.numeric(X %*% beta) + rnorm(120, sd = 0.5)
-  fit <- function(scale) l0glmFit(
+  fit <- function(scale) l0glmFit(local.search=FALSE,
     X, y * scale, family = gaussian(), nonnegative = FALSE,
     dispersion = 0.25 * scale^2, lambda = "gic", maxit = 100,
     relaxed = TRUE, parallelize = FALSE, openmp = FALSE)

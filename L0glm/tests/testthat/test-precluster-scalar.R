@@ -1,3 +1,4 @@
+# These component checks isolate IRLS/tuning from final support refinement.
 test_that("scalar preclustering aggregates offsets and refits original channels", {
   skip_if_not_installed("mgcv")
   set.seed(86)
@@ -26,8 +27,8 @@ test_that("scalar preclustering aggregates offsets and refits original channels"
     args <- list(X=X, y=Y, family=family, lambda=8, offset=O, weights=w,
       dispersion=x[[3L]], nonnegative=TRUE, parallelize=FALSE, precluster=TRUE,
       control.precluster=list(clusterids=groups))
-    reduced <- do.call(l0glmFit, c(args, list(cluster.refit=FALSE)))
-    full <- do.call(l0glmFit, args)
+    reduced <- do.call(l0glmFit, utils::modifyList(c(args, list(cluster.refit=FALSE)), list(local.search=FALSE)))
+    full <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
     expect_identical(dim(coef(reduced)), c(8L, 2L))
     expect_identical(dim(coef(full)), c(8L, 4L))
     expect_equal(unname(as.matrix(reduced$offset)), cbind(rowSums(O[, 1:2]), rowSums(O[, 3:4])))
@@ -50,14 +51,14 @@ test_that("Gaussian preclustering retains signed starts and scales case weights"
   args <- list(X=X, y=y, offset=offset, weights=w, family=gaussian(),
     start=start, dispersion=c(1, 2, 4), precluster=TRUE, lambda=6,
     parallelize=FALSE, control.precluster=list(clusterids=c(1L, 1L, 2L)))
-  reduced <- do.call(l0glmFit, c(args, list(cluster.refit=FALSE)))
-  full <- do.call(l0glmFit, args)
+  reduced <- do.call(l0glmFit, utils::modifyList(c(args, list(cluster.refit=FALSE)), list(local.search=FALSE)))
+  full <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
   expect_equal(unname(as.matrix(reduced$y)), cbind(rowMeans(y[, 1:2]), y[, 3]))
   expect_equal(as.numeric(reduced$prior.weights[, 1]), w * 2)
   expect_equal(as.numeric(reduced$dispersion), c(1.5, 4))
   expect_true(all(coef(full)[2L, ] < 0))
   expect_true(all(coef(full)[-2L, ] == 0))
-  expect_error(l0glmFit(X, y, family=gaussian("log"), precluster=TRUE), "identity-link")
+  expect_error(l0glmFit(local.search=FALSE, X, y, family=gaussian("log"), precluster=TRUE), "identity-link")
 })
 
 test_that("identity-link NB2 tuning learns partitions in its training folds", {
@@ -68,7 +69,7 @@ test_that("identity-link NB2 tuning learns partitions in its training folds", {
   mu <- 2 + outer(X[, 2L], c(18, 16, 2, 1)) + outer(X[, 4L], c(1, 2, 12, 14))
   Y <- matrix(rnbinom(length(mu), mu=mu, size=30), n)
   folds <- rep(1:3, length.out=n)
-  fit <- l0glmTune(X, Y, family=mgcv::nb(theta=30, link="identity"), tune="cv",
+  fit <- l0glmTune(local.search=FALSE, X, Y, family=mgcv::nb(theta=30, link="identity"), tune="cv",
     offset=2, nonnegative=TRUE, parallelize=FALSE, precluster=TRUE, foldid=folds,
     nlambda=3L, prop_range=.2, control.precluster=list(k=2L),
     plot=FALSE, printbest=FALSE)

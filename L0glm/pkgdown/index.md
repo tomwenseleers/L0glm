@@ -15,7 +15,7 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictor-example"><strong>47× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>19× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
 <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a>
@@ -46,11 +46,7 @@ where it matters, producing sparse models with excellent support recovery.
 ## Fit a sparse model
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.55 seconds** and recovers **40 true effects with 3 false positives**.
-
-That is about twice the sensitivity of five-fold-CV LASSO and relaxed LASSO,
-which recover 17 and 20 true effects and select 50 and 252 false positives,
-respectively. [See the full benchmark](articles/performance.html#one-million-predictor-example).
+This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **6.52 seconds** and recovers **40 true effects with 2 false positives**.
 <!-- END million-intro -->
 
 ```r
@@ -73,7 +69,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.55 | 2583 | 40 | 3 | 20 | 999937 | 0.777 | 0.787 |
+| 6.52 | 2579 | 40 | 2 | 20 | 999938 | 0.784 | 0.797 |
 <!-- END million-metrics -->
 
 The recovered coefficients are close to their true values.

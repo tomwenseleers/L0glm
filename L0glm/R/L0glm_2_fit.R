@@ -410,7 +410,7 @@
 #'   screening. Defaults include at most 32 groups, Ward clustering,
 #'   GIC cut selection, unit row bins and a screening factor of 0.1. See
 #'   \code{\link{preclustering}} for all entries.
-#' @param local.search \code{FALSE} (default), \code{TRUE} or \code{"auto"}.
+#' @param local.search \code{"auto"} (default), \code{TRUE} or \code{FALSE}.
 #'   The automatic option refines initial models with at most 50 coefficient
 #'   dimensions; see \link{local_search} for multichannel counting.
 #'   After fitting, including
@@ -970,11 +970,12 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       precluster    = FALSE,
                       cluster.refit = TRUE,
                       control.precluster = list(),
-                      local.search = FALSE,
+                      local.search = "auto",
                       control.local = list()) {
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
+    if (isFALSE(parallelize) || NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
     arguments <- mget(supplied, envir=environment(), inherits=FALSE)
     return(L0glm_local_fit(l0glmFit, arguments, mode, control.local))
   }
@@ -1078,7 +1079,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       maxit = maxit, grouped = grouped, group.maxit = group.maxit,
       relaxed = relaxed, prior.mean = prior.mean,
       thresh = thresh, tol = tol,
-      control.solver = control.solver, verbose = verbose, validation = validation
+      control.solver = control.solver, verbose = verbose, validation = validation,
+      local.search = FALSE
     ))
   }
 
