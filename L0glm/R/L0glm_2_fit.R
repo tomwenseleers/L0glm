@@ -208,7 +208,9 @@
 #'   A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 #'   See \link{information_criteria} for
 #'   all formulas, intended uses and references. Set \code{lambda = 0} to
-#'   disable penalization. Presets calibrate the adaptive ridge updates to
+#'   disable penalization. Predictor groups use dimension-based preset costs;
+#'   see \link{predictor_groups} for numeric group costs and multipliers.
+#'   Presets calibrate the adaptive ridge updates to
 #'   the chosen selection criterion.
 #'   In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
 #'   screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.
@@ -934,6 +936,7 @@
 #'   \code{"pcg"}; a scalar LLT threshold applies to both storage types.
 #'   The working-size guard applies to dense direct Cox and multinomial systems,
 #'   not matrix-free Cox products. See the dedicated family help pages.
+#' @inheritParams predictor_groups
 l0glmFit <- function(X, # n x p design matrix (without intercept)
                       y, # n x m outcome matrix
                       weights       = NULL,
@@ -971,7 +974,14 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       cluster.refit = TRUE,
                       control.precluster = list(),
                       local.search = "auto",
-                      control.local = list()) {
+                      control.local = list(), group = NULL, group.multiplier = NULL) {
+  if (!is.null(group)) {
+    if(!inherits(family,'family'))family <- family()
+    args <- mget(names(formals(l0glmFit)),environment(),inherits=FALSE)
+    if(missing(intercept) && identical(L0glm_ext_kind(args$family),"multinomial"))args$intercept <- TRUE
+    if(missing(relaxed))args$relaxed <- grouped && (identical(L0glm_ext_kind(args$family),"multinomial") || NCOL(y)>1L)
+    return(L0glm_group_fit(args))
+  }
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))

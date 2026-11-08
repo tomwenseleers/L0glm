@@ -1,4 +1,8 @@
 L0glm_ext_loglik <- function(data, B, state) {
+  if (data$kind == "glm") {
+    mu <- L0glm_ext_nb_mean(data,B)$mu
+    return(L0glm_loglik_mean(data$y,mu,data$weights,data$family,state$phi))
+  }
   if (data$kind == "nb") {
     mu <- L0glm_ext_nb_mean(data, B)$mu
     if (any(!is.finite(mu) | mu < 0)) return(-Inf)
@@ -28,6 +32,7 @@ L0glm_ext_working_coefficients <- function(data, beta) {
 }
 
 L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, args) {
+  if (data$kind == "glm")return(L0glm_group_glm_result(data,result,passes,lambda,grouped,relaxed,args))
   beta <- L0glm_ext_original_coefficients(data, result$B)
   rownames(beta) <- colnames(data$X)
   colnames(beta) <- if (data$kind == "multinomial") data$response$levels else
@@ -215,6 +220,11 @@ l0glmMetrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = N
                           r2_mu_floor = 0.1, ...) {
   if (!inherits(object, "L0glm_fit"))
     stop("object must be a model returned by l0glmFit or l0nnPois.", call. = FALSE)
+  if (!is.null(object[["group"]])) {
+    plain <- object;plain[["group"]] <- NULL
+    scores <- l0glmMetrics(plain,newdata,y,weights,offset,mu_floor,beta_true,r2_mu_floor,...)
+    return(L0glm_group_metrics(object,scores))
+  }
   training <- is.null(newdata)
   if (!training && is.null(y))
     stop("Supply y when scoring newdata.", call. = FALSE)

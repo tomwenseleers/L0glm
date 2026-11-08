@@ -119,6 +119,8 @@ L0glm_local_mode <- function(value) {
 }
 
 L0glm_local_size <- function(fit) {
+  if(!is.null(fit[["group"]]))return(sum(fit$group.active)-
+    if(identical(fit$kind,"multinomial"))sum(rowSums(fit$group.active)>0)else 0L)
   beta <- coef(fit)
   m <- ncol(beta)-as.integer(identical(fit$kind,"multinomial"))
   selected <- setdiff(which(Matrix::rowSums(beta!=0)>0),fit$always.include)

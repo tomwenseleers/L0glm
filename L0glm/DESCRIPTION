@@ -43,6 +43,7 @@ LazyData: true
 Suggests: 
     MASS,
     mgcv,
+    grpreg,
     knitr,
     nnet,
     ncvreg,

@@ -12,6 +12,10 @@
 
 ## Model specification and selection
 
+* Predictor-variable groups use norm-based block L0 penalties, with group 0
+  unpenalized, dimension-calibrated IC presets, explicit numeric group costs,
+  group-aware thresholding, relaxed refits and cross-validation.
+
 * Observation weights, offsets, intercepts, mandatory predictors, nonnegative
   coefficients, normalization, starting values and optional validation stopping.
 * Shared observation vectors stay compact across channels in fitting, native

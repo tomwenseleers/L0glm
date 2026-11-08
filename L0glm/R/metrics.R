@@ -256,6 +256,8 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 #'
 #' With the default \code{gamma_ebic}, passing the result as a numeric
 #' \code{lambda} uses the same preset as passing its criterion name.
+#' With predictor-variable groups, also pass the fitted \code{group.multiplier}
+#' values when reusing a numeric preset; see \link{predictor_groups}.
 #' Dispersion adjustment and the adaptive-ridge factor of
 #' \eqn{1/4} are applied inside the fitters. A custom \code{gamma_ebic} can be
 #' supplied here and the resulting penalty passed to a fitter.

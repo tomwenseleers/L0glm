@@ -1,4 +1,4 @@
-# Family-specific IRLS extension. Ordinary GLMs never enter these helpers.
+# Shared IRLS orchestration for special families and predictor groups.
 L0glm_ext_kind <- function(family) {
   name <- tolower(family$family)
   if (identical(name, "negative binomial") && is.function(family$putTheta)) return("nb")
@@ -46,14 +46,13 @@ L0glm_ext_control <- function(control) {
 
 L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
                               always.include, nonnegative, normalize, start,
-                              prior.mean, control.family) {
-  kind <- L0glm_ext_kind(family)
+                              prior.mean, control.family, kind = L0glm_ext_kind(family)) {
   if (!is.matrix(X) && !inherits(X, "Matrix")) X <- as.matrix(X)
   if (length(dim(X)) != 2L || !nrow(X) ||
       any(!is.finite(if (inherits(X, "sparseMatrix")) X@x else X)))
     stop("X must be a finite numeric design matrix.", call. = FALSE)
   n <- nrow(X)
-  response <- switch(kind, nb = L0glm_ext_nb_response(y, family, n),
+  response <- switch(kind, glm = list(y=as.matrix(y),m=NCOL(y)), nb = L0glm_ext_nb_response(y, family, n),
     cox = L0glm_ext_cox_response(y, n),
     multinomial = L0glm_ext_multinomial_response(y, family, n))
   m <- response$m
@@ -70,7 +69,7 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
   p <- ncol(X)
   included <- L0glm_mandatory(X, always.include)
   lower <- rep(if (nonnegative) 0 else -.Machine$double.xmax, p)
-  if (kind == "multinomial") lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
+  if (kind == "multinomial" || family$family %in% c("binomial","quasibinomial")) lower[L0glm_intercepts(X)] <- -.Machine$double.xmax
   if (kind == "cox" && length(L0glm_intercepts(X)))
     stop("Remove constant/intercept columns from a Cox design.", call. = FALSE)
   preprocessing <- L0glm_preprocessing(X, normalize, lower, included)
@@ -99,7 +98,7 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
   if (any(!is.finite(prior))) stop("prior.mean must be finite.", call. = FALSE)
   B <- to_working(B)
   B <- pmax(B, lower * scale)
-  w <- L0glm_observation_input(weights,n,if(kind=="nb")m else 1L,1,"weights")
+  w <- L0glm_observation_input(weights,n,if(kind%in%c("nb","glm"))m else 1L,1,"weights")
   off <- L0glm_observation_input(offset,n,m,0,"offset")
   if (multinomial) off <- off - rowMeans(off)
   if (any(!is.finite(w) | w < 0) || !any(w > 0) || any(!is.finite(off)))
@@ -115,7 +114,8 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     family = family, B = B, allowed = allowed, explicit = explicit, m = m,
     added_intercept = intercept,
     p = p, n = n, p_selectable = p - length(included))
-  data$n_ic <- if (kind == "cox") sum(response$status * w[, 1L]) else sum(rowSums(w) > 0)
+  data$n_ic <- if (kind == "cox") sum(response$status * w[, 1L]) else
+    if(kind=='glm')n else sum(rowSums(w) > 0)
   if (kind == "cox" && data$n_ic == 0) stop("Cox fitting needs an observed event.", call. = FALSE)
   if (kind == "cox") {
     data$cox.cache <- L0glm_ext_cox_cache(response, w[, 1L])
@@ -156,6 +156,12 @@ L0glm_ext_threshold <- function(B, allowed, included, thresh, grouped) {
 L0glm_ext_ridge <- function(X, y, w, D, start, lower, prior, args) {
   active <- is.finite(D)
   beta <- numeric(length(D))
+  if(any(active) && isTRUE(args$predictor.groups) && args$solver=='eigen' &&
+     args$method==1L && all(D[active]==0)) {
+    beta[active] <- L0glm_group_ridge(X[,active,drop=FALSE],y,w,D[active],start[active],
+      lower[active],prior[active],args)
+    return(beta)
+  }
   if (any(active)) beta[active] <- lmRidge(X[, active, drop = FALSE], y,
     weights = w, lambdas = D[active], start = start[active], lower = lower[active],
     prior.mean = prior[active], solver = args$solver, method = args$method,
@@ -178,15 +184,17 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
       list(beta = initial, allowed = allowed, state = initial_state), 0L)
   }
   for (iteration in seq_len(maxit)) {
-    D <- L0glm_ext_penalty(B, allowed, included, lambda, grouped)
+    D <- if (is.null(data$groups)) L0glm_ext_penalty(B, allowed, included, lambda, grouped) else
+      L0glm_group_penalty(B,allowed,included,lambda,grouped,data$groups)
     proposal <- switch(data$kind,
+      glm = L0glm_group_glm_working(data,B,D,state,args),
       nb = L0glm_ext_nb_working(data, B, D, state, args),
       cox = L0glm_ext_cox_working(data, B, D, state, args),
       multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
     solve <- attr(proposal, "cox.solve")
     attr(proposal, "cox.solve") <- NULL
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
-    objective <- function(candidate) -2 * L0glm_ext_loglik(data, candidate, state) + ridge(candidate)
+    objective <- function(candidate) L0glm_ext_loss(data, candidate, state) + ridge(candidate)
     step <- L0glm_step(proposal, B, function(candidate, eta) objective(candidate),
       baseline = if (any((proposal != 0) != (B != 0))) Inf else objective(B),
       maxit = 30L, rtol = 1e-10)
@@ -198,7 +206,8 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
     }
     if (!relaxed && lambda > 0) {
       smooth <- candidate; allowed_smooth <- allowed
-      selection <- L0glm_ext_threshold(candidate, allowed, included, thresh, grouped)
+      selection <- if (is.null(data$groups)) L0glm_ext_threshold(candidate, allowed, included, thresh, grouped) else
+        L0glm_group_threshold(candidate,allowed,included,thresh,grouped,data$groups)
       candidate <- selection$B
       allowed <- selection$allowed
       if (data$kind == "multinomial") {
@@ -214,6 +223,11 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
       }
     }
     nuisance_change <- 0
+    if (data$kind == "glm") {
+      updated <- L0glm_group_scale_update(data,candidate,B,allowed,state,iteration,relaxed)
+      nuisance_change <- max(abs(log(updated$phi/state$phi)))
+      state <- updated
+    }
     if (data$kind == "nb") {
       updated <- L0glm_ext_nb_update(data, candidate, state)
       nuisance_change <- max(abs(log(updated$theta/state$theta)))

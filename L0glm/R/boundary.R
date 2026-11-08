@@ -66,11 +66,11 @@ L0glm_boundary <- function(X, y, beta, eta, weights, family, lower, offset=NULL)
 L0glm_ext_boundary <- function(data, result, validation=NULL) {
   if (data$kind == "multinomial" || !any(data$lower == 0)) return(result)
   before <- result$B
-  if (data$kind == "nb") {
+  if (data$kind %in% c("nb","glm")) {
     eta <- as.matrix(data$Z%*%before+L0glm_observation_broadcast(data$offset))
     for (j in seq_len(data$m)) {
       family <- unserialize(serialize(data$family,NULL))
-      family$putTheta(log(result$state$theta[j]))
+      if (data$kind == "nb")family$putTheta(log(result$state$theta[j]))
       polished <- L0glm_boundary(data$Z,data$y[,j],before[,j],eta[,j],
         L0glm_observation_column(data$weights,j),family,data$lower,L0glm_observation_column(data$offset,j))
       result$B[,j] <- polished$beta

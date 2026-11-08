@@ -134,6 +134,7 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
+    <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -260,7 +261,9 @@ quadratic programming solver.</p>
 <span>  cluster.refit <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  control.precluster <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  local.search <span class="op">=</span> <span class="st">"auto"</span>,</span>
-<span>  control.local <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  control.local <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group.multiplier <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -411,7 +414,9 @@ and <code>always.include</code> terms, before screening by explicit starts.
 A pool with no selectable predictors uses \(p=1\) in logarithms.
 See <a href="information_criteria.html">information_criteria</a> for
 all formulas, intended uses and references. Set <code>lambda = 0</code> to
-disable penalization. Presets calibrate the adaptive ridge updates to
+disable penalization. Predictor groups use dimension-based preset costs;
+see <a href="predictor_groups.html">predictor_groups</a> for numeric group costs and multipliers.
+Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
 In <code>l0glmFit()</code>, an omitted penalty is <code>"gic"</code> with
 screening and 1 otherwise. <code><a href="l0nnPois.html">l0nnPois()</a></code> defaults to <code>"gic"</code>.</p></dd>
@@ -827,6 +832,24 @@ additions, deletions and small exchanges. See <a href="local_search.html">local_
 <dt id="arg-control-local">control.local<a class="anchor" aria-label="anchor" href="#arg-control-local"></a></dt>
 <dd><p>Named advanced controls for the optional support search;
 see <a href="local_search.html">local_search</a>. Ignored when <code>local.search=FALSE</code>.</p></dd>
+
+
+<dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
+<dd><p>Optional vector with one label per column of the supplied <code>X</code>,
+excluding an automatically added intercept. Factors, integers and character
+labels are accepted; ordering and consecutive numbering are unnecessary.
+Label <code>0</code> or <code>"0"</code> identifies unpenalized terms. Intercepts and
+<code>always.include</code> terms remain unpenalized. <code>NULL</code> uses individual predictors.</p></dd>
+
+
+<dt id="arg-group-multiplier">group.multiplier<a class="anchor" aria-label="anchor" href="#arg-group-multiplier"></a></dt>
+<dd><p>Optional positive penalty multipliers, one per
+penalized predictor group in first-appearance order, or a named vector
+matching the nonzero group labels. A scalar applies to every group.
+By default, named IC presets charge each group's coefficient dimension;
+a numeric <code>lambda</code> charges once per group. Returned <code>group.multiplier</code>
+values reproduce the preset when reusing its numeric lambda. Tuning uses
+dimension-based multipliers throughout its path and training folds.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -1486,4 +1509,3 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 
 
   </body></html>
-

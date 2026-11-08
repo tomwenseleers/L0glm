@@ -50,6 +50,7 @@ estimates that retain shrinkage."><meta property="og:image" content="https://tom
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
+    <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -329,6 +330,9 @@ supports and coefficients are fitted independently at every lambda.</p></li>
 <li><p><code>always.include</code>: unpenalized columns, including optional smooth
 background bases. Nonnegative fits refine these in a constrained conditional
 block independently within each training fit; see <code><a href="compulsory_terms.html">compulsory_terms</a></code>.</p></li>
+<li><p><code>group</code>, <code>group.multiplier</code>: select groups of predictor
+variables, using dimension-based penalties throughout the path and CV.
+See <a href="predictor_groups.html">predictor_groups</a>; numeric tuned fits retain their multipliers.</p></li>
 <li><p><code>grouped</code>: <code>TRUE</code> (default) selects predictor rows across
 response channels or multinomial categories; <code>FALSE</code> selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses
@@ -775,4 +779,3 @@ after tuning.</p>
 
 
   </body></html>
-

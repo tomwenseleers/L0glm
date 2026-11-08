@@ -43,7 +43,9 @@ l0glmFit(
   cluster.refit = TRUE,
   control.precluster = list(),
   local.search = "auto",
-  control.local = list()
+  control.local = list(),
+  group = NULL,
+  group.multiplier = NULL
 )
 }
 \arguments{
@@ -185,7 +187,9 @@ and \code{always.include} terms, before screening by explicit starts.
 A pool with no selectable predictors uses \eqn{p=1} in logarithms.
 See \link{information_criteria} for
 all formulas, intended uses and references. Set \code{lambda = 0} to
-disable penalization. Presets calibrate the adaptive ridge updates to
+disable penalization. Predictor groups use dimension-based preset costs;
+see \link{predictor_groups} for numeric group costs and multipliers.
+Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
 In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
 screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.}
@@ -560,6 +564,20 @@ additions, deletions and small exchanges. See \link{local_search}.}
 
 \item{control.local}{Named advanced controls for the optional support search;
 see \link{local_search}. Ignored when \code{local.search=FALSE}.}
+
+\item{group}{Optional vector with one label per column of the supplied \code{X},
+excluding an automatically added intercept. Factors, integers and character
+labels are accepted; ordering and consecutive numbering are unnecessary.
+Label \code{0} or \code{"0"} identifies unpenalized terms. Intercepts and
+\code{always.include} terms remain unpenalized. \code{NULL} uses individual predictors.}
+
+\item{group.multiplier}{Optional positive penalty multipliers, one per
+penalized predictor group in first-appearance order, or a named vector
+matching the nonzero group labels. A scalar applies to every group.
+By default, named IC presets charge each group's coefficient dimension;
+a numeric \code{lambda} charges once per group. Returned \code{group.multiplier}
+values reproduce the preset when reusing its numeric lambda. Tuning uses
+dimension-based multipliers throughout its path and training folds.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.

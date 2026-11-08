@@ -204,6 +204,9 @@ supports and coefficients are fitted independently at every lambda.
 \item \code{always.include}: unpenalized columns, including optional smooth
 background bases. Nonnegative fits refine these in a constrained conditional
 block independently within each training fit; see \code{\link{compulsory_terms}}.
+\item \code{group}, \code{group.multiplier}: select groups of predictor
+variables, using dimension-based penalties throughout the path and CV.
+See \link{predictor_groups}; numeric tuned fits retain their multipliers.
 \item \code{grouped}: \code{TRUE} (default) selects predictor rows across
 response channels or multinomial categories; \code{FALSE} selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses

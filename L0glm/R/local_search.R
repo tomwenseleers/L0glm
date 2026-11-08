@@ -263,6 +263,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
     d$poisson.constant<--2*colSums(W*constant)
   }
   d$reference.eta<-L0glm_local_eta(B,d);d$reference.B<-B
+  if(!is.null(fit[["group"]]))return(L0glm_group_refine(fit,args,d,control))
   score <- L0glm_local_score(fit,d,control)
   initial <- score;current <- fit;evaluations <- 0L;failures <- character()
   screen.seconds <- refit.seconds <- 0

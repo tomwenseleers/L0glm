@@ -1,0 +1,137 @@
+---
+title: "Select groups of predictors"
+description: "Predictor groups, parameter-count information criteria and comparisons with grpreg."
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse=TRUE,comment='#>',message=FALSE,warning=FALSE)
+```
+
+A categorical predictor can require several contrasts, and a smooth effect can
+require several spline coefficients. The `group` argument selects such terms
+together. It also supports groups of related measurements. Adaptive ridge uses
+the squared Euclidean norm of the coefficients within each group, so positive
+and negative effects contribute equally to selection.
+
+## Fit and tune grouped predictors
+
+```{r grouped-fit}
+library(L0glm)
+set.seed(41)
+X <- matrix(rnorm(200*12),200,12)
+group <- rep(1:6,each=2)
+group[11:12] <- 0
+beta <- c(1.5,-1.5,0,0,1,-1,rep(0,6))
+y <- 1+as.numeric(X%*%beta)+rnorm(200)
+fit <- l0glmFit(X,y,group=group,intercept=TRUE,lambda='gic',relaxed=TRUE)
+l0glmMetrics(fit)[c('gic','group_support_size','group_df')]
+```
+
+Group labels can be integers, characters or factors in any order. Group `0`,
+the intercept and `always.include` terms are unpenalized. Explicit starting-zero
+exclusions remain binding; the returned sparse coefficient matrix retains all
+original predictor rows. A relaxed refit removes shrinkage on the retained groups.
+
+For multiple outcomes, `grouped=FALSE` selects each predictor group independently
+within each channel. `grouped=TRUE` pools its coefficients across channels.
+Joint multinomial fits pool the identifiable CLR coefficients across categories.
+
+```{r grouped-cv, eval=FALSE}
+cv <- l0glmTune(X,y,group=group,intercept=TRUE,relaxed=TRUE,
+  tune='cv',nfolds=5,nlambda=10)
+predict(cv$fit_1se,X[1:5,])
+```
+
+Every CV training fold repeats selection independently. Automatic local refinement
+tests whole-group additions, removals and exchanges when the initial selected
+coefficient dimension is at most 50. See [predictor groups](../reference/predictor_groups.html)
+for the penalty equations and [local refinement](../reference/local_search.html)
+for its controls. Predictor-group models currently fit the supplied design directly;
+use `screen='none'` when its dimensions would otherwise activate automatic ISIS.
+
+## GIC and group size
+
+The reported information criteria use the same parameter-count convention as
+other L0glm models:
+
+\[
+\mathrm{GIC}=-2\ell(\widehat B,\widehat\psi)
+  +\log(p)\log\log(n)\,k.
+\]
+
+Here $k$ counts free nonzero coefficients, compulsory coefficient dimensions and
+estimated noise parameters. Multinomial counts respect the CLR zero-sum constraint.
+The original selectable predictor count $p$ is retained. A selected group of four
+unrestricted coefficients contributes four parameters; its size is accounted for
+through those coefficients. No further group-size multiplier enters the reported
+GIC. See [information criteria](../reference/information_criteria.html) for the
+Fan–Tang GIC and its assumptions.
+
+To calibrate adaptive-ridge block selection, named IC presets use nominal group
+coefficient dimensions as penalty multipliers. Exact boundary zeros can reduce
+the reported parameter count of the resulting fit. IC tuning and local refinement
+evaluate that returned support using the parameter-count criterion above.
+A numeric `lambda` instead specifies a penalty per selected group, with optional
+`group.multiplier` values; `group_objective` reports this weighted group target.
+Stored multipliers permit numerical reproduction of an IC-calibrated ridge fit.
+
+Other group-specific selection criteria are possible. For example,
+[Zhang et al.](https://doi.org/10.1287/ijoc.2022.1241) study a group-count criterion
+in Gaussian best-subset-of-groups regression. L0glm retains its parameter-count
+GIC across families and uses it consistently in the comparisons below.
+
+## Comparisons with grpreg
+
+These four simulations include equal and unequal group sizes, correlated
+predictors and signed effects. Each is repeated with three independent seeds.
+Two compulsory predictors and an intercept are retained in every method.
+The [reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_predictor_groups.R)
+compares L0glm with grpreg's group LASSO, group MCP and group SCAD, using both
+information-criterion paths and five-fold CV with shared folds.
+
+The GIC comparisons use one common likelihood and count active coefficients.
+For Gaussian data the variance is known to be one, which makes the score
+comparable even for nearly interpolating path fits. L0glm's estimated-scale
+fits are included as a diagnostic alongside the known-scale fits. The grpreg
+paths contain 40 lambda values; L0glm uses its GIC preset or a ten-value CV grid.
+This common scoring choice is distinct from grpreg's default shrinkage-based
+effective degrees of freedom, described in its
+[selection documentation](https://pbreheny.github.io/grpreg/reference/select.html).
+
+```{r group-results, echo=FALSE, results='asis'}
+path <- '../../../benchmarks/plots/predictor-groups/summary.csv'
+results <- read.csv(path)
+for(case in c('gaussian_equal','gaussian_wide','logistic_equal','logistic_unequal')) {
+  d <- results[results$case==case & results$tune!='5-fold CV',]
+  d <- d[match(c('L0glm','L0glm estimated scale','grLasso','grMCP','grSCAD'),d$method),]
+  d <- d[!is.na(d$method),]
+  cat('\n\n**',gsub('_',' ',case),':** ',d$n[1],' observations, ',d$p[1],
+    ' predictors, ',d$groups[1],' groups (',d$true_groups[1],' active).\n\n',sep='')
+  table <- d[c('method','seconds','GIC','TP','FP','F1','MCC')]
+  names(table) <- c('Method','Seconds','GIC','Group TP','Group FP','F1','MCC')
+  print(knitr::kable(table,digits=c(0,2,1,2,2,3,3),row.names=FALSE))
+}
+```
+
+Gaussian preset fits recover the groups accurately, with prediction errors close
+to the noise level in the equal-size case. The grpreg Gaussian path solvers are
+particularly fast. In logistic regression, L0glm's preset with local refinement
+is faster than these complete paths; the unequal-size, correlated example is
+harder for parameter-count GIC, and CV recovers more of its true groups.
+
+```{r cv-results, echo=FALSE, results='asis'}
+d <- results[results$tune=='5-fold CV',]
+d <- d[order(match(d$case,c('gaussian_equal','gaussian_wide','logistic_equal','logistic_unequal')),
+  match(d$method,c('L0glm','grLasso','grMCP','grSCAD'))),]
+table <- d[c('case','method','seconds','TP','FP','F1','MCC')]
+names(table) <- c('Simulation','Method','Seconds','Group TP','Group FP','F1','MCC')
+knitr::kable(table,digits=c(0,0,2,2,2,3,3),row.names=FALSE)
+```
+
+Timings are medians; recovery scores are averages across three replicates.
+All fits and CV folds use one thread, on an HP ZBook Fury G8 with an Intel
+Core i9-11950H, Windows, R 4.5.0 and grpreg 3.6.0. Simulation and final scoring
+are excluded from the timings. The complete
+[run-level results](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/predictor-groups/runs.csv)
+include test RMSE or AUC/log loss, convergence diagnostics and path warnings.

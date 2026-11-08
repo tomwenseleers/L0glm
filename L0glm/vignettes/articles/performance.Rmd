@@ -185,6 +185,8 @@ coefficient plots and complete code.
   and [complete results and fitting notes](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/support-difficulty-runs.csv).
 * [Single and multichannel deconvolution workflows](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R).
 * [`sparseGLM()`](../reference/sparseGLM.html) applies the same comparison framework to your own data.
+* [Predictor-group comparisons with grpreg](predictor-groups.html) cover group
+  LASSO, MCP and SCAD with equal and unequal group sizes.
 
 Benchmarks were run on an **HP ZBook Fury 17.3-inch G8 Mobile Workstation**
 with an **Intel Core i9-11950H at 2.60 GHz**, **8 physical and 16 logical cores**,

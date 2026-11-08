@@ -24,6 +24,7 @@ or l0nnPois."><meta property="og:image" content="https://tomwenseleers.github.io
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/selection.html">Model selection and cross-validation</a></li>
     <li><a class="dropdown-item" href="../articles/controls.html">Weights, constraints and validation</a></li>
+    <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
@@ -104,6 +105,8 @@ and references for all supported criteria are given in
 <a href="information_criteria.html">information_criteria</a>.</p>
 <p>With the default <code>gamma_ebic</code>, passing the result as a numeric
 <code>lambda</code> uses the same preset as passing its criterion name.
+With predictor-variable groups, also pass the fitted <code>group.multiplier</code>
+values when reusing a numeric preset; see <a href="predictor_groups.html">predictor_groups</a>.
 Dispersion adjustment and the adaptive-ridge factor of
 \(1/4\) are applied inside the fitters. A custom <code>gamma_ebic</code> can be
 supplied here and the resulting penalty passed to a fitter.</p>
@@ -140,4 +143,3 @@ supplied here and the resulting penalty passed to a fitter.</p>
 
 
   </body></html>
-

@@ -101,7 +101,14 @@ l0nnPois <- function(X,
                      cluster.refit = TRUE,
                      control.precluster = list(),
                      local.search = "auto",
-                     control.local = list()) {
+                     control.local = list(), group = NULL, group.multiplier = NULL) {
+  if (!is.null(group)) {
+    if(!inherits(family,'family'))family <- family()
+    if(family$family!='poisson' || family$link!='identity')
+      stop('l0nnPois is only defined for family = poisson(identity).',call.=FALSE)
+    args <- mget(names(formals(l0nnPois)),environment(),inherits=FALSE)
+    return(do.call(l0glmFit,c(args,list(nonnegative=TRUE,screen='none'))))
+  }
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
