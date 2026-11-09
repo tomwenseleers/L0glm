@@ -18,3 +18,4 @@ L0glm.Rcheck
 /L0glm/src/*.o
 /L0glm/src/*.dll
 /L0glm/src/*.so
+/L0glm/src/tmp.def

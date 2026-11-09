@@ -69,6 +69,9 @@
 #' summation order. Thread-local top-candidate heaps are merged deterministically,
 #' including ties in original column order. Errors and interrupts are handled on
 #' the main R thread; no design-sized copies are made for threading.
+#' Double-precision file-backed bigmemory inputs use direct read-only native
+#' access, preserving the same statistics, ranks and tie handling as resident
+#' matrices. Other input formats retain bounded column streaming.
 #'
 #' With `iterative=TRUE`, add the fitted linear predictor to the original
 #' offset for screening, merge new candidates with current nonzero/mandatory

@@ -69,6 +69,9 @@
 
 ## Memory-bounded data access
 
+* Read-only native screening of double-precision bigmemory backing files avoids
+  intermediate R design copies, with deterministic OpenMP reductions and exact
+  agreement with resident screening across ordinary and special families.
 * `l0glmData()` provides lazy subsets of bigmemory, delayed/HDF5 single-cell
   assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2
   conversion cache, including expected dosages.

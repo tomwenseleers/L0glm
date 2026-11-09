@@ -85,6 +85,10 @@ sis_score_cpp <- function(design, context, nsis, full, nthreads = 1L) {
     .Call('_L0glm_sis_score_cpp', PACKAGE = 'L0glm', design, context, nsis, full, nthreads)
 }
 
+sis_bigmemory_score_cpp <- function(address, samples, columns, context, nsis, full, nthreads = 1L) {
+    .Call('_L0glm_sis_bigmemory_score_cpp', PACKAGE = 'L0glm', address, samples, columns, context, nsis, full, nthreads)
+}
+
 sis_bed_score_cpp <- function(path, n, p, samples, columns, imputation_rows, context, nsis, full, nthreads = 1L, mean_impute = TRUE) {
     .Call('_L0glm_sis_bed_score_cpp', PACKAGE = 'L0glm', path, n, p, samples, columns, imputation_rows, context, nsis, full, nthreads, mean_impute)
 }

@@ -46,6 +46,12 @@ Generic HDF5 datasets retain their supplied orientation; `transpose` can be set
 explicitly. Sparse HDF5/DelayedArray assays retain sparse working blocks.
 HDF5Array, DelayedArray, rhdf5 and bigmemory are optional dependencies.
 
+Double-precision bigmemory designs are screened directly through their existing
+native mapping, using read-only access. Each OpenMP worker reads its assigned columns
+without first copying them into an R matrix. Subsets retain the original row
+and column indices, and screening statistics and tie handling match resident
+matrices. Other storage types and mean-imputed data use bounded column blocks.
+
 Subsetting with `drop=FALSE` creates a view. `as.matrix()` makes an explicit
 bounded read. An unscreened working design, the retained fit matrix and requested
 outputs must fit the configurable `max.cells` guard. Full-design IRLS on an

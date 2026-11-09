@@ -1,6 +1,7 @@
 // Efficient-score screening without design-sized squares or channel Hessians.
 #include "eigen_diagnostics.h"
 #include "bed_input.h"
+#include <bigmemory/MatrixAccessor.hpp>
 #include <queue>
 #include <algorithm>
 #include <exception>
@@ -122,10 +123,10 @@ struct SisFeature {
 };
 
 // The common single-response/null-intercept case needs only scalar reductions.
-std::pair<double,int> sis_scalar(const SisContext& c,const double* x) {
+std::pair<double,int> sis_scalar(const SisContext& c,const double* x,const int* rows=nullptr) {
   double U=0,I=0,A=0;
   for (int i=0;i<c.n;++i) {
-    const double v=x[c.rows[i]-1];
+    const double v=x[rows?rows[i]:c.rows[i]-1];
     if (!std::isfinite(v)) throw std::runtime_error("X must contain only finite values.");
     U+=v*c.score(i,0); I+=v*v*c.weight(i,0);
     if (c.q) A+=v*c.weight(i,0)*c.nuisance(i,0);
@@ -232,6 +233,61 @@ List sis_score_cpp(SEXP design,List context,int nsis,bool full,int nthreads=1) {
       } catch (...) {errors[thread]=std::current_exception();}
     }
     for (const auto& error:errors) if (error) std::rethrow_exception(error);
+    checkUserInterrupt();first=last;
+  }
+  return result.finish(used);
+}
+
+// [[Rcpp::export]]
+List sis_bigmemory_score_cpp(SEXP address,IntegerVector samples,
+  IntegerVector columns,List context,int nsis,bool full,int nthreads=1) {
+  XPtr<BigMatrix> matrix(address);
+  if(matrix->matrix_type()!=8 || matrix->separated_columns())
+    stop("Native screening requires a non-separated double big.matrix.");
+  MatrixAccessor<double> access(*matrix);
+  SisContext c(context);
+  const int count=columns.size();
+  if(samples.size()!=c.n || !count || nsis<1 || nthreads<1)
+    stop("Invalid backing-file screening dimensions.");
+  for(int i:samples)if(i<1||i>access.nrow())stop("Backing sample index out of range.");
+  for(int j:columns)if(j<1||j>access.ncol())stop("Backing column index out of range.");
+  std::vector<int> rows(c.n);
+  for(int i=0;i<c.n;++i)rows[i]=samples[c.rows[i]-1]-1;
+  int threads=1,used=1;
+#ifdef _OPENMP
+  threads=std::min(nthreads,std::min(count,omp_get_num_procs()));
+#endif
+  SisResults result(count,nsis,full,threads);
+  std::vector<std::exception_ptr> errors(threads);
+  const bool scalar=!c.cox&&!c.multinomial&&c.r==1&&c.q<=1;
+  const int batch=1024*std::min(threads,64);
+  for(int first=0;first<count;) {
+    const int last=first+std::min(batch,count-first);
+#ifdef _OPENMP
+#pragma omp parallel num_threads(threads) if(threads>1)
+#endif
+    {
+      int thread=0,team=1;
+#ifdef _OPENMP
+      thread=omp_get_thread_num();team=omp_get_num_threads();
+#endif
+      if(thread==0)used=std::max(used,team);
+      const int begin=first+static_cast<long long>(last-first)*thread/team;
+      const int end=first+static_cast<long long>(last-first)*(thread+1)/team;
+      try {
+        SisFeature feature(c);
+        for(int j=begin;j<end;++j) {
+          const double* x=access[columns[j]-1];
+          if(scalar)result.add(thread,j,sis_scalar(c,x,rows.data()));
+          else {
+            feature.reset();
+            for(int i=0;i<c.n;++i)feature.add(i,x[rows[i]]);
+            result.add(thread,j,feature.finish());
+          }
+        }
+      } catch(...){errors[thread]=std::current_exception();}
+    }
+    for(const auto& error:errors)if(error)std::rethrow_exception(error);
     checkUserInterrupt();first=last;
   }
   return result.finish(used);

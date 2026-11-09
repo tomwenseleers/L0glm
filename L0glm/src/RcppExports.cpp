@@ -477,6 +477,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sis_bigmemory_score_cpp
+List sis_bigmemory_score_cpp(SEXP address, IntegerVector samples, IntegerVector columns, List context, int nsis, bool full, int nthreads);
+RcppExport SEXP _L0glm_sis_bigmemory_score_cpp(SEXP addressSEXP, SEXP samplesSEXP, SEXP columnsSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type address(addressSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type columns(columnsSEXP);
+    Rcpp::traits::input_parameter< List >::type context(contextSEXP);
+    Rcpp::traits::input_parameter< int >::type nsis(nsisSEXP);
+    Rcpp::traits::input_parameter< bool >::type full(fullSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(sis_bigmemory_score_cpp(address, samples, columns, context, nsis, full, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // sis_bed_score_cpp
 List sis_bed_score_cpp(std::string path, int n, int p, IntegerVector samples, IntegerVector columns, IntegerVector imputation_rows, List context, int nsis, bool full, int nthreads, bool mean_impute);
 RcppExport SEXP _L0glm_sis_bed_score_cpp(SEXP pathSEXP, SEXP nSEXP, SEXP pSEXP, SEXP samplesSEXP, SEXP columnsSEXP, SEXP imputation_rowsSEXP, SEXP contextSEXP, SEXP nsisSEXP, SEXP fullSEXP, SEXP nthreadsSEXP, SEXP mean_imputeSEXP) {
@@ -707,6 +724,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_scalar_profile_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_profile_cpp, 7},
     {"_L0glm_L0glm_scalar_dist_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_dist_cpp, 6},
     {"_L0glm_sis_score_cpp", (DL_FUNC) &_L0glm_sis_score_cpp, 5},
+    {"_L0glm_sis_bigmemory_score_cpp", (DL_FUNC) &_L0glm_sis_bigmemory_score_cpp, 7},
     {"_L0glm_sis_bed_score_cpp", (DL_FUNC) &_L0glm_sis_bed_score_cpp, 11},
     {"_L0glm_solve_sparse_QR", (DL_FUNC) &_L0glm_solve_sparse_QR, 3},
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},

@@ -26,6 +26,11 @@
 #' [sisGLM()] streams predictor columns, reusing its exact family-specific null
 #' context. BED screening decodes two-bit calls directly inside native OpenMP
 #' reductions. Ties and within-column summation order match resident matrices.
+#' Double-precision bigmemory sources without missing-value imputation are
+#' screened directly through their existing native mapping, using read-only access.
+#' Row/column views retain their original indexing; the operating system pages
+#' the backing file without a design-sized R allocation. Other source types
+#' and mean-imputed data use bounded working blocks.
 #'
 #' [l0glmFit()] and [l0glmTune()] fit the retained SIS/ISIS columns with the
 #' existing GLM/NB, joint multinomial or Cox engine. Presets and criteria retain
@@ -305,6 +310,14 @@ L0glm_data_restricted_fit <- function(args) {
 L0glm_data_score <- function(X,context,nsis,full,nthreads) {
   if(X$format=='bed')return(sis_bed_score_cpp(X$object,X$dimensions[1],X$dimensions[2],
     X$rows,X$columns,X$cache$rows,context,nsis,full,nthreads,X$missing=='mean'))
+  if(X$format=='bigmemory' && X$missing=='error') {
+    d <- X$descriptor@description
+    if(identical(d$type,'double') && !isTRUE(d$separated)) {
+      object <- X$object
+      if(bigmemory::is.nil(object@address))object <- bigmemory::attach.big.matrix(X$descriptor)
+      return(sis_bigmemory_score_cpp(object@address,X$rows,X$columns,context,nsis,full,nthreads))
+    }
+  }
   size <- as.integer(max(1,min(X$control$block.columns,floor(X$control$block.cells/nrow(X)))))
   top <- integer();scores <- numeric();statistics <- if(full)numeric(ncol(X))else NULL
   signs <- if(full)integer(ncol(X))else NULL

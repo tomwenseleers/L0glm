@@ -26,7 +26,7 @@ Imports: Matrix,
          methods,
          scales,
          statmod
-LinkingTo: Rcpp, RcppEigen
+LinkingTo: Rcpp, RcppEigen, bigmemory
 SystemRequirements: C++17, OpenMP (optional)
 Maintainer: Tom Wenseleers <tom.wenseleers@kuleuven.be>
 Description: Fits L0-norm penalized or group-L0 penalized generalized linear models

@@ -56,6 +56,11 @@ respects \code{max.cells}. Sparse backends retain sparse working blocks.
 \code{\link[=sisGLM]{sisGLM()}} streams predictor columns, reusing its exact family-specific null
 context. BED screening decodes two-bit calls directly inside native OpenMP
 reductions. Ties and within-column summation order match resident matrices.
+Double-precision bigmemory sources without missing-value imputation are
+screened directly through their existing native mapping, using read-only access.
+Row/column views retain their original indexing; the operating system pages
+the backing file without a design-sized R allocation. Other source types
+and mean-imputed data use bounded working blocks.
 
 \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=l0glmTune]{l0glmTune()}} fit the retained SIS/ISIS columns with the
 existing GLM/NB, joint multinomial or Cox engine. Presets and criteria retain
