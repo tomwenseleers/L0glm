@@ -1,7 +1,9 @@
 # Recognize an explicit intercept without constructing a dense logical copy of X.
 L0glm_intercepts <- function(X) {
   named <- grep("intercept", colnames(X), ignore.case = TRUE)
-  if(inherits(X,'L0glm_data'))return(named)
+  # Lazy source views share the source's declared-intercept contract.
+  if(inherits(X,'L0glm_data') || inherits(X,'L0glm_design') &&
+     inherits(X$data,'L0glm_data'))return(named)
   if (length(named) || !nrow(X)) return(named)
   candidates <- which(as.numeric(X[1L, , drop = FALSE]) == 1)
   for (j in candidates) if (all(X[, j, drop = FALSE] == 1)) return(j)

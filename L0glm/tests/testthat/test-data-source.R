@@ -164,3 +164,17 @@ test_that('VCF conversion preserves existing files at a proposed cache prefix', 
     'already contains files')
   expect_identical(readLines(paste0(prefix,'.psam')),'keep')
 })
+test_that("lazy source intercept checks use metadata without a full predictor probe", {
+  set.seed(8611)
+  X <- matrix(rnorm(10*20),10,20)
+  source <- l0glmData(X,control=list(max.cells=10))
+  view <- L0glm_design_view(source,intercept=FALSE,names=rep("",20))
+  expect_identical(L0glm_intercepts(view),integer())
+  expect_identical(L0glm_mandatory(view,3L),3L)
+  added <- L0glm_design_view(source,intercept=TRUE,names=rep("",20))
+  expect_identical(L0glm_intercepts(added),1L)
+  # One complete source row exceeds the guard; a requested column fits.
+  expect_error(view[1L,,drop=FALSE],"max.cells")
+  expect_length(added[,1L],10L)
+})
+
