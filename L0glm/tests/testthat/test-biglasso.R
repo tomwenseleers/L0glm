@@ -43,6 +43,20 @@ test_that("file-backed folds agree with resident Gaussian, logistic and Cox fits
   }
 })
 
+test_that("biglasso lambda ranges follow native defaults for the training view", {
+  skip_if_not_installed("biglasso");skip_if_not_installed("bigmemory")
+  d <- biglasso_fixture();source <- l0glmData(bigmemory::as.big.matrix(d$X))
+  for(n in c(30L,40L,90L)) {
+    rows <- seq_len(n)
+    fit <- sparseGLM(source[rows,,drop=FALSE],d$y[rows],method="biglasso",
+      tune="bic",nlambda=5,screen="none")
+    reference <- biglasso::biglasso(bigmemory::as.big.matrix(d$X[rows,]),d$y[rows],
+      family="gaussian",nlambda=5,eps=1e-7,max.iter=10000)
+    expect_identical(fit$timings$status,"ok")
+    expect_equal(fit$tuning[[1]]$candidates$parameter,reference$lambda,tolerance=1e-12)
+  }
+})
+
 test_that("biglasso shares Gaussian grouping, offsets and zero-weight exclusions", {
   skip_if_not_installed("biglasso");skip_if_not_installed("bigmemory")
   d <- biglasso_fixture();Y <- cbind(d$y,-d$y+rnorm(120))

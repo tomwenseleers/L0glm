@@ -23,7 +23,7 @@ L0glm_benchmark_biglasso <- function(data,grid,options,grouped) {
     if(gaussian)'gaussian'else 'binomial'
   args <- list(X=M,y=if(ncol(y)==1L)as.numeric(response)else response,
     row.idx=rows[keep],penalty='lasso',family=family,nlambda=data$nlambda,
-    lambda.min=if(nrow(X)<ncol(X)).01 else 1e-4,ncores=1L,eps=1e-7,max.iter=10000L)
+    lambda.min=if(nrow(X)>ncol(X)).001 else .05,ncores=1L,eps=1e-7,max.iter=10000L)
   if(!is.null(options$native.screen)) {
     args$screen <- options$native.screen;options$native.screen <- NULL
   }

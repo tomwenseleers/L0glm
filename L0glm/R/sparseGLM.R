@@ -35,8 +35,9 @@
 #'   use an explicit log-spaced grid of this length from their native
 #'   `lambda_max` to `lambda_max * lambda.min.ratio`; set the ratio through
 #'   method-specific `options`. A supplied `lambda` sequence takes precedence.
-#'   Biglasso uses its native grid, with `lambda.min=0.01` for wide designs and
-#'   `1e-4` otherwise; this ratio can also be set through `options`.
+#'   Biglasso uses its native grid, with `lambda.min=0.001` when observations
+#'   outnumber predictors and `0.05` otherwise. This ratio can also be set
+#'   through `options` and is based on the training view's dimensions.
 #' @param lambda Optional nonnegative sequence, or named list of method-specific
 #'   sequences. Penalty units differ between methods. ABESS instead searches
 #'   `support.size`; its additional ridge penalty is fixed at zero.
