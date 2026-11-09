@@ -55,6 +55,10 @@ benchmark_filebacked_normal <- function(n=10000L,p=1000000L,n_nonzero=60L,
   metrics$file_GB <- file.info(file.path(cache,paste0(stem,'.bin')))$size/1e9
   metrics$generation_seconds <- saved$generation_seconds
   metrics$screening_threads <- fit$screening$nthreads
+  if(!is.null(fit$screening$working.set)) {
+    metrics$working_columns <- fit$screening$working.set$columns
+    metrics$global_scans <- fit$screening$working.set$global.scans
+  }
   metrics$block_columns <- fit.block.columns;metrics$intercept <- intercept
   stopifnot(identical(dim(coef(fit)),c(as.integer(p+intercept),1L)),inherits(coef(fit),'sparseMatrix'))
   write.csv(metrics,file.path(output,paste0(stem,'-metrics.csv')),row.names=FALSE)

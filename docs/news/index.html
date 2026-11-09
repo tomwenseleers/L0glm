@@ -82,8 +82,10 @@
 </ul></div>
 <div class="section level3">
 <h3 id="memory-bounded-data-access-0-2-0-9002">Memory-bounded data access<a class="anchor" aria-label="anchor" href="#memory-bounded-data-access-0-2-0-9002"></a></h3>
-<ul><li>
+<ul><li>Read-only native screening of double-precision bigmemory backing files avoids intermediate R design copies, with deterministic OpenMP reductions and exact agreement with resident screening across ordinary and special families.</li>
+<li>
 <code><a href="../reference/l0glmData.html">l0glmData()</a></code> provides lazy subsets of bigmemory, delayed/HDF5 single-cell assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2 conversion cache, including expected dosages.</li>
+<li>Large file-backed Gaussian identity ISIS fits can retain a bounded candidate pool, preserving the global ISIS path and selecting cached or small-support Gaussian refinements only when original-p GIC improves. Repeated exact coefficients avoid a redundant global scan; <code>working.columns=0L</code> disables this cache. Restored descriptors attach once per fit, and pilot blocks respect the working-memory guard.</li>
 <li>All-family SIS/ISIS streams predictor columns; BED screening reduces packed two-bit genotypes directly with OpenMP. Retained-design fitting preserves original coefficient dimensions and criterion calibration. Training-only imputation is reused for prediction and relearned inside CV and bootstraps.</li>
 <li>Ward outcome clustering streams row blocks, including its cut losses and aggregation. Explicit memory guards bound working matrices and outputs.</li>
 <li>Native file-backed LASSO through optional biglasso reuses double bigmemory designs across training/CV row views. Gaussian, logistic, grouped Gaussian and Breslow Cox paths use the common likelihood scoring, IC selection and CV.</li>

@@ -779,7 +779,10 @@ validation error; <code>NULL</code> retains the GIC-based ISIS default.</p></dd>
 <dt id="arg-screen-maxit">screen.maxit<a class="anchor" aria-label="anchor" href="#arg-screen-maxit"></a></dt>
 <dd><p>Maximum ISIS rounds, default 10. A repeated candidate
 set stops the search early; SIS always uses one round. This is separate
-from <code>maxit</code>, the inner IRLS limit. Ignored when screening is off.</p></dd>
+from the IRLS iteration limit. For cached file-backed Gaussian fits,
+this bounds global screening rounds; the cache also supplies restricted
+candidates and a small-support GIC check.
+Ignored when screening is off.</p></dd>
 
 
 <dt id="arg-screen-nthreads">screen.nthreads<a class="anchor" aria-label="anchor" href="#arg-screen-nthreads"></a></dt>

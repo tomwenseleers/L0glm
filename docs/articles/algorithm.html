@@ -1745,6 +1745,31 @@ sparse coefficients, support, screening history and timings.</li>
 omitted from one joint fit remains eligible for a later screening round.
 The current fitted predictor enters the next <strong>screening</strong>
 offset; every joint fit uses the original model offset.</p>
+<p>For large complete double-precision bigmemory Gaussian identity
+designs, unconstrained relaxed GIC fits can additionally cache up to
+10,000 predictors, bounded by <code><a href="../reference/l0glmData.html">l0glmData()</a></code>’s
+<code>working.columns</code> and <code>max.cells</code> controls. The
+first global screen supplies this pool. Restricted ISIS fits use the
+original predictor count for both lambda and scoring, while the ordinary
+global trajectory continues from its original first fit. Return the
+better candidate on the original-data GIC. An exactly repeated Gaussian
+coefficient vector permits stopping before a redundant global scan: its
+next screening offset, ranking and candidate set would be identical. At
+least three requested global rounds are required for the cache;
+<code>working.columns=0L</code> disables it.</p>
+<p>Small unconstrained Gaussian supports also admit inexpensive deletion
+checks. After a weighted least-squares refit with Gram matrix <span class="math inline">G</span>, deleting coefficient <span class="math inline">j</span> increases residual sum of squares by <span class="math display">
+\Delta_j=\widehat\beta_j^2/(G^{-1})_{jj}.
+</span> A Cholesky factor supplies these quantities. Compare <span class="math inline">\Delta_j/\phi</span> with the GIC charge when
+variance is fixed, or compare <span class="math inline">n_+\log(1+\Delta_j/\mathrm{RSS})</span> when
+variance is profiled; here <span class="math inline">n_+</span> counts
+positive-weight observations. Compulsory terms cannot be deleted. Any
+proposed reduction is passed through the ordinary fitting engine and
+accepted only when its actual original-data GIC improves. These checks
+are limited to supports no larger than the screening batch plus
+compulsory terms. <code>fit$screening$working.set</code> reports cache
+size, inner fits and global scan counts; <code>screen.maxit</code>
+bounds global rounds.</p>
 <p>For <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> the batch/retained-set defaults are</p>
 <p><span class="math display">
 \begin{aligned}
@@ -1987,6 +2012,7 @@ followed directly in the source:</p>
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R" class="external-link">sis_context.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp" class="external-link">sis.cpp</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R" class="external-link">isis_glm.R</a>,
+<a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening_cache.R" class="external-link">screening_cache.R</a>,
 <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R" class="external-link">screening.R</a>
 </td>
 </tr>

@@ -1523,6 +1523,33 @@ from one joint fit remains eligible for a later screening round. The current
 fitted predictor enters the next **screening** offset; every joint fit uses
 the original model offset.
 
+For large complete double-precision bigmemory Gaussian identity designs,
+unconstrained relaxed GIC fits can additionally cache up to 10,000 predictors,
+bounded by `l0glmData()`'s `working.columns` and `max.cells` controls. The first
+global screen supplies this pool. Restricted ISIS fits use the original
+predictor count for both lambda and scoring, while the ordinary global
+trajectory continues from its original first fit. Return the better candidate
+on the original-data GIC. An exactly repeated Gaussian coefficient vector
+permits stopping before a redundant global scan: its next screening offset,
+ranking and candidate set would be identical. At least three requested global
+rounds are required for the cache; `working.columns=0L` disables it.
+
+Small unconstrained Gaussian supports also admit inexpensive deletion checks.
+After a weighted least-squares refit with Gram matrix \(G\), deleting coefficient
+\(j\) increases residual sum of squares by
+\[
+\Delta_j=\widehat\beta_j^2/(G^{-1})_{jj}.
+\]
+A Cholesky factor supplies these quantities. Compare \(\Delta_j/\phi\) with
+the GIC charge when variance is fixed, or compare
+\(n_+\log(1+\Delta_j/\mathrm{RSS})\) when variance is profiled; here
+\(n_+\) counts positive-weight observations. Compulsory terms cannot be
+deleted. Any proposed reduction is passed through the ordinary fitting engine
+and accepted only when its actual original-data GIC improves. These checks
+are limited to supports no larger than the screening batch plus compulsory
+terms. `fit$screening$working.set` reports cache size, inner fits and global
+scan counts; `screen.maxit` bounds global rounds.
+
 For `l0glmFit()` the batch/retained-set defaults are
 
 \[
@@ -1698,7 +1725,7 @@ source:
 | Constrained compulsory blocks | [nuisance.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/nuisance.R), [nuisance.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/nuisance.cpp) |
 | Native Poisson backend | [L0nnpois.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/L0nnpois.cpp) |
 | Special-family passes | [families_common.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/families_common.R), [family_nb.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_nb.R), [family_multinomial.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_multinomial.R), [family_cox.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox.R), [family_cox_pcg.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/family_cox_pcg.R) |
-| Screening and outer ISIS | [sis_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R), [sis.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp), [isis_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R), [screening.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R) |
+| Screening and outer ISIS | [sis_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/sis_context.R), [sis.cpp](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/src/sis.cpp), [isis_glm.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/isis_glm.R), [screening_cache.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening_cache.R), [screening.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/screening.R) |
 | Backtracking and validation | [irls.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/irls.R), [validation.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/validation.R) |
 | Optional support refinement | [local_search.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search.R), [local_search_context.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_context.R), [local_search_refit.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_refit.R), [local_search_workspace.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_workspace.R), [local_search_dispatch.R](https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/local_search_dispatch.R) |
 

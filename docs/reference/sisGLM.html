@@ -177,7 +177,10 @@ mandatory predictors in original column order; <code>nsis</code> counts these an
 <code>screen_size</code> records the screening batch size. Optional statistics/ranking
 describe the screen preceding the chosen fit, with <code>keep</code> updated to its
 retained rows. <code>top_statistics</code> is <code>NULL</code> for ISIS. The returned <code>fit</code>
-accepts new data with all original columns in <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">stats::predict()</a></code>.</p>
+accepts new data with all original columns in <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">stats::predict()</a></code>.
+For eligible file-backed Gaussian fits with <code>return_stats=FALSE</code>,
+<code>working.set</code> records the resident pool size, its candidate history,
+global scan count and whether a Gaussian GIC deletion check was accepted.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -204,7 +207,10 @@ weak/suppressor effects and does not certify a global L0 optimum.
 Screening threads process separate predictors with unchanged within-column
 summation order. Thread-local top-candidate heaps are merged deterministically,
 including ties in original column order. Errors and interrupts are handled on
-the main R thread; no design-sized copies are made for threading.</p>
+the main R thread; no design-sized copies are made for threading.
+Double-precision file-backed bigmemory inputs use direct read-only native
+access, preserving the same statistics, ranks and tie handling as resident
+matrices. Other input formats retain bounded column streaming.</p>
 <p>With <code>iterative=TRUE</code>, add the fitted linear predictor to the original
 offset for screening, merge new candidates with current nonzero/mandatory
 rows, and refit on the original responses and original offsets. Each round

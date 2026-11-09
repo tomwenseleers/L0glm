@@ -754,8 +754,10 @@ and multichannel deconvolution workflows</a>.</li>
 applies the same comparison framework to your own data.</li>
 <li>
 <a href="file-backed.html">File-backed Gaussian and logistic GWAS
-examples</a> include an 80 GB design and native biglasso LASSO
-comparisons.</li>
+examples</a> include an 80 GB design: L0glm takes <strong>249 s</strong>
+versus <strong>792 s</strong> for BIC-tuned biglasso LASSO, with
+<strong>one versus three false positives</strong> and lower held-out
+RMSE.</li>
 <li>
 <a href="predictor-groups.html">Predictor-group comparisons with
 grpreg</a> cover group LASSO, MCP and SCAD with equal and unequal group

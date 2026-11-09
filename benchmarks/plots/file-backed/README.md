@@ -10,22 +10,23 @@ predicts 2,000 held-out rows:
 <!-- BEGIN file-lasso-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | F1 | MCC | Test RMSE |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 1695.53 | 24652 | 50 | 1 | 10 | 0.901 | 0.904 | 0.993 |
+| L0glm | GIC preset | 248.72 | 24652 | 50 | 1 | 10 | 0.901 | 0.904 | 0.993 |
 | biglasso LASSO | BIC path | 792.32 | 25933 | 51 | 3 | 9 | 0.895 | 0.896 | 1.074 |
 <!-- END file-lasso-metrics -->
 
 * `benchmark_filebacked_normal.R` generates a 10,000-observation by
   1,000,000-predictor Gaussian design (80 GB in double precision) in bounded
   256-column blocks, with 60 signed effects. It fits a free-intercept ISIS
-  model with 4,096-column streaming blocks on 8,000 training rows and
+  model with direct native screening and a 10,000-column resident pool on 8,000 training rows and
   evaluates prediction on 2,000 held-out rows. The history and metrics use
   the original predictor count.
 * `benchmark_filebacked_lasso.R` reuses that same file for a free-intercept
   comparison: L0glm with a GIC preset and ISIS, versus native biglasso LASSO
   with BIC selection on a ten-value path down to 5% of its native lambda maximum.
   It uses 8,000 training and 2,000 test
-  rows. Both fit a free intercept; L0glm streams 4,096-column blocks and
-  biglasso reads the full double backing matrix directly.
+  rows. Both fit a free intercept and read the double backing matrix directly.
+  L0glm retains four global screening scans and the original predictor count
+  for its GIC comparisons.
 * `benchmark_filebacked_gwas.R` uses `helpers/hwe_genotypes.cpp` to create a
   portable PLINK BED/BIM/FAM dataset with 4,000 observations and one million
   independent HWE variants (1 GB packed). It simulates six main effects and

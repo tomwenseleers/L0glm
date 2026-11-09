@@ -128,8 +128,16 @@ call:</p>
 <p>H5AD, h5Seurat and loom adapters put observations in rows and genes
 in columns. Generic HDF5 datasets retain their supplied orientation;
 <code>transpose</code> can be set explicitly. Sparse HDF5/DelayedArray
-assays retain sparse working blocks. HDF5Array, DelayedArray, rhdf5 and
-bigmemory are optional dependencies.</p>
+assays retain sparse working blocks. The HDF5 adapters use optional
+HDF5Array, DelayedArray and rhdf5 packages. Native bigmemory access uses
+the bigmemory and BH headers when building L0glm; bigmemory is loaded
+only when that storage backend is requested.</p>
+<p>Double-precision bigmemory designs are screened directly through
+their existing native mapping, using read-only access. Each OpenMP
+worker reads its assigned columns without first copying them into an R
+matrix. Subsets retain the original row and column indices, and
+screening statistics and tie handling match resident matrices. Other
+storage types and mean-imputed data use bounded column blocks.</p>
 <p>Subsetting with <code>drop=FALSE</code> creates a view.
 <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix()</a></code> makes an explicit bounded read. An unscreened
 working design, the retained fit matrix and requested outputs must fit
@@ -195,7 +203,7 @@ random number sequence matches
 <th align="right">Test RMSE</th>
 </tr></thead>
 <tbody><tr class="odd">
-<td align="right">1695.53</td>
+<td align="right">248.72</td>
 <td align="right">24652</td>
 <td align="right">50</td>
 <td align="right">1</td>
@@ -210,12 +218,30 @@ random number sequence matches
 excluded from the fitting time. <!-- END file-normal-metrics --></p>
 <p>The first 8,000 rows are used for screening and fitting, and the
 remaining 2,000 rows assess prediction. The model includes a free
-intercept and uses 4,096-column streaming blocks. The GIC preset uses
-the original one million predictors. Generation and fitting times are
-recorded separately. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_normal.R" class="external-link">complete
+intercept. Screening reads the native mapping with eight threads;
+repeated candidate fits also use a resident pool of 10,000 screened
+predictors, occupying 640 MB. Four global screening scans are sufficient
+here. The GIC preset and every support score use the original one
+million predictors. Generation and fitting times are recorded
+separately. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_normal.R" class="external-link">complete
 reproduction script</a> creates a reusable descriptor and response cache
 and reports the screening history. The response, truth and descriptor
 should be saved together when continuing in a new session.</p>
+<p>For large complete double-precision bigmemory designs, relaxed
+Gaussian ISIS can cache up to <code>control$working.columns</code>
+columns (default 10,000), bounded by <code>control$max.cells</code>. The
+ordinary global ISIS trajectory is retained, and a cached candidate
+replaces its best fit only when the original-data GIC improves.
+Identical consecutive Gaussian coefficients avoid another redundant
+full-file scan. Set <code>working.columns=0L</code> to use the ordinary
+global path without a resident candidate pool. Weights, offsets and
+compulsory terms retain their specified meaning; other families and
+fitting options use the regular screening path.</p>
+<p>On this dataset, <code>screen.maxit=2L</code> gives the same support,
+GIC and test RMSE in <strong>123.96 seconds</strong>, with coefficients
+agreeing to numerical precision. This explicit two-round budget is
+useful when disk scans dominate; the default retains further global
+convergence checks.</p>
 <div class="section level3">
 <h3 id="compare-with-native-file-backed-lasso">Compare with native file-backed LASSO<a class="anchor" aria-label="anchor" href="#compare-with-native-file-backed-lasso"></a>
 </h3>
@@ -242,9 +268,9 @@ same likelihood and information-criterion code as the other methods.</p>
 comparison, give both methods a free intercept. The reproduction script
 uses a GIC preset and ISIS for L0glm, while LASSO selects from ten
 native lambda values using BIC. Both models train on 8,000 rows and
-predict the same held-out 2,000 rows. The L0glm streaming blocks contain
-up to 4,096 columns; the native LASSO solver reads the backing matrix
-directly. Neither method copies the full design into an R matrix.</p>
+predict the same held-out 2,000 rows. Both methods read the backing
+matrix directly, and neither copies the full design into an R
+matrix.</p>
 <!-- BEGIN file-lasso-metrics -->
 <table class="table">
 <colgroup>
@@ -275,7 +301,7 @@ directly. Neither method copies the full design into an R matrix.</p>
 <tr class="odd">
 <td>L0glm</td>
 <td>GIC preset</td>
-<td align="right">1695.53</td>
+<td align="right">248.72</td>
 <td align="right">24652</td>
 <td align="right">50</td>
 <td align="right">1</td>
@@ -298,12 +324,12 @@ directly. Neither method copies the full design into an R matrix.</p>
 </tr>
 </tbody>
 </table>
-<!-- END file-lasso-metrics --><p>Biglasso finishes the full-predictor LASSO path in <strong>13.2
-minutes</strong>. L0glm’s ISIS fit takes <strong>28.3 minutes</strong>,
-with lower GIC, fewer false positives and lower held-out RMSE.
-Biglasso’s BIC minimum is the ninth of ten grid points
-(<code>lambda=0.05690</code>), so the lower endpoint does not determine
-the result. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/file-backed/normal-10000-1000000-lasso-path.csv" class="external-link">complete
+<!-- END file-lasso-metrics --><p>L0glm’s ISIS fit takes <strong>4.15 minutes</strong>, compared with
+<strong>13.2 minutes</strong> for the full-predictor biglasso LASSO
+path: <strong>3.2 times faster</strong>, with lower GIC, fewer false
+positives and lower held-out RMSE. Biglasso’s BIC minimum is the ninth
+of ten grid points (<code>lambda=0.05690</code>), so the lower endpoint
+does not determine the result. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/file-backed/normal-10000-1000000-lasso-path.csv" class="external-link">complete
 BIC path</a> retains every candidate’s support size and score. These
 single-run timings include disk access; file caching and storage speed
 affect them substantially.</p>

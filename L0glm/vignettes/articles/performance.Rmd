@@ -186,7 +186,8 @@ coefficient plots and complete code.
 * [Single and multichannel deconvolution workflows](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R).
 * [`sparseGLM()`](../reference/sparseGLM.html) applies the same comparison framework to your own data.
 * [File-backed Gaussian and logistic GWAS examples](file-backed.html) include
-  an 80 GB design and native biglasso LASSO comparisons.
+  an 80 GB design: L0glm takes **249 s** versus **792 s** for BIC-tuned biglasso
+  LASSO, with **one versus three false positives** and lower held-out RMSE.
 * [Predictor-group comparisons with grpreg](predictor-groups.html) cover group
   LASSO, MCP and SCAD with equal and unequal group sizes.
 
