@@ -21,6 +21,11 @@ test_that('mapped backing files preserve every screening context and view', {
     }
   }
   context <- L0glm_sis_context(rnorm(nrow(A)),gaussian(),nrow(A),NULL,NULL,NULL)
+  ids <- c(9L,2L,9L,seq_len(nrow(A)));cols <- c(4L,8L,4L)
+  duplicate <- L0glm_sis_context(rnorm(length(ids)),gaussian(),length(ids),NULL,NULL,NULL)
+  expected <- sis_score_cpp(A[ids,cols],duplicate,3L,TRUE,1L)
+  actual <- L0glm_data_score(X[ids,cols,drop=FALSE],duplicate,3L,TRUE,8L)
+  expect_identical(actual[names(actual)!='nthreads'],expected[names(expected)!='nthreads'])
   M[2L,2L] <- NA_real_
   expect_error(L0glm_data_score(X,context,7L,FALSE,8L),'finite')
   M[2L,2L] <- Inf

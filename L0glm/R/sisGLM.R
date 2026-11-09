@@ -117,6 +117,9 @@
 #'   describe the screen preceding the chosen fit, with `keep` updated to its
 #'   retained rows. `top_statistics` is `NULL` for ISIS. The returned `fit`
 #'   accepts new data with all original columns in [stats::predict()].
+#'   For eligible file-backed Gaussian fits with `return_stats=FALSE`,
+#'   `working.set` records the resident pool size, its candidate history,
+#'   global scan count and whether a Gaussian GIC deletion check was accepted.
 #' @seealso [l0glmFit()]
 #' @example examples/sisGLM.R
 #' @export

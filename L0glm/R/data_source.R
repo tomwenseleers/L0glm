@@ -15,11 +15,16 @@
 #'   other backends default to error. Means use nonmissing training observations
 #'   with positive weight in at least one response. All-missing columns use zero.
 #' @param control Named list: `block.columns=256L`, `block.cells=2e6`,
-#'   `max.cells=5e7`, `nthreads=1L`. The last controls selected BED decoding;
+#'   `max.cells=5e7`, `nthreads=1L`, `working.columns=10000L`.
+#'   `nthreads` controls selected BED decoding;
 #'   `screen.nthreads` in [l0glmFit()] controls fused BED screening.
 #'   VCF conversion additionally needs `cache` (new output prefix) and `plink`
 #'   (PLINK 2 executable; defaults to `Sys.which("plink2")`). `dosage=NULL`
 #'   imports GT hardcalls; `dosage="DS"` preserves expected ALT dosages.
+#'   `working.columns` caps the resident candidate pool for large file-backed
+#'   Gaussian identity ISIS fits; zero disables that cache. Its size also
+#'   respects `max.cells`. Global checks preserve the ordinary ISIS path,
+#'   and cached or small-support refits are accepted only when GIC improves.
 #' @details
 #' Subsets with `drop=FALSE` are cheap matrix views. Explicit `as.matrix()`
 #' respects `max.cells`. Sparse backends retain sparse working blocks.
@@ -31,6 +36,19 @@
 #' Row/column views retain their original indexing; the operating system pages
 #' the backing file without a design-sized R allocation. Other source types
 #' and mean-imputed data use bounded working blocks.
+#'
+#' Large file-backed Gaussian identity models with an unconstrained coefficient
+#' vector, the GIC preset, relaxed refitting and Eigen LLT can also reuse a
+#' resident pool of up to `working.columns` predictors when at least three
+#' screening rounds are requested. The ordinary global
+#' ISIS path is retained. Cached candidates and small-support Gaussian refits
+#' are selected only when the original-p GIC improves. Exact repetition of a
+#' Gaussian coefficient vector avoids a redundant final file scan.
+#' Weights, offsets, compulsory terms and fixed or estimated dispersion retain
+#' their meanings. This cache uses scalar or automatic starts; a supplied ridge
+#' centre or validation set uses ordinary streamed ISIS. The diagnostics in
+#' `fit$screening$working.set` report the pool size and full-file scan count.
+#' Set `working.columns=0L` for ordinary streamed ISIS.
 #'
 #' [l0glmFit()] and [l0glmTune()] fit the retained SIS/ISIS columns with the
 #' existing GLM/NB, joint multinomial or Cox engine. Presets and criteria retain
@@ -81,7 +99,7 @@
 #' @export
 l0glmData <- function(x,format='auto',n=NULL,p=NULL,dataset=NULL,
                      transpose=NULL,missing=NULL,control=list()) {
-  defaults <- list(block.columns=256L,block.cells=2e6,max.cells=5e7,nthreads=1L,
+  defaults <- list(block.columns=256L,block.cells=2e6,max.cells=5e7,nthreads=1L,working.columns=10000L,
     plink=NULL,cache=NULL,dosage=NULL)
   if(!is.list(control) || length(control) && (is.null(names(control)) ||
       any(!names(control)%in%names(defaults)) || anyDuplicated(names(control))))
@@ -89,6 +107,10 @@ l0glmData <- function(x,format='auto',n=NULL,p=NULL,dataset=NULL,
   defaults[names(control)] <- control
   if(any(!vapply(defaults[1:4],function(z)is.numeric(z)&&length(z)==1L&&is.finite(z)&&z>=1,TRUE)))
     stop('Data block limits and threads must be positive.',call.=FALSE)
+  value <- defaults$working.columns
+  if(!is.numeric(value)||length(value)!=1L||!is.finite(value)||value<0||
+     value!=floor(value)||value>.Machine$integer.max)
+    stop('working.columns must be a nonnegative integer.',call.=FALSE)
   if(inherits(x,'L0glm_data'))return(x)
   if(format=='auto')format <- if(is.character(x))if(grepl('\\.vcf(\\.gz)?$',x,ignore.case=TRUE))'vcf'else
     switch(tolower(tools::file_ext(x)),bed='bed',pgen='pgen',h5ad='h5ad',loom='loom',
@@ -234,6 +256,8 @@ L0glm_data_matrix <- function(x) {
 }
 
 L0glm_data_training <- function(x,weights=NULL) {
+  if(x$format=='bigmemory' && bigmemory::is.nil(x$object@address))
+    x$object <- bigmemory::attach.big.matrix(x$descriptor)
   cache <- new.env(parent=emptyenv());cache$means <- rep(NA_real_,x$dimensions[2])
   positive <- if(is.null(weights)||length(weights)==1L)rep(TRUE,nrow(x))else
     if(is.null(dim(weights)))weights>0 else Matrix::rowSums(weights)>0
@@ -318,7 +342,8 @@ L0glm_data_score <- function(X,context,nsis,full,nthreads) {
       return(sis_bigmemory_score_cpp(object@address,X$rows,X$columns,context,nsis,full,nthreads))
     }
   }
-  size <- as.integer(max(1,min(X$control$block.columns,floor(X$control$block.cells/nrow(X)))))
+  size <- as.integer(max(1,min(X$control$block.columns,
+    floor(min(X$control$block.cells,X$control$max.cells)/nrow(X)))))
   top <- integer();scores <- numeric();statistics <- if(full)numeric(ncol(X))else NULL
   signs <- if(full)integer(ncol(X))else NULL
   threads <- 1L
@@ -350,7 +375,8 @@ L0glm_data_marginal <- function(X,y,weights,offset,intercept,always.include) {
     response[[j]] <- if(length(free))z[,j]-as.numeric(U%*%L0glm_nuisance_solve(G,crossprod(U,w[,j]*z[,j])))else z[,j]
   }
   beta <- matrix(0,p,m)
-  size <- as.integer(max(1,min(X$control$block.columns,floor(X$control$block.cells/n))))
+  size <- as.integer(max(1,min(X$control$block.columns,
+    floor(min(X$control$block.cells,X$control$max.cells)/n))))
   for(first in seq.int(1L,p,by=size)) {
     ids <- seq.int(first,min(p,first+size-1L));A <- design[,ids,drop=FALSE]
     for(j in seq_len(m)) {

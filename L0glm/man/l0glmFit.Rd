@@ -522,7 +522,10 @@ validation error; \code{NULL} retains the GIC-based ISIS default.}
 
 \item{screen.maxit}{Maximum ISIS rounds, default 10. A repeated candidate
 set stops the search early; SIS always uses one round. This is separate
-from \code{maxit}, the inner IRLS limit. Ignored when screening is off.}
+from the IRLS iteration limit. For cached file-backed Gaussian fits,
+this bounds global screening rounds; the cache also supplies restricted
+candidates and a small-support GIC check.
+Ignored when screening is off.}
 
 \item{screen.nthreads}{Positive integer OpenMP thread count for screening.
 \code{NULL} (default) uses the number of physical cores, falling back to

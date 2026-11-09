@@ -87,6 +87,9 @@ mandatory predictors in original column order; \code{nsis} counts these and
 describe the screen preceding the chosen fit, with \code{keep} updated to its
 retained rows. \code{top_statistics} is \code{NULL} for ISIS. The returned \code{fit}
 accepts new data with all original columns in \code{\link[stats:predict]{stats::predict()}}.
+For eligible file-backed Gaussian fits with \code{return_stats=FALSE},
+\code{working.set} records the resident pool size, its candidate history,
+global scan count and whether a Gaussian GIC deletion check was accepted.
 }
 \description{
 Screen predictors using one null/nuisance fit and native column reductions,

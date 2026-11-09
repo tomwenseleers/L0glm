@@ -1,7 +1,16 @@
 // Efficient-score screening without design-sized squares or channel Hessians.
 #include "eigen_diagnostics.h"
 #include "bed_input.h"
+// Older Boost headers expose auto_ptr compatibility overloads under C++17.
+// Keep dependency diagnostics local, preserving warnings for our own code.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #include <bigmemory/MatrixAccessor.hpp>
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 #include <queue>
 #include <algorithm>
 #include <exception>

@@ -75,6 +75,12 @@
 * `l0glmData()` provides lazy subsets of bigmemory, delayed/HDF5 single-cell
   assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2
   conversion cache, including expected dosages.
+* Large file-backed Gaussian identity ISIS fits can retain a bounded candidate
+  pool, preserving the global ISIS path and selecting cached or small-support
+  Gaussian refinements only when original-p GIC improves. Repeated exact
+  coefficients avoid a redundant global scan; `working.columns=0L` disables
+  this cache. Restored descriptors attach once per fit, and pilot blocks respect
+  the working-memory guard.
 * All-family SIS/ISIS streams predictor columns; BED screening reduces packed
   two-bit genotypes directly with OpenMP. Retained-design fitting preserves
   original coefficient dimensions and criterion calibration. Training-only

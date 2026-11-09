@@ -1,6 +1,6 @@
 # Offset screening is an outer support search; every candidate fit starts afresh.
 L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,options,
-                       nthreads=NULL,fixed_candidates=NULL) {
+                       nthreads=NULL,fixed_candidates=NULL,p_reference=NULL,working=TRUE) {
   if (!is.numeric(niter) || length(niter)!=1L || !is.finite(niter) ||
       niter<1 || niter!=floor(niter)) stop("niter must be a positive integer.",call.=FALSE)
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) ||
@@ -28,6 +28,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   if (identical(kind,"cox") && length(L0glm_intercepts(design)))
     stop("Remove constant/intercept columns from a Cox design.",call.=FALSE)
   p_total <- ncol(design)-length(included)
+  if(!is.null(p_reference))p_total <- p_reference
   joint <- identical(kind,"cox") || identical(kind,"multinomial")
   w <- L0glm_ext_matrix(weights,n,if (joint) 1L else m,1,"weights")
   off <- L0glm_ext_matrix(offset,n,m,0,"offset")
@@ -54,6 +55,12 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     rep(args$start!=0,p) else rowSums(args$start[seq_len(p)+added,,drop=FALSE]!=0)>0
   allowed[mandatory] <- TRUE;eligible <- which(allowed)
   screen_X <- if (is.null(fixed_candidates) && length(eligible)<p) X[,eligible,drop=FALSE] else X
+  if(working && m==1L && is.null(p_reference) && is.null(fixed_candidates)) {
+    size <- L0glm_isis_cache_size(X,family,args,nonnegative,full,niter,nsis,mandatory,p_total,n_ic)
+    if(size>0L)return(L0glm_isis_cached(X,y,family,nsis,niter,nthreads,size,
+      list(args=args,added=added,mandatory=mandatory,included=included,design=design,
+        w=w,off=off,p_total=p_total,n_ic=n_ic,started=started)))
+  }
   B <- Matrix::Matrix(0,ncol(design),m,sparse=TRUE)
   selected <- mandatory;previous <- NULL;best <- NULL;history <- list();converged <- FALSE
   quasi_estimated <- NULL

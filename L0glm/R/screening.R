@@ -43,6 +43,7 @@ L0glm_screen_fit <- function(X, y, family, weights, offset, nonnegative,
   fit <- result$fit
   fit$screening <- c(list(method = method, automatic = automatic), result[c(
     "screen_size", "iterations", "best_iteration", "converged", "candidates", "indices", "history", "seconds", "nthreads")])
+  if(!is.null(result$working.set))fit$screening$working.set <- result$working.set
   if (!is.null(candidates)) fit$screening$fixed.candidates <- TRUE
   fit
 }

@@ -37,11 +37,16 @@ other backends default to error. Means use nonmissing training observations
 with positive weight in at least one response. All-missing columns use zero.}
 
 \item{control}{Named list: \code{block.columns=256L}, \code{block.cells=2e6},
-\code{max.cells=5e7}, \code{nthreads=1L}. The last controls selected BED decoding;
+\code{max.cells=5e7}, \code{nthreads=1L}, \code{working.columns=10000L}.
+\code{nthreads} controls selected BED decoding;
 \code{screen.nthreads} in \code{\link[=l0glmFit]{l0glmFit()}} controls fused BED screening.
 VCF conversion additionally needs \code{cache} (new output prefix) and \code{plink}
 (PLINK 2 executable; defaults to \code{Sys.which("plink2")}). \code{dosage=NULL}
-imports GT hardcalls; \code{dosage="DS"} preserves expected ALT dosages.}
+imports GT hardcalls; \code{dosage="DS"} preserves expected ALT dosages.
+\code{working.columns} caps the resident candidate pool for large file-backed
+Gaussian identity ISIS fits; zero disables that cache. Its size also
+respects \code{max.cells}. Global checks preserve the ordinary ISIS path,
+and cached or small-support refits are accepted only when GIC improves.}
 }
 \value{
 A serializable \code{L0glm_data} matrix descriptor. It retains paths or
@@ -61,6 +66,19 @@ screened directly through their existing native mapping, using read-only access.
 Row/column views retain their original indexing; the operating system pages
 the backing file without a design-sized R allocation. Other source types
 and mean-imputed data use bounded working blocks.
+
+Large file-backed Gaussian identity models with an unconstrained coefficient
+vector, the GIC preset, relaxed refitting and Eigen LLT can also reuse a
+resident pool of up to \code{working.columns} predictors when at least three
+screening rounds are requested. The ordinary global
+ISIS path is retained. Cached candidates and small-support Gaussian refits
+are selected only when the original-p GIC improves. Exact repetition of a
+Gaussian coefficient vector avoids a redundant final file scan.
+Weights, offsets, compulsory terms and fixed or estimated dispersion retain
+their meanings. This cache uses scalar or automatic starts; a supplied ridge
+centre or validation set uses ordinary streamed ISIS. The diagnostics in
+\code{fit$screening$working.set} report the pool size and full-file scan count.
+Set \code{working.columns=0L} for ordinary streamed ISIS.
 
 \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=l0glmTune]{l0glmTune()}} fit the retained SIS/ISIS columns with the
 existing GLM/NB, joint multinomial or Cox engine. Presets and criteria retain
