@@ -304,7 +304,12 @@ L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped
     lambda_max <- lambda_max * (1 + 1e-6) # keep the null endpoint above roundoff
     args$lambda <- exp(seq(log(lambda_max), log(lambda_max) + log(ratio), length.out=data$nlambda))
   }
+  # Release full-design pilot temporaries before native allocation. In a wide
+  # CV fit they otherwise compete with the retained design and validation rows.
+  large <- as.double(n)*p > 1e8
+  if (large) invisible(gc())
   fit <- do.call(glmnet::glmnet, args)
+  if (large && active_refits) invisible(gc())
   if (active_refits)
     return(L0glm_benchmark_align(L0glm_benchmark_relax_gaussian(fit, args, p), grid))
   if (relaxed) fit <- fit$relaxed
