@@ -2,8 +2,8 @@ These measured examples supply the README and pkgdown tutorials. Install the
 checkout of L0glm you want to measure, and run the scripts with that installation
 first on the R library path.
 
-The published runs use L0glm 0.2.0 at fitter revision
-[`d7bdece`](https://github.com/tomwenseleers/L0glm/commit/d7bdece).
+The million-predictor runs use L0glm 0.2.0.9002 at fitter revision
+[`07af781`](https://github.com/tomwenseleers/L0glm/commit/07af781).
 See [`sessionInfo.txt`](sessionInfo.txt) for R and dependency versions.
 
 From the repository root, run:
@@ -24,7 +24,8 @@ The fitting function also accepts a subset of cases, for example
 Use `reuse=TRUE` only to resume checkpoints made with the same package versions,
 simulation and fitting settings. Cached model objects remain outside Git.
 
-The million-predictor design is dense and occupies about 4 GB. Its default-fit
+The million-predictor design has 1,000 observations and 60 signed nonzero
+effects. It is dense and occupies about 8 GB. Its default-fit
 time is the median of three runs; all three return identical coefficients.
 Screening uses the physical cores (eight on this workstation), with one BLAS
 thread. Deconvolution has 10,000 observations, 10,000 predictors and 1,000 true
@@ -60,6 +61,10 @@ GIC-preset L0glm result comes from `million-metrics.csv`. The LASSO paths set
 `screen="none"` and use the package's common-scoring fold loop for CV.
 The shared-SIS and shared-ISIS comparisons are available separately in
 [`3_benchmarks_sis_vs_SIS_results`](../../3_benchmarks_sis_vs_SIS_results).
+Each million-predictor LASSO workflow runs in a fresh R worker, with one BLAS
+thread and serial CV folds. Input loading and worker startup are excluded
+from its fitting/selection time. This keeps native working allocations bounded;
+the data, 40-value grids and shared folds are identical across workflows.
 Standalone `cv.glmnet` calls use
 `benchmarks/cv_glmnet_parallel.R`, which manages a parallel backend and requires
 `doParallel`. It limits simultaneous copies of large dense designs by default.

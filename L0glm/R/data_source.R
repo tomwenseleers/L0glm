@@ -58,6 +58,8 @@
 #' @return A serializable `L0glm_data` matrix descriptor. It retains paths or
 #'   backend references and views, with bounded reads on demand.
 #' @seealso [l0glmFit()], [l0glmTune()], [sisGLM()], [glmCluster()]
+#'   and the [file-backed tutorial](https://tomwenseleers.github.io/L0glm/articles/file-backed.html)
+#'   for reproducible million-predictor Gaussian and packed-genotype examples.
 #' @examples
 #' set.seed(18)
 #' X <- matrix(rnorm(100*2000),100,2000)

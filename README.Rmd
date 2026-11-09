@@ -67,13 +67,13 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 ## One million predictor example
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
 ```r
 library(L0glm)
 set.seed(123)
-n <- 500L
+n <- 1000L
 p <- 1000000L
 X <- matrix(rnorm(n*p), n, p)
 active <- sample.int(p, 60L)
@@ -90,13 +90,13 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN readme-million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.84** | **2579** | **40** | **2** | **0.784** | **0.797** |
-| LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 0.268 | 0.268 |
-| Relaxed LASSO | 5-fold CV | 99.24 | 7413 | 20 | 252 | 0.120 | 0.156 |
+| **L0glm + ISIS** | **GIC preset** | **2.63** | **4194** | **46** | **0** | **0.868** | **0.876** |
+| LASSO | 5-fold CV | 205.98 | 14106 | 42 | 373 | 0.177 | 0.266 |
+| Relaxed LASSO | 5-fold CV | 188.73 | 4475 | 31 | 1 | 0.674 | 0.707 |
 <!-- END readme-million-comparison -->
 
 <!-- BEGIN million-speed -->
-L0glm is **42× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+L0glm is **78× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
 <!-- END million-speed -->
 
 L0glm uses its GIC preset with automatic ISIS screening and relaxed fitting.
@@ -107,8 +107,12 @@ The recovered coefficients are close to their true values.
 
 See the [full comparison, including BIC-tuned LASSO](https://tomwenseleers.github.io/L0glm/articles/performance.html#one-million-predictor-example)
 and the [SIS/ISIS tutorial](https://tomwenseleers.github.io/L0glm/articles/high-dimensional.html).
-The dense design occupies about 4 GB. ISIS is enabled automatically when
+The dense design occupies about 8 GB. ISIS is enabled automatically when
 `p_eligible > 10*n` and uses all physical cores by default.
+
+The [file-backed tutorial](https://tomwenseleers.github.io/L0glm/articles/file-backed.html)
+also constructs and analyses an **80 GB design with 10,000 observations and one
+million predictors**, plus a packed logistic GWAS example with an interaction.
 
 ## Abess benchmark problems
 

@@ -15,7 +15,7 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictor-example"><strong>42× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>78× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
 <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a>
@@ -46,13 +46,13 @@ where it matters, producing sparse models with excellent support recovery.
 ## Fit a sparse model
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
 ```r
 library(L0glm)
 set.seed(123)
-n <- 500L
+n <- 1000L
 p <- 1000000L
 X <- matrix(rnorm(n*p), n, p)
 active <- sample.int(p, 60L)
@@ -69,16 +69,21 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.84 | 2579 | 40 | 2 | 20 | 999938 | 0.784 | 0.797 |
+| 2.63 | 4194 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
 <!-- END million-metrics -->
+
+See the [detailed benchmarks](articles/performance.html#one-million-predictor-example)
+for timings and recovery comparisons with LASSO and relaxed LASSO.
 
 The recovered coefficients are close to their true values.
 
 <img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%">
 
 Install with `remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")`.
-The dense design occupies about 4 GB. The [getting-started guide](articles/L0glm.html)
-explains the example and prediction methods.
+The dense design occupies about 8 GB. See the
+[SIS/ISIS tutorial](articles/high-dimensional.html) and the
+[file-backed example](articles/file-backed.html) for designs larger than RAM.
+The [getting-started guide](articles/L0glm.html) explains prediction and tuning.
 
 ## Application: sparse deconvolution
 

@@ -84,9 +84,9 @@ l0glmMetrics(fit_background,
     "within_row_F1_score", "within_row_MCC")]
 
 # High-dimensional Gaussian regression with positive and negative effects.
-# Run manually: the dense design alone occupies about 4 GB.
+# Run manually: the dense design alone occupies about 8 GB.
 \dontrun{
-n <- 500L
+n <- 1000L
 p <- 1000000L
 set.seed(123)
 X_hd <- matrix(rnorm(n*p), n, p)

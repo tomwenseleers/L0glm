@@ -17,7 +17,7 @@ used to assess both speed and recovery.
 ## One million predictor example
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 500 observations and 60 nonzero effects. One default L0glm call takes **2.84 seconds** and recovers **40 true effects with 2 false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
 L0glm uses its default GIC preset with ISIS screening and relaxed fitting.
@@ -28,21 +28,21 @@ model at this dimension; all methods are also evaluated using the common GIC.
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.84** | **2579** | **40** | **2** | **20** | **999938** | **0.784** | **0.797** |
-| LASSO | BIC path | 23.42 | 14789 | 23 | 612 | 37 | 999328 | 0.066 | 0.118 |
-| Relaxed LASSO | BIC path | 22.47 | 10588 | 21 | 453 | 39 | 999487 | 0.079 | 0.124 |
-| LASSO | 5-fold CV | 120.69 | 4309 | 17 | 50 | 43 | 999890 | 0.268 | 0.268 |
-| Relaxed LASSO | 5-fold CV | 99.24 | 7413 | 20 | 252 | 40 | 999688 | 0.120 | 0.156 |
+| **L0glm + ISIS** | **GIC preset** | **2.63** | **4194** | **46** | **0** | **14** | **999940** | **0.868** | **0.876** |
+| LASSO | BIC path | 41.03 | 5789 | 34 | 20 | 26 | 999920 | 0.596 | 0.597 |
+| Relaxed LASSO | BIC path | 42.55 | 18650 | 43 | 753 | 17 | 999187 | 0.100 | 0.197 |
+| LASSO | 5-fold CV | 205.98 | 14106 | 42 | 373 | 18 | 999567 | 0.177 | 0.266 |
+| Relaxed LASSO | 5-fold CV | 188.73 | 4475 | 31 | 1 | 29 | 999939 | 0.674 | 0.707 |
 <!-- END million-comparison -->
 
-```{r million-plot, echo=FALSE, fig.width=12, fig.height=4.2, dev.args=list(pointsize=18), fig.cap="Fast fitting and selection, higher sensitivity and fewer false positives in the million-predictor example. L0glm uses a GIC preset; both LASSO methods use five-fold CV. There are 60 true effects."}
+```{r million-plot, echo=FALSE, fig.width=12, fig.height=4.2, dev.args=list(pointsize=18), fig.cap="Fitting time, true-effect recovery and false positives in the million-predictor example. L0glm uses a GIC preset; both LASSO methods use five-fold CV. There are 60 true effects."}
 layout(matrix(1:3, nrow=1), widths=c(1.3, 1, 1))
 par(mar=c(4, 6.5, 2.8, 1), mgp=c(2.5, .6, 0), family="sans", cex.axis=.85,
   bg="white", col.axis="#34465d", col.lab="#34465d", col.main="#0a1930")
 labels <- c("L0glm + ISIS", "LASSO", "Relaxed LASSO")
 cols <- c("#087e83", "#8b5cc7", "#d04a78")
-seconds <- c(2.84, 120.69, 99.24)
-plot(seconds, 3:1, log="x", xlim=c(1, 220), ylim=c(.6, 3.4), pch=21, bg=cols,
+seconds <- c(2.63, 205.98, 188.73)
+plot(seconds, 3:1, log="x", xlim=c(min(1, min(seconds)/2), max(seconds)*1.8), ylim=c(.6, 3.4), pch=21, bg=cols,
   col=cols, cex=2.2, yaxt="n", xlab="Seconds (log scale)", ylab="", bty="n")
 axis(2, at=3:1, labels=labels, las=1, tick=FALSE, cex.axis=.9)
 abline(v=c(1, 10, 100), col="#e1ebef", lty=3)
@@ -51,21 +51,21 @@ text(seconds, 3:1, sprintf("%.2f s", seconds), pos=ifelse(seconds > 50, 2, 4),
   offset=.8, cex=.8, col="#29455a")
 title("Fast fitting and selection", adj=0, cex.main=1.1)
 par(mar=c(4, 1, 2.8, 1))
-tp <- c(40, 17, 20)
-plot(tp, 3:1, xlim=c(0, 60), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
+tp <- c(46, 42, 31)
+plot(tp, 3:1, xlim=c(0, 68), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
   cex=2.2, yaxt="n", xlab="True positives (of 60)", ylab="", bty="n")
 text(tp+2, 3:1, tp, pos=4, cex=.9, col="#29455a")
-title("Higher sensitivity", adj=0, cex.main=1.1)
-fp <- c(2, 50, 252)
-plot(fp, 3:1, xlim=c(0, 310), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
+title("True effects recovered", adj=0, cex.main=1.1)
+fp <- c(0, 373, 1)
+plot(fp, 3:1, xlim=c(0, max(10, max(fp)*1.3)), ylim=c(.6, 3.4), pch=21, bg=cols, col=cols,
   cex=2.2, yaxt="n", xlab="False positives", ylab="", bty="n")
-text(fp+9, 3:1, fp, pos=4, cex=.9, col="#29455a")
+text(fp+.03*max(10, max(fp)), 3:1, fp, pos=4, cex=.9, col="#29455a")
 title("Fewer false positives", adj=0, cex.main=1.1)
 layout(1)
 ```
 
 <!-- BEGIN million-speed -->
-L0glm is **42× faster than five-fold-CV LASSO** in this comparison, with higher sensitivity and fewer false positives.
+L0glm is **78× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
 <!-- END million-speed -->
 
 See the [high-dimensional tutorial](high-dimensional.html) for the data setup
@@ -185,6 +185,8 @@ coefficient plots and complete code.
   and [complete results and fitting notes](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/website/support-difficulty-runs.csv).
 * [Single and multichannel deconvolution workflows](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_website_deconvolution.R).
 * [`sparseGLM()`](../reference/sparseGLM.html) applies the same comparison framework to your own data.
+* [File-backed Gaussian and logistic GWAS examples](file-backed.html) include
+  an 80 GB design and native biglasso LASSO comparisons.
 * [Predictor-group comparisons with grpreg](predictor-groups.html) cover group
   LASSO, MCP and SCAD with equal and unequal group sizes.
 
@@ -196,8 +198,10 @@ The Abess benchmark problems use one thread throughout. Multichannel
 deconvolution uses four fitting threads and deconvolution CV uses four parallel
 workers; single channel fitting uses one thread.
 
-Timings include fitting and selection, including CV worker startup, and exclude
-simulation and final metric reporting. The million-predictor L0glm timing is
+Timings include fitting and selection, and exclude simulation and final metric
+reporting. Million-predictor LASSO workflows use fresh R sessions to bound
+memory, with input loading and session startup excluded. Deconvolution CV
+timings include parallel-worker startup. The million-predictor L0glm timing is
 the median of three runs. CV comparisons use shared folds. Known coefficients
 are used only for evaluation. The reproduction scripts specify scoring floors,
 approximation choices and all simulation settings.

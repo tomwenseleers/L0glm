@@ -50,12 +50,12 @@ weights, offsets and constraints.
 ## Fit a sparse model
 
 Here 60 positive or negative effects are hidden among **one million predictors**
-with 500 observations. A single call fits the model using the package defaults.
-The dense design occupies about 4 GB; data generation is excluded from the fitting time.
+with 1,000 observations. A single call fits the model using the package defaults.
+The dense design occupies about 8 GB; data generation is excluded from the fitting time.
 
 ```{r million, eval=FALSE}
 set.seed(123)
-n <- 500L
+n <- 1000L
 p <- 1000000L
 X <- matrix(rnorm(n*p), n, p)
 active <- sample.int(p, 60L)
@@ -72,7 +72,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.84 | 2579 | 40 | 2 | 20 | 999938 | 0.784 | 0.797 |
+| 2.63 | 4194 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
 <!-- END million-metrics -->
 
 <img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%">
@@ -87,9 +87,11 @@ The default automatic screening uses the available physical cores; set
 The preset already gives a strong sparse model. This tuning path uses the
 predictor pool found by ISIS at the preset. Each lambda fits its own model
 within that pool, so the graph shows how the penalty changes selection
-on a common set of candidates. The best grid value is 26.78, close to
-the preset of 25.24. Both recover 40 true effects. The selected grid
-fit has one false positive, compared with three at the preset.
+on a common set of candidates. The grid includes the GIC preset.
+
+<!-- BEGIN million-path-summary -->
+The best grid value is **26.70**, with a GIC preset of **26.70**.
+<!-- END million-path-summary -->
 
 ```{r path, eval=FALSE}
 tuned <- l0glmTune(X, y, family=gaussian(), tune="gic",

@@ -14,7 +14,7 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
     message("Starting ", case, " at ", Sys.time())
     if (case == "million") {
       set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
-      n <- 500L; p <- 1000000L
+      n <- 1000L; p <- 1000000L
       X <- matrix(rnorm(n*p), n, p)
       active <- sample.int(p, 60L)
       beta <- numeric(p); beta[active] <- runif(60L, -.8, .8)

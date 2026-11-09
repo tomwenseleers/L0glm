@@ -50,32 +50,186 @@ Subsetting with `drop=FALSE` creates a view. `as.matrix()` makes an explicit
 bounded read. An unscreened working design, the retained fit matrix and requested
 outputs must fit the configurable `max.cells` guard. Full-design IRLS on an
 arbitrarily large tall matrix still requires a dedicated streamed solver; the
-current interface keeps that memory requirement explicit.
+current interface keeps that memory requirement explicit. For plain LASSO,
+the native biglasso adapter below can fit a complete double bigmemory design.
 
-## Packed genotypes
+## One million predictors on disk
+
+The resident example uses 1,000 observations and 60 nonzero effects. With
+`l0glmData()` the same Gaussian construction can be extended to **10,000
+observations and one million predictors**, while generating and reading the
+design in bounded blocks. A double-precision backing file occupies **80 GB**;
+the active fitting problem is much smaller.
+
+Run the following from an empty working directory with enough disk space.
+Only a block of 256 predictor columns is generated at a time. The random
+number sequence matches `matrix(rnorm(as.double(n)*p), n, p)`.
+
+```{r million-file, eval=FALSE}
+library(L0glm)
+library(bigmemory)
+RhpcBLASctl::blas_set_num_threads(1L)
+n <- 10000L
+p <- 1000000L
+backing <- filebacked.big.matrix(nrow=n,ncol=p,type="double",
+  backingfile="normal.bin",descriptorfile="normal.desc",backingpath=getwd())
+set.seed(123)
+for(first in seq.int(1L,p,by=256L)) {
+  j <- seq.int(first,min(p,first+255L))
+  backing[,j] <- matrix(rnorm(as.double(n)*length(j)),n)
+}
+active <- sample.int(p,60L)
+beta <- numeric(p)
+beta[active] <- runif(60L,-.8,.8)
+set.seed(1)
+y <- drop(backing[,active,drop=FALSE]%*%beta[active])+rnorm(n)
+
+# The descriptor can be reattached in a new R session.
+training <- seq_len(8000L)
+test <- 8001:10000
+X <- l0glmData(attach.big.matrix("normal.desc"),control=list(
+  block.columns=4096L,block.cells=length(training)*4096,max.cells=1e8))
+system.time(fit <- l0glmFit(X[training,,drop=FALSE],y[training],
+  family=gaussian(),intercept=TRUE,screen="ISIS",screen.nthreads=8L))
+l0glmMetrics(fit,beta_true=beta)[
+  c("gic","TP","FP","FN","TN","F1_score","MCC")]
+sqrt(mean((predict(fit,X[test,,drop=FALSE])-y[test])^2))
+```
+
+<!-- BEGIN file-normal-metrics -->
+| Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Test RMSE |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1695.53 | 24652 | 50 | 1 | 10 | 999939 | 0.901 | 0.904 | 0.993 |
+
+Generating the 80 GB file took **488.31 seconds**, excluded from the fitting time.
+<!-- END file-normal-metrics -->
+
+The first 8,000 rows are used for screening and fitting, and the remaining
+2,000 rows assess prediction. The model includes a free intercept and uses
+4,096-column streaming blocks. The GIC preset uses the original one million
+predictors. Generation and fitting times are recorded separately. The
+[complete reproduction script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_normal.R)
+creates a reusable descriptor and response cache and reports the screening
+history. The response, truth and descriptor should be saved together when
+continuing in a new session.
+
+### Compare with native file-backed LASSO
+
+The optional [biglasso](https://pbreheny.github.io/biglasso/) solver fits plain
+LASSO directly on the same backing file. Its native row-index interface also
+reuses the file across cross-validation folds. `screen="none"` keeps all
+predictors available; biglasso still uses its own screening rules to accelerate
+the convex LASSO path. The shared `sparseGLM()` interface selects lambda using
+the same likelihood and information-criterion code as the other methods.
+
+```{r biglasso, eval=FALSE}
+install.packages("biglasso") # once
+comparison <- sparseGLM(X[training,,drop=FALSE],y[training],family=gaussian(),
+  method="biglasso",screen="none",intercept=TRUE,tune="bic",nlambda=10L,
+  options=list(ncores=8L,lambda.min=.05),beta_true=beta)
+l0glmMetrics(comparison)[c("method","seconds","gic","TP","FP","F1_score","MCC")]
+sqrt(mean((predict(comparison,X[test,,drop=FALSE])[[1]]-y[test])^2))
+
+# The same file supports training-row cross-validation without dense copies.
+cv <- sparseGLM(X[training,,drop=FALSE],y[training],family=gaussian(),
+  method="biglasso",screen="none",intercept=TRUE,tune="cv",nfolds=5L,
+  nlambda=10L,options=list(ncores=8L,lambda.min=.05))
+```
+
+Biglasso includes a free Gaussian/logistic intercept. For a matched comparison,
+give both methods a free intercept. The reproduction script uses a GIC preset
+and ISIS for L0glm, while LASSO selects from ten native lambda values using BIC. Both models
+train on 8,000 rows and predict the same held-out 2,000 rows. The L0glm streaming
+blocks contain up to 4,096 columns; the native LASSO solver reads the backing
+matrix directly. Neither method copies the full design into an R matrix.
+
+<!-- BEGIN file-lasso-metrics -->
+<!-- END file-lasso-metrics -->
+
+The [comparison script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_lasso.R)
+records fitting and selection time, including common path scoring, separately
+from final recovery metrics and test predictions. CV is available through the
+same interface; the table reports BIC selection. Gaussian offsets and zero-weight
+row exclusions are supported. Biglasso requires unrestricted coefficients;
+non-unit positive weights and non-Gaussian offsets are excluded explicitly.
+SIS/ISIS can also be applied to biglasso and the other `sparseGLM()` methods.
+
+## Packed genotypes and logistic GWAS
 
 PLINK 1 variant-major BED stores four hardcalls per byte. The native screening
 kernel computes the same family-specific scores directly from these two-bit
 calls, with deterministic OpenMP reduction across predictors. The selected
 genotypes are decoded only for the smaller fitting problem.
 
-A logistic throughput example uses 4,000 samples and 1,733,480 predictors:
-**1.73 GB on disk**, compared with **55.47 GB as doubles**. The fit uses 3,200
-training samples, weights from 1 to 3, known offsets, five nonzero effects and
-a 1,000-predictor SIS pool. The complete screen-and-fit results are:
+This reproducible logistic example has **4,000 observations, one million
+independent variants, six main effects and one pairwise interaction**.
+Minor-allele frequencies range from 0.1 to 0.5, and diploid genotypes are
+generated in Hardy-Weinberg equilibrium. The BED file occupies **1 GB**, versus
+32 GB for the decoded double-precision matrix. The simulator writes matching
+BIM and FAM files, so the dataset can also be opened with PLINK.
+The FAM file encodes controls as 1 and cases as 2; the saved R response uses 0/1.
 
-| Screening threads | Seconds | GIC | TP | FP | F1 | MCC |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 17.14 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
-| 2 | 9.54 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
-| 4 | 5.95 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
-| 8 | 5.00 | 6360.57 | 5 | 1 | 0.909 | 0.913 |
+From the checkout root, run:
 
-Coefficients are identical across thread counts. These are synthetic independent
-genotypes for throughput testing; Windows may cache the file. Timings were
-measured on an HP ZBook Fury G8 with an Intel i9-11950H, eight physical cores and
-16 logical processors. The [reproducible benchmark](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked.R)
-also runs ISIS and records held-out prediction loss.
+```{r bed-simulate, eval=FALSE}
+source("benchmarks/benchmark_filebacked_gwas.R")
+results <- benchmark_filebacked_gwas(n=4000L,p=1000000L,
+  cache="codex_sandbox/filebacked_gwas")
+results[c("method","seconds","gic","TP","FP","FN","F1_score","MCC",
+  "interaction_recovered","test_AUC","test_logloss")]
+```
+
+The [R script](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_gwas.R)
+and its [small C++ simulator](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/helpers/hwe_genotypes.cpp)
+contain the full simulation, including the random seeds. Packed calls are
+written directly to disk, without constructing a dense genotype matrix.
+For an existing BED file the fitting calls are:
+
+```{r bed-fit, eval=FALSE}
+prefix <- "codex_sandbox/filebacked_gwas/gwas-4000-1000000"
+simulation <- readRDS(paste0(prefix,".rds"))
+y <- simulation$response$y
+offset <- simulation$response$offset
+X <- l0glmData(paste0(prefix,".bed"),n=4000L,p=1000000L)
+training <- seq_len(3200L)
+fit <- l0glmFit(X[training,,drop=FALSE],y[training],family=binomial(),
+  intercept=TRUE,offset=offset[training],screen="ISIS",screen.nthreads=8L,
+  interactions=1L)
+fit$interactions$history
+GIC(fit)
+coef(fit)[which(Matrix::rowSums(coef(fit)!=0)>0),,drop=FALSE]
+predict(fit,X[3201:4000,,drop=FALSE],offset=offset[3201:4000])
+```
+
+Set `screen="SIS"` for one marginal screen and `interactions=0L` for main
+effects alone. Pairwise products are generated among selected main effects;
+they are stored in the model recipe and constructed only when needed.
+The example deliberately includes main effects for both interacting variants.
+
+<!-- BEGIN file-gwas-metrics -->
+| Method | Seconds | GIC | TP | FP | FN | F1 | MCC | Interaction recovered | Test AUC | Test log loss |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| SIS | 3.28 | 2971 | 6 | 0 | 1 | 0.923 | 0.926 | No | 0.830 | 0.437 |
+| ISIS | 7.94 | 2971 | 6 | 0 | 1 | 0.923 | 0.926 | No | 0.830 | 0.437 |
+| ISIS + interactions | 10.62 | 2906 | 6 | 0 | 1 | 0.923 | 0.926 | Yes | 0.833 | 0.431 |
+<!-- END file-gwas-metrics -->
+
+The main-effect models recover all six main effects. The interaction model
+retains five main effects and the true interaction, with lower GIC and held-out
+log loss. Parent main effects are eligible for removal after their products
+have been generated.
+
+The first 3,200 observations train the models; 800 are held out. Recovery
+includes the six main effects and the true interaction, so an omitted
+interaction counts as a false negative. All rows use the same evaluation
+universe: original predictors plus the union of generated interactions and
+the true interaction. Simulation truth is used only for evaluation. These
+independent variants provide a reproducible computational example; real GWAS
+also require appropriate population-structure and relatedness adjustment.
+
+Timings exclude generation and final metric reporting. They were measured on
+an HP ZBook Fury G8 with an Intel i9-11950H, eight physical cores, 16 logical
+processors and one BLAS thread. Windows may cache file reads.
 
 PGEN uses the official [pgenlibr](https://github.com/chrchang/plink-ng/tree/master/2.0/pgenlibr)
 reader, retaining continuous ALT dosages. BED coefficients count BIM allele 1;

@@ -62,6 +62,10 @@ navbar:
           href: articles/interactions.html
         - text: Coefficient inference
           href: articles/inference.html
+        - text: SIS / ISIS screening for high dimensional models
+          href: articles/high-dimensional.html
+        - text: File-backed data and GWAS
+          href: articles/file-backed.html
         - text: "---"
         - text: Regular GLM models
           href: articles/regular-glm.html
@@ -71,10 +75,6 @@ navbar:
           href: articles/multinomial.html
         - text: Cox proportional hazards models
           href: articles/cox.html
-        - text: SIS / ISIS screening for high dimensional models
-          href: articles/high-dimensional.html
-        - text: File-backed data and GWAS
-          href: articles/file-backed.html
         - text: "---"
         - text: Single and multichannel deconvolution
           href: articles/deconvolution.html
@@ -90,11 +90,9 @@ navbar:
       aria-label: Source code on GitHub
 articles:
   - title: Get started
-    contents: [L0glm, articles/selection, articles/controls, articles/predictor-groups, articles/interactions, articles/inference]
+    contents: [L0glm, articles/selection, articles/controls, articles/predictor-groups, articles/interactions, articles/inference, articles/high-dimensional, articles/file-backed]
   - title: Model families
     contents: [articles/regular-glm, articles/negative-binomial, articles/multinomial, articles/cox]
-  - title: Screening at scale
-    contents: [articles/high-dimensional, articles/file-backed]
   - title: Algorithms and evidence
     contents: [articles/algorithm, articles/performance]
   - title: Applications

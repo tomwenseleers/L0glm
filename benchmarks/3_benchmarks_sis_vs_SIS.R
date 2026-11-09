@@ -2,7 +2,7 @@
 library(L0glm)
 stopifnot(requireNamespace("SIS",quietly=TRUE),requireNamespace("glmnet",quietly=TRUE))
 RhpcBLASctl::blas_set_num_threads(1L)
-n <- 500L
+n <- 1000L
 p <- 1000000L
 nsis <- 100L
 repetitions <- 3L

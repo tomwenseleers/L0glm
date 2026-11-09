@@ -147,7 +147,9 @@ will be used. Reserve an independent test set when measuring final predictive ac
 ## Compare methods
 
 `sparseGLM()` supplies one comparison interface for L0glm, ABESS, L0Learn,
-LASSO, relaxed LASSO, adaptive variants, MCP and SCAD where supported.
+LASSO, relaxed LASSO, adaptive variants, MCP and SCAD where supported. The
+optional biglasso adapter also fits plain LASSO directly on double bigmemory
+designs; see the [file-backed example](file-backed.html#compare-with-native-file-backed-lasso).
 
 ```{r compare, eval=FALSE}
 comparison <- sparseGLM(X, y, family=gaussian(),

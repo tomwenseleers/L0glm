@@ -3,8 +3,8 @@
 library(L0glm)
 
 # Editable settings. For a quick run, reduce p to e.g. 20000L.
-# The original million-predictor design alone occupies about 4 GB as dense doubles.
-n <- 500L
+# The million-predictor design alone occupies about 8 GB as dense doubles.
+n <- 1000L
 p <- 1000000L
 n_nonzero <- 60L
 beta_range <- c(-0.8, 0.8)
@@ -21,7 +21,7 @@ abess_max_support <- min(p, n - 2L, 150L)
 RhpcBLASctl::blas_set_num_threads(1L)
 RhpcBLASctl::omp_set_num_threads(1L)
 
-# Preserve the historical simulation, including positive and negative effects.
+# Include positive and negative effects.
 stopifnot(n > 2L, p >= n_nonzero, n_nonzero > 0L)
 set.seed(seed_problem)
 X <- matrix(rnorm(n * p), n, p)
@@ -50,8 +50,7 @@ seconds["Full L0glm"] <- system.time(
 
 # One call returns a full-dimension model for either screening strategy.
 # ISIS starts afresh in each round and retains the best original-p GIC round.
-# SIS uses a broad one-pass screen. ISIS uses the smaller historical batch size
-# (20 here): admitting 160 per round gave much poorer recovery at p = 1 million.
+# SIS uses a broad one-pass screen. ISIS uses the smaller GIC-based batch size.
 # Neither screen guarantees signal retention.
 for (name in c("SIS", "ISIS")) {
   label <- paste(name, "+ L0glm")

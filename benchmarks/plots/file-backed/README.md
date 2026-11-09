@@ -1,0 +1,48 @@
+# Reproducible file-backed examples
+
+Run the scripts from the repository root with the current package installed.
+Large input files and model caches are written beneath the ignored
+`codex_sandbox` directory; these CSV outputs retain the measured results.
+
+* `benchmark_filebacked_normal.R` generates a 10,000-observation by
+  1,000,000-predictor Gaussian design (80 GB in double precision) in bounded
+  256-column blocks, with 60 signed effects. It fits a free-intercept ISIS
+  model with 4,096-column streaming blocks on 8,000 training rows and
+  evaluates prediction on 2,000 held-out rows. The history and metrics use
+  the original predictor count.
+* `benchmark_filebacked_lasso.R` reuses that same file for a free-intercept
+  comparison: L0glm with a GIC preset and ISIS, versus native biglasso LASSO
+  with BIC selection on a ten-value path down to 5% of its native lambda maximum.
+  It uses 8,000 training and 2,000 test
+  rows. Both fit a free intercept; L0glm streams 4,096-column blocks and
+  biglasso reads the full double backing matrix directly.
+* `benchmark_filebacked_gwas.R` uses `helpers/hwe_genotypes.cpp` to create a
+  portable PLINK BED/BIM/FAM dataset with 4,000 observations and one million
+  independent HWE variants (1 GB packed). It simulates six main effects and
+  one interaction, compares SIS, ISIS and ISIS with pairwise interactions,
+  and reports recovery and prediction on 800 held-out observations.
+
+```r
+source("benchmarks/benchmark_filebacked_normal.R")
+benchmark_filebacked_normal()
+source("benchmarks/benchmark_filebacked_lasso.R")
+benchmark_filebacked_lasso()
+source("benchmarks/benchmark_filebacked_gwas.R")
+benchmark_filebacked_gwas()
+```
+
+Generation and fitting times are separate. BLAS uses one thread and screening
+uses eight physical cores on an HP ZBook Fury G8 with an Intel i9-11950H,
+64 GB RAM, Windows and R 4.5.0. The retained fitting matrix fits in RAM;
+screening streams the full source. Windows may cache file reads.
+The LASSO comparison uses eight native biglasso threads and retains all
+predictors, with no SIS/ISIS prescreen. It excludes file generation and final
+recovery/test reporting, and includes the complete native path and common IC
+scoring. Five-fold CV is supported by the same row-view interface; the recorded
+large-file table uses BIC selection.
+
+In the GWAS table TP/FP/FN/F1/MCC use a common evaluation universe containing
+all original predictors, the union of generated products and the true product.
+An interaction omitted by a main-effect model is a false negative. The column
+`interaction_recovered` identifies the correct product explicitly. BED counts
+BIM allele 1, and FAM phenotypes encode controls as 1 and cases as 2.

@@ -498,9 +498,9 @@ l0glmMetrics(multi_cv$fit_best, beta_true=multi$beta_true)[
 dim(coef(multi_cv$fit_1se))            # all original predictor rows and channels
 
 # High-dimensional Gaussian regression with 60 positive/negative effects.
-# X alone needs about 4 GB; set p <- 20000L for a smaller example.
+# X alone needs about 8 GB; set p <- 20000L for a smaller example.
 \dontrun{
-n <- 500L
+n <- 1000L
 p <- 1000000L
 set.seed(123)
 X_hd <- matrix(rnorm(n*p), n, p)

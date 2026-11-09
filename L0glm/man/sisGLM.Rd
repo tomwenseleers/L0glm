@@ -199,11 +199,11 @@ if (requireNamespace("mgcv",quietly=TRUE) && requireNamespace("survival",quietly
 }
 
 \dontrun{
-# One million predictors, 500 observations and 60 nonzero effects.
-# The dense design occupies about 4 GB; data generation is outside the timings.
+# One million predictors, 1000 observations and 60 nonzero effects.
+# The dense design occupies about 8 GB; data generation is outside the timings.
 stopifnot(requireNamespace("SIS",quietly=TRUE))
 set.seed(123)
-n <- 500L; p <- 1000000L; nsis <- 100L
+n <- 1000L; p <- 1000000L; nsis <- 100L
 X <- matrix(rnorm(as.double(n) * p), n, p)
 active <- sample.int(p, 60L)
 beta <- numeric(p)

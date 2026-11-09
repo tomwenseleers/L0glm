@@ -102,4 +102,6 @@ fit <- l0glmFit(assay,response,family=poisson())
 }
 \seealso{
 \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \code{\link[=sisGLM]{sisGLM()}}, \code{\link[=glmCluster]{glmCluster()}}
+and the \href{https://tomwenseleers.github.io/L0glm/articles/file-backed.html}{file-backed tutorial}
+for reproducible million-predictor Gaussian and packed-genotype examples.
 }
