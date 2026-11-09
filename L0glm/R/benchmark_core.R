@@ -1,6 +1,6 @@
 L0glm_benchmark_methods <- function(method) {
   choices <- c("L0glm", "abess", "L0Learn", "MCP", "SCAD", "lasso",
-    "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso")
+    "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso", "biglasso")
   if (!is.character(method) || !length(method) || anyNA(method))
     stop("method must contain method names or 'all'.", call. = FALSE)
   key <- function(x) gsub("[^a-z0-9]", "", tolower(x))
@@ -23,7 +23,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
   entries <- if (inherits(X, "sparseMatrix")) {
     if ("x" %in% methods::slotNames(X)) X@x else numeric()
   } else X
-  finite <- !length(entries) || (is.finite(min(entries)) && is.finite(max(entries)))
+  finite <- inherits(X,"L0glm_data") || !length(entries) || (is.finite(min(entries)) && is.finite(max(entries)))
   if (is.null(n) || is.null(p) || n < 3 || p < 1 || !finite)
     stop("X must be a finite numeric design matrix with at least three rows.", call. = FALSE)
   if (length(L0glm_intercepts(X)))
@@ -98,6 +98,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
   offset <- L0glm_tune_matrix(offset, n, m, 0, "offset")
   if (any(!is.finite(weights) | weights < 0) || any(colSums(weights) <= 0) || any(!is.finite(offset)))
     stop("Scoring weights must be nonnegative with positive channel totals; offsets must be finite.", call. = FALSE)
+  if(inherits(X,"L0glm_data"))X <- L0glm_data_training(X,weights)
   if (kind == "multinomial") offset <- offset - rowMeans(offset)
   dispersion <- if (kind == "glm") L0glm_dispersion(dispersion, family, m) else NULL
   mass <- if (kind == "cox") weights[, 1L] * response$status else
@@ -139,7 +140,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
     truth <- matrix(as.numeric(truth), p + intercept, m)
     if (kind == "multinomial") truth <- truth - rowMeans(truth)
   }
-  data <- list(X=X, design=if (intercept) cbind(Intercept=1, X) else X,
+  data <- list(X=X, design=L0glm_benchmark_design(X,intercept), cache=new.env(parent=emptyenv()),
     y=y, m=m, kind=kind, response=response, family=family, weights=weights, offset=offset,
     dispersion=dispersion, intercept=intercept, nonnegative=nonnegative,
     grouped=grouped, nlambda=as.integer(nlambda), support.size=support.size,
@@ -208,6 +209,7 @@ L0glm_benchmark <- function(sim, family, method, tune, nlambda, lambda, support.
       seconds=elapsed, path_seconds=path_seconds, cv_seconds=cv_seconds,
       note=paste(unique(c(if (failed) conditionMessage(result), warnings)), collapse="; "))
   }
+  data$cache <- NULL
   answer <- structure(list(fits=fits, tuning=tuning, timings=do.call(rbind, timings),
     foldid=foldid, beta_true=truth, mu_floor=mu_floor, data=data, call=match.call()),
     class="sparseglm")
@@ -237,14 +239,24 @@ L0glm_benchmark_fit <- function(beta, data) {
       n_ic=if (data$kind == "cox") sum(data$weights[, 1L] * data$response$status) else
         sum(data$weights[, 1L] > 0)), class=c("L0glm_extended_fit", "L0glm_fit"))
     if (data$kind == "cox") result$cox.cache <- data$cox.cache
-    return(result)
+    return(L0glm_benchmark_restore(result,data))
   }
   scale <- if (is.null(data$dispersion)) rep(1, m) else abs(data$dispersion)
-  structure(list(coefficients=beta, X=X, y=data$y, family=data$family,
+  L0glm_benchmark_restore(structure(list(coefficients=beta, X=X, y=data$y, family=data$family,
     prior.weights=data$weights, offset=data$offset, dispersion=scale,
     dispersion.estimated=if (is.null(data$dispersion)) rep(TRUE, m) else data$dispersion < 0,
     p=data$p, always.include=if (data$intercept) 1L else integer(),
-    added_intercept=data$intercept), class="L0glm_fit")
+    added_intercept=data$intercept), class="L0glm_fit"),data)
+}
+
+L0glm_benchmark_design <- function(X,intercept) {
+  if(inherits(X,'L0glm_data'))return(L0glm_design_view(X,intercept=intercept,
+    names=if(is.null(colnames(X)))rep('',ncol(X))else colnames(X)))
+  if(intercept)cbind(Intercept=1,X)else X
+}
+
+L0glm_benchmark_restore <- function(fit,data) {
+  if(inherits(data$X,'L0glm_data'))L0glm_data_restore(fit,data$X)else fit
 }
 
 L0glm_benchmark_cv <- function(method, data, path, foldid) {
@@ -256,6 +268,11 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
   grids <- matrix(NA_real_, L, K)
   large <- as.double(nrow(data$X))*ncol(data$X) > 1e8
   if (large) invisible(gc())
+  base <- data$X
+  if(method=="biglasso" && !inherits(base,"L0glm_data")) {
+    candidate <- data$cache$biglasso_source
+    base <- if(!is.null(candidate) && identical(dim(candidate),dim(base)))candidate else l0glmData(base)
+  }
   for (k in seq_len(K)) {
     train <- foldid != k
     d <- data
@@ -267,11 +284,15 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
       (tolower(data$screen)=="none" || tolower(data$screen)=="auto" &&
         ncol(data$X)<=10*sum(train))
     if (shared) d$weights <- data$weights * train else {
-      d$X <- data$X[train, , drop=FALSE]
-      d$design <- if (data$intercept) cbind(Intercept=1, d$X) else d$X
+      d$X <- base[train,,drop=FALSE]
+      d$design <- L0glm_benchmark_design(d$X,data$intercept)
       for (field in c("y", "weights", "offset")) d[[field]] <- data[[field]][train, , drop=FALSE]
     }
-    X_valid <- if (data$kind == "cox") NULL else data$X[!train, , drop=FALSE]
+    X_valid <- if(data$kind=="cox")NULL else base[!train,,drop=FALSE]
+    if(inherits(d$X,"L0glm_data")) {
+      d$X <- L0glm_data_training(d$X,d$weights)
+      d$design <- L0glm_benchmark_design(d$X,data$intercept)
+    }
     if (data$kind == "cox") {
       d$response <- L0glm_ext_cox_response(d$y, sum(train))
       d$cox.cache <- L0glm_ext_cox_cache(d$response, d$weights[, 1L])
@@ -289,7 +310,8 @@ L0glm_benchmark_cv <- function(method, data, path, foldid) {
       if (is.null(B)) next
       fit <- L0glm_benchmark_fit(B, d)
       if (data$kind == "cox") {
-        eta <- as.numeric(data$X %*% B) + data$offset[, 1L]
+        active <- which(Matrix::rowSums(B!=0)>0)
+        eta <- as.numeric(data$design[,active,drop=FALSE]%*%B[active,,drop=FALSE]) + data$offset[, 1L]
         full <- L0glm_ext_cox_eta(eta, data$response, data$weights[, 1L], data$cox.cache)$loglik
         loss[j, k] <- -2 * (full - as.numeric(stats::logLik(fit)))/mass[k]
       } else loss[j, k] <- l0glmMetrics(fit, newdata=X_valid,

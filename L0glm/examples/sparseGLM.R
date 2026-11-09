@@ -31,6 +31,22 @@ comparison_methods <- c("L0glm","abess","L0Learn","lasso","relaxed_lasso",
                         "adaptive_lasso","adaptive_relaxed_lasso")
 fields <- c("method","seconds","gic","deviance","adj_R2_weighted","F1_score","MCC")
 
+# File-backed plain LASSO, with a free intercept and BIC or CV selection.
+if (requireNamespace("biglasso", quietly=TRUE) &&
+    requireNamespace("bigmemory", quietly=TRUE)) {
+  set.seed(7)
+  A <- matrix(rnorm(100*500),100,500)
+  y <- 2*A[,1]-2*A[,2]+rnorm(100)
+  truth <- c(2,-2,rep(0,498))
+  source <- l0glmData(bigmemory::as.big.matrix(A))
+  comparison <- sparseGLM(source,y,method="biglasso",screen="none",
+    tune="bic",nlambda=10L,options=list(ncores=2L),beta_true=truth)
+  l0glmMetrics(comparison)[c("method","seconds","gic","TP","FP")]
+  cv <- sparseGLM(source,y,method="biglasso",screen="none",
+    tune="cv",nfolds=3L,nlambda=10L)
+  predict(cv,source[1:3,,drop=FALSE])
+}
+
 # Single channel: 50 spikes among 500 candidate locations.
 single <- simul(method=2,n=500,p=500,s=.1,seed=2)
 lambda_gic <- log(ncol(single$X))*log(log(nrow(single$X)))

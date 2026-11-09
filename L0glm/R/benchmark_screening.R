@@ -109,7 +109,7 @@ L0glm_benchmark_expand <- function(B, candidates, p, added, m) {
 L0glm_benchmark_subset <- function(data, candidates) {
   d <- data; p <- ncol(data$X); added <- as.integer(data$intercept)
   d$X <- data$X[,candidates,drop=FALSE]
-  d$design <- if (added) cbind(Intercept=1,d$X) else d$X
+  d$design <- L0glm_benchmark_design(d$X,added==1L)
   d$support.size <- data$support.size[data$support.size<=length(candidates)]
   d$options <- lapply(data$options,function(options) {
     for (name in c("start","prior.mean")) {

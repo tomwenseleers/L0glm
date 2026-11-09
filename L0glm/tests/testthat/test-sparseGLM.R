@@ -182,7 +182,8 @@ test_that("all expands only to installed methods supporting the supplied argumen
     result <- sparseGLM(sim,method="all",nonnegative=nonnegative,intercept=TRUE,
       nlambda=3,support.size=0:2,lambda=list(L0glm=6))
     packages <- c(L0glm="L0glm",abess="abess",L0Learn="L0Learn",MCP="ordinis",SCAD="ordinis",
-      lasso="glmnet",relaxed_lasso="glmnet",adaptive_lasso="glmnet",adaptive_relaxed_lasso="glmnet")
+      lasso="glmnet",relaxed_lasso="glmnet",adaptive_lasso="glmnet",adaptive_relaxed_lasso="glmnet",
+      biglasso="biglasso")
     expected <- methods[vapply(packages[methods],requireNamespace,logical(1),quietly=TRUE)]
     if (nonnegative) expected <- intersect(expected,c("L0glm","L0Learn"))
     expect_identical(names(result$fits),expected)

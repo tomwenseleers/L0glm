@@ -48,7 +48,8 @@ sparseGLM(
 )
 }
 \arguments{
-\item{X}{Design matrix without an intercept column, or a list containing
+\item{X}{Design matrix without an intercept column, \code{\link[=l0glmData]{l0glmData()}} source,
+double \code{bigmemory::big.matrix}, or a list containing
 \code{X}, \code{y} and optionally \code{beta_true}, \code{family}, \code{intercept}, \code{weights} and
 \code{offset}. Simulation metadata from \code{\link[=simul]{simul()}} is used unless overridden.}
 
@@ -65,7 +66,8 @@ currently supported.}
 
 \item{method}{Name, vector of names or \code{"all"}: \code{"L0glm"}, \code{"abess"},
 \code{"L0Learn"}, \code{"MCP"}, \code{"SCAD"}, \code{"lasso"}, \code{"relaxed_lasso"},
-\code{"adaptive_lasso"}, \code{"adaptive_relaxed_lasso"}. Names are case-insensitive;
+\code{"adaptive_lasso"}, \code{"adaptive_relaxed_lasso"}, \code{"biglasso"} (plain LASSO).
+Names are case-insensitive;
 spaces and hyphens may replace underscores. \code{"all"} includes only installed
 methods compatible with the family, constraints, grouping, weights and
 offsets. Explicitly requested unavailable methods report their reason.}
@@ -77,7 +79,9 @@ Every candidate is rescored with the same package likelihood/IC code.}
 grids are retained and may contain fewer distinct models. The glmnet methods
 use an explicit log-spaced grid of this length from their native
 \code{lambda_max} to \code{lambda_max * lambda.min.ratio}; set the ratio through
-method-specific \code{options}. A supplied \code{lambda} sequence takes precedence.}
+method-specific \code{options}. A supplied \code{lambda} sequence takes precedence.
+Biglasso uses its native grid, with \code{lambda.min=0.01} for wide designs and
+\code{1e-4} otherwise; this ratio can also be set through \code{options}.}
 
 \item{lambda}{Optional nonnegative sequence, or named list of method-specific
 sequences. Penalty units differ between methods. ABESS instead searches
@@ -255,12 +259,37 @@ Breslow comparison. ncvreg also requires zero offsets and unrestricted
 coefficients. Different tie conventions are not silently
 mixed. L0Learn has no Cox loss. For glmnet, zero times are replaced by
 order-preserving positive ranks, leaving Cox risk sets and ties unchanged.
+\subsection{Native file-backed LASSO}{
+
+\code{method="biglasso"} uses the optional \code{biglasso} package for Gaussian identity,
+binary logistic, grouped multiresponse Gaussian or Breslow Cox LASSO paths.
+It requires unrestricted coefficients, a free GLM intercept and weights of
+zero or one. Gaussian offsets are subtracted before fitting; other offsets
+are unsupported. Independent Gaussian/logistic channels are also available.
+The shared likelihood code selects lambda by the requested IC or CV.
+
+A complete double \code{bigmemory} design is passed directly to the native solver.
+Training and CV row views reuse that backing matrix through \code{row.idx};
+validation rows are omitted from fitting and standardization. No full dense
+copy is made. Predictors must be finite, without missing values on this
+native path. Other source formats, column subsets or mean imputation use
+bounded working matrices, usually after SIS/ISIS. Large sparse designs also
+require screening before conversion to biglasso's dense storage. Resident
+inputs are copied to a double \code{big.matrix} once and reused across CV folds.
+
+Use \code{screen="none"} for plain LASSO on all predictors, retaining biglasso's
+own convex-path screening rules. Shared SIS/ISIS otherwise follows the same
+rules as the other methods. Set \code{options=list(biglasso=list(ncores=8L))} for
+eight native threads; the default is one. \code{native.screen} selects biglasso's
+internal rule without changing the shared \code{screen} argument. Timings include
+input conversion when needed, path fitting, common scoring and CV.
 
 \code{seconds} includes the full-data path, adaptive pilot, scoring and CV;
 \code{path_seconds} and \code{cv_seconds} separate these components. Missing packages,
 unsupported combinations and failures retain explanatory status rows so
 remaining methods can finish. L0Learn's six-digit lambda reporting is
 accounted for when matching training-fold paths to the requested grid.
+}
 }
 \examples{
 # Sparse Gaussian regression.
@@ -295,6 +324,22 @@ l0glmMetrics(screened_cv)[c("method","screen","seconds","TP","FP","F1_score","MC
 comparison_methods <- c("L0glm","abess","L0Learn","lasso","relaxed_lasso",
                         "adaptive_lasso","adaptive_relaxed_lasso")
 fields <- c("method","seconds","gic","deviance","adj_R2_weighted","F1_score","MCC")
+
+# File-backed plain LASSO, with a free intercept and BIC or CV selection.
+if (requireNamespace("biglasso", quietly=TRUE) &&
+    requireNamespace("bigmemory", quietly=TRUE)) {
+  set.seed(7)
+  A <- matrix(rnorm(100*500),100,500)
+  y <- 2*A[,1]-2*A[,2]+rnorm(100)
+  truth <- c(2,-2,rep(0,498))
+  source <- l0glmData(bigmemory::as.big.matrix(A))
+  comparison <- sparseGLM(source,y,method="biglasso",screen="none",
+    tune="bic",nlambda=10L,options=list(ncores=2L),beta_true=truth)
+  l0glmMetrics(comparison)[c("method","seconds","gic","TP","FP")]
+  cv <- sparseGLM(source,y,method="biglasso",screen="none",
+    tune="cv",nfolds=3L,nlambda=10L)
+  predict(cv,source[1:3,,drop=FALSE])
+}
 
 # Single channel: 50 spikes among 500 candidate locations.
 single <- simul(method=2,n=500,p=500,s=.1,seed=2)

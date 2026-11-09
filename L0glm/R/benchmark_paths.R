@@ -4,13 +4,29 @@ L0glm_benchmark_setup <- function(method, data) {
     L0glm_benchmark_unavailable(paste(method,
       "has no adapter for this exact signal-family likelihood; use method='L0glm'."))
   kind <- data$kind
+  gaussian <- data$family$family == "gaussian" && data$family$link == "identity"
+  binomial <- data$family$family == "binomial" && data$family$link == "logit"
+  poisson <- data$family$family == "poisson" && data$family$link == "log"
+  if(method=="biglasso") {
+    if(!(gaussian || binomial || kind=="cox") || data$nonnegative ||
+       (!data$intercept && kind!="cox") || any(!data$weights%in%c(0,1)) ||
+       (!gaussian && any(data$offset!=0)) || binomial && any(!data$y%in%c(0,1)))
+      L0glm_benchmark_unavailable("biglasso supports Gaussian/logit/Cox losses, unit or zero weights, a free GLM intercept and unrestricted coefficients; offsets require Gaussian loss.")
+  }
+  if(method=="biglasso" && inherits(data$X,"sparseMatrix") &&
+     as.double(nrow(data$X))*ncol(data$X)>5e7 &&
+     L0glm_screen_method(data$screen,data$X,NULL,data$intercept,NULL)=="none")
+    L0glm_benchmark_unavailable("biglasso uses dense double storage; use SIS/ISIS before converting a large sparse design.")
+  if(inherits(data$X,"L0glm_data") && method!="L0glm" &&
+     L0glm_screen_method(data$screen,data$X,NULL,data$intercept,NULL)=="none") {
+    native <- method=="biglasso" && !is.null(L0glm_benchmark_biglasso_matrix(data$X))
+    if(!native && as.double(nrow(data$X))*ncol(data$X)>data$X$control$max.cells)
+      L0glm_benchmark_unavailable("This backend needs a bounded working matrix; use SIS/ISIS. Native biglasso accepts complete double bigmemory designs.")
+  }
   if (kind != "glm" && method == "L0Learn")
     L0glm_benchmark_unavailable("L0Learn has no native Cox or multinomial loss.")
   if (kind == "multinomial" && method %in% c("MCP", "SCAD"))
     L0glm_benchmark_unavailable("The MCP/SCAD backends have no native joint multinomial loss.")
-  gaussian <- data$family$family == "gaussian" && data$family$link == "identity"
-  binomial <- data$family$family == "binomial" && data$family$link == "logit"
-  poisson <- data$family$family == "poisson" && data$family$link == "log"
   ordinis_native <- gaussian || binomial || poisson
   native <- switch(method, abess=kind != "glm" || gaussian || binomial || poisson,
     L0Learn=gaussian || binomial, MCP=kind == "cox" || ordinis_native,
@@ -38,7 +54,7 @@ L0glm_benchmark_setup <- function(method, data) {
     L0glm_benchmark_unavailable(paste("ABESS cannot use channel-specific weights for grouped Poisson WLS;",
       "use approximation='wls_grouped' for shared row weights, or grouped=FALSE for independent fits."))
   can_group <- method == "L0glm" || (kind == "multinomial") || (gaussian && common &&
-    method %in% c("abess", "lasso", "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso"))
+    method %in% c("abess", "biglasso", "lasso", "relaxed_lasso", "adaptive_lasso", "adaptive_relaxed_lasso"))
   grouped <- m > 1L && !identical(data$grouped, FALSE) && can_group
   if (m > 1L && identical(data$grouped, TRUE) && !can_group)
     L0glm_benchmark_unavailable(paste(method, "has no native grouped adapter for these channel weights and family."))
@@ -66,6 +82,7 @@ L0glm_benchmark_setup <- function(method, data) {
   backend <- if (method == "L0glm") "L0glm" else
     if (kind == "cox" && method %in% c("MCP", "SCAD")) "ncvreg" else
       switch(method, abess="abess", L0Learn="L0Learn", MCP="ordinis", SCAD="ordinis", "glmnet")
+  if(method=="biglasso")backend <- "biglasso"
   if (backend == "glmnet" && kind == "glm" && !gaussian && !binomial && !poisson && !data$intercept) {
     mu <- data$family$linkinv(data$offset)
     if (any(!is.finite(mu)) || !data$family$validmu(mu) || any(data$family$variance(mu) <= 0))
@@ -90,11 +107,15 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
     "lows", "highs", "lower.limits", "upper.limits", "penalty", "relax", "penalty.factor",
     "loss", "excludeFirstK", "maxSuppSize", "nLambda", "nlambda", "tune", "tune.type",
     "tune.path", "foldid", "nfolds", "nFolds", "grouped", "standardize.response", "alpha",
-    "type.multinomial", "cox.ties", "screen", "nsis", "screen.maxit", "screen.nthreads")
+    "type.multinomial", "cox.ties", "row.idx", "screen", "nsis", "screen.maxit", "screen.nthreads")
   if (length(options) && (is.null(names(options)) || any(!nzchar(names(options))) || anyDuplicated(names(options))))
     stop("Backend options must have unique argument names.", call.=FALSE)
   if (any(names(options) %in% locked))
     stop("Use shared benchmark arguments instead of overriding: ", paste(intersect(names(options), locked), collapse=", "), call.=FALSE)
+  if(method=="biglasso" && !inherits(data$X,"L0glm_data")) {
+    data$X <- l0glmData(bigmemory::as.big.matrix(as.matrix(data$X),type="double"))
+    data$cache$biglasso_source <- data$X
+  }
   adaptive <- NULL
   if (grepl("adaptive", method)) {
     pilot_options <- data$options$L0glm
@@ -164,7 +185,8 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
 }
 
 L0glm_benchmark_backend <- function(method, data, grid, options, factor, grouped) {
-  X <- data$X; y <- data$y; n <- nrow(X); p <- ncol(X); m <- data$m
+  if(method=="biglasso")return(L0glm_benchmark_biglasso(data,grid,options,grouped))
+  X <- L0glm_data_matrix(data$X); y <- data$y; n <- nrow(X); p <- ncol(X); m <- data$m
   kind <- data$kind
   w <- data$weights[, 1L]; off <- data$offset
   family <- data$family

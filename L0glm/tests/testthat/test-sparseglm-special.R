@@ -51,7 +51,8 @@ test_that("all respects multinomial grouping and Cox risk-set restrictions", {
   times <- rep(1:20,3)
   cox <- sparseGLM(X,survival::Surv(times,rep(c(1,1,0),20)),family="cox",
     method="all",nlambda=3,lambda=list(L0glm=6))
-  expect_identical(names(cox$fits),names(multinomial$fits))
+  expected <- c(names(multinomial$fits),if(requireNamespace("biglasso",quietly=TRUE))"biglasso")
+  expect_identical(names(cox$fits),expected)
   expect_true(all(cox$timings$status == "ok"))
 })
 

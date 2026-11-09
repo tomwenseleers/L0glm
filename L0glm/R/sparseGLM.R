@@ -8,7 +8,8 @@
 #' criterion or observation-row cross-validation, collect elapsed timings and
 #' extract a comparison table with [l0glmMetrics()].
 #'
-#' @param X Design matrix without an intercept column, or a list containing
+#' @param X Design matrix without an intercept column, [l0glmData()] source,
+#'   double `bigmemory::big.matrix`, or a list containing
 #'   `X`, `y` and optionally `beta_true`, `family`, `intercept`, `weights` and
 #'   `offset`. Simulation metadata from [simul()] is used unless overridden.
 #' @param y Numeric response vector or independent-channel matrix, multinomial
@@ -22,7 +23,8 @@
 #'   currently supported.
 #' @param method Name, vector of names or `"all"`: `"L0glm"`, `"abess"`,
 #'   `"L0Learn"`, `"MCP"`, `"SCAD"`, `"lasso"`, `"relaxed_lasso"`,
-#'   `"adaptive_lasso"`, `"adaptive_relaxed_lasso"`. Names are case-insensitive;
+#'   `"adaptive_lasso"`, `"adaptive_relaxed_lasso"`, `"biglasso"` (plain LASSO).
+#'   Names are case-insensitive;
 #'   spaces and hyphens may replace underscores. `"all"` includes only installed
 #'   methods compatible with the family, constraints, grouping, weights and
 #'   offsets. Explicitly requested unavailable methods report their reason.
@@ -33,6 +35,8 @@
 #'   use an explicit log-spaced grid of this length from their native
 #'   `lambda_max` to `lambda_max * lambda.min.ratio`; set the ratio through
 #'   method-specific `options`. A supplied `lambda` sequence takes precedence.
+#'   Biglasso uses its native grid, with `lambda.min=0.01` for wide designs and
+#'   `1e-4` otherwise; this ratio can also be set through `options`.
 #' @param lambda Optional nonnegative sequence, or named list of method-specific
 #'   sequences. Penalty units differ between methods. ABESS instead searches
 #'   `support.size`; its additional ridge penalty is fixed at zero.
@@ -148,6 +152,31 @@
 #' mixed. L0Learn has no Cox loss. For glmnet, zero times are replaced by
 #' order-preserving positive ranks, leaving Cox risk sets and ties unchanged.
 #'
+#' ## Native file-backed LASSO
+#'
+#' `method="biglasso"` uses the optional `biglasso` package for Gaussian identity,
+#' binary logistic, grouped multiresponse Gaussian or Breslow Cox LASSO paths.
+#' It requires unrestricted coefficients, a free GLM intercept and weights of
+#' zero or one. Gaussian offsets are subtracted before fitting; other offsets
+#' are unsupported. Independent Gaussian/logistic channels are also available.
+#' The shared likelihood code selects lambda by the requested IC or CV.
+#'
+#' A complete double `bigmemory` design is passed directly to the native solver.
+#' Training and CV row views reuse that backing matrix through `row.idx`;
+#' validation rows are omitted from fitting and standardization. No full dense
+#' copy is made. Predictors must be finite, without missing values on this
+#' native path. Other source formats, column subsets or mean imputation use
+#' bounded working matrices, usually after SIS/ISIS. Large sparse designs also
+#' require screening before conversion to biglasso's dense storage. Resident
+#' inputs are copied to a double `big.matrix` once and reused across CV folds.
+#'
+#' Use `screen="none"` for plain LASSO on all predictors, retaining biglasso's
+#' own convex-path screening rules. Shared SIS/ISIS otherwise follows the same
+#' rules as the other methods. Set `options=list(biglasso=list(ncores=8L))` for
+#' eight native threads; the default is one. `native.screen` selects biglasso's
+#' internal rule without changing the shared `screen` argument. Timings include
+#' input conversion when needed, path fitting, common scoring and CV.
+#'
 #' `seconds` includes the full-data path, adaptive pilot, scoring and CV;
 #' `path_seconds` and `cv_seconds` separate these components. Missing packages,
 #' unsupported combinations and failures retain explanatory status rows so
@@ -172,6 +201,7 @@ sparseGLM <- function(X, y=NULL, family=NULL, method="all", tune="gic",
   adaptive.epsilon=1e-8, seed=1L, mu_floor=1e-8, beta_true=NULL, plot=FALSE,
   screen="auto", nsis=NULL, screen.maxit=10L, screen.nthreads=NULL) {
   if (is.list(X) && !is.null(X$X) && is.null(y)) sim <- X else sim <- list(X=X, y=y)
+  if(inherits(sim$X,"big.matrix"))sim$X <- l0glmData(sim$X)
   if (!is.null(beta_true)) sim$beta_true <- beta_true
   result <- L0glm_benchmark(sim, family, method, tune, nlambda, lambda, support.size,
     if (missing(nfolds) && !is.null(foldid)) NULL else nfolds, foldid,

@@ -78,6 +78,9 @@
   imputation is reused for prediction and relearned inside CV and bootstraps.
 * Ward outcome clustering streams row blocks, including its cut losses and
   aggregation. Explicit memory guards bound working matrices and outputs.
+* Native file-backed LASSO through optional biglasso reuses double bigmemory
+  designs across training/CV row views. Gaussian, logistic, grouped Gaussian
+  and Breslow Cox paths use the common likelihood scoring, IC selection and CV.
 
 ## Simulation, comparison and interpretation
 
