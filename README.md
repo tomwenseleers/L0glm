@@ -47,6 +47,7 @@ explains the mathematics, regularization presets and full fitting algorithms.
   through `summary(fit, inference="conditional")` or `"bootstrap"`.
 - **Comparison:** `sparseGLM()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
+  `method="biglasso"` adds native file-backed LASSO with IC or CV selection.
 
 L0glm is the statistical fitting and variable-selection layer of a three-package toolkit. [logconNMF](https://tomwenseleers.github.io/logconNMF/) provides sparse log-concave matrix factorization, PSF estimation and blind deconvolution; [GCMSprime](https://tomwenseleers.github.io/GCMSprime/) provides the GC/MS workflow, chromatogram reports and spectral libraries. Generic simulated deconvolution remains available in L0glm.
 

@@ -339,6 +339,7 @@ if lasso_path.exists():
         assert next(r for r in lasso if r["method"] == "biglasso")["grid_interior"] == "TRUE"
         content["file-lasso-metrics"] = table(lasso,["method", "tune", "seconds", "gic", "TP", "FP", "FN", "F1_score", "MCC", "test_RMSE"])
 paths = [ROOT/"README.Rmd", ROOT/"README.md", ROOT/"L0glm/pkgdown/index.md", ROOT/"L0glm/vignettes/L0glm.Rmd"]
+paths += [ROOT/"benchmarks/plots/file-backed/README.md"]
 paths += list((ROOT/"L0glm/vignettes/articles").glob("*.Rmd"))
 for path in paths:
     text = original = path.read_text(encoding="utf-8")

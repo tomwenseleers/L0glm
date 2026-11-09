@@ -4,6 +4,16 @@ Run the scripts from the repository root with the current package installed.
 Large input files and model caches are written beneath the ignored
 `codex_sandbox` directory; these CSV outputs retain the measured results.
 
+The matched 80 GB comparison fits free-intercept models to 8,000 rows and
+predicts 2,000 held-out rows:
+
+<!-- BEGIN file-lasso-metrics -->
+| Method | Selection | Seconds | GIC | TP | FP | FN | F1 | MCC | Test RMSE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| L0glm | GIC preset | 1695.53 | 24652 | 50 | 1 | 10 | 0.901 | 0.904 | 0.993 |
+| biglasso LASSO | BIC path | 792.32 | 25933 | 51 | 3 | 9 | 0.895 | 0.896 | 1.074 |
+<!-- END file-lasso-metrics -->
+
 * `benchmark_filebacked_normal.R` generates a 10,000-observation by
   1,000,000-predictor Gaussian design (80 GB in double precision) in bounded
   256-column blocks, with 60 signed effects. It fits a free-intercept ISIS
@@ -40,6 +50,8 @@ predictors, with no SIS/ISIS prescreen. It excludes file generation and final
 recovery/test reporting, and includes the complete native path and common IC
 scoring. Five-fold CV is supported by the same row-view interface; the recorded
 large-file table uses BIC selection.
+The measured BIC minimum is interior (ninth of ten candidates, lambda 0.056899).
+`normal-10000-1000000-lasso-path.csv` retains that complete native path.
 
 In the GWAS table TP/FP/FN/F1/MCC use a common evaluation universe containing
 all original predictors, the union of generated products and the true product.
