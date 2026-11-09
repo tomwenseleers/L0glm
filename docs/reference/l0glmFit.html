@@ -137,13 +137,13 @@ quadratic programming solver."><meta property="og:image" content="https://tomwen
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -1382,9 +1382,9 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>    <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
 <span><span class="co"># High-dimensional Gaussian regression with positive and negative effects.</span></span>
-<span><span class="co"># Run manually: the dense design alone occupies about 4 GB.</span></span>
+<span><span class="co"># Run manually: the dense design alone occupies about 8 GB.</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span>
-<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">X_hd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">*</span><span class="va">p</span><span class="op">)</span>, <span class="va">n</span>, <span class="va">p</span><span class="op">)</span></span>
@@ -1539,3 +1539,4 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 
 
   </body></html>
+

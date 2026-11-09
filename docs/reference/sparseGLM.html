@@ -29,13 +29,13 @@ extract a comparison table with l0glmMetrics()."><meta property="og:image" conte
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul></li>
@@ -116,7 +116,8 @@ extract a comparison table with <code><a href="l0glmMetrics.html">l0glmMetrics()
 
 
 <dl><dt id="arg-x">X<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>Design matrix without an intercept column, or a list containing
+<dd><p>Design matrix without an intercept column, <code><a href="l0glmData.html">l0glmData()</a></code> source,
+double <code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code>, or a list containing
 <code>X</code>, <code>y</code> and optionally <code>beta_true</code>, <code>family</code>, <code>intercept</code>, <code>weights</code> and
 <code>offset</code>. Simulation metadata from <code><a href="simul.html">simul()</a></code> is used unless overridden.</p></dd>
 
@@ -139,7 +140,8 @@ currently supported.</p></dd>
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Name, vector of names or <code>"all"</code>: <code>"L0glm"</code>, <code>"abess"</code>,
 <code>"L0Learn"</code>, <code>"MCP"</code>, <code>"SCAD"</code>, <code>"lasso"</code>, <code>"relaxed_lasso"</code>,
-<code>"adaptive_lasso"</code>, <code>"adaptive_relaxed_lasso"</code>. Names are case-insensitive;
+<code>"adaptive_lasso"</code>, <code>"adaptive_relaxed_lasso"</code>, <code>"biglasso"</code> (plain LASSO).
+Names are case-insensitive;
 spaces and hyphens may replace underscores. <code>"all"</code> includes only installed
 methods compatible with the family, constraints, grouping, weights and
 offsets. Explicitly requested unavailable methods report their reason.</p></dd>
@@ -155,7 +157,10 @@ Every candidate is rescored with the same package likelihood/IC code.</p></dd>
 grids are retained and may contain fewer distinct models. The glmnet methods
 use an explicit log-spaced grid of this length from their native
 <code>lambda_max</code> to <code>lambda_max * lambda.min.ratio</code>; set the ratio through
-method-specific <code>options</code>. A supplied <code>lambda</code> sequence takes precedence.</p></dd>
+method-specific <code>options</code>. A supplied <code>lambda</code> sequence takes precedence.
+Biglasso uses its native grid, with <code>lambda.min=0.001</code> when observations
+outnumber predictors and <code>0.05</code> otherwise. This ratio can also be set
+through <code>options</code> and is based on the training view's dimensions.</p></dd>
 
 
 <dt id="arg-lambda">lambda<a class="anchor" aria-label="anchor" href="#arg-lambda"></a></dt>
@@ -380,12 +385,37 @@ ncvreg. ABESS and ncvreg require untied times and unit weights for a common
 Breslow comparison. ncvreg also requires zero offsets and unrestricted
 coefficients. Different tie conventions are not silently
 mixed. L0Learn has no Cox loss. For glmnet, zero times are replaced by
-order-preserving positive ranks, leaving Cox risk sets and ties unchanged.</p>
+order-preserving positive ranks, leaving Cox risk sets and ties unchanged.</p><div class="section">
+<h3 id="native-file-backed-lasso">Native file-backed LASSO<a class="anchor" aria-label="anchor" href="#native-file-backed-lasso"></a></h3>
+
+
+<p><code>method="biglasso"</code> uses the optional <code>biglasso</code> package for Gaussian identity,
+binary logistic, grouped multiresponse Gaussian or Breslow Cox LASSO paths.
+It requires unrestricted coefficients, a free GLM intercept and weights of
+zero or one. Gaussian offsets are subtracted before fitting; other offsets
+are unsupported. Independent Gaussian/logistic channels are also available.
+The shared likelihood code selects lambda by the requested IC or CV.</p>
+<p>A complete double <code>bigmemory</code> design is passed directly to the native solver.
+Training and CV row views reuse that backing matrix through <code>row.idx</code>;
+validation rows are omitted from fitting and standardization. No full dense
+copy is made. Predictors must be finite, without missing values on this
+native path. Other source formats, column subsets or mean imputation use
+bounded working matrices, usually after SIS/ISIS. Large sparse designs also
+require screening before conversion to biglasso's dense storage. Resident
+inputs are copied to a double <code>big.matrix</code> once and reused across CV folds.</p>
+<p>Use <code>screen="none"</code> for plain LASSO on all predictors, retaining biglasso's
+own convex-path screening rules. Shared SIS/ISIS otherwise follows the same
+rules as the other methods. Set <code>options=list(biglasso=list(ncores=8L))</code> for
+eight native threads; the default is one. <code>native.screen</code> selects biglasso's
+internal rule without changing the shared <code>screen</code> argument. Timings include
+input conversion when needed, path fitting, common scoring and CV.</p>
 <p><code>seconds</code> includes the full-data path, adaptive pilot, scoring and CV;
 <code>path_seconds</code> and <code>cv_seconds</code> separate these components. Missing packages,
 unsupported combinations and failures retain explanatory status rows so
 remaining methods can finish. L0Learn's six-digit lambda reporting is
 accounted for when matching training-fold paths to the requested grid.</p>
+</div>
+
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -426,6 +456,22 @@ accounted for when matching training-fold paths to the requested grid.</p>
 <span><span class="va">comparison_methods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>,<span class="st">"abess"</span>,<span class="st">"L0Learn"</span>,<span class="st">"lasso"</span>,<span class="st">"relaxed_lasso"</span>,</span>
 <span>                        <span class="st">"adaptive_lasso"</span>,<span class="st">"adaptive_relaxed_lasso"</span><span class="op">)</span></span>
 <span><span class="va">fields</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"deviance"</span>,<span class="st">"adj_R2_weighted"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># File-backed plain LASSO, with a free intercept and BIC or CV selection.</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"biglasso"</span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"bigmemory"</span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
+<span>  <span class="va">A</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">*</span><span class="fl">500</span><span class="op">)</span>,<span class="fl">100</span>,<span class="fl">500</span><span class="op">)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fl">2</span><span class="op">*</span><span class="va">A</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">-</span><span class="fl">2</span><span class="op">*</span><span class="va">A</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span></span>
+<span>  <span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="op">-</span><span class="fl">2</span>,<span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">498</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">source</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="fu">bigmemory</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">as.big.matrix</a></span><span class="op">(</span><span class="va">A</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu">sparseGLM</span><span class="op">(</span><span class="va">source</span>,<span class="va">y</span>,method<span class="op">=</span><span class="st">"biglasso"</span>,screen<span class="op">=</span><span class="st">"none"</span>,</span>
+<span>    tune<span class="op">=</span><span class="st">"bic"</span>,nlambda<span class="op">=</span><span class="fl">10L</span>,options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>ncores<span class="op">=</span><span class="fl">2L</span><span class="op">)</span>,beta_true<span class="op">=</span><span class="va">truth</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span><span class="op">)</span><span class="op">]</span></span>
+<span>  <span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu">sparseGLM</span><span class="op">(</span><span class="va">source</span>,<span class="va">y</span>,method<span class="op">=</span><span class="st">"biglasso"</span>,screen<span class="op">=</span><span class="st">"none"</span>,</span>
+<span>    tune<span class="op">=</span><span class="st">"cv"</span>,nfolds<span class="op">=</span><span class="fl">3L</span>,nlambda<span class="op">=</span><span class="fl">10L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">cv</span>,<span class="va">source</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Single channel: 50 spikes among 500 candidate locations.</span></span>
 <span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2</span>,n<span class="op">=</span><span class="fl">500</span>,p<span class="op">=</span><span class="fl">500</span>,s<span class="op">=</span><span class="fl">.1</span>,seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
@@ -479,3 +525,4 @@ accounted for when matching training-fold paths to the requested grid.</p>
 
 
   </body></html>
+

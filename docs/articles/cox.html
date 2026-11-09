@@ -49,13 +49,13 @@
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -83,14 +83,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Cox proportional hazards models</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/cox.Rmd" class="external-link"><code>vignettes/articles/cox.Rmd</code></a></small>
       <div class="d-none name"><code>cox.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p>The Cox model describes the hazard as</p>
 <p><span class="math display">
 h(t\mid x_i)=h_0(t)\exp(x_i^\top\beta).
@@ -117,7 +117,7 @@ the coefficient model has no separate intercept.</p>
 <span><span class="co">#&gt; Observations: 400   Selectable predictors: 25   Channels: 1</span></span>
 <span><span class="co">#&gt; Selected rows: 3   Nonzero selectable coefficients: 3   Mandatory rows: 0</span></span>
 <span><span class="co">#&gt; Lambda: 5.6 </span></span>
-<span><span class="co">#&gt; Local search: 0 accepted steps   13 candidate refits   0.19 s</span></span>
+<span><span class="co">#&gt; Local search: 0 accepted steps   13 candidate refits   0.18 s</span></span>
 <span><span class="co">#&gt; Criterion sample size (Cox): 296 </span></span>
 <span><span class="co">#&gt; Convergence (last pass per stage/channel):</span></span>
 <span><span class="co">#&gt;      stage channels converged not_converged unavailable max_iterations</span></span>

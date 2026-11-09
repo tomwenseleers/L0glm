@@ -49,13 +49,13 @@
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -83,14 +83,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>File-backed data and GWAS</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/file-backed.Rmd" class="external-link"><code>vignettes/articles/file-backed.Rmd</code></a></small>
       <div class="d-none name"><code>file-backed.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p><code><a href="../reference/l0glmData.html">l0glmData()</a></code> separates matrix storage from model
 selection. SIS/ISIS reads predictors in bounded blocks, then L0glm fits
 the retained working design using its ordinary or special-family engine.
@@ -135,81 +135,328 @@ bigmemory are optional dependencies.</p>
 working design, the retained fit matrix and requested outputs must fit
 the configurable <code>max.cells</code> guard. Full-design IRLS on an
 arbitrarily large tall matrix still requires a dedicated streamed
-solver; the current interface keeps that memory requirement
-explicit.</p>
+solver; the current interface keeps that memory requirement explicit.
+For plain LASSO, the native biglasso adapter below can fit a complete
+double bigmemory design.</p>
 </div>
 <div class="section level2">
-<h2 id="packed-genotypes">Packed genotypes<a class="anchor" aria-label="anchor" href="#packed-genotypes"></a>
+<h2 id="one-million-predictors-on-disk">One million predictors on disk<a class="anchor" aria-label="anchor" href="#one-million-predictors-on-disk"></a>
+</h2>
+<p>The resident example uses 1,000 observations and 60 nonzero effects.
+With <code><a href="../reference/l0glmData.html">l0glmData()</a></code> the same Gaussian construction can be
+extended to <strong>10,000 observations and one million
+predictors</strong>, while generating and reading the design in bounded
+blocks. A double-precision backing file occupies <strong>80 GB</strong>;
+the active fitting problem is much smaller.</p>
+<p>Run the following from an empty working directory with enough disk
+space. Only a block of 256 predictor columns is generated at a time. The
+random number sequence matches
+<code>matrix(rnorm(as.double(n)*p), n, p)</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/kaneplusplus/bigmemory" class="external-link">bigmemory</a></span><span class="op">)</span></span>
+<span><span class="fu">RhpcBLASctl</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/RhpcBLASctl/man/RhpcBLASctl-package.html" class="external-link">blas_set_num_threads</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">10000L</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
+<span><span class="va">backing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">filebacked.big.matrix</a></span><span class="op">(</span>nrow<span class="op">=</span><span class="va">n</span>,ncol<span class="op">=</span><span class="va">p</span>,type<span class="op">=</span><span class="st">"double"</span>,</span>
+<span>  backingfile<span class="op">=</span><span class="st">"normal.bin"</span>,descriptorfile<span class="op">=</span><span class="st">"normal.desc"</span>,backingpath<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">first</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq.int</a></span><span class="op">(</span><span class="fl">1L</span>,<span class="va">p</span>,by<span class="op">=</span><span class="fl">256L</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">j</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq.int</a></span><span class="op">(</span><span class="va">first</span>,<span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">p</span>,<span class="va">first</span><span class="op">+</span><span class="fl">255L</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">backing</span><span class="op">[</span>,<span class="va">j</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">j</span><span class="op">)</span><span class="op">)</span>,<span class="va">n</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">active</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="va">p</span>,<span class="fl">60L</span><span class="op">)</span></span>
+<span><span class="va">beta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span></span>
+<span><span class="va">beta</span><span class="op">[</span><span class="va">active</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">60L</span>,<span class="op">-</span><span class="fl">.8</span>,<span class="fl">.8</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">backing</span><span class="op">[</span>,<span class="va">active</span>,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span><span class="va">beta</span><span class="op">[</span><span class="va">active</span><span class="op">]</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The descriptor can be reattached in a new R session.</span></span>
+<span><span class="va">training</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">8000L</span><span class="op">)</span></span>
+<span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fl">8001</span><span class="op">:</span><span class="fl">10000</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/bigmemory/man/attach.big.matrix.html" class="external-link">attach.big.matrix</a></span><span class="op">(</span><span class="st">"normal.desc"</span><span class="op">)</span>,control<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  block.columns<span class="op">=</span><span class="fl">4096L</span>,block.cells<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">training</span><span class="op">)</span><span class="op">*</span><span class="fl">4096</span>,max.cells<span class="op">=</span><span class="fl">1e8</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="va">training</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>,<span class="va">y</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>,</span>
+<span>  family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,intercept<span class="op">=</span><span class="cn">TRUE</span>,screen<span class="op">=</span><span class="st">"ISIS"</span>,screen.nthreads<span class="op">=</span><span class="fl">8L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit</span>,beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span>,<span class="st">"FN"</span>,<span class="st">"TN"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>,<span class="va">X</span><span class="op">[</span><span class="va">test</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span><span class="op">-</span><span class="va">y</span><span class="op">[</span><span class="va">test</span><span class="op">]</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<!-- BEGIN file-normal-metrics -->
+<table class="table">
+<thead><tr class="header">
+<th align="right">Seconds</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">FN</th>
+<th align="right">TN</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+<th align="right">Test RMSE</th>
+</tr></thead>
+<tbody><tr class="odd">
+<td align="right">1695.53</td>
+<td align="right">24652</td>
+<td align="right">50</td>
+<td align="right">1</td>
+<td align="right">10</td>
+<td align="right">999939</td>
+<td align="right">0.901</td>
+<td align="right">0.904</td>
+<td align="right">0.993</td>
+</tr></tbody>
+</table>
+<p>Generating the 80 GB file took <strong>488.31 seconds</strong>,
+excluded from the fitting time. <!-- END file-normal-metrics --></p>
+<p>The first 8,000 rows are used for screening and fitting, and the
+remaining 2,000 rows assess prediction. The model includes a free
+intercept and uses 4,096-column streaming blocks. The GIC preset uses
+the original one million predictors. Generation and fitting times are
+recorded separately. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_normal.R" class="external-link">complete
+reproduction script</a> creates a reusable descriptor and response cache
+and reports the screening history. The response, truth and descriptor
+should be saved together when continuing in a new session.</p>
+<div class="section level3">
+<h3 id="compare-with-native-file-backed-lasso">Compare with native file-backed LASSO<a class="anchor" aria-label="anchor" href="#compare-with-native-file-backed-lasso"></a>
+</h3>
+<p>The optional <a href="https://pbreheny.github.io/biglasso/" class="external-link">biglasso</a> solver fits
+plain LASSO directly on the same backing file. Its native row-index
+interface also reuses the file across cross-validation folds.
+<code>screen="none"</code> keeps all predictors available; biglasso
+still uses its own screening rules to accelerate the convex LASSO path.
+The shared <code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> interface selects lambda using the
+same likelihood and information-criterion code as the other methods.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"biglasso"</span><span class="op">)</span> <span class="co"># once</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseGLM.html">sparseGLM</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="va">training</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>,<span class="va">y</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>,family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="st">"biglasso"</span>,screen<span class="op">=</span><span class="st">"none"</span>,intercept<span class="op">=</span><span class="cn">TRUE</span>,tune<span class="op">=</span><span class="st">"bic"</span>,nlambda<span class="op">=</span><span class="fl">10L</span>,</span>
+<span>  options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>ncores<span class="op">=</span><span class="fl">8L</span>,lambda.min<span class="op">=</span><span class="fl">.05</span><span class="op">)</span>,beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">comparison</span>,<span class="va">X</span><span class="op">[</span><span class="va">test</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">-</span><span class="va">y</span><span class="op">[</span><span class="va">test</span><span class="op">]</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># The same file supports training-row cross-validation without dense copies.</span></span>
+<span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseGLM.html">sparseGLM</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="va">training</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>,<span class="va">y</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>,family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  method<span class="op">=</span><span class="st">"biglasso"</span>,screen<span class="op">=</span><span class="st">"none"</span>,intercept<span class="op">=</span><span class="cn">TRUE</span>,tune<span class="op">=</span><span class="st">"cv"</span>,nfolds<span class="op">=</span><span class="fl">5L</span>,</span>
+<span>  nlambda<span class="op">=</span><span class="fl">10L</span>,options<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>ncores<span class="op">=</span><span class="fl">8L</span>,lambda.min<span class="op">=</span><span class="fl">.05</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Biglasso includes a free Gaussian/logistic intercept. For a matched
+comparison, give both methods a free intercept. The reproduction script
+uses a GIC preset and ISIS for L0glm, while LASSO selects from ten
+native lambda values using BIC. Both models train on 8,000 rows and
+predict the same held-out 2,000 rows. The L0glm streaming blocks contain
+up to 4,096 columns; the native LASSO solver reads the backing matrix
+directly. Neither method copies the full design into an R matrix.</p>
+<!-- BEGIN file-lasso-metrics -->
+<table class="table">
+<colgroup>
+<col width="7%">
+<col width="7%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+<col width="10%">
+</colgroup>
+<thead><tr class="header">
+<th>Method</th>
+<th>Selection</th>
+<th align="right">Seconds</th>
+<th align="right">GIC</th>
+<th align="right">TP</th>
+<th align="right">FP</th>
+<th align="right">FN</th>
+<th align="right">F1</th>
+<th align="right">MCC</th>
+<th align="right">Test RMSE</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>L0glm</td>
+<td>GIC preset</td>
+<td align="right">1695.53</td>
+<td align="right">24652</td>
+<td align="right">50</td>
+<td align="right">1</td>
+<td align="right">10</td>
+<td align="right">0.901</td>
+<td align="right">0.904</td>
+<td align="right">0.993</td>
+</tr>
+<tr class="even">
+<td>biglasso LASSO</td>
+<td>BIC path</td>
+<td align="right">792.32</td>
+<td align="right">25933</td>
+<td align="right">51</td>
+<td align="right">3</td>
+<td align="right">9</td>
+<td align="right">0.895</td>
+<td align="right">0.896</td>
+<td align="right">1.074</td>
+</tr>
+</tbody>
+</table>
+<!-- END file-lasso-metrics --><p>Biglasso finishes the full-predictor LASSO path in <strong>13.2
+minutes</strong>. L0glm’s ISIS fit takes <strong>28.3 minutes</strong>,
+with lower GIC, fewer false positives and lower held-out RMSE.
+Biglasso’s BIC minimum is the ninth of ten grid points
+(<code>lambda=0.05690</code>), so the lower endpoint does not determine
+the result. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/file-backed/normal-10000-1000000-lasso-path.csv" class="external-link">complete
+BIC path</a> retains every candidate’s support size and score. These
+single-run timings include disk access; file caching and storage speed
+affect them substantially.</p>
+<p>The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_lasso.R" class="external-link">comparison
+script</a> records fitting and selection time, including common path
+scoring, separately from final recovery metrics and test predictions. CV
+is available through the same interface; the table reports BIC
+selection. Gaussian offsets and zero-weight row exclusions are
+supported. Biglasso requires unrestricted coefficients; non-unit
+positive weights and non-Gaussian offsets are excluded explicitly.
+SIS/ISIS can also be applied to biglasso and the other
+<code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> methods.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="packed-genotypes-and-logistic-gwas">Packed genotypes and logistic GWAS<a class="anchor" aria-label="anchor" href="#packed-genotypes-and-logistic-gwas"></a>
 </h2>
 <p>PLINK 1 variant-major BED stores four hardcalls per byte. The native
 screening kernel computes the same family-specific scores directly from
 these two-bit calls, with deterministic OpenMP reduction across
 predictors. The selected genotypes are decoded only for the smaller
 fitting problem.</p>
-<p>A logistic throughput example uses 4,000 samples and 1,733,480
-predictors: <strong>1.73 GB on disk</strong>, compared with
-<strong>55.47 GB as doubles</strong>. The fit uses 3,200 training
-samples, weights from 1 to 3, known offsets, five nonzero effects and a
-1,000-predictor SIS pool. The complete screen-and-fit results are:</p>
-<table class="table">
+<p>This reproducible logistic example has <strong>4,000 observations,
+one million independent variants, six main effects and one pairwise
+interaction</strong>. Minor-allele frequencies range from 0.1 to 0.5,
+and diploid genotypes are generated in Hardy-Weinberg equilibrium. The
+BED file occupies <strong>1 GB</strong>, versus 32 GB for the decoded
+double-precision matrix. The simulator writes matching BIM and FAM
+files, so the dataset can also be opened with PLINK. The FAM file
+encodes controls as 1 and cases as 2; the saved R response uses 0/1.</p>
+<p>From the checkout root, run:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"benchmarks/benchmark_filebacked_gwas.R"</span><span class="op">)</span></span>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">benchmark_filebacked_gwas</span><span class="op">(</span>n<span class="op">=</span><span class="fl">4000L</span>,p<span class="op">=</span><span class="fl">1000000L</span>,</span>
+<span>  cache<span class="op">=</span><span class="st">"codex_sandbox/filebacked_gwas"</span><span class="op">)</span></span>
+<span><span class="va">results</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>,<span class="st">"seconds"</span>,<span class="st">"gic"</span>,<span class="st">"TP"</span>,<span class="st">"FP"</span>,<span class="st">"FN"</span>,<span class="st">"F1_score"</span>,<span class="st">"MCC"</span>,</span>
+<span>  <span class="st">"interaction_recovered"</span>,<span class="st">"test_AUC"</span>,<span class="st">"test_logloss"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked_gwas.R" class="external-link">R
+script</a> and its <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/helpers/hwe_genotypes.cpp" class="external-link">small
+C++ simulator</a> contain the full simulation, including the random
+seeds. Packed calls are written directly to disk, without constructing a
+dense genotype matrix. For an existing BED file the fitting calls
+are:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prefix</span> <span class="op">&lt;-</span> <span class="st">"codex_sandbox/filebacked_gwas/gwas-4000-1000000"</span></span>
+<span><span class="va">simulation</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">prefix</span>,<span class="st">".rds"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">simulation</span><span class="op">$</span><span class="va">response</span><span class="op">$</span><span class="va">y</span></span>
+<span><span class="va">offset</span> <span class="op">&lt;-</span> <span class="va">simulation</span><span class="op">$</span><span class="va">response</span><span class="op">$</span><span class="va">offset</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">prefix</span>,<span class="st">".bed"</span><span class="op">)</span>,n<span class="op">=</span><span class="fl">4000L</span>,p<span class="op">=</span><span class="fl">1000000L</span><span class="op">)</span></span>
+<span><span class="va">training</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">3200L</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="va">training</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>,<span class="va">y</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>,family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  intercept<span class="op">=</span><span class="cn">TRUE</span>,offset<span class="op">=</span><span class="va">offset</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>,screen<span class="op">=</span><span class="st">"ISIS"</span>,screen.nthreads<span class="op">=</span><span class="fl">8L</span>,</span>
+<span>  interactions<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="va">interactions</span><span class="op">$</span><span class="va">history</span></span>
+<span><span class="fu"><a href="../reference/model_criteria.html">GIC</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu">Matrix</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">!=</span><span class="fl">0</span><span class="op">)</span><span class="op">&gt;</span><span class="fl">0</span><span class="op">)</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>,<span class="va">X</span><span class="op">[</span><span class="fl">3201</span><span class="op">:</span><span class="fl">4000</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>,offset<span class="op">=</span><span class="va">offset</span><span class="op">[</span><span class="fl">3201</span><span class="op">:</span><span class="fl">4000</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<p>Set <code>screen="SIS"</code> for one marginal screen and
+<code>interactions=0L</code> for main effects alone. Pairwise products
+are generated among selected main effects; they are stored in the model
+recipe and constructed only when needed. The example deliberately
+includes main effects for both interacting variants.</p>
+<!-- BEGIN file-gwas-metrics -->
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="6%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+<col width="9%">
+</colgroup>
 <thead><tr class="header">
-<th align="right">Screening threads</th>
+<th>Method</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
 <th align="right">FP</th>
+<th align="right">FN</th>
 <th align="right">F1</th>
 <th align="right">MCC</th>
+<th align="right">Interaction recovered</th>
+<th align="right">Test AUC</th>
+<th align="right">Test log loss</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td>SIS</td>
+<td align="right">3.28</td>
+<td align="right">2971</td>
+<td align="right">6</td>
+<td align="right">0</td>
 <td align="right">1</td>
-<td align="right">17.14</td>
-<td align="right">6360.57</td>
-<td align="right">5</td>
-<td align="right">1</td>
-<td align="right">0.909</td>
-<td align="right">0.913</td>
+<td align="right">0.923</td>
+<td align="right">0.926</td>
+<td align="right">No</td>
+<td align="right">0.830</td>
+<td align="right">0.437</td>
 </tr>
 <tr class="even">
-<td align="right">2</td>
-<td align="right">9.54</td>
-<td align="right">6360.57</td>
-<td align="right">5</td>
+<td>ISIS</td>
+<td align="right">7.94</td>
+<td align="right">2971</td>
+<td align="right">6</td>
+<td align="right">0</td>
 <td align="right">1</td>
-<td align="right">0.909</td>
-<td align="right">0.913</td>
+<td align="right">0.923</td>
+<td align="right">0.926</td>
+<td align="right">No</td>
+<td align="right">0.830</td>
+<td align="right">0.437</td>
 </tr>
 <tr class="odd">
-<td align="right">4</td>
-<td align="right">5.95</td>
-<td align="right">6360.57</td>
-<td align="right">5</td>
+<td>ISIS + interactions</td>
+<td align="right">10.62</td>
+<td align="right">2906</td>
+<td align="right">6</td>
+<td align="right">0</td>
 <td align="right">1</td>
-<td align="right">0.909</td>
-<td align="right">0.913</td>
-</tr>
-<tr class="even">
-<td align="right">8</td>
-<td align="right">5.00</td>
-<td align="right">6360.57</td>
-<td align="right">5</td>
-<td align="right">1</td>
-<td align="right">0.909</td>
-<td align="right">0.913</td>
+<td align="right">0.923</td>
+<td align="right">0.926</td>
+<td align="right">Yes</td>
+<td align="right">0.833</td>
+<td align="right">0.431</td>
 </tr>
 </tbody>
 </table>
-<p>Coefficients are identical across thread counts. These are synthetic
-independent genotypes for throughput testing; Windows may cache the
-file. Timings were measured on an HP ZBook Fury G8 with an Intel
-i9-11950H, eight physical cores and 16 logical processors. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_filebacked.R" class="external-link">reproducible
-benchmark</a> also runs ISIS and records held-out prediction loss.</p>
+<!-- END file-gwas-metrics --><p>The main-effect models recover all six main effects. The interaction
+model retains five main effects and the true interaction, with lower GIC
+and held-out log loss. Parent main effects are eligible for removal
+after their products have been generated.</p>
+<p>The first 3,200 observations train the models; 800 are held out.
+Recovery includes the six main effects and the true interaction, so an
+omitted interaction counts as a false negative. All rows use the same
+evaluation universe: original predictors plus the union of generated
+interactions and the true interaction. Simulation truth is used only for
+evaluation. These independent variants provide a reproducible
+computational example; real GWAS also require appropriate
+population-structure and relatedness adjustment.</p>
+<p>Timings exclude generation and final metric reporting. They were
+measured on an HP ZBook Fury G8 with an Intel i9-11950H, eight physical
+cores, 16 logical processors and one BLAS thread. Windows may cache file
+reads.</p>
 <p>PGEN uses the official <a href="https://github.com/chrchang/plink-ng/tree/master/2.0/pgenlibr" class="external-link">pgenlibr</a>
 reader, retaining continuous ALT dosages. BED coefficients count BIM
 allele 1; PGEN coefficients count ALT dosage, combining ALT alleles for
 multiallelic records.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">source</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="st">'variants.pgen'</span><span class="op">)</span></span>
 <span><span class="va">source</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="st">'variants.vcf.gz'</span>,control<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  plink<span class="op">=</span><span class="st">'C:/tools/plink2.exe'</span>,cache<span class="op">=</span><span class="st">'C:/analysis/cache/genotypes'</span>,dosage<span class="op">=</span><span class="st">'DS'</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -229,7 +476,7 @@ these means in each training fold. Prediction reuses the fitted training
 means, including when predictor columns are reordered by name. Bootstrap
 row views repeat the fitting pipeline with replicate-specific training
 means.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">source</span>,<span class="va">response</span>,family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span>,tune<span class="op">=</span><span class="st">'cv'</span>,nfolds<span class="op">=</span><span class="fl">5L</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">10L</span>,screen<span class="op">=</span><span class="st">'SIS'</span>,nsis<span class="op">=</span><span class="fl">1000L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">tuned</span><span class="op">$</span><span class="va">fit_best</span>,<span class="va">source</span><span class="op">[</span><span class="va">test_rows</span>,,drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
@@ -245,7 +492,7 @@ their usual eligibility and screening rules.</p>
 <p>Ward distances and cut losses add over observation blocks, so
 <code><a href="../reference/glmCluster.html">glmCluster()</a></code> can cluster file-backed responses without
 making a full dense outcome copy:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">channels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmData.html">l0glmData</a></span><span class="op">(</span><span class="st">'chromatogram.h5'</span>,dataset<span class="op">=</span><span class="st">'intensity'</span><span class="op">)</span></span>
 <span><span class="va">clustered</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/glmCluster.html">glmCluster</a></span><span class="op">(</span><span class="va">channels</span>,family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,linkage<span class="op">=</span><span class="st">'ward'</span>,k.max<span class="op">=</span><span class="fl">32L</span><span class="op">)</span></span></code></pre></div>
 <p>The pairwise channel distances and returned centres/aggregates must

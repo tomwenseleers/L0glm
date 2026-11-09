@@ -49,13 +49,13 @@
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -83,14 +83,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>SIS / ISIS screening for high dimensional models</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/high-dimensional.Rmd" class="external-link"><code>vignettes/articles/high-dimensional.Rmd</code></a></small>
       <div class="d-none name"><code>high-dimensional.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p><strong>SIS</strong> stands for <strong>Sure Independence
 Screening</strong> and <strong>ISIS</strong> for <strong>Iterative Sure
 Independence Screening</strong>. These methods rapidly prescreen the
@@ -151,11 +151,11 @@ for predictors excluded by screening.</p>
 <div class="section level2">
 <h2 id="a-million-variable-example">A million-variable example<a class="anchor" aria-label="anchor" href="#a-million-variable-example"></a>
 </h2>
-<p>This simulation has 500 observations, one million standard-normal
+<p>This simulation has 1,000 observations, one million standard-normal
 predictors and 60 nonzero effects of either sign. The dense design
-occupies about 4 GB.</p>
+occupies about 8 GB.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
+<code class="sourceCode R"><span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">*</span><span class="va">p</span><span class="op">)</span>, <span class="va">n</span>, <span class="va">p</span><span class="op">)</span></span>
@@ -168,10 +168,10 @@ occupies about 4 GB.</p>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit</span>, beta_true<span class="op">=</span><span class="va">beta</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <!-- BEGIN million-screening-summary -->
-<p>The default L0glm fit with ISIS recovers <strong>40 true effects with
-2 false positives</strong> in <strong>2.84 s</strong> using eight
+<p>The default L0glm fit with ISIS recovers <strong>46 true effects with
+no false positives</strong> in <strong>2.63 s</strong> using eight
 physical cores. Five-fold-CV LASSO on the unscreened design takes
-<strong>120.69 s</strong> and recovers 17 true effects with 50 false
+<strong>205.98 s</strong> and recovers 42 true effects with 373 false
 positives. The <a href="performance.html#one-million-predictor-example">benchmark
 article</a> gives the tuning settings.
 <!-- END million-screening-summary --></p>
@@ -179,58 +179,61 @@ article</a> gives the tuning settings.
 <div class="section level2">
 <h2 id="compare-screening-and-complete-models-with-sis">Compare screening and complete models with SIS<a class="anchor" aria-label="anchor" href="#compare-screening-and-complete-models-with-sis"></a>
 </h2>
-<p>On a Gaussian design with <strong>500 observations and one million
+<p>On a Gaussian design with <strong>1,000 observations and one million
 predictors</strong>, <code><a href="../reference/sisGLM.html">sisGLM()</a></code> and SIS returned
 <strong>identical complete screening ranks</strong>, including the same
 top 100 predictors. Screening-only median timings over three runs:</p>
+<!-- BEGIN screening-times -->
 <table class="table">
 <thead><tr class="header">
-<th align="left">Screening routine</th>
+<th>Method</th>
 <th align="right">Seconds</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left">
+<td>
 <code><a href="../reference/sisGLM.html">sisGLM()</a></code>, eight physical cores</td>
-<td align="right">0.24</td>
+<td align="right">0.53</td>
 </tr>
 <tr class="even">
-<td align="left"><code>sisGLM(nthreads=1)</code></td>
-<td align="right">0.80</td>
+<td><code>sisGLM(nthreads=1)</code></td>
+<td align="right">1.81</td>
 </tr>
 <tr class="odd">
-<td align="left">SIS Gaussian screen (<code>obtain.ix0</code>)</td>
-<td align="right">2.03</td>
+<td>SIS Gaussian screen (<code>obtain.ix0</code>)</td>
+<td align="right">4.64</td>
 </tr>
 </tbody>
 </table>
-<p>The SIS row calls its screening helper directly, excluding the
+<!-- END screening-times --><p>The SIS row calls its screening helper directly, excluding the
 subsequent LASSO fit. Gaussian correlation ranks are scale invariant, so
-redundant standardization is omitted. The OpenMP screen is <strong>8.5
-times faster</strong> on this machine.</p>
+redundant standardization is omitted.</p>
+<!-- BEGIN screening-speed -->
+<p>The OpenMP screen is <strong>8.8 times faster</strong> on this
+machine. <!-- END screening-speed --></p>
 <p>Complete screening-and-selection pipelines were timed separately on
 the <strong>same million-predictor simulation as the homepage</strong>.
 L0glm uses its default GIC preset. LASSO variants use BIC-selected paths
-because GIC commonly selects an empty LASSO model in this example. The
-comparisons below set <code>local.search=FALSE</code> to isolate
-screening and adaptive ridge; the opening example uses the automatic
-final refinement. The one-pass comparison retains 100 predictors. On the
-million-predictor design, ISIS uses the default GIC-based batch size and
-ten rounds. The SIS-package ISIS comparison uses a separate
-5,000-predictor design and three rounds; <code>nsis=100</code> is a
-batch size in L0glm and a total support limit in SIS. Standalone
-<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> retains its best ISIS round by GIC; the LASSO
-comparisons use the requested BIC for their outer searches. The public
-SIS pipeline fits a free intercept; L0glm and glmnet use a zero
-intercept, matching the simulation. Both ICs are saved with the
-results.</p>
+because GIC commonly selects an empty LASSO model in this example. Here
+<code>local.search=FALSE</code> isolates screening and adaptive ridge;
+the opening example uses automatic final refinement. The one-pass SIS
+comparison retains 100 predictors. On the million-predictor design, ISIS
+uses the default GIC-based batch size and ten rounds. The SIS-package
+ISIS comparison uses a separate 5,000-predictor design and three rounds;
+<code>nsis=100</code> is a batch size in L0glm and a total support limit
+in SIS. Standalone <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> retains its best ISIS round
+by GIC; the LASSO comparisons use the requested BIC for their outer
+searches. The public SIS pipeline fits a free intercept; L0glm and
+glmnet use a zero intercept, matching the simulation. Both ICs are saved
+with the results.</p>
 <p>The rows below report median elapsed time over three runs. They
 include screening and variable selection for each fitted model.</p>
-<table style="width:100%;" class="table">
+<!-- BEGIN screening-models -->
+<table class="table">
 <colgroup>
 <col width="11%">
-<col width="11%">
-<col width="11%">
+<col width="8%">
+<col width="8%">
 <col width="11%">
 <col width="11%">
 <col width="11%">
@@ -240,8 +243,8 @@ include screening and variable selection for each fitted model.</p>
 </colgroup>
 <thead><tr class="header">
 <th align="right">Predictors</th>
-<th align="left">Screen</th>
-<th align="left">Complete model</th>
+<th>Screen</th>
+<th>Complete model</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -251,129 +254,129 @@ include screening and variable selection for each fitted model.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="right">1,000,000</td>
-<td align="left">SIS</td>
-<td align="left">SIS::SIS + BIC LASSO</td>
-<td align="right">7.04</td>
-<td align="right">4407</td>
-<td align="right">12</td>
-<td align="right">86</td>
-<td align="right">0.152</td>
-<td align="right">0.156</td>
+<td align="right">1000000</td>
+<td>SIS</td>
+<td>SIS::SIS + BIC LASSO</td>
+<td align="right">9.05</td>
+<td align="right">6351</td>
+<td align="right">25</td>
+<td align="right">73</td>
+<td align="right">0.316</td>
+<td align="right">0.326</td>
 </tr>
 <tr class="even">
-<td align="right">1,000,000</td>
-<td align="left">SIS</td>
-<td align="left">l0glmFit, GIC preset</td>
-<td align="right">0.31</td>
-<td align="right">2793</td>
-<td align="right">7</td>
-<td align="right">1</td>
-<td align="right">0.206</td>
-<td align="right">0.319</td>
-</tr>
-<tr class="odd">
-<td align="right">1,000,000</td>
-<td align="left">SIS</td>
-<td align="left">sparseGLM LASSO, BIC grid</td>
-<td align="right">1.50</td>
-<td align="right">4414</td>
-<td align="right">12</td>
-<td align="right">87</td>
-<td align="right">0.151</td>
-<td align="right">0.156</td>
-</tr>
-<tr class="even">
-<td align="right">1,000,000</td>
-<td align="left">SIS</td>
-<td align="left">sparseGLM relaxed LASSO, BIC grid</td>
-<td align="right">1.55</td>
-<td align="right">4240</td>
-<td align="right">12</td>
-<td align="right">80</td>
-<td align="right">0.158</td>
-<td align="right">0.161</td>
-</tr>
-<tr class="odd">
-<td align="right">1,000,000</td>
-<td align="left">ISIS</td>
-<td align="left">l0glmFit, GIC preset</td>
-<td align="right">2.30</td>
-<td align="right">2583</td>
-<td align="right">40</td>
-<td align="right">3</td>
-<td align="right">0.777</td>
-<td align="right">0.787</td>
-</tr>
-<tr class="even">
-<td align="right">1,000,000</td>
-<td align="left">ISIS</td>
-<td align="left">sparseGLM LASSO, BIC grid</td>
-<td align="right">4.36</td>
-<td align="right">4402</td>
-<td align="right">9</td>
-<td align="right">191</td>
-<td align="right">0.069</td>
-<td align="right">0.082</td>
-</tr>
-<tr class="odd">
-<td align="right">1,000,000</td>
-<td align="left">ISIS</td>
-<td align="left">sparseGLM relaxed LASSO, BIC grid</td>
-<td align="right">4.56</td>
-<td align="right">4187</td>
-<td align="right">9</td>
-<td align="right">185</td>
-<td align="right">0.071</td>
-<td align="right">0.083</td>
-</tr>
-<tr class="even">
-<td align="right">5,000</td>
-<td align="left">ISIS</td>
-<td align="left">SIS::SIS + BIC LASSO</td>
-<td align="right">22.40</td>
-<td align="right">2883</td>
-<td align="right">42</td>
-<td align="right">57</td>
-<td align="right">0.528</td>
-<td align="right">0.538</td>
-</tr>
-<tr class="odd">
-<td align="right">5,000</td>
-<td align="left">ISIS</td>
-<td align="left">l0glmFit, GIC preset</td>
-<td align="right">0.06</td>
-<td align="right">2180</td>
-<td align="right">46</td>
+<td align="right">1000000</td>
+<td>SIS</td>
+<td>l0glmFit, GIC preset</td>
+<td align="right">0.63</td>
+<td align="right">4660</td>
+<td align="right">25</td>
 <td align="right">0</td>
-<td align="right">0.868</td>
-<td align="right">0.874</td>
-</tr>
-<tr class="even">
-<td align="right">5,000</td>
-<td align="left">ISIS</td>
-<td align="left">sparseGLM LASSO, BIC grid</td>
-<td align="right">0.22</td>
-<td align="right">4581</td>
-<td align="right">47</td>
-<td align="right">228</td>
-<td align="right">0.281</td>
-<td align="right">0.352</td>
+<td align="right">0.588</td>
+<td align="right">0.645</td>
 </tr>
 <tr class="odd">
-<td align="right">5,000</td>
-<td align="left">ISIS</td>
-<td align="left">sparseGLM relaxed LASSO, BIC grid</td>
-<td align="right">0.25</td>
-<td align="right">2939</td>
+<td align="right">1000000</td>
+<td>SIS</td>
+<td>sparseGLM LASSO, BIC grid</td>
+<td align="right">3.44</td>
+<td align="right">6325</td>
+<td align="right">25</td>
+<td align="right">73</td>
+<td align="right">0.316</td>
+<td align="right">0.326</td>
+</tr>
+<tr class="even">
+<td align="right">1000000</td>
+<td>SIS</td>
+<td>sparseGLM relaxed LASSO, BIC grid</td>
+<td align="right">3.21</td>
+<td align="right">4952</td>
+<td align="right">25</td>
+<td align="right">16</td>
+<td align="right">0.495</td>
+<td align="right">0.504</td>
+</tr>
+<tr class="odd">
+<td align="right">1000000</td>
+<td>ISIS</td>
+<td>l0glmFit, GIC preset</td>
+<td align="right">2.72</td>
+<td align="right">4198</td>
+<td align="right">46</td>
+<td align="right">1</td>
+<td align="right">0.860</td>
+<td align="right">0.866</td>
+</tr>
+<tr class="even">
+<td align="right">1000000</td>
+<td>ISIS</td>
+<td>sparseGLM LASSO, BIC grid</td>
+<td align="right">7.50</td>
+<td align="right">7747</td>
+<td align="right">41</td>
+<td align="right">329</td>
+<td align="right">0.191</td>
+<td align="right">0.275</td>
+</tr>
+<tr class="odd">
+<td align="right">1000000</td>
+<td>ISIS</td>
+<td>sparseGLM relaxed LASSO, BIC grid</td>
+<td align="right">7.74</td>
+<td align="right">7504</td>
+<td align="right">46</td>
+<td align="right">312</td>
+<td align="right">0.220</td>
+<td align="right">0.314</td>
+</tr>
+<tr class="even">
+<td align="right">5000</td>
+<td>ISIS</td>
+<td>SIS::SIS + BIC LASSO</td>
+<td align="right">42.97</td>
+<td align="right">4388</td>
 <td align="right">47</td>
-<td align="right">71</td>
-<td align="right">0.528</td>
-<td align="right">0.552</td>
+<td align="right">52</td>
+<td align="right">0.591</td>
+<td align="right">0.604</td>
+</tr>
+<tr class="odd">
+<td align="right">5000</td>
+<td>ISIS</td>
+<td>l0glmFit, GIC preset</td>
+<td align="right">0.08</td>
+<td align="right">3714</td>
+<td align="right">45</td>
+<td align="right">0</td>
+<td align="right">0.857</td>
+<td align="right">0.865</td>
+</tr>
+<tr class="even">
+<td align="right">5000</td>
+<td>ISIS</td>
+<td>sparseGLM LASSO, BIC grid</td>
+<td align="right">0.25</td>
+<td align="right">5217</td>
+<td align="right">50</td>
+<td align="right">121</td>
+<td align="right">0.433</td>
+<td align="right">0.485</td>
+</tr>
+<tr class="odd">
+<td align="right">5000</td>
+<td>ISIS</td>
+<td>sparseGLM relaxed LASSO, BIC grid</td>
+<td align="right">0.29</td>
+<td align="right">3931</td>
+<td align="right">46</td>
+<td align="right">23</td>
+<td align="right">0.713</td>
+<td align="right">0.711</td>
 </tr>
 </tbody>
 </table>
-<p><code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> also supports <code>screen="SIS"</code>,
+<!-- END screening-models --><p><code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> also supports <code>screen="SIS"</code>,
 <code>"ISIS"</code>, <code>"auto"</code> and <code>"none"</code> for
 every compatible method. Each ISIS search uses its own method’s fitted
 predictions as screening offsets. CV recomputes screening on training
@@ -395,13 +398,15 @@ script</a> give the calls and checks.</p>
 <div class="section level3">
 <h3 id="compare-all-supported-adapters">Compare all supported adapters<a class="anchor" aria-label="anchor" href="#compare-all-supported-adapters"></a>
 </h3>
-<p>The same homepage data were also fitted with all nine adapters. This
-table uses ISIS, the GIC preset for L0glm and BIC-selected paths for the
-competitors. Times are one run of each method’s screening, fitting and
-common scoring; shared input preparation is separate.</p>
+<p>The same homepage data were also fitted with nine zero-intercept
+adapters. This table uses ISIS, the GIC preset for L0glm and
+BIC-selected paths for the competitors. Times are one run of each
+method’s screening, fitting and common scoring; shared input preparation
+is separate.</p>
+<!-- BEGIN screening-adapters -->
 <table class="table">
 <thead><tr class="header">
-<th align="left">Method</th>
+<th>Method</th>
 <th align="right">Seconds</th>
 <th align="right">GIC</th>
 <th align="right">TP</th>
@@ -411,91 +416,93 @@ common scoring; shared input preparation is separate.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left">L0glm</td>
-<td align="right">2.52</td>
-<td align="right">2583</td>
-<td align="right">40</td>
-<td align="right">3</td>
-<td align="right">0.777</td>
-<td align="right">0.787</td>
+<td>L0glm</td>
+<td align="right">2.98</td>
+<td align="right">4194</td>
+<td align="right">46</td>
+<td align="right">0</td>
+<td align="right">0.868</td>
+<td align="right">0.876</td>
 </tr>
 <tr class="even">
-<td align="left">abess</td>
-<td align="right">12.72</td>
-<td align="right">3268</td>
-<td align="right">9</td>
-<td align="right">91</td>
-<td align="right">0.113</td>
-<td align="right">0.116</td>
+<td>ABESS</td>
+<td align="right">16.39</td>
+<td align="right">4575</td>
+<td align="right">43</td>
+<td align="right">57</td>
+<td align="right">0.537</td>
+<td align="right">0.555</td>
 </tr>
 <tr class="odd">
-<td align="left">L0Learn</td>
-<td align="right">1.64</td>
-<td align="right">2790</td>
-<td align="right">11</td>
-<td align="right">2</td>
-<td align="right">0.301</td>
-<td align="right">0.394</td>
+<td>L0Learn</td>
+<td align="right">1.48</td>
+<td align="right">5050</td>
+<td align="right">13</td>
+<td align="right">0</td>
+<td align="right">0.356</td>
+<td align="right">0.465</td>
 </tr>
 <tr class="even">
-<td align="left">MCP</td>
-<td align="right">3.78</td>
-<td align="right">4040</td>
-<td align="right">9</td>
-<td align="right">168</td>
-<td align="right">0.076</td>
-<td align="right">0.087</td>
+<td>MCP</td>
+<td align="right">6.08</td>
+<td align="right">6859</td>
+<td align="right">45</td>
+<td align="right">291</td>
+<td align="right">0.227</td>
+<td align="right">0.317</td>
 </tr>
 <tr class="odd">
-<td align="left">SCAD</td>
-<td align="right">4.13</td>
-<td align="right">4353</td>
-<td align="right">9</td>
-<td align="right">187</td>
-<td align="right">0.070</td>
-<td align="right">0.083</td>
+<td>SCAD</td>
+<td align="right">6.21</td>
+<td align="right">7491</td>
+<td align="right">47</td>
+<td align="right">309</td>
+<td align="right">0.226</td>
+<td align="right">0.322</td>
 </tr>
 <tr class="even">
-<td align="left">lasso</td>
-<td align="right">3.87</td>
-<td align="right">4402</td>
-<td align="right">9</td>
-<td align="right">191</td>
-<td align="right">0.069</td>
-<td align="right">0.082</td>
+<td>LASSO</td>
+<td align="right">5.81</td>
+<td align="right">7747</td>
+<td align="right">41</td>
+<td align="right">329</td>
+<td align="right">0.191</td>
+<td align="right">0.275</td>
 </tr>
 <tr class="odd">
-<td align="left">relaxed_lasso</td>
-<td align="right">4.00</td>
-<td align="right">4187</td>
-<td align="right">9</td>
-<td align="right">185</td>
-<td align="right">0.071</td>
-<td align="right">0.083</td>
+<td>Relaxed LASSO</td>
+<td align="right">5.83</td>
+<td align="right">7504</td>
+<td align="right">46</td>
+<td align="right">312</td>
+<td align="right">0.220</td>
+<td align="right">0.314</td>
 </tr>
 <tr class="even">
-<td align="left">adaptive_lasso</td>
-<td align="right">4.05</td>
-<td align="right">4316</td>
-<td align="right">9</td>
-<td align="right">184</td>
-<td align="right">0.071</td>
-<td align="right">0.084</td>
+<td>Adaptive LASSO</td>
+<td align="right">5.93</td>
+<td align="right">7373</td>
+<td align="right">44</td>
+<td align="right">297</td>
+<td align="right">0.219</td>
+<td align="right">0.308</td>
 </tr>
 <tr class="odd">
-<td align="left">adaptive_relaxed_lasso</td>
-<td align="right">4.18</td>
-<td align="right">4305</td>
-<td align="right">9</td>
-<td align="right">185</td>
-<td align="right">0.071</td>
-<td align="right">0.083</td>
+<td>Adaptive relaxed LASSO</td>
+<td align="right">6.16</td>
+<td align="right">6946</td>
+<td align="right">43</td>
+<td align="right">294</td>
+<td align="right">0.217</td>
+<td align="right">0.302</td>
 </tr>
 </tbody>
 </table>
-<p>The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS_results/all_methods.csv" class="external-link">complete
+<!-- END screening-adapters --><p>The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sis_vs_SIS_results/all_methods.csv" class="external-link">complete
 SIS and ISIS results</a> and <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/3_benchmarks_sparseglm_screening.R" class="external-link">reproducible
-calls</a> include every method and its tuning settings.</p>
+calls</a> include every method and its tuning settings. The <a href="file-backed.html#compare-with-native-file-backed-lasso">native
+file-backed LASSO comparison</a> uses biglasso with its required free
+intercept.</p>
 </div>
 </div>
 <div class="section level2">
@@ -511,6 +518,10 @@ can also compare a batch grid, for example
 <code>nsis=c(2L, 5L, 10L)</code> with
 <code>validation=list(X=V, y=v)</code>, while retaining the default GIC
 batch when <code>nsis=NULL</code>.</p>
+<p>For designs larger than RAM, continue with <a href="file-backed.html">file-backed data and GWAS</a>: the worked
+examples generate an 80 GB Gaussian design with 10,000 observations and
+one million predictors, and a packed logistic dataset with a pairwise
+interaction.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

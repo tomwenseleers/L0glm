@@ -51,13 +51,13 @@
     <li><a class="dropdown-item" href="articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -102,7 +102,7 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>42× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>78× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a> <!-- END multi-stat --></p>
 </div>
 <p>L0glm selects predictors and estimates their effects in a generalized linear model. For one response it selects individual coefficients. For multiple responses, grouped selection identifies a common set of predictor rows and estimates a separate coefficient for each outcome.</p>
 <div class="section level2">
@@ -152,11 +152,11 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
 <!-- BEGIN million-intro -->
-<p>This Gaussian simulation has <strong>one million predictors</strong>, 500 observations and 60 nonzero effects. One default L0glm call takes <strong>2.84 seconds</strong> and recovers <strong>40 true effects with 2 false positives</strong>. <!-- END million-intro --></p>
+<p>This Gaussian simulation has <strong>one million predictors</strong>, 1,000 observations and 60 nonzero effects. One default L0glm call takes <strong>2.63 seconds</strong> and recovers <strong>46 true effects with no false positives</strong>. <!-- END million-intro --></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">*</span><span class="va">p</span><span class="op">)</span>, <span class="va">n</span>, <span class="va">p</span><span class="op">)</span></span>
 <span><span class="va">active</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">60L</span><span class="op">)</span></span>
@@ -181,19 +181,20 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr>
-<td align="right">2.84</td>
-<td align="right">2579</td>
-<td align="right">40</td>
-<td align="right">2</td>
-<td align="right">20</td>
-<td align="right">999938</td>
-<td align="right">0.784</td>
-<td align="right">0.797</td>
+<td align="right">2.63</td>
+<td align="right">4194</td>
+<td align="right">46</td>
+<td align="right">0</td>
+<td align="right">14</td>
+<td align="right">999940</td>
+<td align="right">0.868</td>
+<td align="right">0.876</td>
 </tr></tbody>
 </table>
-<!-- END million-metrics --><p>The recovered coefficients are close to their true values.</p>
+<!-- END million-metrics --><p>See the <a href="articles/performance.html#one-million-predictor-example">detailed benchmarks</a> for timings and recovery comparisons with LASSO and relaxed LASSO.</p>
+<p>The recovered coefficients are close to their true values.</p>
 <p><img src="million-coefficients.png" alt="Recovered versus true effects in the million-predictor example." width="100%"></p>
-<p>Install with <code>remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")</code>. The dense design occupies about 4 GB. The <a href="articles/L0glm.html">getting-started guide</a> explains the example and prediction methods.</p>
+<p>Install with <code>remotes::install_github("tomwenseleers/L0glm", subdir="L0glm")</code>. The dense design occupies about 8 GB. See the <a href="articles/high-dimensional.html">SIS/ISIS tutorial</a> and the <a href="articles/file-backed.html">file-backed example</a> for designs larger than RAM. The <a href="articles/L0glm.html">getting-started guide</a> explains prediction and tuning.</p>
 </div>
 <div class="section level2">
 <h2 id="application-sparse-deconvolution">Application: sparse deconvolution<a class="anchor" aria-label="anchor" href="#application-sparse-deconvolution"></a>

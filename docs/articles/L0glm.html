@@ -49,13 +49,13 @@
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -83,14 +83,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Get started with L0glm</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/L0glm.Rmd" class="external-link"><code>vignettes/L0glm.Rmd</code></a></small>
       <div class="d-none name"><code>L0glm.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p>L0glm fits sparse generalized linear models using adaptive ridge and
 IRLS. The same interface covers ordinary GLMs, negative binomial counts,
 joint multinomial classification and Cox survival models. Dense and
@@ -135,12 +135,12 @@ offsets and constraints.</p>
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
 <p>Here 60 positive or negative effects are hidden among <strong>one
-million predictors</strong> with 500 observations. A single call fits
-the model using the package defaults. The dense design occupies about 4
+million predictors</strong> with 1,000 observations. A single call fits
+the model using the package defaults. The dense design occupies about 8
 GB; data generation is excluded from the fitting time.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">500L</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">1000L</span></span>
 <span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fl">1000000L</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">*</span><span class="va">p</span><span class="op">)</span>, <span class="va">n</span>, <span class="va">p</span><span class="op">)</span></span>
 <span><span class="va">active</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">60L</span><span class="op">)</span></span>
@@ -165,14 +165,14 @@ GB; data generation is excluded from the fitting time.</p>
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr class="odd">
-<td align="right">2.84</td>
-<td align="right">2579</td>
-<td align="right">40</td>
-<td align="right">2</td>
-<td align="right">20</td>
-<td align="right">999938</td>
-<td align="right">0.784</td>
-<td align="right">0.797</td>
+<td align="right">2.63</td>
+<td align="right">4194</td>
+<td align="right">46</td>
+<td align="right">0</td>
+<td align="right">14</td>
+<td align="right">999940</td>
+<td align="right">0.868</td>
+<td align="right">0.876</td>
 </tr></tbody>
 </table>
 <!-- END million-metrics --><p><img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%"></p>
@@ -188,9 +188,11 @@ for serial screening.</p>
 <p>The preset already gives a strong sparse model. This tuning path uses
 the predictor pool found by ISIS at the preset. Each lambda fits its own
 model within that pool, so the graph shows how the penalty changes
-selection on a common set of candidates. The best grid value is 26.78,
-close to the preset of 25.24. Both recover 40 true effects. The selected
-grid fit has one false positive, compared with three at the preset.</p>
+selection on a common set of candidates. The grid includes the GIC
+preset.</p>
+<!-- BEGIN million-path-summary -->
+<p>The best grid value is <strong>26.70</strong>, with a GIC preset of
+<strong>26.70</strong>. <!-- END million-path-summary --></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
 <span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, screen.path<span class="op">=</span><span class="st">"preset"</span>, coefs.true<span class="op">=</span><span class="va">beta</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>

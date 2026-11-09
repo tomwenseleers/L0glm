@@ -49,13 +49,13 @@
     <li><a class="dropdown-item" href="../articles/predictor-groups.html">Groups of predictors</a></li>
     <li><a class="dropdown-item" href="../articles/interactions.html">Interaction effects</a></li>
     <li><a class="dropdown-item" href="../articles/inference.html">Coefficient inference</a></li>
+    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
+    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/regular-glm.html">Regular GLM models</a></li>
     <li><a class="dropdown-item" href="../articles/negative-binomial.html">Negative binomial models</a></li>
     <li><a class="dropdown-item" href="../articles/multinomial.html">Multinomial models</a></li>
     <li><a class="dropdown-item" href="../articles/cox.html">Cox proportional hazards models</a></li>
-    <li><a class="dropdown-item" href="../articles/high-dimensional.html">SIS / ISIS screening for high dimensional models</a></li>
-    <li><a class="dropdown-item" href="../articles/file-backed.html">File-backed data and GWAS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/deconvolution.html">Single and multichannel deconvolution</a></li>
   </ul>
@@ -83,14 +83,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Model selection and cross-validation</h1>
-
-
+            
+      
       <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/vignettes/articles/selection.Rmd" class="external-link"><code>vignettes/articles/selection.Rmd</code></a></small>
       <div class="d-none name"><code>selection.Rmd</code></div>
     </div>
 
-
-
+    
+    
 <p>The example below has <strong>1,000 observations, 5,000 predictors
 and 100 nonzero coefficients of either sign</strong>. It shows a rich
 coefficient path while retaining a genuinely sparse underlying
@@ -294,7 +294,9 @@ final predictive accuracy.</p>
 </h2>
 <p><code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> supplies one comparison interface for L0glm,
 ABESS, L0Learn, LASSO, relaxed LASSO, adaptive variants, MCP and SCAD
-where supported.</p>
+where supported. The optional biglasso adapter also fits plain LASSO
+directly on double bigmemory designs; see the <a href="file-backed.html#compare-with-native-file-backed-lasso">file-backed
+example</a>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sparseGLM.html">sparseGLM</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  method<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"L0glm"</span>, <span class="st">"abess"</span>, <span class="st">"lasso"</span>, <span class="st">"relaxed_lasso"</span><span class="op">)</span>,</span>
