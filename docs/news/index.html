@@ -61,7 +61,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="model-specification-and-selection-0-2-0-9002">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9002"></a></h3>
-<ul><li><p>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation.</p></li>
+<ul><li><p>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, relaxed refits and cross-validation. Dense Gaussian groups reuse bounded weighted cross-products; standard group fits cache current/trial predictions and skip fixed-scale updates. Dense ridge diagonals are updated directly, preserving sparse and Woodbury solver paths.</p></li>
 <li><p>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</p></li>
 <li><p>Observation weights, offsets, intercepts, mandatory predictors, nonnegative coefficients, normalization, starting values and optional validation stopping.</p></li>
 <li><p>Optional selected-support standard errors and case-bootstrap coefficient intervals through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, with reselection frequencies, sparse draws, and support for ordinary GLMs, negative binomial, multinomial and Cox models.</p></li>

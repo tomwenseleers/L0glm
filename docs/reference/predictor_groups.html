@@ -98,8 +98,9 @@ multipliers with a numeric lambda to reproduce an IC-preset or tuned fit.</p>
 $$r_{gc}^2=\sum_{j\in G_g}b_{jc}^2.$$
 Joint selection (<code>grouped=TRUE</code>) uses
 $$r_g^2=\sum_c\sum_{j\in G_g}b_{jc}^2.$$
-The norm prevents opposing signs from cancelling. Each penalized coefficient
-in a block receives ridge diagonal
+The norm prevents opposing signs from cancelling. The adaptive exponent is
+fixed at \(\gamma=2\), and each penalized coefficient in a block receives
+ridge diagonal
 $$D_{jc}=\frac{\lambda a_g}{4r_g^2},$$
 with the appropriate channel-specific norm for independent selection. Scalar
 GLM working weights are divided by the channel's dispersion, so this expression
@@ -135,6 +136,12 @@ predictor dimensions. <code>group_support_size</code>, <code>group_df</code> and
 in <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code> describe the group fit, alongside coefficient-based scores.</p>
 <p>Group models use the shared structured IRLS driver and the existing ridge
 solvers for ordinary GLMs, negative binomial, joint multinomial and Cox models.
+Dense Gaussian identity fits reuse weighted cross-products on bounded active
+designs; wider systems retain the Woodbury route. The Gaussian cache holds
+at most 2,000 columns per channel and eight million entries across channels.
+Standard scalar-family group fits also reuse the current and trial linear
+predictors within each fit. Dense Gram updates preserve ordinary matrix
+storage, and sparse inputs retain their sparse solver path.
 Predictor-group screening and outcome preclustering are unavailable; use
 <code>screen="none"</code> to fit a large group design directly. Local refinement tests
 additions, deletions and exchanges of complete predictor groups, accepting

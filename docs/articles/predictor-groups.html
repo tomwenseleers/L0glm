@@ -96,7 +96,7 @@ effect can require several spline coefficients. The <code>group</code>
 argument selects such terms together. It also supports groups of related
 measurements. Adaptive ridge uses the squared Euclidean norm of the
 coefficients within each group, so positive and negative effects
-contribute equally to selection.</p>
+contribute equally to selection. The adaptive exponent is fixed at <span class="math inline">\gamma=2</span>.</p>
 <div class="section level2">
 <h2 id="fit-and-tune-grouped-predictors">Fit and tune grouped predictors<a class="anchor" aria-label="anchor" href="#fit-and-tune-grouped-predictors"></a>
 </h2>
@@ -200,7 +200,7 @@ groups (6 active).</p>
 <tbody>
 <tr class="odd">
 <td align="left">L0glm</td>
-<td align="right">0.14</td>
+<td align="right">0.07</td>
 <td align="right">1369.0</td>
 <td align="right">6</td>
 <td align="right">0</td>
@@ -209,7 +209,7 @@ groups (6 active).</p>
 </tr>
 <tr class="even">
 <td align="left">L0glm estimated scale</td>
-<td align="right">0.20</td>
+<td align="right">0.08</td>
 <td align="right">1369.0</td>
 <td align="right">6</td>
 <td align="right">0</td>
@@ -218,7 +218,7 @@ groups (6 active).</p>
 </tr>
 <tr class="odd">
 <td align="left">grLasso</td>
-<td align="right">0.03</td>
+<td align="right">0.05</td>
 <td align="right">1462.1</td>
 <td align="right">6</td>
 <td align="right">0</td>
@@ -227,7 +227,7 @@ groups (6 active).</p>
 </tr>
 <tr class="even">
 <td align="left">grMCP</td>
-<td align="right">0.04</td>
+<td align="right">0.05</td>
 <td align="right">1369.0</td>
 <td align="right">6</td>
 <td align="right">0</td>
@@ -236,7 +236,7 @@ groups (6 active).</p>
 </tr>
 <tr class="odd">
 <td align="left">grSCAD</td>
-<td align="right">0.03</td>
+<td align="right">0.04</td>
 <td align="right">1369.3</td>
 <td align="right">6</td>
 <td align="right">0</td>
@@ -269,7 +269,7 @@ groups (8 active).</p>
 <tbody>
 <tr class="odd">
 <td align="left">L0glm</td>
-<td align="right">0.16</td>
+<td align="right">0.09</td>
 <td align="right">1746.5</td>
 <td align="right">7.67</td>
 <td align="right">0.00</td>
@@ -278,7 +278,7 @@ groups (8 active).</p>
 </tr>
 <tr class="even">
 <td align="left">L0glm estimated scale</td>
-<td align="right">0.34</td>
+<td align="right">0.15</td>
 <td align="right">1719.2</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
@@ -305,7 +305,7 @@ groups (8 active).</p>
 </tr>
 <tr class="odd">
 <td align="left">grSCAD</td>
-<td align="right">0.05</td>
+<td align="right">0.06</td>
 <td align="right">1766.2</td>
 <td align="right">8.00</td>
 <td align="right">1.33</td>
@@ -329,7 +329,7 @@ groups (8 active).</p>
 <tbody>
 <tr class="odd">
 <td align="left">L0glm</td>
-<td align="right">0.39</td>
+<td align="right">0.25</td>
 <td align="right">608.5</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
@@ -338,7 +338,7 @@ groups (8 active).</p>
 </tr>
 <tr class="even">
 <td align="left">grLasso</td>
-<td align="right">2.11</td>
+<td align="right">2.00</td>
 <td align="right">827.5</td>
 <td align="right">5.33</td>
 <td align="right">0.33</td>
@@ -347,7 +347,7 @@ groups (8 active).</p>
 </tr>
 <tr class="odd">
 <td align="left">grMCP</td>
-<td align="right">1.13</td>
+<td align="right">1.11</td>
 <td align="right">608.5</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
@@ -356,7 +356,7 @@ groups (8 active).</p>
 </tr>
 <tr class="even">
 <td align="left">grSCAD</td>
-<td align="right">1.19</td>
+<td align="right">1.14</td>
 <td align="right">608.5</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
@@ -380,7 +380,7 @@ groups (8 active).</p>
 <tbody>
 <tr class="odd">
 <td align="left">L0glm</td>
-<td align="right">0.56</td>
+<td align="right">0.36</td>
 <td align="right">1123.7</td>
 <td align="right">4.33</td>
 <td align="right">0</td>
@@ -389,7 +389,7 @@ groups (8 active).</p>
 </tr>
 <tr class="even">
 <td align="left">grLasso</td>
-<td align="right">5.81</td>
+<td align="right">5.36</td>
 <td align="right">1308.8</td>
 <td align="right">2.67</td>
 <td align="right">0</td>
@@ -398,7 +398,7 @@ groups (8 active).</p>
 </tr>
 <tr class="odd">
 <td align="left">grMCP</td>
-<td align="right">2.36</td>
+<td align="right">2.19</td>
 <td align="right">1101.7</td>
 <td align="right">5.67</td>
 <td align="right">0</td>
@@ -407,7 +407,7 @@ groups (8 active).</p>
 </tr>
 <tr class="even">
 <td align="left">grSCAD</td>
-<td align="right">2.44</td>
+<td align="right">2.39</td>
 <td align="right">1142.0</td>
 <td align="right">7.00</td>
 <td align="right">0</td>
@@ -417,11 +417,17 @@ groups (8 active).</p>
 </tbody>
 </table>
 <p>Gaussian preset fits recover the groups accurately, with prediction
-errors close to the noise level in the equal-size case. The grpreg
-Gaussian path solvers are particularly fast. In logistic regression,
-L0glm’s preset with local refinement is faster than these complete
-paths; the unequal-size, correlated example is harder for
-parameter-count GIC, and CV recovers more of its true groups.</p>
+errors close to the noise level in the equal-size case. Dense Gaussian
+fits reuse bounded weighted cross-products, and standard group fits
+cache current and trial predictions. Wide systems retain the Woodbury
+solver path. In logistic regression, L0glm’s preset with local
+refinement is faster than these complete paths; the unequal-size,
+correlated example is harder for parameter-count GIC, and CV recovers
+more of its true groups. For CV, grpreg’s native group
+coordinate-descent paths reuse work through warm starts along the lambda
+sequence. L0glm repeats independent adaptive-ridge fits and whole-group
+local refinement within each training fold. Its preset avoids that grid
+search when information-criterion selection is appropriate.</p>
 <table class="table">
 <thead><tr class="header">
 <th align="left">Simulation</th>
@@ -436,7 +442,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">gaussian_equal</td>
 <td align="left">L0glm</td>
-<td align="right">10.07</td>
+<td align="right">4.80</td>
 <td align="right">6.00</td>
 <td align="right">0.00</td>
 <td align="right">1.000</td>
@@ -445,7 +451,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">gaussian_equal</td>
 <td align="left">grLasso</td>
-<td align="right">0.25</td>
+<td align="right">0.22</td>
 <td align="right">6.00</td>
 <td align="right">12.33</td>
 <td align="right">0.502</td>
@@ -454,7 +460,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">gaussian_equal</td>
 <td align="left">grMCP</td>
-<td align="right">0.33</td>
+<td align="right">0.29</td>
 <td align="right">6.00</td>
 <td align="right">0.33</td>
 <td align="right">0.974</td>
@@ -463,7 +469,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">gaussian_equal</td>
 <td align="left">grSCAD</td>
-<td align="right">0.30</td>
+<td align="right">0.28</td>
 <td align="right">6.00</td>
 <td align="right">0.33</td>
 <td align="right">0.974</td>
@@ -472,7 +478,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">gaussian_wide</td>
 <td align="left">L0glm</td>
-<td align="right">12.39</td>
+<td align="right">6.74</td>
 <td align="right">8.00</td>
 <td align="right">1.67</td>
 <td align="right">0.914</td>
@@ -490,7 +496,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">gaussian_wide</td>
 <td align="left">grMCP</td>
-<td align="right">0.59</td>
+<td align="right">0.50</td>
 <td align="right">8.00</td>
 <td align="right">4.00</td>
 <td align="right">0.822</td>
@@ -499,7 +505,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">gaussian_wide</td>
 <td align="left">grSCAD</td>
-<td align="right">0.38</td>
+<td align="right">0.37</td>
 <td align="right">8.00</td>
 <td align="right">5.33</td>
 <td align="right">0.761</td>
@@ -508,7 +514,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">logistic_equal</td>
 <td align="left">L0glm</td>
-<td align="right">30.92</td>
+<td align="right">21.95</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
 <td align="right">1.000</td>
@@ -517,7 +523,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">logistic_equal</td>
 <td align="left">grLasso</td>
-<td align="right">8.08</td>
+<td align="right">7.28</td>
 <td align="right">8.00</td>
 <td align="right">31.67</td>
 <td align="right">0.337</td>
@@ -526,7 +532,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">logistic_equal</td>
 <td align="left">grMCP</td>
-<td align="right">4.97</td>
+<td align="right">4.86</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
 <td align="right">1.000</td>
@@ -535,7 +541,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">logistic_equal</td>
 <td align="left">grSCAD</td>
-<td align="right">5.52</td>
+<td align="right">5.27</td>
 <td align="right">8.00</td>
 <td align="right">0.00</td>
 <td align="right">1.000</td>
@@ -544,7 +550,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">logistic_unequal</td>
 <td align="left">L0glm</td>
-<td align="right">39.29</td>
+<td align="right">22.64</td>
 <td align="right">9.67</td>
 <td align="right">0.00</td>
 <td align="right">0.982</td>
@@ -553,7 +559,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">logistic_unequal</td>
 <td align="left">grLasso</td>
-<td align="right">20.92</td>
+<td align="right">18.84</td>
 <td align="right">10.00</td>
 <td align="right">44.67</td>
 <td align="right">0.311</td>
@@ -562,7 +568,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="odd">
 <td align="left">logistic_unequal</td>
 <td align="left">grMCP</td>
-<td align="right">11.17</td>
+<td align="right">10.28</td>
 <td align="right">9.33</td>
 <td align="right">0.00</td>
 <td align="right">0.965</td>
@@ -571,7 +577,7 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <tr class="even">
 <td align="left">logistic_unequal</td>
 <td align="left">grSCAD</td>
-<td align="right">11.06</td>
+<td align="right">10.24</td>
 <td align="right">10.00</td>
 <td align="right">0.00</td>
 <td align="right">1.000</td>
@@ -582,8 +588,9 @@ parameter-count GIC, and CV recovers more of its true groups.</p>
 <p>Timings are medians; recovery scores are averages across three
 replicates. All fits and CV folds use one thread, on an HP ZBook Fury G8
 with an Intel Core i9-11950H, Windows, R 4.5.0 and grpreg 3.6.0.
-Simulation and final scoring are excluded from the timings. The complete
-<a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/predictor-groups/runs.csv" class="external-link">run-level
+Simulation and final scoring are excluded from the timings; fitting and
+selection are included. For grpreg’s GIC paths this includes scoring all
+candidates with the common criterion. The complete <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/predictor-groups/runs.csv" class="external-link">run-level
 results</a> include test RMSE or AUC/log loss, convergence diagnostics
 and path warnings.</p>
 </div>

@@ -12,7 +12,8 @@ A categorical predictor can require several contrasts, and a smooth effect can
 require several spline coefficients. The `group` argument selects such terms
 together. It also supports groups of related measurements. Adaptive ridge uses
 the squared Euclidean norm of the coefficients within each group, so positive
-and negative effects contribute equally to selection.
+and negative effects contribute equally to selection. The adaptive exponent
+is fixed at $\gamma=2$.
 
 ## Fit and tune grouped predictors
 
@@ -115,10 +116,16 @@ for(case in c('gaussian_equal','gaussian_wide','logistic_equal','logistic_unequa
 ```
 
 Gaussian preset fits recover the groups accurately, with prediction errors close
-to the noise level in the equal-size case. The grpreg Gaussian path solvers are
-particularly fast. In logistic regression, L0glm's preset with local refinement
+to the noise level in the equal-size case. Dense Gaussian fits reuse bounded
+weighted cross-products, and standard group fits cache current and trial
+predictions. Wide systems retain the Woodbury solver path. In logistic
+regression, L0glm's preset with local refinement
 is faster than these complete paths; the unequal-size, correlated example is
 harder for parameter-count GIC, and CV recovers more of its true groups.
+For CV, grpreg's native group coordinate-descent paths reuse work through warm
+starts along the lambda sequence. L0glm repeats independent adaptive-ridge fits
+and whole-group local refinement within each training fold. Its preset avoids
+that grid search when information-criterion selection is appropriate.
 
 ```{r cv-results, echo=FALSE, results='asis'}
 d <- results[results$tune=='5-fold CV',]
@@ -132,6 +139,8 @@ knitr::kable(table,digits=c(0,0,2,2,2,3,3),row.names=FALSE)
 Timings are medians; recovery scores are averages across three replicates.
 All fits and CV folds use one thread, on an HP ZBook Fury G8 with an Intel
 Core i9-11950H, Windows, R 4.5.0 and grpreg 3.6.0. Simulation and final scoring
-are excluded from the timings. The complete
+are excluded from the timings; fitting and selection are included. For grpreg's
+GIC paths this includes scoring all candidates with the common criterion.
+The complete
 [run-level results](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/plots/predictor-groups/runs.csv)
 include test RMSE or AUC/log loss, convergence diagnostics and path warnings.

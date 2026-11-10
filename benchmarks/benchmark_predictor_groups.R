@@ -91,9 +91,12 @@ for(case in names(cases))for(replication in seq_len(replications)) {
       family=cfg$family,penalty=penalty_name,nlambda=nlambda),warning=function(w) {
         messages <<- c(messages,conditionMessage(w));invokeRestart('muffleWarning')
       }),gcFirst=FALSE)[['elapsed']]
-    coefficient <- as.matrix(path$beta)
-    stopifnot(nrow(coefficient)==p+1L)
-    score <- apply(coefficient,2L,common);best <- which.min(score)
+    selection_seconds <- system.time({
+      coefficient <- as.matrix(path$beta)
+      stopifnot(nrow(coefficient)==p+1L)
+      score <- apply(coefficient,2L,common);best <- which.min(score)
+    },gcFirst=FALSE)[['elapsed']]
+    seconds <- seconds+selection_seconds
     record(penalty_name,'GIC path',coefficient[,best],seconds,edge=best%in%c(1,ncol(coefficient)),
       note=paste(unique(messages),collapse='; '))
     messages <- character()
