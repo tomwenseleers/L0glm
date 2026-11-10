@@ -15,6 +15,9 @@
 * Predictor-variable groups use norm-based block L0 penalties, with group 0
   unpenalized, dimension-calibrated IC presets, explicit numeric group costs,
   group-aware thresholding, relaxed refits and cross-validation.
+  Dense Gaussian groups reuse bounded weighted cross-products; standard group
+  fits cache current/trial predictions and skip fixed-scale updates. Dense ridge
+  diagonals are updated directly, preserving sparse and Woodbury solver paths.
 * Staged interaction selection generates products among selected main effects:
   `interactions=1L` for pairwise and `2L` for up to three-way terms. Prediction
   reconstructs products from original columns, and CV repeats candidate

@@ -456,7 +456,9 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   dual <- p > n && all(lambdas >= 0) &&
     (all(lambdas == 0) || sum(lambdas == 0) <= n)
   if (!is.null(cached)) {
-    coefs <- eigen_ridge_solve(cached$xx + Matrix::Diagonal(x = lambdas),
+    A <- cached$xx
+    if(is.matrix(A))diag(A) <- diag(A)+lambdas else A <- A+Matrix::Diagonal(x=lambdas)
+    coefs <- eigen_ridge_solve(A,
       cached$xy + lambdas * prior.mean, start, control.solver, iteration)
   } else if (dual) {
     coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
@@ -477,7 +479,8 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
         A <- Matrix::crossprod(A)
       } else {
         rhs <- Matrix::crossprod(Xw, yw) + lambdas * prior.mean
-        A <- Matrix::crossprod(Xw) + Matrix::Diagonal(x = lambdas)
+        A <- Matrix::crossprod(Xw)
+        if(is.matrix(A))diag(A) <- diag(A)+lambdas else A <- A+Matrix::Diagonal(x=lambdas)
       }
     }
     coefs <- eigen_ridge_solve(A, rhs, start, control.solver, iteration)

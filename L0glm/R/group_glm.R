@@ -31,6 +31,12 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda) {
   },1)
   phi <- abs(phi);phi[!is.finite(phi)|phi<=0] <- 1
   data$initial.mu <- mu
+  cacheable <- !is.null(L0glm_native_family(data$family))
+  if((data$n+data$p)*data$m<=1e6 && cacheable)
+    data$prediction.cache <- new.env(parent=emptyenv())
+  if(data$family$family=='gaussian' && data$family$link=='identity' &&
+     is.matrix(data$Z) && cacheable)
+    data$gram <- new.env(parent=emptyenv())
   list(data=data,B=pmax(B,data$lower),state=list(phi=phi,estimated=estimate,stable=integer(data$m)))
 }
 
@@ -45,21 +51,38 @@ L0glm_group_glm_working <- function(data,B,D,state,args) {
     }
     point <- working(data$y[,j],eta,mu,L0glm_observation_column(data$weights,j),
       L0glm_observation_column(data$offset,j))
-    good <- point$good
+    good <- point$good;options <- args
+    active <- which(is.finite(D[,j]))
+    if(!is.null(data$gram) && args$solver=='eigen' && args$method==1L &&
+       !isTRUE(args$control.solver$rowaug) && length(active)<=length(good) &&
+       length(active)<=2000L && length(active)^2*data$m<=8e6 && length(active)>0L) {
+      key <- as.character(j);cached <- data$gram[[key]]
+      if(is.null(cached) || !all(active%in%cached$active)) {
+        Xw <- Xweights(data$Z[good,active,drop=FALSE],L0glm_observation_column(data$weights,j,good))
+        yw <- Yweights(data$y[good,j]-L0glm_observation_column(data$offset,j,good),
+          L0glm_observation_column(data$weights,j,good))
+        cached <- list(xx=crossprod(Xw),xy=crossprod(Xw,yw),active=active)
+        data$gram[[key]] <- cached
+      }
+      k <- match(active,cached$active)
+      options$control.solver$.crossprod <- list(xx=cached$xx[k,k,drop=FALSE]/state$phi[j],
+        xy=cached$xy[k,,drop=FALSE]/state$phi[j])
+    }
     answer[,j] <- L0glm_ext_ridge(data$Z[good,,drop=FALSE],point$response[good],
-      point$weights[good]/state$phi[j],D[,j],B[,j],data$lower,data$prior[,j],args)
+      point$weights[good]/state$phi[j],D[,j],B[,j],data$lower,data$prior[,j],options)
   }
   answer
 }
 
 L0glm_ext_loss <- function(data,B,state) {
   if(data$kind!='glm')return(-2*L0glm_ext_loglik(data,B,state))
-  eta <- as.matrix(data$Z%*%B+L0glm_observation_broadcast(data$offset))
+  eta <- L0glm_ext_eta(data,B)
   sum(vapply(seq_len(data$m),function(j)L0glm_irls_deviance(data$y[,j],eta[,j],
     L0glm_observation_column(data$weights,j),data$family)/state$phi[j],1))
 }
 
 L0glm_group_scale_update <- function(data,B,previous,allowed,state,iteration,relaxed) {
+  if(!any(state$estimated))return(state)
   mu <- L0glm_ext_nb_mean(data,B)$mu
   for(j in which(state$estimated)) {
     changed <- any((B[,j]!=0)!=(previous[,j]!=0))

@@ -7,8 +7,23 @@ L0glm_ext_nb_response <- function(y, family, n) {
        estimated = rep(isTRUE(family$n.theta > 0), ncol(y)))
 }
 
+# Current/trial predictors are reused only within an immutable group-fit design.
+L0glm_ext_eta <- function(data, B) {
+  cache <- data$prediction.cache
+  eta <- if(!is.null(cache) && identical(B,cache$first.B))cache$first.eta else
+    if(!is.null(cache) && identical(B,cache$second.B))cache$second.eta else NULL
+  if(is.null(eta)) {
+    eta <- as.matrix(data$Z %*% B + L0glm_observation_broadcast(data$offset))
+    if(!is.null(cache)) {
+      cache$second.B <- cache$first.B;cache$second.eta <- cache$first.eta
+      cache$first.B <- B;cache$first.eta <- eta
+    }
+  }
+  eta
+}
+
 L0glm_ext_nb_mean <- function(data, B) {
-  eta <- as.matrix(data$Z %*% B + L0glm_observation_broadcast(data$offset))
+  eta <- L0glm_ext_eta(data,B)
   mu <- matrix(data$family$linkinv(eta), nrow(eta), ncol(eta))
   list(eta = eta, mu = mu)
 }
