@@ -51,6 +51,13 @@ for the penalty equations and [local refinement](../reference/local_search.html)
 for its controls. Predictor-group models currently fit the supplied design directly;
 use `screen='none'` when its dimensions would otherwise activate automatic ISIS.
 
+Recognized scalar GLMs run predictor-group IRLS in C++, with the same group
+penalties, step halving, dispersion updates and convergence checks. Multiple
+outcomes can use OpenMP channel workers through `parallelize=TRUE, ncores=4`.
+BLAS uses one thread within those parallel passes, and the caller's thread
+settings are restored. Custom and special-family adapters and validation
+checkpoints use the structured R driver.
+
 ## GIC and group size
 
 The reported information criteria use the same parameter-count convention as
@@ -116,9 +123,9 @@ for(case in c('gaussian_equal','gaussian_wide','logistic_equal','logistic_unequa
 ```
 
 Gaussian preset fits recover the groups accurately, with prediction errors close
-to the noise level in the equal-size case. Dense Gaussian fits reuse bounded
-weighted cross-products, and standard group fits cache current and trial
-predictions. Wide systems retain the Woodbury solver path. In logistic
+to the noise level in the equal-size case. The native group driver reuses bounded
+Gaussian weighted cross-products and runs the iteration in C++. Wide systems
+retain the Woodbury solver path, and sparse inputs retain their sparse solves. In logistic
 regression, L0glm's preset with local refinement
 is faster than these complete paths; the unequal-size, correlated example is
 harder for parameter-count GIC, and CV recovers more of its true groups.
