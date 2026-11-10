@@ -31,7 +31,13 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda) {
   },1)
   phi <- abs(phi);phi[!is.finite(phi)|phi<=0] <- 1
   data$initial.mu <- mu
-  cacheable <- !is.null(L0glm_native_family(data$family))
+  descriptor <- L0glm_native_family(data$family)
+  cacheable <- !is.null(descriptor)
+  loglik <- match(data$family$family,c('gaussian','poisson','binomial','Gamma',
+    'inverse.gaussian','Negative Binomial','quasipoisson','quasibinomial'))-1L
+  if(startsWith(data$family$family,'Negative Binomial('))loglik <- 5L
+  if(cacheable && descriptor$scalar<0L && !is.na(loglik))
+    data$native.group <- list(descriptor=descriptor,loglik=as.integer(loglik),cache=new.env(parent=emptyenv()))
   if((data$n+data$p)*data$m<=1e6 && cacheable)
     data$prediction.cache <- new.env(parent=emptyenv())
   if(data$family$family=='gaussian' && data$family$link=='identity' &&

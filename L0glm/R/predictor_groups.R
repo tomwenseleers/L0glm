@@ -66,8 +66,16 @@
 #' predictor dimensions. `group_support_size`, `group_df` and `group_objective`
 #' in [l0glmMetrics()] describe the group fit, alongside coefficient-based scores.
 #'
-#' Group models use the shared structured IRLS driver and the existing ridge
-#' solvers for ordinary GLMs, negative binomial, joint multinomial and Cox models.
+#' Recognized scalar GLMs use a native C++ predictor-group IRLS driver, sharing
+#' the family calculations and ridge solvers with ordinary models. For multiple
+#' outcomes, `parallelize=TRUE` uses up to `ncores` OpenMP channel workers;
+#' BLAS runs with one thread inside those passes and its settings are restored.
+#' The group penalty, step halving, dispersion updates and convergence checks
+#' retain the same definitions in serial and parallel fits. External OSQP and
+#' bigGlm solver callbacks run on the R thread.
+#' Custom families, validation checkpoints, negative binomial with estimated
+#' theta, joint multinomial and Cox models use the structured R driver and the
+#' same group-selection rules.
 #' Dense Gaussian identity fits reuse weighted cross-products on bounded active
 #' designs; wider systems retain the Woodbury route. The Gaussian cache holds
 #' at most 2,000 columns per channel and eight million entries across channels.
@@ -258,7 +266,8 @@ L0glm_group_fit <- function(args) {
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.',call.=FALSE)
   lambda <- L0glm_resolve_lambda(args$lambda,max(1,data$p_selectable),max(2,data$n_ic))
   options <- list(solver=args$solver,method=args$method,control.solver=args$control.solver,
-    validation=args$validation,predictor.groups=TRUE)
+    validation=args$validation,predictor.groups=TRUE,
+    group.nthreads=if(args$parallelize)L0glm_normalize_thread_count(args$ncores)else 1L)
   state <- if(kind=='nb')list(theta=data$response$theta,estimated=data$response$estimated)else list()
   B <- data$B
   if(kind=='glm') {

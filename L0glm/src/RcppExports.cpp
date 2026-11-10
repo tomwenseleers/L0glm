@@ -198,6 +198,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// glm_predictor_group_cpp
+List glm_predictor_group_cpp(SEXP design, List context, int family, int link, double theta, int scalar, double parameter, double censor, List solver_control, SEXP solver_bridge, int nthreads, SEXP cache);
+RcppExport SEXP _L0glm_glm_predictor_group_cpp(SEXP designSEXP, SEXP contextSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP thetaSEXP, SEXP scalarSEXP, SEXP parameterSEXP, SEXP censorSEXP, SEXP solver_controlSEXP, SEXP solver_bridgeSEXP, SEXP nthreadsSEXP, SEXP cacheSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< List >::type context(contextSEXP);
+    Rcpp::traits::input_parameter< int >::type family(familySEXP);
+    Rcpp::traits::input_parameter< int >::type link(linkSEXP);
+    Rcpp::traits::input_parameter< double >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type scalar(scalarSEXP);
+    Rcpp::traits::input_parameter< double >::type parameter(parameterSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    Rcpp::traits::input_parameter< List >::type solver_control(solver_controlSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type solver_bridge(solver_bridgeSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type cache(cacheSEXP);
+    rcpp_result_gen = Rcpp::wrap(glm_predictor_group_cpp(design, context, family, link, theta, scalar, parameter, censor, solver_control, solver_bridge, nthreads, cache));
+    return rcpp_result_gen;
+END_RCPP
+}
 // glm_native_cpp
 List glm_native_cpp(SEXP design, List contexts, int family, int link, double theta, int scalar, double parameter, double censor, int nthreads, NumericVector probes, int max_passes, bool relaxed, bool nonnegative, List solver_control, SEXP solver_bridge, SEXP executor);
 RcppExport SEXP _L0glm_glm_native_cpp(SEXP designSEXP, SEXP contextsSEXP, SEXP familySEXP, SEXP linkSEXP, SEXP thetaSEXP, SEXP scalarSEXP, SEXP parameterSEXP, SEXP censorSEXP, SEXP nthreadsSEXP, SEXP probesSEXP, SEXP max_passesSEXP, SEXP relaxedSEXP, SEXP nonnegativeSEXP, SEXP solver_controlSEXP, SEXP solver_bridgeSEXP, SEXP executorSEXP) {
@@ -713,6 +734,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_L0glm_cluster_profile_cpp", (DL_FUNC) &_L0glm_L0glm_cluster_profile_cpp, 7},
     {"_L0glm_L0glm_column_moments_cpp", (DL_FUNC) &_L0glm_L0glm_column_moments_cpp, 2},
     {"_L0glm_l0glm_bed_read_cpp", (DL_FUNC) &_L0glm_l0glm_bed_read_cpp, 6},
+    {"_L0glm_glm_predictor_group_cpp", (DL_FUNC) &_L0glm_glm_predictor_group_cpp, 12},
     {"_L0glm_glm_native_cpp", (DL_FUNC) &_L0glm_glm_native_cpp, 16},
     {"_L0glm_glm_native_pass_cpp", (DL_FUNC) &_L0glm_glm_native_pass_cpp, 11},
     {"_L0glm_signal_start_cpp", (DL_FUNC) &_L0glm_signal_start_cpp, 7},

@@ -357,6 +357,22 @@ template<class Design> std::vector<State> load_states(const Design& X,List conte
   return states;
 }
 #include "glm_group.h"
+#include "glm_predictor_groups.h"
+}
+// [[Rcpp::export(rng = false)]]
+List glm_predictor_group_cpp(SEXP design,List context,int family,int link,double theta=1,
+ int scalar=-1,double parameter=1,double censor=0,List solver_control=R_NilValue,
+ SEXP solver_bridge=R_NilValue,int nthreads=1,SEXP cache=R_NilValue) {
+ L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
+   -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
+ L0glmNative::SolverControl control(solver_control,solver_bridge);
+ nthreads=std::max(1,nthreads);
+ if(Rf_isS4(design)) {
+   Eigen::MappedSparseMatrix<double> X=as<Eigen::MappedSparseMatrix<double>>(design);
+   return L0glmNative::predictor_group_pass(X,context,spec,control,nthreads,cache);
+ }
+ NumericMatrix mat(design);Eigen::Map<MatrixXd> X(mat.begin(),mat.nrow(),mat.ncol());
+ return L0glmNative::predictor_group_pass(X,context,spec,control,nthreads,cache);
 }
 // [[Rcpp::export(rng = false)]]
 List glm_native_cpp(SEXP design,List contexts,int family,int link,double theta=1,

@@ -74,8 +74,16 @@ not enter solves. The returned sparse coefficient matrix retains the original
 predictor dimensions. \code{group_support_size}, \code{group_df} and \code{group_objective}
 in \code{\link[=l0glmMetrics]{l0glmMetrics()}} describe the group fit, alongside coefficient-based scores.
 
-Group models use the shared structured IRLS driver and the existing ridge
-solvers for ordinary GLMs, negative binomial, joint multinomial and Cox models.
+Recognized scalar GLMs use a native C++ predictor-group IRLS driver, sharing
+the family calculations and ridge solvers with ordinary models. For multiple
+outcomes, \code{parallelize=TRUE} uses up to \code{ncores} OpenMP channel workers;
+BLAS runs with one thread inside those passes and its settings are restored.
+The group penalty, step halving, dispersion updates and convergence checks
+retain the same definitions in serial and parallel fits. External OSQP and
+bigGlm solver callbacks run on the R thread.
+Custom families, validation checkpoints, negative binomial with estimated
+theta, joint multinomial and Cox models use the structured R driver and the
+same group-selection rules.
 Dense Gaussian identity fits reuse weighted cross-products on bounded active
 designs; wider systems retain the Woodbury route. The Gaussian cache holds
 at most 2,000 columns per channel and eight million entries across channels.

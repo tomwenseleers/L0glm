@@ -171,6 +171,10 @@ L0glm_ext_ridge <- function(X, y, w, D, start, lower, prior, args) {
 
 L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
                            thresh, maxit, tol, args, relaxed = FALSE) {
+  if(data$kind=='glm' && !is.null(data$groups)) {
+    native <- L0glm_group_native_pass(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
+    if(!is.null(native))return(native)
+  }
   converged <- FALSE
   history <- list()
   included <- data$included
