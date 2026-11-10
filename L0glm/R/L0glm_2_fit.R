@@ -137,6 +137,10 @@
 #'   values are invalid. Poisson, binomial and negative binomial with known
 #'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 #'   \code{family$dispersion}. See Details for initialization and updating.
+#'   Automatic grouped multichannel fits also check whether independent-channel
+#'   calibration can improve an inflated noise estimate; see
+#'   \link{dispersion_calibration}. Single-channel fits retain the guarded pilot
+#'   and bounded updates. Supplied dispersion values bypass this calibration.
 #' @param start \code{NULL} (default) requests automatic initialization.
 #'   Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
 #'   negative binomial) with nonnegative designs and a compulsory background or known
@@ -696,6 +700,12 @@
 #' A relaxed refit holds dispersion fixed during its coefficient solves and
 #' reports the final Pearson residual scale for estimated channels; user-supplied
 #' positive dispersions remain fixed throughout.
+#' Eligible grouped multichannel fits can then calibrate unknown noise using
+#' predictor sets selected from independent channel subsets. A successful repair
+#' holds the calibrated values fixed in its final fit while retaining their
+#' data-estimated parameter counts. Unreliable calibration retains the original
+#' fit. See \link{dispersion_calibration} for the variance-function calculation,
+#' negative-binomial shape, assumptions and single-channel fallback.
 #'
 #' These inexpensive Pearson moment updates use the active coefficient count
 #' to approximate residual degrees of freedom. In nearly interpolating models,
@@ -878,6 +888,12 @@
 #' \item{\code{dispersion}, \code{dispersion.estimated}}{fitted dispersions
 #' and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
 #' Special families retain their nuisance-parameter information separately.}
+#' \item{\code{dispersionCalibration}}{when applicable, cross-channel calibration
+#' diagnostics: whether a repair was applied, fallback reason, calibrated noise,
+#' channel folds, calibration supports, residual degrees of freedom and timings.
+#' See \link{dispersion_calibration}.}
+#' \item{\code{initialDispersion}, \code{initialTheta}}{initial noise parameters
+#' recorded by the ordinary GLM and negative-binomial drivers, respectively.}
 #' \item{\code{init.lambda}}{initial lambda.} \item{\code{lambdas}}{a vector or
 #' matrix with the adaptive penalties lambdas.} \item{\code{family}}{The error
 #' structure used to fit the data.}
@@ -949,6 +965,10 @@
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #' @param control.family Family-specific IRLS controls. A named list with
+#'   \code{dispersion.calibration="auto"} for guarded cross-channel noise
+#'   calibration; \code{FALSE} disables it and \code{TRUE} requests a check
+#'   without the automatic width/inflation trigger. See \link{dispersion_calibration}.
+#'   Other controls are
 #'   \code{multinomial="irls"} (joint block IRLS) or \code{"bound"}
 #'   (upper curvature bound), \code{theta.min=1e-6}, \code{theta.max=1e7},
 #'   \code{theta.tol=1e-6}, \code{max.working=2000L}, \code{cox="auto"},
@@ -1385,6 +1405,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
           break
         }
         fit <- fit_channels(vars, start, lambda)
+        if(iter==1L)initial_dispersion <- fit$initialDispersion
         convergence[[length(convergence) + 1L]] <-
           cbind(stage = "selection", pass = iter, channel = seq_len(m), fit$convergence)
         disp_list <- as_list(next_dispersion(fit$dispersion))
@@ -1428,6 +1449,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
         } else if (verbose) warning("Relaxed fit skipped - all coeffs zero")
       }
       fit["convergence"] <- list(do.call(rbind, convergence))
+      fit$initialDispersion <- initial_dispersion
       if (!is.null(validation)) {
         fit$validation <- list(selection = c(L0glm_validation_info(validation_track,
           length(validation_passes)), list(passes = validation_passes)))
@@ -1474,6 +1496,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                               verbose     = verbose)
     
     coefficients <- fit$coefficients
+    initial_dispersion <- fit$initialDispersion
     dispersion   <- fit$dispersion
     lambdas      <- fit$lambdas
     weights.ret  <- fit$weights
@@ -1578,6 +1601,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   }
   result$relaxationSkipped <- vapply(seq_len(m),function(j)
     any(convergence$stage=='relaxed' & convergence$channel==j & convergence$iterations==0L),TRUE)
+  result$initialDispersion <- if(exists('native',inherits=FALSE))native$initial_dispersion else
+    if(exists('res_multi',inherits=FALSE))res_multi$initialDispersion else initial_dispersion
   result
 }
 
@@ -1728,6 +1753,7 @@ L0glm_collect_channels <- function(fit) {
   result <- list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
        weights = do.call(cbind, lapply(fit, `[[`, "weights")),
        dispersion = as.numeric(unlist(lapply(fit, `[[`, "dispersion"), use.names = FALSE)),
+       initialDispersion = as.numeric(unlist(lapply(fit, `[[`, "initialDispersion"), use.names = FALSE)),
        lambdas = do.call(cbind, lapply(fit, `[[`, "lambdas")),
        convergence = do.call(rbind, lapply(fit, `[[`, "convergence")),
        z = do.call(cbind, lapply(fit, `[[`, "z")))

@@ -46,7 +46,7 @@ template<class Design> void final_state(const Design& X,State& s,const Family& f
  if(!s.hard)final_boundary(X,s,f);
  bool any=false;int k=s.offset_df;
  for(int j=0;j<X.cols();++j){any=any||s.beta[j]!=0;k+=s.beta[j]!=0||s.included[j];}
- if(s.estimate&&(!s.hard||s.lambda==0||!any)&&s.npositive>k) {
+ if(s.estimate&&!s.fixed_scale&&(!s.hard||s.lambda==0||!any)&&s.npositive>k) {
   long double value=0;
   for(int i=0;i<X.rows();++i)if(s.w[i]>0)value+=s.w[i]*std::pow(s.y[i]-s.mu[i],2)/f.variance(s.mu[i]);
   double phi=(double)value/(s.npositive-k);
@@ -71,7 +71,7 @@ struct PassRecord {int pass,channel,iterations,updates,restarts;bool relaxed,con
 inline List pass_result(const State& s) {
  return List::create(_["beta"]=s.beta,_["eta"]=s.eta,_["mu"]=s.mu,_["weights"]=s.Wret,
    _["z"]=s.zret,_["lambdas"]=s.lambdas,_["dispersion"]=s.phi,
-   _["iterations"]=s.iterations,_["converged"]=s.converged,_["updates"]=s.updates,_["restarts"]=s.restarts,
+   _["initial_dispersion"]=s.initial_phi,_["iterations"]=s.iterations,_["converged"]=s.converged,_["updates"]=s.updates,_["restarts"]=s.restarts,
    _["failed"]=s.failed,_["solver_failed"]=s.solver_failed,
    _["solver_inexact"]=s.solver_inexact,_["solver_fallbacks"]=s.solver_fallbacks);
 }
@@ -79,6 +79,7 @@ inline void read_pass(State& s,List result) {
  s.beta=as<VectorXd>(result["beta"]);s.eta=as<VectorXd>(result["eta"]);s.mu=as<VectorXd>(result["mu"]);
  s.Wret=as<VectorXd>(result["weights"]);s.zret=as<VectorXd>(result["z"]);
  s.lambdas=as<VectorXd>(result["lambdas"]);s.phi=as<double>(result["dispersion"]);
+ if(!std::isfinite(s.initial_phi))s.initial_phi=as<double>(result["initial_dispersion"]);
  s.iterations=as<int>(result["iterations"]);s.converged=as<bool>(result["converged"]);
  s.updates=as<int>(result["updates"]);s.restarts=as<int>(result["restarts"]);
  s.failed=as<bool>(result["failed"]);
@@ -160,7 +161,7 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
    if(refit&&skip_relaxation[k])continue;
    s.eta=initial_eta[k];s.mu=initial_mu[k];s.hard=!refit;s.lambda=refit?1e-30:s.selection_lambda;
    s.stable=s.iterations=s.updates=s.restarts=0;
-    s.converged=s.failed=s.solver_failed=false;s.frozen=!s.estimate;s.old_prediction.resize(0);
+    s.converged=s.failed=s.solver_failed=false;s.frozen=s.fixed_scale||!s.estimate;s.old_prediction.resize(0);
     s.solver_inexact=s.solver_fallbacks=0;
    }
    if(executor!=R_NilValue) {
@@ -218,15 +219,16 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
   pool(true);for(int k=0;k<m;++k)if(retained[k])states[k]=std::move(*retained[k]);
   if(std::any_of(active.begin(),active.end(),[](char x){return x;}))run(1,true);
  }
- MatrixXd coefficients(p,m),penalties=MatrixXd::Zero(p,m),weights(n,m),z(n,m);NumericVector dispersion(m);
+ MatrixXd coefficients(p,m),penalties=MatrixXd::Zero(p,m),weights(n,m),z(n,m);NumericVector dispersion(m),initial_dispersion(m);
  for(int k=0;k<m;++k) {
   coefficients.col(k)=original_coefficients(states[k]);weights.col(k)=states[k].Wret;z.col(k)=states[k].zret;
   dispersion[k]=states[k].phi;
+  initial_dispersion[k]=states[k].initial_phi;
   for(int j=0;j<p;++j)if(last_active[j])penalties(j,k)=states[k].lambdas[j];
  }
  LogicalVector skipped(m);for(int k=0;k<m;++k)skipped[k]=skip_relaxation[k];
  return List::create(_["coefficients"]=coefficients,_["lambdas"]=penalties,_["weights"]=weights,_["relaxation_skipped"]=skipped,
-  _["z"]=z,_["dispersion"]=dispersion,_["convergence"]=pass_frame(history),
+  _["z"]=z,_["dispersion"]=dispersion,_["initial_dispersion"]=initial_dispersion,_["convergence"]=pass_frame(history),
   _["native_stats"]=List::create(_["failed_steps"]=failed_steps,_["failed_solves"]=failed_solves,
      _["inexact_solves"]=inexact_solves,_["solver_fallbacks"]=solver_fallbacks));
 }

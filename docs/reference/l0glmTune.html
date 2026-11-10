@@ -208,7 +208,12 @@ therefore cancels from the multinomial probabilities.</p></li>
 initializes and estimates dispersion, a positive value fixes it, and a negative
 value supplies its absolute value as an initial estimate. A vector can specify
 separate values for the response channels. Fixed-scale families retain their
-family dispersion.</p></dd>
+family dispersion.
+Cross-channel dispersion calibration follows <code><a href="l0glmFit.html">l0glmFit()</a></code> independently
+in each candidate and CV training fit. Control it with
+<code>control.family=list(dispersion.calibration="auto")</code> in <code>...</code>;
+see <a href="dispersion_calibration.html">dispersion_calibration</a> for the reliability checks and single-channel
+fallback. Validation responses never enter training-fold calibration.</p></dd>
 
 
 <dt id="arg-tune">tune<a class="anchor" aria-label="anchor" href="#arg-tune"></a></dt>

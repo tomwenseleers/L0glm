@@ -90,10 +90,10 @@ struct Family {
 };
 struct State {
   VectorXd y,w,offset,beta,eta,mu,previous_eta,anchor,prior,scale,lower,upper,W,z,Wret,zret,lambdas,old_prediction;
- std::vector<char> included;double phi,lambda,tol,thresh,previous_dev;
+ std::vector<char> included;double phi,lambda,tol,thresh,previous_dev,initial_phi=NA_REAL;
  int maxit,offset_df,free_intercept,npositive,iterations=0,updates=0,restarts=0,stable=0;
   MatrixXd cacheG;VectorXd cacheXY,cacheW;
-  bool estimate,normalized,hard,frozen,cache=false,cache_weights=false,
+  bool estimate,normalized,hard,frozen,fixed_scale=false,cache=false,cache_weights=false,
        converged=false,failed=false,solver_failed=false;
  bool auto_beta=false,auto_phi=false,gaussian_name=false,binomial_name=false,signal_family=false;
  std::vector<char> allowed;double reference_p=1;
@@ -272,7 +272,7 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
   for(int j=0;j<p;++j){if(s.beta[j]!=0||s.included[j])++selected;
     if(!s.included[j]&&((s.beta[j]!=0)!=(old[j]!=0)))support_changed=true;}
   s.previous_dev=dev;
-  if(s.estimate&&s.hard&&support_changed){if(s.frozen)++s.restarts;s.frozen=false;s.stable=0;}
+  if(s.estimate&&!s.fixed_scale&&s.hard&&support_changed){if(s.frozen)++s.restarts;s.frozen=false;s.stable=0;}
   bool estimable=selected+s.offset_df<.7*s.npositive;
   if(!s.frozen&&s.hard&&iteration>=2&&estimable) {
    long double value=0;for(int i=0;i<n;++i)if(s.w[i]>0)
@@ -335,7 +335,8 @@ template<class Design> std::vector<State> load_states(const Design& X,List conte
     s.phi=as<double>(a["dispersion"]);s.lambda=as<double>(a["lambda"]);s.selection_lambda=s.lambda;
     s.tol=as<double>(a["tol"]);s.thresh=as<double>(a["thresh"]);s.maxit=as<int>(a["maxit"]);
     s.offset_df=as<int>(a["offset_df"]);s.estimate=as<bool>(a["estimate_dispersion"]);
-    s.frozen=!s.estimate;s.normalized=as<bool>(a["normalized"]);s.hard=as<bool>(a["hard_threshold"]);
+    s.fixed_scale=a.containsElementNamed("fixed_scale")&&as<bool>(a["fixed_scale"]);
+    s.frozen=s.fixed_scale||!s.estimate;s.normalized=as<bool>(a["normalized"]);s.hard=as<bool>(a["hard_threshold"]);
     s.cache=as<bool>(a["cache_gaussian"]);s.cache_weights=as<bool>(a["cache_fixed_weights"]);
     IntegerVector included=a["always.include"],intercept=a["free_intercept"];
     s.included.assign(X.cols(),0);s.allowed.assign(X.cols(),1);

@@ -44,7 +44,8 @@ L0glm_local_restore <- function(fit, workspace) {
   d <- list(D=original$X, p=nrow(coef(original)), m=ncol(coef(original)),
     mandatory=original$always.include, grouped=isTRUE(original$grouped), kind=kind,
     estimated=original$dispersion.estimated,
-    common.phi=if(quasi) pmax(abs(original$dispersion), 1e-8) else numeric())
+    common.phi=if(is.null(kind) && (quasi||isTRUE(original$dispersionCalibration$applied)))
+      pmax(abs(original$dispersion), 1e-8) else numeric())
   search <- fit$local.search
   fit <- if (nrow(search$history)>1L) L0glm_local_remap(fit, rows, d, original) else original
   fit$local.search <- search

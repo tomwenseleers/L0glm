@@ -17,13 +17,14 @@ L0glm_ext_matrix <- function(value, n, m, default, name) {
 }
 
 L0glm_ext_control <- function(control) {
-  defaults <- list(multinomial = "irls", theta.min = 1e-6, theta.max = 1e7,
+  defaults <- list(multinomial = "irls", dispersion.calibration="auto", theta.min = 1e-6, theta.max = 1e7,
                    theta.tol = 1e-6, max.working = 2000L, cox = "auto",
                    cox.llt.max = c(dense = 1024L, sparse = 0L), cox.cg.tol = 1e-10, cox.cg.maxit = 2000L)
   if (!is.list(control) || (length(control) && is.null(names(control))) ||
       any(!names(control) %in% names(defaults)))
     stop("Unknown control.family option.", call. = FALSE)
   defaults[names(control)] <- control
+  L0glm_calibration_mode(defaults$dispersion.calibration)
   if (length(defaults$multinomial) != 1L || !defaults$multinomial %in% c("irls", "bound"))
     stop('control.family$multinomial must be "irls" or "bound".', call. = FALSE)
   if (length(defaults$cox) != 1L || !defaults$cox %in% c("auto", "direct", "pcg"))
@@ -33,7 +34,7 @@ L0glm_ext_control <- function(control) {
       any(cut < 0 | cut != floor(cut)) ||
       (length(cut) == 2L && !setequal(names(cut), c("dense", "sparse"))))
     stop("cox.llt.max must be a nonnegative integer or named dense/sparse pair.", call. = FALSE)
-  numeric <- defaults[setdiff(names(defaults), c("multinomial", "cox", "cox.llt.max"))]
+  numeric <- defaults[setdiff(names(defaults), c("multinomial", "cox", "cox.llt.max","dispersion.calibration"))]
   if (any(lengths(numeric) != 1L) || !all(vapply(numeric, is.numeric, logical(1))) ||
       any(!is.finite(unlist(numeric))) ||
       defaults$theta.min <= 0 || defaults$theta.max <= defaults$theta.min ||
@@ -294,17 +295,13 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   data <- L0glm_ext_prepare(X, y, family, weights, offset, intercept, always.include,
                             nonnegative, normalize, start, prior.mean, control.family)
   data$p_selectable <- L0glm_criterion_size(data$p_selectable,control.solver)
+  data$fixed.dispersion <- isTRUE(control.solver$.dispersion.fixed)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))
   args <- list(solver = solver, method = method, control.solver = control.solver, validation = validation)
   if (data$kind == "cox" && data$control$cox == "pcg" &&
       (solver != "eigen" || any(data$lower > -1e100)))
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)
-  state <- if (data$kind == "nb") list(theta = data$response$theta, estimated = data$response$estimated) else list()
-  if(data$kind=="nb" && !is.null(control.solver$.theta.start)) {
-    theta <- control.solver$.theta.start
-    if(length(theta)!=data$m || any(!is.finite(theta)|theta<=0)) stop("Invalid NB nuisance starting shape.")
-    state$theta <- as.numeric(theta)
-  }
+  state <- if(data$kind=="nb")L0glm_ext_nb_state(data,control.solver)else list()
   B <- data$B
   if (!data$explicit) {
     D <- matrix(1e-3, data$p, data$m)

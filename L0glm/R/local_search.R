@@ -122,6 +122,8 @@ L0glm_local_remap <- function(model,rows,d,template) {
   }
   if (!is.null(template$selected)) model$selected <- sort(unique(L0glm_local_pattern(model)$rows))
   model$metrics <- model$objective <- NULL
+  for(name in c("dispersionCalibration","initialDispersion","initialTheta"))
+    model[[name]] <- template[[name]]
   model
 }
 
@@ -241,6 +243,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
   if(any(B[!allowed]!=0)) stop("Initial fit violates an explicit starting mask.")
   estimated <- if(is.null(kind)) rep_len(fit$dispersion.estimated,m) else rep(FALSE,m)
   quasi <- startsWith(family$family,"quasi")
+  calibrated <- isTRUE(fit$dispersionCalibration$applied)
   W <- L0glm_ext_matrix(if(is.null(kind))fit$prior.weights else fit$weights,n,
     if(!is.null(kind) && kind%in%c("cox","multinomial"))1L else m,1,"weights")
   O <- L0glm_ext_matrix(fit$offset,n,m,0,"offset")
@@ -251,7 +254,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
   d <- list(D=fit$X,X=args$X,Y=fit$y,original.y=fit$y,O=O,W=W,family=family,
     kind=kind,p=p,n=n,m=m,added=added,mandatory=mandatory,allowed=allowed,pool=setdiff(pool,mandatory),
     nonnegative=isTRUE(args$nonnegative),grouped=isTRUE(fit$grouped),estimated=estimated,
-    common.phi=if(quasi) pmax(abs(fit$dispersion),1e-8) else numeric(),
+    common.phi=if(is.null(kind) && (quasi||calibrated)) pmax(abs(fit$dispersion),1e-8) else numeric(),
     normalize=if(is.null(args$normalize)) "auto" else args$normalize,
     solver=if(is.null(args$solver)) "eigen" else args$solver,
     method=if(is.null(args$method)) 1L else args$method,
@@ -261,6 +264,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
     control.family=if(is.null(args$control.family))list() else args$control.family,
     response=fit$response,cox.cache=fit$cox.cache,
     gic=presetLambda("gic",max(1L,fit$p),max(2,stats::nobs(fit))))
+  if(calibrated)d$control.solver$.dispersion.fixed <- TRUE
   d$validation <- if(is.null(args$validation)) NULL else
     if(inherits(args$validation,"L0glm_validation")) args$validation else
       L0glm_validation_context(args$validation,args$X,fit$y,family,isTRUE(fit$added_intercept))

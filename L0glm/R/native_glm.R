@@ -52,6 +52,7 @@ L0glm_native_context <- function(env,family) {
   context <- mget(fields,env,inherits=FALSE)
   for(name in fields[seq_len(9L)]) context[[name]] <- as.numeric(context[[name]])
   context$auto_beta <- is.null(env$start);context$auto_phi <- is.null(env$dispersion)
+  context$fixed_scale <- isTRUE(env$control.solver$.dispersion.fixed)
   context$beta <- if(is.null(env$start)) numeric(ncol(env$X)) else as.numeric(env$start)
   context$dispersion <- if(is.null(env$dispersion)) NA_real_ else as.numeric(env$dispersion)
   context$gaussian_name <- family$family=='gaussian'
@@ -174,6 +175,7 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
     list(nthreads=threads,probes=probes,max_passes=if(m>1L && take('grouped'))as.integer(take('group.maxit'))else 1L,
       relaxed=take('relaxed'),nonnegative=take('nonnegative'),
       solver_control=solver_control,solver_bridge=bridge,executor=executor)))
+  result$initialDispersion <- result$initial_dispersion
   if(isTRUE(take('verbose')))print(result$convergence,row.names=FALSE)
   status <- result$native_stats;result$native_stats <- NULL
   if(status$failed_steps) warning('Native IRLS retained previous coefficients after line search in ',

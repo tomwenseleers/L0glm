@@ -10,6 +10,12 @@
   drivers. Independent channels retain their own selected supports.
   Local support refinement also rejects unsupported trial refits and preserves
   an initial fit whose requested relaxed refit was skipped.
+* Unknown multichannel noise can be calibrated using independent channel
+  subsets, with variance-function Pearson scales across ordinary GLMs and
+  a bounded moment equation for estimated negative-binomial shape. Guarded
+  automatic activation, common-noise objective checks and diagnostic output
+  preserve supplied settings and single-channel estimators. Successful repairs
+  retain data-estimated noise counts while freezing calibrated noise in IRLS.
 * Standard GLM families and links, negative binomial with fixed or estimated
   shape, joint multinomial models in CLR coordinates, and Cox proportional
   hazards models with direct or matrix-free quadratic updates.

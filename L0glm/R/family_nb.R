@@ -8,6 +8,17 @@ L0glm_ext_nb_response <- function(y, family, n) {
 }
 
 # Current/trial predictors are reused only within an immutable group-fit design.
+L0glm_ext_nb_state <- function(data,control) {
+  state <- list(theta=data$response$theta,estimated=data$response$estimated)
+  theta <- control$.theta.start
+  if(!is.null(theta)) {
+    if(length(theta)!=data$m || any(!is.finite(theta)|theta<=0))
+      stop("Invalid NB nuisance starting shape.",call.=FALSE)
+    state$theta <- as.numeric(theta)
+  }
+  state
+}
+
 L0glm_ext_eta <- function(data, B) {
   cache <- data$prediction.cache
   eta <- if(!is.null(cache) && identical(B,cache$first.B))cache$first.eta else
@@ -57,6 +68,7 @@ L0glm_ext_theta_derivatives <- function(y, mu, theta, w) {
 }
 
 L0glm_ext_nb_update <- function(data, B, state) {
+  if(isTRUE(data$fixed.dispersion))return(state)
   mu <- L0glm_ext_nb_mean(data, B)$mu
   for (j in which(state$estimated)) {
     good <- L0glm_observation_column(data$weights,j) > 0

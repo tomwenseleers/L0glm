@@ -251,6 +251,7 @@ L0glm_group_fit <- function(args) {
   data <- L0glm_ext_prepare(args$X,args$y,family,args$weights,args$offset,args$intercept,
     include,args$nonnegative,args$normalize,args$start,args$prior.mean,args$control.family,kind=kind)
   data$p_selectable <- L0glm_criterion_size(data$p_selectable,args$control.solver)
+  data$fixed.dispersion <- isTRUE(args$control.solver$.dispersion.fixed)
   structural <- which(L0glm_moments(data$Z)$ss==0)
   data$allowed[structural,] <- FALSE;data$B[structural,] <- 0
   data$included <- setdiff(data$included,structural)
@@ -268,7 +269,7 @@ L0glm_group_fit <- function(args) {
   options <- list(solver=args$solver,method=args$method,control.solver=args$control.solver,
     validation=args$validation,predictor.groups=TRUE,
     group.nthreads=if(args$parallelize)L0glm_normalize_thread_count(args$ncores)else 1L)
-  state <- if(kind=='nb')list(theta=data$response$theta,estimated=data$response$estimated)else list()
+  state <- if(kind=='nb')L0glm_ext_nb_state(data,args$control.solver)else list()
   B <- data$B
   if(kind=='glm') {
     initial <- L0glm_group_glm_initialize(data,args$dispersion,lambda)

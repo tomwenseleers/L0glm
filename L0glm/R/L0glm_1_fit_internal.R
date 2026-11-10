@@ -63,7 +63,8 @@ L0glm.fit.internal = function(X,
   if (!is.null(dispersion)) dispersion <- abs(dispersion)
   offset_df <- if(is.null(control.solver$.nuisance.df)) 0L else control.solver$.nuisance.df
   scale_stable <- 0L
-  scale_frozen <- !estimate_dispersion
+  dispersion_fixed <- isTRUE(control.solver$.dispersion.fixed)
+  scale_frozen <- dispersion_fixed || !estimate_dispersion
   scale_updates <- 0L
   scale_restarts <- 0L
   converged <- FALSE
@@ -174,6 +175,7 @@ L0glm.fit.internal = function(X,
       L0glm_pearson_scale(y, linkinv(as.numeric(offset)), weights, family, 0L)
     if (!is.finite(dispersion) || dispersion <= 0) dispersion <- 1
   }
+  starting_dispersion <- dispersion
   # names(beta) = colnames(X)
   
   # dev = sum(dev.resids(y, mu, weights)) # deviance = sum of deviance residuals
@@ -365,7 +367,7 @@ L0glm.fit.internal = function(X,
       break
     }
     deviance_previous <- step_deviance
-    if (estimate_dispersion && hard_threshold && support_changed) {
+    if (estimate_dispersion && !dispersion_fixed && hard_threshold && support_changed) {
       if (scale_frozen) scale_restarts <- scale_restarts + 1L
       scale_frozen <- FALSE
       scale_stable <- 0L
@@ -443,7 +445,7 @@ L0glm.fit.internal = function(X,
   }
   # A relaxed fit holds scale fixed during the solves, then reports its own
   # residual scale. Supplied positive dispersions remain unchanged throughout.
-  if (estimate_dispersion && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
+  if (estimate_dispersion && !dispersion_fixed && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
     target <- L0glm_pearson_scale(y, mu, weights, family,
                                  sum(beta != 0) + sum(beta[always.include] == 0)+offset_df)
     if (is.finite(target) && target > 0) dispersion <- target
@@ -453,6 +455,7 @@ L0glm.fit.internal = function(X,
   result <- list(coefficients = as.numeric(beta),
        weights      = as.numeric(W.ret),
        dispersion   = dispersion,
+       initialDispersion = starting_dispersion,
        convergence  = data.frame(iterations = iterations, converged = converged,
          dispersion_updates = scale_updates, dispersion_restarts = scale_restarts),
        lambdas      = as.numeric(lambdas),

@@ -50,7 +50,9 @@
 #' refits use the existing family engines; nonnegative identity-Poisson fits
 #' retain the native [l0nnPois()] backend. Free Gaussian variance is profiled for
 #' comparison, NB theta is re-estimated when requested, and quasi scale is held
-#' common across candidates. The original-dimension sparse coefficients are
+#' common across candidates. Successful cross-channel dispersion/shape
+#' calibration is held common throughout subsequent local refinement.
+#' The original-dimension sparse coefficients are
 #' returned. Candidate supports are refitted without the adaptive penalty,
 #' including when the initial fit used `relaxed=FALSE`. Unsupported trial refits
 #' are rejected. If the initial requested relaxed refit was skipped for

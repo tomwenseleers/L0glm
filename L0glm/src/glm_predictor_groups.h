@@ -97,6 +97,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
   tol=as<double>(context["tol"]),theta_tol=as<double>(context["theta_tol"]);
  const bool joint=as<bool>(context["grouped"]),relaxed=as<bool>(context["relaxed"]),
    auto_rowaug=as<bool>(context["auto_rowaug"]);
+ const bool fixed_scale=context.containsElementNamed("fixed_scale")&&as<bool>(context["fixed_scale"]);
  if(n<1||m<1||B.rows()!=p||Y.rows()!=n||Y.cols()!=m||weights.rows()!=n||
     !(weights.cols()==1||weights.cols()==m)||offset.rows()!=n||!(offset.cols()==1||offset.cols()==m)||
     prior.rows()!=p||prior.cols()!=m||lower.size()!=p||allowed.nrow()!=p||allowed.ncol()!=m||
@@ -241,7 +242,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
    }
   }
   double nuisance=0;
-  for(int k=0;k<m;++k)if(estimated[k]) {
+  for(int k=0;k<m;++k)if(estimated[k]&&!fixed_scale) {
    if(relaxed&&relaxation_skipped[k])continue;
    bool support_changed=false;int selected=0;
    for(int j=0;j<p;++j){support_changed=support_changed||((candidate(j,k)!=0)!=(B(j,k)!=0));selected+=allowed(j,k);}

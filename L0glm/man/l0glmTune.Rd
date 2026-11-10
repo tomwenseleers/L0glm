@@ -101,7 +101,12 @@ therefore cancels from the multinomial probabilities.
 initializes and estimates dispersion, a positive value fixes it, and a negative
 value supplies its absolute value as an initial estimate. A vector can specify
 separate values for the response channels. Fixed-scale families retain their
-family dispersion.}
+family dispersion.
+Cross-channel dispersion calibration follows \code{l0glmFit()} independently
+in each candidate and CV training fit. Control it with
+\code{control.family=list(dispersion.calibration="auto")} in \code{...};
+see \link{dispersion_calibration} for the reliability checks and single-channel
+fallback. Validation responses never enter training-fold calibration.}
 
 \item{tune}{A case-insensitive method for model selection:
 \code{"aic"}, \code{"bic"}, \code{"gic"},

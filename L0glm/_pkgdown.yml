@@ -107,7 +107,7 @@ reference:
   - title: Screening, simulations and solvers
     contents: [sisGLM, l0glmData, simul, simulateSpikeTrain, lmRidge, controlSolverGen]
   - title: Signal noise and dispersion
-    contents: [signal_families, temporalDispersion]
+    contents: [dispersion_calibration, signal_families, temporalDispersion]
   - title: Visualization and outcome clustering
     contents: [plotMat, plotL0glmBenchmark, glmCluster, glmDist]
   - title: Example data

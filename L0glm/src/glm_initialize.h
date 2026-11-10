@@ -371,6 +371,7 @@ template<class Design> void prepare_state(const Design& X,State& s,const Family&
   }else s.phi=initial_dispersion(X,s,f,probes);
   if(!std::isfinite(s.phi)||s.phi<=0)s.phi=1;
  }
+ if(!std::isfinite(s.initial_phi))s.initial_phi=s.phi;
  s.anchor=s.beta;s.previous_eta=predict(X,s.beta,s.offset);
  s.previous_dev=f.deviance(s.y,s.previous_eta,s.w);
  if(!std::isfinite(s.previous_dev)&&std::isfinite(f.deviance(s.y,s.offset,s.w))) {

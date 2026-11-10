@@ -31,6 +31,7 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda) {
   },1)
   phi <- abs(phi);phi[!is.finite(phi)|phi<=0] <- 1
   data$initial.mu <- mu
+  data$initial.dispersion <- phi
   descriptor <- L0glm_native_family(data$family)
   cacheable <- !is.null(descriptor)
   loglik <- match(data$family$family,c('gaussian','poisson','binomial','Gamma',
@@ -88,7 +89,7 @@ L0glm_ext_loss <- function(data,B,state) {
 }
 
 L0glm_group_scale_update <- function(data,B,previous,allowed,state,iteration,relaxed) {
-  if(!any(state$estimated))return(state)
+  if(!any(state$estimated)||isTRUE(data$fixed.dispersion))return(state)
   mu <- L0glm_ext_nb_mean(data,B)$mu
   for(j in which(state$estimated)) {
     changed <- any((B[,j]!=0)!=(previous[,j]!=0))
@@ -125,7 +126,7 @@ L0glm_group_glm_result <- function(data,result,passes,lambda,grouped,relaxed,arg
   answer <- structure(list(coefficients=Matrix::Matrix(beta,sparse=TRUE),X=data$X,y=data$y,
     prior.weights=data$weights,offset=data$offset,family=data$family,
     weights=W,z=z,
-    dispersion=result$state$phi,dispersion.estimated=result$state$estimated,
+    dispersion=result$state$phi,dispersion.estimated=result$state$estimated,initialDispersion=data$initial.dispersion,
     init.lambda=lambda,always.include=data$included,preprocessing=data$preprocessing,
     p=data$p_selectable,added_intercept=data$added_intercept,grouped=grouped,relaxed=relaxed,
     history=lapply(passes,`[[`,'history'),convergence=convergence),class='L0glm_fit')

@@ -646,6 +646,47 @@ permissive ridge pilot and bounded updates, with inexpensive random-sign
 probes to guard against an almost-interpolating pilot. Positive supplied
 dispersions are held fixed; negative values initialize further
 estimation at their absolute value.</p>
+<div class="section level3">
+<h3 id="cross-channel-noise-calibration">Cross-channel noise calibration<a class="anchor" aria-label="anchor" href="#cross-channel-noise-calibration"></a>
+</h3>
+<p>Grouped models with independent response-channel errors can share
+information about the support while estimating each channel’s noise from
+a model selected using other channels. The automatic check targets wide
+fits with inflated dispersion or an unsupported requested relaxed refit,
+and remaining shared signal. A reproducible two-way channel split
+supplies independent screening and unpenalized calibration models. With
+the family variance function, channel <span class="math inline">c</span>
+uses</p>
+<p><span class="math display">
+\widehat\phi_c=\frac{1}{N_c-r_c}
+  \sum_{i:w_{ic}&gt;0}\frac{w_{ic}(y_{ic}-\widehat\mu_{ic})^2}
+  {V(\widehat\mu_{ic})}.
+</span></p>
+<p>For Gaussian identity models, independent channel errors make the
+screening set independent of the calibration channel’s noise,
+conditional on the design. For an unpenalized projection <span class="math inline">P_S</span>,</p>
+<p><span class="math display">
+E\left[\frac{\|(I-P_S)y_c\|^2}{N_c-r_c}\mid X,S\right]
+=\phi_c+\frac{\|(I-P_S)\mu_c\|^2}{N_c-r_c}.
+</span></p>
+<p>The expression is exact after precision-weighted whitening. It shows
+why omitted signal can inflate a noise estimate and why a permissive
+shared-support pilot helps. The corresponding GLM Pearson calculation
+uses the local working model. This response-channel adaptation applies
+the independent-screen/refit principle in <a href="https://arxiv.org/abs/1004.5178" class="external-link">Fan, Guo and Hao’s refitted
+cross-validation</a>.</p>
+<p>Negative-binomial shape uses the same independent calibration means
+and a bounded NB2 moment equation. Accepted calibrated noise stays fixed
+during the final adaptive-ridge and relaxed passes, with its
+data-estimated parameter count retained. A common-noise
+penalized-likelihood check accepts the repair; reported IC methods keep
+their conventions, including profiled Gaussian variance. Rank,
+convergence and residual-dependence checks retain the original fit when
+calibration is unreliable. Single-channel fits keep their guarded ridge
+pilot and bounded updates. See <a href="../reference/dispersion_calibration.html">dispersion
+calibration</a> and Subroutine E for the controls and implementation
+details.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="grouped-and-special-family-updates">Grouped and special-family updates<a class="anchor" aria-label="anchor" href="#grouped-and-special-family-updates"></a>
@@ -1216,6 +1257,78 @@ solves and reports the final Pearson scale afterwards. A supplied
 positive scale stays fixed. The same final reporting update is used for
 an unpenalized or empty estimated-scale fit.</p></li>
 </ol>
+</div>
+<div class="section level4 l0-algorithm">
+<h4 id="subroutine-e-calibrate-unknown-noise-across-response-channels">Subroutine E: calibrate unknown noise across response channels<a class="anchor" aria-label="anchor" href="#subroutine-e-calibrate-unknown-noise-across-response-channels"></a>
+</h4>
+<p><strong>Input:</strong> a grouped fit, its initial noise estimates,
+family/link and original fitting specification. <strong>Output:</strong>
+a checked calibrated refit or the original fit.</p>
+<ol style="list-style-type: decimal">
+<li><p>Require at least two channels with unknown noise, automatic
+coefficient starts and ridge centers, and an ordinary GLM or
+estimated-shape NB model. Supplied dispersion values, independent
+supports, conditional nuisance fits, SIS/ISIS, preclustering and
+validation fits retain their existing estimators. The automatic rule
+also requires <span class="math inline">\min_c N_c&lt;p_{\rm
+selectable}\le10n</span>, a greater than fourfold increase from
+permissive initialization (<span class="math inline">\phi_c/\phi_c^0</span>, or <span class="math inline">\theta_c^0/\theta_c</span>, using the channel
+median), or an unsupported requested relaxed refit. Skip one-iteration
+and unpenalized fits.</p></li>
+<li><p>In automatic mode, use native efficient-score screening for
+remaining signal with fitted predictors as offsets. An unsupported
+relaxed model instead uses the original offsets. Compare the largest
+joint score to the Bonferroni <span class="math inline">\chi_m^2(1-0.05/p_{\rm selectable})</span>
+reference. This is a computational trigger; all subsequent calibration
+checks still apply. <code>TRUE</code> bypasses the width, inflation and
+score triggers; <code>FALSE</code> disables the procedure.</p></li>
+<li><p>Split channels into two balanced sets with seed 1701, restoring
+the caller’s RNG. In each direction, fit a norm-based grouped pilot to
+one set. Keep the requested numeric penalty, dimension-based row costs
+and original predictor universe; use fixed scales <span class="math inline">0.1\phi_c^0</span>. NB pilots use fixed shape <span class="math inline">\min\{10^7,10\operatorname{median}(\theta^0)\}</span>.</p></li>
+<li><p>Rank selectable rows by normalized squared coefficient energy.
+Retain mandatory terms and at most <span class="math inline">\lfloor0.7\min N_c\rfloor</span> total calibration
+columns for the opposite set. Require full selected-model rank and at
+least eight and 20% residual degrees of freedom. Refit those channels
+without an adaptive penalty, respecting their weights, offsets, link and
+constraints. Use up to 60 iterations at tolerance <span class="math inline">10^{-8}</span>. A nearly stationary unpenalized fit
+can also pass a Fisher-score check when coefficient changes reach
+floating-point precision first.</p></li>
+<li>
+<p>Compute the variance-function Pearson scale above. For NB2, solve
+within <code>theta.min</code> and <code>theta.max</code></p>
+<p><span class="math display">
+\sum_i\frac{w_{ic}(y_{ic}-\widehat\mu_{ic})^2}
+  {\widehat\mu_{ic}+\widehat\mu_{ic}^2/\theta_c}
+  =\nu_c(\theta_c).
+</span></p>
+<p>Equal case weights use <span class="math inline">\nu_c=(N_c-r_c)\bar
+w_c</span>. For unequal NB case weights use <span class="math inline">\nu_c=\sum_iw_{ic}(1-h_{ic})</span>, where <span class="math inline">h_{ic}</span> is the diagonal of the weighted
+working projection. Reject invalid scales and substantial
+standardized-residual correlation across the two channel sets. The
+dependence check uses a Bonferroni Fisher-correlation reference on at
+most 64 channels. Require a median twofold decrease in variance, or
+increase in NB shape, relative to the original fit.</p>
+</li>
+<li><p>A full-response permissive pilot supplies mature starting
+coefficients. Also retain original selected rows if the original
+requested relaxed fit was supported. Fill zero entries within these
+retained rows with a small signed row seed. Refit using the original
+family, penalty and constraints, with up to 100 iterations and the
+caller’s tolerance. Keep calibrated noise fixed during selection and
+relaxed refitting; retain its estimated-parameter flag.</p></li>
+<li><p>Require an accurate final refit and improvement in <span class="math inline">-2\ell(B;\widehat\psi)+\lambda d(B)</span>,
+evaluated for both fits at the common calibrated noise. IC presets count
+free coefficients; specified numeric predictor-group penalties use their
+stored group costs. unavailable likelihoods use scaled quasi-deviance.
+Otherwise return the original fit. Save folds, calibration supports,
+residual degrees of freedom, noise values, objectives and timing in
+<code>dispersionCalibration</code>.</p></li>
+</ol>
+<p>The final fit keeps the original public specification for
+reproducible refitting and resampling. CV runs this procedure separately
+inside every training model. Single-channel fits retain Subroutine D and
+the relaxed-refit information guard.</p>
 </div>
 </div>
 <div class="section level3">

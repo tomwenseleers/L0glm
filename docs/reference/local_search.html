@@ -103,7 +103,9 @@ Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 refits use the existing family engines; nonnegative identity-Poisson fits
 retain the native <code><a href="l0nnPois.html">l0nnPois()</a></code> backend. Free Gaussian variance is profiled for
 comparison, NB theta is re-estimated when requested, and quasi scale is held
-common across candidates. The original-dimension sparse coefficients are
+common across candidates. Successful cross-channel dispersion/shape
+calibration is held common throughout subsequent local refinement.
+The original-dimension sparse coefficients are
 returned. Candidate supports are refitted without the adaptive penalty,
 including when the initial fit used <code>relaxed=FALSE</code>. Unsupported trial refits
 are rejected. If the initial requested relaxed refit was skipped for

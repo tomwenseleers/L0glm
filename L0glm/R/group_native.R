@@ -22,7 +22,8 @@ L0glm_group_native_pass <- function(data,B,allowed,state,lambda,grouped,
     initial_eta=matrix(suppressWarnings(data$family$linkfun(data$initial.mu)),data$n,data$m),
     ids=as.integer(data$groups$id),multiplier=data$groups$multiplier,
     lambda=lambda,grouped=grouped,thresh=thresh,maxit=as.integer(maxit),tol=tol,
-    theta_tol=data$control$theta.tol,relaxed=relaxed,loglik_kind=native$loglik,auto_rowaug=auto_rowaug)
+    theta_tol=data$control$theta.tol,relaxed=relaxed,loglik_kind=native$loglik,auto_rowaug=auto_rowaug,
+    fixed_scale=isTRUE(data$fixed.dispersion))
   design <- data$Z
   if(inherits(design,'sparseMatrix'))design <- methods::as(methods::as(design,'generalMatrix'),'CsparseMatrix')
   else {design <- as.matrix(design);storage.mode(design) <- 'double'}
