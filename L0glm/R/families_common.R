@@ -171,10 +171,16 @@ L0glm_ext_ridge <- function(X, y, w, D, start, lower, prior, args) {
 
 L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
                            thresh, maxit, tol, args, relaxed = FALSE) {
+  if(relaxed && any(!L0glm_relaxed_check(data,B,allowed)))
+    return(list(B=B,allowed=allowed,state=state,iterations=0L,converged=FALSE,
+      history=data.frame(),relaxation_skipped=rep(TRUE,data$m)))
   if(data$kind=='glm' && !is.null(data$groups)) {
     native <- L0glm_group_native_pass(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
     if(!is.null(native))return(native)
   }
+  if(relaxed && data$kind=='glm' && any(!L0glm_relaxed_standard(data$Z,data$weights,allowed,state$estimated)))
+    return(list(B=B,allowed=allowed,state=state,iterations=0L,converged=FALSE,
+      history=data.frame(),relaxation_skipped=rep(TRUE,data$m)))
   converged <- FALSE
   history <- list()
   included <- data$included
@@ -336,7 +342,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
                               grouped, 0, as.integer(maxit), tol, args, TRUE)
     passes$relaxed <- result
   }
-  if (relaxed && nonnegative) {
+  if (relaxed && nonnegative && !any(result$relaxation_skipped)) {
     result <- L0glm_ext_boundary(data,result,validation)
     passes$relaxed <- result
   }

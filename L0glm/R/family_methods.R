@@ -58,6 +58,7 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     method = args$method, control.family = data$control),
     class = c("L0glm_extended_fit", "L0glm_fit"))
   if (data$kind == "multinomial") answer$coordinates <- "clr"
+  answer$relaxationSkipped <- if(is.null(result$relaxation_skipped))rep(FALSE,data$m)else result$relaxation_skipped
   if (data$kind == "cox") {
     answer$cox.cache <- data$cox.cache
     answer$initialization <- data$initialization

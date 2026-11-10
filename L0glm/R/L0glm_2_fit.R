@@ -463,6 +463,14 @@
 #'   would increase its held-out deviance. Explicit starting-value
 #'   exclusions are respected; intercepts and \code{always.include} terms remain
 #'   eligible and unpenalized. Sparse output retains the original dimensions.
+#'   A refit is skipped when its admitted coefficients exceed the available
+#'   information or its selected design is numerically rank deficient. Estimating
+#'   dispersion also requires positive residual degrees of freedom. Checks use
+#'   positive-weight observations, the multinomial zero-sum parameter space and
+#'   the Cox risk-set information, as appropriate. The penalized selection fit is
+#'   retained for unsupported refits; \code{relaxationSkipped} identifies them.
+#'   These checks assess structural information, not the existence of a finite
+#'   maximum-likelihood estimate under separation.
 #'   The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
 #'   and for grouped multinomial models with either factor or count-matrix
 #'   responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
@@ -901,6 +909,11 @@
 #' containing its stage, pass, channel, iteration count, convergence flag,
 #' number of dispersion updates and number of reactivations after a freeze.
 #' The flag records whether the iterative stopping criterion was met.}
+#' \item{\code{relaxationSkipped}}{logical vector identifying response channels
+#' whose requested relaxed refit was unsupported. Their selected penalized
+#' estimates are retained. Joint special-family passes retain the complete
+#' selection fit if any required information block is unsupported. A skipped
+#' pass has zero iterations in \code{convergence}.}
 #'
 #' @example examples/l0glmFit.R
 #' @example examples/L0glm.special-families.R
@@ -1297,6 +1310,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       group_support_start <- function(coefs) {
         support <- L0glm_group_start(coefs, nonnegative)
         support$vars <- sort(unique(c(support$vars, always.include.start)))
+        if(!grouped) support$start <- as.matrix(coefs)
         if (!is.null(allowed)) support$start[!allowed] <- 0
         support
       }
@@ -1387,7 +1401,22 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       if (relaxed) {
         disp_list <- as_list(next_dispersion(fit$dispersion))
         support <- group_support_start(fit$coefficients)
-        if (length(support$vars)) {
+        eligible <- if(is.null(allowed))matrix(TRUE,length(support$vars),m)else allowed[support$vars,,drop=FALSE]
+        if(!grouped) {
+          eligible <- eligible & as.matrix(fit$coefficients[support$vars,,drop=FALSE]!=0)
+          eligible[match(always.include.start,support$vars,nomatch=0L),] <- TRUE
+        }
+        identifiable <- rep(TRUE,m)
+        if(length(support$vars)) {
+          refit_design <- L0glm_center_working_design(X[,support$vars,drop=FALSE],
+            L0glm_subset_preprocessing(preprocessing,support$vars),lower[support$vars])$X
+          identifiable <- L0glm_relaxed_standard(refit_design,fit$weights,eligible,estimate_dispersion,
+            if(is.null(control.solver$.nuisance.df))0L else control.solver$.nuisance.df)
+        }
+        if(length(support$vars)&&any(!identifiable)) {
+          convergence[[length(convergence)+1L]] <- data.frame(stage='relaxed',pass=1L,channel=seq_len(m),
+            iterations=0L,converged=FALSE,dispersion_updates=0L,dispersion_restarts=0L)
+        }else if (length(support$vars)) {
           refit_validation <- validation
           if (!is.null(refit_validation)) refit_validation$refit_baseline <- as.matrix(fit$coefficients)
           fit <- fit_channels(support$vars, support$start, 1e-30, hard_threshold = FALSE,
@@ -1455,7 +1484,17 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     # --- relaxed - refit selected variables nearly unpenalised -------------
     if (relaxed) { 
       vars <- sort(unique(c(which(coefficients != 0), always.include.start)))
-      if (length(vars)) {
+      identifiable <- TRUE
+      if(length(vars)) {
+        refit_design <- L0glm_center_working_design(X[,vars,drop=FALSE],
+          L0glm_subset_preprocessing(preprocessing,vars),lower[vars])$X
+        identifiable <- L0glm_relaxed_standard(refit_design,weights.ret,matrix(TRUE,length(vars),1L),estimate_dispersion,
+          if(is.null(control.solver$.nuisance.df))0L else control.solver$.nuisance.df)
+      }
+      if(length(vars)&&!identifiable) {
+        convergence <- rbind(convergence,data.frame(stage='relaxed',pass=1L,channel=1L,
+          iterations=0L,converged=FALSE,dispersion_updates=0L,dispersion_restarts=0L))
+      }else if (length(vars)) {
         always.include <- match(always.include.start[always.include.start %in% vars], vars)
         refit_validation <- L0glm_subset_validation(validation, vars)
         if(!is.null(refit_validation)) refit_validation$refit_baseline <- matrix(coefficients[vars],ncol=1L)
@@ -1537,6 +1576,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     validation_info$deviance <- L0glm_validation_loss(validation, coefficients)
     result$validation <- validation_info
   }
+  result$relaxationSkipped <- vapply(seq_len(m),function(j)
+    any(convergence$stage=='relaxed' & convergence$channel==j & convergence$iterations==0L),TRUE)
   result
 }
 

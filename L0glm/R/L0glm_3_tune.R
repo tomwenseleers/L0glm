@@ -328,6 +328,9 @@
 #' terms remain eligible, and no other predictor rows can enter the refit.
 #' NB refits follow the same row-versus-entry support rule and continue updating
 #' estimated channel shapes. Cox refits selected log-relative-hazard effects.
+#' All candidates and CV training fits apply the relaxed-refit information
+#' safeguard from \code{l0glmFit()}; unsupported refits retain the penalized
+#' estimate and record \code{relaxationSkipped} in the fitted model.
 #' Refits apply inside each CV training fold, before validation scoring; full-data
 #' paths, \code{fit_best} and \code{fit_1se} contain the corresponding refitted
 #' models. Pilot initialization fits remain unrelaxed.

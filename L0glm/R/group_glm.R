@@ -133,5 +133,6 @@ L0glm_group_glm_result <- function(data,result,passes,lambda,grouped,relaxed,arg
     answer$validation <- lapply(passes,`[[`,'validation')
     answer$validation$deviance <- L0glm_validation_loss(args$validation,beta)
   }
+  answer$relaxationSkipped <- if(is.null(result$relaxation_skipped))rep(FALSE,data$m)else result$relaxation_skipped
   answer
 }

@@ -4,6 +4,10 @@
 
 * L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
   relaxed refitting on the selected support.
+  Relaxed passes check selected-model information and residual degrees of
+  freedom, retain the penalized fit when unsupported, and report
+  `relaxationSkipped` across ordinary GLM, predictor-group and special-family
+  drivers. Independent channels retain their own selected supports.
 * Standard GLM families and links, negative binomial with fixed or estimated
   shape, joint multinomial models in CLR coordinates, and Cox proportional
   hazards models with direct or matrix-free quadratic updates.

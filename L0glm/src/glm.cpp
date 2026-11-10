@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <L0glm/nuisance.h>
 #include "boundary.h"
+#include "relaxed_guard.h"
 #include <L0glm/scalar_families.h>
 #include "ridge_profile.h"
 #include "solver_native.h"

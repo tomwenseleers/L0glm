@@ -15,6 +15,7 @@
 #include "ridge_profile.h"
 #include "poisson_validation.h"
 #include "boundary.h"
+#include "relaxed_guard.h"
 
 namespace {
 
@@ -58,7 +59,8 @@ inline std::vector<int> active_positions(const VectorXd& beta,
 inline void group_support_start(const MatrixXd& coef,
                                 std::vector<int>& vars,
                                 MatrixXd& start_current,
-                                const std::vector<char>& always_include) {
+                                const std::vector<char>& always_include,
+                                bool shared = true) {
   const int p = coef.rows();
   const int m = coef.cols();
   vars.clear();
@@ -86,7 +88,7 @@ inline void group_support_start(const MatrixXd& coef,
   start_current.resize(static_cast<int>(vars.size()), m);
   for (int col = 0; col < m; ++col) {
     for (int a = 0; a < static_cast<int>(vars.size()); ++a) {
-      start_current(a, col) = starts[a];
+      start_current(a, col) = shared ? starts[a] : coef(vars[a],col);
     }
   }
 }
@@ -821,6 +823,7 @@ Rcpp::List fit_all_impl(const Design& X,
   std::vector<std::string> stages;
   std::vector<int> passes, channels, iterations;
   std::vector<bool> converged;
+  std::vector<char> skip_relaxation(m,0);
 
   auto preserve_start_mask = [&]() {
     if (has_start) for (int a = 0; a < static_cast<int>(vars.size()); ++a)
@@ -841,6 +844,13 @@ Rcpp::List fit_all_impl(const Design& X,
 #pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
 #endif
     for (int col = 0; col < m; ++col) {
+      if(!hard_threshold&&skip_relaxation[col]) {
+        FitResult& f=fits[col];f.beta.resize(q);f.lambdas.resize(q);
+        for(int a=0;a<q;++a){f.beta[a]=coef(vars[a],col);f.lambdas[a]=lambdas(vars[a],col);}
+        f.weights=weights_out.col(col);f.z=z_out.col(col);
+        if(validation)f.validation.update(*validation,validation->loss(f.beta,vars,col),(f.beta.array()!=0).count(),0);
+        continue;
+      }
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, scaling, maxit,
@@ -897,8 +907,16 @@ Rcpp::List fit_all_impl(const Design& X,
     validation_data.baseline = coef;
   }
   if (relaxed) {
-    group_support_start(coef, vars, start_current, always_include);
+    group_support_start(coef, vars, start_current, always_include, grouped);
     preserve_start_mask();
+    L0glm::RelaxedDesignGuard guard;
+    for(int col=0;col<m;++col) {
+      std::vector<int> rows,columns;
+      for(int i=0;i<n;++i)if(prior_weights(i,prior_weights.cols()==1?0:col)>0)rows.push_back(i);
+      for(int j:vars)if((grouped||coef(j,col)!=0||always_include[j])&&
+        (!has_start||always_include[j]||start_full(j,col)!=0))columns.push_back(j);
+      skip_relaxation[col]=!guard.check(X,rows,columns);
+    }
     if (!vars.empty()) {
       fit_for_vars(1e-30, &start_current, false, 1);
     }
@@ -911,6 +929,7 @@ Rcpp::List fit_all_impl(const Design& X,
 #pragma omp parallel for schedule(dynamic) num_threads(threads) if(threads > 1 && m > 1)
 #endif
     for (int col = 0; col < m; ++col) {
+      if(skip_relaxation[col])continue;
       VectorXd beta = coef.col(col), previous = beta, eta = Offset.col(Offset.cols()==1?0:col);
       for (int j : vars) if (beta[j] != 0.0)
         L0glm::boundary_column(X,j,[&](int i,double x) { eta[i] += x*beta[j]; });
@@ -938,10 +957,12 @@ Rcpp::List fit_all_impl(const Design& X,
     }
   }
   Rcpp::NumericVector dispersion(m, 1.0);
+  Rcpp::LogicalVector skipped(m);for(int k=0;k<m;++k)skipped[k]=skip_relaxation[k];
   Rcpp::List result = Rcpp::List::create(
     Rcpp::Named("coefficients") = coef,
     Rcpp::Named("weights") = weights_out,
     Rcpp::Named("dispersion") = dispersion,
+    Rcpp::Named("relaxation_skipped") = skipped,
     Rcpp::Named("lambdas") = lambdas,
     Rcpp::Named("z") = z_out,
     Rcpp::Named("convergence") = Rcpp::DataFrame::create(

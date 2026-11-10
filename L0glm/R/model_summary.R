@@ -50,6 +50,8 @@
 #' the stored fitting scale; the profiled Gaussian likelihood scale can differ,
 #' as described in [model_criteria]. NB summaries also retain theta and its
 #' estimation flag. Cox and multinomial do not display an ordinary dispersion.
+#' Unsupported relaxed passes are counted as skipped, and
+#' \code{relaxationSkipped} retains the response-channel flags.
 #'
 #' Comparison summaries retain the complete metrics table, including timings,
 #' tuning metadata and explanatory notes for unavailable or failed methods.
@@ -175,6 +177,7 @@ L0glm_model_info <- function(object) {
     nonzero=sum(beta != 0) - sum(beta[mandatory, , drop=FALSE] != 0),
     lambda=object$init.lambda, grouped=object$grouped, screening=object$screening,
     local.search=object$local.search,
+    relaxationSkipped=object$relaxationSkipped,
     convergence=L0glm_summary_convergence(object$convergence))
 }
 
@@ -185,10 +188,14 @@ L0glm_summary_convergence <- function(convergence) {
   last <- !duplicated(convergence[c("stage", "channel")], fromLast=TRUE)
   stages <- factor(convergence$stage[last], levels=unique(convergence$stage))
   rows <- split(convergence[last, , drop=FALSE], stages, drop=TRUE)
-  do.call(rbind, lapply(rows, function(data) data.frame(stage=data$stage[1L],
+  do.call(rbind, lapply(rows, function(data) {
+    skipped <- data$stage=='relaxed' & data$iterations==0L & !is.na(data$iterations)
+    data.frame(stage=data$stage[1L],
     channels=nrow(data), converged=sum(data$converged %in% TRUE),
-    not_converged=sum(data$converged %in% FALSE), unavailable=sum(is.na(data$converged)),
-    max_iterations=if (any(is.finite(data$iterations))) max(data$iterations, na.rm=TRUE) else NA_real_)))
+    not_converged=sum(data$converged %in% FALSE & !skipped), skipped=sum(skipped),
+    unavailable=sum(is.na(data$converged)),
+    max_iterations=if (any(is.finite(data$iterations))) max(data$iterations, na.rm=TRUE) else NA_real_)
+  }))
 }
 
 L0glm_print_model_info <- function(x, digits) {
@@ -199,6 +206,8 @@ L0glm_print_model_info <- function(x, digits) {
   if (length(x$lambda) && !all(is.na(x$lambda)))
     cat("Lambda:", paste(format(x$lambda, digits=digits), collapse=", "), "\n")
   if (x$m > 1L && !is.null(x$grouped)) cat("Grouped selection:", x$grouped, "\n")
+  if(any(x$relaxationSkipped))
+    cat('Relaxed refit skipped: selected estimates retained in',sum(x$relaxationSkipped),'channel(s)\n')
   if (isTRUE(x$local.search$applied))
     cat(sprintf("Local search: %d accepted steps   %d candidate refits   %.3g s\n",
       nrow(x$local.search$history)-1L,x$local.search$evaluations,x$local.search$seconds))

@@ -337,6 +337,14 @@ remain unrestricted. A validation checkpoint is retained if polishing
 would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and \code{always.include} terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
+A refit is skipped when its admitted coefficients exceed the available
+information or its selected design is numerically rank deficient. Estimating
+dispersion also requires positive residual degrees of freedom. Checks use
+positive-weight observations, the multinomial zero-sum parameter space and
+the Cox risk-set information, as appropriate. The penalized selection fit is
+retained for unsupported refits; \code{relaxationSkipped} identifies them.
+These checks assess structural information, not the existence of a finite
+maximum-likelihood estimate under separation.
 The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
 and for grouped multinomial models with either factor or count-matrix
 responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
@@ -495,7 +503,9 @@ inside each CV training fit. Limits are checked before forming products.}
 An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:
   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
-  retained separately from the working weights for scoring. Methods
+  retained separately from the working weights for scoring.
+  The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+  for which the penalized selection estimates are retained. Methods
   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
   \code{print()} and \code{summary()} provide compact model displays;

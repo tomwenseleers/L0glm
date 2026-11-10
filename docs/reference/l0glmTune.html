@@ -586,6 +586,9 @@ zero. Both preserve zero-sum rows: \(s\) admitted category entries give
 terms remain eligible, and no other predictor rows can enter the refit.
 NB refits follow the same row-versus-entry support rule and continue updating
 estimated channel shapes. Cox refits selected log-relative-hazard effects.
+All candidates and CV training fits apply the relaxed-refit information
+safeguard from <code><a href="l0glmFit.html">l0glmFit()</a></code>; unsupported refits retain the penalized
+estimate and record <code>relaxationSkipped</code> in the fitted model.
 Refits apply inside each CV training fold, before validation scoring; full-data
 paths, <code>fit_best</code> and <code>fit_1se</code> contain the corresponding refitted
 models. Pilot initialization fits remain unrelaxed.

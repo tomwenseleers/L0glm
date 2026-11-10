@@ -381,6 +381,14 @@ remain unrestricted. A validation checkpoint is retained if polishing
 would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and \code{always.include} terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
+A refit is skipped when its admitted coefficients exceed the available
+information or its selected design is numerically rank deficient. Estimating
+dispersion also requires positive residual degrees of freedom. Checks use
+positive-weight observations, the multinomial zero-sum parameter space and
+the Cox risk-set information, as appropriate. The penalized selection fit is
+retained for unsupported refits; \code{relaxationSkipped} identifies them.
+These checks assess structural information, not the existence of a finite
+maximum-likelihood estimate under separation.
 The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
 and for grouped multinomial models with either factor or count-matrix
 responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
@@ -657,6 +665,11 @@ Coefficients are already on the original input scale.}
 containing its stage, pass, channel, iteration count, convergence flag,
 number of dispersion updates and number of reactivations after a freeze.
 The flag records whether the iterative stopping criterion was met.}
+\item{\code{relaxationSkipped}}{logical vector identifying response channels
+whose requested relaxed refit was unsupported. Their selected penalized
+estimates are retained. Joint special-family passes retain the complete
+selection fit if any required information block is unsupported. A skipped
+pass has zero iterations in \code{convergence}.}
 }
 \description{
 Fits a generalized linear model with an \eqn{L_0} penalty or,

@@ -113,15 +113,17 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
  const std::vector<double>& probes,int nthreads,int max_passes,bool relaxed,bool nonnegative,
  const SolverControl& control,SEXP executor=R_NilValue) {
  const int p=X.cols(),m=contexts.size(),n=X.rows();
+ const bool grouped=as<bool>(as<List>(contexts[0])["grouped"]);
  std::vector<State> states=load_states(X,contexts);
  std::vector<std::vector<char>> fixed_allowed(m);std::vector<VectorXd> initial_eta(m),initial_mu(m);
  for(int j=0;j<m;++j){fixed_allowed[j]=states[j].allowed;initial_eta[j]=states[j].eta;initial_mu[j]=states[j].mu;center_prior(states[j]);}
  std::vector<char> active(p,0),last_active(p,0);
  for(int j=0;j<p;++j)for(const auto& s:states)active[j]=active[j]||s.allowed[j]||s.included[j];
  std::vector<PassRecord> history;std::vector<std::string> errors(m);
+ std::vector<char> skip_relaxation(m,0);
  int failed_steps=0,failed_solves=0,inexact_solves=0,solver_fallbacks=0;
  MatrixXd original=MatrixXd::Zero(p,m);
- auto pool=[&]() {
+ auto pool=[&](bool refit=false) {
   for(int k=0;k<m;++k)original.col(k)=original_coefficients(states[k]);
   std::vector<double> seeds(p,0);
   #ifdef _OPENMP
@@ -140,7 +142,10 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
   }
   for(int k=0;k<m;++k) {
    State& s=states[k];s.beta.setZero();
-   for(int j=0;j<p;++j){s.allowed[j]=active[j]&&fixed_allowed[k][j];if(s.allowed[j]||s.included[j])s.beta[j]=seeds[j];}
+   for(int j=0;j<p;++j) {
+    s.allowed[j]=(refit&&!grouped?original(j,k)!=0||s.included[j]:active[j])&&fixed_allowed[k][j];
+    if(s.allowed[j]||s.included[j])s.beta[j]=refit&&!grouped?original(j,k):seeds[j];
+   }
    if(s.center_intercept>=0) {
     long double shift=0;for(int j=0;j<p;++j)shift+=s.center_shift[j]*s.beta[j];
     s.beta[s.center_intercept]+=(double)shift;
@@ -152,24 +157,29 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
   last_active=active;
    for(int k=0;k<m;++k) {
    State& s=states[k];
+   if(refit&&skip_relaxation[k])continue;
    s.eta=initial_eta[k];s.mu=initial_mu[k];s.hard=!refit;s.lambda=refit?1e-30:s.selection_lambda;
    s.stable=s.iterations=s.updates=s.restarts=0;
     s.converged=s.failed=s.solver_failed=false;s.frozen=!s.estimate;s.old_prediction.resize(0);
     s.solver_inexact=s.solver_fallbacks=0;
    }
    if(executor!=R_NilValue) {
-     List jobs(m);for(int k=0;k<m;++k)jobs[k]=pass_context(states[k],contexts[k]);
-     Function execute(executor);List results=execute(jobs);
-     for(int k=0;k<m;++k)read_pass(states[k],results[k]);
+     std::vector<int> keep;for(int k=0;k<m;++k)if(!refit||!skip_relaxation[k])keep.push_back(k);
+     if(!keep.empty()) {
+      List jobs(keep.size());for(int j=0;j<(int)keep.size();++j)jobs[j]=pass_context(states[keep[j]],contexts[keep[j]]);
+      Function execute(executor);List results=execute(jobs);
+      for(int j=0;j<(int)keep.size();++j)read_pass(states[keep[j]],results[j]);
+     }
    }else {
      #ifdef _OPENMP
      #pragma omp parallel for schedule(dynamic,1) num_threads(nthreads) if(nthreads>1)
      #endif
-     for(int k=0;k<m;++k)try {prepare_state(X,states[k],family,probes);}
+     for(int k=0;k<m;++k)try {if(!refit||!skip_relaxation[k])prepare_state(X,states[k],family,probes);}
        catch(const std::exception& e){errors[k]=e.what();}
      for(const auto& e:errors)if(!e.empty())stop(e);
      prefill_shared_gram(X,states,family);
      auto solve_channel=[&](int k) {
+       if(refit&&skip_relaxation[k])return;
        try {fit(X,states[k],family,control);final_state(X,states[k],family);}
        catch(const std::exception& e){errors[k]=e.what();}
      };
@@ -183,7 +193,9 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
      for(const auto& e:errors)if(!e.empty())stop(e);
    }
   for(int k=0;k<m;++k) {
-   const auto& s=states[k];history.push_back({pass,k+1,s.iterations,s.updates,s.restarts,refit,s.converged});
+   const auto& s=states[k];
+   if(refit&&skip_relaxation[k]){history.push_back({pass,k+1,0,0,0,true,false});continue;}
+   history.push_back({pass,k+1,s.iterations,s.updates,s.restarts,refit,s.converged});
     failed_steps+=s.failed;failed_solves+=s.solver_failed;
     inexact_solves+=s.solver_inexact;solver_fallbacks+=s.solver_fallbacks;
   }
@@ -194,7 +206,17 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
   run(pass,false);
  }
  if(relaxed) {
-  pool();if(std::any_of(active.begin(),active.end(),[](char x){return x;}))run(1,true);
+  std::vector<char> rows(p,0);for(int j=0;j<p;++j)for(const auto& s:states)rows[j]=rows[j]||s.beta[j]!=0||s.included[j];
+  L0glm::RelaxedDesignGuard guard;std::vector<std::unique_ptr<State>> retained(m);
+  for(int k=0;k<m;++k) {
+   const auto& s=states[k];std::vector<int> observations,columns;
+   for(int i=0;i<n;++i)if(s.w[i]>0&&s.Wret[i]>0&&std::isfinite(s.Wret[i]))observations.push_back(i);
+   for(int j=0;j<p;++j)if((grouped?rows[j]:s.beta[j]!=0||s.included[j])&&(fixed_allowed[k][j]||s.included[j]))columns.push_back(j);
+   skip_relaxation[k]=(s.estimate&&columns.size()+s.offset_df>=observations.size())||!guard.check(X,observations,columns);
+   if(skip_relaxation[k])retained[k]=std::make_unique<State>(s);
+  }
+  pool(true);for(int k=0;k<m;++k)if(retained[k])states[k]=std::move(*retained[k]);
+  if(std::any_of(active.begin(),active.end(),[](char x){return x;}))run(1,true);
  }
  MatrixXd coefficients(p,m),penalties=MatrixXd::Zero(p,m),weights(n,m),z(n,m);NumericVector dispersion(m);
  for(int k=0;k<m;++k) {
@@ -202,7 +224,8 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
   dispersion[k]=states[k].phi;
   for(int j=0;j<p;++j)if(last_active[j])penalties(j,k)=states[k].lambdas[j];
  }
- return List::create(_["coefficients"]=coefficients,_["lambdas"]=penalties,_["weights"]=weights,
+ LogicalVector skipped(m);for(int k=0;k<m;++k)skipped[k]=skip_relaxation[k];
+ return List::create(_["coefficients"]=coefficients,_["lambdas"]=penalties,_["weights"]=weights,_["relaxation_skipped"]=skipped,
   _["z"]=z,_["dispersion"]=dispersion,_["convergence"]=pass_frame(history),
   _["native_stats"]=List::create(_["failed_steps"]=failed_steps,_["failed_solves"]=failed_solves,
      _["inexact_solves"]=inexact_solves,_["solver_fallbacks"]=solver_fallbacks));

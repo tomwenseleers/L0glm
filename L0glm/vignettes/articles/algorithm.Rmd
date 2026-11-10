@@ -495,6 +495,15 @@ excluded from that selection pass. This shrinking active set saves substantial
 work. Final relaxed refitting applies no hard cutoff. Explicit zero starts
 restrict eligible coefficients in advance, with mandatory terms retained.
 
+Before removing the penalty, the relaxed pass checks whether its admitted
+coefficients have sufficient structural information. The selected design must
+have full numerical column rank on positive-weight observations; an estimated
+dispersion also needs positive residual degrees of freedom. Multinomial checks
+use the admitted CLR contrast space, and Cox checks use risk-set information.
+An unsupported pass retains the penalized selection estimate and records
+`relaxationSkipped`. Independent channels use their own selected supports;
+grouped refits use eligible coefficients in the selected row union.
+
 Default initialization is training-based. Estimated dispersions use a permissive
 ridge pilot and bounded updates, with inexpensive random-sign probes to guard
 against an almost-interpolating pilot. Positive supplied dispersions are held
@@ -1147,10 +1156,12 @@ matrix on the original scale.
    value, allowing further optimization from the previous estimate. A fixed
    channel dispersion stays positive. Validation can stop these passes and
    restore their best checkpoint.
-6. For a relaxed refit, pool the retained rows once more and refit eligible
-   entries using \(\lambda=10^{-30}\), with thresholding disabled. Without
-   grouped selection, the one-pass row union is used for this refit as well;
-   originally excluded starting entries remain excluded. Return all \(q\) rows.
+6. For a relaxed refit, check selected-design rank and, for estimated
+   dispersion, positive residual degrees of freedom. Retain unsupported
+   channels' penalized estimates. Otherwise refit eligible entries using
+   \(\lambda=10^{-30}\), with thresholding disabled. Grouped selection pools
+   the retained rows once more; independent channels keep their own support.
+   Originally excluded starting entries remain excluded. Return all \(q\) rows.
 :::
 
 The common rows and pooled starts couple the ordinary channel fits. Each inner
@@ -1214,6 +1225,8 @@ at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
 6. For `relaxed=TRUE`, set \(\lambda=0\), disable thresholding and refit.
    Grouped refits admit eligible entries in selected rows; ungrouped refits
    retain selected entries. Estimated shapes continue updating in the refit.
+   Retain the selection fit if its admitted design is rank deficient or leaves
+   no residual degrees of freedom for estimating shape.
 :::
 
 **Log-shape step.** For one channel let \(a=\log\theta\), and write
@@ -1318,6 +1331,8 @@ class-symmetric CLR coordinates.
    Algorithm 3, or the iteration/validation limits. For a relaxed grouped fit,
    refit all originally eligible categories within retained rows with
    \(\lambda=0\). An ungrouped refit keeps only selected CLR entries.
+   Check rank in this admitted zero-sum space before refitting; retain the
+   selection fit if the information is deficient.
    No hard cutoff is applied during the refit. Return full-size CLR coefficients
    and category probabilities.
 :::
@@ -1398,7 +1413,8 @@ V_\eta=\operatorname{diag}(q)-\operatorname{diag}(e)\,C\,\operatorname{diag}(e),
 6. Apply special-family backtracking and scalar thresholding. Stop using the
    special-family convergence measure, iteration limit or validation rule.
    For `relaxed=TRUE`, repeat on selected terms with \(\lambda=0\) and no
-   thresholding. Return the full coefficient vector; estimate baseline
+   thresholding, provided the risk-set information has full selected rank.
+   Otherwise retain the selection fit. Return the full coefficient vector; estimate baseline
    cumulative hazard by \(\widehat H_0(t)=\sum_{r:t_r\le t}d_r/S_r\).
 :::
 

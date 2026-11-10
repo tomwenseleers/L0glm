@@ -296,7 +296,7 @@ L0glm_group_fit <- function(args) {
       as.integer(args$maxit),args$tol,options,TRUE)
     passes$relaxed <- result
   }
-  if(args$relaxed && args$nonnegative) {
+  if(args$relaxed && args$nonnegative && !any(result$relaxation_skipped)) {
     result <- L0glm_ext_boundary(data,result,options$validation)
     passes$relaxed <- result
   }

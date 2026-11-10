@@ -145,6 +145,7 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
     env <- do.call(L0glm.fit.internal,args)
     if(is.null(solver_control))solver_control <- env$control.solver
     a <- L0glm_native_context(env,family)
+    a$grouped <- take('grouped')
     a$allowed <- if(is.null(allowed))rep(TRUE,p)else as.logical(allowed[,col])
     a$center_shift <- as.numeric(env$centered$shift)
     a$center_intercept <- if(length(env$centered$intercept)) as.integer(env$centered$intercept[1L]-1L) else -1L

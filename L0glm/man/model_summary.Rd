@@ -109,6 +109,8 @@ Missing backend diagnostics remain unavailable. The printed dispersion is
 the stored fitting scale; the profiled Gaussian likelihood scale can differ,
 as described in \link{model_criteria}. NB summaries also retain theta and its
 estimation flag. Cox and multinomial do not display an ordinary dispersion.
+Unsupported relaxed passes are counted as skipped, and
+\code{relaxationSkipped} retains the response-channel flags.
 
 Comparison summaries retain the complete metrics table, including timings,
 tuning metadata and explanatory notes for unavailable or failed methods.

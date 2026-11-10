@@ -489,6 +489,14 @@ remain unrestricted. A validation checkpoint is retained if polishing
 would increase its held-out deviance. Explicit starting-value
 exclusions are respected; intercepts and <code>always.include</code> terms remain
 eligible and unpenalized. Sparse output retains the original dimensions.
+A refit is skipped when its admitted coefficients exceed the available
+information or its selected design is numerically rank deficient. Estimating
+dispersion also requires positive residual degrees of freedom. Checks use
+positive-weight observations, the multinomial zero-sum parameter space and
+the Cox risk-set information, as appropriate. The penalized selection fit is
+retained for unsupported refits; <code>relaxationSkipped</code> identifies them.
+These checks assess structural information, not the existence of a finite
+maximum-likelihood estimate under separation.
 The default is <code>TRUE</code> for grouped multichannel ordinary GLMs and NB,
 and for grouped multinomial models with either factor or count-matrix
 responses. It is <code>FALSE</code> for Cox, ungrouped fits and other single-channel
@@ -673,7 +681,9 @@ inside each CV training fit. Limits are checked before forming products.</p></dd
     <p>An object of class <code>L0glm_fit</code>, with the same main components as [l0glmFit()]:
   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
-  retained separately from the working weights for scoring. Methods
+  retained separately from the working weights for scoring.
+  The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+  for which the penalized selection estimates are retained. Methods
   <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code>, <code><a href="model_criteria.html">GIC()</a></code>,
   <code><a href="model_criteria.html">EBIC()</a></code> and <code><a href="model_criteria.html">MBIC()</a></code> are available; see <a href="model_criteria.html">model_criteria</a>.
   <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> provide compact model displays;

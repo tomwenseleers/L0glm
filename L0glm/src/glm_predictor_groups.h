@@ -116,6 +116,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
  Shield<SEXP> protected_cache(cache_pointer);XPtr<GroupCache> ptr(cache_pointer);cache=ptr.get();
  if((int)cache->channels.size()!=m)cache->channels.resize(m);
  std::vector<State> states(m);std::vector<std::string> errors(m);
+ std::vector<char> relaxation_skipped(m,0);
  for(int k=0;k<m;++k) {
   State& s=states[k];s.y=Y.col(k);s.w=weights.col(weights.cols()==1?0:k);
   s.offset=offset.col(offset.cols()==1?0:k);s.prior=prior.col(k);s.lower=lower;
@@ -123,6 +124,22 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
   s.npositive=(s.w.array()>0).count();s.phi=phi[k];
  }
  MatrixXd eta=group_predictions(X,B,states,nthreads);
+ if(relaxed) {
+  L0glm::RelaxedDesignGuard guard;
+  for(int k=0;k<m;++k) {
+   std::vector<int> rows,columns;
+   for(int i=0;i<n;++i)if(states[k].w[i]>0)rows.push_back(i);
+   for(int j=0;j<p;++j)if(allowed(j,k))columns.push_back(j);
+   relaxation_skipped[k]=(estimated[k]&&columns.size()>=rows.size())||!guard.check(X,rows,columns);
+  }
+  if(std::all_of(relaxation_skipped.begin(),relaxation_skipped.end(),[](char v){return v;})) {
+   return List::create(_["B"]=B,_["allowed"]=allowed,
+    _["state"]=List::create(_["phi"]=phi,_["estimated"]=estimated,_["stable"]=stable),
+    _["iterations"]=0,_["converged"]=false,_["history"]=DataFrame::create(),
+    _["relaxation_skipped"]=LogicalVector(m,true),_["cache"]=cache_pointer,
+    _["failed_iteration"]=0,_["failed_solves"]=0,_["inexact_solves"]=0,_["solver_fallbacks"]=0);
+  }
+ }
  std::vector<double> h_ll,h_change,h_noise;std::vector<int> h_selected,h_halvings;
  bool converged=false;int iteration=0,failed_iteration=0,failed_solves=0,inexact=0,fallbacks=0;
  auto loglik=[&](const MatrixXd& e) {
@@ -156,7 +173,8 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
     }
     std::vector<int> active;for(int j=0;j<p;++j)if(std::isfinite(s.lambdas[j]))active.push_back(j);
     VectorXd value=VectorXd::Zero(p);
-    if(!active.empty()) {
+    if(relaxed&&relaxation_skipped[k])value=B.col(k);
+    else if(!active.empty()) {
      SolverControl channel_control=control;
      if(auto_rowaug)channel_control.rowaug=group_rowaug(X,s,active);
      const bool cached=f.kind==0&&f.link==0&&!control.external()&&control.method==0&&control.pivot==0&&
@@ -224,6 +242,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
   }
   double nuisance=0;
   for(int k=0;k<m;++k)if(estimated[k]) {
+   if(relaxed&&relaxation_skipped[k])continue;
    bool support_changed=false;int selected=0;
    for(int j=0;j<p;++j){support_changed=support_changed||((candidate(j,k)!=0)!=(B(j,k)!=0));selected+=allowed(j,k);}
    if(support_changed)stable[k]=0;
@@ -267,11 +286,12 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
  }
  for(int k=0;k<m;++k){phi[k]=states[k].phi;failed_solves+=states[k].solver_failed;inexact+=states[k].solver_inexact;fallbacks+=states[k].solver_fallbacks;}
  IntegerVector iters(h_ll.size());for(int i=0;i<iters.size();++i)iters[i]=i+1;
+ LogicalVector skipped(m);for(int k=0;k<m;++k)skipped[k]=relaxation_skipped[k];
  return List::create(_["B"]=B,_["allowed"]=allowed,_["state"]=List::create(_["phi"]=phi,
    _["estimated"]=estimated,_["stable"]=stable),_["iterations"]=std::min(iteration,maxit),_["converged"]=converged,
    _["history"]=DataFrame::create(_["iteration"]=iters,_["loglik"]=h_ll,_["selected"]=h_selected,
      _["step_halvings"]=h_halvings,_["coefficient_change"]=h_change,_["nuisance_change"]=h_noise),
-   _["cache"]=cache_pointer,_["failed_iteration"]=failed_iteration,_["failed_solves"]=failed_solves,
+   _["relaxation_skipped"]=skipped,_["cache"]=cache_pointer,_["failed_iteration"]=failed_iteration,_["failed_solves"]=failed_solves,
    _["inexact_solves"]=inexact,_["solver_fallbacks"]=fallbacks);
 }
 #endif

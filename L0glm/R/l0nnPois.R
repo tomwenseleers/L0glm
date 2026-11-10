@@ -55,7 +55,9 @@
 #' @return An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
 #'   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
-#'   retained separately from the working weights for scoring. Methods
+#'   retained separately from the working weights for scoring.
+#'   The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+#'   for which the penalized selection estimates are retained. Methods
 #'   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
 #'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
 #'   \code{print()} and \code{summary()} provide compact model displays;
@@ -372,6 +374,7 @@ l0nnPois <- function(X,
     result$validation <- fit$validation
     result$validation$deviance <- L0glm_validation_loss(validation, coefficients)
   }
+  result$relaxationSkipped <- fit$relaxation_skipped
   result
 }
 
