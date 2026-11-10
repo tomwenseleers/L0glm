@@ -63,15 +63,12 @@ not the effective degrees of freedom of a ridge smoother. Nonzero
 coefficients and all mandatory coefficient dimensions are counted, along
 with one nuisance parameter for each estimated dispersion or NB theta.
 Known dispersions and fixed NB theta do not add a nuisance parameter.
-Gaussian estimated dispersion is profiled as weighted RSS divided by the
-number of positive-weight observations in each channel. Estimated Gamma
-and inverse-Gaussian dispersion use the same deviance-based
-\code{family$aic} convention as the existing package metrics, which need
-not equal the jointly maximized likelihood. For quasipoisson, the Poisson
-log-likelihood kernel is divided by the fitted dispersion. The regular
-criterion names report the corresponding quasi-information criteria;
-\code{logLik()} marks the value with \code{quasi=TRUE}. Use a common dispersion when
-comparing candidate models. Quasibinomial likelihood criteria are unavailable.
+The likelihood uses the dispersion or negative-binomial shape returned
+by the fitter. For quasipoisson, the Poisson log-likelihood kernel is
+divided by the fitted dispersion. The regular criterion names report
+quasi-information criteria and \code{logLik()} sets \code{quasi=TRUE}. Use a common
+dispersion when comparing quasi-Poisson candidates. Quasibinomial
+likelihood criteria are unavailable.
 
 Multinomial grouped selection counts \eqn{K-1} parameters per active row
 for \eqn{K} categories. Ungrouped CLR selection counts nonzero entries

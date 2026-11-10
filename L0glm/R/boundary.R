@@ -93,5 +93,9 @@ L0glm_ext_boundary <- function(data, result, validation=NULL) {
     new <- L0glm_validation_loss(validation,L0glm_ext_original_coefficients(data,result$B),state=result$state)
     if (!is.finite(new) || new>old) result$B <- before
   }
+  if(!identical(before,result$B)) {
+    if(data$kind=='nb')result$state <- L0glm_nb_scale_step(data,result$B,before,result$state,3L,TRUE)
+    else if(data$kind=='glm')result$state <- L0glm_group_scale_update(data,result$B,before,result$state,3L,TRUE)
+  }
   result
 }

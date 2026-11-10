@@ -28,7 +28,7 @@ L0glm_local_phi <- function(model,d) {
   if(!is.null(d$kind)) return(rep(1,d$m))
   phi <- rep_len(abs(model$dispersion),d$m)
   if(length(d$common.phi)) return(d$common.phi)
-  if(d$family$family=="gaussian" && any(d$estimated)) {
+  if(!isTRUE(d$family$consistent.scale) && d$family$family=="gaussian" && any(d$estimated)) {
     prediction<-matrix(d$family$linkinv(L0glm_local_eta(as.matrix(coef(model)),d)),d$n,d$m)
     residual <- d$Y-prediction
     phi[d$estimated] <- colSums(d$W*residual^2)[d$estimated]/colSums(d$W>0)[d$estimated]
@@ -243,7 +243,8 @@ L0glm_local_refine <- function(fit,args,control=list()) {
   if(any(B[!allowed]!=0)) stop("Initial fit violates an explicit starting mask.")
   estimated <- if(is.null(kind)) rep_len(fit$dispersion.estimated,m) else rep(FALSE,m)
   quasi <- startsWith(family$family,"quasi")
-  calibrated <- isTRUE(fit$dispersionCalibration$applied)
+  calibrated <- identical(fit$dispersionCalibration$method,"cross-channel") &&
+    isTRUE(fit$dispersionCalibration$applied)
   W <- L0glm_ext_matrix(if(is.null(kind))fit$prior.weights else fit$weights,n,
     if(!is.null(kind) && kind%in%c("cox","multinomial"))1L else m,1,"weights")
   O <- L0glm_ext_matrix(fit$offset,n,m,0,"offset")

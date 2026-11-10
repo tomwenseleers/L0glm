@@ -2,80 +2,61 @@
 % Please edit documentation in R/dispersion_calibration.R
 \name{dispersion_calibration}
 \alias{dispersion_calibration}
-\title{Cross-channel calibration of unknown dispersion}
-\value{
-Applicable fits include \code{dispersionCalibration}, with \code{applied}, a
-fallback \code{reason}, or calibrated values, channel folds, calibration supports,
-residual degrees of freedom, timings and common-noise objective comparisons.
-\code{initialDispersion} and \code{initialTheta} record initialization values for the
-ordinary and NB drivers, respectively.
-}
+\title{Dispersion updates and starting values}
 \description{
-Grouped multichannel models can use independent response channels to calibrate
-unknown noise levels before a final adaptive-ridge fit. This supplements the
-inexpensive ridge-pilot and bounded Pearson updates in \code{\link[=l0glmFit]{l0glmFit()}}.
+\code{\link[=l0glmFit]{l0glmFit()}} estimates ordinary GLM dispersion and negative-binomial
+shape within the fit. Available information criteria use the returned
+noise parameter and count each fitted coefficient and estimated noise
+parameter.
 }
 \details{
-\code{control.family=list(dispersion.calibration="auto")} is the default. It checks
-models with more selectable columns than positive-weight observations and at
-most ten times as many columns as observations. Calibration requires at least
-two grouped response channels with unknown noise parameters, automatic starts
-and zero ridge centers. A fourfold increase relative to the permissive initial
-scale, or an unsupported requested relaxed refit, triggers a residual-score
-check for remaining shared signal. \code{FALSE} disables calibration. \code{TRUE}
-bypasses the width and trigger checks, while retaining the reliability checks.
-Supplied positive or negative dispersions, starts and ridge centers are
-respected. Screening, preclustering, validation and conditional nuisance fits
-retain their existing estimators. Fixed-scale families require no calibration.
+For an ordinary GLM with variance function \eqn{V} and weights \eqn{w}, the Pearson
+target for \eqn{\phi} is
+\deqn{\frac{1}{N-k}\sum_{i:w_i>0}\frac{w_i(y_i-\mu_i)^2}{V(\mu_i)}.}
+Here \eqn{N} counts observations with positive weight and \eqn{k} counts
+the fitted coefficient coordinates, including compulsory terms. Negative
+binomial with variance \eqn{\mu+\mu^2/\theta} solves the corresponding
+weighted Pearson equation with target \eqn{\bar w(N-k)}. Its left hand
+side increases with \eqn{\theta}, so the solver uses a bounded scalar root.
+Fixed dispersion or shape values stay fixed.
 
-Channels are reproducibly split into two balanced sets, preserving the caller's
-RNG. A permissive, norm-based grouped pilot in one set ranks predictors for
-unpenalized refitting in the other set. Each calibration model retains at most
-70\% of its positive-weight observations in coefficient dimensions, including
-mandatory terms. It must retain at least eight and 20\% residual degrees of
-freedom. The original family, link, weights, offsets and coefficient constraints
-are used. The family variance function gives
-\deqn{\widehat\phi_c=\frac{\sum_{i:w_{ic}>0}w_{ic}
-(y_{ic}-\widehat\mu_{ic})^2/V(\widehat\mu_{ic})}{N_c-r_c}.}
-Here \eqn{r_c} is the calibration model's coefficient dimension. For Gaussian
-identity models with independent channel errors, selection on other channels
-avoids selection on the target channel's noise. If the selected span contains
-its mean, this is the usual unbiased residual-variance estimate. Omitted signal
-biases the estimate upward. For other GLMs the same argument applies to the
-local working model; the Pearson calculation is an approximation.
+During adaptive-ridge selection the updates begin at iteration three
+once \eqn{k < 0.7N}. A step can change the noise parameter by a factor
+between one half and two. Three successive changes within one percent
+of the target pause the updates until the support changes. A relaxed
+pass uses the full Pearson target with positive residual degrees of
+freedom. These are residual moment estimates. The coefficient step and
+noise step need not maximize the joint likelihood.
 
-Estimated negative-binomial shape uses a bounded NB2 moment equation,
-\deqn{\sum_i\frac{w_{ic}(y_{ic}-\widehat\mu_{ic})^2}
-{\widehat\mu_{ic}+\widehat\mu_{ic}^2/\theta_c}=\nu_c(\theta_c).}
-Unit case weights give \eqn{\nu_c=N_c-r_c}. Unequal NB case weights use
-\eqn{\nu_c=\sum_i w_{ic}(1-h_{ic})}, where \eqn{h_{ic}} is the diagonal
-of the weighted working-model projection. This accounts for the power-
-likelihood interpretation of NB weights. Shape bounds follow \code{theta.min}
-and \code{theta.max} in \code{control.family}.
+The default \code{control.family=list(dispersion.calibration="auto")}
+enables the following starting values. Set the entry to \code{FALSE}
+to use the ordinary initializers. \code{TRUE} enables the same eligible
+pilots as \code{"auto"}. The Pearson updates run with either choice.
+\itemize{
+\item Signed, grouped Gaussian identity-link fits with multiple channels and
+between \eqn{n+1} and \eqn{10n} selectable predictors use five
+adaptive-ridge steps with shared row norms. The last local ridge
+smoother supplies a residual scale for each channel. The subsequent
+fit uses the BIC preset if \code{lambda} was omitted. The pilot
+needs an in-memory unscreened fit, at least five allowed iterations
+and automatic starts and dispersions. It leaves explicit group
+specifications to the predictor-group interface.
+\item A five-step Poisson fit with the same link supplies starting values for
+automatic negative-binomial log-link fits. For direct nonnegative
+identity-link fits it supplies only the starting shape. A fixed or
+non-default starting shape, supplied coefficients or prior means,
+or preclustering uses the ordinary initializer.
+}
 
-Rank-deficient or inaccurate calibration fits, invalid scales and substantial
-residual dependence across channel sets retain the original fit. A repair
-requires at least a twofold reduction in estimated variance (or increase in NB
-shape) and an acceptable final refit. A full-response pilot supplies its start;
-calibrated noise parameters remain fixed during its IRLS, relaxed and local-search passes,
-while retaining their data-estimated parameter-count flags. Calibration refits
-use default iteration budgets of 60 and 100, respectively, respecting a larger
-supplied \code{maxit}. The repair is kept
-only if its penalized likelihood, or quasi-deviance kernel, improves when both
-models are compared at the common calibrated noise level.
+A constrained negative-binomial relaxed refit checks conditional
+likelihood descent when coefficients touch the boundary. If the
+clipped working solution stalls, the refit tries a diagonally scaled
+projected score step within the same support.
 
-Single-channel fits retain the guarded ridge initialization, bounded updates
-and relaxed-refit information checks. They do not sacrifice observations for
-a noise-calibration holdout. This fallback also applies whenever independent
-calibration is unavailable. \code{\link[=l0glmTune]{l0glmTune()}} performs calibration within each
-full-data candidate and each CV training fit using only that fit's responses.
-
-The reported likelihood and IC methods retain their conventions in
-\link{model_criteria}, including profiled Gaussian variance. The common-scale repair
-score in \code{dispersionCalibration$objective} is a separate fitting diagnostic.
-The channel-split adaptation implements the independent-screen/refit principle
-of Fan, Guo and Hao's
-\href{https://arxiv.org/abs/1004.5178}{refitted cross-validation}.
+See the \link[=information_criteria]{information criteria} for the role of
+model-space size. The wide Gaussian BIC preset is motivated by multitask
+examples where each selected row adds many fitted coefficients. Screened
+fits retain their usual GIC preset.
 }
 \seealso{
 \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \link{model_criteria}

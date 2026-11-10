@@ -46,12 +46,7 @@ template<class Design> void final_state(const Design& X,State& s,const Family& f
  if(!s.hard)final_boundary(X,s,f);
  bool any=false;int k=s.offset_df;
  for(int j=0;j<X.cols();++j){any=any||s.beta[j]!=0;k+=s.beta[j]!=0||s.included[j];}
- if(s.estimate&&!s.fixed_scale&&(!s.hard||s.lambda==0||!any)&&s.npositive>k) {
-  long double value=0;
-  for(int i=0;i<X.rows();++i)if(s.w[i]>0)value+=s.w[i]*std::pow(s.y[i]-s.mu[i],2)/f.variance(s.mu[i]);
-  double phi=(double)value/(s.npositive-k);
-  if(std::isfinite(phi)&&phi>0)s.phi=phi;
- }
+ if(!s.hard||s.lambda==0||!any)pearson_scale_step(f,s,k,3,false,true);
 }
 inline VectorXd original_coefficients(const State& s) {
  VectorXd b=s.beta;

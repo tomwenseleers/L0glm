@@ -173,8 +173,10 @@ disable penalization. Predictor groups use dimension-based preset costs;
 see \link{predictor_groups} for numeric group costs and multipliers.
 Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
-In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
-screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.}
+In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with screening,
+\code{"bic"} for eligible wide multitask Gaussian fits
+(\link{dispersion_calibration}), and 1 otherwise. \code{l0nnPois()}
+defaults to \code{"gic"}.}
 
 \item{intercept}{Logical; if \code{TRUE}, add an intercept column to \code{X}.
 The intercept is constrained to be nonnegative, just like every other

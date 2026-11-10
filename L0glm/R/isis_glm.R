@@ -14,6 +14,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     intercept=identical(kind,"multinomial") || identical(family$family,"binomial")),options,keep.null=TRUE)
   args$screen <- "none" # The outer search owns screening; candidate fits never recurse.
   args$local.search <- FALSE # The completed l0glmFit call owns support refinement.
+  if (identical(family$family,"gaussian")) args$control.family$dispersion.calibration <- FALSE
   if (!is.logical(args$intercept) || length(args$intercept)!=1L || is.na(args$intercept))
     stop("intercept must be TRUE or FALSE.",call.=FALSE)
   if (identical(kind,"cox") && args$intercept) {
@@ -63,7 +64,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   }
   B <- Matrix::Matrix(0,ncol(design),m,sparse=TRUE)
   selected <- mandatory;previous <- NULL;best <- NULL;history <- list();converged <- FALSE
-  quasi_estimated <- NULL
+  nuisance_history <- list(); quasi_estimated <- NULL
   for (iteration in seq_len(niter)) {
     if (!is.null(fixed_candidates)) {
       screen <- NULL
@@ -85,12 +86,25 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       fit_args[[name]] <- args[[name]][rows,,drop=FALSE]
     fit <- do.call(l0glmFit,c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
       weights=w,offset=off,nonnegative=nonnegative),fit_args))
-    if (identical(family$family,"quasipoisson")) {
-      if (is.null(quasi_estimated)) {
-        quasi_estimated <- fit$dispersion.estimated
-        args$dispersion <- fit$dispersion
+    if (any(fit$theta.estimated)) {
+      nuisance_history[[iteration]] <- list(initial=fit$initialTheta, fitted=fit$theta)
+      if (is.null(args$control.solver)) args$control.solver <- controlSolverGen(
+        if (is.null(args$solver)) "eigen" else args$solver,
+        if (is.null(args$method)) 1L else args$method)
+      args$control.solver$.theta.start <- fit$theta
+    } else {
+      if (identical(family$family,"quasipoisson")) {
+        # Use a common scale when comparing quasi-likelihoods across supports.
+        if (is.null(quasi_estimated)) {
+          quasi_estimated <- fit$dispersion.estimated
+          args$dispersion <- fit$dispersion
+        }
+        fit$dispersion.estimated <- quasi_estimated
+      } else if (any(fit$dispersion.estimated)) {
+        args$dispersion <- ifelse(fit$dispersion.estimated, -fit$dispersion, fit$dispersion)
       }
-      fit$dispersion.estimated <- quasi_estimated
+      if (any(fit$dispersion.estimated))
+        nuisance_history[[iteration]] <- list(initial=fit$initialDispersion, fitted=fit$dispersion)
     }
     score <- l0glmMetrics(fit,mu_floor=1e-8)
     gic <- get.IC(score$loglik,max(2,n_ic),max(1L,p_total),score$df)$gic
@@ -133,6 +147,6 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   list(indices=indices,top_statistics=NULL,ranking=ranking,stats=stats,nsis=length(indices),
     screen_size=nsis,family=family$family,link=family$link,theta=fit$theta,
     fit=fit,coefficients=fit$coefficients,candidates=best$candidates,lambda=args$lambda,
-    history=do.call(rbind,history),best_iteration=best$iteration,iterations=length(history),
+    history=do.call(rbind,history),nuisance_history=nuisance_history,best_iteration=best$iteration,iterations=length(history),
     converged=converged,seconds=proc.time()[["elapsed"]]-started,nthreads=threads_used)
 }

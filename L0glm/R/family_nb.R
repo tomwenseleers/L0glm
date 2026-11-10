@@ -59,36 +59,39 @@ L0glm_ext_nb_working <- function(data, B, D, state, args) {
   answer
 }
 
-L0glm_ext_theta_derivatives <- function(y, mu, theta, w) {
-  U <- sum(w * (digamma(y + theta) - digamma(theta) + log(theta) + 1 -
-    log(theta + mu) - (y + theta)/(theta + mu)))
-  H <- sum(w * (trigamma(y + theta) - trigamma(theta) + 1/theta -
-    2/(theta + mu) + (y + theta)/(theta + mu)^2))
-  c(gradient = theta * U, curvature = theta^2 * H + theta * U)
+# A projected Fisher-diagonal step is a feasible descent direction when the
+# clipped working ridge step stalls on a constrained relaxed support.
+L0glm_nb_projected_step <- function(data, B, D, state) {
+  prediction <- L0glm_ext_nb_mean(data,B)
+  if (any(!is.finite(prediction$mu) | prediction$mu <= 0)) return(B)
+  proposal <- B
+  for (j in seq_len(data$m)) {
+    active <- which(is.finite(D[,j]))
+    if (!length(active)) next
+    X <- data$Z[,active,drop=FALSE]
+    mu <- prediction$mu[,j]
+    derivative <- data$family$mu.eta(prediction$eta[,j])
+    w <- L0glm_observation_column(data$weights,j)/(mu+mu^2/state$theta[j])
+    ridge <- D[active,j]
+    gradient <- as.numeric(Matrix::crossprod(X,w*derivative*(mu-data$y[,j])))+
+      ridge*(B[active,j]-data$prior[active,j])
+    diagonal <- as.numeric(Matrix::crossprod(X^2,w*derivative^2))+ridge
+    good <- is.finite(diagonal) & diagonal > 0 & is.finite(gradient)
+    keep <- active[good]
+    proposal[keep,j] <- pmax(data$lower[keep],B[keep,j]-gradient[good]/diagonal[good])
+  }
+  proposal
 }
 
-L0glm_ext_nb_update <- function(data, B, state) {
-  if(isTRUE(data$fixed.dispersion))return(state)
-  mu <- L0glm_ext_nb_mean(data, B)$mu
-  for (j in which(state$estimated)) {
-    good <- L0glm_observation_column(data$weights,j) > 0
-    y <- data$y[good, j]; fitted <- mu[good, j]; w <- L0glm_observation_column(data$weights,j,good)
-    if (any(!is.finite(fitted) | fitted <= 0)) next
-    a <- log(state$theta[j])
-    derivatives <- L0glm_ext_theta_derivatives(y, fitted, exp(a), w)
-    step <- if (is.finite(derivatives[2L]) && derivatives[2L] < 0)
-      -derivatives[1L]/derivatives[2L] else sign(derivatives[1L])
-    step <- max(-1, min(1, step))
-    likelihood <- function(value) sum(w * stats::dnbinom(y, mu = fitted, size = exp(value), log = TRUE))
-    baseline <- likelihood(a)
-    for (halving in 0:25) {
-      candidate <- max(log(data$control$theta.min), min(log(data$control$theta.max), a + step))
-      if (is.finite(likelihood(candidate)) && likelihood(candidate) >= baseline) {
-        state$theta[j] <- exp(candidate)
-        break
-      }
-      step <- step/2
-    }
-  }
-  state
+L0glm_nb_refit_step <- function(data, proposal, B, D, state, objective) {
+  old <- objective(B)
+  search <- function(trial,maxit) L0glm_step(trial,B,function(candidate,eta) objective(candidate),
+    baseline=old,maxit=maxit,rtol=1e-12)
+  step <- search(proposal,10L)
+  if (!is.finite(old) || (step$accepted && step$value < old-1e-12*max(1,abs(old))))
+    return(step)
+  fallback <- search(L0glm_nb_projected_step(data,B,D,state),18L)
+  fallback$halvings <- fallback$halvings + step$halvings
+  if (fallback$accepted) return(fallback)
+  list(beta=B,halvings=fallback$halvings,accepted=TRUE)
 }

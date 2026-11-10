@@ -185,6 +185,7 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
   converged <- FALSE
   history <- list()
   included <- data$included
+  nb_refit <- relaxed && data$kind=="nb" && any(data$lower==0)
   validation <- args$validation
   if (!is.null(validation)) {
     initial <- if (relaxed) B else L0glm_ext_working_coefficients(data, validation$baseline)
@@ -206,9 +207,10 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
     attr(proposal, "cox.solve") <- NULL
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
     objective <- function(candidate) L0glm_ext_loss(data, candidate, state) + ridge(candidate)
-    step <- L0glm_step(proposal, B, function(candidate, eta) objective(candidate),
-      baseline = if (any((proposal != 0) != (B != 0))) Inf else objective(B),
-      maxit = 30L, rtol = 1e-10)
+    step <- if (nb_refit) L0glm_nb_refit_step(data,proposal,B,D,state,objective) else
+      L0glm_step(proposal, B, function(candidate, eta) objective(candidate),
+        baseline = if (any((proposal != 0) != (B != 0))) Inf else objective(B),
+        maxit = 30L, rtol = 1e-10)
     halving <- step$halvings
     candidate <- step$beta
     if (!step$accepted) {
@@ -235,12 +237,12 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
     }
     nuisance_change <- 0
     if (data$kind == "glm") {
-      updated <- L0glm_group_scale_update(data,candidate,B,allowed,state,iteration,relaxed)
+      updated <- L0glm_group_scale_update(data,candidate,B,state,iteration,relaxed || lambda==0)
       nuisance_change <- max(abs(log(updated$phi/state$phi)))
       state <- updated
     }
     if (data$kind == "nb") {
-      updated <- L0glm_ext_nb_update(data, candidate, state)
+      updated <- L0glm_nb_scale_step(data,candidate,B,state,iteration,relaxed || lambda==0)
       nuisance_change <- max(abs(log(updated$theta/state$theta)))
       state <- updated
     }

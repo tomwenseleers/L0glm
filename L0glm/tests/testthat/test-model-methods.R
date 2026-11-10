@@ -17,7 +17,7 @@ expect_model_criteria <- function(fit) {
   expect_false("hbic" %in% names(scores))
 }
 
-test_that("Gaussian likelihood methods use prior weights, offsets and profiled scale", {
+test_that("Gaussian likelihood methods use prior weights, offsets and fitted scale", {
   set.seed(1901)
   X <- matrix(rnorm(360), 120, 3)
   w <- runif(120, .5, 2); off <- runif(120, -.2, .2)
@@ -28,9 +28,9 @@ test_that("Gaussian likelihood methods use prior weights, offsets and profiled s
       lambda = 0, thresh = 0, relaxed = FALSE, parallelize = FALSE, maxit = 100)
     expect_model_criteria(fit)
     expect_equal(as.numeric(coef(fit)), unname(coef(ref)), tolerance = 1e-8)
-    expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-9)
-    expect_equal(AIC(fit), AIC(ref), tolerance = 1e-9)
-    expect_equal(BIC(fit), BIC(ref), tolerance = 1e-9)
+    expect_equal(fit$dispersion,summary(ref)$dispersion)
+    expected <- sum(dnorm(as.numeric(y),fitted(ref),sqrt(fit$dispersion/w),log=TRUE))
+    expect_equal(as.numeric(logLik(fit)),expected,tolerance=1e-9)
     expect_equal(nobs(fit), 120)
     expect_true(fit$dispersion.estimated)
     expect_equal(as.numeric(fit$prior.weights), w)
@@ -52,7 +52,8 @@ test_that("known and estimated multichannel scales retain their distinct likelih
     lambda = 0, thresh = 0, grouped = FALSE, relaxed = FALSE, parallelize = FALSE)
   expect_model_criteria(fit)
   mu <- as.matrix(X %*% coef(fit)) + off
-  phi <- c(2, sum(w[, 2] * (y[, 2] - mu[, 2])^2)/80)
+  phi <- c(2, sum(w[, 2] * (y[, 2] - mu[, 2])^2)/(80-sum(coef(fit)[,2]!=0)))
+  expect_equal(fit$dispersion,phi)
   expected <- sum(dnorm(y, mu, sqrt(rep(phi, each = 80)/w), log = TRUE))
   expect_equal(as.numeric(logLik(fit)), expected, tolerance = 1e-12)
   expect_equal(attr(logLik(fit), "df"), sum(coef(fit) != 0) + 1)
@@ -133,7 +134,7 @@ test_that("zero mandatory coefficients and excluded starts keep the correct mode
   expect_equal(attr(logLik(fit), "df"), sum(coef(fit) != 0) + length(fit$always.include))
 })
 
-test_that("continuous-family scoring retains fixed and estimated dispersion conventions", {
+test_that("Gamma and inverse Gaussian likelihoods use fixed or fitted dispersion", {
   set.seed(1907)
   X <- matrix(runif(180), 60, 3)
   w <- runif(60, .5, 2)
@@ -147,14 +148,11 @@ test_that("continuous-family scoring retains fixed and estimated dispersion conv
         intercept = TRUE, lambda = 2, relaxed = FALSE, parallelize = FALSE, maxit = 100)
       expect_model_criteria(fit)
       fitted_mean <- family$linkinv(as.numeric(cbind(1, X) %*% coef(fit)))
-      if (!is.null(dispersion)) {
-        expected <- if (family$family == "Gamma")
-          sum(w * dgamma(y, shape = 1/phi, scale = fitted_mean*phi, log = TRUE)) else
-          sum(w * statmod::dinvgauss(y, mean = fitted_mean, dispersion = phi, log = TRUE))
-      } else {
-        dev <- sum(family$dev.resids(y, fitted_mean, w))
-        expected <- -.5 * (family$aic(y, w, fitted_mean, w, dev) - 2)
-      }
+      if (!is.null(dispersion)) expect_equal(fit$dispersion, dispersion)
+      fitted_phi <- fit$dispersion
+      expected <- if (family$family == "Gamma")
+        sum(w * dgamma(y, shape = 1/fitted_phi, scale = fitted_mean*fitted_phi, log = TRUE)) else
+        sum(w * statmod::dinvgauss(y, mean = fitted_mean, dispersion = fitted_phi, log = TRUE))
       expect_equal(as.numeric(logLik(fit)), expected, tolerance = 1e-10)
       expect_equal(attr(logLik(fit), "df"), sum(coef(fit) != 0) + is.null(dispersion))
     }

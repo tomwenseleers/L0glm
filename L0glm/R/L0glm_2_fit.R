@@ -137,10 +137,8 @@
 #'   values are invalid. Poisson, binomial and negative binomial with known
 #'   \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 #'   \code{family$dispersion}. See Details for initialization and updating.
-#'   Automatic grouped multichannel fits also check whether independent-channel
-#'   calibration can improve an inflated noise estimate; see
-#'   \link{dispersion_calibration}. Single-channel fits retain the guarded pilot
-#'   and bounded updates. Supplied dispersion values bypass this calibration.
+#'   See \link{dispersion_calibration} for the Pearson update and the
+#'   additional pilots for eligible Gaussian and negative-binomial fits.
 #' @param start \code{NULL} (default) requests automatic initialization.
 #'   Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
 #'   negative binomial) with nonnegative designs and a compulsory background or known
@@ -219,8 +217,10 @@
 #'   see \link{predictor_groups} for numeric group costs and multipliers.
 #'   Presets calibrate the adaptive ridge updates to
 #'   the chosen selection criterion.
-#'   In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
-#'   screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.
+#'   In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with screening,
+#'   \code{"bic"} for eligible wide multitask Gaussian fits
+#'   (\link{dispersion_calibration}), and 1 otherwise. \code{l0nnPois()}
+#'   defaults to \code{"gic"}.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
@@ -697,15 +697,11 @@
 #' current dispersion, it is held fixed until the support changes again.
 #' A later support loss reactivates these bounded updates in the same IRLS loop.
 #' Each subsequent grouped selection pass may update it again on the new support.
-#' A relaxed refit holds dispersion fixed during its coefficient solves and
-#' reports the final Pearson residual scale for estimated channels; user-supplied
-#' positive dispersions remain fixed throughout.
-#' Eligible grouped multichannel fits can then calibrate unknown noise using
-#' predictor sets selected from independent channel subsets. A successful repair
-#' holds the calibrated values fixed in its final fit while retaining their
-#' data-estimated parameter counts. Unreliable calibration retains the original
-#' fit. See \link{dispersion_calibration} for the variance-function calculation,
-#' negative-binomial shape, assumptions and single-channel fallback.
+#' A relaxed refit uses the full Pearson residual target with positive
+#' residual degrees of freedom. Supplied positive dispersions stay fixed.
+#' Model likelihood and information criteria use the fitted dispersion.
+#' See \link{dispersion_calibration} for the Gaussian and negative-binomial
+#' starting values and the bounded shape equation.
 #'
 #' These inexpensive Pearson moment updates use the active coefficient count
 #' to approximate residual degrees of freedom. In nearly interpolating models,
@@ -888,10 +884,9 @@
 #' \item{\code{dispersion}, \code{dispersion.estimated}}{fitted dispersions
 #' and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
 #' Special families retain their nuisance-parameter information separately.}
-#' \item{\code{dispersionCalibration}}{when applicable, cross-channel calibration
-#' diagnostics: whether a repair was applied, fallback reason, calibrated noise,
-#' channel folds, calibration supports, residual degrees of freedom and timings.
-#' See \link{dispersion_calibration}.}
+#' \item{\code{dispersionCalibration}}{when applicable, the pilot method,
+#' initial and calibrated noise values, reliability flags and, for Gaussian
+#' fits, pilot residual degrees of freedom. See \link{dispersion_calibration}.}
 #' \item{\code{initialDispersion}, \code{initialTheta}}{initial noise parameters
 #' recorded by the ordinary GLM and negative-binomial drivers, respectively.}
 #' \item{\code{init.lambda}}{initial lambda.} \item{\code{lambdas}}{a vector or
@@ -965,9 +960,10 @@
 #' \url{https://bio.kuleuven.be/eeb/tw/research} \\
 #' ORCID: \href{https://orcid.org/0000-0002-1434-861X}{0000-0002-1434-861X}
 #' @param control.family Family-specific IRLS controls. A named list with
-#'   \code{dispersion.calibration="auto"} for guarded cross-channel noise
-#'   calibration; \code{FALSE} disables it and \code{TRUE} requests a check
-#'   without the automatic width/inflation trigger. See \link{dispersion_calibration}.
+#'   \code{dispersion.calibration="auto"} or \code{TRUE} for the eligible
+#'   dispersion and shape pilots. \code{FALSE} uses the ordinary initializers.
+#'   All three settings use the same updates during fitting. See
+#'   \link{dispersion_calibration}.
 #'   Other controls are
 #'   \code{multinomial="irls"} (joint block IRLS) or \code{"bound"}
 #'   (upper curvature bound), \code{theta.min=1e-6}, \code{theta.max=1e7},
@@ -1111,6 +1107,29 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       return(L0glm_data_restricted_fit(mget(names(match.call())[-1L],environment(),inherits=FALSE)))
     X <- L0glm_data_matrix(X)
   }
+  if (L0glm_wide_gaussian_pilot(X,y,family,dispersion,start,prior.mean,grouped,nonnegative,
+      maxit,lambda,control.family,always.include)) {
+    if (missing(lambda)) lambda <- "bic"
+    args <- mget(setdiff(names(formals(l0glmFit)), "ncores"), environment(), inherits=FALSE)
+    args$ncores <- if (isTRUE(parallelize)) ncores else 1L
+    args[["group"]] <- seq_len(ncol(X))
+    args$group.multiplier <- as.numeric(NCOL(y))
+    attr(args$group.multiplier,"dimension_based") <- TRUE
+    return(L0glm_group_fit(args, gaussian.pilot=TRUE))
+  }
+  nb_pilot <- NULL
+  if (identical(kind,"nb") && is.null(start) && is.null(prior.mean) &&
+      is.null(control.solver$.theta.start) && isTRUE(family$n.theta>0L) &&
+      family$getTheta(TRUE)==1 && isTRUE(maxit>=5L) && !isTRUE(lambda==0) &&
+      !isTRUE(control.solver$.dispersion.fixed) && L0glm_pilot_enabled(control.family) &&
+      (family$link=="log" || (family$link=="identity" && nonnegative))) {
+    nb_pilot <- L0glm_nb_pilot(X,y,family,weights,offset,intercept,always.include,
+      nonnegative,normalize,grouped,openmp,control.family)
+    if (!is.null(nb_pilot)) {
+      control.solver$.theta.start <- nb_pilot$theta
+      start <- nb_pilot$start
+    }
+  }
   if (identical(kind,"nb") && L0glm_signal_family(family) && nonnegative && is.null(start) &&
       !isTRUE(intercept) && maxit > 1L && !is.null(offset) && any(offset != 0)) {
     n <- nrow(X); m <- NCOL(y)
@@ -1118,12 +1137,15 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       L0glm_observation_input(weights,n,m,1,"weights"), always.include,
       if(is.null(prior.mean)) NULL else L0glm_ext_matrix(prior.mean,ncol(X),m,0,"prior.mean"))
   }
-  if (!is.null(kind)) return(L0glm_ext_fit(
-    X, y, weights, family, dispersion, start, offset, lambda,
-    if (missing(intercept)) kind == "multinomial" else intercept,
-    always.include, nonnegative, normalize, solver, method, nthreads, maxit,
-    grouped, if (missing(relaxed)) grouped && (kind == "multinomial" || NCOL(y) > 1L && kind == "nb") else relaxed,
-    prior.mean, thresh, tol, control.solver, control.family, validation))
+  if (!is.null(kind)) {
+    fit <- L0glm_ext_fit(X, y, weights, family, dispersion, start, offset, lambda,
+      if (missing(intercept)) kind == "multinomial" else intercept,
+      always.include, nonnegative, normalize, solver, method, nthreads, maxit,
+      grouped, if (missing(relaxed)) grouped && (kind == "multinomial" || NCOL(y) > 1L && kind == "nb") else relaxed,
+      prior.mean, thresh, tol, control.solver, control.family, validation)
+    fit$dispersionCalibration <- nb_pilot$diagnostic
+    return(fit)
+  }
 
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are

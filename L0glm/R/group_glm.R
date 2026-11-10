@@ -88,22 +88,16 @@ L0glm_ext_loss <- function(data,B,state) {
     L0glm_observation_column(data$weights,j),data$family)/state$phi[j],1))
 }
 
-L0glm_group_scale_update <- function(data,B,previous,allowed,state,iteration,relaxed) {
+L0glm_group_scale_update <- function(data,B,previous,state,iteration,relaxed) {
   if(!any(state$estimated)||isTRUE(data$fixed.dispersion))return(state)
   mu <- L0glm_ext_nb_mean(data,B)$mu
   for(j in which(state$estimated)) {
     changed <- any((B[,j]!=0)!=(previous[,j]!=0))
-    if(changed)state$stable[j] <- 0L
-    if(state$stable[j]>=3L && !relaxed)next
-    weights <- L0glm_observation_column(data$weights,j)
-    k <- sum(allowed[,j]);N <- sum(weights>0)
-    if((iteration>=3L && k<.7*N)||relaxed) {
-      target <- L0glm_pearson_scale(data$y[,j],mu[,j],weights,data$family,k)
-      if(is.finite(target) && target>0) {
-        state$stable[j] <- if(!changed && abs(target/state$phi[j]-1)<.01)state$stable[j]+1L else 0L
-        state$phi[j] <- max(state$phi[j]/2,min(2*state$phi[j],target))
-      }
-    }
+    k <- sum(B[,j]!=0) + sum(B[data$included,j]==0)
+    step <- L0glm_pearson_step(state$phi[j],state$stable[j],data$y[,j],mu[,j],
+      L0glm_observation_column(data$weights,j),data$family,k,iteration,changed,relaxed)
+    state$phi[j] <- step$value
+    state$stable[j] <- step$stable
   }
   state
 }

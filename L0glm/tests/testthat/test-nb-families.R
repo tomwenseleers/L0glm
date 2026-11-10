@@ -1,4 +1,4 @@
-test_that("NB Fisher scoring and theta updates match reference likelihoods", {
+test_that("NB coefficients match Fisher scoring at fixed or Pearson-estimated shape", {
   skip_if_not_installed("mgcv"); skip_if_not_installed("MASS")
   set.seed(1803)
   X <- matrix(rnorm(500 * 3), 500, 3)
@@ -13,20 +13,18 @@ test_that("NB Fisher scoring and theta updates match reference likelihoods", {
   family <- mgcv::nb(theta = -1)
   fit <- l0glmFit(X, y, family = family, intercept = TRUE, weights = w, offset = offset,
     lambda = 0, relaxed = FALSE, maxit = 200, tol = 1e-9)
-  ref <- MASS::glm.nb(y ~ X + offset(offset), weights = w,
-                       control = glm.control(epsilon = 1e-10, maxit = 100))
-  expect_equal(as.numeric(fit$coefficients), unname(coef(ref)), tolerance = 1e-5)
-  expect_equal(fit$theta, ref$theta, tolerance = 1e-5)
+  ref <- glm(y ~ X + offset(offset), family = MASS::negative.binomial(fit$theta), weights = w,
+             control = glm.control(epsilon = 1e-12, maxit = 100))
+  expect_equal(as.numeric(fit$coefficients), unname(coef(ref)), tolerance = 1e-6)
+  expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-8)
+  mu <- as.numeric(fitted(fit))
+  pearson <- sum(w * (y-mu)^2 / (mu+mu^2/fit$theta))/mean(w[w>0])
+  expect_equal(pearson, sum(w>0)-sum(coef(fit)!=0), tolerance = 1e-7)
   expect_equal(family$getTheta(TRUE), 1)
   expect_equal(fit$family$getTheta(TRUE), fit$theta)
   expect_equal(fit$metrics$nuisance, 1)
   small <- l0glmMetrics(fit, weights = rep(.001, 500), mu_floor = 0)
   expect_equal(small$mean_deviance, small$deviance/.5)
-  a <- log(2); h <- 1e-4
-  f <- function(a) sum(w * dnbinom(y, mu = fitted(ref), size = exp(a), log = TRUE))
-  numerical <- c((f(a+h)-f(a-h))/(2*h), (f(a+h)-2*f(a)+f(a-h))/h^2)
-  expect_equal(unname(L0glm_ext_theta_derivatives(y, fitted(ref), exp(a), w)),
-               numerical, tolerance = 1e-4)
 })
 
 test_that("NB multichannel masks, theta and original-unit coefficients are retained", {

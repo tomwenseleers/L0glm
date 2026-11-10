@@ -12,7 +12,8 @@ L0glm_loglik_mean <- function(y, mu, weights, family, dispersion=NULL) {
       kernel <- ifelse(yy == 0, 0, yy * log(mm)) - mm - lgamma(yy + 1)
       return(-2 * sum(ww * kernel) / max(scale, .Machine$double.eps))
     }
-    phi <- if (is.null(dispersion) || free_scale[j]) NULL else dispersion[j]
+    phi <- if(isTRUE(family$consistent.scale)&&!is.null(dispersion))abs(dispersion[j])else
+      if (is.null(dispersion) || free_scale[j]) NULL else dispersion[j]
     if (family$family == "gaussian") {
       rss <- sum(ww * (yy - mm)^2)
       if (is.null(phi)) phi <- rss / length(yy)

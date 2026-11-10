@@ -259,6 +259,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
   allowed[mandatory]<-TRUE
   call_fit<-function(design,response,opt) {
     opt$precluster<-FALSE
+    if (kind %in% c("gaussian","nb2")) opt$control.family$dispersion.calibration <- FALSE
     do.call(fit.fun,c(list(X=design,y=response),opt[intersect(names(opt),names(formals(fit.fun)))]))
   }
   bypass<-if(m==1L) "one response channel" else if(refit&&lambda==0) "zero penalty" else

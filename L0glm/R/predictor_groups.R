@@ -219,11 +219,13 @@ L0glm_group_metrics <- function(object,scores) {
   scores
 }
 
-L0glm_group_fit <- function(args) {
+L0glm_group_fit <- function(args, gaussian.pilot=FALSE) {
   mode <- L0glm_local_mode(args$local.search)
   if(is.null(args$control.local$target))args$control.local$target <-
     if(is.character(args$lambda) || isTRUE(attr(args$group.multiplier,'dimension_based')))'IC'else'L0'
   if(!isFALSE(mode))return(L0glm_local_fit(l0glmFit,args,mode,args$control.local))
+  thread_state <- L0glm_set_thread_count(args$nthreads)
+  if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state),add=TRUE)
   family <- args$family
   if(!inherits(family,'family'))family <- family()
   label <- L0glm_group_labels(args[["group"]],ncol(args$X))
@@ -267,12 +269,14 @@ L0glm_group_fit <- function(args) {
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.',call.=FALSE)
   lambda <- L0glm_resolve_lambda(args$lambda,max(1,data$p_selectable),max(2,data$n_ic))
   options <- list(solver=args$solver,method=args$method,control.solver=args$control.solver,
-    validation=args$validation,predictor.groups=TRUE,
+    validation=args$validation,predictor.groups=TRUE,openmp=args$openmp,
     group.nthreads=if(args$parallelize)L0glm_normalize_thread_count(args$ncores)else 1L)
   state <- if(kind=='nb')L0glm_ext_nb_state(data,args$control.solver)else list()
   B <- data$B
   if(kind=='glm') {
-    initial <- L0glm_group_glm_initialize(data,args$dispersion,lambda)
+    pilot_lambda <- if (gaussian.pilot) presetLambda("gic", max(1,data$p_selectable), data$n_ic) else lambda
+    initial <- L0glm_group_glm_initialize(data,args$dispersion,pilot_lambda)
+    if (gaussian.pilot) initial <- L0glm_gaussian_pilot(initial,pilot_lambda,args$tol,options)
     data <- initial$data; state <- initial$state
     if(!data$explicit)B <- initial$B
     if(!is.null(options$validation)) {
@@ -302,6 +306,7 @@ L0glm_group_fit <- function(args) {
     passes$relaxed <- result
   }
   fit <- L0glm_ext_result(data,result,passes,lambda,args$grouped,args$relaxed,options)
+  fit$dispersionCalibration <- data$dispersion.pilot
   fit$coefficients <- methods::as(methods::as(fit$coefficients,'generalMatrix'),'CsparseMatrix')
   fit[["group"]] <- label
   fit$group.multiplier <- multiplier

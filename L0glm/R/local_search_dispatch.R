@@ -48,18 +48,15 @@
 #' Explicit starting-zero exclusions and mandatory terms retain their meaning.
 #' Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 #' refits use the existing family engines; nonnegative identity-Poisson fits
-#' retain the native [l0nnPois()] backend. Free Gaussian variance is profiled for
-#' comparison, NB theta is re-estimated when requested, and quasi scale is held
-#' common across candidates. Successful cross-channel dispersion/shape
-#' calibration is held common throughout subsequent local refinement.
+#' retain the native [l0nnPois()] backend. Ordinary dispersion and NB shape are
+#' scored at the fitted values. Quasi scale is held common across candidates.
 #' The original-dimension sparse coefficients are
 #' returned. Candidate supports are refitted without the adaptive penalty,
 #' including when the initial fit used `relaxed=FALSE`. Unsupported trial refits
 #' are rejected. If the initial requested relaxed refit was skipped for
 #' insufficient information, refinement is also skipped and retains the
-#' returned fit (`stopping="insufficient_information"`). For quasibinomial,
-#' refinement uses scaled quasi-deviance plus the complexity charge; its
-#' likelihood-based S3 criteria remain unavailable.
+#' returned fit (`stopping="insufficient_information"`). Quasibinomial
+#' refinement uses scaled quasi-deviance plus the complexity charge.
 #'
 #' `control.local` is a named list. Main controls are:
 #' \describe{

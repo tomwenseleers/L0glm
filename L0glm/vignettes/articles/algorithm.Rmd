@@ -245,7 +245,7 @@ adaptations, whose complete computations are given in the appendix.
 | Component | Foundation | Development in L0glm |
 |---|---|---|
 | Automatic regularization and scale | GIC of [Fan & Tang (2013)](https://doi.org/10.1111/rssb.12001), with adaptive-ridge calibration | Scale-aware initialization, bounded dispersion updates and a common penalty convention across families |
-| Negative binomial | Standard NB2 likelihood and shape estimation | Adaptive-ridge IRLS coupled to safeguarded log-shape updates, with independent or grouped channels |
+| Negative binomial | Standard NB2 likelihood and shape estimation | Adaptive-ridge IRLS coupled to bounded Pearson shape updates, with independent or grouped channels |
 | Multinomial | Joint softmax likelihood and its quadratic approximation | Class-symmetric CLR output, invariant grouped penalties, entrywise CLR selection and contrast-space ridge solves |
 | Cox PH | BAR Cox regression of [Kawaguchi et al. (2020)](https://doi.org/10.1002/sim.8438) | Cached weighted Breslow risk sets, exact matrix-free curvature products, a matrix-free ridge initializer and direct/PCG dispatch |
 | Screening | SIS of [Fan & Lv (2008)](https://doi.org/10.1111/j.1467-9868.2008.00674.x) and likelihood ISIS of [Fan, Samworth & Wu (2009)](https://www.jmlr.org/papers/v10/fan09a.html) | Family-aware efficient-score screening, OpenMP implementation and an offset-based ISIS/L0glm pipeline |
@@ -512,120 +512,25 @@ ridge pilot and bounded updates, with inexpensive random-sign probes to guard
 against an almost-interpolating pilot. Positive supplied dispersions are held
 fixed; negative values initialize further estimation at their absolute value.
 
-### Cross-channel noise calibration
+### Dispersion and shape
 
-Grouped models with independent response-channel errors can share information
-about the support while estimating each channel's noise from a model selected
-using other channels. The automatic check targets wide fits with inflated
-dispersion or an unsupported requested relaxed refit, and remaining shared
-signal. A reproducible two-way channel split supplies independent screening
-and unpenalized calibration models. With the family variance function, channel
-\(c\) uses
+Each channel with unknown dispersion uses the Pearson residual sum divided
+by its residual degrees of freedom. For NB2 the same residual calculation
+determines shape through a monotone equation in \(\theta\). During selection
+the update is delayed until iteration three and the active model uses fewer
+than 70% of the positive-weight observations. The next noise value can be at
+most twice or half the current one. Relaxed refits use the full target.
+Likelihood-based criteria use the fitted noise value and count each fitted
+coefficient coordinate and each estimated noise parameter.
 
-\[
-\widehat\phi_c=\frac{1}{N_c-r_c}
-  \sum_{i:w_{ic}>0}\frac{w_{ic}(y_{ic}-\widehat\mu_{ic})^2}
-  {V(\widehat\mu_{ic})}.
-\]
-
-For Gaussian identity models, independent channel errors make the screening
-set independent of the calibration channel's noise, conditional on the design.
-For an unpenalized projection \(P_S\),
-
-\[
-E\left[\frac{\|(I-P_S)y_c\|^2}{N_c-r_c}\mid X,S\right]
-=\phi_c+\frac{\|(I-P_S)\mu_c\|^2}{N_c-r_c}.
-\]
-
-The expression is exact after precision-weighted whitening. It shows why
-omitted signal can inflate a noise estimate and why a permissive shared-support
-pilot helps. The corresponding GLM Pearson calculation uses the local working
-model. This response-channel adaptation applies the independent-screen/refit
-principle in [Fan, Guo and Hao's refitted cross-validation](https://arxiv.org/abs/1004.5178).
-
-Negative-binomial shape uses the same independent calibration means and a
-bounded NB2 moment equation. Accepted calibrated noise stays fixed during the
-final adaptive-ridge and relaxed passes, with its data-estimated parameter
-count retained. A common-noise penalized-likelihood check accepts the repair;
-reported IC methods keep their conventions, including profiled Gaussian
-variance. Rank, convergence and residual-dependence checks retain the original
-fit when calibration is unreliable. Single-channel fits keep their guarded
-ridge pilot and bounded updates. See [dispersion calibration](../reference/dispersion_calibration.html)
-and Subroutine E for the controls and implementation details.
-
-## Grouped and special-family updates
-
-Ordinary multichannel GLMs fit channels on a shared support and repeat
-shared-support selection passes. Row starts use a signed mean-absolute
-magnitude for signed models, avoiding cancellation across channels; nonnegative
-models use arithmetic row averages. Relaxed grouped fitting admits the eligible
-channel coefficients within each selected row.
-
-Multinomial regression uses a joint likelihood, zero-sum CLR output and joint
-quadratic updates. Grouped penalties act on class-symmetric row norms; ungrouped
-selection acts on individual CLR entries. Negative-binomial fits update the
-shape parameter alongside coefficient fitting. Cox fits use a quadratic
-approximation to the Breslow partial likelihood, with cached risk sets and
-matrix-free Hessian-vector products for larger active systems.
-
-## Scaling the linear algebra
-
-Weighted ridge has the normal equations
-
-\[
-(X^TWX+D)b=X^TWz+Dc.
-\]
-
-For wide systems with positive diagonal \(D\), the Woodbury identity gives
-
-\[
-b=c+D^{-1}X^T(W^{-1}+XD^{-1}X^T)^{-1}(z-Xc),
-\]
-
-factoring an observation-space system instead of a predictor-space system.
-Zero-weight observations are omitted and unpenalized terms are profiled out.
-Dense direct-Gram and sparse augmentation/factorization paths exploit the
-appropriate storage. Required solver-boundary conversions retain formal
-constraints for OSQP. The native scalar-family driver keeps initialization,
-dispersion updates and grouped/relaxed coordination in C++. All Eigen methods
-share their kernels with the R solver interfaces, retain dense or sparse storage
-and share the design across OpenMP threads. OSQP and `bigGlm` enter through their
-R-facing dependency interfaces on the R thread, using independent R workers for
-concurrent channels. Nonnegative identity-link Poisson LLT fits use `l0nnPois`.
-
-For ultrahigh dimensions, SIS or offset-based ISIS adds another level of
-dimension reduction. Compiled screening ranks candidates, and joint refitting
-updates the support in small batches. This follows the screening ideas of
-[Fan & Lv (2008)](https://doi.org/10.1111/j.1467-9868.2008.00674.x) and
-[Fan, Samworth & Wu (2009)](https://www.jmlr.org/papers/v10/fan09a.html).
-
-## Information criteria and validation
-
-The GIC preset is \(\lambda=\log p\log\log n\), motivated by
-[Fan & Tang (2013)](https://doi.org/10.1111/rssb.12001).
-`l0glmTune()` can instead select candidate fits by an IC or held-out deviance.
-CV returns both the minimum-deviance and one-SE full-data models.
-
-Reported `GIC()` uses the model's parameter dimension: ordinary multichannel
-models count coefficient entries, and grouped multinomial rows contribute
-\(K-1\) parameters. A row-count grouped target and a parameter-count reported
-criterion therefore have distinct complexity terms. The
-[criterion reference](../reference/model_criteria.html) records the conventions.
-Validation can also select the best IRLS checkpoint, including its fitted
-distribution parameters and penalties.
-
-## Optional local support refinement {#local-support-refinement}
-
-The default `local.search="auto"` adds a discrete support search to small
-completed models. It runs after adaptive ridge, SIS/ISIS, compulsory-block
-updates and any original-channel preclustering refit. It draws on the
-support-exchange ideas of [Zhu et al. (2020)](https://doi.org/10.1073/pnas.2014241117)
-and the local combinatorial search of
-[Hazimeh & Mazumder (2020)](https://doi.org/10.1287/opre.2019.1919).
-The implementation combines these ideas with the package's family-specific
-scores, likelihoods, constraints and refitting engines. Adaptive ridge supplies
-an initial sparse model; the support search tests whether another small set of
-predictors improves the specified objective.
+A signed wide Gaussian model with shared support can use a short pilot based
+on the Euclidean norms of the coefficient rows. Its frozen ridge smoother
+provides a starting scale and starting coefficients. The default for this
+route is the BIC preset. One selected row can contribute many slopes, so
+a coefficient-count GIC can be severe in this setting. Ordinary BIC has no
+explicit charge for the size of the model space. Screened fits keep the GIC
+preset. See [Chen and Chen (2008)](https://doi.org/10.1093/biomet/asn034) and
+[dispersion and shape](../reference/dispersion_calibration.html).
 
 ### Objective and candidate pool
 
@@ -710,8 +615,8 @@ fit; newly admitted ordinary coefficients receive a small nonzero seed of
 to CLR coordinates with their entry masks imposed explicitly.
 Unconstrained Gaussian identity-link trials use a direct least-squares
 solve; other trials use the appropriate GLM, negative-binomial, multinomial or
-Cox engine. Free Gaussian scale is profiled in scoring, estimated NB shapes are
-updated in refitting, and quasi models use a common dispersion for comparisons.
+Cox engine. Ordinary dispersion and NB shape are scored at their fitted
+values. Quasi models use a common dispersion for comparisons.
 
 Small supports are refitted jointly. For substantially larger supports, a trial
 updates a small affected block and places the remaining fitted contribution in
@@ -1058,79 +963,37 @@ setting. **Output:** \(\phi\) and a flag recording whether it may be updated.
    Three successive updates with unchanged support and
    \(|\phi_P/\phi^t-1|<0.01\) freeze the scale. A support change unfreezes
    an estimated scale. Invalid/nonpositive targets leave its value unchanged.
-7. A relaxed ordinary-GLM refit holds the current scale during its solves and
-   reports the final Pearson scale afterwards. A supplied positive scale stays
-   fixed. The same final reporting update is used for an unpenalized or empty
-   estimated-scale fit.
+7. A relaxed ordinary GLM refit uses the full Pearson target after each
+   accepted step with positive residual degrees of freedom. A supplied
+   positive scale stays fixed. Refresh the reported scale after any
+   boundary polish.
 :::
 
 ::: {.l0-algorithm}
-#### Subroutine E: calibrate unknown noise across response channels
+#### Subroutine E: initialize wide Gaussian and negative-binomial fits
 
-**Input:** a grouped fit, its initial noise estimates, family/link and original
-fitting specification. **Output:** a checked calibrated refit or the original fit.
-
-1. Require at least two channels with unknown noise, automatic coefficient
-   starts and ridge centers, and an ordinary GLM or estimated-shape NB model.
-   Supplied dispersion values, independent supports, conditional nuisance fits,
-   SIS/ISIS, preclustering and validation fits retain their existing estimators.
-   The automatic rule also requires
-   \(\min_c N_c<p_{\rm selectable}\le10n\), a greater than fourfold increase
-   from permissive initialization (\(\phi_c/\phi_c^0\), or
-   \(\theta_c^0/\theta_c\), using the channel median), or an unsupported
-   requested relaxed refit. Skip one-iteration and unpenalized fits.
-2. In automatic mode, use native efficient-score screening for remaining signal
-   with fitted predictors as offsets. An unsupported relaxed model instead uses
-   the original offsets. Compare the largest joint score to the Bonferroni
-   \(\chi_m^2(1-0.05/p_{\rm selectable})\) reference. This is a computational
-   trigger; all subsequent calibration checks still apply. `TRUE` bypasses the
-   width, inflation and score triggers; `FALSE` disables the procedure.
-3. Split channels into two balanced sets with seed 1701, restoring the caller's
-   RNG. In each direction, fit a norm-based grouped pilot to one set. Keep the
-   requested numeric penalty, dimension-based row costs and original predictor
-   universe; use fixed scales \(0.1\phi_c^0\). NB pilots use fixed shape
-   \(\min\{10^7,10\operatorname{median}(\theta^0)\}\).
-4. Rank selectable rows by normalized squared coefficient energy. Retain
-   mandatory terms and at most \(\lfloor0.7\min N_c\rfloor\) total calibration
-   columns for the opposite set. Require full selected-model rank and at least
-   eight and 20% residual degrees of freedom. Refit those channels without an
-   adaptive penalty, respecting their weights, offsets, link and constraints.
-   Use up to 60 iterations at tolerance \(10^{-8}\). A nearly stationary
-   unpenalized fit can also pass a Fisher-score check when coefficient changes
-   reach floating-point precision first.
-5. Compute the variance-function Pearson scale above. For NB2, solve within
-   `theta.min` and `theta.max`
-
-   \[
-   \sum_i\frac{w_{ic}(y_{ic}-\widehat\mu_{ic})^2}
-     {\widehat\mu_{ic}+\widehat\mu_{ic}^2/\theta_c}
-     =\nu_c(\theta_c).
-   \]
-
-   Equal case weights use \(\nu_c=(N_c-r_c)\bar w_c\). For unequal NB case
-   weights use \(\nu_c=\sum_iw_{ic}(1-h_{ic})\), where \(h_{ic}\) is the
-   diagonal of the weighted working projection. Reject invalid scales and
-   substantial standardized-residual correlation across the two channel sets.
-   The dependence check uses a Bonferroni Fisher-correlation reference on at
-   most 64 channels. Require a median twofold decrease in variance, or increase
-   in NB shape, relative to the original fit.
-6. A full-response permissive pilot supplies mature starting coefficients.
-   Also retain original selected rows if the original requested relaxed fit was
-   supported. Fill zero entries within these retained rows with a small signed
-   row seed. Refit using the original family, penalty and constraints, with up
-   to 100 iterations and the caller's tolerance. Keep calibrated noise fixed
-   during selection and relaxed refitting; retain its estimated-parameter flag.
-7. Require an accurate final refit and improvement in
-   \(-2\ell(B;\widehat\psi)+\lambda d(B)\), evaluated for both fits at the
-   common calibrated noise. IC presets count free coefficients; specified
-   numeric predictor-group penalties use their stored group costs.
-   unavailable likelihoods use scaled quasi-deviance. Otherwise return the
-   original fit. Save folds, calibration supports, residual degrees of freedom,
-   noise values, objectives and timing in `dispersionCalibration`.
-
-The final fit keeps the original public specification for reproducible refitting
-and resampling. CV runs this procedure separately inside every training model.
-Single-channel fits retain Subroutine D and the relaxed-refit information guard.
+1. For an unscreened, signed Gaussian identity-link fit with grouped channels
+   and \(n<p_{\rm eligible}\le 10n\), run five shared-row adaptive-ridge steps
+   at the GIC reference with scales fixed to \(0.1\phi_c^0\). This pilot uses
+   automatic starts and dispersions. Set the fitted penalty to the BIC preset
+   if the caller omitted it.
+2. At the final pilot row norms, freeze the ridge diagonals. Project out
+   mandatory terms and apply the same residual operator to the weighted
+   response and to four Rademacher probes. Divide the squared response
+   residual by the mean squared probe residual. A channel with insufficient
+   residual information uses the initial scale from Subroutine D.
+3. Initialize the main Gaussian fit with the pilot coefficients and these
+   channel scales. Charge each shared row for its coefficient dimensions and
+   update free scales by Subroutine D. Eligible entries in pilot-retained rows
+   receive a small signed seed if a pilot coefficient is zero.
+4. With estimated NB2 shape and automatic starts, run five Poisson steps with
+   the same link. Solve the Pearson shape equation at the pilot mean. Use the
+   pilot coefficients as the start for log-link fits. Direct nonnegative
+   identity-link fits use the pilot shape with their ordinary coefficient
+   initializer. Known or supplied non-default shapes and preclustered fits
+   use the ordinary initializers.
+5. Start each training model from its own observations. The controls and
+   pilot values are recorded in [dispersion and shape](../reference/dispersion_calibration.html).
 :::
 
 ### A.3. Single-channel ordinary GLMs {#appendix-glm}
@@ -1297,8 +1160,10 @@ at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
 
 1. Prepare \(Z,C_0,M\), bounds and eligible entries as in A.1. Initialize
    each \(\theta_c\) from the family object.
-2. With `start=NULL`, begin from \(B=0\) and take one NB working-ridge
-   step with diagonal \(10^{-3}\) on selectable terms and zero on \(M\).
+2. Use the eligible Poisson pilot in Subroutine E. For the ordinary
+   automatic coefficient start, begin from \(B=0\) and take one NB
+   working-ridge step with diagonal \(10^{-3}\) on selectable terms and
+   zero on \(M\).
    At this step calculate \(\eta=ZB+O\), \(\mu=g^{-1}(\eta)\). If a
    channel has invalid/nonpositive means, use \(\mu_i=y_i+0.1\) and
    \(\eta_i=g(\mu_i)\) for its working model. Supplied starts replace this
@@ -1327,8 +1192,8 @@ at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
    At \(\lambda=0\), set all permitted diagonals directly to zero.
    Solve each channel's working ridge problem and apply the special-family
    acceptance and threshold rules below.
-4. Holding the accepted means fixed, take **one bounded log-shape update**
-   in each channel whose shape is estimated, using the equations below.
+4. At the accepted means, update each free shape using the bounded
+   Pearson step below.
 5. Stop when the larger of the relative selectable-coefficient and
    fitted-predictor changes is below `tol`, and
    \(\max_c|\log(\theta_c^{\rm new}/\theta_c)|<10^{-6}\), or by the
@@ -1342,28 +1207,30 @@ at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
    no residual degrees of freedom for estimating shape.
 :::
 
-**Log-shape step.** For one channel let \(a=\log\theta\), and write
-\(\psi\), \(\psi_1\) for the digamma and trigamma functions. At fixed means,
+**Pearson shape step.** At the accepted mean \(\mu\), let \(N\) count
+positive-weight observations, \(k\) count fitted coefficient coordinates
+including mandatory terms, and \(\bar a\) be the mean positive weight. Solve
 
 \[
-\begin{aligned}
-U_\theta={}&\sum_i a_i\left[
- \psi(y_i+\theta)-\psi(\theta)+\log\theta+1
- -\log(\theta+\mu_i)-\frac{y_i+\theta}{\theta+\mu_i}\right],\\
-H_\theta={}&\sum_i a_i\left[
- \psi_1(y_i+\theta)-\psi_1(\theta)+\frac1\theta
- -\frac2{\theta+\mu_i}+\frac{y_i+\theta}{(\theta+\mu_i)^2}\right],\\
-G_a={}&\theta U_\theta,\qquad
-H_a=\theta^2H_\theta+\theta U_\theta.
-\end{aligned}
+\sum_{i:a_i>0}\frac{a_i(y_i-\mu_i)^2}{\mu_i+\mu_i^2/\theta}
+=\bar a(N-k)
 \]
 
-Use \(d=-G_a/H_a\) when \(H_a<0\) is finite, otherwise
-\(d=\operatorname{sign}(G_a)\), and clip \(d\) to \([-1,1]\). Try
-\(a_{\rm trial}=\operatorname{clip}(a+2^{-h}d,\log10^{-6},\log10^7)\),
-up to 25 halvings. Accept the first finite NB log likelihood at least as large
-as its value at \(a\); otherwise retain \(\theta\). These bounds and the
-shape tolerance can be changed through `control.family`.
+between the supplied shape bounds. The left side increases with
+\(\theta\), so the root is unique when an interior root exists and the
+residual sum is positive. Use the nearer bound when the root lies outside
+the interval. Apply the same eligibility, damping and stability rules as
+for ordinary dispersion.
+
+A constrained relaxed fit checks conditional likelihood even when the
+clipped working solution changes the zero pattern. If the proposal
+stalls, let \(g\) be half the objective gradient and let \(H\) be the
+positive diagonal of the working Hessian divided by two. Project
+\(B-H^{-1}g\) onto the eligible coefficient bounds and backtrack at the
+current \(\theta\). For the projected displacement \(d\), the projection
+inequality gives \(g^\mathsf{T}d\le-d^\mathsf{T}Hd\), so a nonzero
+feasible direction decreases the conditional objective for a sufficiently
+short step.
 
 **Special-family acceptance and thresholding.** NB, multinomial and Cox use
 \(-2\ell+\sum D_{jc}(B_{jc}-C_{0,jc})^2\) as the smooth-step objective, with
@@ -1634,9 +1501,11 @@ size \(b\); one round for SIS or up to `screen.maxit=10` rounds for ISIS.
    \(C_r=S_{r-1}\cup T_r\cup M\). If it equals the preceding candidate
    set, stop. Otherwise fit the appropriate Algorithm 1--5 on \(X_{C_r}\)
    with the **original offset** \(O\), the resolved full-problem lambda,
-   and `screen="none"`. Each joint fit uses a fresh automatic start, or the
-   user's supplied starts restricted to these rows. Screening defaults to a
-   relaxed joint fit and serial response-channel fitting unless overridden.
+    and `screen="none"`. Each joint fit uses a fresh automatic coefficient
+    start or the supplied start restricted to these rows. Free dispersion or
+    NB shape starts from the preceding fit when available. Quasi-Poisson uses
+    the first fit's scale for every candidate so the quasi-criteria are
+    comparable. Screening defaults to a relaxed fit with serial channel solves.
 4. Expand this fit to the original coefficient dimensions, with zero rows
    outside \(C_r\), and set \(S_r\) to its nonzero row support together
    with the mandatory predictors. Record its likelihood, parameter dimension,
@@ -1736,7 +1605,7 @@ distribution parameters change.
 For Gaussian identity-link validation, the default candidate starts are the
 automatic seed and an uncalibrated conditional-marginal seed. Supplied starts
 override this comparison. The marginal seed uses \(b_j=t_j/v_j\) from A.2,
-without the initialization ridge or joint Gaussian calibration, and recovers
+without the initialization ridge or shared-row Gaussian pilot, and recovers
 the mandatory coefficients from the residual weighted fit.
 An `nsis` vector adds a screening-batch grid; include
 the mandatory-only model among the candidates. Select minimum validation loss,

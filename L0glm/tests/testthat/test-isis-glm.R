@@ -87,6 +87,9 @@ test_that("ISIS fits ordinary families and noncanonical links, with quasi fallba
     if(f$family=="quasipoisson") {
       expect_true(all(is.finite(result$history$gic)))
       expect_equal(result$best_iteration, which.min(result$history$gic))
+      expect_true(result$fit$dispersion.estimated)
+      scales <- vapply(result$nuisance_history, function(round) round$fitted, numeric(1L))
+      expect_equal(scales, rep(result$fit$dispersion, result$iterations))
     }
   }
 })

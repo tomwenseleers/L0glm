@@ -106,8 +106,8 @@ complete \code{local.search} diagnostics in their summaries.
 Convergence counts use the last recorded pass for each stage and channel,
 rather than counting intermediate grouped-selection passes as final failures.
 Missing backend diagnostics remain unavailable. The printed dispersion is
-the stored fitting scale; the profiled Gaussian likelihood scale can differ,
-as described in \link{model_criteria}. NB summaries also retain theta and its
+the scale used for model scoring, as described in \link{model_criteria}.
+Negative-binomial summaries also retain theta and its
 estimation flag. Cox and multinomial do not display an ordinary dispersion.
 Unsupported relaxed passes are counted as skipped, and
 \code{relaxationSkipped} retains the response-channel flags.

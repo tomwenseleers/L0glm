@@ -41,10 +41,12 @@ L0glm_local_restore <- function(fit, workspace) {
   original <- workspace$original
   kind <- L0glm_ext_kind(original$family)
   quasi <- startsWith(original$family$family, "quasi")
+  calibrated <- identical(original$dispersionCalibration$method,"cross-channel") &&
+    isTRUE(original$dispersionCalibration$applied)
   d <- list(D=original$X, p=nrow(coef(original)), m=ncol(coef(original)),
     mandatory=original$always.include, grouped=isTRUE(original$grouped), kind=kind,
     estimated=original$dispersion.estimated,
-    common.phi=if(is.null(kind) && (quasi||isTRUE(original$dispersionCalibration$applied)))
+    common.phi=if(is.null(kind) && (quasi||calibrated))
       pmax(abs(original$dispersion), 1e-8) else numeric())
   search <- fit$local.search
   fit <- if (nrow(search$history)>1L) L0glm_local_remap(fit, rows, d, original) else original

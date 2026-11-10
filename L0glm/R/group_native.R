@@ -3,7 +3,7 @@
 L0glm_group_native_pass <- function(data,B,allowed,state,lambda,grouped,
                                    thresh,maxit,tol,args,relaxed) {
   native <- data$native.group
-  if(is.null(native) || !is.null(args$validation))return(NULL)
+  if(is.null(native) || isFALSE(args$openmp) || !is.null(args$validation))return(NULL)
   control <- args$control.solver
   auto_rowaug <- is.null(control$rowaug)
   if(is.null(control$ordering) && !is.null(control$NaturalOrdering))

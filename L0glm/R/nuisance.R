@@ -286,12 +286,10 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
       state <- list(theta=model$theta,estimated=model$theta.estimated)
       data <- list(m=m,Z=matrix(0,n,0),offset=eta(trial),family=f,y=Y,weights=W,
         control=model$control.family)
-      for(inner in seq_len(10L)) {
-        next_state <- L0glm_ext_nb_update(data,matrix(0,0,m),state)
-        change <- max(abs(log(next_state$theta/state$theta)))
-        state <- next_state
-        if(change<model$control.family$theta.tol) break
-      }
+      data$fixed.dispersion <- isTRUE(options$control.solver$.dispersion.fixed)
+      data$noise.df <- colSums(trial[selectable,,drop=FALSE]!=0)+q
+      empty <- matrix(0,0,m)
+      state <- L0glm_nb_scale_step(data,empty,empty,state,3L,TRUE)
       change <- max(abs(log(state$theta/model$theta)));model$theta <- state$theta
       model$families <- lapply(model$theta,function(theta) {
         family <- unserialize(serialize(f,NULL));family$putTheta(log(theta));family
@@ -347,10 +345,9 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     fit$y <- Y;pred <- eta(beta);mu <- matrix(f$linkinv(pred),n,m)
     wrk <- zr <- matrix(0,n,m)
     for(j in seq_len(m)) {
-      if(estimated_phi[j]) {
-        target <- L0glm_pearson_scale(Y[,j],mu[,j],L0glm_observation_column(W,j),f,sum(beta[selectable,j]!=0)+q)
-        if(is.finite(target) && target>0) fit$dispersion[j] <- target
-      }
+      if(estimated_phi[j] && !isTRUE(options$control.solver$.dispersion.fixed))
+        fit$dispersion[j] <- L0glm_pearson_step(fit$dispersion[j],0L,Y[,j],mu[,j],
+          L0glm_observation_column(W,j),f,sum(beta[selectable,j]!=0)+q,3L,FALSE,TRUE)$value
       work <- L0glm_working_model(f)(Y[,j],pred[,j],mu[,j],L0glm_observation_column(W,j),L0glm_observation_column(O,j))
       wrk[,j] <- work$weights;zr[,j] <- work$response
     }

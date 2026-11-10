@@ -117,6 +117,7 @@ VectorXd predict(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& b,co
   for(Eigen::MappedSparseMatrix<double>::InnerIterator it(X,j);it;++it)value[it.row()]+=it.value()*b[j];
  return offset+value;
 }
+#include "scale_step.h"
 #include "glm_initialize.h"
 VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W,
  const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
@@ -272,17 +273,9 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
   for(int j=0;j<p;++j){if(s.beta[j]!=0||s.included[j])++selected;
     if(!s.included[j]&&((s.beta[j]!=0)!=(old[j]!=0)))support_changed=true;}
   s.previous_dev=dev;
-  if(s.estimate&&!s.fixed_scale&&s.hard&&support_changed){if(s.frozen)++s.restarts;s.frozen=false;s.stable=0;}
-  bool estimable=selected+s.offset_df<.7*s.npositive;
-  if(!s.frozen&&s.hard&&iteration>=2&&estimable) {
-   long double value=0;for(int i=0;i<n;++i)if(s.w[i]>0)
-      value+=s.w[i]*(s.y[i]-s.mu[i])*(s.y[i]-s.mu[i])/f.variance(s.mu[i]);
-   double target=(double)value/(s.npositive-selected-s.offset_df);
-   if(std::isfinite(target)&&target>0) {
-    bool stable=!support_changed&&std::abs(target/s.phi-1)<.01;s.stable=stable?s.stable+1:0;
-    s.phi=std::min(2*s.phi,std::max(s.phi/2,target));++s.updates;s.frozen=s.stable>=3;
-   }
-  }
+  const int scale_df=selected+s.offset_df;
+  const bool estimable=scale_df<.7*s.npositive;
+  const double noise_change=pearson_scale_step(f,s,scale_df,iteration+1,support_changed,!s.hard);
   double relative=0;
   if(!s.normalized)relative=(s.beta-old).norm()/std::max(1e-12,s.beta.norm());
   else {
@@ -297,7 +290,9 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
     relative=std::max(relative,change/std::max(1e-12,std::max(std::sqrt(total),size)));
    }
   }
-  if(relative<s.tol&&iteration>0&&(s.frozen||!s.hard||s.lambda==0||(iteration>=2&&!estimable))){s.converged=true;break;}
+  const bool scale_ready=!s.hard?noise_change<1e-6:
+    (s.frozen||s.lambda==0||(iteration>=2&&!estimable));
+  if(relative<s.tol&&iteration>0&&scale_ready){s.converged=true;break;}
   old=s.beta;s.previous_eta=s.eta;if(s.old_prediction.size())s.old_prediction=s.eta-s.offset;
  }
 }

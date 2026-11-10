@@ -88,8 +88,14 @@ test_that("special-family boundary passes use the fitted nuisance parameters", {
     data<-L0glm_ext_prepare(X,y,family,NULL,.2,FALSE,NULL,TRUE,"none",1,NULL,list())
     result<-list(B=b,state=list(theta=2,estimated=!fixed))
     out<-L0glm_ext_boundary(data,result)
-    expect_gte(L0glm_ext_loglik(data,out$B,out$state),L0glm_ext_loglik(data,b,result$state)-1e-10)
-    expect_equal(out$state,result$state)
+    expect_gte(L0glm_ext_loglik(data,out$B,result$state),L0glm_ext_loglik(data,b,result$state)-1e-10)
+    if (fixed || identical(out$B,b)) {
+      expect_equal(out$state,result$state)
+    } else {
+      mu <- L0glm_ext_nb_mean(data,out$B)$mu[,1]
+      expect_equal(out$state$theta,L0glm_nb_pearson_shape(y,mu,rep(1,120),
+        sum(out$B!=0),data$control))
+    }
     fit<-l0glmFit(X,y,family=family,offset=.2,nonnegative=TRUE,relaxed=TRUE,
       parallelize=FALSE,lambda=2,maxit=40)
     expect_true(is.finite(as.numeric(logLik(fit))))
@@ -113,7 +119,7 @@ test_that("validation rejects a training-only boundary improvement", {
   expect_equal(as.numeric(r$coefficients),1)
   expect_equal(as.numeric(native$coefficients),1)
 })
-test_that("NB endpoint tests retain fitted theta and remove redundant positive terms", {
+test_that("NB boundary polish refreshes estimated theta after removing redundant terms", {
   skip_if_not_installed("mgcv")
   X<-matrix(1,15,2);b<-matrix(c(1e-18,.5),2,1)
   for(link in c("log","identity")) {
@@ -121,7 +127,12 @@ test_that("NB endpoint tests retain fitted theta and remove redundant positive t
       FALSE,NULL,TRUE,"none",1,NULL,list())
     state<-list(theta=7,estimated=TRUE)
     z<-L0glm_ext_boundary(data,list(B=b,state=state))
-    expect_true(all(z$B==0));expect_identical(z$state,state)
+    expect_true(all(z$B==0))
+    residual_fraction <- (nrow(X)-length(data$included))/nrow(X)
+    mu <- exp(.3)
+    target <- if(link=="identity") data$control$theta.max else
+      residual_fraction*mu/(mu-residual_fraction)
+    expect_equal(z$state$theta,target,tolerance=1e-7)
   }
 })
 test_that("Poisson subtraction respects signed offsets and accumulated roundoff", {

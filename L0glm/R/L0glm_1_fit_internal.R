@@ -367,23 +367,18 @@ L0glm.fit.internal = function(X,
       break
     }
     deviance_previous <- step_deviance
-    if (estimate_dispersion && !dispersion_fixed && hard_threshold && support_changed) {
-      if (scale_frozen) scale_restarts <- scale_restarts + 1L
-      scale_frozen <- FALSE
-      scale_stable <- 0L
-    }
-    
-    ## ----- bounded Pearson scale update, without another fit ------
-    scale_estimable <- sum(nonzero)+offset_df < 0.7 * n_positive
-    if (!scale_frozen && hard_threshold && iter >= 3L && scale_estimable) {
-      target <- L0glm_pearson_scale(y, mu, weights, family, sum(nonzero)+offset_df)
-      if (is.finite(target) && target > 0) {
-        stable <- !support_changed && abs(target / dispersion - 1) < 0.01
-        scale_stable <- if (stable) scale_stable + 1L else 0L
-        dispersion <- min(2 * dispersion, max(dispersion / 2, target))
-        scale_updates <- scale_updates + 1L
-        scale_frozen <- scale_stable >= 3L
-      }
+    scale_df <- sum(nonzero) + offset_df
+    scale_estimable <- scale_df < .7 * n_positive
+    noise_change <- 0
+    if (estimate_dispersion && !dispersion_fixed) {
+      if (hard_threshold && support_changed && scale_frozen) scale_restarts <- scale_restarts + 1L
+      step_scale <- L0glm_pearson_step(dispersion, scale_stable, y, mu, weights, family,
+        scale_df, iter, support_changed, !hard_threshold)
+      noise_change <- abs(log(step_scale$value/dispersion))
+      dispersion <- step_scale$value
+      scale_stable <- step_scale$stable
+      scale_frozen <- scale_stable >= 3L
+      scale_updates <- scale_updates + step_scale$updated
     }
       
     
@@ -401,9 +396,9 @@ L0glm.fit.internal = function(X,
       max(1e-12, sqrt(sum(beta^2))) else
         L0glm_coefficient_change(beta, beta_old, scaling, always.include,
           as.numeric(eta) - as.numeric(offset), prediction_old, weights)
-    if (change < tol && iter > 1L &&
-         (scale_frozen || !hard_threshold || lambda == 0 ||
-          (iter >= 3L && !scale_estimable)) ) {
+    scale_ready <- if (!hard_threshold) noise_change < 1e-6 else
+      scale_frozen || lambda == 0 || (iter >= 3L && !scale_estimable)
+    if (change < tol && iter > 1L && scale_ready) {
       converged <- TRUE
       break
     }
@@ -443,12 +438,11 @@ L0glm.fit.internal = function(X,
       W.ret <- working$weights; z.ret <- working$response
     }
   }
-  # A relaxed fit holds scale fixed during the solves, then reports its own
-  # residual scale. Supplied positive dispersions remain unchanged throughout.
+  # Evaluate the residual scale at the final coefficients after boundary polish.
   if (estimate_dispersion && !dispersion_fixed && (!hard_threshold || lambda == 0 || !any(beta != 0))) {
-    target <- L0glm_pearson_scale(y, mu, weights, family,
-                                 sum(beta != 0) + sum(beta[always.include] == 0)+offset_df)
-    if (is.finite(target) && target > 0) dispersion <- target
+    k <- sum(beta!=0) + sum(beta[always.include]==0) + offset_df
+    dispersion <- L0glm_pearson_step(dispersion, scale_stable, y, mu, weights, family,
+      k, 3L, FALSE, TRUE)$value
   }
   if (length(centered$intercept)) beta[centered$intercept] <-
     beta[centered$intercept] - sum(centered$shift * beta)

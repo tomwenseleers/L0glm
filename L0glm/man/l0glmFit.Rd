@@ -115,10 +115,8 @@ channel; fixed and estimated channels may be mixed. Zero and non-finite
 values are invalid. Poisson, binomial and negative binomial with known
 \eqn{\theta} have dispersion fixed at 1; other fixed-scale families respect
 \code{family$dispersion}. See Details for initialization and updating.
-Automatic grouped multichannel fits also check whether independent-channel
-calibration can improve an inflated noise estimate; see
-\link{dispersion_calibration}. Single-channel fits retain the guarded pilot
-and bounded updates. Supplied dispersion values bypass this calibration.}
+See \link{dispersion_calibration} for the Pearson update and the
+additional pilots for eligible Gaussian and negative-binomial fits.}
 
 \item{start}{\code{NULL} (default) requests automatic initialization.
 Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
@@ -200,8 +198,10 @@ disable penalization. Predictor groups use dimension-based preset costs;
 see \link{predictor_groups} for numeric group costs and multipliers.
 Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
-In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with
-screening and 1 otherwise. \code{l0nnPois()} defaults to \code{"gic"}.}
+In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with screening,
+\code{"bic"} for eligible wide multitask Gaussian fits
+(\link{dispersion_calibration}), and 1 otherwise. \code{l0nnPois()}
+defaults to \code{"gic"}.}
 
 \item{intercept}{Logical: Whether to include an intercept term in the model.
 If `TRUE`, a column of ones will be added to the design matrix `X`, and
@@ -504,9 +504,10 @@ to request the general R driver. \code{parallelize} separately controls
 whether outcome channels run concurrently.}
 
 \item{control.family}{Family-specific IRLS controls. A named list with
-\code{dispersion.calibration="auto"} for guarded cross-channel noise
-calibration; \code{FALSE} disables it and \code{TRUE} requests a check
-without the automatic width/inflation trigger. See \link{dispersion_calibration}.
+\code{dispersion.calibration="auto"} or \code{TRUE} for the eligible
+dispersion and shape pilots. \code{FALSE} uses the ordinary initializers.
+All three settings use the same updates during fitting. See
+\link{dispersion_calibration}.
 Other controls are
 \code{multinomial="irls"} (joint block IRLS) or \code{"bound"}
 (upper curvature bound), \code{theta.min=1e-6}, \code{theta.max=1e7},
@@ -642,10 +643,9 @@ models retain prior weights in \code{weights}.}
 \item{\code{dispersion}, \code{dispersion.estimated}}{fitted dispersions
 and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
 Special families retain their nuisance-parameter information separately.}
-\item{\code{dispersionCalibration}}{when applicable, cross-channel calibration
-diagnostics: whether a repair was applied, fallback reason, calibrated noise,
-channel folds, calibration supports, residual degrees of freedom and timings.
-See \link{dispersion_calibration}.}
+\item{\code{dispersionCalibration}}{when applicable, the pilot method,
+initial and calibrated noise values, reliability flags and, for Gaussian
+fits, pilot residual degrees of freedom. See \link{dispersion_calibration}.}
 \item{\code{initialDispersion}, \code{initialTheta}}{initial noise parameters
 recorded by the ordinary GLM and negative-binomial drivers, respectively.}
 \item{\code{init.lambda}}{initial lambda.} \item{\code{lambdas}}{a vector or
@@ -892,15 +892,11 @@ consecutive updates with unchanged support and a target within 1\% of the
 current dispersion, it is held fixed until the support changes again.
 A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
-A relaxed refit holds dispersion fixed during its coefficient solves and
-reports the final Pearson residual scale for estimated channels; user-supplied
-positive dispersions remain fixed throughout.
-Eligible grouped multichannel fits can then calibrate unknown noise using
-predictor sets selected from independent channel subsets. A successful repair
-holds the calibrated values fixed in its final fit while retaining their
-data-estimated parameter counts. Unreliable calibration retains the original
-fit. See \link{dispersion_calibration} for the variance-function calculation,
-negative-binomial shape, assumptions and single-channel fallback.
+A relaxed refit uses the full Pearson residual target with positive
+residual degrees of freedom. Supplied positive dispersions stay fixed.
+Model likelihood and information criteria use the fitted dispersion.
+See \link{dispersion_calibration} for the Gaussian and negative-binomial
+starting values and the bounded shape equation.
 
 These inexpensive Pearson moment updates use the active coefficient count
 to approximate residual degrees of freedom. In nearly interpolating models,

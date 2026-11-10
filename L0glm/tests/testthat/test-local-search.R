@@ -172,12 +172,12 @@ test_that('default refinement executes once after each complete orchestrated fit
   expect_equal(ncol(coef(clustered)),4)
 })
 
-test_that('an unbounded initial likelihood cannot be replaced by a finite score', {
+test_that('exact Gaussian fits retain a finite criterion at their fitted scale', {
   fit <- l0glmFit(diag(3),cbind(c(1,0,0),c(-1,0,0)),lambda=.01,
     grouped=TRUE,relaxed=TRUE,normalize=FALSE,parallelize=FALSE)
-  expect_identical(fit$local.search$stopping,'unbounded_criterion')
+  expect_true(all(fit$dispersion > 0))
+  expect_true(is.finite(fit$local.search$final$value))
   expect_equal(nrow(fit$local.search$history),1L)
-  expect_identical(fit$local.search$final$value,-Inf)
   expect_false(L0glm_local_better(0,-Inf,1e-8))
   expect_true(L0glm_local_better(0,Inf,1e-8))
 })

@@ -51,9 +51,8 @@ get.metrics <- function(beta, X, y, weights = NULL, offset = NULL,
   # calculate some information criteria, cf. Zhang & Chen 2010 ####
   # see also https://github.com/abess-team/abess/blob/master/R-package/R/deviance.abess.R
   # get -2 * log-likelihood & log likelihood from family$aic slot & observed deviance
-  # Score each response channel at its own scale. Positive supplied dispersions
-  # are known; otherwise Gaussian likelihood profiles phi = weighted RSS / N.
-  # family$aic includes an extra 2 for estimated scale in the continuous families.
+  # Fitted models supply their noise values. Standalone calls may ask the
+  # family likelihood to profile an unspecified scale.
   loglik <- L0glm_loglik_mean(y,mu,weights,family,dispersion)
   IC = get.IC(loglik = loglik, n = n, p = max(1L, p), edf = edf)
   

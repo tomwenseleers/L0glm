@@ -90,11 +90,10 @@
 #' value supplies its absolute value as an initial estimate. A vector can specify
 #' separate values for the response channels. Fixed-scale families retain their
 #' family dispersion.
-#' Cross-channel dispersion calibration follows \code{l0glmFit()} independently
-#' in each candidate and CV training fit. Control it with
-#' \code{control.family=list(dispersion.calibration="auto")} in \code{...};
-#' see \link{dispersion_calibration} for the reliability checks and single-channel
-#' fallback. Validation responses never enter training-fold calibration.
+#' The noise initializers and Pearson updates in \code{l0glmFit()} use
+#' the observations available to each fit. In cross-validation the pilot and
+#' updates use only the training rows of each fold. See
+#' \link{dispersion_calibration} for eligibility and controls.
 #' @param tune A case-insensitive method for model selection:
 #' \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
@@ -249,8 +248,8 @@
 #' With a nonzero prior mean or an unsuccessful endpoint search, a warning is
 #' issued and \code{endpoint_zero} is false. A zoomed grid need not reach the
 #' full endpoint. Supplied observation weights, offsets and known dispersions
-#' are included in scoring; unknown Gaussian scales are profiled separately
-#' for each response channel.
+#' are included in scoring. Each candidate is scored at the dispersion or
+#' negative-binomial shape returned by its fitter.
 #' Quasi-Poisson information criteria use a common dispersion across the path.
 #' When unspecified, it is estimated by a preset pilot fit and then held
 #' fixed; estimated scales retain their nuisance-parameter count. With CV,
@@ -615,12 +614,7 @@ l0glmTune <- function(X, y,
     if(interactions)models[[i]] <- fit
     
     ## quality metrics --------------------------------------------------------
-    met <- get.metrics(beta = beta_hat,
-                       X = fit$X, y = y, family = family,
-                       weights = weights, offset = offset,
-                       dispersion = dispersion, mu_floor = mu_floor,
-                       beta_true = if(interactions)NULL else coefs.true, p = p,
-                       always.include = included)
+    met <- as.list(l0glmMetrics(fit, beta_true=if(interactions) NULL else coefs.true, mu_floor=mu_floor))
     score <- if (do_cv) cv$mean[i] else met[[tune]]
     if (!is.na(score) && score < best_score) {
       best_score <- score

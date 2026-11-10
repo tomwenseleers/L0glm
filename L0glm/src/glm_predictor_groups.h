@@ -123,6 +123,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
   s.offset=offset.col(offset.cols()==1?0:k);s.prior=prior.col(k);s.lower=lower;
   s.upper=VectorXd::Constant(p,DBL_MAX);s.scale=VectorXd::Ones(p);
   s.npositive=(s.w.array()>0).count();s.phi=phi[k];
+  s.estimate=estimated[k];s.fixed_scale=fixed_scale;s.stable=stable[k];s.frozen=s.stable>=3;
  }
  MatrixXd eta=group_predictions(X,B,states,nthreads);
  if(relaxed) {
@@ -245,21 +246,14 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
   for(int k=0;k<m;++k)if(estimated[k]&&!fixed_scale) {
    if(relaxed&&relaxation_skipped[k])continue;
    bool support_changed=false;int selected=0;
-   for(int j=0;j<p;++j){support_changed=support_changed||((candidate(j,k)!=0)!=(B(j,k)!=0));selected+=allowed(j,k);}
-   if(support_changed)stable[k]=0;
-   if(stable[k]>=3&&!relaxed)continue;
-   State& s=states[k];
-   if((iteration>=3&&selected<.7*s.npositive)||relaxed) {
-    long double rss=0;for(int i=0;i<n;++i)if(s.w[i]>0) {
-     const double mu=f.mean(next_eta(i,k)),residual=s.y[i]-mu;rss+=s.w[i]*residual*residual/f.variance(mu);
-    }
-    double target=s.npositive>selected?(double)rss/(s.npositive-selected):NA_REAL;
-    if(std::isfinite(target)&&target>0) {
-     stable[k]=!support_changed&&std::abs(target/s.phi-1)<.01?stable[k]+1:0;
-     const double updated=std::max(s.phi/2,std::min(2*s.phi,target));
-     nuisance=std::max(nuisance,std::abs(std::log(updated/s.phi)));s.phi=updated;
-    }
+   for(int j=0;j<p;++j){
+    support_changed=support_changed||((candidate(j,k)!=0)!=(B(j,k)!=0));
+    selected+=candidate(j,k)!=0||compulsory[j];
    }
+   State& s=states[k];
+   const double change=pearson_scale_step(f,s,selected,iteration,support_changed,relaxed||lambda==0,
+     [&](int i){return f.mean(next_eta(i,k));});
+   nuisance=std::max(nuisance,change);stable[k]=s.stable;
   }
   long double slope_num=0,slope_den=0,pred_num=0,pred_den=0;
   int selected=0;
