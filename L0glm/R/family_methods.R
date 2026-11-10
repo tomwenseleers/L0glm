@@ -58,7 +58,8 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     method = args$method, control.family = data$control),
     class = c("L0glm_extended_fit", "L0glm_fit"))
   if (data$kind == "multinomial") answer$coordinates <- "clr"
-  if (data$kind == "nb") answer$initialTheta <- data$response$theta
+  if (data$kind == "nb") answer$initialTheta <- if(is.null(args$control.solver$.theta.start))
+    data$response$theta else as.numeric(args$control.solver$.theta.start)
   answer$relaxationSkipped <- if(is.null(result$relaxation_skipped))rep(FALSE,data$m)else result$relaxation_skipped
   if (data$kind == "cox") {
     answer$cox.cache <- data$cox.cache

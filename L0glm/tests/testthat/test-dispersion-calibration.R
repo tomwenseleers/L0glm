@@ -245,6 +245,7 @@ test_that("NB calibration starts and frozen estimated shapes work for predictor 
   fit <- l0glmFit(X,y,family=mgcv::nb(theta=-1),group=seq_len(4),lambda="gic",
     maxit=1L,relaxed=FALSE,control.solver=control,parallelize=FALSE,local.search=FALSE)
   expect_equal(fit$theta,c(2,3));expect_true(all(fit$theta.estimated))
+  expect_equal(fit$initialTheta,c(2,3))
   expected <- sum(vapply(1:2,function(j)sum(dnbinom(y[,j],mu=fitted(fit)[,j],size=c(2,3)[j],log=TRUE)),1))
   expect_equal(as.numeric(logLik(fit)),expected)
 })
