@@ -637,7 +637,10 @@ space, and Cox checks use risk-set information. An unsupported pass
 retains the penalized selection estimate and records
 <code>relaxationSkipped</code>. Independent channels use their own
 selected supports; grouped refits use eligible coefficients in the
-selected row union.</p>
+selected row union. Local support refinement rejects unsupported trial
+refits as well. When the initial requested relaxed pass is unsupported,
+refinement retains the returned fit and reports
+<code>stopping="insufficient_information"</code>.</p>
 <p>Default initialization is training-based. Estimated dispersions use a
 permissive ridge pilot and bounded updates, with inexpensive random-sign
 probes to guard against an almost-interpolating pilot. Positive supplied

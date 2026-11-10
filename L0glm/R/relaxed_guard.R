@@ -1,12 +1,18 @@
 # Structural information checks for special-family unpenalized refits.
 # Built-in ordinary-family/native passes share the C++ counterpart.
-L0glm_relaxed_gram <- function(G) {
+L0glm_relaxed_gram <- function(G,factor=NULL) {
  if(!ncol(G))return(TRUE)
  norm <- sqrt(pmax(0,diag(G)))
  if(any(!is.finite(norm)|norm==0))return(FALSE)
- G <- as.matrix(G)/(norm%o%norm)
- U <- tryCatch(chol(G),error=function(e)NULL)
- !is.null(U)&&min(diag(U))>sqrt(ncol(G)*.Machine$double.eps)*max(diag(U))
+ if(is.null(factor)) {
+  G <- as.matrix(G)/(norm%o%norm)
+  factor <- tryCatch(chol(G),error=function(e)NULL)
+  norm[] <- 1
+ }
+ if(is.null(factor))return(FALSE)
+ # U / column_norm is the Cholesky factor of the normalized Gram matrix.
+ pivots <- diag(factor)/norm
+ all(is.finite(pivots))&&min(pivots)>sqrt(ncol(G)*.Machine$double.eps)*max(pivots)
 }
 L0glm_relaxed_standard <- function(X,weights,allowed,estimated=FALSE,nuisance_df=0L) {
  m <- ncol(allowed);estimated <- rep_len(estimated,m)

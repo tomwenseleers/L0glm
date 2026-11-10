@@ -53,7 +53,10 @@ retain the native \code{\link[=l0nnPois]{l0nnPois()}} backend. Free Gaussian var
 comparison, NB theta is re-estimated when requested, and quasi scale is held
 common across candidates. The original-dimension sparse coefficients are
 returned. Candidate supports are refitted without the adaptive penalty,
-including when the initial fit used \code{relaxed=FALSE}. For quasibinomial,
+including when the initial fit used \code{relaxed=FALSE}. Unsupported trial refits
+are rejected. If the initial requested relaxed refit was skipped for
+insufficient information, refinement is also skipped and retains the
+returned fit (\code{stopping="insufficient_information"}). For quasibinomial,
 refinement uses scaled quasi-deviance plus the complexity charge; its
 likelihood-based S3 criteria remain unavailable.
 

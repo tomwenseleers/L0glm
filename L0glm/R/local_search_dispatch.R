@@ -52,7 +52,10 @@
 #' comparison, NB theta is re-estimated when requested, and quasi scale is held
 #' common across candidates. The original-dimension sparse coefficients are
 #' returned. Candidate supports are refitted without the adaptive penalty,
-#' including when the initial fit used `relaxed=FALSE`. For quasibinomial,
+#' including when the initial fit used `relaxed=FALSE`. Unsupported trial refits
+#' are rejected. If the initial requested relaxed refit was skipped for
+#' insufficient information, refinement is also skipped and retains the
+#' returned fit (`stopping="insufficient_information"`). For quasibinomial,
 #' refinement uses scaled quasi-deviance plus the complexity charge; its
 #' likelihood-based S3 criteria remain unavailable.
 #'
@@ -140,10 +143,11 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   elapsed <- proc.time()[[3L]]-started
   if (isFALSE(mode)) return(fit)
   size <- L0glm_local_size(fit)
-  skip <- if(isTRUE(arguments$maxit==1L)) "initialization_only" else
+  skip <- if(any(fit$relaxationSkipped)) "insufficient_information" else
+    if(isTRUE(arguments$maxit==1L)) "initialization_only" else
     if(isTRUE(fit$init.lambda==0)) "unpenalized" else
       if(size>control$size.max) "size_limit" else NULL
-  if (identical(mode,"auto") && !is.null(skip)) {
+  if (identical(skip,"insufficient_information") || identical(mode,"auto") && !is.null(skip)) {
     fit$local.search <- list(requested=mode,applied=FALSE,initial.size=size,
       size.max=control$size.max,stopping=skip,initial.seconds=elapsed,
       seconds=0,total.seconds=elapsed)

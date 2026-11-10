@@ -218,6 +218,8 @@ L0glm_print_model_info <- function(x, digits) {
     cat("Local search: skipped for a one-iteration ridge fit\n")
   else if (identical(x$local.search$stopping,"unpenalized"))
     cat("Local search: skipped for an unpenalized fit\n")
+  else if (identical(x$local.search$stopping,"insufficient_information"))
+    cat("Local search: skipped because the selected support has insufficient information\n")
   if (!is.null(x$screening)) {
     cat(sprintf("Screening: %s   Rounds: %d   Best round: %d   Batch size: %d",
       x$screening$method, x$screening$iterations, x$screening$best_iteration, x$screening$screen_size))

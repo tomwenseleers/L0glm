@@ -173,3 +173,38 @@ test_that('entrywise CLR information can be full rank with more rows than observ
   data$Z[,4] <- data$Z[,1]
   expect_false(L0glm_relaxed_check(data,matrix(0,4,3),allowed))
 })
+
+test_that('default local search cannot undo a skipped relaxed refit', {
+  set.seed(9012);X <- matrix(runif(20*30,0,.1),20,30)
+  for(f in list(gaussian(),poisson(log),binomial(),Gamma(log))) {
+    y <- if(f$family=='gaussian')rnorm(20)else if(f$family=='binomial')rbinom(20,1,.4)else
+      if(f$family=='Gamma')rgamma(20,3)else rpois(20,10)
+    args <- list(X=X,y=y,family=f,start=1,lambda=1e-8,maxit=2L,thresh=0,
+      normalize='none',parallelize=FALSE,screen='none',dispersion=1)
+    selected <- do.call(l0glmFit,c(args,list(relaxed=FALSE,local.search=FALSE)))
+    for(mode in list('auto',TRUE)) {
+      fit <- do.call(l0glmFit,c(args,list(relaxed=TRUE,local.search=mode)))
+      expect_true(all(fit$relaxationSkipped))
+      expect_identical(coef(fit),coef(selected))
+      expect_false(fit$local.search$applied)
+      expect_identical(fit$local.search$stopping,'insufficient_information')
+    }
+  }
+})
+
+test_that('local trial refits reject unsupported supports instead of using a pseudoinverse', {
+  set.seed(9013)
+  for(f in list(gaussian(),poisson(log))) {
+    X <- matrix(runif(6*8),6,8)
+    for(alias in c(FALSE,TRUE)) {
+      A <- if(alias)cbind(X[,1],X[,2],X[,1])else X
+      p <- ncol(A);mask <- matrix(TRUE,p,1)
+      current <- structure(list(coefficients=Matrix::Matrix(matrix(1,p,1),sparse=TRUE)),class='L0glm_fit')
+      d <- list(allowed=mask,mandatory=integer(),kind=NULL,m=1L,D=A,
+        family=f,nonnegative=FALSE,W=matrix(1,6,1),Y=matrix(1:6,6,1),O=matrix(0,6,1),
+        estimated=TRUE,control.solver=list())
+      expect_error(L0glm_local_refit(mask,current,d,list(channel.refit=FALSE,block.max=Inf)),
+        'insufficient information')
+    }
+  }
+})

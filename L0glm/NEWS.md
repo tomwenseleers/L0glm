@@ -8,6 +8,8 @@
   freedom, retain the penalized fit when unsupported, and report
   `relaxationSkipped` across ordinary GLM, predictor-group and special-family
   drivers. Independent channels retain their own selected supports.
+  Local support refinement also rejects unsupported trial refits and preserves
+  an initial fit whose requested relaxed refit was skipped.
 * Standard GLM families and links, negative binomial with fixed or estimated
   shape, joint multinomial models in CLR coordinates, and Cox proportional
   hazards models with direct or matrix-free quadratic updates.

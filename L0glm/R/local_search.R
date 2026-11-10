@@ -146,11 +146,16 @@ L0glm_local_refit <- function(mask,current,d,control) {
     C <- matrix(0,length(rows),d$m)
     for(j in seq_len(d$m)) {
       keep <- which(submask[,j]);Z <- as.matrix(A[,keep,drop=FALSE])
+      N <- sum(d$W[,j]>0)
+      nuisance <- if(is.null(d$control.solver$.nuisance.df))0L else d$control.solver$.nuisance.df
+      if(length(keep)>N || d$estimated[j] && length(keep)+nuisance>=N)
+        stop('Selected support has insufficient information for an unpenalized refit.',call.=FALSE)
       if(length(keep)) {
         G <- crossprod(Z,d$W[,j]*Z);rhs <- crossprod(Z,d$W[,j]*(d$Y[,j]-d$O[,j]))
-        R <- tryCatch(chol(G),error=function(e) NULL)
-        b <- if(is.null(R)) as.numeric(L0glm_sis_inverse(G)%*%rhs) else
-          as.numeric(backsolve(R,forwardsolve(t(R),rhs)))
+        R <- tryCatch(chol(G),error=function(e)NULL)
+        if(is.null(R)||!L0glm_relaxed_gram(G,R))
+          stop('Selected support has insufficient information for an unpenalized refit.',call.=FALSE)
+        b <- as.numeric(backsolve(R,forwardsolve(t(R),rhs)))
         if(any(!is.finite(b))) stop("Nonfinite Gaussian refit.")
         C[keep,j] <- b
       }
@@ -181,8 +186,19 @@ L0glm_local_refit <- function(mask,current,d,control) {
     args <- list(solver=d$solver,method=d$method,control.solver=d$control.solver,validation=NULL)
     result <- L0glm_ext_pass(data,start,submask,list(),0,FALSE,0,
       control$refit.maxit,control$refit.tol,args,TRUE)
+    if(any(result$relaxation_skipped))
+      stop('Selected support has insufficient information for an unpenalized refit.',call.=FALSE)
     model <- L0glm_ext_result(data,result,list(local_refit=result),0,d$grouped,TRUE,args)
   } else {
+    supported <- if(identical(d$kind,'cox')) {
+      data <- list(kind='cox',Z=A[d$cox.cache$order,,drop=FALSE],m=d$m,
+        weights=d$W,offset=d$O,response=d$response,cox.cache=d$cox.cache)
+      L0glm_relaxed_check(data,B,submask)
+    } else L0glm_relaxed_standard(A,d$W,submask,
+      if(identical(d$kind,'nb'))current$theta.estimated else d$estimated,
+      if(is.null(d$control.solver$.nuisance.df))0L else d$control.solver$.nuisance.df)
+    if(any(!supported))
+      stop('Selected support has insufficient information for an unpenalized refit.',call.=FALSE)
     args <- list(X=A,y=d$original.y,family=d$family,weights=d$W,offset=d$O,
       intercept=FALSE,always.include=included,lambda=0,start=B,
       nonnegative=d$nonnegative,normalize=d$normalize,solver=d$solver,method=d$method,
