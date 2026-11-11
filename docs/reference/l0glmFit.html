@@ -34,8 +34,9 @@ elementwise \(L_0\) penalties can be used to approximate Best Subset
 Selection, while for multivariate (multitask/multichannel) data, the
 group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option grouped=TRUE). Fits on
-multichannel data can be parallelized. Option relaxed allows one to
-finish with a (nearly) unpenalized fit on the L0glm selected features.
+multichannel data can be parallelized. Penalized fits retain their adaptive
+ridge estimates and selected within-row zeroes. Optional local search
+accepts a restricted refit only when its selection target improves.
 The level of regularisation can be manually chosen (if a numeric value is
 passed to lambda) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See information_criteria for
@@ -91,8 +92,9 @@ elementwise \(L_0\) penalties can be used to approximate Best Subset
 Selection, while for multivariate (multitask/multichannel) data, the
 group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option grouped=TRUE). Fits on
-multichannel data can be parallelized. Option relaxed allows one to
-finish with a (nearly) unpenalized fit on the L0glm selected features.
+multichannel data can be parallelized. Penalized fits retain their adaptive
+ridge estimates and selected within-row zeroes. Optional local search
+accepts a restricted refit only when its selection target improves.
 The level of regularisation can be manually chosen (if a numeric value is
 passed to lambda) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See information_criteria for
@@ -199,8 +201,9 @@ elementwise \(L_0\) penalties can be used to approximate Best Subset
 Selection, while for multivariate (multitask/multichannel) data, the
 group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option <code>grouped=TRUE</code>). Fits on
-multichannel data can be parallelized. Option <code>relaxed</code> allows one to
-finish with a (nearly) unpenalized fit on the <code>L0glm</code> selected features.</p>
+multichannel data can be parallelized. Penalized fits retain their adaptive
+ridge estimates and selected within-row zeroes. Optional local search
+accepts a restricted refit only when its selection target improves.</p>
 <p>The level of regularisation can be manually chosen (if a numeric value is
 passed to <code>lambda</code>) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See <a href="information_criteria.html">information_criteria</a> for
@@ -247,7 +250,6 @@ quadratic programming solver.</p>
 <span>  maxit <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  group.maxit <span class="op">=</span> <span class="fl">6</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="va">grouped</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">NCOL</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span>,</span>
 <span>  prior.mean <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  thresh <span class="op">=</span> <span class="fl">1e-05</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
@@ -370,13 +372,13 @@ matrix to distinguish this from the scalar shorthand in a one-term model.
 Starting values determine the initial adaptive ridge penalties, subject to
 the coefficient constraints and the following support restrictions.</p><ul><li><p>Ordinary GLMs and <code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: exact zeros exclude individual
 coefficients separately in each channel, throughout selection, grouped
-passes and relaxed refits. Rows zero in every channel are screened out.</p></li>
+passes and unpenalized refits. Rows zero in every channel are screened out.</p></li>
 <li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: use a scalar, length-<code>p</code> vector or
 <code>p</code> by <code>1</code> matrix; exact zeros exclude the corresponding predictors.</p></li>
 <li><p><code>mgcv::multinom(K)</code>: a starting matrix has one column per category,
 in factor-level or response-matrix column order. Rows are centered across
 categories to give CLR coefficients. Rows supplied as all zero are excluded
-before centering and remain zero during selection and relaxed refits.
+before centering and remain zero during selection and unpenalized refits.
 Individual zero entries in an otherwise nonzero row remain eligible.
 Common nonzero rows, including scalar <code>start = 1</code>, center to zero but
 remain eligible; a weak-ridge step seeds eligible zero starts.</p></li>
@@ -600,52 +602,6 @@ penalty. This argument applies to ordinary GLMs, not the special-family
 loops; those update grouping within IRLS and use <code>maxit</code> per pass.</p></dd>
 
 
-<dt id="arg-relaxed">relaxed<a class="anchor" aria-label="anchor" href="#arg-relaxed"></a></dt>
-<dd><p>Logical controlling a final refit to reduce shrinkage bias.
-<code>FALSE</code> returns the selection fit. For ordinary GLMs, <code>TRUE</code>
-uses a nearly unpenalized refit with <code>lambda = 1e-30</code> and unsmoothed
-adaptive ridge weights. Special families instead use an unpenalized IRLS
-pass with <code>lambda = 0</code>, on the following support:</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: grouped refits admit all eligible channel
-coefficients within selected predictor rows; ungrouped refits admit only
-entries nonzero at the end of selection. Estimated shape parameters continue
-to be updated during refitting; shapes fixed in the constructor remain fixed.</p></li>
-<li><p><code>mgcv::multinom(K)</code>: grouped refits jointly estimate all
-category coefficients within retained predictor rows, allowing category
-entries that were zero during selection to become nonzero. Ungrouped refits
-jointly estimate only the selected nonzero CLR entries and hold all other
-category entries at zero. Both retain the joint multinomial likelihood and
-zero-sum row constraints; a row with \(s\) admitted category entries has
-\(s-1\) free directions. No new predictor rows are introduced.</p></li>
-<li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: refit the selected log-relative-hazard
-coefficients using the Cox partial likelihood, without an intercept.</p></li>
-</ul><p>Hard thresholding is disabled during refitting. Relaxed nonnegative fits
-finish with a conditional boundary pass: a positive coefficient may be set
-to exactly zero when the endpoint derivative supports zero and the actual
-deviance or negative log likelihood does not increase. This uses no
-coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
-its fitted shape and Cox partial likelihood; multinomial CLR coefficients
-remain unrestricted. A validation checkpoint is retained if polishing
-would increase its held-out deviance. Explicit starting-value
-exclusions are respected; intercepts and <code>always.include</code> terms remain
-eligible and unpenalized. Sparse output retains the original dimensions.
-A refit is skipped when its admitted coefficients exceed the available
-information or its selected design is numerically rank deficient. Estimating
-dispersion also requires positive residual degrees of freedom. Checks use
-positive-weight observations, the multinomial zero-sum parameter space and
-the Cox risk-set information, as appropriate. The penalized selection fit is
-retained for unsupported refits; <code>relaxationSkipped</code> identifies them.
-These checks assess structural information, not the existence of a finite
-maximum-likelihood estimate under separation.
-The default is <code>TRUE</code> for grouped multichannel ordinary GLMs and NB,
-and for grouped multinomial models with either factor or count-matrix
-responses. It is <code>FALSE</code> for Cox, ungrouped fits and other single-channel
-fits. Set <code>relaxed = TRUE</code> explicitly to refit an ungrouped model.
-Screened <code>l0glmFit()</code> models instead default to <code>TRUE</code>,
-including single-channel models, unless explicitly overridden.
-Each special-family pass has its own <code>maxit</code> limit; inspect
-<code>convergence</code> to assess whether the refit converged.</p></dd>
-
-
 <dt id="arg-prior-mean">prior.mean<a class="anchor" aria-label="anchor" href="#arg-prior-mean"></a></dt>
 <dd><p>Optional finite centers for the ridge penalty in each IRLS
 update. <code>NULL</code> (default) uses zero centers. Supply values in original
@@ -674,9 +630,9 @@ coefficients and do not change the eligibility rules of <code>start</code>: a no
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and <code>always.include</code> terms are not
-shrunk toward their targets. For special families, the final relaxed refit
-removes the ridge penalty on retained support, so these centers no longer
-exert shrinkage during that refit.</p></dd>
+shrunk toward their targets. An accepted unpenalized support refit removes
+the ridge penalty on the retained support, so these centers no longer
+exert shrinkage in the returned model.</p></dd>
 
 
 <dt id="arg-thresh">thresh<a class="anchor" aria-label="anchor" href="#arg-thresh"></a></dt>
@@ -702,10 +658,10 @@ excluded entries at zero. Rows with fewer than two allowed entries are zero.
 Row norms, not arithmetic row means, are used for grouped thresholding.</p></li>
 </ul><p>Mandatory terms are excluded from cutoff maxima and never hard thresholded.
 Removed rows or entries stay excluded during the selection pass; grouped
-relaxed refits may recover eligible entries within retained rows as described
-in <code>relaxed</code>. Starting-value exclusions remain binding, and sparse
+local support search can propose eligible entries within retained rows.
+Starting-value exclusions remain binding, and sparse
 output keeps its original dimensions. Setting <code>thresh = 0</code> disables
-only the relative cutoff; the absolute floor remains. Final relaxed refits
+only the relative cutoff; the absolute floor remains. Final unpenalized refits
 apply neither cutoff. For special families, cutoffs are applied only in
 selection passes with <code>lambda &gt; 0</code>. Coefficient constraints still apply.
 <code>thresh</code> does not smooth or otherwise alter the adaptive ridge weights.</p></dd>
@@ -741,7 +697,7 @@ printed to the console.</p></dd>
 <dd><p>Logical; defaults to <code>TRUE</code>. Selects a native driver for
 built-in scalar GLM families and fixed-noise signal families, including
 coefficient initialization, dispersion updates, grouped selection and
-relaxed refitting. All Eigen methods are supported and share the design
+unpenalized refitting. All Eigen methods are supported and share the design
 across OpenMP threads. OSQP and <code>bigGlm</code> use the same native IRLS
 driver, calling their dependency interfaces on the R thread; concurrent
 channels use independent R workers for these two solvers.
@@ -838,7 +794,7 @@ quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 <dt id="arg-cluster-refit">cluster.refit<a class="anchor" aria-label="anchor" href="#arg-cluster-refit"></a></dt>
 <dd><p>With preclustering, refine selection on every original
 channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of aggregated cluster outcomes
-at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
+at the requested lambda.</p></dd>
 
 
 <dt id="arg-control-precluster">control.precluster<a class="anchor" aria-label="anchor" href="#arg-control-precluster"></a></dt>
@@ -1000,7 +956,7 @@ The flag records whether the iterative stopping criterion was met.</p></dd>
 
 <dt><code>relaxationSkipped</code></dt>
 <dd><p>logical vector identifying response channels
-whose requested relaxed refit was unsupported. Their selected penalized
+whose requested unpenalized refit was unsupported. Their selected penalized
 estimates are retained. Joint special-family passes retain the complete
 selection fit if any required information block is unsupported. A skipped
 pass has zero iterations in <code>convergence</code>.</p></dd>
@@ -1031,7 +987,7 @@ $$w = 1 / |\beta|^2$$
 where \(\beta\) are the coefficient estimates
 in each iteration. During selection, the relative cutoff and absolute
 numerical floor specified by <code>thresh</code> remove coefficients from later solves.
-The final relaxed refit does not apply this hard cutoff. The inverse-square
+Accepted unpenalized support refits do not apply this hard cutoff. The inverse-square
 weights follow Frommlet &amp; Nuel (2016). Nonnegativity
 constraints are natively supported if the <code>bigGlm</code> or
 the <code>osqp</code> solver is used, or are obtained via clipping if the
@@ -1065,7 +1021,7 @@ category coefficients. Ungrouped NB and multinomial fits use
 \(D_{jc}=\lambda/(4|b_{jc}|^2)\); Cox and single-channel NB use the
 same scalar rule. Mandatory terms have zero ridge penalty and excluded
 coefficients remain excluded. Hard thresholding is controlled separately
-by <code>thresh</code>. Special-family relaxed refits use <code>lambda = 0</code>.</p>
+by <code>thresh</code>. Special-family unpenalized refits use <code>lambda = 0</code>.</p>
 </div>
 
 <div class="section">
@@ -1138,7 +1094,7 @@ consecutive updates with unchanged support and a target within 1% of the
 current dispersion, it is held fixed until the support changes again.
 A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
-A relaxed refit uses the full Pearson residual target with positive
+An unpenalized refit uses the full Pearson residual target with positive
 residual degrees of freedom. Supplied positive dispersions stay fixed.
 Model likelihood and information criteria use the fitted dispersion.
 See <a href="dispersion_calibration.html">dispersion_calibration</a> for the Gaussian and negative-binomial
@@ -1185,10 +1141,9 @@ See Marschner (2011) for deviance backtracking in ordinary GLMs.</p>
 </div>
 
 <p>Fisher scoring uses the expected Hessian in each quadratic approximation.
-If option <code>relaxed</code> is set to <code>TRUE</code> the algorithm
-will refit the <code>L0glm</code> selected variables using a nearly unpenalized
-model (with <code>lambda=1E-30</code>) without hard thresholding. This can reduce bias and
-increase sensitivity. If an appropriate level of regularisation lambda is chosen,
+Adaptive-ridge estimates are retained unless criterion-checked support
+refinement improves the selection target; see <a href="local_search.html">local_search</a>. A separate
+unpenalized model can be requested with <code>lambda=0</code>. If an appropriate level of regularisation lambda is chosen,
 the L0 norm penalized solution approximates Best Subset selection. To achieve
 variable selection consistency, the <code>"bic"</code> <code>lambda</code> preset is
 recommended for low dimensional settings, whilst <code>"gic"</code>,
@@ -1217,10 +1172,8 @@ with the sign of the row mean. If that mean is exactly zero, the sign of the
 first largest-magnitude entry is used. Thus opposite signs across channels
 cannot reduce the starting magnitude by cancellation. Nonnegative fits retain
 arithmetic averaging.
-This is then further iterated until convergence. Finally, as for single
-channel data, if <code>relaxed=TRUE</code>, the algorithm can finish with a final
-step whereby the selected variables are refit using a nearly unpenalized model
-(with <code>lambda=1E-10</code>). Compared to other group penalized regression
+This is then further iterated until convergence. The resulting estimate
+retains its adaptive penalties and within-row sparsity. Compared to other group penalized regression
 methods, such as the group LASSO or multitask lasso, which use an
 \(L_{2,1}\) penalty, this approach produces a sparser solution that better
 approximates the Best Subset of Groups solution if lambda is adequately
@@ -1228,9 +1181,10 @@ chosen.</p>
 <div class="section">
 <h3 id="screening">Screening<a class="anchor" aria-label="anchor" href="#screening"></a></h3>
 <p>Screening reuses <code><a href="sisGLM.html">sisGLM</a></code> for all ordinary and special families.
-With screening enabled, omitted <code>lambda</code>, <code>relaxed</code> and
-<code>parallelize</code> use <code>"gic"</code>, <code>TRUE</code> and <code>FALSE</code>,
-respectively. Explicit arguments are preserved. Other defaults are unchanged.
+With screening enabled, omitted <code>lambda</code> and <code>parallelize</code> use
+<code>"gic"</code> and <code>FALSE</code>, respectively. Each screening round retains
+its penalized estimate. Explicit arguments are
+preserved. Other defaults are unchanged.
 This reproduces the small-batch ISIS workflow used in the ultra-wide
 Gaussian benchmark with a single <code>l0glmFit(X, y)</code> call.</p>
 <p>Each candidate model starts afresh. The original offsets and prior observation
@@ -1337,7 +1291,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># Single-channel Poisson deconvolution: shifted copies of a known PSF.</span></span>
 <span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2</span>, n<span class="op">=</span><span class="fl">500</span>, p<span class="op">=</span><span class="fl">500</span>, s<span class="op">=</span><span class="fl">.1</span>, seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">fit_single</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">single</span><span class="op">$</span><span class="va">X</span>, <span class="va">single</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit_single</span>, beta_true<span class="op">=</span><span class="va">single</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
@@ -1368,8 +1322,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Retain every mass channel generated by the simulation.</span></span>
 <span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4</span>, n<span class="op">=</span><span class="fl">500</span>, p<span class="op">=</span><span class="fl">500</span>, s<span class="op">=</span><span class="fl">.05</span>, seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit_multi</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>,</span>
 <span>    <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span>
@@ -1386,7 +1339,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># then refine and return coefficients for every original mass channel.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_multi_clustered</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>,</span>
 <span>  family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
 <span>  precluster<span class="op">=</span><span class="cn">TRUE</span>, cluster.refit<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_multi_clustered</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">clusters</span></span>
@@ -1407,8 +1360,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">compulsory</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">B</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_background</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_background</span>, <span class="va">Y_background</span>,</span>
 <span>  family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  always.include<span class="op">=</span><span class="va">compulsory</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  precluster<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  always.include<span class="op">=</span><span class="va">compulsory</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, precluster<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
 <span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">background_hat</span> <span class="op">&lt;-</span> <span class="va">B</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_background</span><span class="op">)</span><span class="op">[</span><span class="va">compulsory</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co"># Every original mass channel is retained in both the peak and background fit.</span></span>
@@ -1434,7 +1386,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">y_hd</span> <span class="op">&lt;-</span> <span class="va">mean_hd</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># screen="auto" activates ISIS exactly when p_eligible &gt; 10*n. Screened fits</span></span>
-<span><span class="co"># default to the original-p GIC preset and a relaxed refit.</span></span>
+<span><span class="co"># default to the original-p GIC preset and criterion-checked support refinement.</span></span>
 <span><span class="co"># Screening threads are independent of BLAS threads (nthreads).</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_hd</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_hd</span>, <span class="va">y_hd</span>, screen.nthreads<span class="op">=</span><span class="fl">8</span>, nthreads<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_hd</span><span class="op">$</span><span class="va">screening</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"screen_size"</span>, <span class="st">"iterations"</span>, <span class="st">"best_iteration"</span>, <span class="st">"nthreads"</span><span class="op">)</span><span class="op">]</span></span>
@@ -1477,7 +1429,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">y_validation</span> <span class="op">&lt;-</span> <span class="fl">3</span> <span class="op">+</span> <span class="fl">2</span><span class="op">*</span><span class="va">X_validation</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="va">X_validation</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">200</span><span class="op">)</span></span>
 <span><span class="va">train</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">120</span></span>
 <span><span class="va">fit_stopped</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_validation</span><span class="op">[</span><span class="va">train</span>, <span class="op">]</span>, <span class="va">y_validation</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
-<span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>,</span>
+<span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, maxit<span class="op">=</span><span class="fl">100</span>,</span>
 <span>  validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">fit_stopped</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">selection</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"best_iteration"</span>, <span class="st">"iterations"</span>, <span class="st">"stopped"</span><span class="op">)</span><span class="op">]</span></span>
@@ -1486,7 +1438,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Omit nsis to keep the GIC-based default batch.</span></span>
 <span><span class="va">fit_batch</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_validation</span><span class="op">[</span><span class="va">train</span>, <span class="op">]</span>, <span class="va">y_validation</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, screen<span class="op">=</span><span class="st">"ISIS"</span>, nsis<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  maxit<span class="op">=</span><span class="fl">100</span>, validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span>, rule<span class="op">=</span><span class="st">"1se"</span><span class="op">)</span>,</span>
 <span>  parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">fit_batch</span><span class="op">$</span><span class="va">validation</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"selected_start"</span>, <span class="st">"selected_nsis"</span>, <span class="st">"deviance"</span><span class="op">)</span><span class="op">]</span></span>
@@ -1504,15 +1456,15 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>  <span class="va">y_nb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/NegBinomial.html" class="external-link">rnbinom</a></span><span class="op">(</span><span class="va">n</span>, mu<span class="op">=</span><span class="va">mu_nb</span>, size<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="co"># nb() estimates theta; nb(theta=2) would keep it fixed at two.</span></span>
 <span>  <span class="va">nb_fit</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_nb</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>    intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>,  maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="va">nb_fit</span><span class="op">$</span><span class="va">theta</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">nb_fit</span><span class="op">)</span></span>
 <span>  <span class="va">nb_gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_nb</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    intercept<span class="op">=</span><span class="cn">TRUE</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">5</span>,</span>
-<span>    relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>     maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="va">nb_cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_nb</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">nb</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>    intercept<span class="op">=</span><span class="cn">TRUE</span>, tune<span class="op">=</span><span class="st">"cv"</span>, nlambda<span class="op">=</span><span class="fl">5</span>, nfolds<span class="op">=</span><span class="fl">3</span>, foldid<span class="op">=</span><span class="va">folds_special</span>,</span>
-<span>    relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>     maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GIC<span class="op">=</span><span class="va">nb_gic</span><span class="op">$</span><span class="va">lambda_best</span>, CV<span class="op">=</span><span class="va">nb_cv</span><span class="op">$</span><span class="va">lambda_best</span>, CV_1se<span class="op">=</span><span class="va">nb_cv</span><span class="op">$</span><span class="va">lambda_1se</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">nb_cv</span><span class="op">$</span><span class="va">fit_1se</span>, <span class="va">X_special</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span></span>
 <span></span>
@@ -1525,15 +1477,15 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, prob<span class="op">=</span><span class="va">probabilities</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>, levels<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span>  <span class="va">multinomial_fit</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>
 <span>    family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/multinom.html" class="external-link">multinom</a></span><span class="op">(</span>K<span class="op">=</span><span class="fl">2</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>    relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>     maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">multinomial_fit</span><span class="op">)</span>               <span class="co"># original-scale, zero-sum CLR rows</span></span>
 <span>  <span class="va">multinomial_gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>
 <span>    family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/multinom.html" class="external-link">multinom</a></span><span class="op">(</span>K<span class="op">=</span><span class="fl">2</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">5</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>    relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>     maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="va">multinomial_cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_multinomial</span>,</span>
 <span>    family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/multinom.html" class="external-link">multinom</a></span><span class="op">(</span>K<span class="op">=</span><span class="fl">2</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>, nlambda<span class="op">=</span><span class="fl">5</span>,</span>
 <span>    nfolds<span class="op">=</span><span class="fl">3</span>, foldid<span class="op">=</span><span class="va">folds_special</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>    relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>     maxit<span class="op">=</span><span class="fl">200</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GIC<span class="op">=</span><span class="va">multinomial_gic</span><span class="op">$</span><span class="va">lambda_best</span>, CV<span class="op">=</span><span class="va">multinomial_cv</span><span class="op">$</span><span class="va">lambda_best</span>,</span>
 <span>    CV_1se<span class="op">=</span><span class="va">multinomial_cv</span><span class="op">$</span><span class="va">lambda_1se</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">multinomial_cv</span><span class="op">$</span><span class="va">fit_1se</span>, <span class="va">X_special</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span></span>
@@ -1545,13 +1497,13 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span>    <span class="va">y_cox</span> <span class="op">&lt;-</span> <span class="fu">survival</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="va">event_time</span>, <span class="va">censor_time</span><span class="op">)</span>,</span>
 <span>      <span class="va">event_time</span> <span class="op">&lt;=</span> <span class="va">censor_time</span><span class="op">)</span></span>
 <span>    <span class="va">cox_fit</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_cox</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>      lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>      lambda<span class="op">=</span><span class="st">"gic"</span>,  maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">cox_fit</span><span class="op">)</span></span>
 <span>    <span class="va">cox_gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_cox</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>      tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">5</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>      tune<span class="op">=</span><span class="st">"gic"</span>, nlambda<span class="op">=</span><span class="fl">5</span>,  maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>    <span class="va">cox_cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X_special</span>, <span class="va">y_cox</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>      tune<span class="op">=</span><span class="st">"cv"</span>, nlambda<span class="op">=</span><span class="fl">5</span>, nfolds<span class="op">=</span><span class="fl">3</span>, foldid<span class="op">=</span><span class="va">folds_special</span>,</span>
-<span>      relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>       maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>GIC<span class="op">=</span><span class="va">cox_gic</span><span class="op">$</span><span class="va">lambda_best</span>, CV<span class="op">=</span><span class="va">cox_cv</span><span class="op">$</span><span class="va">lambda_best</span>, CV_1se<span class="op">=</span><span class="va">cox_cv</span><span class="op">$</span><span class="va">lambda_1se</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">cox_cv</span><span class="op">$</span><span class="va">fit_1se</span>, <span class="va">X_special</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span>, type<span class="op">=</span><span class="st">"risk"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>

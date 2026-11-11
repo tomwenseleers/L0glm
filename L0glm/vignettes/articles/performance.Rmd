@@ -17,10 +17,10 @@ used to assess both speed and recovery.
 ## One million predictor example
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **3.61 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
-L0glm uses its default GIC preset with ISIS screening and relaxed fitting.
+L0glm uses its default GIC preset with ISIS screening and criterion-checked support refinement.
 LASSO and fully relaxed LASSO search paths of up to 40 lambda values, selected
 by BIC or five-fold CV. BIC is included because GIC can select an empty LASSO
 model at this dimension; all methods are also evaluated using the common GIC.
@@ -28,7 +28,7 @@ model at this dimension; all methods are also evaluated using the common GIC.
 <!-- BEGIN million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.63** | **4194** | **46** | **0** | **14** | **999940** | **0.868** | **0.876** |
+| **L0glm + ISIS** | **GIC preset** | **3.61** | **4195** | **46** | **0** | **14** | **999940** | **0.868** | **0.876** |
 | LASSO | BIC path | 41.03 | 5789 | 34 | 20 | 26 | 999920 | 0.596 | 0.597 |
 | Relaxed LASSO | BIC path | 42.55 | 18650 | 43 | 753 | 17 | 999187 | 0.100 | 0.197 |
 | LASSO | 5-fold CV | 205.98 | 14106 | 42 | 373 | 18 | 999567 | 0.177 | 0.266 |
@@ -41,7 +41,7 @@ par(mar=c(4, 6.5, 2.8, 1), mgp=c(2.5, .6, 0), family="sans", cex.axis=.85,
   bg="white", col.axis="#34465d", col.lab="#34465d", col.main="#0a1930")
 labels <- c("L0glm + ISIS", "LASSO", "Relaxed LASSO")
 cols <- c("#087e83", "#8b5cc7", "#d04a78")
-seconds <- c(2.63, 205.98, 188.73)
+seconds <- c(3.61, 205.98, 188.73)
 plot(seconds, 3:1, log="x", xlim=c(min(1, min(seconds)/2), max(seconds)*1.8), ylim=c(.6, 3.4), pch=21, bg=cols,
   col=cols, cex=2.2, yaxt="n", xlab="Seconds (log scale)", ylab="", bty="n")
 axis(2, at=3:1, labels=labels, las=1, tick=FALSE, cex.axis=.9)
@@ -65,7 +65,7 @@ layout(1)
 ```
 
 <!-- BEGIN million-speed -->
-L0glm is **78× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
+L0glm is **57× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
 <!-- END million-speed -->
 
 See the [high-dimensional tutorial](high-dimensional.html) for the data setup
@@ -137,11 +137,11 @@ achieves F1 0.534.
 <!-- BEGIN single-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 0.14 | 102682 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
-| LASSO | GIC path | 0.24 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
-| Relaxed LASSO | GIC path | 0.42 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
-| LASSO | 5-fold CV | 2.72 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
-| Relaxed LASSO | 5-fold CV | 2.77 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
+| L0glm | GIC preset | 0.17 | 102765 | 845 | 154 | 155 | 8846 | 0.845 | 0.828 |
+| LASSO | GIC path | 0.40 | 145904 | 950 | 2096 | 50 | 6904 | 0.470 | 0.467 |
+| Relaxed LASSO | GIC path | 0.64 | 122083 | 905 | 999 | 95 | 8001 | 0.623 | 0.607 |
+| LASSO | 5-fold CV | 4.83 | 146234 | 951 | 2146 | 49 | 6854 | 0.464 | 0.462 |
+| Relaxed LASSO | 5-fold CV | 6.70 | 133122 | 920 | 1523 | 80 | 7477 | 0.534 | 0.524 |
 <!-- END single-metrics -->
 
 All fits are evaluated with the original Poisson likelihood. LASSO uses a
@@ -157,17 +157,17 @@ recovers peak times, while coefficients within each row describe the mass
 spectrum.
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **11.34 seconds**. In this benchmark it is **21.6× faster than GIC-tuned group LASSO** and **282× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
 
 <!-- BEGIN multi-metrics -->
 | Method | Selection | Seconds | GIC | TP | FP | FN | TN | F1 | MCC | Within-row F1 | Within-row MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.912 | 0.869 |
-| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
-| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
-| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 2 | 4758 | 0.320 | 0.316 | 0.886 | 0.830 |
-| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
+| L0glm | GIC preset | 11.34 | 5606331 | 944 | 11 | 56 | 8989 | 0.966 | 0.962 | 0.912 | 0.869 |
+| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 20 | 8140 | 0.690 | 0.685 | 0.842 | 0.768 |
+| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 91 | 8691 | 0.820 | 0.802 | 0.853 | 0.782 |
+| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 2 | 4758 | 0.320 | 0.316 | 0.886 | 0.830 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 38 | 8498 | 0.781 | 0.769 | 0.856 | 0.785 |
 <!-- END multi-metrics -->
 
 Within-row F1 and MCC assess spectral sparsity among correctly recovered peaks.

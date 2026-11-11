@@ -15,8 +15,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // L0nnpois_dense_cpp
-Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation);
-RcppExport SEXP _L0glm_L0nnpois_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP) {
+Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only);
+RcppExport SEXP _L0glm_L0nnpois_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -39,13 +39,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< bool >::type natural_ordering(natural_orderingSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type validation(validationSEXP);
-    rcpp_result_gen = Rcpp::wrap(L0nnpois_dense_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation));
+    Rcpp::traits::input_parameter< bool >::type refit_only(refit_onlySEXP);
+    rcpp_result_gen = Rcpp::wrap(L0nnpois_dense_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only));
     return rcpp_result_gen;
 END_RCPP
 }
 // L0nnpois_sparse_cpp
-Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation);
-RcppExport SEXP _L0glm_L0nnpois_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP) {
+Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only);
+RcppExport SEXP _L0glm_L0nnpois_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -68,7 +69,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     Rcpp::traits::input_parameter< bool >::type natural_ordering(natural_orderingSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type validation(validationSEXP);
-    rcpp_result_gen = Rcpp::wrap(L0nnpois_sparse_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation));
+    Rcpp::traits::input_parameter< bool >::type refit_only(refit_onlySEXP);
+    rcpp_result_gen = Rcpp::wrap(L0nnpois_sparse_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -434,6 +436,23 @@ RcppExport SEXP _L0glm_nuisance_gaussian_cpp(SEXP BSEXP, SEXP YSEXP, SEXP Signal
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// posterior_truncated_cpp
+NumericMatrix posterior_truncated_cpp(NumericVector mean, NumericMatrix precision, LogicalVector constrained, NumericVector start, int nsim, int burnin, int thin);
+RcppExport SEXP _L0glm_posterior_truncated_cpp(SEXP meanSEXP, SEXP precisionSEXP, SEXP constrainedSEXP, SEXP startSEXP, SEXP nsimSEXP, SEXP burninSEXP, SEXP thinSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type precision(precisionSEXP);
+    Rcpp::traits::input_parameter< LogicalVector >::type constrained(constrainedSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type start(startSEXP);
+    Rcpp::traits::input_parameter< int >::type nsim(nsimSEXP);
+    Rcpp::traits::input_parameter< int >::type burnin(burninSEXP);
+    Rcpp::traits::input_parameter< int >::type thin(thinSEXP);
+    rcpp_result_gen = Rcpp::wrap(posterior_truncated_cpp(mean, precision, constrained, start, nsim, burnin, thin));
+    return rcpp_result_gen;
+END_RCPP
+}
 // L0glm_scalar_terms_cpp
 NumericMatrix L0glm_scalar_terms_cpp(NumericVector y, NumericVector mu, int family, double phi, double censor, bool deviance);
 RcppExport SEXP _L0glm_L0glm_scalar_terms_cpp(SEXP ySEXP, SEXP muSEXP, SEXP familySEXP, SEXP phiSEXP, SEXP censorSEXP, SEXP devianceSEXP) {
@@ -724,8 +743,8 @@ RcppExport SEXP _L0glm_RcppExport_registerCCallable() {
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 19},
-    {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 19},
+    {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 20},
+    {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 20},
     {"_L0glm_boundary_dense_cpp", (DL_FUNC) &_L0glm_boundary_dense_cpp, 8},
     {"_L0glm_boundary_sparse_cpp", (DL_FUNC) &_L0glm_boundary_sparse_cpp, 8},
     {"_L0glm_L0glm_poissondist_cpp", (DL_FUNC) &_L0glm_L0glm_poissondist_cpp, 4},
@@ -742,6 +761,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
     {"_L0glm_nuisance_gaussian_cpp", (DL_FUNC) &_L0glm_nuisance_gaussian_cpp, 7},
+    {"_L0glm_posterior_truncated_cpp", (DL_FUNC) &_L0glm_posterior_truncated_cpp, 7},
     {"_L0glm_L0glm_scalar_terms_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_terms_cpp, 6},
     {"_L0glm_L0glm_scalar_profile_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_profile_cpp, 7},
     {"_L0glm_L0glm_scalar_dist_cpp", (DL_FUNC) &_L0glm_L0glm_scalar_dist_cpp, 6},

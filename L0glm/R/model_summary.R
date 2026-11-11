@@ -20,8 +20,10 @@
 #' @param digits Significant digits for printed numeric values.
 #' @param inference Optional coefficient inference for fitted models:
 #'   \code{"none"} (default), \code{"conditional"} for selected-support
-#'   unpenalized refits and model-based standard errors, or \code{"bootstrap"}
-#'   for repeated case-resampling of the saved fitting specification.
+#'   unpenalized refits and model-based standard errors, \code{"bootstrap"}
+#'   for repeated case-resampling of the saved fitting specification, or
+#'   \code{"posterior"} for conditional frozen-prior Gaussian approximations
+#'   and coefficient draws, respecting nonnegative constraints.
 #'   See \link{coefficient_inference} for assumptions and returned tables.
 #' @param control.inference Named advanced inference controls, including
 #'   \code{level=.95}, \code{nboot=199L} and \code{seed=NULL}.
@@ -92,7 +94,7 @@ print.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L), ...) {
 #' @method summary L0glm_fit
 #' @export
 summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_floor=0.1,
-  inference=c('none','conditional','bootstrap'),control.inference=list()) {
+  inference=c('none','conditional','bootstrap','posterior'),control.inference=list()) {
   inference <- match.arg(inference)
   answer <- structure(c(L0glm_model_info(object), list(coefficients=stats::coef(object),
     metrics=l0glmMetrics(object, mu_floor=mu_floor, beta_true=beta_true, r2_mu_floor=r2_mu_floor),
@@ -102,8 +104,10 @@ summary.L0glm_fit <- function(object, ..., mu_floor=0, beta_true=NULL, r2_mu_flo
     class="summary.L0glm_fit")
   if(inference!='none') {
     control <- L0glm_inference_control(control.inference)
-    answer$inference <- if(inference=='conditional')L0glm_conditional_inference(object,control)else
-      L0glm_bootstrap_inference(object,control)
+    answer$inference <- switch(inference,
+      conditional=L0glm_conditional_inference(object,control),
+      bootstrap=L0glm_bootstrap_inference(object,control),
+      posterior=L0glm_posterior_inference(object,control))
   }
   answer
 }
@@ -140,14 +144,18 @@ print.summary.L0glm_fit <- function(x, digits=max(3L, getOption("digits") - 3L),
   }
   rows <- sort(unique(c(x$selected_rows, x$mandatory_rows)))
   if(!is.null(x$inference)) {
-    cat(if(x$inference$method=='conditional')'\nSelected-support coefficient inference:\n'else
-      '\nBootstrap coefficient inference:\n')
+    cat(switch(x$inference$method,conditional='\nSelected-support coefficient inference:\n',
+      posterior='\nConditional posterior coefficient inference:\n',bootstrap='\nBootstrap coefficient inference:\n'))
     table <- x$inference$coefficients
     keep <- table$row%in%head(rows,max.rows) & table$column<=max.cols
     print(table[keep,setdiff(names(table),c('row','column')),drop=FALSE],digits=digits,row.names=FALSE)
     if(x$inference$method=='conditional')
       cat('Selection is treated as fixed. Refit converged:',x$inference$converged,'\n')else
-      cat(x$inference$successful,'of',x$inference$nboot,'bootstrap fits succeeded.\n')
+      if(x$inference$method=='posterior')
+        cat('Prior:',x$inference$prior.source,'\n',
+          'Support and noise parameters held fixed.',x$inference$nsim,
+          'coefficient draws; mode converged:',x$inference$converged,'\n')else
+        cat(x$inference$successful,'of',x$inference$nboot,'bootstrap fits succeeded.\n')
     return(invisible(x))
   }
   cat("\nCoefficient estimates:\n")
@@ -208,7 +216,9 @@ L0glm_print_model_info <- function(x, digits) {
   if (x$m > 1L && !is.null(x$grouped)) cat("Grouped selection:", x$grouped, "\n")
   if(any(x$relaxationSkipped))
     cat('Relaxed refit skipped: selected estimates retained in',sum(x$relaxationSkipped),'channel(s)\n')
-  if (isTRUE(x$local.search$applied))
+  if(identical(x$local.search$stopping,'support_refit_only'))
+    cat('Selected-support refit:',if(nrow(x$local.search$history)>1L)'accepted'else'penalized fit retained','\n')
+  else if (isTRUE(x$local.search$applied))
     cat(sprintf("Local search: %d accepted steps   %d candidate refits   %.3g s\n",
       nrow(x$local.search$history)-1L,x$local.search$evaluations,x$local.search$seconds))
   else if (identical(x$local.search$stopping,"size_limit"))

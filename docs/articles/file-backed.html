@@ -227,16 +227,16 @@ separately. The <a href="https://github.com/tomwenseleers/L0glm/blob/master/benc
 reproduction script</a> creates a reusable descriptor and response cache
 and reports the screening history. The response, truth and descriptor
 should be saved together when continuing in a new session.</p>
-<p>For large complete double-precision bigmemory designs, relaxed
-Gaussian ISIS can cache up to <code>control$working.columns</code>
-columns (default 10,000), bounded by <code>control$max.cells</code>. The
-ordinary global ISIS trajectory is retained, and a cached candidate
-replaces its best fit only when the original-data GIC improves.
-Identical consecutive Gaussian coefficients avoid another redundant
-full-file scan. Set <code>working.columns=0L</code> to use the ordinary
-global path without a resident candidate pool. Weights, offsets and
-compulsory terms retain their specified meaning; other families and
-fitting options use the regular screening path.</p>
+<p>For large complete double-precision bigmemory designs, Gaussian ISIS
+can cache up to <code>control$working.columns</code> columns (default
+10,000), bounded by <code>control$max.cells</code>. The ordinary global
+ISIS trajectory is retained, and a cached candidate replaces its best
+fit only when the original-data GIC improves. Identical consecutive
+Gaussian coefficients avoid another redundant full-file scan. Set
+<code>working.columns=0L</code> to use the ordinary global path without
+a resident candidate pool. Weights, offsets and compulsory terms retain
+their specified meaning; other families and fitting options use the
+regular screening path.</p>
 <p>On this dataset, <code>screen.maxit=2L</code> gives the same support,
 GIC and test RMSE in <strong>123.96 seconds</strong>, with coefficients
 agreeing to numerical precision. This explicit two-round budget is

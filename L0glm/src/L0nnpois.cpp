@@ -758,7 +758,8 @@ Rcpp::List fit_all_impl(const Design& X,
                         double tol,
                         int nthreads,
                         bool natural_ordering,
-                        Rcpp::Nullable<Rcpp::List> validation_r) {
+                        Rcpp::Nullable<Rcpp::List> validation_r,
+                        bool refit_only) {
   const int n = X.rows();
   const int p = X.cols();
   const int m = Ymap.cols();
@@ -787,6 +788,8 @@ Rcpp::List fit_all_impl(const Design& X,
     Rcpp::NumericMatrix sr(start_nullable.get());
     start_full = Rcpp::as<Map<MatrixXd> >(sr);
   }
+  if(refit_only && (!has_start || !relaxed || validation))
+    Rcpp::stop("A native support-only refit requires starting coefficients and no internal validation.");
 
   std::vector<char> always_include(p, 0);
   for (int i = 0; i < always_include_r.size(); ++i) {
@@ -810,6 +813,7 @@ Rcpp::List fit_all_impl(const Design& X,
   }
 
   MatrixXd coef = MatrixXd::Zero(p, m);
+  if(refit_only)coef=start_full;
   MatrixXd lambdas = MatrixXd::Zero(p, m);
   MatrixXd weights_out = MatrixXd::Zero(n, m);
   MatrixXd z_out = MatrixXd::Zero(n, m);
@@ -885,7 +889,7 @@ Rcpp::List fit_all_impl(const Design& X,
     if (failed_steps) Rcpp::warning("No decreasing finite Poisson step in %d channel(s); retaining previous coefficients.", failed_steps);
   };
 
-  for (int iter = 0; iter < effective_group_maxit; ++iter) {
+  for (int iter = 0; !refit_only && iter < effective_group_maxit; ++iter) {
     if (iter > 0) {
       group_support_start(coef, vars, start_current, always_include);
       preserve_start_mask();
@@ -916,6 +920,8 @@ Rcpp::List fit_all_impl(const Design& X,
       for(int j:vars)if((grouped||coef(j,col)!=0||always_include[j])&&
         (!has_start||always_include[j]||start_full(j,col)!=0))columns.push_back(j);
       skip_relaxation[col]=!guard.check(X,rows,columns);
+      if(refit_only && skip_relaxation[col])
+        Rcpp::stop("Selected support has insufficient information for an unpenalized refit.");
     }
     if (!vars.empty()) {
       fit_for_vars(1e-30, &start_current, false, 1);
@@ -1013,11 +1019,12 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               double tol,
                               int nthreads,
                               bool natural_ordering,
-                              Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
+                              Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
+                              bool refit_only = false) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only);
 }
 
 // [[Rcpp::export]]
@@ -1039,9 +1046,10 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                double tol,
                                int nthreads,
                                bool natural_ordering,
-                              Rcpp::Nullable<Rcpp::List> validation = R_NilValue) {
+                               Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
+                               bool refit_only = false) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only);
 }

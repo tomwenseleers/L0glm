@@ -338,9 +338,9 @@ coefficients and do not change the eligibility rules of \code{start}: a nonzero
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and \code{always.include} terms are not
-shrunk toward their targets. For special families, the final unpenalized refit
-removes the ridge penalty on retained support, so these centers no longer
-exert shrinkage during that refit.}
+shrunk toward their targets. An accepted unpenalized support refit removes
+the ridge penalty on the retained support, so these centers no longer
+exert shrinkage in the returned model.}
 
 \item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
 hard thresholding during selection. Cutoffs use normalized working

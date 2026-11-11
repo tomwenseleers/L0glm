@@ -106,7 +106,7 @@ offsets are expanded across observations and channels.</p>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fl">300</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">.5</span> <span class="op">+</span> <span class="fl">.8</span><span class="op">*</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="st">"log"</span><span class="op">)</span>, intercept<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>  weights<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">.8</span>, <span class="fl">1.2</span>, length.out<span class="op">=</span><span class="fl">300</span><span class="op">)</span>, offset<span class="op">=</span><span class="va">offset</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="op">]</span>, offset<span class="op">=</span><span class="va">offset</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      [,1]</span></span>
 <span><span class="co">#&gt; [1,] 2.30</span></span>
@@ -214,16 +214,16 @@ response.</p>
 <p>The native Poisson backend scores validation deviance in C++, shares
 the design across OpenMP workers and restores each channel’s best
 checkpoint. Grouped selection also retains the best shared-support pass.
-Relaxed refitting can keep its initial selected coefficients when
-subsequent steps increase validation loss.</p>
+A support refit is accepted only when it improves the validation
+target.</p>
 <p>The default controls are <code>patience=3L</code>,
 <code>minit=3L</code> and <code>tol=1e-8</code>. An improvement must
 exceed <code>tol * max(1, best_deviance)</code> to reset patience.
 Validation weights and offsets follow the response formats;
 <code>mu_floor=1e-8</code> is used only for positive-mean validation
-scoring. Diagnostics include <code>selection</code>,
-<code>relaxed</code>, iteration histories and the selected start/batch
-candidate.</p>
+scoring. Diagnostics include <code>selection</code>, any internal
+<code>relaxed</code> refit, iteration histories and the selected
+start/batch candidate.</p>
 <p>The same interface works through <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> for all
 supported families. <code>validation$rule="1se"</code> selects a simpler
 candidate within one empirical standard error of the best candidate.

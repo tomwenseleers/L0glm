@@ -211,6 +211,8 @@ L0glm_local_refit <- function(mask,current,d,control) {
       maxit=control$refit.maxit,tol=control$refit.tol,thresh=0,
       grouped=d$grouped,group.maxit=1L,screen="none",local.search=FALSE,
       control.solver=d$control.solver,control.family=d$control.family)
+    if(d$nonnegative && identical(d$family$family,'poisson') && identical(d$family$link,'identity') &&
+       identical(d$solver,'eigen') && isTRUE(d$method==1L))args$control.solver$.refit.only <- TRUE
     # The constrained native backend uses ncores for its outcome threads.
     args$parallelize <- control$ncores>1L
     if(is.null(d$kind)) {
@@ -218,7 +220,7 @@ L0glm_local_refit <- function(mask,current,d,control) {
       if(!length(d$common.phi)) phi[d$estimated] <- -phi[d$estimated]
       args$dispersion <- phi
     } else if(identical(d$kind,"nb")) args$control.solver$.theta.start <- current$theta
-    model <- do.call(l0glmFit,args)
+    model <- do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE)))
   }
   model$support.refit <- TRUE
   L0glm_local_remap(model,rows,d,current)
@@ -263,6 +265,8 @@ L0glm_local_refine <- function(fit,args,control=list(),support.only=FALSE) {
     normalize=if(is.null(args$normalize)) "auto" else args$normalize,
     solver=if(is.null(args$solver)) "eigen" else args$solver,
     method=if(is.null(args$method)) 1L else args$method,
+    refit.maxit=if(is.null(args$maxit))25L else args$maxit,
+    refit.tol=if(is.null(args$tol))1e-10 else args$tol,
     control.solver=if(is.null(args$control.solver))controlSolverGen(
       solver=if(is.null(args$solver))"eigen" else args$solver,
       method=if(is.null(args$method))1L else args$method) else args$control.solver,
@@ -461,6 +465,7 @@ L0glm_local_support_refit <- function(fit,d,control) {
   started <- proc.time()[[3L]]
   control$block.max <- Inf;control$channel.refit <- FALSE
   control$mu.floor <- .Machine$double.eps
+  control$refit.maxit <- d$refit.maxit;control$refit.tol <- d$refit.tol
   mask <- as.matrix(coef(fit))!=0
   if(d$grouped)mask <- matrix(rowSums(mask)>0,d$p,d$m)&d$allowed
   if(!is.null(fit[['group']]))mask <- fit$group.active

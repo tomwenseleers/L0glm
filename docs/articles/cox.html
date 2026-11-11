@@ -110,19 +110,19 @@ the coefficient model has no separate intercept.</p>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">survival</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmin</a></span><span class="op">(</span><span class="va">event</span>, <span class="va">censor</span><span class="op">)</span>, <span class="va">event</span> <span class="op">&lt;=</span> <span class="va">censor</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, maxit<span class="op">=</span><span class="fl">100</span>, tol<span class="op">=</span><span class="fl">1e-8</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt; L0glm fit</span></span>
 <span><span class="co">#&gt; Family: Cox PH   Link: identity </span></span>
 <span><span class="co">#&gt; Observations: 400   Selectable predictors: 25   Channels: 1</span></span>
 <span><span class="co">#&gt; Selected rows: 3   Nonzero selectable coefficients: 3   Mandatory rows: 0</span></span>
 <span><span class="co">#&gt; Lambda: 5.6 </span></span>
-<span><span class="co">#&gt; Local search: 0 accepted steps   13 candidate refits   0.17 s</span></span>
+<span><span class="co">#&gt; Local search: 1 accepted steps   13 candidate refits   0.25 s</span></span>
 <span><span class="co">#&gt; Criterion sample size (Cox): 296 </span></span>
 <span><span class="co">#&gt; Convergence (last pass per stage/channel):</span></span>
-<span><span class="co">#&gt;      stage channels converged not_converged unavailable max_iterations</span></span>
-<span><span class="co">#&gt;  selection        1         1             0           0             25</span></span>
-<span><span class="co">#&gt;    relaxed        1         1             0           0              3</span></span>
+<span><span class="co">#&gt;      stage channels converged not_converged skipped unavailable max_iterations</span></span>
+<span><span class="co">#&gt;  selection        1         1             0       0           0              3</span></span>
+<span><span class="co">#&gt;    relaxed        1         1             0       0           0              1</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="op">]</span>, type<span class="op">=</span><span class="st">"risk"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1.659 0.802 0.193 0.193 0.269</span></span></code></pre></div>
 <p>Risk predictions are relative hazards
@@ -134,9 +134,9 @@ Breslow treatment of tied event times.</p>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"gic"</span>,</span>
-<span>  nlambda<span class="op">=</span><span class="fl">10</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
+<span>  nlambda<span class="op">=</span><span class="fl">10</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu">mgcv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">cox.ph</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>,</span>
-<span>  nfolds<span class="op">=</span><span class="fl">5</span>, nlambda<span class="op">=</span><span class="fl">10</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span></code></pre></div>
+<span>  nfolds<span class="op">=</span><span class="fl">5</span>, nlambda<span class="op">=</span><span class="fl">10</span>, maxit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span></code></pre></div>
 <p>Cox CV uses partial-likelihood subtraction with the full risk sets.
 The <a href="../reference/L0glm_cox.html">Cox help page</a> includes the
 likelihood, quadratic approximation and a reproducible

@@ -19,9 +19,12 @@ other attached packages:
 [1] L0glm_0.2.0.9002
 
 loaded via a namespace (and not attached):
- [1] digest_0.6.39         Matrix_1.7-6          lattice_0.23-1
- [4] sparsesvd_0.2-3       parallel_4.5.0        RhpcBLASctl_0.23-42
- [7] docopt_0.7.2          dynamicTreeCut_1.63-1 cli_3.6.6
-[10] qlcMatrix_0.9.9       grid_4.5.0            statmod_1.5.2
-[13] slam_0.1-56           compiler_4.5.0        fastcluster_1.3.0
-[16] tools_4.5.0           Rcpp_1.1.2            rlang_1.3.0
+ [1] digest_0.6.39         codetools_0.2-20      shape_1.4.6.1
+ [4] Matrix_1.7-6          lattice_0.23-1        sparsesvd_0.2-3
+ [7] splines_4.5.0         iterators_1.0.14      parallel_4.5.0
+[10] RhpcBLASctl_0.23-42   docopt_0.7.2          dynamicTreeCut_1.63-1
+[13] cli_3.6.6             foreach_1.5.2         qlcMatrix_0.9.9
+[16] grid_4.5.0            statmod_1.5.2         slam_0.1-56
+[19] compiler_4.5.0        fastcluster_1.3.0     tools_4.5.0
+[22] survival_3.8-12       Rcpp_1.1.2            glmnet_5.1
+[25] rlang_1.3.0

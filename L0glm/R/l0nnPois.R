@@ -317,13 +317,13 @@ l0nnPois <- function(X,
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
-      natural_ordering, validation)
+      natural_ordering, validation,isTRUE(control.solver$.refit.only))
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
-      natural_ordering, validation)
+      natural_ordering, validation,isTRUE(control.solver$.refit.only))
   }
 
   coefficients <- fit$coefficients

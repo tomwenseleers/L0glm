@@ -384,9 +384,9 @@ coefficients and do not change the eligibility rules of \code{start}: a nonzero
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and \code{always.include} terms are not
-shrunk toward their targets. For special families, the final unpenalized refit
-removes the ridge penalty on retained support, so these centers no longer
-exert shrinkage during that refit.}
+shrunk toward their targets. An accepted unpenalized support refit removes
+the ridge penalty on the retained support, so these centers no longer
+exert shrinkage in the returned model.}
 
 \item{thresh}{Finite nonnegative scalar, default \code{1e-5}, controlling
 hard thresholding during selection. Cutoffs use normalized working
@@ -739,7 +739,7 @@ with adaptive penalty weights
 where \eqn{\beta} are the coefficient estimates
 in each iteration. During selection, the relative cutoff and absolute
 numerical floor specified by \code{thresh} remove coefficients from later solves.
-The final unpenalized refit does not apply this hard cutoff. The inverse-square
+Accepted unpenalized support refits do not apply this hard cutoff. The inverse-square
 weights follow Frommlet & Nuel (2016). Nonnegativity
 constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
@@ -845,7 +845,7 @@ consecutive updates with unchanged support and a target within 1\% of the
 current dispersion, it is held fixed until the support changes again.
 A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
-A unpenalized refit uses the full Pearson residual target with positive
+An unpenalized refit uses the full Pearson residual target with positive
 residual degrees of freedom. Supplied positive dispersions stay fixed.
 Model likelihood and information criteria use the fitted dispersion.
 See \link{dispersion_calibration} for the Gaussian and negative-binomial
@@ -895,8 +895,9 @@ See Marschner (2011) for deviance backtracking in ordinary GLMs.
 }
 
 Fisher scoring uses the expected Hessian in each quadratic approximation.
-Penalized fits return the adaptive-ridge estimate. A separate unpenalized
-model can be requested with \code{lambda=0}. If an appropriate level of regularisation lambda is chosen,
+Adaptive-ridge estimates are retained unless criterion-checked support
+refinement improves the selection target; see \link{local_search}. A separate
+unpenalized model can be requested with \code{lambda=0}. If an appropriate level of regularisation lambda is chosen,
 the L0 norm penalized solution approximates Best Subset selection. To achieve
 variable selection consistency, the \code{"bic"} \code{lambda} preset is
 recommended for low dimensional settings, whilst \code{"gic"},
@@ -1106,7 +1107,7 @@ set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
 # screen="auto" activates ISIS exactly when p_eligible > 10*n. Screened fits
-# default to the original-p GIC preset and penalized estimates.
+# default to the original-p GIC preset and criterion-checked support refinement.
 # Screening threads are independent of BLAS threads (nthreads).
 system.time(fit_hd <- l0glmFit(X_hd, y_hd, screen.nthreads=8, nthreads=1))
 fit_hd$screening[c("method", "screen_size", "iterations", "best_iteration", "nthreads")]

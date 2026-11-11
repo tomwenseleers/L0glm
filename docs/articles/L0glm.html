@@ -110,11 +110,11 @@ one fitting interface.</p>
 </h2>
 <p>Pass a design matrix and a response vector to
 <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code>. A GIC preset provides a single penalty value
-for variable selection. A relaxed refit then estimates the retained
-effects with reduced shrinkage.</p>
+for variable selection. Criterion-checked support refinement can reduce
+shrinkage and improve the selected model.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span><span class="st">"normal"</span>, n<span class="op">=</span><span class="fl">200L</span>, p<span class="op">=</span><span class="fl">80L</span>, n_nonzero<span class="op">=</span><span class="fl">6L</span>, seed<span class="op">=</span><span class="fl">42L</span><span class="op">)</span></span>
-<span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">small</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1]  4 26 33 45 47 57</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted</a></span><span class="op">(</span><span class="va">small</span><span class="op">)</span><span class="op">)</span></span>
@@ -165,8 +165,8 @@ GB; data generation is excluded from the fitting time.</p>
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr class="odd">
-<td align="right">2.63</td>
-<td align="right">4194</td>
+<td align="right">3.61</td>
+<td align="right">4195</td>
 <td align="right">46</td>
 <td align="right">0</td>
 <td align="right">14</td>

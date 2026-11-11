@@ -18,8 +18,8 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <meta property="og:title" content="Coefficient inference">
-<meta name="description" content="Selected-support refits, standard errors and bootstrap selection stability.">
-<meta property="og:description" content="Selected-support refits, standard errors and bootstrap selection stability.">
+<meta name="description" content="Conditional posterior draws, selected-support standard errors and bootstrap selection stability.">
+<meta property="og:description" content="Conditional posterior draws, selected-support standard errors and bootstrap selection stability.">
 <meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png">
 <meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels">
 </head>
@@ -91,20 +91,76 @@
 
     
     
-<p>L0glm can report ordinary selected-model uncertainty, or repeat the
-fitting pipeline under bootstrap resampling to assess variability and
-selection stability. These optional calculations are requested in
-<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>.</p>
-<div class="section level2">
-<h2 id="selected-support-standard-errors">Selected-support standard errors<a class="anchor" aria-label="anchor" href="#selected-support-standard-errors"></a>
-</h2>
+<p>L0glm provides conditional posterior summaries, selected-model
+standard errors and bootstrap selection stability. These optional
+calculations are requested in <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and leave the
+fitted point estimates unchanged.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">51</span><span class="op">)</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">200</span><span class="op">*</span><span class="fl">10</span><span class="op">)</span>,<span class="fl">200</span>,<span class="fl">10</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">+</span><span class="fl">2</span><span class="op">*</span><span class="va">X</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">-</span><span class="fl">2</span><span class="op">*</span><span class="va">X</span><span class="op">[</span>,<span class="fl">2</span><span class="op">]</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">200</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>,<span class="va">y</span>,intercept<span class="op">=</span><span class="cn">TRUE</span>,lambda<span class="op">=</span><span class="st">'gic'</span>,relaxed<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">details</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span>,inference<span class="op">=</span><span class="st">'conditional'</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>,<span class="va">y</span>,intercept<span class="op">=</span><span class="cn">TRUE</span>,lambda<span class="op">=</span><span class="st">'gic'</span><span class="op">)</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="conditional-posterior-summaries-and-sampling">Conditional posterior summaries and sampling<a class="anchor" aria-label="anchor" href="#conditional-posterior-summaries-and-sampling"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">posterior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span>,inference<span class="op">=</span><span class="st">'posterior'</span>,</span>
+<span>  control.inference<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nsim<span class="op">=</span><span class="fl">2000L</span>,seed<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">inference</span></span>
+<span><span class="va">posterior</span><span class="op">$</span><span class="va">coefficients</span></span>
+<span><span class="co">#&gt;        term channel selected.estimate       mode   estimate  std.error</span></span>
+<span><span class="co">#&gt; 1 Intercept       1         1.1742432  1.1742432  1.1742432 0.07887247</span></span>
+<span><span class="co">#&gt; 2        x2       1         1.9537009  1.9537009  1.9537009 0.08452514</span></span>
+<span><span class="co">#&gt; 3        x3       1        -1.9873599 -1.9873599 -1.9873599 0.08004978</span></span>
+<span><span class="co">#&gt; 4        x5       1        -0.1487977 -0.1487977 -0.1487977 0.07460205</span></span>
+<span><span class="co">#&gt; 5        x8       1        -0.2132204 -0.2132204 -0.2132204 0.08058415</span></span>
+<span><span class="co">#&gt;     cred.low    cred.high row column</span></span>
+<span><span class="co">#&gt; 1  1.0196560  1.328830457   1      1</span></span>
+<span><span class="co">#&gt; 2  1.7880347  2.119367130   2      1</span></span>
+<span><span class="co">#&gt; 3 -2.1442546 -1.830465200   3      1</span></span>
+<span><span class="co">#&gt; 4 -0.2950150 -0.002580342   5      1</span></span>
+<span><span class="co">#&gt; 5 -0.3711624 -0.055278332   8      1</span></span>
+<span><span class="va">posterior</span><span class="op">$</span><span class="va">prior.source</span></span>
+<span><span class="co">#&gt; [1] "flat prior on the refitted support"</span></span>
+<span><span class="va">draws</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">posterior</span>,nsim<span class="op">=</span><span class="fl">1000L</span>,seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">draws</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1]   11 1000</span></span></code></pre></div>
+<p>An accepted full unpenalized support refit uses a flat prior. A fit
+that retains adaptive-ridge shrinkage uses a frozen Gaussian prior,
+obtained by one inverse-square update at its fitted coefficients.
+Mandatory coefficients have a flat prior; <code>prior.mean</code>
+supplies the other prior centres. With selected coefficient support
+<span class="math inline">J</span>, prior precision <span class="math inline">P</span> and fitted noise parameters <span class="math inline">\widehat\psi</span>, the target is</p>
+<p><span class="math display">
+p(\beta_J\mid y,J,P,\widehat\psi)\propto
+\exp\{\ell(\beta_J,\widehat\psi)-\tfrac12(\beta_J-c)^TP(\beta_J-c)\}
+1_{\mathcal C}(\beta_J).
+</span></p>
+<p>The calculation finds a separate conditional mode with this prior and
+noise held fixed. It uses a local Gaussian likelihood approximation,
+with the full coefficient covariance. Nonnegative coefficients are
+sampled from a truncated joint Gaussian. Multinomial draws preserve the
+zero-sum CLR constraints. For Gaussian identity models with known
+dispersion, the frozen-prior Gaussian calculation is exact, including
+its truncation.</p>
+<p>The table reports the original estimates, conditional modes,
+posterior means, standard deviations and equal-tail credible limits.
+Sparse draws retain the original coefficient dimensions, with excluded
+entries zero. <code>simulate(fit,...)</code> constructs the posterior
+directly; <code>simulate(posterior,...)</code> reuses its stored
+information without retaining a copy of the training data.</p>
+<p>Cholesky sampling and independent rejection are used when practical.
+Native Gibbs sampling handles more restrictive nonnegative regions. For
+a Gibbs run, increase <code>burnin</code> or <code>thin</code> and
+compare seeds when posterior correlations are strong.
+<code>max.parameters</code> and <code>max.cells</code> bound the
+information and draw storage.</p>
+</div>
+<div class="section level2">
+<h2 id="selected-support-standard-errors">Selected-support standard errors<a class="anchor" aria-label="anchor" href="#selected-support-standard-errors"></a>
+</h2>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">details</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span>,inference<span class="op">=</span><span class="st">'conditional'</span><span class="op">)</span></span>
 <span><span class="va">details</span><span class="op">$</span><span class="va">inference</span><span class="op">$</span><span class="va">coefficients</span></span>
 <span><span class="co">#&gt;        term channel selected.estimate   estimate  std.error  statistic</span></span>
 <span><span class="co">#&gt; 1 Intercept       1         1.1742432  1.1742432 0.07887247  14.887871</span></span>
@@ -138,7 +194,7 @@ substantial uncertainty near detection thresholds.</p>
 <div class="section level2">
 <h2 id="bootstrap-selection-stability">Bootstrap selection stability<a class="anchor" aria-label="anchor" href="#bootstrap-selection-stability"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">uncertainty</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span>,inference<span class="op">=</span><span class="st">'bootstrap'</span>,</span>
 <span>  control.inference<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nboot<span class="op">=</span><span class="fl">199L</span>,seed<span class="op">=</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">uncertainty</span><span class="op">$</span><span class="va">inference</span><span class="op">$</span><span class="va">coefficients</span></span>
@@ -159,7 +215,7 @@ procedure according to their original starting restrictions.</p>
 <p>A model extracted from <code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> retains its chosen
 penalty for this bootstrap. A <code>refit</code> callback can repeat
 tuning within each replicate:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">retune</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">args</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">args</span><span class="op">$</span><span class="va">lambda</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
 <span>  <span class="va">args</span><span class="op">$</span><span class="va">family</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -175,6 +231,90 @@ diagnostics, rather than a proof that the selected support is correct.
 See the <a href="../reference/coefficient_inference.html">reference
 page</a> for covariance formulas, controls and the discussion by <a href="https://doi.org/10.1016/j.jeconom.2007.05.017" class="external-link">Leeb and Poetscher
 (2008)</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="frequentist-coverage-in-deconvolution">Frequentist coverage in deconvolution<a class="anchor" aria-label="anchor" href="#frequentist-coverage-in-deconvolution"></a>
+</h2>
+<p>A 95% conditional credible interval need not cover a fixed true
+coefficient in 95% of repeated datasets after variable selection.
+Shifted PSF columns are highly correlated: omitted neighbouring peaks
+can bias retained coefficients, and an estimated adaptive prior
+introduces additional shrinkage. Dispersion and support uncertainty are
+held fixed in the posterior calculation.</p>
+<p>The following experiments use nonnegative GIC-preset deconvolution.
+Single-channel designs have 1,000 scans, 1,000 predictors and 100 peaks,
+with 200 repeated noise draws. Three-channel designs have 500 scans, 500
+predictors and 50 shared peaks, with 100 repeats. Gaussian noise has SD
+5; Poisson means use the simulated signal. Each interval uses 2,000
+coefficient draws. The reference fits restrict the design to the true
+predictors.</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Noise and model</th>
+<th align="right">Coverage among recovered true coefficients</th>
+<th align="right">Coverage across all true coefficients</th>
+<th align="right">True-predictor reference</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Poisson, single channel</td>
+<td align="right">74.0%</td>
+<td align="right">62.3%</td>
+<td align="right">94.9%</td>
+</tr>
+<tr class="even">
+<td align="left">Gaussian, known variance, single channel</td>
+<td align="right">79.5%</td>
+<td align="right">71.2%</td>
+<td align="right">94.7%</td>
+</tr>
+<tr class="odd">
+<td align="left">Gaussian, estimated variance, single channel</td>
+<td align="right">81.8%</td>
+<td align="right">74.4%</td>
+<td align="right">94.7%</td>
+</tr>
+<tr class="even">
+<td align="left">Poisson, three channels</td>
+<td align="right">86.2%</td>
+<td align="right">74.8%</td>
+<td align="right">94.2%</td>
+</tr>
+<tr class="odd">
+<td align="left">Gaussian, known variance, three channels</td>
+<td align="right">87.7%</td>
+<td align="right">84.4%</td>
+<td align="right">95.2%</td>
+</tr>
+<tr class="even">
+<td align="left">Gaussian, estimated variance, three channels</td>
+<td align="right">91.4%</td>
+<td align="right">90.0%</td>
+<td align="right">95.3%</td>
+</tr>
+</tbody>
+</table>
+<p>The second column conditions on recovery at the exact predictor
+location. The third also counts missed peaks as uncovered. Monte Carlo
+standard errors for the recovered-coefficient coverage are about 0.2–0.4
+percentage points across replicates. All runs completed successfully.
+These results support using the intervals to describe uncertainty within
+the selected model; they do not provide selection-adjusted confidence
+guarantees. The bootstrap additionally describes selection stability,
+with its own coverage considerations near thresholds.</p>
+<p><a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_posterior_coverage.R" class="external-link">Reproduce
+the coverage experiments</a>.</p>
+<p>Reducing peak heights twentyfold gives recovered-coefficient coverage
+of 67.1% for Poisson and 71.1% for Gaussian noise with estimated
+variance in the single-channel experiment. The true-predictor references
+give 92.6% and 94.6%, respectively. The reproducible benchmark includes
+these lower-signal cases.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -1,6 +1,7 @@
 L0glm_inference_control <- function(control) {
   defaults <- list(maxit=100L,tol=1e-10,level=.95,max.parameters=1000L,
-    rank.tol=1e-10,nboot=199L,seed=NULL,max.cells=5e7,refit.args=list(),refit=NULL)
+    rank.tol=1e-10,nboot=199L,seed=NULL,max.cells=5e7,refit.args=list(),refit=NULL,
+    nsim=2000L,burnin=500L,thin=1L)
   if(!is.list(control) || length(control) && (is.null(names(control)) ||
      any(!names(control)%in%names(defaults)) || anyDuplicated(names(control))))
     stop('Use named control.inference entries.',call.=FALSE)
@@ -16,6 +17,13 @@ L0glm_inference_control <- function(control) {
   if(!is.null(defaults$seed) && (length(defaults$seed)!=1L || !is.numeric(defaults$seed) ||
     !is.finite(defaults$seed) || abs(defaults$seed)>.Machine$integer.max))
     stop('seed must be NULL or a finite integer-range number.',call.=FALSE)
+  for(name in c('nsim','burnin','thin')) {
+    value <- defaults[[name]]
+    minimum <- switch(name,nsim=2L,burnin=0L,thin=1L)
+    if(length(value)!=1L || !is.numeric(value) || !is.finite(value) || value<minimum ||
+       value!=floor(value) || value>.Machine$integer.max)
+      stop('Use nsim >= 2, burnin >= 0 and thin >= 1 as integer controls.',call.=FALSE)
+  }
   defaults
 }
 

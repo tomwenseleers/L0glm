@@ -18,7 +18,7 @@
   mu_floor = 0,
   beta_true = NULL,
   r2_mu_floor = 0.1,
-  inference = c("none", "conditional", "bootstrap"),
+  inference = c("none", "conditional", "bootstrap", "posterior"),
   control.inference = list()
 )
 
@@ -64,8 +64,10 @@ default 0.1. See \code{\link[=l0glmMetrics]{l0glmMetrics()}}.}
 
 \item{inference}{Optional coefficient inference for fitted models:
 \code{"none"} (default), \code{"conditional"} for selected-support
-unpenalized refits and model-based standard errors, or \code{"bootstrap"}
-for repeated case-resampling of the saved fitting specification.
+unpenalized refits and model-based standard errors, \code{"bootstrap"}
+for repeated case-resampling of the saved fitting specification, or
+\code{"posterior"} for conditional frozen-prior Gaussian approximations
+and coefficient draws, respecting nonnegative constraints.
 See \link{coefficient_inference} for assumptions and returned tables.}
 
 \item{control.inference}{Named advanced inference controls, including

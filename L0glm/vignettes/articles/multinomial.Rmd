@@ -48,7 +48,7 @@ max(abs(rowSums(as.matrix(coef(fit)))))
 
 `grouped=TRUE` selects whole predictor rows using class-symmetric row norms;
 the model is fitted jointly. `grouped=FALSE` promotes sparsity in individual
-displayed CLR entries, subject to their zero-sum constraint. Grouped relaxed
+displayed CLR entries, subject to their zero-sum constraint. Grouped support
 refitting admits all class coefficients in selected rows; ungrouped refitting
 retains the selected CLR-entry pattern.
 

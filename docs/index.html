@@ -102,13 +102,13 @@ R · Dense &amp; sparse designs · Single &amp; multiple responses
 <p><img class="l0-hero-logo" src="logo-dark.svg" alt="L0glm: selected coefficient rows across response channels inside a navy hexagon" width="240" height="280"></p>
 </div>
 <div class="l0-stat-grid">
-<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>78× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a> <!-- END multi-stat --></p>
+<p><a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a> <!-- BEGIN speed-stat --> <a href="articles/performance.html#one-million-predictor-example"><strong>57× faster</strong><span>than five-fold-CV LASSO in that example</span></a> <!-- END speed-stat --> <!-- BEGIN multi-stat --> <a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>80× faster</b> than GIC-tuned relaxed group LASSO</span></a> <!-- END multi-stat --></p>
 </div>
 <p>L0glm selects predictors and estimates their effects in a generalized linear model. For one response it selects individual coefficients. For multiple responses, grouped selection identifies a common set of predictor rows and estimates a separate coefficient for each outcome.</p>
 <div class="section level2">
 <h2 id="sparse-learning-across-a-wide-range-of-models">Sparse learning across a wide range of models<a class="anchor" aria-label="anchor" href="#sparse-learning-across-a-wide-range-of-models"></a>
 </h2>
-<p>L0glm combines adaptive ridge with iteratively reweighted least squares, fast linear solvers and an optional relaxed refit. Small effects drop out; strong effects retain their magnitude. A shrinking active set concentrates computation where it matters, producing sparse models with excellent support recovery.</p>
+<p>L0glm combines adaptive ridge with iteratively reweighted least squares, fast linear solvers and objective-based local support refinement. Small effects drop out; strong effects retain their magnitude. A shrinking active set concentrates computation where it matters, producing sparse models with excellent support recovery.</p>
 <div class="l0-feature-grid">
 <div>
 <span class="l0-feature-number">01 / MODELS</span>
@@ -152,7 +152,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <h2 id="fit-a-sparse-model">Fit a sparse model<a class="anchor" aria-label="anchor" href="#fit-a-sparse-model"></a>
 </h2>
 <!-- BEGIN million-intro -->
-<p>This Gaussian simulation has <strong>one million predictors</strong>, 1,000 observations and 60 nonzero effects. One default L0glm call takes <strong>2.63 seconds</strong> and recovers <strong>46 true effects with no false positives</strong>. <!-- END million-intro --></p>
+<p>This Gaussian simulation has <strong>one million predictors</strong>, 1,000 observations and 60 nonzero effects. One default L0glm call takes <strong>3.61 seconds</strong> and recovers <strong>46 true effects with no false positives</strong>. <!-- END million-intro --></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tomwenseleers.github.io/L0glm/">L0glm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
@@ -181,8 +181,8 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <th align="right">MCC</th>
 </tr></thead>
 <tbody><tr>
-<td align="right">2.63</td>
-<td align="right">4194</td>
+<td align="right">3.61</td>
+<td align="right">4195</td>
 <td align="right">46</td>
 <td align="right">0</td>
 <td align="right">14</td>
@@ -202,7 +202,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <p>In <strong>GC/MS analysis</strong>, overlapping chromatographic peaks have distinct mass spectra. Recovering their peak times and spectra together is a natural application of grouped L₀ regression. This Poisson simulation has <strong>10,000 observations, 10,000 candidate peak locations, 1,000 true peaks and 226 mass channels</strong>.</p>
 <p>By regressing the observed signal on a design matrix consisting of shifted copies of the peak-shape function (the point spread function), L0glm recovers the underlying peaks and their mass spectra.</p>
 <!-- BEGIN multi-speed -->
-<p>L0glm recovers <strong>944 of 1,000 true peaks with 11 false positives</strong> in <strong>8.03 seconds</strong>. In this benchmark it is <strong>25.0× faster than GIC-tuned group LASSO</strong> and <strong>306× faster than relaxed group LASSO tuned by five-fold CV</strong>. <!-- END multi-speed --> <!-- BEGIN multi-spectral --> Among correctly located peaks, the recovered mass spectra have a within-row F1 of <strong>0.912</strong> and MCC of <strong>0.869</strong>. <!-- END multi-spectral --> A direct <code><a href="reference/l0glmFit.html">l0glmFit()</a></code> call uses <code>lambda="gic"</code> and four cores. The competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
+<p>L0glm recovers <strong>944 of 1,000 true peaks with 11 false positives</strong> in <strong>11.34 seconds</strong>. In this benchmark it is <strong>21.6× faster than GIC-tuned group LASSO</strong> and <strong>282× faster than relaxed group LASSO tuned by five-fold CV</strong>. <!-- END multi-speed --> <!-- BEGIN multi-spectral --> Among correctly located peaks, the recovered mass spectra have a within-row F1 of <strong>0.912</strong> and MCC of <strong>0.869</strong>. <!-- END multi-spectral --> A direct <code><a href="reference/l0glmFit.html">l0glmFit()</a></code> call uses <code>lambda="gic"</code> and four cores. The competing methods select lambda from a ten-value grid using GIC or five-fold cross-validation.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4L</span>, n<span class="op">=</span><span class="fl">10000L</span>, p<span class="op">=</span><span class="fl">10000L</span>,</span>
 <span>  n_nonzero<span class="op">=</span><span class="fl">1000L</span>, seed<span class="op">=</span><span class="fl">2L</span><span class="op">)</span></span>
@@ -234,7 +234,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>L0glm</td>
 <td>GIC preset</td>
-<td align="right">8.03</td>
+<td align="right">11.34</td>
 <td align="right">5606331</td>
 <td align="right">944</td>
 <td align="right">11</td>
@@ -244,7 +244,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Group LASSO</td>
 <td>GIC path</td>
-<td align="right">201.03</td>
+<td align="right">244.87</td>
 <td align="right">7413616</td>
 <td align="right">980</td>
 <td align="right">860</td>
@@ -254,7 +254,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Relaxed group LASSO</td>
 <td>GIC path</td>
-<td align="right">804.89</td>
+<td align="right">906.34</td>
 <td align="right">6138687</td>
 <td align="right">909</td>
 <td align="right">309</td>
@@ -264,7 +264,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">593.23</td>
+<td align="right">813.42</td>
 <td align="right">9639345</td>
 <td align="right">998</td>
 <td align="right">4242</td>
@@ -274,7 +274,7 @@ Start with a fast GIC preset, tune an information criterion, or use cross-valida
 <tr>
 <td>Relaxed group LASSO</td>
 <td>5-fold CV</td>
-<td align="right">2460.38</td>
+<td align="right">3199.62</td>
 <td align="right">6198648</td>
 <td align="right">962</td>
 <td align="right">502</td>

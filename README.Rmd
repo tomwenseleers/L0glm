@@ -45,7 +45,8 @@ explains the mathematics, regularization presets and full fitting algorithms.
   using `interactions=1L` for pairwise terms or `2L` for three-way terms.
 - **Inference:** optional [selected-support standard errors and bootstrap
   selection stability](https://tomwenseleers.github.io/L0glm/articles/inference.html)
-  through `summary(fit, inference="conditional")` or `"bootstrap"`.
+  through `summary(fit, inference="posterior")`, `"conditional"` or `"bootstrap"`;
+  `simulate(fit, nsim=1000)` returns conditional posterior coefficient draws.
 - **Comparison:** `sparseGLM()` benchmarks L0glm, ABESS, L0Learn, LASSO, relaxed
   and adaptive LASSO, MCP and SCAD where their backends support the requested model.
   `method="biglasso"` adds native file-backed LASSO with IC or CV selection.
@@ -68,7 +69,7 @@ The special-family examples use `mgcv`; Cox also uses `survival`.
 ## One million predictor example
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **3.61 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
 ```r
@@ -91,13 +92,13 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN readme-million-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm + ISIS** | **GIC preset** | **2.63** | **4194** | **46** | **0** | **0.868** | **0.876** |
+| **L0glm + ISIS** | **GIC preset** | **3.61** | **4195** | **46** | **0** | **0.868** | **0.876** |
 | LASSO | 5-fold CV | 205.98 | 14106 | 42 | 373 | 0.177 | 0.266 |
 | Relaxed LASSO | 5-fold CV | 188.73 | 4475 | 31 | 1 | 0.674 | 0.707 |
 <!-- END readme-million-comparison -->
 
 <!-- BEGIN million-speed -->
-L0glm is **78× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
+L0glm is **57× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
 <!-- END million-speed -->
 
 L0glm uses its GIC preset with automatic ISIS screening and local support refinement.
@@ -135,7 +136,7 @@ A blurred Poisson spike train has **10,000 observations, 10,000 candidate peak
 positions and 1,000 true peaks**.
 
 <!-- BEGIN readme-single-highlight -->
-L0glm achieves **F1 0.845 in 0.14 s** with its GIC preset, compared with **F1 0.534 in 2.77 s** for fully relaxed LASSO tuned by five-fold CV.
+L0glm achieves **F1 0.845 in 0.17 s** with its GIC preset, compared with **F1 0.534 in 6.70 s** for fully relaxed LASSO tuned by five-fold CV.
 <!-- END readme-single-highlight -->
 
 See the [single-sample comparison](https://tomwenseleers.github.io/L0glm/articles/performance.html#single-sample-deconvolution)
@@ -158,15 +159,15 @@ fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
 ```
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **11.34 seconds**. In this benchmark it is **21.6× faster than GIC-tuned group LASSO** and **282× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
 
 <!-- BEGIN readme-multi-comparison -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **L0glm** | **GIC preset** | **8.03** | **5606331** | **944** | **11** | **0.966** | **0.962** |
-| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 0.820 | 0.802 |
-| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 0.781 | 0.769 |
+| **L0glm** | **GIC preset** | **11.34** | **5606331** | **944** | **11** | **0.966** | **0.962** |
+| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 0.820 | 0.802 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 0.781 | 0.769 |
 <!-- END readme-multi-comparison -->
 
 The coefficient comparison shows how closely L0glm recovers individual

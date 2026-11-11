@@ -502,8 +502,8 @@ dispersion also needs positive residual degrees of freedom. Multinomial checks
 use the admitted CLR contrast space, and Cox checks use risk-set information.
 Unsupported trial refits are rejected. Independent channels use their own selected
 supports; grouped refits use eligible coefficients in the selected row union.
-These checks apply to local search, selected-support inference and explicitly
-unpenalized fits requested with `lambda=0`.
+These checks apply to local support refits and selected-support inference.
+An explicit `lambda=0` requests an ordinary unpenalized fitting pass.
 
 With `local.search="auto"`, multichannel models above the combinatorial-search
 size limit still compare one selected-support refit with the adaptive-ridge fit.
@@ -684,6 +684,31 @@ for the recipe, prediction and memory controls.
 
 ## Optional coefficient inference
 
+`summary(fit,inference="posterior")` holds the selected coefficient support and
+fitted noise parameters fixed. An accepted full support refit uses a flat prior;
+otherwise the adaptive Gaussian prior is frozen by one inverse-square update
+at the fitted coefficients. In normalized coordinates \(u_j=s_j\widehat\beta_j\),
+the original-coordinate prior precision is \(P_{jj}=s_j^2\lambda/(4u_j^2)\),
+with the corresponding block norms for shared penalties and zero precision for
+mandatory terms. A separate fixed-prior IRLS solve minimizes
+
+\[
+-\ell(\beta_J,\widehat\psi)+\tfrac12(\beta_J-c)^TP(\beta_J-c),
+\qquad\beta_J\in\mathcal C.
+\]
+
+At its mode \(b_*\), let \(g_*\) be the negative log-target gradient and
+\(Q=\mathcal I(b_*)+P\). The local approximation is
+\(N(b_*-Q^{-1}g_*,Q^{-1})\), truncated to the coefficient constraints.
+Retaining the gradient term is essential at a nonnegative boundary. Multinomial
+information and draws are mapped through the admitted CLR contrast space.
+Cholesky Gaussian sampling, independent rejection and native Gibbs conditionals
+provide coefficient draws. A fixed-dispersion Gaussian identity model gives the
+exact frozen-prior target. Other families use local likelihood curvature.
+These credible intervals condition on support, estimated prior and noise;
+the [inference tutorial](inference.html#frequentist-coverage-in-deconvolution)
+reports their repeated-sampling coverage in deconvolution.
+
 `summary(fit, inference="conditional")` refits the selected coefficients and
 compulsory terms without the sparsity penalty. For an ordinary GLM with selected
 design \(X_J\), its model-based covariance is
@@ -710,7 +735,7 @@ Selected-support intervals have the usual interpretation conditional on the
 chosen model. Bootstrap selection frequencies quantify stability; nominal
 coverage near selection thresholds needs care ([Leeb and Poetscher,
 2008](https://doi.org/10.1016/j.jeconom.2007.05.017)). The
-[inference tutorial](inference.html) explains both approaches and their controls.
+[inference tutorial](inference.html) explains these approaches and their controls.
 
 ## Memory-bounded designs
 
@@ -1498,8 +1523,11 @@ size \(b\); one round for SIS or up to `screen.maxit=10` rounds for ISIS.
     start or the supplied start restricted to these rows. Free dispersion or
     NB shape starts from the preceding fit when available. Quasi-Poisson uses
     the first fit's scale for every candidate so the quasi-criteria are
-     comparable. Each candidate fit retains its adaptive penalties and uses serial
-     channel solves by default. Local refinement follows the selected screening round.
+     comparable. Candidate fits use serial channel solves by default. With
+     automatic local refinement enabled, small candidate supports also compare
+     a restricted likelihood refit on the same original-problem criterion.
+     This reduces shrinkage in the residual used for subsequent screening.
+     Combinatorial refinement follows the selected screening round.
 4. Expand this fit to the original coefficient dimensions, with zero rows
    outside \(C_r\), and set \(S_r\) to its nonzero row support together
    with the mandatory predictors. Record its likelihood, parameter dimension,

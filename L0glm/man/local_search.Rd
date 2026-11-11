@@ -13,6 +13,9 @@ Set \code{local.search=TRUE} to run additions, deletions, single exchanges and
 small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 compulsory-term fitting and any original-channel preclustering refit finish
 first. Their internal fits do not run local search.
+Small SIS/ISIS candidate supports can compare one restricted refit before
+the next residual screen. This check uses the original-problem target;
+additions and exchanges run only after the screening search has finished.
 The default \code{local.search="auto"} runs refinement when the initial support has at most
 50 free coefficient coordinates, including mandatory terms. A grouped
 multichannel row contributes \code{m} coordinates; a multinomial row contributes

@@ -86,6 +86,13 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
       fit_args[[name]] <- args[[name]][rows,,drop=FALSE]
     fit <- do.call(l0glmFit,c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
       weights=w,offset=off,nonnegative=nonnegative),fit_args))
+    if(isTRUE(args$control.solver$.screen.refit)) {
+      refit_args <- c(list(X=X[,candidates,drop=FALSE],y=y,family=family,
+        weights=w,offset=off,nonnegative=nonnegative),fit_args)
+      control <- L0glm_local_control(if(is.null(args$control.local))list()else args$control.local,refit_args)
+      if(L0glm_local_size(fit)<=control$size.max)
+        fit <- L0glm_local_refine(fit,refit_args,control,support.only=TRUE)
+    }
     if (any(fit$theta.estimated)) {
       nuisance_history[[iteration]] <- list(initial=fit$initialTheta, fitted=fit$theta)
       if (is.null(args$control.solver)) args$control.solver <- controlSolverGen(
@@ -114,6 +121,8 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
     selected <- which(Matrix::rowSums(B[seq_len(p)+added,,drop=FALSE]!=0)>0)
     history[[iteration]] <- data.frame(iteration,candidates=length(candidates),selected=length(setdiff(selected,mandatory)),
       df=score$df,gic,deviance=score$deviance)
+    if(isTRUE(args$control.solver$.screen.refit))
+      history[[iteration]]$support_refit <- isTRUE(fit$support.refit)
     criterion <- if (is.null(args$validation)) gic else
       L0glm_validation_loss(args$validation, B, state = list(theta = fit$theta))
     if (!is.null(args$validation)) history[[iteration]]$validation_deviance <- criterion

@@ -23,7 +23,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
     saveRDS(value, path)
     value
   }
-  preset <- checkpoint("preset-checked-support-four-core", {
+  preset <- checkpoint("preset-checked-native-four-core", {
     times <- numeric(3L)
     for (run in seq_along(times)) {
       gc()

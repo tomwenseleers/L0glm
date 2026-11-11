@@ -12,6 +12,9 @@
 #' small batch exchanges after the initial adaptive-ridge fit. SIS/ISIS,
 #' compulsory-term fitting and any original-channel preclustering refit finish
 #' first. Their internal fits do not run local search.
+#' Small SIS/ISIS candidate supports can compare one restricted refit before
+#' the next residual screen. This check uses the original-problem target;
+#' additions and exchanges run only after the screening search has finished.
 #' The default `local.search="auto"` runs refinement when the initial support has at most
 #' 50 free coefficient coordinates, including mandatory terms. A grouped
 #' multichannel row contributes `m` coordinates; a multinomial row contributes
@@ -143,6 +146,13 @@ L0glm_local_size <- function(fit) {
 L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL) {
   control <- L0glm_local_control(control, arguments)
   arguments$local.search <- FALSE
+  if(!isTRUE(arguments$maxit==1L) && (is.null(arguments$solver) ||
+     isTRUE(arguments$solver%in%c('eigen','bigGlm','osqp')))) {
+    if(is.null(arguments$control.solver))arguments$control.solver <- controlSolverGen(
+      if(is.null(arguments$solver))'eigen'else arguments$solver,
+      if(is.null(arguments$method))1L else arguments$method)
+    arguments$control.solver$.screen.refit <- TRUE
+  }
   started <- proc.time()[[3L]]
   fit <- do.call(fit.fun, arguments)
   elapsed <- proc.time()[[3L]]-started

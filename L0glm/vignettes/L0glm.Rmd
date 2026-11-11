@@ -32,8 +32,8 @@ Windows source installation requires [Rtools](https://cran.r-project.org/bin/win
 ## Start with a small model
 
 Pass a design matrix and a response vector to `l0glmFit()`. A GIC preset
-provides a single penalty value for variable selection. A relaxed refit
-then estimates the retained effects with reduced shrinkage.
+provides a single penalty value for variable selection. Criterion-checked support
+refinement can reduce shrinkage and improve the selected model.
 
 ```{r small-fit}
 sim <- simul("normal", n=200L, p=80L, n_nonzero=6L, seed=42L)
@@ -72,7 +72,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.63 | 4194 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
+| 3.61 | 4195 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
 <!-- END million-metrics -->
 
 <img src="../million-coefficients.png" alt="True versus estimated coefficients for the one-million-predictor default L0glm fit." width="100%">

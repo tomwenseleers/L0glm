@@ -96,7 +96,7 @@ set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
 # screen="auto" activates ISIS exactly when p_eligible > 10*n. Screened fits
-# default to the original-p GIC preset and penalized estimates.
+# default to the original-p GIC preset and criterion-checked support refinement.
 # Screening threads are independent of BLAS threads (nthreads).
 system.time(fit_hd <- l0glmFit(X_hd, y_hd, screen.nthreads=8, nthreads=1))
 fit_hd$screening[c("method", "screen_size", "iterations", "best_iteration", "nthreads")]

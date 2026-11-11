@@ -88,7 +88,7 @@ l0glmMetrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "
 ```
 
 <!-- BEGIN million-screening-summary -->
-The default L0glm fit with ISIS recovers **46 true effects with no false positives** in **2.63 s** using eight physical cores. Five-fold-CV LASSO on the unscreened design takes **205.98 s** and recovers 42 true effects with 373 false positives. The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.
+The default L0glm fit with ISIS recovers **46 true effects with no false positives** in **3.61 s** using eight physical cores. Five-fold-CV LASSO on the unscreened design takes **205.98 s** and recovers 42 true effects with 373 false positives. The [benchmark article](performance.html#one-million-predictor-example) gives the tuning settings.
 <!-- END million-screening-summary -->
 
 ## Compare screening and complete models with SIS

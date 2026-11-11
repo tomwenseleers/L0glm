@@ -1,6 +1,6 @@
 ---
 title: "Coefficient inference"
-description: "Selected-support refits, standard errors and bootstrap selection stability."
+description: "Conditional posterior draws, selected-support standard errors and bootstrap selection stability."
 output: rmarkdown::html_document
 ---
 
@@ -8,18 +8,62 @@ output: rmarkdown::html_document
 knitr::opts_chunk$set(collapse=TRUE,comment='#>',message=FALSE,warning=FALSE)
 ```
 
-L0glm can report ordinary selected-model uncertainty, or repeat the fitting
-pipeline under bootstrap resampling to assess variability and selection stability.
-These optional calculations are requested in `summary()`.
+L0glm provides conditional posterior summaries, selected-model standard errors
+and bootstrap selection stability. These optional calculations are requested in
+`summary()` and leave the fitted point estimates unchanged.
 
-## Selected-support standard errors
-
-```{r conditional}
+```{r fit}
 library(L0glm)
 set.seed(51)
 X <- matrix(rnorm(200*10),200,10)
 y <- 1+2*X[,1]-2*X[,2]+rnorm(200)
 fit <- l0glmFit(X,y,intercept=TRUE,lambda='gic')
+```
+
+## Conditional posterior summaries and sampling
+
+```{r posterior}
+posterior <- summary(fit,inference='posterior',
+  control.inference=list(nsim=2000L,seed=1))$inference
+posterior$coefficients
+posterior$prior.source
+draws <- simulate(posterior,nsim=1000L,seed=2)
+dim(draws)
+```
+
+An accepted full unpenalized support refit uses a flat prior. A fit that retains
+adaptive-ridge shrinkage uses a frozen Gaussian prior, obtained by one inverse-square
+update at its fitted coefficients. Mandatory coefficients have a flat prior;
+`prior.mean` supplies the other prior centres. With selected coefficient support
+\(J\), prior precision \(P\) and fitted noise parameters \(\widehat\psi\), the target is
+
+\[
+p(\beta_J\mid y,J,P,\widehat\psi)\propto
+\exp\{\ell(\beta_J,\widehat\psi)-\tfrac12(\beta_J-c)^TP(\beta_J-c)\}
+1_{\mathcal C}(\beta_J).
+\]
+
+The calculation finds a separate conditional mode with this prior and noise
+held fixed. It uses a local Gaussian likelihood approximation, with the full
+coefficient covariance. Nonnegative coefficients are sampled from a truncated
+joint Gaussian. Multinomial draws preserve the zero-sum CLR constraints.
+For Gaussian identity models with known dispersion, the frozen-prior Gaussian
+calculation is exact, including its truncation.
+
+The table reports the original estimates, conditional modes, posterior means,
+standard deviations and equal-tail credible limits. Sparse draws retain the
+original coefficient dimensions, with excluded entries zero. `simulate(fit,...)`
+constructs the posterior directly; `simulate(posterior,...)` reuses its stored
+information without retaining a copy of the training data.
+
+Cholesky sampling and independent rejection are used when practical. Native
+Gibbs sampling handles more restrictive nonnegative regions. For a Gibbs run,
+increase `burnin` or `thin` and compare seeds when posterior correlations are
+strong. `max.parameters` and `max.cells` bound the information and draw storage.
+
+## Selected-support standard errors
+
+```{r conditional}
 details <- summary(fit,inference='conditional')
 details$inference$coefficients
 ```
@@ -83,3 +127,42 @@ selection frequencies are useful stability diagnostics, rather than a proof that
 the selected support is correct. See the
 [reference page](../reference/coefficient_inference.html) for covariance formulas,
 controls and the discussion by [Leeb and Poetscher (2008)](https://doi.org/10.1016/j.jeconom.2007.05.017).
+
+## Frequentist coverage in deconvolution
+
+A 95% conditional credible interval need not cover a fixed true coefficient in
+95% of repeated datasets after variable selection. Shifted PSF columns are highly
+correlated: omitted neighbouring peaks can bias retained coefficients, and an
+estimated adaptive prior introduces additional shrinkage. Dispersion and support
+uncertainty are held fixed in the posterior calculation.
+
+The following experiments use nonnegative GIC-preset deconvolution. Single-channel
+designs have 1,000 scans, 1,000 predictors and 100 peaks, with 200 repeated noise
+draws. Three-channel designs have 500 scans, 500 predictors and 50 shared peaks,
+with 100 repeats. Gaussian noise has SD 5; Poisson means use the simulated signal.
+Each interval uses 2,000 coefficient draws. The reference fits restrict the design
+to the true predictors.
+
+| Noise and model | Coverage among recovered true coefficients | Coverage across all true coefficients | True-predictor reference |
+|:---|---:|---:|---:|
+| Poisson, single channel | 74.0% | 62.3% | 94.9% |
+| Gaussian, known variance, single channel | 79.5% | 71.2% | 94.7% |
+| Gaussian, estimated variance, single channel | 81.8% | 74.4% | 94.7% |
+| Poisson, three channels | 86.2% | 74.8% | 94.2% |
+| Gaussian, known variance, three channels | 87.7% | 84.4% | 95.2% |
+| Gaussian, estimated variance, three channels | 91.4% | 90.0% | 95.3% |
+
+The second column conditions on recovery at the exact predictor location. The
+third also counts missed peaks as uncovered. Monte Carlo standard errors for
+the recovered-coefficient coverage are about 0.2–0.4 percentage points across
+replicates. All runs completed successfully. These results support using the
+intervals to describe uncertainty within the selected model; they do not provide
+selection-adjusted confidence guarantees. The bootstrap additionally describes
+selection stability, with its own coverage considerations near thresholds.
+
+[Reproduce the coverage experiments](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/benchmark_posterior_coverage.R).
+
+Reducing peak heights twentyfold gives recovered-coefficient coverage of 67.1%
+for Poisson and 71.1% for Gaussian noise with estimated variance in the
+single-channel experiment. The true-predictor references give 92.6% and 94.6%,
+respectively. The reproducible benchmark includes these lower-signal cases.

@@ -41,14 +41,14 @@ test_that("screening, special families and predictor groups retain penalties", {
   }
 })
 
-test_that("explicitly unpenalized fits retain protected refits", {
+test_that("explicitly unpenalized fits use a single ordinary fitting pass", {
   set.seed(7112)
   X <- matrix(rnorm(80L*4L),80L)
   y <- 1+2*X[,1]+rnorm(80)
   f <- l0glmFit(X,y,intercept=TRUE,lambda=0,local.search=FALSE)
   expected <- stats::lm.fit(cbind(1,X),y)$coefficients
   expect_equal(as.numeric(coef(f)),as.numeric(expected),tolerance=1e-8)
-  expect_true(any(f$convergence$stage=="relaxed"))
+  expect_false(any(f$convergence$stage=="relaxed"))
 })
 
 test_that('large multichannel models get one criterion-checked support refit', {

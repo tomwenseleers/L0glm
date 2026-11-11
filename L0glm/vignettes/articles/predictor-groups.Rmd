@@ -32,7 +32,8 @@ l0glmMetrics(fit)[c('gic','group_support_size','group_df')]
 Group labels can be integers, characters or factors in any order. Group `0`,
 the intercept and `always.include` terms are unpenalized. Explicit starting-zero
 exclusions remain binding; the returned sparse coefficient matrix retains all
-original predictor rows. A relaxed refit removes shrinkage on the retained groups.
+original predictor rows. Criterion-checked support refinement can refit retained
+groups without shrinkage.
 
 For multiple outcomes, `grouped=FALSE` selects each predictor group independently
 within each channel. `grouped=TRUE` pools its coefficients across channels.

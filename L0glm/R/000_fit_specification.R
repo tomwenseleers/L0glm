@@ -8,8 +8,6 @@ L0glm_recorded_fitter <- function(kernel,engine,public=TRUE) {
     L0glm_iteration_limit(maxit)
     forwarded <- stats::setNames(lapply(supplied,as.name),supplied)
     call <- as.call(c(list(quote(KERNEL)),forwarded))
-    # An explicitly unpenalized fit uses the checked internal refit path.
-    if(PUBLIC && isTRUE(lambda==0))call[['relaxed']] <- TRUE
     source <- inherits(X,'L0glm_data')
     if(source)X <- L0glm_data_training(X,weights)
     if(ENGINE=='l0glmFit') {
@@ -32,7 +30,7 @@ L0glm_recorded_fitter <- function(kernel,engine,public=TRUE) {
     result$engine <- ENGINE
     result$specification <- specification
     result
-  },list(KERNEL=substitute(kernel),ENGINE=engine,PUBLIC=public))
+  },list(KERNEL=substitute(kernel),ENGINE=engine))
   environment(wrapper) <- environment(kernel)
   wrapper
 }

@@ -161,8 +161,8 @@ ridge scaling \(\widetilde\lambda=\lambda\phi/4\), with dispersion
 Gaussian threshold calibration of Frommlet and Nuel (2016). Applying this
 calibration to general GLMs is an approximation. Criterion consistency
 also does not by itself establish consistency of the numerical algorithm.
-<code>relaxed = TRUE</code> refits selected coefficients with negligible
-penalization; <code><a href="l0glmTune.html">l0glmTune()</a></code> searches nearby penalties and evaluates the
+Internal support refits are accepted when they improve the target;
+<code><a href="l0glmTune.html">l0glmTune()</a></code> searches nearby penalties and evaluates the
 requested criterion on the resulting fits.</p>
 <p>Reported scores use the fitted likelihood and the package's parameter
 counts, including all mandatory coefficient dimensions and an extra

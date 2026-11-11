@@ -2,22 +2,21 @@
 
 ## Sparse generalized linear models
 
-* L0 and grouped L0 variable selection through adaptive-ridge IRLS. Fits retain
-  their penalized coefficients by default, including multichannel models and
-  SIS/ISIS. Explicit `lambda=0` models and internal local-search/inference
-  refits retain information and residual-degree-of-freedom safeguards.
-  Relaxed passes check selected-model information and residual degrees of
-  freedom, retain the penalized fit when unsupported, and report
-  `relaxationSkipped` across ordinary GLM, predictor-group and special-family
-  drivers. Independent channels retain their own selected supports.
-  Local support refinement also rejects unsupported trial refits and preserves
-  an initial fit whose requested relaxed refit was skipped.
+* L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
+  criterion-checked support refinement. Large multichannel fits compare one
+  unpenalized selected-support refit; large single-channel fits retain their
+  adaptive penalties. Small supports allow local additions, deletions and swaps.
+  Small ISIS candidates also use guarded refits to improve residual screening.
+  `local.search=FALSE` retains pure adaptive-ridge selection. Explicit `lambda=0`
+  requests an unpenalized model. Internal support refits check information and
+  residual degrees of freedom.
+  Independent channels retain their own selected supports.
 * A common guarded Pearson rule updates ordinary dispersion and
   negative-binomial shape. Model criteria score the fitted noise parameters
   and count free coefficient dimensions. Eligible wide multitask Gaussian
   fits use an adaptive-ridge pilot and default to the BIC preset. A short
   Poisson pilot initializes eligible negative-binomial fits, and constrained
-  relaxed refits can fall back to a projected likelihood descent step.
+  unpenalized refits can fall back to a projected likelihood descent step.
 * Standard GLM families and links, negative binomial with fixed or estimated
   shape, joint multinomial models in CLR coordinates, and Cox proportional
   hazards models with direct or matrix-free quadratic updates.
@@ -28,7 +27,7 @@
 
 * Predictor-variable groups use norm-based block L0 penalties, with group 0
   unpenalized, dimension-calibrated IC presets, explicit numeric group costs,
-  group-aware thresholding, relaxed refits and cross-validation.
+  group-aware thresholding, guarded support refits and cross-validation.
   Recognized scalar-family predictor groups use native IRLS with OpenMP channel
   solves and predictions, preserving initialization, penalties and convergence;
   custom/special-family and validation adapters retain their structured driver.
@@ -41,9 +40,12 @@
   generation independently within every training fold.
 * Observation weights, offsets, intercepts, mandatory predictors, nonnegative
   coefficients, normalization, starting values and optional validation stopping.
-* Optional selected-support standard errors and case-bootstrap coefficient
-  intervals through `summary()`, with reselection frequencies, sparse draws,
-  and support for ordinary GLMs, negative binomial, multinomial and Cox models.
+* Optional conditional posterior summaries and sparse coefficient sampling,
+  using a flat prior after an accepted full support refit and a frozen adaptive
+  prior otherwise. Nonnegative and multinomial CLR constraints are respected.
+  Selected-support standard errors and case-bootstrap intervals provide
+  complementary summaries, including reselection frequencies. Ordinary GLMs,
+  negative binomial, multinomial and Cox models are supported.
 * Shared observation vectors stay compact across channels in fitting, native
   Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
 

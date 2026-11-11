@@ -124,7 +124,7 @@ creates a reusable descriptor and response cache and reports the screening
 history. The response, truth and descriptor should be saved together when
 continuing in a new session.
 
-For large complete double-precision bigmemory designs, relaxed Gaussian ISIS
+For large complete double-precision bigmemory designs, Gaussian ISIS
 can cache up to `control$working.columns` columns (default 10,000), bounded by
 `control$max.cells`. The ordinary global ISIS trajectory is retained, and a
 cached candidate replaces its best fit only when the original-data GIC improves.

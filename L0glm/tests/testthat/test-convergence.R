@@ -32,7 +32,7 @@ test_that("diagnostics distinguish iteration caps and converged coefficient upda
   converged <- l0glmFit(diag(4), 1:4, family = gaussian(), dispersion = 1,
     start = 1, lambda = 0, maxit = 100L, parallelize = FALSE)
   expect_true(all(converged$convergence$converged))
-  expect_equal(converged$convergence$stage, c("selection", "relaxed"))
+  expect_equal(converged$convergence$stage, "selection")
   expect_true(all(converged$convergence$iterations < 5L))
 })
 

@@ -102,14 +102,14 @@ signals. In another application, pass a separate design and response.
 
 The native Poisson backend scores validation deviance in C++, shares the design
 across OpenMP workers and restores each channel's best checkpoint. Grouped
-selection also retains the best shared-support pass. Relaxed refitting can keep
-its initial selected coefficients when subsequent steps increase validation loss.
+selection also retains the best shared-support pass. A support refit is accepted
+only when it improves the validation target.
 
 The default controls are `patience=3L`, `minit=3L` and `tol=1e-8`.
 An improvement must exceed `tol * max(1, best_deviance)` to reset patience.
 Validation weights and offsets follow the response formats; `mu_floor=1e-8`
 is used only for positive-mean validation scoring. Diagnostics include
-`selection`, `relaxed`, iteration histories and the selected start/batch candidate.
+`selection`, any internal `relaxed` refit, iteration histories and the selected start/batch candidate.
 
 The same interface works through `l0glmFit()` for all supported families.
 `validation$rule="1se"` selects a simpler candidate within one empirical

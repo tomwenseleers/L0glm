@@ -156,7 +156,6 @@ if coefficients of either sign are required.</p>
 <span>  maxit <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  group.maxit <span class="op">=</span> <span class="fl">6</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="va">grouped</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">NCOL</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">1</span>,</span>
 <span>  prior.mean <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  thresh <span class="op">=</span> <span class="fl">1e-05</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
@@ -256,13 +255,13 @@ matrix to distinguish this from the scalar shorthand in a one-term model.
 Starting values determine the initial adaptive ridge penalties, subject to
 the coefficient constraints and the following support restrictions.</p><ul><li><p>Ordinary GLMs and <code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: exact zeros exclude individual
 coefficients separately in each channel, throughout selection, grouped
-passes and relaxed refits. Rows zero in every channel are screened out.</p></li>
+passes and unpenalized refits. Rows zero in every channel are screened out.</p></li>
 <li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: use a scalar, length-<code>p</code> vector or
 <code>p</code> by <code>1</code> matrix; exact zeros exclude the corresponding predictors.</p></li>
 <li><p><code>mgcv::multinom(K)</code>: a starting matrix has one column per category,
 in factor-level or response-matrix column order. Rows are centered across
 categories to give CLR coefficients. Rows supplied as all zero are excluded
-before centering and remain zero during selection and relaxed refits.
+before centering and remain zero during selection and unpenalized refits.
 Individual zero entries in an otherwise nonzero row remain eligible.
 Common nonzero rows, including scalar <code>start = 1</code>, center to zero but
 remain eligible; a weak-ridge step seeds eligible zero starts.</p></li>
@@ -463,52 +462,6 @@ penalty. This argument applies to ordinary GLMs, not the special-family
 loops; those update grouping within IRLS and use <code>maxit</code> per pass.</p></dd>
 
 
-<dt id="arg-relaxed">relaxed<a class="anchor" aria-label="anchor" href="#arg-relaxed"></a></dt>
-<dd><p>Logical controlling a final refit to reduce shrinkage bias.
-<code>FALSE</code> returns the selection fit. For ordinary GLMs, <code>TRUE</code>
-uses a nearly unpenalized refit with <code>lambda = 1e-30</code> and unsmoothed
-adaptive ridge weights. Special families instead use an unpenalized IRLS
-pass with <code>lambda = 0</code>, on the following support:</p><ul><li><p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code>: grouped refits admit all eligible channel
-coefficients within selected predictor rows; ungrouped refits admit only
-entries nonzero at the end of selection. Estimated shape parameters continue
-to be updated during refitting; shapes fixed in the constructor remain fixed.</p></li>
-<li><p><code>mgcv::multinom(K)</code>: grouped refits jointly estimate all
-category coefficients within retained predictor rows, allowing category
-entries that were zero during selection to become nonzero. Ungrouped refits
-jointly estimate only the selected nonzero CLR entries and hold all other
-category entries at zero. Both retain the joint multinomial likelihood and
-zero-sum row constraints; a row with \(s\) admitted category entries has
-\(s-1\) free directions. No new predictor rows are introduced.</p></li>
-<li><p><code><a href="https://rdrr.io/pkg/mgcv/man/coxph.html" class="external-link">mgcv::cox.ph()</a></code>: refit the selected log-relative-hazard
-coefficients using the Cox partial likelihood, without an intercept.</p></li>
-</ul><p>Hard thresholding is disabled during refitting. Relaxed nonnegative fits
-finish with a conditional boundary pass: a positive coefficient may be set
-to exactly zero when the endpoint derivative supports zero and the actual
-deviance or negative log likelihood does not increase. This uses no
-coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
-its fitted shape and Cox partial likelihood; multinomial CLR coefficients
-remain unrestricted. A validation checkpoint is retained if polishing
-would increase its held-out deviance. Explicit starting-value
-exclusions are respected; intercepts and <code>always.include</code> terms remain
-eligible and unpenalized. Sparse output retains the original dimensions.
-A refit is skipped when its admitted coefficients exceed the available
-information or its selected design is numerically rank deficient. Estimating
-dispersion also requires positive residual degrees of freedom. Checks use
-positive-weight observations, the multinomial zero-sum parameter space and
-the Cox risk-set information, as appropriate. The penalized selection fit is
-retained for unsupported refits; <code>relaxationSkipped</code> identifies them.
-These checks assess structural information, not the existence of a finite
-maximum-likelihood estimate under separation.
-The default is <code>TRUE</code> for grouped multichannel ordinary GLMs and NB,
-and for grouped multinomial models with either factor or count-matrix
-responses. It is <code>FALSE</code> for Cox, ungrouped fits and other single-channel
-fits. Set <code>relaxed = TRUE</code> explicitly to refit an ungrouped model.
-Screened <code><a href="l0glmFit.html">l0glmFit()</a></code> models instead default to <code>TRUE</code>,
-including single-channel models, unless explicitly overridden.
-Each special-family pass has its own <code>maxit</code> limit; inspect
-<code>convergence</code> to assess whether the refit converged.</p></dd>
-
-
 <dt id="arg-prior-mean">prior.mean<a class="anchor" aria-label="anchor" href="#arg-prior-mean"></a></dt>
 <dd><p>Optional finite centers for the ridge penalty in each IRLS
 update. <code>NULL</code> (default) uses zero centers. Supply values in original
@@ -537,9 +490,9 @@ coefficients and do not change the eligibility rules of <code>start</code>: a no
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and <code>always.include</code> terms are not
-shrunk toward their targets. For special families, the final relaxed refit
-removes the ridge penalty on retained support, so these centers no longer
-exert shrinkage during that refit.</p></dd>
+shrunk toward their targets. An accepted unpenalized support refit removes
+the ridge penalty on the retained support, so these centers no longer
+exert shrinkage in the returned model.</p></dd>
 
 
 <dt id="arg-thresh">thresh<a class="anchor" aria-label="anchor" href="#arg-thresh"></a></dt>
@@ -565,10 +518,10 @@ excluded entries at zero. Rows with fewer than two allowed entries are zero.
 Row norms, not arithmetic row means, are used for grouped thresholding.</p></li>
 </ul><p>Mandatory terms are excluded from cutoff maxima and never hard thresholded.
 Removed rows or entries stay excluded during the selection pass; grouped
-relaxed refits may recover eligible entries within retained rows as described
-in <code>relaxed</code>. Starting-value exclusions remain binding, and sparse
+local support search can propose eligible entries within retained rows.
+Starting-value exclusions remain binding, and sparse
 output keeps its original dimensions. Setting <code>thresh = 0</code> disables
-only the relative cutoff; the absolute floor remains. Final relaxed refits
+only the relative cutoff; the absolute floor remains. Final unpenalized refits
 apply neither cutoff. For special families, cutoffs are applied only in
 selection passes with <code>lambda &gt; 0</code>. Coefficient constraints still apply.
 <code>thresh</code> does not smooth or otherwise alter the adaptive ridge weights.</p></dd>
@@ -616,7 +569,7 @@ quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 <dt id="arg-cluster-refit">cluster.refit<a class="anchor" aria-label="anchor" href="#arg-cluster-refit"></a></dt>
 <dd><p>With preclustering, refine selection on every original
 channel (default <code>TRUE</code>). <code>FALSE</code> returns a model of aggregated cluster outcomes
-at the requested lambda. This is separate from <code>relaxed</code>.</p></dd>
+at the requested lambda.</p></dd>
 
 
 <dt id="arg-control-precluster">control.precluster<a class="anchor" aria-label="anchor" href="#arg-control-precluster"></a></dt>
@@ -684,7 +637,7 @@ inside each CV training fit. Limits are checked before forming products.</p></dd
   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
   retained separately from the working weights for scoring.
-  The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+  The logical vector `relaxationSkipped` flags unsupported unpenalized refits,
   for which the penalized selection estimates are retained. Methods
   <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code>, <code><a href="model_criteria.html">GIC()</a></code>,
   <code><a href="model_criteria.html">EBIC()</a></code> and <code><a href="model_criteria.html">MBIC()</a></code> are available; see <a href="model_criteria.html">model_criteria</a>.
@@ -716,7 +669,7 @@ inside each CV training fit. Limits are checked before forming products.</p></dd
 <span>  <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span>,</span>
 <span>  lambda <span class="op">=</span> <span class="st">"gic"</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span></span>
 <span>  parallelize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ncores <span class="op">=</span> <span class="fl">4L</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
@@ -743,7 +696,7 @@ inside each CV training fit. Limits are checked before forming products.</p></dd
 <span>  <span class="va">sim.pois.mc</span><span class="op">$</span><span class="va">y</span><span class="op">[</span>, <span class="fl">1L</span><span class="op">]</span>,</span>
 <span>  lambda <span class="op">=</span> <span class="st">"gic"</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  relaxed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span></span>
 <span>  parallelize <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

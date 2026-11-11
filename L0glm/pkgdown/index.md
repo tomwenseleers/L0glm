@@ -15,10 +15,10 @@
 <div class="l0-stat-grid">
 <a href="articles/high-dimensional.html"><strong>1 million</strong><span>predictors in a high dimensional example</span></a>
 <!-- BEGIN speed-stat -->
-<a href="articles/performance.html#one-million-predictor-example"><strong>78× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
+<a href="articles/performance.html#one-million-predictor-example"><strong>57× faster</strong><span>than five-fold-CV LASSO in that example</span></a>
 <!-- END speed-stat -->
 <!-- BEGIN multi-stat -->
-<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>100× faster</b> than GIC-tuned relaxed group LASSO</span></a>
+<a href="articles/performance.html#multichannel-deconvolution"><strong>944 / 1000</strong><span>peaks recovered in simulated GC/MS deconvolution and <b>80× faster</b> than GIC-tuned relaxed group LASSO</span></a>
 <!-- END multi-stat -->
 </div>
 
@@ -46,7 +46,7 @@ where it matters, producing sparse models with excellent support recovery.
 ## Fit a sparse model
 
 <!-- BEGIN million-intro -->
-This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **2.63 seconds** and recovers **46 true effects with no false positives**.
+This Gaussian simulation has **one million predictors**, 1,000 observations and 60 nonzero effects. One default L0glm call takes **3.61 seconds** and recovers **46 true effects with no false positives**.
 <!-- END million-intro -->
 
 ```r
@@ -69,7 +69,7 @@ l0glmMetrics(fit, beta_true=beta)[
 <!-- BEGIN million-metrics -->
 | Seconds | GIC | TP | FP | FN | TN | F1 | MCC |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2.63 | 4194 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
+| 3.61 | 4195 | 46 | 0 | 14 | 999940 | 0.868 | 0.876 |
 <!-- END million-metrics -->
 
 See the [detailed benchmarks](articles/performance.html#one-million-predictor-example)
@@ -97,7 +97,7 @@ copies of the peak-shape function (the point spread function), L0glm recovers
 the underlying peaks and their mass spectra.
 
 <!-- BEGIN multi-speed -->
-L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **8.03 seconds**. In this benchmark it is **25.0× faster than GIC-tuned group LASSO** and **306× faster than relaxed group LASSO tuned by five-fold CV**.
+L0glm recovers **944 of 1,000 true peaks with 11 false positives** in **11.34 seconds**. In this benchmark it is **21.6× faster than GIC-tuned group LASSO** and **282× faster than relaxed group LASSO tuned by five-fold CV**.
 <!-- END multi-speed -->
 <!-- BEGIN multi-spectral -->
 Among correctly located peaks, the recovered mass spectra have a within-row F1 of **0.912** and MCC of **0.869**.
@@ -116,11 +116,11 @@ fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
 <!-- BEGIN multi-home -->
 | Method | Selection | Seconds | GIC | TP | FP | F1 | MCC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| L0glm | GIC preset | 8.03 | 5606331 | 944 | 11 | 0.966 | 0.962 |
-| Group LASSO | GIC path | 201.03 | 7413616 | 980 | 860 | 0.690 | 0.685 |
-| Relaxed group LASSO | GIC path | 804.89 | 6138687 | 909 | 309 | 0.820 | 0.802 |
-| Group LASSO | 5-fold CV | 593.23 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
-| Relaxed group LASSO | 5-fold CV | 2460.38 | 6198648 | 962 | 502 | 0.781 | 0.769 |
+| L0glm | GIC preset | 11.34 | 5606331 | 944 | 11 | 0.966 | 0.962 |
+| Group LASSO | GIC path | 244.87 | 7413616 | 980 | 860 | 0.690 | 0.685 |
+| Relaxed group LASSO | GIC path | 906.34 | 6138687 | 909 | 309 | 0.820 | 0.802 |
+| Group LASSO | 5-fold CV | 813.42 | 9639345 | 998 | 4242 | 0.320 | 0.316 |
+| Relaxed group LASSO | 5-fold CV | 3199.62 | 6198648 | 962 | 502 | 0.781 | 0.769 |
 <!-- END multi-home -->
 
 ![Multichannel GC/MS peak recovery: observed data, ground truth, L0glm and relaxed group LASSO, retaining all 226 channels. Cyan lines mark true positives, red false positives and magenta false negatives.](deconvolution-multi-large.png)

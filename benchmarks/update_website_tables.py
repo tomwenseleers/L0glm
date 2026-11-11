@@ -307,7 +307,7 @@ assert abs(float(thread_fit["MCC"]) - float(million["MCC"])) < 1e-12
     "HP ZBook Fury G8, Intel i9-11950H, eight physical cores, 16 logical cores and 64 GB RAM; "
     "Windows and R 4.5.0. BLAS and fitting use one thread; screening concurrency varies.\n\n"
     f'SIS retains {2*int(1000/log(1000))} candidates. Complete ISIS uses the GIC-based '
-    "batch, up to ten rounds, relaxed fitting and automatic local refinement. Simulation, "
+    "batch, up to ten rounds, guarded support refitting and automatic local refinement. Simulation, "
     "explicit GC, equality checks and final reporting are outside timed calls.\n\n"
     + "\n".join(thread_table) + "\n\n"
     "Every tested score, sign, rank, coefficient and ISIS history agrees exactly across "

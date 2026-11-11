@@ -150,12 +150,12 @@ test_that('automatic search uses independent coefficient dimensions', {
   expect_null(disabled$fit_best$local.search)
 })
 
-test_that('default refinement executes once after each complete orchestrated fit', {
+test_that('combinatorial refinement executes once after each complete orchestrated fit', {
   set.seed(8813)
   original <- L0glm_local_refine
   calls <- list()
   local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control,support.only=FALSE) {
-    calls[[length(calls)+1L]] <<- list(screening=fit$screening,clustering=fit$preclustering)
+    if(!support.only)calls[[length(calls)+1L]] <<- list(screening=fit$screening,clustering=fit$preclustering)
     original(fit,args,control,support.only)
   })
   X <- matrix(rnorm(80*40),80,40);y <- 2*X[,1]+rnorm(80)
