@@ -124,7 +124,7 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
       family=original$family, dispersion=original$dispersion, intercept=original$intercept,
       nonnegative=original$nonnegative, start=NULL,
       lambda=presetLambda("gic", original$p, nrow(original$X)), maxit=1,
-      grouped=FALSE, relaxed=FALSE, thresh=0, parallelize=FALSE, screen="none",local.search=FALSE)
+      grouped=FALSE,  thresh=0, parallelize=FALSE, screen="none",local.search=FALSE)
     pilot <- do.call(l0glmFit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
     B <- as.matrix(pilot$coefficients)
     if (data$intercept) B <- B[-1L, , drop=FALSE]

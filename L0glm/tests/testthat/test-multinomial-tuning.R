@@ -5,7 +5,7 @@ test_that("multinomial parameter criterion, pilot seed, masks and plotting work 
   P <- L0glm_ext_softmax(cbind(0, .8 * X[, 1] - .5 * X[, 2], -.7 * X[, 1] + .6 * X[, 3]))$p
   y <- factor(vapply(seq_len(150), function(i) sample.int(3, 1, prob = P[i, ]), integer(1)))
   result <- l0glmTune(X, y, family = mgcv::multinom(K = 2), grouped = TRUE,
-    relaxed = TRUE, start = "pilot", nlambda = 4, maxit = 100, tol = 1e-7,
+     start = "pilot", nlambda = 4, maxit = 100, tol = 1e-7,
     plot = FALSE, printbest = FALSE)
   expect_equal(result$criterion_support, "parameters")
   expect_identical(result$coordinates, "clr")

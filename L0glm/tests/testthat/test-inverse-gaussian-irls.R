@@ -59,12 +59,12 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
     })
   fit <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family, weights=sim$weights,
     intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
-    relaxed=FALSE, parallelize=FALSE, openmp=FALSE)
+     parallelize=FALSE, openmp=FALSE)
   expect_gt(halvings, 0L)
   expect_equal(solves, sum(fit$convergence$iterations))
   native <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family, weights=sim$weights,
     intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
-    relaxed=FALSE, parallelize=FALSE)
+     parallelize=FALSE)
   expect_equal(native$coefficients, fit$coefficients, tolerance=1e-7)
   expect_equal(native$dispersion, fit$dispersion, tolerance=1e-7)
 })
@@ -102,8 +102,9 @@ test_that("the initial inverse-Gaussian working fit cannot falsely converge", {
   fit <- l0glmFit(local.search=FALSE, matrix(numeric(), 80, 0), y, weights=w,
     family=inverse.gaussian("log"), intercept=TRUE, dispersion=1,
     lambda=0, maxit=100, tol=1e-9, parallelize=FALSE)
-  expect_gt(fit$convergence$iterations, 1L)
-  expect_true(fit$convergence$converged)
+  selection <- subset(fit$convergence,stage=='selection')
+  expect_gt(selection$iterations, 1L)
+  expect_true(all(fit$convergence$converged))
   expect_equal(as.numeric(fit$coefficients), log(weighted.mean(y, w)), tolerance=1e-8)
 })
 
@@ -113,7 +114,7 @@ test_that("grouped inverse-Gaussian channels preserve masks on both execution pa
     options=list(beta_range=c(-.4, .4), dispersion=c(.1, 1, 2)), seed=9)
   start <- matrix(.1, 6, 3); start[6, ] <- 0; start[2, 1] <- 0
   args <- list(X=sim$X, y=sim$y, family=sim$family, intercept=TRUE,
-    start=start, lambda="gic", grouped=TRUE, relaxed=TRUE,
+    start=start, lambda="gic", grouped=TRUE,
     group.maxit=2, maxit=200, tol=1e-8)
   expect_no_warning(serial <- do.call(l0glmFit, utils::modifyList(c(args, list(parallelize=FALSE)), list(local.search=FALSE))))
   expect_no_warning(parallel <- do.call(l0glmFit, utils::modifyList(c(args, list(parallelize=TRUE, ncores=2)), list(local.search=FALSE))))
@@ -133,7 +134,7 @@ test_that("inverse-Gaussian damping respects exclusions, constraints and refits"
   for (normalize in c("none", "rms")) {
     expect_no_warning(fit <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family,
       intercept=TRUE, start=start, prior.mean=rep(.01, 9),
-      nonnegative=TRUE, normalize=normalize, lambda="gic", relaxed=TRUE,
+      nonnegative=TRUE, normalize=normalize, lambda="gic",
       maxit=200, tol=1e-8, parallelize=FALSE))
     expect_s4_class(fit$coefficients, "sparseMatrix")
     expect_equal(dim(fit$coefficients), c(9L, 1L))

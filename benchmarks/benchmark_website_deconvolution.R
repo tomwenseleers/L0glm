@@ -23,13 +23,13 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
     saveRDS(value, path)
     value
   }
-  preset <- checkpoint("preset-four-core", {
+  preset <- checkpoint("preset-checked-support-four-core", {
     times <- numeric(3L)
     for (run in seq_along(times)) {
       gc()
       times[run] <- system.time(fit <- l0glmFit(sim$X, sim$y,
         family=poisson("identity"), lambda="gic", nonnegative=TRUE,
-        intercept=FALSE, relaxed=TRUE, grouped=TRUE,
+        intercept=FALSE,  grouped=TRUE,
         parallelize=TRUE, ncores=ncores))[["elapsed"]]
       if (run>1L) stopifnot(identical(coef(fit), previous))
       previous <- coef(fit)

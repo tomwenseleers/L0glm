@@ -1,6 +1,7 @@
+# Internal restricted-refit kernels; the public fitters retain adaptive penalties.
 guard_pair <- function(args) {
-  selected <- suppressWarnings(do.call(l0glmFit,c(args,list(relaxed=FALSE))))
-  refitted <- suppressWarnings(do.call(l0glmFit,c(args,list(relaxed=TRUE))))
+  selected <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE))))
+  refitted <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE))))
   expect_true(all(refitted$relaxationSkipped))
   expect_identical(coef(refitted),coef(selected))
   expect_equal(refitted$dispersion,selected$dispersion)
@@ -72,8 +73,8 @@ test_that('channel masks preserve supported refits and original starting exclusi
   args <- list(X=X,y=Y,weights=weights,dispersion=1,start=start,lambda=.01,
     normalize='none',maxit=1L,group.maxit=1L,local.search=FALSE,
     parallelize=FALSE,screen='none',nthreads=1L)
-  selected <- do.call(l0glmFit,c(args,list(relaxed=FALSE)))
-  fit <- do.call(l0glmFit,c(args,list(relaxed=TRUE)))
+  selected <- do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE)))
+  fit <- do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE)))
   expect_identical(fit$relaxationSkipped,c(FALSE,TRUE))
   expect_identical(coef(fit)[,2,drop=FALSE],coef(selected)[,2,drop=FALSE])
   expect_equal(as.numeric(coef(fit)[p,]),c(0,0))
@@ -85,7 +86,7 @@ test_that('independent channels refit their own selected supports', {
   set.seed(9006);n <- 30L;p <- 42L;X <- matrix(rnorm(n*p),n,p)
   start <- matrix(0,p,2);start[1:21,1] <- 1;start[22:42,2] <- 1
   Y <- matrix(rnorm(2*n),n,2)
-  fit <- l0glmFit(X,Y,start=start,lambda=.01,dispersion=1,grouped=FALSE,
+  fit <- L0glm_internal_fit(X,Y,start=start,lambda=.01,dispersion=1,grouped=FALSE,
     relaxed=TRUE,maxit=1L,normalize='none',local.search=FALSE,
     parallelize=FALSE,screen='none')
   expect_false(any(fit$relaxationSkipped))
@@ -100,7 +101,7 @@ test_that('independent channels refit their own selected supports', {
 test_that('independent native Poisson channels do not pool their refit support', {
   X <- cbind(diag(30),diag(30));Y <- matrix(0,30,2);Y[1:20,] <- 10
   start <- matrix(0,60,2);start[1:20,1] <- 1;start[31:50,2] <- 1
-  fit <- l0nnPois(X,Y,start=start,lambda=.01,grouped=FALSE,relaxed=TRUE,
+  fit <- L0glm_internal_pois(X,Y,start=start,lambda=.01,grouped=FALSE,relaxed=TRUE,
     maxit=3L,normalize='none',local.search=FALSE,parallelize=FALSE)
   expect_false(any(fit$relaxationSkipped))
   expect_equal(as.matrix(coef(fit))[start!=0],rep(10,40),tolerance=1e-9)
@@ -121,7 +122,7 @@ test_that('predictor groups and the R fallback share the refit guard', {
 test_that('identifiable Gaussian refits retain ordinary least-squares accuracy', {
   set.seed(9003);X <- matrix(rnorm(150*8),150,8)
   Y <- X[,1:3]%*%matrix(rnorm(6),3,2)+matrix(rnorm(300),150,2)
-  fit <- l0glmFit(X,Y,lambda='gic',intercept=TRUE,relaxed=TRUE,
+  fit <- L0glm_internal_fit(X,Y,lambda='gic',intercept=TRUE,relaxed=TRUE,
     parallelize=FALSE,nthreads=1L,local.search=FALSE)
   active <- which(Matrix::rowSums(abs(coef(fit)))>0)
   A <- cbind(1,X)[,active,drop=FALSE]
@@ -152,13 +153,13 @@ test_that('external native solvers preserve skipped channels', {
   args <- list(X=X,y=Y,start=1,weights=weights,dispersion=1,lambda=.001,
     maxit=1L,group.maxit=1L,normalize='none',local.search=FALSE,
     solver='bigGlm',parallelize=FALSE,screen='none')
-  selected <- suppressWarnings(do.call(l0glmFit,c(args,list(relaxed=FALSE))))
-  fit <- suppressWarnings(do.call(l0glmFit,c(args,list(relaxed=TRUE))))
+  selected <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE))))
+  fit <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE))))
   expect_identical(fit$relaxationSkipped,c(FALSE,TRUE))
   expect_identical(coef(fit)[,2,drop=FALSE],coef(selected)[,2,drop=FALSE])
   expect_equal(summary(fit)$convergence$skipped,c(0L,1L))
   args$parallelize <- TRUE;args$ncores <- 2L;args$nthreads <- 1L
-  parallel_fit <- suppressWarnings(do.call(l0glmFit,c(args,list(relaxed=TRUE))))
+  parallel_fit <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE))))
   expect_identical(parallel_fit$relaxationSkipped,fit$relaxationSkipped)
   expect_equal(coef(parallel_fit),coef(fit),tolerance=1e-12)
 })
@@ -181,9 +182,9 @@ test_that('default local search cannot undo a skipped relaxed refit', {
       if(f$family=='Gamma')rgamma(20,3)else rpois(20,10)
     args <- list(X=X,y=y,family=f,start=1,lambda=1e-8,maxit=2L,thresh=0,
       normalize='none',parallelize=FALSE,screen='none',dispersion=1)
-    selected <- do.call(l0glmFit,c(args,list(relaxed=FALSE,local.search=FALSE)))
+    selected <- do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE,local.search=FALSE)))
     for(mode in list('auto',TRUE)) {
-      fit <- do.call(l0glmFit,c(args,list(relaxed=TRUE,local.search=mode)))
+      fit <- do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE,local.search=mode)))
       expect_true(all(fit$relaxationSkipped))
       expect_identical(coef(fit),coef(selected))
       expect_false(fit$local.search$applied)

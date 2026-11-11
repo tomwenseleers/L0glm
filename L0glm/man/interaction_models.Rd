@@ -90,12 +90,12 @@ X <- matrix(rnorm(250 * 8), 250, 8)
 y <- 1 + 2 * X[, 1] - 2 * X[, 2] +
   2 * X[, 1] * X[, 2] + rnorm(250)
 fit <- l0glmFit(X, y, family=gaussian(), intercept=TRUE,
-  lambda="gic", interactions=1L, relaxed=TRUE)
+  lambda="gic", interactions=1L)
 fit$interactions$history
 predict(fit, X[1:5, ])
 \dontrun{
 cv <- l0glmTune(X, y, family=gaussian(), intercept=TRUE,
-  interactions=1L, tune="cv", nfolds=5L, relaxed=TRUE)
+  interactions=1L, tune="cv", nfolds=5L)
 predict(cv$fit_1se, X[1:5, ])
 }
 }

@@ -4,7 +4,7 @@ model_summary_fixture <- function(m=1L) {
   B <- matrix(rep(c(2,-1,0,0,0),m),5,m)
   y <- X %*% B + matrix(rnorm(64*m,sd=.5),64,m)
   fit <- l0glmFit(X,y,lambda=0,thresh=0,intercept=TRUE,
-    parallelize=FALSE,relaxed=FALSE)
+    parallelize=FALSE)
   list(fit=fit,X=X,y=y,truth=rbind(0,B))
 }
 
@@ -90,7 +90,7 @@ test_that("special families inherit summary methods without losing their coordin
   families <- list(nb=mgcv::nb(theta=2),multinomial=mgcv::multinom(K=2),cox=mgcv::cox.ph())
   for (kind in names(families)) {
     fit <- l0glmFit(X,responses[[kind]],family=families[[kind]],
-      lambda=2,relaxed=FALSE,maxit=30)
+      lambda=2,maxit=30)
     details <- summary(fit)
     expect_s3_class(details,"summary.L0glm_fit")
     expect_identical(details$coefficients,coef(fit))

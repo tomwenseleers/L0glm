@@ -48,7 +48,7 @@ non-default starting shape, supplied coefficients or prior means,
 or preclustering uses the ordinary initializer.
 }
 
-A constrained negative-binomial relaxed refit checks conditional
+A constrained negative-binomial unpenalized refit checks conditional
 likelihood descent when coefficients touch the boundary. If the
 clipped working solution stalls, the refit tries a diagonally scaled
 projected score step within the same support.

@@ -68,7 +68,7 @@ for(case in names(cases))for(replication in seq_len(replications)) {
     write.csv(do.call(rbind,results),file.path(out,'runs.csv'),row.names=FALSE)
   }
   f <- if(cfg$family=='gaussian')gaussian()else binomial()
-  args <- list(X=X,y=y,family=f,group=group,lambda='gic',intercept=TRUE,relaxed=TRUE,
+  args <- list(X=X,y=y,family=f,group=group,lambda='gic',intercept=TRUE,
     dispersion=1,local.search='auto',parallelize=FALSE,nthreads=1L)
   seconds <- system.time(fit <- do.call(l0glmFit,args),gcFirst=FALSE)[['elapsed']]
   record('L0glm','GIC preset',as.numeric(coef(fit)),seconds,all(fit$convergence$converged),

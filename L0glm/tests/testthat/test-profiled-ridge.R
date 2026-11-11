@@ -45,7 +45,7 @@ test_that("native profiling handles wide models with several mandatory terms", {
   for (sparse in c(FALSE, TRUE)) for (natural in c(FALSE, TRUE)) {
     fit <- l0nnPois(Matrix::Matrix(X, sparse = sparse), y,
                     always.include = 2L, lambda = 2, start = start,
-                    maxit = 1L, relaxed = FALSE, thresh = 0, parallelize = FALSE,
+                    maxit = 1L,  thresh = 0, parallelize = FALSE,
                     control.solver = controlSolverGen("eigen", 1L,
                                                         NaturalOrdering = natural))
     expect_equal(as.numeric(fit$coefficients), reference, tolerance = 1e-9)
@@ -108,7 +108,7 @@ test_that("native wide sparse nuisance fits preserve dense and threaded results"
   X@x[seq.int(2L, n, by = 5L)] <- 0
   Y <- matrix(rpois(n * 3L, 5), n, 3L)
   opt <- list(y = Y, lambda = 2, start = 1, maxit = 1L, grouped = FALSE,
-              relaxed = FALSE, thresh = 0, parallelize = FALSE)
+               thresh = 0, parallelize = FALSE)
   sparse <- do.call(l0nnPois, c(list(X = X), opt))
   dense <- do.call(l0nnPois, c(list(X = as.matrix(X)), opt))
   expect_equal(as.matrix(sparse$coefficients), as.matrix(dense$coefficients), tolerance = 1e-9)

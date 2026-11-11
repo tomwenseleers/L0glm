@@ -102,6 +102,8 @@ L0glm_local_remap <- function(model,rows,d,template) {
   model$coefficients <- Matrix::sparseMatrix(i=rows[E@i+1L],j=E@j+1L,x=E@x,dims=c(d$p,d$m),
     dimnames=dimnames(template$coefficients))
   model$X <- d$D;model$p <- template$p;model$always.include <- d$mandatory
+  model$offset <- template$offset
+  if(is.null(d$kind))model$prior.weights <- template$prior.weights else model$weights <- template$weights
   model$added_intercept <- template$added_intercept;model$init.lambda <- template$init.lambda
   model$grouped <- d$grouped
   model$preprocessing <- template$preprocessing
@@ -168,6 +170,7 @@ L0glm_local_refit <- function(mask,current,d,control) {
     model$dispersion[!d$estimated] <- current$dispersion[!d$estimated]
     model$weights <- d$W;model$z <- d$Y-d$O
     model$lambdas <- matrix(ifelse(submask,0,Inf),length(rows),d$m)
+    model$support.refit <- TRUE
     model$convergence <- data.frame(stage="local_refit",pass=1L,channel=seq_len(d$m),
       iterations=1L,converged=TRUE)
     return(L0glm_local_remap(model,rows,d,current))
@@ -206,7 +209,7 @@ L0glm_local_refit <- function(mask,current,d,control) {
       nonnegative=d$nonnegative,normalize=d$normalize,solver=d$solver,method=d$method,
       parallelize=FALSE,ncores=control$ncores,nthreads=1L,openmp=TRUE,
       maxit=control$refit.maxit,tol=control$refit.tol,thresh=0,
-      grouped=d$grouped,group.maxit=1L,relaxed=TRUE,screen="none",local.search=FALSE,
+      grouped=d$grouped,group.maxit=1L,screen="none",local.search=FALSE,
       control.solver=d$control.solver,control.family=d$control.family)
     # The constrained native backend uses ncores for its outcome threads.
     args$parallelize <- control$ncores>1L
@@ -217,10 +220,11 @@ L0glm_local_refit <- function(mask,current,d,control) {
     } else if(identical(d$kind,"nb")) args$control.solver$.theta.start <- current$theta
     model <- do.call(l0glmFit,args)
   }
+  model$support.refit <- TRUE
   L0glm_local_remap(model,rows,d,current)
 }
 
-L0glm_local_refine <- function(fit,args,control=list()) {
+L0glm_local_refine <- function(fit,args,control=list(),support.only=FALSE) {
   clock <- proc.time()[[3L]]
   control <- L0glm_local_control(control,args)
   family <- fit$family;kind <- L0glm_ext_kind(family)
@@ -284,6 +288,7 @@ L0glm_local_refine <- function(fit,args,control=list()) {
     d$poisson.constant<--2*colSums(W*constant)
   }
   d$reference.eta<-L0glm_local_eta(B,d);d$reference.B<-B
+  if(support.only)return(L0glm_local_support_refit(fit,d,control))
   if(!is.null(fit[["group"]]))return(L0glm_group_refine(fit,args,d,control))
   score <- L0glm_local_score(fit,d,control)
   initial <- score;current <- fit;evaluations <- 0L;failures <- character()
@@ -448,4 +453,55 @@ L0glm_local_refine <- function(fit,args,control=list()) {
   }
   stopifnot(all(diff(current$local.search$history$value)<0),all(as.matrix(coef(current))[!allowed]==0))
   current
+}
+
+# Above the combinatorial-search limit, compare just one selected-support refit.
+# This retains useful spectral boundary corrections without add/drop/swap scans.
+L0glm_local_support_refit <- function(fit,d,control) {
+  started <- proc.time()[[3L]]
+  control$block.max <- Inf;control$channel.refit <- FALSE
+  control$mu.floor <- .Machine$double.eps
+  mask <- as.matrix(coef(fit))!=0
+  if(d$grouped)mask <- matrix(rowSums(mask)>0,d$p,d$m)&d$allowed
+  if(!is.null(fit[['group']]))mask <- fit$group.active
+  mask[d$mandatory,] <- TRUE
+  decorate <- function(model) {
+    if(!is.null(fit[['group']])) {
+      for(name in c('group','group.multiplier','group.allowed','group.cost.type'))model[[name]] <- fit[[name]]
+      model$group.active <- L0glm_group_active(as.matrix(coef(model)),fit$group.allowed,d$mandatory,
+        d$grouped,list(id=match(fit[['group']],unique(fit[['group']]))))
+    }
+    model
+  }
+  score <- function(model) {
+    value <- L0glm_local_score(model,d,control)
+    if(!is.null(fit[['group']]) && control$target=='L0') {
+      model <- decorate(model)
+      value$criterion <- l0glmMetrics(model,mu_floor=0)$group_objective
+      value$value <- if(is.null(d$validation))value$criterion else value$validation
+    }
+    value
+  }
+  initial <- score(fit)
+  candidate <- tryCatch(L0glm_local_refit(mask,fit,d,control),error=identity)
+  final <- initial;accepted <- FALSE;failures <- character()
+  if(inherits(candidate,'error'))failures <- conditionMessage(candidate)else {
+    next.score <- score(candidate)
+    accepted <- L0glm_local_better(next.score$value,initial$value,control$tol)
+    if(accepted) {fit <- decorate(candidate);final <- next.score}
+  }
+  row <- function(s,move,iteration)data.frame(iteration,move,value=s$value,GIC=s$GIC,
+    selected=s$selected,nonzero=s$nonzero,evaluations=as.integer(iteration>0L))
+  history <- row(initial,'initial',0L)
+  if(accepted)history <- rbind(history,row(final,'support_refit',1L))
+  fit$local.search <- list(initial=initial,final=final,history=history,proposals=data.frame(),
+    evaluations=1L,failures=failures,seconds=proc.time()[[3L]]-started,screen.seconds=0,
+    refit.seconds=proc.time()[[3L]]-started,scoring.floor=control$mu.floor,lambda=d$lambda,pool=d$pool,
+    stopping='support_refit_only',target=if(is.null(d$validation))control$target else 'validation',
+    control=control,after.screening=!is.null(fit$screening))
+  if(!is.null(d$validation))fit$validation$deviance <- final$validation
+  if(inherits(fit,'L0glm_extended_fit')) {
+    fit$metrics <- l0glmMetrics(fit,mu_floor=0);fit$objective <- fit$metrics$objective
+  }
+  fit
 }

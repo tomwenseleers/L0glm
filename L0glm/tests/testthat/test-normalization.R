@@ -52,7 +52,7 @@ test_that("all scaling choices preserve native and general fit coordinates", {
   y <- rpois(30, 3)
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, lambda = 2,
-                 start = 0.2, maxit = 5L, relaxed = FALSE, parallelize = FALSE,
+                 start = 0.2, maxit = 5L,  parallelize = FALSE,
                  prior.mean = rep(0.01, 45))
     reference <- do.call(l0nnPois, args)
     for (normalize in list(TRUE, "l2", "rms", "sd", "none")) {

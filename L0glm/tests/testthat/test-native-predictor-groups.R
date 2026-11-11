@@ -21,7 +21,7 @@ test_that('native predictor groups preserve the structured GLM solution', {
         family=family,group=rep(1:4,each=3),always.include=11L,intercept=TRUE,
         offset=.1,weights=rep(c(0,1,2),length.out=n),prior.mean=.01,start=start,
         dispersion=if(family$family%in%c('gaussian','Gamma'))NULL else 1,
-        grouped=grouped,relaxed=TRUE,local.search=FALSE,parallelize=FALSE,maxit=45L)
+        grouped=grouped,local.search=FALSE,parallelize=FALSE,maxit=45L)
       reference <- group_R_reference(args);fit <- do.call(l0glmFit,args)
       expect_equal(coef(fit),coef(reference),tolerance=1e-7)
       expect_equal(GIC(fit),GIC(reference),tolerance=1e-9)
@@ -39,7 +39,7 @@ test_that('native group channel parallelism is deterministic and restores thread
   set.seed(284);X <- matrix(rnorm(100*16),100,16)
   Y <- matrix(rpois(100*4,exp(.4+.7*X[,1]-.7*X[,2])),100,4)
   args <- list(X=X,y=Y,family=poisson(),group=rep(1:4,each=4),intercept=TRUE,
-    relaxed=TRUE,parallelize=TRUE,local.search=FALSE)
+    parallelize=TRUE,local.search=FALSE)
   for(grouped in c(FALSE,TRUE)) {
     args$grouped <- grouped
     one <- do.call(l0glmFit,c(args,list(ncores=1L)))
@@ -55,7 +55,7 @@ test_that('native group channel parallelism is deterministic and restores thread
 test_that('group routing preserves callbacks and validation checkpoints', {
   set.seed(42);X <- matrix(rnorm(80*6),80,6);y <- .8+X[,1]-X[,2]+rnorm(80)
   args <- list(X=X,y=y,group=rep(1:3,each=2),intercept=TRUE,dispersion=1,
-    relaxed=TRUE,local.search=FALSE,parallelize=FALSE)
+    local.search=FALSE,parallelize=FALSE)
   native <- do.call(l0glmFit,args)
   local({
     local_mocked_bindings(glm_predictor_group_cpp=function(...)stop('native sentinel'),.package='L0glm')
@@ -74,7 +74,7 @@ test_that('native group relaxed refits handle aliased columns and wide designs',
   for(sparse in c(FALSE,TRUE)) {
     args <- list(X=if(sparse)Matrix::Matrix(X,sparse=TRUE)else X,y=y,
       group=rep(1:30,each=2),intercept=TRUE,start=1,lambda=0,dispersion=1,
-      relaxed=TRUE,local.search=FALSE,parallelize=FALSE)
+      local.search=FALSE,parallelize=FALSE)
     reference <- group_R_reference(args);fit <- do.call(l0glmFit,args)
     expect_equal(as.numeric(predict(fit)),as.numeric(predict(reference)),tolerance=1e-8)
     expect_equal(GIC(fit),GIC(reference),tolerance=1e-8)
@@ -84,7 +84,7 @@ test_that('native group relaxed refits handle aliased columns and wide designs',
 test_that('unused initial link values do not warn in noncanonical Gaussian fits', {
   set.seed(51);X <- matrix(rnorm(100*6),100,6);y <- .4+.2*X[,1]+rnorm(100)
   args <- list(X=X,y=y,family=gaussian(log),group=rep(1:3,each=2),intercept=TRUE,
-    dispersion=1,start=1,relaxed=TRUE,local.search=FALSE,parallelize=FALSE)
+    dispersion=1,start=1,local.search=FALSE,parallelize=FALSE)
   reference <- group_R_reference(args)
   expect_silent(fit <- do.call(l0glmFit,args))
   expect_equal(coef(fit),coef(reference),tolerance=1e-7)

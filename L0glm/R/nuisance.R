@@ -173,11 +173,10 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   n_ic <- if(identical(kind,"cox")) sum(as.matrix(Y)[,2L]*original_w[,1L]) else
     if(identical(kind,"nb")) sum(rowSums(original_w)>0) else n
   lambda <- L0glm_resolve_lambda(options$lambda,max(1L,length(selectable)),max(2,n_ic))
-  if(!"relaxed"%in%supplied && identical(kind,"cox")) options$relaxed <- FALSE
+   options$relaxed <- isTRUE(options$relaxed)
   if(!is.null(options$screen) && !isTRUE(options$precluster) &&
       L0glm_screen_method(options$screen,X,options$start,added,options$always.include)!="none") {
     if(!"lambda"%in%supplied) lambda <- L0glm_resolve_lambda("gic",max(1L,length(selectable)),max(2,n_ic))
-    if(!"relaxed"%in%supplied) options$relaxed <- TRUE
     if(!"parallelize"%in%supplied) options$parallelize <- FALSE
   }
   opt <- options;opt$lambda <- lambda;opt$intercept <- FALSE;opt$start <- S;opt$prior.mean <- P;opt$always.include <- included

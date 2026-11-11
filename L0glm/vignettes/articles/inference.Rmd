@@ -19,7 +19,7 @@ library(L0glm)
 set.seed(51)
 X <- matrix(rnorm(200*10),200,10)
 y <- 1+2*X[,1]-2*X[,2]+rnorm(200)
-fit <- l0glmFit(X,y,intercept=TRUE,lambda='gic',relaxed=TRUE)
+fit <- l0glmFit(X,y,intercept=TRUE,lambda='gic')
 details <- summary(fit,inference='conditional')
 details$inference$coefficients
 ```

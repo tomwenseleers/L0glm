@@ -30,7 +30,7 @@ time is the median of three runs; all three return identical coefficients.
 Screening uses the physical cores (eight on this workstation), with one BLAS
 thread. Deconvolution has 10,000 observations, 10,000 predictors and 1,000 true
 peaks; the multichannel simulation retains all 226 informative mass channels.
-L0glm uses a direct `l0glmFit(..., lambda="gic", relaxed=TRUE,
+L0glm uses a direct `l0glmFit(..., lambda="gic",
 parallelize=TRUE, ncores=4L)` call. Its time is the median of three runs
 returning matching coefficients. GIC-tuned LASSO and fully relaxed LASSO
 search ten lambda values, scoring each using the original Poisson likelihood.

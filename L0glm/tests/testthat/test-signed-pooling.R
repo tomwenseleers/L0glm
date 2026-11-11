@@ -18,7 +18,7 @@ test_that("signed multichannel fits are invariant to response channel order", {
   Y <- X %*% B + matrix(rnorm(240, sd = 0.3), 80, 3)
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), family = gaussian(),
-                 dispersion = 0.09, lambda = "gic", grouped = TRUE, relaxed = TRUE,
+                 dispersion = 0.09, lambda = "gic", grouped = TRUE,
                  maxit = 50L, parallelize = FALSE)
     original <- do.call(l0glmFit, c(args, list(y = Y)))
     order <- c(3, 1, 2)

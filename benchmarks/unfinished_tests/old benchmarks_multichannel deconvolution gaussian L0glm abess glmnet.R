@@ -88,7 +88,7 @@ system.time(warmup <- l0glmFit(X = X, y = Y,
                                thresh = 1,
                                grouped = T, # use group L0 penalty
                                group.maxit = 5,
-                               relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
+                                # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                warmupiters = 5,
                                solver = "eigen",
                                method = 1L # using Eigen's sparse Cholesky solver
@@ -108,7 +108,7 @@ system.time(coefficients <- lapply(lambdas, function (lambda) {
                                                                             thresh = 1, # coefficients below this threshold are set to zero
                                                                             grouped = T, # use group L0 penalty
                                                                             group.maxit = 6,
-                                                                            relaxed = T, # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
+                                                                             # return unpenalized fit for selected variables at the end, similar to concept of relaxed LASSO
                                                                             warmupiters = 5,
                                                                             solver = "eigen",
                                                                             method = 1L, # using Eigen's sparse Cholesky solver
@@ -128,7 +128,7 @@ metrics <- data.frame(do.call(rbind, lapply(coefficients, function (coefs) get.m
                                                                                        beta_true=sim$beta_true)))) 
 
 
-system.time(metrics2 <- l0glmTune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, tune = "aic", group.maxit = 6, plot = T, grouped = T, relaxed = T, parallellize=T))
+system.time(metrics2 <- l0glmTune(X = sim$X, y = sim$y, family = gaussian(identity), nonnegative = T, coefs.true = sim$beta_true, tune = "aic", group.maxit = 6, plot = T, grouped = T,  parallellize=T))
 
 
 # best empirical lambda based on calculated GIC over lambda sequence:

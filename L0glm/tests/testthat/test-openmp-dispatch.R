@@ -1,6 +1,6 @@
 # These component checks isolate IRLS/tuning from final support refinement.
 test_that("eligible l0glmFit calls forward all fitting controls to l0nnPois", {
-  local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
+  local_mocked_bindings(L0glm_internal_pois = function(...) list(args = list(...)))
   X <- matrix(1, 5, 3)
   y <- cbind(1:5, 2:6)
   args <- list(
@@ -10,19 +10,21 @@ test_that("eligible l0glmFit calls forward all fitting controls to l0nnPois", {
     offset = rep(0.1, 5), lambda = "bic", intercept = TRUE,
     always.include = 2L, normalize = TRUE, solver = "eigen", method = 1L,
     parallelize = TRUE, ncores = 2L, nthreads = 1L,
-    maxit = 12L, grouped = FALSE, group.maxit = 3L, relaxed = TRUE,
+    maxit = 12L, grouped = FALSE, group.maxit = 3L,
     prior.mean = matrix(0.2, 3, 2),
     thresh = 1e-6, tol = 1e-8,
     # Test the primitive backend dispatch independently of nuisance orchestration.
     control.solver = list(NaturalOrdering = TRUE, .nuisance = FALSE), verbose = TRUE, validation = NULL
   )
   fit <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
-  expect_setequal(names(fit$args), setdiff(names(args), "nonnegative"))
-  expect_equal(fit$args, args[names(fit$args)])
+  expect_setequal(names(fit$args), c(setdiff(names(args), "nonnegative"), "relaxed"))
+  expect_false(fit$args$relaxed)
+  expect_equal(fit$args[names(args)[names(args)!="nonnegative"]],
+               args[names(args)!="nonnegative"])
 })
 
 test_that("OpenMP dispatch handles vector responses and family functions", {
-  local_mocked_bindings(l0nnPois = function(...) list(args = list(...)))
+  local_mocked_bindings(L0glm_internal_pois = function(...) list(args = list(...)))
   fit <- l0glmFit(local.search=FALSE, diag(4), 1:4, nonnegative = TRUE,
                    family = function() poisson(identity))
   expect_false(fit$args$relaxed)
@@ -33,10 +35,10 @@ test_that("OpenMP dispatch handles vector responses and family functions", {
 })
 
 test_that("fits outside the Poisson specialization use the general driver", {
-  local_mocked_bindings(l0nnPois = function(...) stop("Unexpected dispatch"))
+  local_mocked_bindings(L0glm_internal_pois = function(...) stop("Unexpected dispatch"))
   base <- list(X = diag(4), y = c(4, 3, 2, 1), family = poisson(identity),
                nonnegative = TRUE, parallelize = FALSE, grouped = FALSE,
-               relaxed = FALSE, lambda = 0.01)
+                lambda = 0.01)
   variants <- list(
     list(openmp = FALSE), list(nonnegative = FALSE),
     list(family = gaussian(identity)), list(family = poisson(log)),
@@ -68,7 +70,7 @@ test_that("dispatched grouped fits agree with direct and R fits", {
       args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y,
                    weights = seq(0.7, 1.2, length.out = 60),
                    offset = Matrix::Matrix(0.2, 60, 3),
-                   lambda = "gic", grouped = grouped, relaxed = TRUE,
+                   lambda = "gic", grouped = grouped,
                    parallelize = FALSE, group.maxit = 2L, maxit = 15L)
       direct <- do.call(l0nnPois, utils::modifyList(args, list(local.search=FALSE)))
       dispatched <- do.call(l0glmFit, utils::modifyList(c(args, list(

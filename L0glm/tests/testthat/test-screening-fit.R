@@ -26,7 +26,7 @@ test_that("screened fits match standalone SIS/ISIS with usable original dimensio
   }
 })
 
-test_that("screened defaults reproduce the small-batch GIC relaxed workflow", {
+test_that("screened defaults retain the small-batch GIC penalized estimate", {
   set.seed(2611);n <- 80L;p <- 1000L;X <- matrix(rnorm(n*p),n,p)
   y <- X[,1]*2-X[,2]*2+rnorm(n)
   auto <- l0glmFit(local.search=FALSE, X,y)
@@ -37,7 +37,7 @@ test_that("screened defaults reproduce the small-batch GIC relaxed workflow", {
   expect_equal(coef(auto),coef(explicit),tolerance=1e-10)
   expect_equal(auto$screening$history,explicit$screening$history,tolerance=1e-10)
   expect_false(explicit$screening$automatic)
-  expect_true(any(auto$convergence$stage=="relaxed"))
+  expect_false(any(auto$convergence$stage=="relaxed"))
   sis <- l0glmFit(local.search=FALSE, X,y,screen="SIS")
   expect_equal(sis$screening$screen_size,2L*floor(n/log(n)))
   expect_equal(sis$screening$iterations,1L)
@@ -73,10 +73,10 @@ test_that("explicit fitting controls and all starting-zero exclusions survive sc
   prior <- matrix(0,41,2);prior[5,] <- 100
   fit <- l0glmFit(local.search=FALSE, X,Y,screen="ISIS",nsis=15,screen.maxit=2,intercept=TRUE,
     start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
-    lambda=3,relaxed=FALSE,normalize="none",maxit=5,tol=1e-6)
+    lambda=3,normalize="none",maxit=5,tol=1e-6)
   expected <- sisGLM(X,Y,nsis=15,iterative=TRUE,niter=2,return_stats=FALSE,intercept=TRUE,
     start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
-    lambda=3,relaxed=FALSE,normalize="none",maxit=5,tol=1e-6)
+    lambda=3,normalize="none",maxit=5,tol=1e-6)
   expect_equal(coef(fit),coef(expected$fit),tolerance=1e-10)
   expect_true(all(coef(fit)[5,]==0));expect_equal(coef(fit)[6,1],0)
   expect_false(4L%in%fit$screening$candidates);expect_true(7L%in%fit$screening$candidates)

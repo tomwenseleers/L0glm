@@ -176,7 +176,7 @@ all zero are excluded before CLR centering; zero category entries in other
 rows remain eligible. Scalar \code{1} centers to zero without excluding rows,
 whereas scalar \code{0} excludes all selectable rows. Intercepts and
 \code{always.include} terms remain eligible. These restrictions also apply
-during relaxed refits, and output coefficients retain their original sparse
+during unpenalized refits, and output coefficients retain their original sparse
 dimensions. See \code{l0glmFit} for further starting-value details.
 Use \code{"pilot"} to build a common seed from ten independent unrelaxed
 fits at log-spaced penalties between \code{lambda_min} and the GIC preset
@@ -228,20 +228,12 @@ response channels or multinomial categories; \code{FALSE} selects individual
 channel coefficients or CLR category entries. Multinomial fitting always uses
 the joint likelihood, and Cox has one coefficient per predictor so the choices
 coincide there.
-\item \code{relaxed}: refit the selected support before scoring each candidate
-full-data or CV training model. Special families use \code{lambda = 0} for this
-refit. Grouped refits admit eligible entries within retained rows; ungrouped
-refits retain only selected entries. The default is \code{TRUE} for grouped
-multichannel ordinary GLMs and NB, and grouped multinomial models with either
-factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
-other single-channel fits. Set it explicitly to refit an ungrouped model.
-With screening enabled the default is \code{TRUE}, as in \code{l0glmFit()}.
 \item \code{thresh}: relative hard cutoff during selection (default
 \code{1e-5}), applied to working coefficient row norms for grouped
 multichannel NB/multinomial fits and individual magnitudes for ungrouped or
 single-channel fits. The absolute \code{1e-20} cutoff remains when
 \code{thresh = 0}. Multinomial rows are restored to zero-sum CLR coordinates
-after thresholding. Mandatory terms are exempt, and relaxed refits do not
+after thresholding. Mandatory terms are exempt, and unpenalized refits do not
 apply these cutoffs. Cutoffs use each fit's normalized working coefficients,
 not returned original-unit coefficients, and do not smooth adaptive weights.
 \item \code{prior.mean}: ridge-penalty centers in original input coefficient
@@ -423,23 +415,14 @@ terms are excluded from cutoff maxima. Inverse-square weights and the same \code
 are used in full-data candidates, pilot selection fits and CV training fits;
 each fit computes its own training normalization. Special-family cutoffs
 apply only during selection with positive lambda and are disabled during
-relaxed refits. \code{thresh = 0} retains the absolute cutoff and does not
+unpenalized refits. \code{thresh = 0} retains the absolute cutoff and does not
 smooth adaptive weights.
-With \code{relaxed = TRUE}, grouped multinomial refits jointly estimate all
-category coefficients in retained predictor rows; zero category
-entries within those rows may become nonzero. Ungrouped multinomial refits
-jointly estimate only the selected CLR entries and keep the others fixed at
-zero. Both preserve zero-sum rows: \eqn{s} admitted category entries give
-\eqn{s-1} free directions. Starting-row exclusions remain in force, mandatory
-terms remain eligible, and no other predictor rows can enter the refit.
-NB refits follow the same row-versus-entry support rule and continue updating
-estimated channel shapes. Cox refits selected log-relative-hazard effects.
-All candidates and CV training fits apply the relaxed-refit information
-safeguard from \code{l0glmFit()}; unsupported refits retain the penalized
-estimate and record \code{relaxationSkipped} in the fitted model.
-Refits apply inside each CV training fold, before validation scoring; full-data
-paths, \code{fit_best} and \code{fit_1se} contain the corresponding refitted
-models. Pilot initialization fits remain unrelaxed.
+All candidates and CV training fits retain their adaptive-ridge estimates.
+Multinomial coefficients remain in their selected zero-sum CLR subspace;
+\eqn{s} admitted category entries give \eqn{s-1} free directions.
+Optional local support refinement tests restricted likelihood fits and accepts
+a proposal only when its target improves. It runs independently within each
+training fold, before held-out scoring. Pilot initializers do not run it.
 IC tuning uses the same parameter counts as \code{GIC()}, \code{AIC()}
 and the other criterion methods. Grouped multinomial rows contribute
 \eqn{K} parameters for \eqn{K+1} categories; ungrouped CLR models count
@@ -469,14 +452,14 @@ old_par <- par(mgp=c(2, .7, 0))
 single <- simul(method=2, n=500, p=500, s=.1, seed=2)
 single_gic <- l0glmTune(single$X, single$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=single$beta_true,
-  nonnegative=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, parallelize=FALSE, plot=TRUE)
 
 # Venetian-blind CV: train on two out of every three time points.
 folds <- rep(1:3, length.out=nrow(single$X))
 single_cv <- l0glmTune(single$X, single$y, family=poisson(identity),
   tune="cv", nlambda=5, prop_range=.25, nfolds=3, foldid=folds,
   coefs.true=single$beta_true,
-  nonnegative=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, parallelize=FALSE, plot=TRUE)
 c(GIC=single_gic$lambda_best, CV=single_cv$lambda_best,
   CV_1se=single_cv$lambda_1se, GIC_preset=single_cv$lambda_preset)
 single_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
@@ -491,14 +474,14 @@ fitted(single_cv$fit_1se)[1:6, , drop=FALSE]
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
 multi_gic <- l0glmTune(multi$X, multi$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=multi$beta_true,
-  nonnegative=TRUE, grouped=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, grouped=TRUE, parallelize=FALSE, plot=TRUE)
 
 # All channels of each time point share one fold assignment.
 folds <- rep(1:3, length.out=nrow(multi$X))
 multi_cv <- l0glmTune(multi$X, multi$y, family=poisson(identity),
   tune="cv", nlambda=5, prop_range=.25, nfolds=3, foldid=folds,
   coefs.true=multi$beta_true,
-  nonnegative=TRUE, grouped=TRUE, relaxed=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, grouped=TRUE, parallelize=FALSE, plot=TRUE)
 c(GIC=multi_gic$lambda_best, CV=multi_cv$lambda_best,
   CV_1se=multi_cv$lambda_1se, GIC_preset=multi_cv$lambda_preset)
 l0glmMetrics(multi_gic$fit_best, beta_true=multi$beta_true)[
@@ -559,15 +542,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
   y_nb <- rnbinom(n, mu=mu_nb, size=2)
   # nb() estimates theta; nb(theta=2) would keep it fixed at two.
   nb_fit <- l0glmFit(X_special, y_nb, family=mgcv::nb(),
-    intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+    intercept=TRUE, lambda="gic",  maxit=100, tol=1e-8)
   nb_fit$theta
   coef(nb_fit)
   nb_gic <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="gic", nlambda=5,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   nb_cv <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   c(GIC=nb_gic$lambda_best, CV=nb_cv$lambda_best, CV_1se=nb_cv$lambda_1se)
   predict(nb_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
 
@@ -580,15 +563,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     sample.int(3, 1, prob=probabilities[i, ]), integer(1)), levels=1:3)
   multinomial_fit <- l0glmFit(X_special, y_multinomial,
     family=mgcv::multinom(K=2), lambda="gic", grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   coef(multinomial_fit)               # original-scale, zero-sum CLR rows
   multinomial_gic <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="gic", nlambda=5, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   multinomial_cv <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="cv", nlambda=5,
     nfolds=3, foldid=folds_special, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   c(GIC=multinomial_gic$lambda_best, CV=multinomial_cv$lambda_best,
     CV_1se=multinomial_cv$lambda_1se)
   predict(multinomial_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
@@ -600,13 +583,13 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     y_cox <- survival::Surv(pmin(event_time, censor_time),
       event_time <= censor_time)
     cox_fit <- l0glmFit(X_special, y_cox, family=mgcv::cox.ph(),
-      lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+      lambda="gic",  maxit=100, tol=1e-8)
     coef(cox_fit)
     cox_gic <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
-      tune="gic", nlambda=5, relaxed=TRUE, maxit=100, tol=1e-8)
+      tune="gic", nlambda=5,  maxit=100, tol=1e-8)
     cox_cv <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
       tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-      relaxed=TRUE, maxit=100, tol=1e-8)
+       maxit=100, tol=1e-8)
     c(GIC=cox_gic$lambda_best, CV=cox_cv$lambda_best, CV_1se=cox_cv$lambda_1se)
     predict(cox_cv$fit_1se, X_special[1:5, , drop=FALSE], type="risk")
   }

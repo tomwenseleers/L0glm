@@ -136,7 +136,7 @@
 #' rows remain eligible. Scalar \code{1} centers to zero without excluding rows,
 #' whereas scalar \code{0} excludes all selectable rows. Intercepts and
 #' \code{always.include} terms remain eligible. These restrictions also apply
-#' during relaxed refits, and output coefficients retain their original sparse
+#' during unpenalized refits, and output coefficients retain their original sparse
 #' dimensions. See \code{l0glmFit} for further starting-value details.
 #' Use \code{"pilot"} to build a common seed from ten independent unrelaxed
 #' fits at log-spaced penalties between \code{lambda_min} and the GIC preset
@@ -218,20 +218,12 @@
 #' channel coefficients or CLR category entries. Multinomial fitting always uses
 #' the joint likelihood, and Cox has one coefficient per predictor so the choices
 #' coincide there.
-#' \item \code{relaxed}: refit the selected support before scoring each candidate
-#' full-data or CV training model. Special families use \code{lambda = 0} for this
-#' refit. Grouped refits admit eligible entries within retained rows; ungrouped
-#' refits retain only selected entries. The default is \code{TRUE} for grouped
-#' multichannel ordinary GLMs and NB, and grouped multinomial models with either
-#' factor or count-matrix responses; it is \code{FALSE} for Cox and ungrouped or
-#' other single-channel fits. Set it explicitly to refit an ungrouped model.
-#' With screening enabled the default is \code{TRUE}, as in \code{l0glmFit()}.
 #' \item \code{thresh}: relative hard cutoff during selection (default
 #' \code{1e-5}), applied to working coefficient row norms for grouped
 #' multichannel NB/multinomial fits and individual magnitudes for ungrouped or
 #' single-channel fits. The absolute \code{1e-20} cutoff remains when
 #' \code{thresh = 0}. Multinomial rows are restored to zero-sum CLR coordinates
-#' after thresholding. Mandatory terms are exempt, and relaxed refits do not
+#' after thresholding. Mandatory terms are exempt, and unpenalized refits do not
 #' apply these cutoffs. Cutoffs use each fit's normalized working coefficients,
 #' not returned original-unit coefficients, and do not smooth adaptive weights.
 #' \item \code{prior.mean}: ridge-penalty centers in original input coefficient
@@ -326,23 +318,14 @@
 #' are used in full-data candidates, pilot selection fits and CV training fits;
 #' each fit computes its own training normalization. Special-family cutoffs
 #' apply only during selection with positive lambda and are disabled during
-#' relaxed refits. \code{thresh = 0} retains the absolute cutoff and does not
+#' unpenalized refits. \code{thresh = 0} retains the absolute cutoff and does not
 #' smooth adaptive weights.
-#' With \code{relaxed = TRUE}, grouped multinomial refits jointly estimate all
-#' category coefficients in retained predictor rows; zero category
-#' entries within those rows may become nonzero. Ungrouped multinomial refits
-#' jointly estimate only the selected CLR entries and keep the others fixed at
-#' zero. Both preserve zero-sum rows: \eqn{s} admitted category entries give
-#' \eqn{s-1} free directions. Starting-row exclusions remain in force, mandatory
-#' terms remain eligible, and no other predictor rows can enter the refit.
-#' NB refits follow the same row-versus-entry support rule and continue updating
-#' estimated channel shapes. Cox refits selected log-relative-hazard effects.
-#' All candidates and CV training fits apply the relaxed-refit information
-#' safeguard from \code{l0glmFit()}; unsupported refits retain the penalized
-#' estimate and record \code{relaxationSkipped} in the fitted model.
-#' Refits apply inside each CV training fold, before validation scoring; full-data
-#' paths, \code{fit_best} and \code{fit_1se} contain the corresponding refitted
-#' models. Pilot initialization fits remain unrelaxed.
+#' All candidates and CV training fits retain their adaptive-ridge estimates.
+#' Multinomial coefficients remain in their selected zero-sum CLR subspace;
+#' \eqn{s} admitted category entries give \eqn{s-1} free directions.
+#' Optional local support refinement tests restricted likelihood fits and accepts
+#' a proposal only when its target improves. It runs independently within each
+#' training fold, before held-out scoring. Pilot initializers do not run it.
 #' IC tuning uses the same parameter counts as \code{GIC()}, \code{AIC()}
 #' and the other criterion methods. Grouped multinomial rows contribute
 #' \eqn{K} parameters for \eqn{K+1} categories; ungrouped CLR models count
@@ -442,6 +425,8 @@ l0glmTune <- function(X, y,
   screen.path <- match.arg(screen.path)
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
+  if ("relaxed" %in% names(list(...)))
+    stop("relaxed is not a fitting argument; lambda=0 requests an unpenalized model.", call.=FALSE)
   dots <- L0glm_group_tune_cost(X,y,family,list(...))
   if ("maxit" %in% names(dots)) L0glm_iteration_limit(dots$maxit)
   interactions <- !is.null(dots$interactions) && L0glm_interaction_order(dots$interactions)>0L

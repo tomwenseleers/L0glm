@@ -4,7 +4,7 @@ test_that('interaction settings add pairwise then three-way products', {
   y <- 1+2*X[,1]-2*X[,2]+2*X[,3]+2*X[,1]*X[,2]+
     2*X[,1]*X[,2]*X[,3]+rnorm(300)
   args <- list(X=X,y=y,lambda='gic',dispersion=1,intercept=TRUE,
-    relaxed=TRUE,local.search=FALSE,maxit=70L,parallelize=FALSE)
+    local.search=FALSE,maxit=70L,parallelize=FALSE)
   main <- do.call(l0glmFit,args)
   for(order in 0L) {
     fit <- do.call(l0glmFit,c(args,list(interactions=order)))
@@ -51,7 +51,7 @@ test_that('interaction views preserve storage, indexing and original predictor u
   }
   y <- 1+2*X[,1]-2*X[,2]+2*X[,1]*X[,2]+rnorm(140,sd=.4)
   args <- list(X=X,y=y,interactions=1L,lambda='gic',intercept=TRUE,
-    dispersion=1,relaxed=TRUE,local.search=FALSE,maxit=60L,parallelize=FALSE)
+    dispersion=1,local.search=FALSE,maxit=60L,parallelize=FALSE)
   fit <- do.call(l0glmFit,args)
   for(A in list(as(X,'dgCMatrix'),X*rep(10^seq(-2,2,length.out=6),each=140))) {
     alternative <- do.call(l0glmFit,modifyList(args,list(X=A)))
@@ -65,7 +65,7 @@ test_that('interaction starts preserve channel masks and compulsory main effects
     2-X[,1]+2*X[,2]-X[,1]*X[,2])+matrix(rnorm(320,sd=.2),160)
   start <- matrix(1,7,2);start[2,1] <- 0;start[4,] <- 0;start[7,] <- 0
   fit <- l0glmFit(X,Y,interactions=1L,intercept=TRUE,always.include=6L,
-    start=start,prior.mean=matrix(.1,7,2),lambda='gic',relaxed=TRUE,
+    start=start,prior.mean=matrix(.1,7,2),lambda='gic',
     dispersion=1,local.search=FALSE,maxit=60L,parallelize=FALSE)
   expect_equal(as.numeric(coef(fit)[2,1]),0)
   expect_true(all(coef(fit)[4,]==0))
@@ -79,7 +79,7 @@ test_that('generic quasi families can select interaction stages', {
   set.seed(92);X <- matrix(rnorm(150*5),150,5)
   y <- 1+2*X[,1]-2*X[,2]+X[,1]*X[,2]+rnorm(150)
   fit <- l0glmFit(X,y,family=quasi('identity','constant'),lambda='gic',
-    interactions=1L,intercept=TRUE,relaxed=TRUE,local.search=FALSE)
+    interactions=1L,intercept=TRUE,local.search=FALSE)
   expect_true(all(is.finite(fit$interactions$history$score)))
   expect_true(all(is.finite(predict(fit,X))))
 })
@@ -90,7 +90,7 @@ test_that('native Poisson interactions accept compact weights, offsets and precl
   Y <- matrix(rpois(n*4,rep(mu,4)),n,4)
   w <- runif(n,.7,1.3);offset <- rep(1,n)
   args <- list(X=X,y=Y,interactions=1L,lambda='gic',weights=w,offset=offset,
-    relaxed=TRUE,local.search=FALSE,maxit=40L,parallelize=FALSE)
+    local.search=FALSE,maxit=40L,parallelize=FALSE)
   fast <- do.call(l0nnPois,args)
   general <- do.call(l0glmFit,c(args,list(family=poisson(identity),nonnegative=TRUE)))
   expanded <- do.call(l0nnPois,modifyList(args,list(weights=matrix(w,n,4),offset=matrix(offset,n,4))))
@@ -111,11 +111,11 @@ test_that('group costs and fold-specific interaction generation remain reproduci
   y <- 1+2*X[,1]-2*X[,2]+X[,1]*X[,2]+rnorm(140)
   fold <- rep(1:2,70)
   cv <- l0glmTune(X,y,family=gaussian(),interactions=1L,intercept=TRUE,
-    relaxed=TRUE,nlambda=3L,tune='cv',nfolds=2L,foldid=fold,plot=FALSE,
+    nlambda=3L,tune='cv',nfolds=2L,foldid=fold,plot=FALSE,
     printbest=FALSE,local.search=FALSE,maxit=60L)
   train <- fold!=1L
   manual <- l0glmFit(X[train,],y[train],interactions=1L,intercept=TRUE,
-    lambda=cv$cv$lambda_train[1,1],relaxed=TRUE,local.search=FALSE,maxit=60L)
+    lambda=cv$cv$lambda_train[1,1],local.search=FALSE,maxit=60L)
   expect_equal(unname(cv$cv$deviance[1,1]),
     mean((y[!train]-as.numeric(predict(manual,X[!train,])))^2),tolerance=1e-10)
   expect_identical(cv$cv$interaction_terms[[1]][[1]],manual$interactions$terms)
@@ -126,7 +126,7 @@ test_that('group costs and fold-specific interaction generation remain reproduci
   expect_error(l0glmTune(X,y,family=gaussian(),interactions=1L,start='pilot',
     plot=FALSE,printbest=FALSE),'pilot')
   grouped <- l0glmTune(X,y,family=gaussian(),interactions=1L,group=rep(1:3,each=2),
-    intercept=TRUE,relaxed=TRUE,tune='gic',nlambda=3L,plot=FALSE,
+    intercept=TRUE,tune='gic',nlambda=3L,plot=FALSE,
     printbest=FALSE,local.search='auto',maxit=60L)
   expect_equal(grouped$fit_best$group.cost.type,'dimensions')
   expect_true(isTRUE(attr(grouped$fit_best$group.multiplier,'dimension_based')))
@@ -134,7 +134,7 @@ test_that('group costs and fold-specific interaction generation remain reproduci
   truth <- matrix(c(1,2,-2,0,0,0,0,1),ncol=1,
     dimnames=list(c('Intercept',letters[1:6],'a:b'),NULL))
   path <- l0glmTune(X,y,family=gaussian(),interactions=1L,intercept=TRUE,
-    relaxed=TRUE,nlambda=3L,tune='gic',plot=FALSE,printbest=FALSE,
+    nlambda=3L,tune='gic',plot=FALSE,printbest=FALSE,
     local.search=FALSE,maxit=60L,coefs.true=truth)
   expect_true(all(is.finite(path$metrics$F1_score)))
   expect_equal(path$metrics$tuning_score,path$metrics$gic)

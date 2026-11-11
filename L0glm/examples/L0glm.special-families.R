@@ -11,15 +11,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
   y_nb <- rnbinom(n, mu=mu_nb, size=2)
   # nb() estimates theta; nb(theta=2) would keep it fixed at two.
   nb_fit <- l0glmFit(X_special, y_nb, family=mgcv::nb(),
-    intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+    intercept=TRUE, lambda="gic",  maxit=100, tol=1e-8)
   nb_fit$theta
   coef(nb_fit)
   nb_gic <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="gic", nlambda=5,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   nb_cv <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   c(GIC=nb_gic$lambda_best, CV=nb_cv$lambda_best, CV_1se=nb_cv$lambda_1se)
   predict(nb_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
 
@@ -32,15 +32,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     sample.int(3, 1, prob=probabilities[i, ]), integer(1)), levels=1:3)
   multinomial_fit <- l0glmFit(X_special, y_multinomial,
     family=mgcv::multinom(K=2), lambda="gic", grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   coef(multinomial_fit)               # original-scale, zero-sum CLR rows
   multinomial_gic <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="gic", nlambda=5, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   multinomial_cv <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="cv", nlambda=5,
     nfolds=3, foldid=folds_special, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   c(GIC=multinomial_gic$lambda_best, CV=multinomial_cv$lambda_best,
     CV_1se=multinomial_cv$lambda_1se)
   predict(multinomial_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
@@ -52,13 +52,13 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     y_cox <- survival::Surv(pmin(event_time, censor_time),
       event_time <= censor_time)
     cox_fit <- l0glmFit(X_special, y_cox, family=mgcv::cox.ph(),
-      lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+      lambda="gic",  maxit=100, tol=1e-8)
     coef(cox_fit)
     cox_gic <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
-      tune="gic", nlambda=5, relaxed=TRUE, maxit=100, tol=1e-8)
+      tune="gic", nlambda=5,  maxit=100, tol=1e-8)
     cox_cv <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
       tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-      relaxed=TRUE, maxit=100, tol=1e-8)
+       maxit=100, tol=1e-8)
     c(GIC=cox_gic$lambda_best, CV=cox_cv$lambda_best, CV_1se=cox_cv$lambda_1se)
     predict(cox_cv$fit_1se, X_special[1:5, , drop=FALSE], type="risk")
   }

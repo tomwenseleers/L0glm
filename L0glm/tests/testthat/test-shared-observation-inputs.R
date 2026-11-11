@@ -5,7 +5,7 @@ test_that("shared row weights and offsets stay compact and match channel matrice
   y<-matrix(rpois(n*m,as.matrix(X%*%B)+off),n,m)
   for(openmp in c(FALSE,TRUE))for(grouped in c(FALSE,TRUE)) {
     args<-list(X=X,y=y,family=poisson("identity"),lambda="gic",nonnegative=TRUE,
-      openmp=openmp,parallelize=FALSE,grouped=grouped,relaxed=TRUE)
+      openmp=openmp,parallelize=FALSE,grouped=grouped)
     a<-do.call(l0glmFit,c(args,list(weights=w,offset=off)))
     b<-do.call(l0glmFit,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
     expect_equal(coef(a),coef(b),tolerance=1e-8)

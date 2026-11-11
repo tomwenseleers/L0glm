@@ -24,7 +24,6 @@ l0nnPois(
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,
-  relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
   thresh = 1e-05,
   tol = 1e-10,
@@ -116,13 +115,13 @@ the coefficient constraints and the following support restrictions.
 \itemize{
 \item Ordinary GLMs and \code{mgcv::nb()}: exact zeros exclude individual
 coefficients separately in each channel, throughout selection, grouped
-passes and relaxed refits. Rows zero in every channel are screened out.
+passes and unpenalized refits. Rows zero in every channel are screened out.
 \item \code{mgcv::cox.ph()}: use a scalar, length-\code{p} vector or
 \code{p} by \code{1} matrix; exact zeros exclude the corresponding predictors.
 \item \code{mgcv::multinom(K)}: a starting matrix has one column per category,
 in factor-level or response-matrix column order. Rows are centered across
 categories to give CLR coefficients. Rows supplied as all zero are excluded
-before centering and remain zero during selection and relaxed refits.
+before centering and remain zero during selection and unpenalized refits.
 Individual zero entries in an otherwise nonzero row remain eligible.
 Common nonzero rows, including scalar \code{start = 1}, center to zero but
 remain eligible; a weak-ridge step seeds eligible zero starts.
@@ -309,53 +308,6 @@ values derived from the current coefficients, which then imposes a group
 penalty. This argument applies to ordinary GLMs, not the special-family
 loops; those update grouping within IRLS and use \code{maxit} per pass.}
 
-\item{relaxed}{Logical controlling a final refit to reduce shrinkage bias.
-\code{FALSE} returns the selection fit. For ordinary GLMs, \code{TRUE}
-uses a nearly unpenalized refit with \code{lambda = 1e-30} and unsmoothed
-adaptive ridge weights. Special families instead use an unpenalized IRLS
-pass with \code{lambda = 0}, on the following support:
-\itemize{
-\item \code{mgcv::nb()}: grouped refits admit all eligible channel
-coefficients within selected predictor rows; ungrouped refits admit only
-entries nonzero at the end of selection. Estimated shape parameters continue
-to be updated during refitting; shapes fixed in the constructor remain fixed.
-\item \code{mgcv::multinom(K)}: grouped refits jointly estimate all
-category coefficients within retained predictor rows, allowing category
-entries that were zero during selection to become nonzero. Ungrouped refits
-jointly estimate only the selected nonzero CLR entries and hold all other
-category entries at zero. Both retain the joint multinomial likelihood and
-zero-sum row constraints; a row with \eqn{s} admitted category entries has
-\eqn{s-1} free directions. No new predictor rows are introduced.
-\item \code{mgcv::cox.ph()}: refit the selected log-relative-hazard
-coefficients using the Cox partial likelihood, without an intercept.
-}
-Hard thresholding is disabled during refitting. Relaxed nonnegative fits
-finish with a conditional boundary pass: a positive coefficient may be set
-to exactly zero when the endpoint derivative supports zero and the actual
-deviance or negative log likelihood does not increase. This uses no
-coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
-its fitted shape and Cox partial likelihood; multinomial CLR coefficients
-remain unrestricted. A validation checkpoint is retained if polishing
-would increase its held-out deviance. Explicit starting-value
-exclusions are respected; intercepts and \code{always.include} terms remain
-eligible and unpenalized. Sparse output retains the original dimensions.
-A refit is skipped when its admitted coefficients exceed the available
-information or its selected design is numerically rank deficient. Estimating
-dispersion also requires positive residual degrees of freedom. Checks use
-positive-weight observations, the multinomial zero-sum parameter space and
-the Cox risk-set information, as appropriate. The penalized selection fit is
-retained for unsupported refits; \code{relaxationSkipped} identifies them.
-These checks assess structural information, not the existence of a finite
-maximum-likelihood estimate under separation.
-The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
-and for grouped multinomial models with either factor or count-matrix
-responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
-fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
-Screened \code{l0glmFit()} models instead default to \code{TRUE},
-including single-channel models, unless explicitly overridden.
-Each special-family pass has its own \code{maxit} limit; inspect
-\code{convergence} to assess whether the refit converged.}
-
 \item{prior.mean}{Optional finite centers for the ridge penalty in each IRLS
 update. \code{NULL} (default) uses zero centers. Supply values in original
 input coefficient units; normalization and any eligible predictor centering
@@ -386,7 +338,7 @@ coefficients and do not change the eligibility rules of \code{start}: a nonzero
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and \code{always.include} terms are not
-shrunk toward their targets. For special families, the final relaxed refit
+shrunk toward their targets. For special families, the final unpenalized refit
 removes the ridge penalty on retained support, so these centers no longer
 exert shrinkage during that refit.}
 
@@ -415,10 +367,10 @@ Row norms, not arithmetic row means, are used for grouped thresholding.
 }
 Mandatory terms are excluded from cutoff maxima and never hard thresholded.
 Removed rows or entries stay excluded during the selection pass; grouped
-relaxed refits may recover eligible entries within retained rows as described
-in \code{relaxed}. Starting-value exclusions remain binding, and sparse
+local support search can propose eligible entries within retained rows.
+Starting-value exclusions remain binding, and sparse
 output keeps its original dimensions. Setting \code{thresh = 0} disables
-only the relative cutoff; the absolute floor remains. Final relaxed refits
+only the relative cutoff; the absolute floor remains. Final unpenalized refits
 apply neither cutoff. For special families, cutoffs are applied only in
 selection passes with \code{lambda > 0}. Coefficient constraints still apply.
 \code{thresh} does not smooth or otherwise alter the adaptive ridge weights.}
@@ -454,7 +406,7 @@ quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 
 \item{cluster.refit}{With preclustering, refine selection on every original
 channel (default \code{TRUE}). \code{FALSE} returns a model of aggregated cluster outcomes
-at the requested lambda. This is separate from \code{relaxed}.}
+at the requested lambda.}
 
 \item{control.precluster}{Named advanced settings for clustering and
 screening. Defaults include at most 32 groups, Ward clustering,
@@ -506,7 +458,7 @@ An object of class \code{L0glm_fit}, with the same main components as [l0glmFit(
   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
   retained separately from the working weights for scoring.
-  The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+  The logical vector `relaxationSkipped` flags unsupported unpenalized refits,
   for which the penalized selection estimates are retained. Methods
   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
@@ -558,7 +510,7 @@ system.time(fit.mc <- l0nnPois(
   sim.pois.mc$y,
   lambda = "gic",
   grouped = TRUE,
-  relaxed = TRUE,
+
   parallelize = TRUE,
   ncores = 4L
 ))
@@ -585,7 +537,7 @@ system.time(fit.sc <- l0nnPois(
   sim.pois.mc$y[, 1L],
   lambda = "gic",
   grouped = FALSE,
-  relaxed = FALSE,
+
   parallelize = FALSE
 ))
 

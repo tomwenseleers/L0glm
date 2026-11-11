@@ -10,7 +10,7 @@ test_that('cached group solves agree with equivalent family callbacks', {
     A <- if(sparse)Matrix::Matrix(X,sparse=TRUE)else X
     args <- list(X=A,y=Y,weights=w,offset=off,group=rep(1:8,each=3),
       start=start,always.include=22L,intercept=TRUE,dispersion=c(.7,1.2),
-      lambda='gic',relaxed=TRUE,grouped=grouped,prior.mean=.03,
+      lambda='gic',grouped=grouped,prior.mean=.03,
       maxit=80L,local.search=FALSE,parallelize=FALSE)
     cached <- do.call(l0glmFit,c(args,list(family=gaussian())))
     reference <- do.call(l0glmFit,c(args,list(family=callback)))
@@ -26,7 +26,7 @@ test_that('cached group solves agree with equivalent family callbacks', {
 test_that('wide unpenalized group fits retain observation-space least squares', {
   set.seed(921);X <- matrix(rnorm(18*50),18,50);y <- rnorm(18)
   fit <- l0glmFit(X,y,group=rep(1:10,each=5),intercept=TRUE,lambda=0,
-    dispersion=1,start=1,relaxed=TRUE,local.search=FALSE,parallelize=FALSE)
+    dispersion=1,start=1,local.search=FALSE,parallelize=FALSE)
   expect_equal(as.numeric(fitted(fit)),y,tolerance=1e-8)
   expect_true(all(is.finite(coef(fit))))
 })
@@ -35,7 +35,7 @@ test_that('group prediction caches are isolated between fits and offsets', {
   set.seed(922);X <- matrix(rnorm(150*12),150,12)
   y <- rbinom(150,1,plogis(.4+X[,1]-X[,2]));off <- seq(-.4,.4,length.out=150)
   call <- function(y,offset)l0glmFit(X,y,offset=offset,family=binomial(),
-    group=rep(1:4,each=3),intercept=TRUE,lambda='gic',relaxed=TRUE,local.search=FALSE)
+    group=rep(1:4,each=3),intercept=TRUE,lambda='gic',local.search=FALSE)
   first <- call(y,off);first_prediction <- fitted(first)
   second <- call(1-y,-off)
   repeated <- call(y,off)

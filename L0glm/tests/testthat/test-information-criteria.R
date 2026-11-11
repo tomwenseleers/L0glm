@@ -29,7 +29,7 @@ test_that("both fitters resolve every named preset before fitting", {
   X <- matrix(runif(160), 40, 4)
   y <- rpois(40, 2 + 4 * X[, 1])
   args <- list(X = X, y = y, family = poisson(identity), intercept = TRUE,
-               parallelize = FALSE, grouped = FALSE, relaxed = FALSE,
+               parallelize = FALSE, grouped = FALSE,
                maxit = 5)
 
   for (fitter in list(l0glmFit, l0nnPois)) {
@@ -62,7 +62,7 @@ test_that("GIC works for sparse grouped and relaxed fits", {
                offset = rep(1, 40), intercept = FALSE,
                grouped = TRUE, parallelize = FALSE, group.maxit = 2,
                maxit = 8)
-  for (fitter in list(l0glmFit, l0nnPois)) {
+  for (fitter in list(L0glm_internal_fit, L0glm_internal_pois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
     else args$nonnegative <- NULL
     for (relaxed in c(FALSE, TRUE)) {

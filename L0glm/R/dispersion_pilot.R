@@ -104,7 +104,7 @@ L0glm_nb_pilot <- function(X, y, family, weights, offset, intercept, always.incl
   pilot <- tryCatch(suppressWarnings(l0glmFit(X, y, weights=weights, offset=offset,
     family=stats::poisson(family$link), intercept=intercept, always.include=always.include,
     nonnegative=nonnegative, normalize=normalize, grouped=grouped, openmp=openmp,
-    maxit=5L, thresh=0, lambda="gic", relaxed=FALSE, parallelize=FALSE, screen="none",
+    maxit=5L, thresh=0, lambda="gic",  parallelize=FALSE, screen="none",
     local.search=FALSE)), error=function(e) NULL)
   if (is.null(pilot)) return(NULL)
   B <- as.matrix(coef(pilot))

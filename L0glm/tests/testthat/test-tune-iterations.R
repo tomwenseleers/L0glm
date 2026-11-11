@@ -47,7 +47,7 @@ test_that("scalar limits retain special-family lambda CV", {
   )
   for (case in cases) {
     tuned <- do.call(l0glmTune,c(list(X=X,tune="cv",foldid=rep(1:3,each=16),
-      maxit=5L,nlambda=2L,prop_range=.1,relaxed=FALSE,local.search=FALSE,
+      maxit=5L,nlambda=2L,prop_range=.1,local.search=FALSE,
       plot=FALSE,printbest=FALSE),case))
     expect_equal(dim(tuned$cv$deviance),c(2L,3L))
     expect_true(all(is.finite(tuned$cv$mean)))

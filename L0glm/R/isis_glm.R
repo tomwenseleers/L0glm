@@ -10,7 +10,7 @@ L0glm_isis <- function(X,y,family,weights,offset,nsis,full,nonnegative,niter,opt
   nthreads <- L0glm_sis_threads(nthreads);threads_used <- 1L
   kind <- L0glm_ext_kind(family);n <- nrow(X);p <- ncol(X)
   m <- if (identical(kind,"cox")) 1L else if (identical(kind,"multinomial")) family$nlp+1L else NCOL(y)
-  args <- utils::modifyList(list(lambda="gic",start=NULL,relaxed=TRUE,parallelize=FALSE,
+  args <- utils::modifyList(list(lambda="gic",start=NULL,parallelize=FALSE,
     intercept=identical(kind,"multinomial") || identical(family$family,"binomial")),options,keep.null=TRUE)
   args$screen <- "none" # The outer search owns screening; candidate fits never recurse.
   args$local.search <- FALSE # The completed l0glmFit call owns support refinement.

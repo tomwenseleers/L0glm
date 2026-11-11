@@ -107,7 +107,7 @@ test_that("dense storage of an exactly sparse design preserves native fits", {
   y <- matrix(rpois(160, 2), 80, 2)
   args <- list(y = y, lambda = 0.5, weights = c(0, rep(1, 79)),
                offset = rep(0.2, 80), prior.mean = rep(0.01, 50),
-               normalize = TRUE, grouped = TRUE, relaxed = TRUE,
+               normalize = TRUE, grouped = TRUE,
                parallelize = FALSE, maxit = 10L, group.maxit = 2L)
   sparse <- do.call(l0nnPois, c(list(X = X), args))
   dense <- do.call(l0nnPois, c(list(X = as.matrix(X)), args))

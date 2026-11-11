@@ -5,7 +5,7 @@ test_that("NB CV returns reproducible full-data best and one-SE fits", {
   y <- rnbinom(120, mu = exp(.4 + X[, 1] * .7 - X[, 2] * .5), size = 3)
   folds <- rep(1:3, 40)
   args <- list(X = X, y = y, family = mgcv::nb(), intercept = TRUE,
-    grouped = FALSE, relaxed = TRUE, maxit = 100, tol = 1e-7,
+    grouped = FALSE,  maxit = 100, tol = 1e-7,
     nlambda = 4, plot = FALSE, printbest = FALSE, tune = "cv", foldid = folds)
   result <- do.call(l0glmTune, args)
   expect_identical(result$cv$foldid, as.integer(folds))

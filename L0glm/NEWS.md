@@ -2,8 +2,10 @@
 
 ## Sparse generalized linear models
 
-* L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
-  relaxed refitting on the selected support.
+* L0 and grouped L0 variable selection through adaptive-ridge IRLS. Fits retain
+  their penalized coefficients by default, including multichannel models and
+  SIS/ISIS. Explicit `lambda=0` models and internal local-search/inference
+  refits retain information and residual-degree-of-freedom safeguards.
   Relaxed passes check selected-model information and residual degrees of
   freedom, retain the penalized fit when unsupported, and report
   `relaxationSkipped` across ordinary GLM, predictor-group and special-family

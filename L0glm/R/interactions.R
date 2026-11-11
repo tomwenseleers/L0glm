@@ -101,6 +101,7 @@ L0glm_interaction_array <- function(value,rows,p,m,products,A,args,included,kind
 }
 
 L0glm_interaction_fit <- function(args,interactions,control) {
+  args$relaxed <- NULL
   control <- L0glm_interaction_control(control,args)
   if(isTRUE(args$precluster) && isFALSE(args$cluster.refit))
     stop('Interaction generation requires cluster.refit=TRUE; aggregate responses before fitting an aggregate-only model.',call.=FALSE)

@@ -8,7 +8,7 @@ test_that('source views preserve values, sparsity and screened fits', {
   b <- sisGLM(source,y,nsis=20,nthreads=2)
   expect_identical(a$stats,b$stats)
   args <- list(y=y,intercept=TRUE,screen='ISIS',nsis=10L,screen.maxit=3L,
-    local.search='auto',lambda='gic',relaxed=TRUE)
+    local.search='auto',lambda='gic')
   a <- do.call(l0glmFit,c(list(X=X),args));b <- do.call(l0glmFit,c(list(X=source),args))
   expect_equal(unname(as.matrix(coef(a))),unname(as.matrix(coef(b))),tolerance=1e-11)
   expect_equal(unname(fitted(a)),unname(fitted(b)),tolerance=1e-11)
@@ -25,7 +25,7 @@ test_that('imputation uses positive-weight training rows and follows predictor n
   impute <- function(A) {na<-which(is.na(A),arr.ind=TRUE);A[na]<-mean[na[,2]];A}
   source <- l0glmData(X,missing='mean',control=list(max.cells=20000,block.columns=83))
   args <- list(y=y[train],weights=w[train],intercept=TRUE,lambda='gic',screen='SIS',
-    nsis=10L,local.search=FALSE,relaxed=TRUE)
+    nsis=10L,local.search=FALSE)
   a <- do.call(l0glmFit,c(list(X=impute(X[train,])),args))
   b <- do.call(l0glmFit,c(list(X=source[train,,drop=FALSE]),args))
   expect_equal(unname(as.matrix(coef(a))),unname(as.matrix(coef(b))),tolerance=1e-10)

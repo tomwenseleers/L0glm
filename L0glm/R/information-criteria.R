@@ -87,8 +87,8 @@
 #' Gaussian threshold calibration of Frommlet and Nuel (2016). Applying this
 #' calibration to general GLMs is an approximation. Criterion consistency
 #' also does not by itself establish consistency of the numerical algorithm.
-#' \code{relaxed = TRUE} refits selected coefficients with negligible
-#' penalization; [l0glmTune()] searches nearby penalties and evaluates the
+#' Internal support refits are accepted when they improve the target;
+#' [l0glmTune()] searches nearby penalties and evaluates the
 #' requested criterion on the resulting fits.
 #'
 #' Reported scores use the fitted likelihood and the package's parameter

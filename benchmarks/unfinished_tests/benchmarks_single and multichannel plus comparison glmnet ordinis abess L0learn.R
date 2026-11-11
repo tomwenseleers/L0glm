@@ -111,8 +111,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                              method = 1L,
                              # maxit = 200,
-                             thresh = 1E-5,
-                             relaxed = FALSE
+                             thresh = 1E-5
                              ) 
   L0glm.out_coefs = L0glm.out$coefficients
   coefmat[i,] <<- as.vector(L0glm.out_coefs)
@@ -736,7 +735,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              start = start, # L0glm.out_preset_coefs, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 1L,
-                             relaxed = FALSE,
+
                              thresh = 1E-5,
 )
   coefmat[i,] <<- as.vector(L0glm.out$coefficients)
@@ -1293,7 +1292,7 @@ system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = lambda_preset, 
                                grouped = TRUE,
-                               relaxed = TRUE, # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
+                                # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
                                parallelize = TRUE,
                                maxit = 10, # default 25
@@ -1344,7 +1343,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              family = family, 
                              lambda = lambda, 
                              grouped = TRUE,
-                             relaxed = TRUE, 
+
                              nonnegative = TRUE,
                              dispersion = L0glm.out_preset$dispersion,
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
@@ -1486,7 +1485,7 @@ system.time(L0glm.out_preset <- l0glmFit(X, y,
                                family = family, 
                                lambda = "ebic", # lambda_preset, 
                                grouped = TRUE,
-                               relaxed = TRUE,
+
                                nonnegative = TRUE,
                                dispersion = NULL,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
@@ -1532,7 +1531,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              family = gaussian(identity), 
                              lambda = lambda, 
                              grouped = TRUE,
-                             relaxed = TRUE, 
+
                              nonnegative = TRUE,
                              dispersion = 1,
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver

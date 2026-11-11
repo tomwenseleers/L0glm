@@ -34,7 +34,7 @@ benchmark_abess_simulations <- function(output = "benchmarks/plots/website",
         fit <- L0glm::sparseGLM(train$x, train$y, family = family, method = methods,
           tune = "gic", nlambda = 40L, support.size = 0:60, intercept = TRUE,
           lambda = list(L0glm = L0glm::presetLambda("gic", p, n)),
-          options = list(L0glm = list(relaxed = TRUE, ncores = 1L,
+          options = list(L0glm = list( ncores = 1L,
               local.search = local.search, control.local = control.local),
             abess = list(thread = 1L)))
         metrics <- L0glm::l0glmMetrics(fit)

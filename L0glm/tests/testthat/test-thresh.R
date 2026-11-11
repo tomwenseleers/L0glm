@@ -22,10 +22,10 @@ test_that("adaptive weights are unsmoothed by default and honor explicit helper 
 
 test_that("selection uses a relative cutoff and preserves exact-zero exclusion", {
   for (sparse in c(FALSE,TRUE)) for (engine in c("native","R")) {
-    fun <- if(engine=="native")l0nnPois else l0glmFit
+    fun <- if(engine=="native")L0glm_internal_pois else L0glm_internal_fit
     args <- list(X=Matrix::Matrix(diag(2),sparse=sparse),y=c(1e6,0.02),family=poisson(identity),
                  start=c(1,1),lambda=0,thresh=0.01,
-                 grouped=FALSE,relaxed=FALSE,maxit=2,parallelize=FALSE)
+                 grouped=FALSE,maxit=2,parallelize=FALSE)
     if(engine=="R") args <- c(args,list(openmp=FALSE,nonnegative=TRUE))
     fit <- do.call(fun,args)
     expect_equal(as.vector(fit$coefficients),c(1e6,0),tolerance=1e-10)
@@ -52,11 +52,11 @@ test_that("selection uses a relative cutoff and preserves exact-zero exclusion",
 
 test_that("relaxed fits retain coefficients below both cutoffs in all execution paths", {
   for (sparse in c(FALSE,TRUE)) for (engine in c("native","R")) {
-    fun <- if(engine=="native")l0nnPois else l0glmFit
+    fun <- if(engine=="native")L0glm_internal_pois else L0glm_internal_fit
     # Neither column is an intercept: both contribute to the relative cutoff.
     args <- list(X=Matrix::Matrix(matrix(c(1,0,1,1.01),2),sparse=sparse),
                  y=c(1.05,1),family=poisson(identity),start=c(1,1),lambda=1,thresh=0.1,
-                 grouped=FALSE,relaxed=FALSE,maxit=1,parallelize=FALSE)
+                 grouped=FALSE,maxit=1,parallelize=FALSE)
     if(engine=="R") args <- c(args,list(openmp=FALSE,nonnegative=TRUE))
     selection <- do.call(fun,args)
     expect_gt(min(selection$coefficients),max(selection$coefficients)*args$thresh)
@@ -82,7 +82,7 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
 test_that("R and native penalties are unsmoothed and cutoffs respect coefficient signs", {
   args <- list(X=diag(3),y=c(2,3,4),family=poisson(identity),start=c(1,2,3),lambda=4,
                thresh=0.25,maxit=1,
-               grouped=FALSE,relaxed=FALSE,parallelize=FALSE)
+               grouped=FALSE,parallelize=FALSE)
   native <- do.call(l0nnPois,utils::modifyList(args, list(local.search=FALSE)))
   general <- do.call(l0glmFit,utils::modifyList(c(args,list(nonnegative=TRUE,openmp=FALSE)), list(local.search=FALSE)))
   expect_equal(as.numeric(native$lambdas),1/args$start^2)
@@ -91,6 +91,6 @@ test_that("R and native penalties are unsmoothed and cutoffs respect coefficient
   fit <- l0glmFit(local.search=FALSE, diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
                   nonnegative=FALSE,openmp=FALSE,lambda=0,thresh=0.1,
                   start=rep(1,3),dispersion=1,maxit=1,
-                  relaxed=FALSE,parallelize=FALSE)
+                  parallelize=FALSE)
   expect_equal(as.numeric(fit$coefficients),c(0,-0.5,0.4))
 })

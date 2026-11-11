@@ -30,7 +30,7 @@ y <- factor(vapply(seq_len(nrow(X)), function(i)
   sample.int(3, 1, prob=prob[i, ]), integer(1)), levels=1:3)
 
 fit <- l0glmFit(X, y, family=mgcv::multinom(K=2),
-  lambda="gic", grouped=TRUE, relaxed=TRUE, maxit=150, tol=1e-8)
+  lambda="gic", grouped=TRUE, maxit=150, tol=1e-8)
 predict(fit, X[1:5, ], type="response")
 ```
 
@@ -61,9 +61,9 @@ in CLR space and does not lock out every predictor.
 
 ```{r tuning, eval=FALSE}
 gic <- l0glmTune(X, y, family=mgcv::multinom(2), tune="gic",
-  nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
+  nlambda=10, grouped=TRUE, maxit=150)
 cv <- l0glmTune(X, y, family=mgcv::multinom(2), tune="cv",
-  nfolds=5, nlambda=10, grouped=TRUE, relaxed=TRUE, maxit=150)
+  nfolds=5, nlambda=10, grouped=TRUE, maxit=150)
 predict(cv$fit_1se, X[1:5, ], type="response")
 ```
 

@@ -82,7 +82,7 @@ identical(one$ranking,fast$ranking)                   # TRUE
 t_SIS <- system.time(sis_fit <- SIS::SIS(X,y,family="gaussian",nsis=nsis,
   iter=FALSE,penalty="lasso",tune="bic",standardize=FALSE,parallel=FALSE,seed=123L))
 t_L0glm <- system.time(l0_fit <- l0glmFit(X,y,
-  screen="SIS",nsis=nsis,lambda="gic",relaxed=TRUE))
+  screen="SIS",nsis=nsis,lambda="gic"))
 data.frame(method=c("SIS + BIC LASSO","SIS + L0glm GIC preset"),
   seconds=c(t_SIS[["elapsed"]],t_L0glm[["elapsed"]]))
 l0glmMetrics(l0_fit,beta_true=beta)[c("gic","TP","FP","F1_score","MCC")]
@@ -91,6 +91,6 @@ l0glmMetrics(l0_fit,beta_true=beta)[c("gic","TP","FP","F1_score","MCC")]
 # methods. Change screen to "ISIS" for method-specific iterative screening.
 comparison <- sparseGLM(X,y,method=c("L0glm","lasso","relaxed_lasso"),
   screen="SIS",nsis=nsis,tune="bic",nlambda=10,beta_true=beta,intercept=FALSE,
-  lambda=list(L0glm=presetLambda("gic",p,n)),options=list(L0glm=list(relaxed=TRUE)))
+  lambda=list(L0glm=presetLambda("gic",p,n)),options=list(L0glm=list()))
 l0glmMetrics(comparison)[c("method","screen","seconds","bic","TP","FP","F1_score","MCC")]
 }

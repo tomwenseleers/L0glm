@@ -42,10 +42,10 @@ test_that("grouped and CLR elementwise L0 are category permutation invariant", {
   colnames(Y) <- c("a","b","c")
   for(grouped in c(FALSE,TRUE)) {
     fit <- l0glmFit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
-      relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8)
+      normalize="rms",maxit=200L,tol=1e-8)
     for(perm in list(c(3,1,2),c(2,3,1),c(3,2,1),c(2,1,3),c(1,3,2))) {
       other <- l0glmFit(X,Y[,perm],family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
-        relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8)
+        normalize="rms",maxit=200L,tol=1e-8)
       expect_equal(as.matrix(other$coefficients)[,order(perm)],as.matrix(fit$coefficients),tolerance=1e-6)
       expect_equal(other$objective,fit$objective,tolerance=1e-6)
     }
@@ -53,7 +53,7 @@ test_that("grouped and CLR elementwise L0 are category permutation invariant", {
     rotation <- matrix(c(cos(.7),sin(.7),-sin(.7),cos(.7)),2,2)
     rotated <- testthat::with_mocked_bindings(
       l0glmFit(X,Y,family=mgcv::multinom(K=2),lambda=4,grouped=grouped,
-        relaxed=TRUE,normalize="rms",maxit=200L,tol=1e-8),
+        normalize="rms",maxit=200L,tol=1e-8),
       L0glm_ext_contrasts=function(C) {
         Q <- contrasts(C)
         if(C==3L) Q%*%rotation else Q
@@ -79,13 +79,13 @@ test_that("binomial multinomial limit, CLR offsets and start values are consiste
   Y <- cbind(1-y,y)
   offset <- cbind(-off/2,off/2)
   fit <- l0glmFit(X,Y,family=mgcv::multinom(K=1),offset=offset,
-    lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
+    lambda=0,maxit=100,tol=1e-9)
   ref <- glm(y~X+offset(off),family=binomial(),control=glm.control(epsilon=1e-12))
   expect_equal(as.numeric(fit$coefficients[,2]-fit$coefficients[,1]),unname(coef(ref)),tolerance=1e-7)
   expect_equal(fit$metrics$df,5)
   common <- matrix(runif(250),250,2)
   same <- l0glmFit(X,Y,family=mgcv::multinom(K=1),offset=offset+common,
-    lambda=0,relaxed=FALSE,maxit=100,tol=1e-9,start=matrix(1,5,2))
+    lambda=0,maxit=100,tol=1e-9,start=matrix(1,5,2))
   expect_equal(fit$coefficients,same$coefficients,tolerance=1e-9)
   expect_equal(rowSums(same$offset),rep(0,250),tolerance=1e-13)
   expect_error(l0glmFit(X,Y,family=mgcv::multinom(K=1),start=matrix(1,5,1)),"CLR column")

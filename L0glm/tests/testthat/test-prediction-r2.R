@@ -143,7 +143,7 @@ test_that("S3 prediction metrics use fitted NB theta and score new observations"
   X <- matrix(rnorm(160),80,2)
   y <- matrix(rnbinom(160,size=2,mu=exp(1 + X[,1]*.4)),80,2)
   fit <- l0glmFit(X,y,family=mgcv::nb(theta=2),intercept=TRUE,
-    lambda=2,grouped=FALSE,relaxed=FALSE)
+    lambda=2,grouped=FALSE)
   mu <- fitted(fit)
   w <- mu/(1+mu/2)
   rss <- sum(w*(y-mu)^2)

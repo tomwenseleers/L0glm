@@ -20,7 +20,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
     lambda = "gic",
     nonnegative = TRUE,
     grouped = FALSE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     solver = "eigen",
     method = 1L,
@@ -30,7 +30,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
     X, y,
     lambda = "gic",
     grouped = FALSE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 15L
   )
@@ -57,7 +57,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
     lambda = "gic",
     nonnegative = TRUE,
     grouped = FALSE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     solver = "eigen",
     method = 1L,
@@ -67,7 +67,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
     Xs, ys,
     lambda = "gic",
     grouped = FALSE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 15L
   )
@@ -96,7 +96,7 @@ test_that("l0nnPois ignores grouped outer passes for single-channel fits", {
     lambda = "gic",
     grouped = TRUE,
     group.maxit = 4L,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 10L
   )
@@ -105,7 +105,7 @@ test_that("l0nnPois ignores grouped outer passes for single-channel fits", {
     lambda = "gic",
     grouped = FALSE,
     group.maxit = 4L,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 10L
   )
@@ -132,7 +132,7 @@ test_that("l0nnPois accepts NaturalOrdering control for sparse Cholesky", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 10L,
     group.maxit = 2L
@@ -141,7 +141,7 @@ test_that("l0nnPois accepts NaturalOrdering control for sparse Cholesky", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 10L,
     group.maxit = 2L,
@@ -151,7 +151,7 @@ test_that("l0nnPois accepts NaturalOrdering control for sparse Cholesky", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     maxit = 10L,
     group.maxit = 2L,
@@ -189,7 +189,7 @@ test_that("l0nnPois OpenMP multichannel fits match serial fits", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    relaxed = TRUE,
+
     parallelize = FALSE,
     maxit = 12L,
     group.maxit = 3L
@@ -198,7 +198,7 @@ test_that("l0nnPois OpenMP multichannel fits match serial fits", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    relaxed = TRUE,
+
     parallelize = TRUE,
     ncores = 2L,
     maxit = 12L,

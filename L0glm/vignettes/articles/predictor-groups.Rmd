@@ -25,7 +25,7 @@ group <- rep(1:6,each=2)
 group[11:12] <- 0
 beta <- c(1.5,-1.5,0,0,1,-1,rep(0,6))
 y <- 1+as.numeric(X%*%beta)+rnorm(200)
-fit <- l0glmFit(X,y,group=group,intercept=TRUE,lambda='gic',relaxed=TRUE)
+fit <- l0glmFit(X,y,group=group,intercept=TRUE,lambda='gic')
 l0glmMetrics(fit)[c('gic','group_support_size','group_df')]
 ```
 
@@ -39,8 +39,7 @@ within each channel. `grouped=TRUE` pools its coefficients across channels.
 Joint multinomial fits pool the identifiable CLR coefficients across categories.
 
 ```{r grouped-cv, eval=FALSE}
-cv <- l0glmTune(X,y,family=gaussian(),group=group,intercept=TRUE,relaxed=TRUE,
-  tune='cv',nfolds=5,nlambda=10)
+cv <- l0glmTune(X,y,family=gaussian(),group=group,intercept=TRUE,tune='cv',nfolds=5,nlambda=10)
 predict(cv$fit_1se,X[1:5,])
 ```
 

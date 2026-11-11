@@ -56,16 +56,16 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
       sim <- simul("normal", n=1000L, p=5000L, n_nonzero=100L, seed=42L,
         options=list(beta_range=c(-2, 2)))
       elapsed <- system.time(fit <- l0glmFit(sim$X, sim$y,
-        family=gaussian(), lambda="gic", relaxed=TRUE))[["elapsed"]]
+        family=gaussian(), lambda="gic"))[["elapsed"]]
       scores <- l0glmMetrics(fit, beta_true=sim$beta_true); scores$seconds <- elapsed
       write.csv(scores, file.path(output, "selection-metrics.csv"), row.names=FALSE)
       gic <- l0glmTune(sim$X, sim$y, family=gaussian(), tune="gic",
-        nlambda=10L, prop_range=.25, relaxed=TRUE, plot=FALSE, printbest=FALSE,
+        nlambda=10L, prop_range=.25,  plot=FALSE, printbest=FALSE,
         coefs.true=sim$beta_true)
       set.seed(10)
       folds <- sample(rep(1:5, length.out=nrow(sim$X)))
       cv <- l0glmTune(sim$X, sim$y, family=gaussian(), tune="cv",
-        nlambda=10L, prop_range=.25, nfolds=5L, foldid=folds, relaxed=TRUE,
+        nlambda=10L, prop_range=.25, nfolds=5L, foldid=folds,
         plot=FALSE, printbest=FALSE, coefs.true=sim$beta_true)
       saveRDS(list(gic=gic, cv=cv, beta_true=sim$beta_true),
         file.path(cache, "selection-paths.rds"))

@@ -65,7 +65,7 @@ outcome-fitting parallelism; use \code{screen.nthreads} in \code{\link[=l0glmFit
 
 \item{...}{Named \code{\link[=l0glmFit]{l0glmFit()}} arguments for ISIS, such as \code{lambda}, \code{start},
 \code{intercept}, \code{always.include}, \code{grouped}, \code{normalize} and solver controls.
-ISIS defaults to \code{lambda="gic"}, \code{start=NULL}, \code{relaxed=TRUE}
+ISIS defaults to \code{lambda="gic"}, \code{start=NULL} and penalized estimates
 and \code{parallelize=FALSE}. Coefficient-shaped starts/prior means use the
 original predictor dimensions, optionally including an added intercept;
 they are subset internally. Scalar \code{start=1} retains its normalized-coordinate
@@ -242,7 +242,7 @@ identical(one$ranking,fast$ranking)                   # TRUE
 t_SIS <- system.time(sis_fit <- SIS::SIS(X,y,family="gaussian",nsis=nsis,
   iter=FALSE,penalty="lasso",tune="bic",standardize=FALSE,parallel=FALSE,seed=123L))
 t_L0glm <- system.time(l0_fit <- l0glmFit(X,y,
-  screen="SIS",nsis=nsis,lambda="gic",relaxed=TRUE))
+  screen="SIS",nsis=nsis,lambda="gic"))
 data.frame(method=c("SIS + BIC LASSO","SIS + L0glm GIC preset"),
   seconds=c(t_SIS[["elapsed"]],t_L0glm[["elapsed"]]))
 l0glmMetrics(l0_fit,beta_true=beta)[c("gic","TP","FP","F1_score","MCC")]
@@ -251,7 +251,7 @@ l0glmMetrics(l0_fit,beta_true=beta)[c("gic","TP","FP","F1_score","MCC")]
 # methods. Change screen to "ISIS" for method-specific iterative screening.
 comparison <- sparseGLM(X,y,method=c("L0glm","lasso","relaxed_lasso"),
   screen="SIS",nsis=nsis,tune="bic",nlambda=10,beta_true=beta,intercept=FALSE,
-  lambda=list(L0glm=presetLambda("gic",p,n)),options=list(L0glm=list(relaxed=TRUE)))
+  lambda=list(L0glm=presetLambda("gic",p,n)),options=list(L0glm=list()))
 l0glmMetrics(comparison)[c("method","screen","seconds","bic","TP","FP","F1_score","MCC")]
 }
 }

@@ -36,8 +36,8 @@ The cluster screen uses a permissive \code{screen.factor * lambda} (default \cod
 Original-channel refinement uses the requested penalty, calculated once
 from the original predictor universe. Its default is two grouped passes;
 an explicitly supplied \code{group.maxit} takes precedence unless
-\code{control.precluster$refit.passes} is supplied. \code{relaxed} retains its usual
-selected-support coefficient-refitting meaning.
+\code{control.precluster$refit.passes} is supplied. Automatic multichannel support
+refinement accepts an unpenalized refit only when it improves the target.
 
 With \code{start=NULL}, Poisson refinement broadcasts each candidate's summed
 aggregate coefficient divided by the original channel count. Other families

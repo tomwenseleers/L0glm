@@ -37,7 +37,7 @@ then estimates the retained effects with reduced shrinkage.
 
 ```{r small-fit}
 sim <- simul("normal", n=200L, p=80L, n_nonzero=6L, seed=42L)
-small <- l0glmFit(sim$X, sim$y, family=gaussian(), lambda="gic", relaxed=TRUE)
+small <- l0glmFit(sim$X, sim$y, family=gaussian(), lambda="gic")
 which(as.numeric(coef(small)) != 0)
 head(fitted(small))
 ```

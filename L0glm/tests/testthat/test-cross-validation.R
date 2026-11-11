@@ -9,7 +9,7 @@ test_that("Gaussian CV matches independent weighted held-out predictions", {
   off <- cbind(seq(0,.5,length.out=n),seq(.5,0,length.out=n))
   foldid <- rep(1:3,length.out=n)
   args <- list(X=X,y=y,weights=w,offset=off,family=gaussian(),
-    dispersion=c(2,-3),intercept=TRUE,grouped=FALSE,relaxed=TRUE,
+    dispersion=c(2,-3),intercept=TRUE,grouped=FALSE,
     parallelize=FALSE,maxit=40)
   tuned <- do.call(l0glmTune,utils::modifyList(c(args,list(tune="cv",foldid=foldid,
     nlambda=3,prop_range=.1,plot=FALSE,printbest=FALSE)), list(local.search=FALSE)))
@@ -84,7 +84,7 @@ test_that("Poisson CV uses all held-out channels and the numerical scoring floor
   y[1,] <- c(1,2)
   folds <- rep(1:5,4)
   args <- list(X=X,y=y,family=poisson(identity),nonnegative=TRUE,
-               grouped=TRUE,group.maxit=2,relaxed=TRUE,parallelize=FALSE)
+               grouped=TRUE,group.maxit=2,parallelize=FALSE)
   tuned <- do.call(l0glmTune,utils::modifyList(c(args,list(tune="CV",foldid=folds,nlambda=3,
     prop_range=.1,plot=FALSE,printbest=FALSE)), list(local.search=FALSE)))
   expect_identical(tuned$tune,"cv")
@@ -94,7 +94,7 @@ test_that("Poisson CV uses all held-out channels and the numerical scoring floor
     valid <- folds==k
     fit <- l0glmFit(local.search=FALSE, X[!valid,,drop=FALSE],y[!valid,,drop=FALSE],
       family=poisson(identity),nonnegative=TRUE,grouped=TRUE,group.maxit=2,
-      relaxed=TRUE,parallelize=FALSE,lambda=tuned$cv$lambda_train[1,k])
+      parallelize=FALSE,lambda=tuned$cv$lambda_train[1,k])
     mu <- pmax(as.matrix(X[valid,,drop=FALSE] %*% fit$coefficients),1e-8)
     expected <- sum(poisson()$dev.resids(as.numeric(y[valid,,drop=FALSE]),as.numeric(mu),1))/sum(valid)/2
     expect_equal(unname(tuned$cv$deviance[1,k]),expected)

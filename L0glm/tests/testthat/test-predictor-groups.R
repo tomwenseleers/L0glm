@@ -3,10 +3,16 @@ test_that('orthogonal group selection preserves opposing signs and matches block
   X <- qr.Q(qr(matrix(rnorm(n*8L),n,8L)))*sqrt(n)
   truth <- c(.5,-.5,.04,-.04,0,0,.8,-.6)
   fit <- l0glmFit(X,as.numeric(X%*%truth),group=rep(1:4,each=2),
-    family=gaussian(),dispersion=1,normalize='none',lambda=4,relaxed=TRUE,
+    family=gaussian(),dispersion=1,normalize='none',lambda=4,
     maxit=100L,local.search=FALSE,parallelize=FALSE)
   truth[3:6] <- 0
-  expect_equal(as.numeric(coef(fit)),truth,tolerance=1e-9)
+  # At an orthogonal BAR fixed point, each retained block has this shrinkage.
+  expected <- truth
+  for(rows in list(1:2,7:8)) {
+    a <- (1+sqrt(1-4/(n*sum(truth[rows]^2))))/2
+    expected[rows] <- a*truth[rows]
+  }
+  expect_equal(as.numeric(coef(fit)),expected,tolerance=1e-8)
   expect_s4_class(coef(fit),'CsparseMatrix')
   expect_equal(l0glmMetrics(fit)$group_support_size,2L)
   expect_equal(l0glmMetrics(fit)$group_df,4L)
@@ -18,7 +24,7 @@ test_that('group presets, sparse storage and predictor units give reproducible f
   y <- .5+as.numeric(X%*%beta)+rnorm(180,sd=.4)
   group <- rep(letters[1:6],each=2)
   args <- list(X=X,y=y,group=group,lambda='gic',intercept=TRUE,dispersion=1,
-    relaxed=TRUE,local.search=FALSE,maxit=100L,parallelize=FALSE)
+    local.search=FALSE,maxit=100L,parallelize=FALSE)
   fit <- do.call(l0glmFit,args)
   sparse <- do.call(l0glmFit,modifyList(args,list(X=as(X,'dgCMatrix'))))
   expect_equal(as.matrix(coef(fit)),as.matrix(coef(sparse)),tolerance=1e-8)
@@ -40,7 +46,7 @@ test_that('group zero, compulsory terms and starting-entry masks retain their me
   start <- matrix(1,9,2);start[2,1] <- 0;start[5,] <- 0
   for(grouped in c(FALSE,TRUE)) {
     fit <- l0glmFit(X,Y,group=group,intercept=TRUE,start=start,
-      lambda='gic',dispersion=1,relaxed=TRUE,grouped=grouped,
+      lambda='gic',dispersion=1,grouped=grouped,
       maxit=70L,local.search=FALSE,parallelize=FALSE)
     expect_equal(fit$always.include,c(1L,8L,9L))
     expect_equal(dim(coef(fit)),c(9L,2L))
@@ -58,15 +64,15 @@ test_that('group tuning and validation retain correct full-data models', {
   y <- 1+X[,1]-X[,2]+rnorm(100,sd=.3)
   group <- rep(1:3,each=2)
   cv <- l0glmTune(X,y,family=gaussian(),group=group,intercept=TRUE,
-    tune='cv',nfolds=3L,nlambda=3L,dispersion=1,relaxed=TRUE,
+    tune='cv',nfolds=3L,nlambda=3L,dispersion=1,
     maxit=60L,plot=FALSE,printbest=FALSE,local.search=FALSE)
   fit <- l0glmFit(X,y,family=gaussian(),group=group,intercept=TRUE,
     lambda=cv$lambda_best,group.multiplier=cv$fit_best$group.multiplier,
-    dispersion=1,relaxed=TRUE,maxit=60L,local.search=FALSE)
+    dispersion=1,maxit=60L,local.search=FALSE)
   expect_equal(coef(cv$fit_best),coef(fit),tolerance=1e-9)
   expect_true(all(is.finite(predict(cv$fit_1se,X))))
   validated <- l0glmFit(X,y,group=group,intercept=TRUE,lambda='gic',
-    dispersion=1,relaxed=TRUE,local.search=FALSE,
+    dispersion=1,local.search=FALSE,
     validation=list(X=X,y=y,starts='default'))
   expect_true(is.finite(validated$validation$deviance))
 })
@@ -86,7 +92,7 @@ test_that('grouped GIC uses the standard n, p and active parameter conventions',
   y <- X[,1]-X[,2]+rnorm(100);w <- rep(c(0,1),50)
   fit <- l0glmFit(X,y,group=rep(1:4,each=2),always.include=8L,
     family=gaussian,weights=w,intercept=TRUE,lambda='gic',dispersion=1,
-    relaxed=TRUE,local.search=FALSE)
+    local.search=FALSE)
   expect_equal(fit$init.lambda,presetLambda('gic',7,100))
   B <- coef(fit);k <- sum(B!=0)+sum(B[fit$always.include,,drop=FALSE]==0)
   scores <- l0glmMetrics(fit,mu_floor=0)
@@ -101,7 +107,7 @@ test_that('local refinement moves complete predictor groups and respects exclusi
   for(joint in c(FALSE,TRUE)) {
     Y <- if(joint)cbind(y,-y)else y
     fit <- l0glmFit(X,Y,group=group,lambda='gic',start=c(0,start),dispersion=1,
-      grouped=joint,intercept=TRUE,relaxed=TRUE,local.search=TRUE)
+      grouped=joint,intercept=TRUE,local.search=TRUE)
     expect_true(fit$local.search$applied)
     expect_true(all(diff(fit$local.search$history$value)<0))
     expect_lte(fit$local.search$final$value,fit$local.search$initial$value)
@@ -118,7 +124,7 @@ test_that('nonnegative Poisson and scalar noise families support predictor group
   mu <- as.numeric(2+X%*%c(1,1,0,0,1,1))
   group <- rep(1:3,each=2)
   Y <- cbind(rpois(140,mu),rpois(140,mu))
-  fit <- l0nnPois(X,Y,group=group,offset=2,lambda='gic',relaxed=TRUE,
+  fit <- l0nnPois(X,Y,group=group,offset=2,lambda='gic',
     local.search=FALSE,maxit=60L,parallelize=FALSE)
   expect_true(all(coef(fit)>=0))
   expect_true(is.finite(GIC(fit)))
@@ -130,7 +136,7 @@ test_that('nonnegative Poisson and scalar noise families support predictor group
   response$censored[response$censored<.5] <- 0
   for(name in names(noise)) {
     fit <- l0glmFit(X,response[[name]],group=group,offset=2,lambda='gic',
-      family=noise[[name]],nonnegative=TRUE,relaxed=TRUE,local.search=FALSE,maxit=70L)
+      family=noise[[name]],nonnegative=TRUE,local.search=FALSE,maxit=70L)
     expect_true(all(coef(fit)>=0))
     expect_true(is.finite(GIC(fit)))
     expect_true(all(is.finite(predict(fit))))

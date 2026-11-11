@@ -26,7 +26,6 @@ l0glmFit(
   maxit = 25,
   grouped = TRUE,
   group.maxit = 6,
-  relaxed = grouped & NCOL(y) > 1,
   prior.mean = NULL,
   thresh = 1e-05,
   tol = 1e-10,
@@ -141,13 +140,13 @@ the coefficient constraints and the following support restrictions.
 \itemize{
 \item Ordinary GLMs and \code{mgcv::nb()}: exact zeros exclude individual
 coefficients separately in each channel, throughout selection, grouped
-passes and relaxed refits. Rows zero in every channel are screened out.
+passes and unpenalized refits. Rows zero in every channel are screened out.
 \item \code{mgcv::cox.ph()}: use a scalar, length-\code{p} vector or
 \code{p} by \code{1} matrix; exact zeros exclude the corresponding predictors.
 \item \code{mgcv::multinom(K)}: a starting matrix has one column per category,
 in factor-level or response-matrix column order. Rows are centered across
 categories to give CLR coefficients. Rows supplied as all zero are excluded
-before centering and remain zero during selection and relaxed refits.
+before centering and remain zero during selection and unpenalized refits.
 Individual zero entries in an otherwise nonzero row remain eligible.
 Common nonzero rows, including scalar \code{start = 1}, center to zero but
 remain eligible; a weak-ridge step seeds eligible zero starts.
@@ -355,53 +354,6 @@ values derived from the current coefficients, which then imposes a group
 penalty. This argument applies to ordinary GLMs, not the special-family
 loops; those update grouping within IRLS and use \code{maxit} per pass.}
 
-\item{relaxed}{Logical controlling a final refit to reduce shrinkage bias.
-\code{FALSE} returns the selection fit. For ordinary GLMs, \code{TRUE}
-uses a nearly unpenalized refit with \code{lambda = 1e-30} and unsmoothed
-adaptive ridge weights. Special families instead use an unpenalized IRLS
-pass with \code{lambda = 0}, on the following support:
-\itemize{
-\item \code{mgcv::nb()}: grouped refits admit all eligible channel
-coefficients within selected predictor rows; ungrouped refits admit only
-entries nonzero at the end of selection. Estimated shape parameters continue
-to be updated during refitting; shapes fixed in the constructor remain fixed.
-\item \code{mgcv::multinom(K)}: grouped refits jointly estimate all
-category coefficients within retained predictor rows, allowing category
-entries that were zero during selection to become nonzero. Ungrouped refits
-jointly estimate only the selected nonzero CLR entries and hold all other
-category entries at zero. Both retain the joint multinomial likelihood and
-zero-sum row constraints; a row with \eqn{s} admitted category entries has
-\eqn{s-1} free directions. No new predictor rows are introduced.
-\item \code{mgcv::cox.ph()}: refit the selected log-relative-hazard
-coefficients using the Cox partial likelihood, without an intercept.
-}
-Hard thresholding is disabled during refitting. Relaxed nonnegative fits
-finish with a conditional boundary pass: a positive coefficient may be set
-to exactly zero when the endpoint derivative supports zero and the actual
-deviance or negative log likelihood does not increase. This uses no
-coefficient-size cutoff. It supports ordinary GLMs, negative binomial at
-its fitted shape and Cox partial likelihood; multinomial CLR coefficients
-remain unrestricted. A validation checkpoint is retained if polishing
-would increase its held-out deviance. Explicit starting-value
-exclusions are respected; intercepts and \code{always.include} terms remain
-eligible and unpenalized. Sparse output retains the original dimensions.
-A refit is skipped when its admitted coefficients exceed the available
-information or its selected design is numerically rank deficient. Estimating
-dispersion also requires positive residual degrees of freedom. Checks use
-positive-weight observations, the multinomial zero-sum parameter space and
-the Cox risk-set information, as appropriate. The penalized selection fit is
-retained for unsupported refits; \code{relaxationSkipped} identifies them.
-These checks assess structural information, not the existence of a finite
-maximum-likelihood estimate under separation.
-The default is \code{TRUE} for grouped multichannel ordinary GLMs and NB,
-and for grouped multinomial models with either factor or count-matrix
-responses. It is \code{FALSE} for Cox, ungrouped fits and other single-channel
-fits. Set \code{relaxed = TRUE} explicitly to refit an ungrouped model.
-Screened \code{l0glmFit()} models instead default to \code{TRUE},
-including single-channel models, unless explicitly overridden.
-Each special-family pass has its own \code{maxit} limit; inspect
-\code{convergence} to assess whether the refit converged.}
-
 \item{prior.mean}{Optional finite centers for the ridge penalty in each IRLS
 update. \code{NULL} (default) uses zero centers. Supply values in original
 input coefficient units; normalization and any eligible predictor centering
@@ -432,7 +384,7 @@ coefficients and do not change the eligibility rules of \code{start}: a nonzero
 target cannot reactivate an excluded starting coefficient or an all-zero
 multinomial starting row. Such rows remain zero in the full-size sparse
 output. Unpenalized intercepts and \code{always.include} terms are not
-shrunk toward their targets. For special families, the final relaxed refit
+shrunk toward their targets. For special families, the final unpenalized refit
 removes the ridge penalty on retained support, so these centers no longer
 exert shrinkage during that refit.}
 
@@ -461,10 +413,10 @@ Row norms, not arithmetic row means, are used for grouped thresholding.
 }
 Mandatory terms are excluded from cutoff maxima and never hard thresholded.
 Removed rows or entries stay excluded during the selection pass; grouped
-relaxed refits may recover eligible entries within retained rows as described
-in \code{relaxed}. Starting-value exclusions remain binding, and sparse
+local support search can propose eligible entries within retained rows.
+Starting-value exclusions remain binding, and sparse
 output keeps its original dimensions. Setting \code{thresh = 0} disables
-only the relative cutoff; the absolute floor remains. Final relaxed refits
+only the relative cutoff; the absolute floor remains. Final unpenalized refits
 apply neither cutoff. For special families, cutoffs are applied only in
 selection passes with \code{lambda > 0}. Coefficient constraints still apply.
 \code{thresh} does not smooth or otherwise alter the adaptive ridge weights.}
@@ -492,7 +444,7 @@ printed to the console.}
 \item{openmp}{Logical; defaults to \code{TRUE}. Selects a native driver for
 built-in scalar GLM families and fixed-noise signal families, including
 coefficient initialization, dispersion updates, grouped selection and
-relaxed refitting. All Eigen methods are supported and share the design
+unpenalized refitting. All Eigen methods are supported and share the design
 across OpenMP threads. OSQP and \code{bigGlm} use the same native IRLS
 driver, calling their dependency interfaces on the R thread; concurrent
 channels use independent R workers for these two solvers.
@@ -573,7 +525,7 @@ quasipoisson, negative binomial, Gamma and inverse Gaussian models. See
 
 \item{cluster.refit}{With preclustering, refine selection on every original
 channel (default \code{TRUE}). \code{FALSE} returns a model of aggregated cluster outcomes
-at the requested lambda. This is separate from \code{relaxed}.}
+at the requested lambda.}
 
 \item{control.precluster}{Named advanced settings for clustering and
 screening. Defaults include at most 32 groups, Ward clustering,
@@ -680,7 +632,7 @@ containing its stage, pass, channel, iteration count, convergence flag,
 number of dispersion updates and number of reactivations after a freeze.
 The flag records whether the iterative stopping criterion was met.}
 \item{\code{relaxationSkipped}}{logical vector identifying response channels
-whose requested relaxed refit was unsupported. Their selected penalized
+whose requested unpenalized refit was unsupported. Their selected penalized
 estimates are retained. Joint special-family passes retain the complete
 selection fit if any required information block is unsupported. A skipped
 pass has zero iterations in \code{convergence}.}
@@ -733,8 +685,9 @@ elementwise \eqn{L_0} penalties can be used to approximate Best Subset
 Selection, while for multivariate (multitask/multichannel) data, the
 group-\eqn{L_0}/row-\eqn{L_0}/\eqn{L_{2,0}} penalty can be used to approximate
 Best Subset of Groups Selection (via option \code{grouped=TRUE}). Fits on
-multichannel data can be parallelized. Option \code{relaxed} allows one to
-finish with a (nearly) unpenalized fit on the \code{L0glm} selected features.
+multichannel data can be parallelized. Penalized fits retain their adaptive
+ridge estimates and selected within-row zeroes. Optional local search
+accepts a restricted refit only when its selection target improves.
 
 The level of regularisation can be manually chosen (if a numeric value is
 passed to \code{lambda}) or preset to approximate an information criterion.
@@ -786,7 +739,7 @@ with adaptive penalty weights
 where \eqn{\beta} are the coefficient estimates
 in each iteration. During selection, the relative cutoff and absolute
 numerical floor specified by \code{thresh} remove coefficients from later solves.
-The final relaxed refit does not apply this hard cutoff. The inverse-square
+The final unpenalized refit does not apply this hard cutoff. The inverse-square
 weights follow Frommlet & Nuel (2016). Nonnegativity
 constraints are natively supported if the \code{bigGlm} or
 the \code{osqp} solver is used, or are obtained via clipping if the
@@ -820,7 +773,7 @@ category coefficients. Ungrouped NB and multinomial fits use
 \eqn{D_{jc}=\lambda/(4|b_{jc}|^2)}; Cox and single-channel NB use the
 same scalar rule. Mandatory terms have zero ridge penalty and excluded
 coefficients remain excluded. Hard thresholding is controlled separately
-by \code{thresh}. Special-family relaxed refits use \code{lambda = 0}.
+by \code{thresh}. Special-family unpenalized refits use \code{lambda = 0}.
 }
 
 \subsection{Optimization interpretation}{
@@ -892,7 +845,7 @@ consecutive updates with unchanged support and a target within 1\% of the
 current dispersion, it is held fixed until the support changes again.
 A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
-A relaxed refit uses the full Pearson residual target with positive
+A unpenalized refit uses the full Pearson residual target with positive
 residual degrees of freedom. Supplied positive dispersions stay fixed.
 Model likelihood and information criteria use the fitted dispersion.
 See \link{dispersion_calibration} for the Gaussian and negative-binomial
@@ -942,10 +895,8 @@ See Marschner (2011) for deviance backtracking in ordinary GLMs.
 }
 
 Fisher scoring uses the expected Hessian in each quadratic approximation.
-If option \code{relaxed} is set to \code{TRUE} the algorithm
-will refit the \code{L0glm} selected variables using a nearly unpenalized
-model (with \code{lambda=1E-30}) without hard thresholding. This can reduce bias and
-increase sensitivity. If an appropriate level of regularisation lambda is chosen,
+Penalized fits return the adaptive-ridge estimate. A separate unpenalized
+model can be requested with \code{lambda=0}. If an appropriate level of regularisation lambda is chosen,
 the L0 norm penalized solution approximates Best Subset selection. To achieve
 variable selection consistency, the \code{"bic"} \code{lambda} preset is
 recommended for low dimensional settings, whilst \code{"gic"},
@@ -976,10 +927,8 @@ with the sign of the row mean. If that mean is exactly zero, the sign of the
 first largest-magnitude entry is used. Thus opposite signs across channels
 cannot reduce the starting magnitude by cancellation. Nonnegative fits retain
 arithmetic averaging.
-This is then further iterated until convergence. Finally, as for single
-channel data, if \code{relaxed=TRUE}, the algorithm can finish with a final
-step whereby the selected variables are refit using a nearly unpenalized model
-(with \code{lambda=1E-10}). Compared to other group penalized regression
+This is then further iterated until convergence. The resulting estimate
+retains its adaptive penalties and within-row sparsity. Compared to other group penalized regression
 methods, such as the group LASSO or multitask lasso, which use an
 \eqn{L_{2,1}} penalty, this approach produces a sparser solution that better
 approximates the Best Subset of Groups solution if lambda is adequately
@@ -987,9 +936,10 @@ chosen.
 
 \subsection{Screening}{
 Screening reuses \code{\link{sisGLM}} for all ordinary and special families.
-With screening enabled, omitted \code{lambda}, \code{relaxed} and
-\code{parallelize} use \code{"gic"}, \code{TRUE} and \code{FALSE},
-respectively. Explicit arguments are preserved. Other defaults are unchanged.
+With screening enabled, omitted \code{lambda} and \code{parallelize} use
+\code{"gic"} and \code{FALSE}, respectively. Each screening round retains
+its penalized estimate. Explicit arguments are
+preserved. Other defaults are unchanged.
 This reproduces the small-batch ISIS workflow used in the ultra-wide
 Gaussian benchmark with a single \code{l0glmFit(X, y)} call.
 
@@ -1061,7 +1011,7 @@ point, so use separate test observations to assess prediction performance.
 # Single-channel Poisson deconvolution: shifted copies of a known PSF.
 single <- simul(method=2, n=500, p=500, s=.1, seed=2)
 fit_single <- l0glmFit(single$X, single$y, family=poisson(identity),
-  lambda="gic", nonnegative=TRUE, relaxed=TRUE, parallelize=FALSE)
+  lambda="gic", nonnegative=TRUE, parallelize=FALSE)
 l0glmMetrics(fit_single, beta_true=single$beta_true)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 
@@ -1092,8 +1042,7 @@ legend("topright", c("Observed signal", "True signal", "True spikes",
 # Retain every mass channel generated by the simulation.
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
 fit_multi <- l0glmFit(multi$X, multi$y, family=poisson(identity),
-  lambda="gic", nonnegative=TRUE, grouped=TRUE, relaxed=TRUE,
-  parallelize=FALSE)
+  lambda="gic", nonnegative=TRUE, grouped=TRUE, parallelize=FALSE)
 l0glmMetrics(fit_multi, beta_true=multi$beta_true)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
     "within_row_F1_score", "within_row_MCC")]
@@ -1110,7 +1059,7 @@ par(old_par)
 # then refine and return coefficients for every original mass channel.
 system.time(fit_multi_clustered <- l0glmFit(multi$X, multi$y,
   family=poisson(identity), lambda="gic", nonnegative=TRUE,
-  grouped=TRUE, relaxed=TRUE, parallelize=TRUE, ncores=4L,
+  grouped=TRUE, parallelize=TRUE, ncores=4L,
   precluster=TRUE, cluster.refit=TRUE,
   control.precluster=list(k.max=32L, rowbins=5L)))
 fit_multi_clustered$preclustering$clusters
@@ -1131,8 +1080,7 @@ X_background <- cbind(multi$X, Matrix::Matrix(B, sparse=TRUE))
 compulsory <- ncol(multi$X) + seq_len(ncol(B))
 fit_background <- l0glmFit(X_background, Y_background,
   family=poisson(identity), lambda="gic", nonnegative=TRUE,
-  always.include=compulsory, grouped=TRUE, relaxed=TRUE,
-  precluster=TRUE, ncores=4L,
+  always.include=compulsory, grouped=TRUE, precluster=TRUE, ncores=4L,
   control.precluster=list(k.max=32L, rowbins=5L))
 background_hat <- B \%*\% as.matrix(coef(fit_background)[compulsory, , drop=FALSE])
 # Every original mass channel is retained in both the peak and background fit.
@@ -1158,7 +1106,7 @@ set.seed(1)
 y_hd <- mean_hd + rnorm(n)
 
 # screen="auto" activates ISIS exactly when p_eligible > 10*n. Screened fits
-# default to the original-p GIC preset and a relaxed refit.
+# default to the original-p GIC preset and penalized estimates.
 # Screening threads are independent of BLAS threads (nthreads).
 system.time(fit_hd <- l0glmFit(X_hd, y_hd, screen.nthreads=8, nthreads=1))
 fit_hd$screening[c("method", "screen_size", "iterations", "best_iteration", "nthreads")]
@@ -1201,7 +1149,7 @@ X_validation <- matrix(rnorm(200*40), 200, 40)
 y_validation <- 3 + 2*X_validation[, 1] - X_validation[, 2] + rnorm(200)
 train <- 1:120
 fit_stopped <- l0glmFit(X_validation[train, ], y_validation[train],
-  intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100,
+  intercept=TRUE, lambda="gic", maxit=100,
   validation=list(X=X_validation[-train, ], y=y_validation[-train]),
   parallelize=FALSE)
 fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
@@ -1210,7 +1158,7 @@ fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
 # Omit nsis to keep the GIC-based default batch.
 fit_batch <- l0glmFit(X_validation[train, ], y_validation[train],
   intercept=TRUE, lambda="gic", screen="ISIS", nsis=c(1, 3, 5, 10),
-  relaxed=TRUE, maxit=100, validation=list(
+  maxit=100, validation=list(
     X=X_validation[-train, ], y=y_validation[-train], rule="1se"),
   parallelize=FALSE)
 fit_batch$validation[c("selected_start", "selected_nsis", "deviance")]
@@ -1228,15 +1176,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
   y_nb <- rnbinom(n, mu=mu_nb, size=2)
   # nb() estimates theta; nb(theta=2) would keep it fixed at two.
   nb_fit <- l0glmFit(X_special, y_nb, family=mgcv::nb(),
-    intercept=TRUE, lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+    intercept=TRUE, lambda="gic",  maxit=100, tol=1e-8)
   nb_fit$theta
   coef(nb_fit)
   nb_gic <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="gic", nlambda=5,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   nb_cv <- l0glmTune(X_special, y_nb, family=mgcv::nb(),
     intercept=TRUE, tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-    relaxed=TRUE, maxit=100, tol=1e-8)
+     maxit=100, tol=1e-8)
   c(GIC=nb_gic$lambda_best, CV=nb_cv$lambda_best, CV_1se=nb_cv$lambda_1se)
   predict(nb_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
 
@@ -1249,15 +1197,15 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     sample.int(3, 1, prob=probabilities[i, ]), integer(1)), levels=1:3)
   multinomial_fit <- l0glmFit(X_special, y_multinomial,
     family=mgcv::multinom(K=2), lambda="gic", grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   coef(multinomial_fit)               # original-scale, zero-sum CLR rows
   multinomial_gic <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="gic", nlambda=5, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   multinomial_cv <- l0glmTune(X_special, y_multinomial,
     family=mgcv::multinom(K=2), tune="cv", nlambda=5,
     nfolds=3, foldid=folds_special, grouped=TRUE,
-    relaxed=TRUE, maxit=200, tol=1e-8)
+     maxit=200, tol=1e-8)
   c(GIC=multinomial_gic$lambda_best, CV=multinomial_cv$lambda_best,
     CV_1se=multinomial_cv$lambda_1se)
   predict(multinomial_cv$fit_1se, X_special[1:5, , drop=FALSE], type="response")
@@ -1269,13 +1217,13 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
     y_cox <- survival::Surv(pmin(event_time, censor_time),
       event_time <= censor_time)
     cox_fit <- l0glmFit(X_special, y_cox, family=mgcv::cox.ph(),
-      lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+      lambda="gic",  maxit=100, tol=1e-8)
     coef(cox_fit)
     cox_gic <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
-      tune="gic", nlambda=5, relaxed=TRUE, maxit=100, tol=1e-8)
+      tune="gic", nlambda=5,  maxit=100, tol=1e-8)
     cox_cv <- l0glmTune(X_special, y_cox, family=mgcv::cox.ph(),
       tune="cv", nlambda=5, nfolds=3, foldid=folds_special,
-      relaxed=TRUE, maxit=100, tol=1e-8)
+       maxit=100, tol=1e-8)
     c(GIC=cox_gic$lambda_best, CV=cox_cv$lambda_best, CV_1se=cox_cv$lambda_1se)
     predict(cox_cv$fit_1se, X_special[1:5, , drop=FALSE], type="risk")
   }

@@ -4,7 +4,6 @@ L0glm_pilot_start <- function(args, bounds) {
   lambdas <- unique(exp(seq(log(bounds[1L]), log(bounds[2L]), length.out = 10L)))
   lambdas[c(1L, length(lambdas))] <- bounds
   args$start <- NULL
-  args$relaxed <- FALSE
   args$local.search <- FALSE
   total <- absolute <- largest <- direction <- NULL
   timing <- numeric(length(lambdas))

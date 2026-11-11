@@ -4,7 +4,7 @@ test_that('selected-support Gaussian estimates and errors agree with weighted lm
   w <- cbind(runif(n,.5,1.5),runif(n,.5,1.5));offset <- matrix(rnorm(n*2,0,.2),n,2)
   start <- matrix(1,7,2);start[2,1] <- 0
   fit <- l0glmFit(X,Y,weights=w,offset=offset,intercept=TRUE,lambda='gic',
-    start=start,relaxed=TRUE,local.search=FALSE)
+    start=start,local.search=FALSE)
   point <- coef(fit)
   inference <- summary(fit,inference='conditional')$inference
   for(j in 1:2) {
@@ -27,7 +27,7 @@ test_that('multinomial CLR and Cox errors agree with reference likelihood fits',
   Y <- t(vapply(seq_len(n),function(i)as.numeric(rmultinom(1,10,
     exp(c(.7*X[i,1],-.7*X[i,1],.7*X[i,2])))),numeric(3)))
   fit <- l0glmFit(X,Y,family=mgcv::multinom(2),lambda='gic',intercept=TRUE,
-    relaxed=TRUE,local.search=FALSE,maxit=100L)
+    local.search=FALSE,maxit=100L)
   details <- summary(fit,inference='conditional')$inference
   A <- fit$X[,details$covariance.rows,drop=FALSE];p <- ncol(A);C <- ncol(Y)
   reference <- nnet::multinom(Y~A-1,trace=FALSE,Hess=TRUE,maxit=500,abstol=1e-10,reltol=1e-12)
@@ -38,7 +38,7 @@ test_that('multinomial CLR and Cox errors agree with reference likelihood fits',
   y <- survival::Surv(rexp(n,exp(.7*X[,1]-.7*X[,2])),rbinom(n,1,.8))
   w <- runif(n,.8,1.2);off <- rnorm(n,0,.1)
   fit <- l0glmFit(X,y,family=mgcv::cox.ph(),lambda='gic',weights=w,offset=off,
-    relaxed=TRUE,local.search=FALSE,maxit=100L)
+    local.search=FALSE,maxit=100L)
   details <- summary(fit,inference='conditional')$inference
   A <- fit$X[,details$covariance.rows,drop=FALSE]
   reference <- survival::coxph(y~A+offset(off),weights=w,ties='breslow',robust=FALSE,
@@ -51,7 +51,7 @@ test_that('bootstrap reselection includes zeros and restores a supplied seed', {
   set.seed(18);n <- 120L;X <- matrix(rnorm(n*6),n,6)
   y <- 1+2*X[,1]-2*X[,2]+X[,1]*X[,2]+rnorm(n)
   fit <- l0glmFit(X,y,intercept=TRUE,interactions=1L,lambda='gic',
-    relaxed=TRUE,local.search=FALSE)
+    local.search=FALSE)
   seed <- .Random.seed
   control <- list(nboot=8L,seed=27)
   details <- summary(fit,inference='bootstrap',control.inference=control)$inference

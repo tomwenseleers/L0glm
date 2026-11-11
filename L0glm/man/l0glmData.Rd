@@ -68,7 +68,7 @@ the backing file without a design-sized R allocation. Other source types
 and mean-imputed data use bounded working blocks.
 
 Large file-backed Gaussian identity models with an unconstrained coefficient
-vector, the GIC preset, relaxed refitting and Eigen LLT can also reuse a
+vector, the GIC preset, unpenalized refitting and Eigen LLT can also reuse a
 resident pool of up to \code{working.columns} predictors when at least three
 screening rounds are requested. The ordinary global
 ISIS path is retained. Cached candidates and small-support Gaussian refits

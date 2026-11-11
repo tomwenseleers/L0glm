@@ -5,7 +5,7 @@ test_that("near-square Gaussian pilots retain enough noise to select sparse mode
   beta[round(seq(1, 50, length.out = 5))] <- c(1, -1, 1, -1, 1)
   y <- as.numeric(X %*% beta) + rnorm(50, sd = sqrt(5 / 6))
   rng <- .Random.seed
-  fit <- l0glmFit(X, y, lambda = "gic", relaxed = TRUE, maxit = 100,
+  fit <- l0glmFit(X, y, lambda = "gic",  maxit = 100,
                    screen = "none", parallelize = FALSE)
   expect_identical(.Random.seed, rng)
   expect_lt(sum((as.numeric(coef(fit)) - beta)^2) / 5, 0.05)

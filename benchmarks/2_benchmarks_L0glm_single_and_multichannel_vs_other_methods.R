@@ -161,7 +161,7 @@ system.time(L0glm.chol.pois <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-                                         relaxed = TRUE,
+
                                          parallelize = TRUE,
                                          ncores = 4,
                                          solver = "eigen",
@@ -176,7 +176,7 @@ system.time(comparison.mc.pois <- sparseGLM(sim.pois.mc, family = poisson(identi
   intercept = FALSE, approximation = "wls_grouped",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol.pois$init.lambda),
-  options = list(L0glm = list(relaxed = TRUE), abess = list(warm.start = TRUE))))
+  options = list(L0glm = list(), abess = list(warm.start = TRUE))))
 # 2690s=44 mins
 
 plot(comparison.mc.pois, channels = "mean")
@@ -235,7 +235,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                          lambda = "gic", 
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-                                         relaxed = TRUE,
+
                                          parallelize = TRUE,
                                          ncores = 4,
                                          solver = "eigen",
@@ -248,7 +248,7 @@ system.time(comparison.mc.gaus <- sparseGLM(sim.gaus.mc, family = gaussian(ident
   method = comparison_methods, nlambda = 10L, tune = "gic", nonnegative = TRUE, intercept = FALSE,
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol.gaus$init.lambda),
-  options = list(L0glm = list(relaxed = TRUE), abess = list(warm.start = TRUE))))
+  options = list(L0glm = list(), abess = list(warm.start = TRUE))))
 # 3053s=50 mins
 
 plot(comparison.mc.gaus, channels = "mean")
@@ -322,7 +322,7 @@ system.time(tune_full <- l0glmTune(X=sim.pois$X,
                                     prop_range = 1, # full range up to lambda_max
                                     plot = TRUE, 
                                     coefs.true = sim.pois$beta_true, 
-                                    relaxed = FALSE, 
+
                                     family = poisson(identity), 
                                     nonnegative = TRUE, 
                                     solver = "eigen", 
@@ -340,7 +340,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois$X,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.pois$beta_true, 
-                                      relaxed = FALSE, 
+
                                       family = poisson(identity), 
                                       nonnegative = TRUE, 
                                       solver = "eigen", 
@@ -369,7 +369,7 @@ system.time(tune_full_bigglm <- l0glmTune(X=sim.pois$X,
                                            prop_range = 1, # full range up to lambda_max
                                            plot = TRUE, 
                                            coefs.true = sim.pois$beta_true, 
-                                           relaxed = FALSE, 
+
                                            family = poisson(identity), 
                                            nonnegative = TRUE, 
                                            solver = "bigGlm"))
@@ -382,7 +382,7 @@ system.time(tune_full_osqp <- l0glmTune(X=sim.pois$X,
                                          prop_range = 1, # full range up to lambda_max
                                          plot = TRUE, 
                                          coefs.true = sim.pois$beta_true, 
-                                         relaxed = FALSE, 
+
                                          family = poisson(identity), 
                                          nonnegative = TRUE, 
                                          solver = "osqp"))
@@ -397,7 +397,7 @@ system.time(tune_zoomed_cv <- l0glmTune(X=sim.pois$X,
                                          lambda_min = 2,
                                          plot = TRUE, 
                                          coefs.true = sim.pois$beta_true, 
-                                         relaxed = FALSE, 
+
                                          family = poisson(identity), 
                                          nonnegative = TRUE, 
                                          solver = "eigen", 
@@ -410,7 +410,7 @@ system.time(L0glm.chol.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          # verbose = TRUE,
                                          solver = "eigen",
                                          method = 1L)) 
@@ -421,7 +421,7 @@ system.time(L0glm.CG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                        family = poisson(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
-                                       relaxed = FALSE,
+
                                        solver = "eigen",
                                        method = 3L)) 
 # 0.33s
@@ -431,7 +431,7 @@ system.time(L0glm.LSCG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          solver = "eigen",
                                          method = 4L)) 
 # 0.78s
@@ -441,7 +441,7 @@ system.time(L0glm.osqp.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          solver = "osqp")) 
 # 4.61s
 
@@ -450,7 +450,7 @@ system.time(L0glm.bigGlm.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                            family = poisson(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
-                                           relaxed = FALSE,
+
                                            solver = "bigGlm")) 
 # 1.74s with n=p=10000
 
@@ -527,7 +527,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus$X,
                                     prop_range = 1, # full range up to lambda_max
                                     plot = TRUE, 
                                     coefs.true = sim.gaus$beta_true, 
-                                    relaxed = FALSE, 
+
                                     family = gaussian(identity), 
                                     nonnegative = TRUE, 
                                     solver = "eigen", 
@@ -547,7 +547,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus$X,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus$beta_true, 
-                                      relaxed = FALSE, 
+
                                       family = gaussian(identity), 
                                       nonnegative = TRUE, 
                                       solver = "eigen", 
@@ -571,7 +571,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          solver = "eigen",
                                          method = 1L)) 
 # 0.28s
@@ -581,7 +581,7 @@ system.time(L0glm.CG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                        family = gaussian(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
-                                       relaxed = FALSE,
+
                                        solver = "eigen",
                                        method = 3L)) 
 # 0.49s
@@ -592,7 +592,7 @@ system.time(L0glm.LSCG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          solver = "eigen",
                                          method = 4L)) 
 # 4.44s
@@ -603,7 +603,7 @@ system.time(L0glm.osqp.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-                                         relaxed = FALSE,
+
                                          solver = "osqp")) 
 # 52.24s
 
@@ -613,7 +613,7 @@ system.time(L0glm.bigGlm.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                            family = gaussian(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
-                                           relaxed = FALSE,
+
                                            solver = "bigGlm")) 
 # 7.04s
 
@@ -694,7 +694,7 @@ m <- ncol(sim.pois.mc$y)
 
 ## 2.1. MULTICHANNEL WITH POISSON NOISE ####
 
-### 2.1.1 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = FALSE (not great) ####
+### 2.1.1 GROUPED L0GLM FIT WITH grouped = FALSE (not great) ####
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
@@ -703,7 +703,7 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                    relaxed = FALSE, family = poisson(identity), 
+                                     family = poisson(identity),
                                     nonnegative = TRUE, 
                                     parallelize = TRUE, 
                                     grouped = FALSE,
@@ -720,7 +720,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                      relaxed = FALSE, family = poisson(identity), 
+                                       family = poisson(identity),
                                       nonnegative = TRUE, 
                                       parallelize = TRUE, 
                                       grouped = FALSE,
@@ -736,7 +736,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = TRUE,
                                     grouped = FALSE,
                                     solver = "eigen",
@@ -763,7 +763,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = FALSE,
                                     solver = "osqp")) 
@@ -773,7 +773,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
 
 
 
-### 2.1.2 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = TRUE (better) ####
+### 2.1.2 GROUPED L0GLM FIT WITH grouped = TRUE (better) ####
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
@@ -782,7 +782,7 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                    relaxed = FALSE, family = poisson(identity), 
+                                     family = poisson(identity),
                                     nonnegative = TRUE, 
                                     parallelize = TRUE, 
                                     grouped = TRUE,
@@ -799,7 +799,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                      relaxed = FALSE, family = poisson(identity), 
+                                       family = poisson(identity),
                                       nonnegative = TRUE, 
                                       parallelize = TRUE, 
                                       grouped = TRUE,
@@ -816,7 +816,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
@@ -831,7 +831,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "osqp"))
@@ -840,7 +840,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
 
 
 
-## 2.1.3 GROUPED L0GLM FIT WITH relaxed = TRUE, grouped = TRUE (best) ####
+## 2.1.3 GROUPED L0GLM FIT WITH grouped = TRUE (best) ####
 
 ## tuning plot (full range)
 # here preset lambda would be ca 10x higher than best lambda
@@ -849,7 +849,7 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                    relaxed = TRUE, family = poisson(identity), 
+                                     family = poisson(identity),
                                     nonnegative = TRUE, 
                                     parallelize = TRUE, 
                                     grouped = TRUE,
@@ -866,7 +866,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                      relaxed = TRUE, family = poisson(identity), 
+                                       family = poisson(identity),
                                       nonnegative = TRUE, 
                                       parallelize = TRUE, 
                                       grouped = TRUE,
@@ -882,7 +882,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
+
                                     parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
@@ -903,13 +903,13 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 
 
 
-## Fit relaxed = TRUE, grouped = TRUE
+## Fit grouped = TRUE
 #### OSQP ####
 system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "osqp")) 
@@ -920,7 +920,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
 
 ## 2.2. MULTICHANNEL WITH GAUSSIAN NOISE ####
 
-### 2.2.1 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = FALSE (not great) ####
+### 2.2.1 GROUPED L0GLM FIT WITH grouped = FALSE (not great) ####
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
@@ -930,7 +930,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, 
                                     coefs.true = sim.gaus.mc$beta_true, 
-                                    relaxed = FALSE, 
+
                                     family = gaussian(identity), 
                                     nonnegative = TRUE, 
                                     parallelize = FALSE, 
@@ -948,7 +948,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus.mc$beta_true, 
-                                      relaxed = FALSE, 
+
                                       family = gaussian(identity), 
                                       nonnegative = TRUE, 
                                       parallelize = FALSE, 
@@ -963,7 +963,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = FALSE,
                                     solver = "eigen",
@@ -991,7 +991,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = FALSE,
                                     solver = "osqp")) 
@@ -1000,7 +1000,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 
 
-### 2.2.2 GROUPED L0GLM FIT WITH relaxed = FALSE, grouped = TRUE (better) ####
+### 2.2.2 GROUPED L0GLM FIT WITH grouped = TRUE (better) ####
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
@@ -1010,7 +1010,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, 
                                     coefs.true = sim.gaus.mc$beta_true, 
-                                    relaxed = FALSE, 
+
                                     family = gaussian(identity), 
                                     nonnegative = TRUE, 
                                     parallelize = FALSE, 
@@ -1028,7 +1028,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus.mc$beta_true, 
-                                      relaxed = FALSE, 
+
                                       family = gaussian(identity), 
                                       nonnegative = TRUE, 
                                       parallelize = FALSE, 
@@ -1043,7 +1043,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.chol.mc$lambda_best,
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "eigen",
@@ -1068,7 +1068,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.osqp.mc$lambda_best,
                                     nonnegative = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "osqp")) 
@@ -1076,7 +1076,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
 
 
 
-### 2.2.3 GROUPED L0GLM FIT WITH relaxed = TRUE, grouped = TRUE (best) ####
+### 2.2.3 GROUPED L0GLM FIT WITH grouped = TRUE (best) ####
 
 ## tuning plot (full range)
 # here best lambda is identical to preset lambda
@@ -1086,7 +1086,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, 
                                     coefs.true = sim.gaus.mc$beta_true, 
-                                    relaxed = TRUE, 
+
                                     family = gaussian(identity), 
                                     nonnegative = TRUE, 
                                     parallelize = FALSE, 
@@ -1104,7 +1104,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus.mc$beta_true, 
-                                      relaxed = TRUE, 
+
                                       family = gaussian(identity), 
                                       nonnegative = TRUE, 
                                       parallelize = FALSE, 
@@ -1120,7 +1120,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "eigen",
@@ -1147,7 +1147,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-                                    relaxed = TRUE,
+
                                     parallelize = FALSE,
                                     grouped = TRUE,
                                     solver = "osqp")) 

@@ -89,7 +89,7 @@ test_that("free-intercept automatic Gaussian fits are invariant to predictor uni
   units <- exp(seq(-2, 2, length.out = ncol(X)))
   origin <- seq(-3, 3, length.out = ncol(X))
   args <- list(y = y, family = gaussian(), intercept = TRUE, maxit = 100,
-               parallelize = FALSE, relaxed = FALSE, lambda = "gic")
+               parallelize = FALSE,  lambda = "gic")
   for (sparse in c(FALSE, TRUE)) {
     original <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = sparse)), args))
     Z <- sweep(sweep(X, 2, origin, "-"), 2, units, "/")
@@ -138,7 +138,7 @@ test_that("nonnegative binomial slopes permit centered initialization", {
   X <- matrix(rnorm(200 * 4), 200, 4)
   y <- rbinom(200, 1, plogis(-1 + 1.5 * X[, 1]))
   args <- list(y = y, family = binomial(), nonnegative = TRUE, intercept = TRUE,
-               lambda = 2, parallelize = FALSE, maxit = 100, relaxed = FALSE)
+               lambda = 2, parallelize = FALSE, maxit = 100)
   a <- do.call(l0glmFit, c(list(X = X), args))
   b <- do.call(l0glmFit, c(list(X = sweep(X, 2, c(2, -1, 3, -2), "-")), args))
   recovered <- as.numeric(b$coefficients)
@@ -153,7 +153,7 @@ test_that("free intercepts are reprofiled after clipping or thresholding slopes"
   X <- matrix(rbinom(120 * 5, 1, 0.3), 120, 5)
   y <- rbinom(120, 1, plogis(-1 + 3 * X[, 1] - 3 * X[, 2]))
   args <- list(y = y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
-    start = 1, lambda = 2, maxit = 1L, parallelize = FALSE, relaxed = FALSE)
+    start = 1, lambda = 2, maxit = 1L, parallelize = FALSE)
   dense <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = FALSE)), args))
   sparse <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = TRUE)), args))
   expect_equal(as.numeric(dense$coefficients), as.numeric(sparse$coefficients), tolerance = 1e-7)
@@ -169,7 +169,7 @@ test_that("canonical Poisson initialization agrees between native and R paths", 
   for (sparse in c(FALSE, TRUE)) for (mode in c("auto", "rms", "l2", "sd")) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, intercept = TRUE,
       family = poisson(identity),
-      normalize = mode, relaxed = TRUE, grouped = TRUE, group.maxit = 2,
+      normalize = mode,  grouped = TRUE, group.maxit = 2,
       parallelize = FALSE, maxit = 30, lambda = 2)
     a <- do.call(l0nnPois, args)
     b <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))

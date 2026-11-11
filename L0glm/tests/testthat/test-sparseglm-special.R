@@ -29,7 +29,7 @@ test_that("multinomial adapters reconstruct reference coefficients and score cou
   for (k in 1:2) {
     train <- fit$foldid != k
     pilot <- l0glmFit(X[train,],label[train],family=mgcv::multinom(K=2),
-      intercept=TRUE,lambda="gic",start=NULL,maxit=1,grouped=FALSE,relaxed=FALSE,
+      intercept=TRUE,lambda="gic",start=NULL,maxit=1,grouped=FALSE,
       thresh=0,parallelize=FALSE)
     expect_equal(fit$tuning$adaptive_lasso$cv$adaptive[[k]]$coefficients,coef(pilot))
   }

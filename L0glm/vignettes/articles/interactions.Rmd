@@ -33,7 +33,7 @@ X <- matrix(rnorm(300*12),300,12,dimnames=list(NULL,letters[1:12]))
 y <- 1+2*X[,1]-2*X[,2]+2*X[,3]+2*X[,1]*X[,2]+
   2*X[,1]*X[,2]*X[,3]+rnorm(300)
 fit <- l0glmFit(X,y,family=gaussian(),intercept=TRUE,lambda='gic',
-  interactions=2L,relaxed=TRUE,dispersion=1)
+  interactions=2L,dispersion=1)
 fit$interactions$history
 coef(fit)[which(Matrix::rowSums(coef(fit)!=0)>0),,drop=FALSE]
 ```
@@ -76,7 +76,7 @@ parent group labels form an interaction group.
 
 ```{r interaction-cv, eval=FALSE}
 cv <- l0glmTune(X,y,family=gaussian(),intercept=TRUE,interactions=2L,
-  tune='cv',nfolds=5L,nlambda=10L,relaxed=TRUE)
+  tune='cv',nfolds=5L,nlambda=10L)
 predict(cv$fit_1se,X[1:5,])
 ```
 

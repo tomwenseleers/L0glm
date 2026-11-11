@@ -18,7 +18,7 @@ for (mode in c('SIS','ISIS')) {
   size <- if (mode=='SIS') 100L else NULL
   l0 <- sparseGLM(X,y,method='L0glm',screen=mode,nsis=size,tune='gic',
     intercept=FALSE,nlambda=10,beta_true=beta,
-    lambda=list(L0glm=presetLambda('gic',p,n)),options=list(L0glm=list(relaxed=TRUE)))
+    lambda=list(L0glm=presetLambda('gic',p,n)),options=list(L0glm=list()))
   competitors <- sparseGLM(X,y,method=others,screen=mode,nsis=size,tune='bic',
     intercept=FALSE,nlambda=10,support.size=0:100,beta_true=beta)
   rows <- rbind(l0glmMetrics(l0),l0glmMetrics(competitors))

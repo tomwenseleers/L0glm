@@ -19,6 +19,12 @@
 #' for multinomial. Noise parameters are excluded from this computational size.
 #' The decision is taken after screening and refitting, separately for each
 #' training model. Increase `control.local$size.max` to change the limit.
+#' Above this limit, multichannel fits compare one full selected-support refit
+#' with the adaptive-ridge fit, retaining it only when the same target improves.
+#' This preserves useful within-row spectral boundary corrections without
+#' running additions, deletions or exchanges. Large single-channel fits keep
+#' their adaptive-ridge estimates. The diagnostic stopping label for this
+#' comparison is `"support_refit_only"`.
 #' Automatic refinement skips one-iteration ridge pilots (`maxit=1`) and
 #' unpenalized fits (`lambda=0`). `TRUE` explicitly requests refinement and
 #' `FALSE` disables it.
@@ -52,8 +58,8 @@
 #' scored at the fitted values. Quasi scale is held common across candidates.
 #' The original-dimension sparse coefficients are
 #' returned. Candidate supports are refitted without the adaptive penalty,
-#' including when the initial fit used `relaxed=FALSE`. Unsupported trial refits
-#' are rejected. If the initial requested relaxed refit was skipped for
+#' after the initial adaptive-ridge fit. Unsupported trial refits
+#' are rejected. If the initial requested unpenalized refit was skipped for
 #' insufficient information, refinement is also skipped and retains the
 #' returned fit (`stopping="insufficient_information"`). Quasibinomial
 #' refinement uses scaled quasi-deviance plus the complexity charge.
@@ -146,7 +152,8 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
     if(isTRUE(arguments$maxit==1L)) "initialization_only" else
     if(isTRUE(fit$init.lambda==0)) "unpenalized" else
       if(size>control$size.max) "size_limit" else NULL
-  if (identical(skip,"insufficient_information") || identical(mode,"auto") && !is.null(skip)) {
+  support.only <- identical(mode,"auto") && identical(skip,"size_limit") && ncol(coef(fit))>1L
+  if (identical(skip,"insufficient_information") || identical(mode,"auto") && !is.null(skip) && !support.only) {
     fit$local.search <- list(requested=mode,applied=FALSE,initial.size=size,
       size.max=control$size.max,stopping=skip,initial.seconds=elapsed,
       seconds=0,total.seconds=elapsed)
@@ -158,8 +165,8 @@ L0glm_local_fit <- function(fit.fun, arguments, mode, control, nonnegative=NULL)
   arguments <- L0glm_local_arguments(fit, arguments)
   refinement.started <- proc.time()[[3L]]
   workspace <- L0glm_local_workspace(fit, arguments, control)
-  if (is.null(workspace)) fit <- L0glm_local_refine(fit, arguments, control) else {
-    fit <- L0glm_local_refine(workspace$fit, workspace$args, control)
+  if (is.null(workspace)) fit <- L0glm_local_refine(fit, arguments, control,support.only) else {
+    fit <- L0glm_local_refine(workspace$fit, workspace$args, control,support.only)
     fit <- L0glm_local_restore(fit, workspace)
   }
   fit$local.search$seconds <- proc.time()[[3L]] - refinement.started

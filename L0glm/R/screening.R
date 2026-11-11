@@ -27,6 +27,7 @@ L0glm_screen_fit <- function(X, y, family, weights, offset, nonnegative,
                             method, automatic, nsis, niter, options, nthreads=NULL,
                             candidates=NULL) {
   X <- L0glm_sis_design(X)
+  options$relaxed <- NULL
   if (is.null(nsis)) {
     n <- nrow(X); p <- L0glm_predictor_count(X, options$intercept, options$always.include)
     nsis <- if (method == "SIS") 2 * floor(n / log(max(n, 3L))) else

@@ -34,7 +34,7 @@ A family object containing its fixed noise parameter, likelihood
 Exact fixed-parameter NB1, common-scale Gamma and censored Gamma models for
 [l0glmFit()], [l0glmTune()], [sisGLM()] and [glmCluster()]. These adapters
 supply the likelihood score and positive quadratic curvature to the shared
-IRLS loop, with its usual selection, line search and relaxed refitting.
+IRLS loop, with its usual selection, line search and unpenalized refitting.
 These adapters are intended for L0glm's score-based IRLS. External fitting
 engines need to implement their likelihood scores to fit the same models.
 }

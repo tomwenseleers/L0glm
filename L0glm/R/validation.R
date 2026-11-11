@@ -184,6 +184,7 @@ L0glm_marginal_start <- function(X, y, weights, offset, intercept, always.includ
 }
 
 L0glm_validated_fit <- function(args) {
+  fit.fun <- if("relaxed"%in%names(args))L0glm_internal_fit else l0glmFit
   X <- args$X; y <- args$y
   family <- if (is.null(args$family)) gaussian() else args$family
   if (is.function(family)) family <- family()
@@ -213,7 +214,7 @@ L0glm_validated_fit <- function(args) {
     stop('Validation rule must be "min" or "1se".', call. = FALSE)
   models <- diagnostics <- list()
   add <- function(fit_args, key, start) {
-    elapsed <- system.time(fit <- do.call(l0glmFit, fit_args), gcFirst = FALSE)[["elapsed"]]
+    elapsed <- system.time(fit <- do.call(fit.fun, fit_args), gcFirst = FALSE)[["elapsed"]]
     diagnostics[[key]] <<- data.frame(start = start,
       nsis = if (is.null(fit$screening)) NA_real_ else fit$screening$screen_size,
       validation_deviance = L0glm_validation_loss(context, coef(fit), state = list(theta = fit$theta)),
@@ -225,7 +226,7 @@ L0glm_validated_fit <- function(args) {
   }
   null_args <- args
   null_args$validation <- NULL; null_args$start <- 0
-  null_args$screen <- "none"; null_args$nsis <- NULL; null_args$relaxed <- FALSE
+  null_args$screen <- "none"; null_args$nsis <- NULL
   null_args$intercept <- intercept
   design <- add(null_args, "null", "null")
   null <- models$null

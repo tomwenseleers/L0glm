@@ -56,7 +56,7 @@
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
 #'   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
 #'   retained separately from the working weights for scoring.
-#'   The logical vector `relaxationSkipped` flags unsupported relaxed refits,
+#'   The logical vector `relaxationSkipped` flags unsupported unpenalized refits,
 #'   for which the penalized selection estimates are retained. Methods
 #'   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
 #'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
@@ -92,7 +92,7 @@ l0nnPois <- function(X,
                      maxit         = 25,
                      grouped       = TRUE,
                      group.maxit   = 6,
-                     relaxed       = grouped & NCOL(y) > 1,
+                     relaxed       = FALSE,
                      prior.mean    = NULL,
                      thresh         = 1e-5,
                      tol           = 1e-10,
@@ -122,14 +122,16 @@ l0nnPois <- function(X,
     if(family$family!='poisson' || family$link!='identity')
       stop('l0nnPois is only defined for family = poisson(identity).',call.=FALSE)
     args <- mget(names(formals(l0nnPois)),environment(),inherits=FALSE)
-    return(do.call(l0glmFit,c(args,list(nonnegative=TRUE,screen='none'))))
+    args$relaxed <- relaxed
+    return(do.call(L0glm_internal_fit,c(args,list(nonnegative=TRUE,screen='none'))))
   }
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
     if (isFALSE(parallelize) || NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
     arguments <- mget(supplied, envir=environment(), inherits=FALSE)
-    return(L0glm_local_fit(l0nnPois, arguments, mode, control.local, nonnegative=TRUE))
+    arguments$relaxed <- relaxed
+    return(L0glm_local_fit(L0glm_internal_pois, arguments, mode, control.local, nonnegative=TRUE))
   }
   L0glm_precluster_flags(precluster,cluster.refit)
   if (!solver %in% c("eigen", "bigGlm", "bigglm", "glmnet", "osqp"))
@@ -152,16 +154,16 @@ l0nnPois <- function(X,
         args$nonnegative <- TRUE; args$openmp <- TRUE; args$screen <- "none"
         return(L0glm_validated_fit(args))
       }
-      options <- mget(setdiff(names(formals(l0nnPois)),c("X","y")),envir=environment(),inherits=FALSE)
+      options <- mget(setdiff(names(formals(L0glm_nnpois_kernel)),c("X","y")),envir=environment(),inherits=FALSE)
       options$nonnegative <- TRUE
-      return(L0glm_nuisance_fit(X,y,options,l0nnPois,supplied))
+      return(L0glm_nuisance_fit(X,y,options,L0glm_internal_pois,supplied))
     }
   }
   if(precluster) {
     if(!inherits(family,"family")) family<-family()
-    options<-mget(setdiff(names(formals(l0nnPois)),c("X","y")),envir=environment(),inherits=FALSE)
+    options<-mget(setdiff(names(formals(L0glm_nnpois_kernel)),c("X","y")),envir=environment(),inherits=FALSE)
     options$nonnegative<-TRUE
-    return(L0glm_precluster_fit(X,y,options,l0nnPois,names(match.call())[-1L]))
+    return(L0glm_precluster_fit(X,y,options,L0glm_internal_pois,names(match.call())[-1L]))
   }
   validate_thresh(thresh)
   normalization <- L0glm_normalization(normalize, nonnegative = TRUE)
@@ -185,7 +187,7 @@ l0nnPois <- function(X,
     args$screen <- "none"
     args$control.solver <- control.solver[intersect(names(control.solver),
       c("NaturalOrdering", "ordering"))]
-    return(do.call(l0glmFit, args))
+    return(do.call(L0glm_internal_fit, args))
   }
   if (!is.null(nthreads) && verbose) {
     message("l0nnPois uses ncores for OpenMP outcome-interactions threading; nthreads is ignored.")
@@ -379,4 +381,5 @@ l0nnPois <- function(X,
 }
 
 L0glm_nnpois_kernel <- l0nnPois
+L0glm_internal_pois <- L0glm_recorded_fitter(L0glm_nnpois_kernel,'l0nnPois',public=FALSE)
 l0nnPois <- L0glm_recorded_fitter(L0glm_nnpois_kernel,'l0nnPois')

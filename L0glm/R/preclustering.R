@@ -34,8 +34,8 @@
 #' Original-channel refinement uses the requested penalty, calculated once
 #' from the original predictor universe. Its default is two grouped passes;
 #' an explicitly supplied `group.maxit` takes precedence unless
-#' `control.precluster$refit.passes` is supplied. `relaxed` retains its usual
-#' selected-support coefficient-refitting meaning.
+#' `control.precluster$refit.passes` is supplied. Automatic multichannel support
+#' refinement accepts an unpenalized refit only when it improves the target.
 #'
 #' With `start=NULL`, Poisson refinement broadcasts each candidate's summed
 #' aggregate coefficient divided by the original channel count. Other families

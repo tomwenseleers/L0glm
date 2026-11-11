@@ -8,8 +8,8 @@ test_that("positive dispersion is fixed and negative dispersion is an exact star
   initial <- do.call(l0glmFit, c(args, list(dispersion = -2, maxit = 1)))
   expect_equal(initial$coefficients, fixed$coefficients)
   expect_identical(initial$dispersion, 2)
-  fixed <- do.call(l0glmFit, c(args, list(dispersion = 2, maxit = 100, relaxed = TRUE)))
-  estimated <- do.call(l0glmFit, c(args, list(dispersion = -2, maxit = 100, relaxed = TRUE)))
+  fixed <- do.call(l0glmFit, c(args, list(dispersion = 2, maxit = 100)))
+  estimated <- do.call(l0glmFit, c(args, list(dispersion = -2, maxit = 100)))
   expect_identical(fixed$dispersion, 2)
   residual <- y - as.numeric(X %*% estimated$coefficients)
   expect_equal(estimated$dispersion,
@@ -44,9 +44,9 @@ test_that("automatic ridge scale respects response units and preserves the RNG",
   expect_identical(.Random.seed, rng)
   expect_equal(initial(X, 10 * y), 100 * phi, tolerance = 1e-8)
   expect_equal(initial(Matrix::Matrix(X, sparse = TRUE), y), phi, tolerance = 1e-8)
-  a <- l0glmFit(X, y, lambda = "gic", maxit = 100, relaxed = TRUE,
+  a <- l0glmFit(X, y, lambda = "gic", maxit = 100,
                  family = gaussian(), parallelize = FALSE)
-  b <- l0glmFit(X, 10 * y, lambda = "gic", maxit = 100, relaxed = TRUE,
+  b <- l0glmFit(X, 10 * y, lambda = "gic", maxit = 100,
                  family = gaussian(), parallelize = FALSE)
   expect_equal(b$coefficients / 10, a$coefficients, tolerance = 1e-7)
   expect_equal(b$dispersion / 100, a$dispersion, tolerance = 1e-7)
@@ -74,7 +74,7 @@ test_that("weighted offset fits use the final mean for estimated scale", {
   w[1:8] <- 0
   y <- offset + X[, 1] + rnorm(160)
   fit <- l0glmFit(X, y, weights = w, offset = offset, family = gaussian(),
-    dispersion = NULL, lambda = 1, relaxed = TRUE, maxit = 100, parallelize = FALSE)
+    dispersion = NULL, lambda = 1,  maxit = 100, parallelize = FALSE)
   mu <- offset + as.numeric(X %*% fit$coefficients)
   expect_equal(fit$dispersion, sum(w * (y - mu)^2) /
                  (sum(w > 0) - sum(fit$coefficients != 0)))
@@ -93,9 +93,9 @@ test_that("free non-Gaussian families report fresh Pearson scale after refitting
       inverse.gaussian = statmod::rinvgauss(160, mean = mu, dispersion = 0.1),
       quasipoisson = rpois(160, mu),
       quasibinomial = rbinom(160, 20, mu) / 20)
-    fit <- l0glmFit(X, y, weights = w, family = family, intercept = FALSE,
+    fit <- L0glm_internal_fit(X, y, weights = w, family = family, intercept = FALSE,
       always.include = 1L, dispersion = NULL, lambda = 0.1,
-      relaxed = TRUE, maxit = 100, parallelize = FALSE)
+       relaxed = TRUE, maxit = 100, parallelize = FALSE)
     fitted <- family$linkinv(as.numeric(X %*% fit$coefficients))
     expected <- sum(w * (y - fitted)^2 / family$variance(fitted)) /
       (160 - sum(fit$coefficients != 0))
@@ -109,7 +109,7 @@ test_that("fixed and estimated channels survive grouped and relaxed passes", {
   X <- matrix(rnorm(120 * 6), 120)
   y <- cbind(2 * X[, 1] + rnorm(120), -X[, 1] + rnorm(120, sd = 2))
   args <- list(X = X, y = y, family = gaussian(), dispersion = c(4, -0.5),
-    lambda = "gic", grouped = TRUE, group.maxit = 2, relaxed = TRUE, maxit = 100)
+    lambda = "gic", grouped = TRUE, group.maxit = 2,  maxit = 100)
   serial <- do.call(l0glmFit, c(args, list(parallelize = FALSE)))
   expect_identical(serial$dispersion[1], 4)
   residual <- y[, 2] - as.numeric(X %*% serial$coefficients[, 2])

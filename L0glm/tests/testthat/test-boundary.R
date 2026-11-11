@@ -1,3 +1,4 @@
+# Internal restricted-refit kernels; the public fitters retain adaptive penalties.
 
 test_that("boundary tests improve the conditional objective without size cutoffs", {
   X <- matrix(1,6,1); weights <- c(0,rep(1,5)); lower <- 0
@@ -69,7 +70,7 @@ test_that("ordinary relaxed fits refresh their working quantities", {
   for(family in list(gaussian(),poisson("identity"),poisson("log"),binomial())) {
     eta<-as.numeric(X%*%beta)+offset;mu<-family$linkinv(eta)
     y<-switch(family$family,gaussian=rnorm(200,mu),poisson=rpois(200,mu),binomial=rbinom(200,1,mu))
-    fit<-l0glmFit(X,y,family=family,offset=offset,nonnegative=TRUE,intercept=TRUE,
+    fit<-L0glm_internal_fit(X,y,family=family,offset=offset,nonnegative=TRUE,intercept=TRUE,
       openmp=FALSE,relaxed=TRUE,parallelize=FALSE,lambda=2)
     expect_true(all(is.finite(coef(fit))))
     expect_s4_class(coef(fit),"sparseMatrix")
@@ -96,7 +97,7 @@ test_that("special-family boundary passes use the fitted nuisance parameters", {
       expect_equal(out$state$theta,L0glm_nb_pearson_shape(y,mu,rep(1,120),
         sum(out$B!=0),data$control))
     }
-    fit<-l0glmFit(X,y,family=family,offset=.2,nonnegative=TRUE,relaxed=TRUE,
+    fit<-L0glm_internal_fit(X,y,family=family,offset=.2,nonnegative=TRUE,relaxed=TRUE,
       parallelize=FALSE,lambda=2,maxit=40)
     expect_true(is.finite(as.numeric(logLik(fit))))
   }
@@ -104,7 +105,7 @@ test_that("special-family boundary passes use the fitted nuisance parameters", {
   data<-L0glm_ext_prepare(X,y,mgcv::cox.ph(),NULL,.2,FALSE,NULL,TRUE,"none",1,NULL,list())
   result<-list(B=b,state=list());out<-L0glm_ext_boundary(data,result)
   expect_gte(L0glm_ext_loglik(data,out$B,out$state),L0glm_ext_loglik(data,b,result$state)-1e-10)
-  fit<-l0glmFit(X,y,family=mgcv::cox.ph(),offset=.2,nonnegative=TRUE,relaxed=TRUE,
+  fit<-L0glm_internal_fit(X,y,family=mgcv::cox.ph(),offset=.2,nonnegative=TRUE,relaxed=TRUE,
     parallelize=FALSE,lambda=2,maxit=40)
   expect_true(is.finite(as.numeric(logLik(fit))))
 })

@@ -20,6 +20,12 @@ multichannel row contributes \code{m} coordinates; a multinomial row contributes
 for multinomial. Noise parameters are excluded from this computational size.
 The decision is taken after screening and refitting, separately for each
 training model. Increase \code{control.local$size.max} to change the limit.
+Above this limit, multichannel fits compare one full selected-support refit
+with the adaptive-ridge fit, retaining it only when the same target improves.
+This preserves useful within-row spectral boundary corrections without
+running additions, deletions or exchanges. Large single-channel fits keep
+their adaptive-ridge estimates. The diagnostic stopping label for this
+comparison is \code{"support_refit_only"}.
 Automatic refinement skips one-iteration ridge pilots (\code{maxit=1}) and
 unpenalized fits (\code{lambda=0}). \code{TRUE} explicitly requests refinement and
 \code{FALSE} disables it.
@@ -53,8 +59,8 @@ retain the native \code{\link[=l0nnPois]{l0nnPois()}} backend. Ordinary dispersi
 scored at the fitted values. Quasi scale is held common across candidates.
 The original-dimension sparse coefficients are
 returned. Candidate supports are refitted without the adaptive penalty,
-including when the initial fit used \code{relaxed=FALSE}. Unsupported trial refits
-are rejected. If the initial requested relaxed refit was skipped for
+after the initial adaptive-ridge fit. Unsupported trial refits
+are rejected. If the initial requested unpenalized refit was skipped for
 insufficient information, refinement is also skipped and retains the
 returned fit (\code{stopping="insufficient_information"}). Quasibinomial
 refinement uses scaled quasi-deviance plus the complexity charge.

@@ -38,8 +38,7 @@ library(L0glm)
 single <- simul(method=2L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
 system.time(fit <- l0glmFit(single$X, single$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, intercept=FALSE, relaxed=TRUE,
-  parallelize=TRUE, ncores=4L))
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, parallelize=TRUE, ncores=4L))
 l0glmMetrics(fit, beta_true=single$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC")]
 ```
@@ -96,8 +95,7 @@ spectral library. No channels are discarded for fitting or plotting.
 multi <- simul(method=4L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
 system.time(fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, intercept=FALSE, grouped=TRUE, relaxed=TRUE,
-  parallelize=TRUE, ncores=4L))
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, grouped=TRUE, parallelize=TRUE, ncores=4L))
 l0glmMetrics(fit_multi, beta_true=multi$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 ```
@@ -205,8 +203,7 @@ groups using their actual pooled Poisson likelihood loss.
 
 ```{r precluster, eval=FALSE}
 clustered <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, grouped=TRUE, relaxed=TRUE,
-  precluster=TRUE,
+  lambda="gic", nonnegative=TRUE, grouped=TRUE, precluster=TRUE,
   control.precluster=list(linkage="ward", rowbins=5L, k.max=32L))
 clustered$preclustering$seconds
 l0glmMetrics(clustered, beta_true=multi$beta_true)[c(
@@ -234,7 +231,7 @@ Z <- cbind(multi$X, Matrix::Matrix(B, sparse=TRUE))
 compulsory <- ncol(multi$X) + seq_len(ncol(B))
 background_fit <- l0glmFit(Z, multi$y, family=poisson("identity"),
   lambda="gic", nonnegative=TRUE, always.include=compulsory,
-  grouped=TRUE, relaxed=TRUE, precluster=TRUE,
+  grouped=TRUE, precluster=TRUE,
   control.precluster=list(k.max=32L, rowbins=5L))
 background <- B %*% as.matrix(coef(background_fit)[compulsory, , drop=FALSE])
 peak_coefficients <- coef(background_fit)[seq_len(ncol(multi$X)), , drop=FALSE]
@@ -256,9 +253,9 @@ or optimize out-of-sample predictive performance.
 
 ```{r tune, eval=FALSE}
 gic <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
-  tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
+  tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE)
 cv <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
-  tune="cv", nfolds=5L, nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
+  tune="cv", nfolds=5L, nlambda=10L, nonnegative=TRUE, grouped=TRUE)
 ```
 
 See the full [benchmark tables](performance.html) for the preset and tuned fits.

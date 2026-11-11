@@ -75,7 +75,7 @@ L0BestRankGNMF <- function(D,
                                          maxit = 10,
                                          group.maxit = 3,
                                          grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
-                                         relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
+                                          # refit selected groups of coefficients unpenalized at the end if grouped=T
                                          solver = "eigen", # use Cholesky solver
                                          method=1L)$coefficients) # k_init x p matrix
   } else {
@@ -126,7 +126,7 @@ L0BestRankGNMF <- function(D,
                    maxit = 10,
                    group.maxit = 3,
                    grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
-                   relaxed = !grouped_Hupdate, # refit selected groups of coefficients unpenalized at the end if grouped=T
+                    # refit selected groups of coefficients unpenalized at the end if grouped=T
                    solver = "eigen", # use Cholesky solver
                    method = 1L)$coefficients) # k x p matrix
     

@@ -55,7 +55,7 @@ system.time(L0glm_gaus_lambda0 <- l0glmFit(X = X,
                                             start = NULL, # rep(sqrt(5), ncol(data_gaus$X)), # NULL, # 
                                             solver = "eigen", # 
                                             method = 4L,
-                                            relaxed = FALSE,
+
                                             thresh = 1E-5
 ))  # historical timings: 0.06s with LSCG, 0.14s with Cholesky LLT
 
@@ -101,7 +101,7 @@ system.time(L0glm_gaus_presetlambda <- l0glmFit(X = X,
                                             start = NULL, # =rep(sqrt(5), ncol(data_gaus$X))/scaling, # NULL, # rep(sqrt(5), ncol(data_gaus$X))*scaling, # NULL, # start_coefs(X, family=gaussian(identity)), # = rep(sqrt(5), ncol(data_gaus$X)) / scaling, 
                                             solver = "eigen", # 
                                             method = 1L, #
-                                            relaxed = FALSE,
+
                                             thresh = 1E-5
 )) # 0.41s with method 3L, 0.72s with method 7L
 # TODO: check solver method 1 here fails
@@ -163,8 +163,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, # historically LSCG was twice as fast as Cholesky LLT here
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -369,8 +368,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -578,8 +576,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -778,8 +775,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start,
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 
@@ -979,8 +975,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # coef(glm_invgaus), # NULL, # rep(sqrt(10), ncol(data_invgaus$X)),
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L,
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 

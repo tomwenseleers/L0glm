@@ -101,7 +101,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
           family = family,
           lambda = lambda,
           nonnegative = TRUE,
-          relaxed = FALSE,
+
           maxit = fit_maxit,
           tol = fit_tol,
           thresh = 1e-5,

@@ -29,7 +29,7 @@ test_that("validation evaluates ordinary family deviances for every standard lin
   for (family in families) {
     d <- validation_family_sample(family)
     fit <- l0glmFit(local.search=FALSE, d$X, d$y, family = family, intercept = TRUE, lambda = "gic",
-      dispersion = 1, relaxed = TRUE, maxit = 100, parallelize = FALSE,
+      dispersion = 1,  maxit = 100, parallelize = FALSE,
       validation = list(X = d$V, y = d$v))
     mu <- as.numeric(predict(fit, d$V))
     if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
@@ -51,7 +51,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   for (theta in c(-1, 2)) {
     family <- mgcv::nb(theta = theta)
     fit <- l0glmFit(local.search=FALSE, d$X, y, family = family, intercept = TRUE, lambda = "gic",
-      relaxed = TRUE, maxit = 80, parallelize = FALSE, validation = list(X = d$V, y = v))
+       maxit = 80, parallelize = FALSE, validation = list(X = d$V, y = v))
     mu <- as.numeric(predict(fit, d$V))
     saturated <- if (theta < 0) dpois(v, v, log = TRUE) else
       dnbinom(v, mu = v, size = theta, log = TRUE)
@@ -65,7 +65,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   labels <- function(n) factor(sample(letters[1:3], n, TRUE), levels = letters[1:3])
   ym <- labels(120); vm <- labels(60)
   mn <- l0glmFit(local.search=FALSE, d$X, ym, family = mgcv::multinom(2), lambda = "gic",
-    relaxed = TRUE, maxit = 50, validation = list(X = d$V, y = vm))
+     maxit = 50, validation = list(X = d$V, y = vm))
   expect_equal(mn$validation$deviance,
     l0glmMetrics(mn, newdata = d$V, y = vm)$mean_deviance, tolerance = 1e-8)
   expect_equal(as.numeric(rowSums(as.matrix(coef(mn)))), rep(0, 7), tolerance = 1e-12)
@@ -73,7 +73,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   yc <- survival::Surv(pmin(time, 2), time <= 2)
   vc <- survival::Surv(pmin(tv, 2), tv <= 2)
   cx <- l0glmFit(local.search=FALSE, d$X, yc, family = mgcv::cox.ph(), lambda = "gic",
-    relaxed = TRUE, maxit = 50, validation = list(X = d$V, y = vc, rule = "1se"))
+     maxit = 50, validation = list(X = d$V, y = vc, rule = "1se"))
   expect_equal(cx$validation$deviance,
     l0glmMetrics(cx, newdata = d$V, y = vc)$mean_deviance, tolerance = 1e-8)
   expect_equal(dim(coef(cx)), c(6L, 1L))

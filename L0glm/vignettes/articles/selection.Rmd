@@ -28,7 +28,7 @@ A preset is often a very effective starting point. Searching a path lets the
 data choose among the candidate sparse models.
 
 ```{r preset, eval=FALSE}
-fit <- l0glmFit(X, y, family=gaussian(), lambda="gic", relaxed=TRUE)
+fit <- l0glmFit(X, y, family=gaussian(), lambda="gic")
 ```
 
 | Preset | Penalty per selected coefficient |
@@ -46,7 +46,7 @@ gives the parameter-count conventions and literature, including
 
 ```{r gic, eval=FALSE}
 gic <- l0glmTune(X, y, family=gaussian(), tune="gic", nlambda=10L,
-  prop_range=.25, relaxed=TRUE, coefs.true=sim$beta_true, plot=TRUE)
+  prop_range=.25, coefs.true=sim$beta_true, plot=TRUE)
 c(lambda_best=gic$lambda_best, lambda_preset=gic$lambda_preset)
 ```
 
@@ -79,8 +79,7 @@ channel. There is no separate minimum sample size or predictor count.
 set.seed(10)
 folds <- sample(rep(1:5, length.out=nrow(X)))
 cv <- l0glmTune(X, y, family=gaussian(), tune="cv", nfolds=5L,
-  nlambda=10L, prop_range=.25, foldid=folds, relaxed=TRUE,
-  coefs.true=sim$beta_true, plot=TRUE)
+  nlambda=10L, prop_range=.25, foldid=folds, coefs.true=sim$beta_true, plot=TRUE)
 ```
 
 <img src="../selection-cv.png" alt="Coefficient paths for a sparse 5,000-predictor Gaussian model and five-fold validation deviance with standard-error bars." width="100%">
@@ -160,7 +159,7 @@ folds <- rep(1:5, length.out=nrow(X))[order(rep(1:5, length.out=nrow(X)))]
 # Venetian blind: odd and even observations alternate
 folds <- rep(1:2, length.out=nrow(X))
 cv <- l0glmTune(X, y, family=gaussian(), tune="cv",
-  foldid=folds, nlambda=10, relaxed=TRUE)
+  foldid=folds, nlambda=10)
 ```
 
 For time-dependent observations, choose folds that reflect how predictions

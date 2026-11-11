@@ -32,7 +32,7 @@ estimates a separate coefficient for each outcome.
 ## Sparse learning across a wide range of models
 
 L0glm combines adaptive ridge with iteratively reweighted least squares, fast
-linear solvers and an optional relaxed refit. Small effects drop out; strong
+linear solvers and objective-based local support refinement. Small effects drop out; strong
 effects retain their magnitude. A shrinking active set concentrates computation
 where it matters, producing sparse models with excellent support recovery.
 

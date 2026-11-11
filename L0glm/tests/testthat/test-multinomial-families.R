@@ -11,7 +11,7 @@ test_that("coupled multinomial IRLS handles count matrices and agrees with multi
                         abstol = 1e-12, reltol = 1e-12)
   for (mode in c("irls", "bound")) {
     fit <- l0glmFit(X, Y, family = mgcv::multinom(K = 2), lambda = 0,
-      weights = w, relaxed = FALSE, maxit = 400, tol = 1e-9,
+      weights = w,  maxit = 400, tol = 1e-9,
       control.family = list(multinomial = mode))
     ref_clr <- cbind(0, t(coef(ref))); ref_clr <- ref_clr - rowMeans(ref_clr)
     expect_equal(as.matrix(fit$coefficients), unname(ref_clr),
@@ -42,16 +42,16 @@ test_that("multinomial CLR normalization respects row masks and free category st
   P <- L0glm_ext_softmax(cbind(0, .5 + .6*X[, 1] - .5*X[, 2], -.3 - .5*X[, 1] + .7*X[, 2]))$p
   y <- factor(vapply(seq_len(300), function(i) sample.int(3, 1, prob = P[i, ]), integer(1)))
   a <- l0glmFit(X, y, family = mgcv::multinom(K = 2), lambda = 0,
-    relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
+     normalize = "rms", maxit = 100, tol = 1e-9)
   scale <- c(.01, .5, 2, 50)
   b <- l0glmFit(sweep(X, 2, scale, "*"), y, family = mgcv::multinom(K = 2),
-    lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
+    lambda = 0,  normalize = "rms", maxit = 100, tol = 1e-9)
   expect_equal(predict(a), predict(b), tolerance = 1e-9)
   expect_equal(as.matrix(a$coefficients), as.matrix(b$coefficients) * c(1, scale), tolerance = 1e-8)
   initial <- matrix(1, 5, 3); initial[1, ] <- initial[3, ] <- initial[5, ] <- 0
   initial[2, 1] <- 0
   fit <- l0glmFit(X, y, family = mgcv::multinom(K = 2), start = initial,
-    always.include = 3L, lambda = 0, grouped = TRUE, relaxed = FALSE,
+    always.include = 3L, lambda = 0, grouped = TRUE,
     maxit = 150, tol = 1e-8)
   expect_equal(dim(fit$coefficients), c(5L, 3L))
   expect_true(all(fit$coefficients[5, ] == 0))
@@ -64,10 +64,10 @@ test_that("multinomial CLR normalization respects row masks and free category st
   expect_equal(as.numeric(data$B), rep(0, 15), tolerance = 1e-12)
   expect_true(all(data$allowed))
   unit <- l0glmFit(X, y, family = mgcv::multinom(K = 2), start = 1,
-    lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9)
+    lambda = 0,  normalize = "rms", maxit = 100, tol = 1e-9)
   expect_equal(unit$coefficients, a$coefficients, tolerance = 1e-9)
   expect_warning(signed <- l0glmFit(X, y, family = mgcv::multinom(K = 2),
-    nonnegative = TRUE, lambda = 0, relaxed = FALSE, normalize = "rms", maxit = 100, tol = 1e-9), "ignored")
+    nonnegative = TRUE, lambda = 0,  normalize = "rms", maxit = 100, tol = 1e-9), "ignored")
   expect_equal(signed$coefficients, a$coefficients, tolerance = 1e-9)
 })
 

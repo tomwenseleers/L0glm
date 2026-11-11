@@ -39,7 +39,7 @@ system.time(L0glm.chol_originaldata <- l0glmFit(X_true,
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-                                         relaxed = FALSE,
+
                                          parallelize = FALSE,
                                          solver = "eigen",
                                          method = 1L)) # 105s
@@ -93,7 +93,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg1,
                                     lambda = "gic",
                                     nonnegative = TRUE,
                                     grouped = TRUE,
-                                    relaxed = FALSE,
+
                                     parallelize = F,
                                     solver = "eigen",
                                     method = 1L)) # 10s
@@ -110,7 +110,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                                lambda = "gic",
                                                nonnegative = TRUE,
                                                grouped = FALSE,
-                                               relaxed = FALSE,
+
                                                # start = matrix(rowMeans(L0glm.chol_aggregated$coefficients[selected_features,,drop=F]), nrow=length(selected_features), ncol=ncol(Y)),
                                                parallelize = FALSE,
                                                solver = "eigen",
@@ -148,7 +148,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg2,
                                                lambda = "gic",
                                                nonnegative = TRUE,
                                                grouped = TRUE,
-                                               relaxed = FALSE,
+
                                                parallelize = FALSE,
                                                solver = "eigen",
                                                method = 1L)) # 2.5s
@@ -164,7 +164,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = FALSE,
-                                         relaxed = FALSE,
+
                                          parallelize = FALSE,
                                          solver = "eigen",
                                          method = 1L)) # 10s with parallelize=F
@@ -270,7 +270,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg1,
                                                lambda = "gic",
                                                nonnegative = TRUE,
                                                grouped = TRUE,
-                                               relaxed = FALSE,
+
                                                parallelize = FALSE,
                                                solver = "eigen",
                                                method = 1L)) # 0.31s
@@ -291,7 +291,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = FALSE,
-                                         relaxed = FALSE,
+
                                          # start = matrix(rowMeans(L0glm.chol_aggregated$coefficients[selected_features,,drop=F]), nrow=length(selected_features), ncol=ncol(Y)),
                                          parallelize = FALSE,
                                          solver = "eigen",
@@ -354,7 +354,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X, Yagg2,
                                                lambda = "gic",
                                                nonnegative = TRUE,
                                                grouped = TRUE,
-                                               relaxed = FALSE,
+
                                                parallelize = FALSE,
                                                solver = "eigen",
                                                method = 1L)) # 0.19s
@@ -374,7 +374,7 @@ system.time(L0glm.chol_full <- l0glmFit(X[,selected_features,drop=F],
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = FALSE,
-                                         relaxed = FALSE,
+
                                          parallelize = FALSE,
                                          solver = "eigen",
                                          method = 1L)) # 6.8s with parallelize=F

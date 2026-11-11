@@ -42,7 +42,7 @@ test_that("Cox cache is built once and public observation order is preserved", {
   original <- L0glm_ext_cox_cache; builds <- 0L
   fit <- testthat::with_mocked_bindings({
     ans <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=off,lambda=2,
-      relaxed=TRUE,maxit=100L,tol=1e-8)
+      maxit=100L,tol=1e-8)
     logLik(ans); l0glmMetrics(ans); L0glm_ext_cox_baseline(ans)
     ans
   },L0glm_ext_cox_cache=function(...) {builds<<-builds+1L;original(...)},.package="L0glm")
@@ -94,15 +94,15 @@ test_that("Cox direct, PCG and automatic fits match coxph with weights and offse
     ties="breslow",control=survival::coxph.control(eps=1e-11))
   for(mode in c("auto","direct","pcg")) {
     fit <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
-      lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9,control.family=list(cox=mode))
+      lambda=0,maxit=100L,tol=1e-9,control.family=list(cox=mode))
     expect_equal(as.numeric(fit$coefficients),unname(coef(ref)),tolerance=1e-7)
     expect_equal(as.numeric(logLik(fit)),as.numeric(logLik(ref)),tolerance=1e-7)
     expect_true(all(fit$convergence$converged))
   }
   shifted <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset+1000,
-    lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9,control.family=list(cox="pcg"))
+    lambda=0,maxit=100L,tol=1e-9,control.family=list(cox="pcg"))
   ordinary <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),weights=w,offset=offset,
-    lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9)
+    lambda=0,maxit=100L,tol=1e-9)
   expect_equal(shifted$coefficients,ordinary$coefficients,tolerance=1e-7)
   expect_equal(predict(shifted,type="survival",times=c(0,.1,1,10)),
     predict(ordinary,type="survival",times=c(0,.1,1,10)),tolerance=1e-7)
@@ -113,7 +113,7 @@ test_that("Cox masks, solver routing, guards and failure diagnostics are explici
   set.seed(1864)
   X <- matrix(rnorm(120*8),120,8); y <- cbind(rexp(120),rep(c(1,0,1),40))
   fit <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),start=c(1,1,rep(0,6)),
-    always.include=3L,lambda=2,relaxed=TRUE,maxit=100L,tol=1e-8,
+    always.include=3L,lambda=2,maxit=100L,tol=1e-8,
     control.family=list(cox="pcg"))
   expect_null(fit$initialization)
   expect_true(all(fit$coefficients[4:8,]==0))
@@ -143,7 +143,7 @@ test_that("a complete forced-PCG Cox fit never calls a dense or ridge backend", 
   X <- Matrix::rsparsematrix(100,220,.2)
   y <- cbind(rexp(100),rep(c(1,1,0,1),25))
   fit <- testthat::with_mocked_bindings(
-    l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=2,relaxed=TRUE,maxit=100L,tol=1e-8,
+    l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=2,maxit=100L,tol=1e-8,
       control.family=list(cox="pcg",max.working=2L)),
     L0glm_ext_cox_direct=function(...)stop("dense backend called"),
     L0glm_ext_cox_information=function(...)stop("dense Hessian called"),
@@ -160,14 +160,14 @@ test_that("Cox automatic routing respects storage and direct constraint solvers"
   set.seed(1866)
   X <- matrix(rnorm(200*4),200,4)
   y <- cbind(round(rexp(200,exp(.7*X[,1]-.6*X[,2])),2),rep(c(1,1,0,1),50))
-  dense <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=0,relaxed=FALSE,maxit=100L,tol=1e-9)
+  dense <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=0,maxit=100L,tol=1e-9)
   sparse <- l0glmFit(local.search=FALSE, Matrix::Matrix(X,sparse=TRUE),y,family=mgcv::cox.ph(),lambda=0,
-    relaxed=FALSE,maxit=100L,tol=1e-9)
+    maxit=100L,tol=1e-9)
   expect_true(all(dense$history$selection$backend=="llt"))
   expect_true(all(sparse$history$selection$backend=="pcg"))
   expect_equal(sparse$coefficients,dense$coefficients,tolerance=1e-7)
   constrained <- l0glmFit(local.search=FALSE, X,y,family=mgcv::cox.ph(),lambda=0,nonnegative=TRUE,
-    solver="osqp",relaxed=FALSE,maxit=100L,tol=1e-8,
+    solver="osqp",maxit=100L,tol=1e-8,
     control.solver=controlSolverGen("osqp",abstol=1e-9,reltol=1e-9))
   expect_true(all(constrained$coefficients>=-1e-8))
   expect_true(all(constrained$history$selection$backend=="osqp"))

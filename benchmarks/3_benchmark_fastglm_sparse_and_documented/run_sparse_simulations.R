@@ -100,7 +100,7 @@ for (i in seq_len(nrow(cases))) for (name in if (length(args) > 1L) args[-1L] el
       function() l0glmFit(sim$X, sim$y, family = if (name == "nb_log") mgcv::nb(theta = 2) else sim$family,
         intercept = TRUE, nonnegative = FALSE, lambda = if (method == "L0_gic") "gic" else 0,
         thresh = if (method == "L0_gic") 1e-5 else 0,
-        relaxed = FALSE, maxit = 25L, tol = 1e-10, nthreads = 1L, parallelize = FALSE)
+         maxit = 25L, tol = 1e-10, nthreads = 1L, parallelize = FALSE)
     fit <- NULL; error <- NA_character_; warnings <- character()
     reps <- if (cfg$n*cfg$p <= 1e6 && !wide) 3L else 1L
     gc()

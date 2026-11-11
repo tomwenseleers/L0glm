@@ -210,7 +210,7 @@ for (id in names(examples)) {
       result
     } else function() l0glmFit(d$X, d$y, family = if (id == "vignette_nb_challenging") mgcv::nb(theta = 1) else d$family,
       weights = d$weights, offset = d$offset, intercept = FALSE, always.include = d$mandatory,
-      nonnegative = FALSE, relaxed = FALSE, parallelize = FALSE, nthreads = 1L,
+      nonnegative = FALSE,  parallelize = FALSE, nthreads = 1L,
       lambda = switch(method, L0_unpenalized = 0, L0_default = 1, "gic"),
       thresh = if (method == "L0_unpenalized") 0 else 1e-5,
       maxit = if (method == "L0_gic_100") 100L else 25L, tol = 1e-10)

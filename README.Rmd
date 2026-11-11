@@ -13,7 +13,7 @@
 
 `L0glm` fits **L0-penalized and grouped L0-penalized models** for best subset and
 best subset of groups selection. It combines adaptive ridge with IRLS, fast
-linear solvers and an optional relaxed refit to obtain sparse, low-bias estimates.
+linear solvers and objective-based local support refinement to obtain sparse, low-bias estimates.
 Strong signals receive progressively less shrinkage as the fit concentrates on
 the active predictors, giving accurate coefficients with few false positives.
 It is highly efficient, with fitting often being one or two orders of magnitude
@@ -100,7 +100,7 @@ l0glmMetrics(fit, beta_true=beta)[
 L0glm is **78× faster than five-fold-CV LASSO** in this comparison, recovering **46 true effects with no false positives**.
 <!-- END million-speed -->
 
-L0glm uses its GIC preset with automatic ISIS screening and relaxed fitting.
+L0glm uses its GIC preset with automatic ISIS screening and local support refinement.
 Both LASSO methods use five-fold CV on paths of up to 40 lambda values.
 The recovered coefficients are close to their true values.
 
@@ -206,10 +206,10 @@ CV training fits.
 
 ```r
 gic <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
-  tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
+  tune="gic", nlambda=10L, nonnegative=TRUE, grouped=TRUE)
 cv <- l0glmTune(multi$X, multi$y, family=poisson("identity"),
   tune="cv", nfolds=5L, nlambda=10L,
-  nonnegative=TRUE, grouped=TRUE, relaxed=TRUE)
+  nonnegative=TRUE, grouped=TRUE)
 coef(cv$fit_1se)
 predict(cv$fit_best, newdata=multi$X, type="response")
 ```
@@ -225,7 +225,7 @@ CV for each family:
 ```r
 fit_and_tune <- function(data) {
   args <- list(X=data$X, y=data$y, family=data$family,
-    intercept=data$intercept, relaxed=TRUE, maxit=100L)
+    intercept=data$intercept, maxit=100L)
   list(preset=do.call(l0glmFit, c(args, list(lambda="gic"))),
     gic=do.call(l0glmTune, c(args, list(tune="gic", nlambda=10L))),
     cv=do.call(l0glmTune, c(args, list(tune="cv", nfolds=5L, nlambda=10L))))

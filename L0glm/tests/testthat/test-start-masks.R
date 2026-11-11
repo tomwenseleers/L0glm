@@ -5,7 +5,7 @@ test_that("all-zero starts fit only mandatory terms and retain sparse dimensions
     for (intercept in c(FALSE, TRUE)) for (backend in c("general", "native")) {
       args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y, start = 0,
                    intercept = intercept, lambda = "gic", maxit = 15L,
-                   grouped = TRUE, relaxed = TRUE, parallelize = FALSE)
+                   grouped = TRUE,  parallelize = FALSE)
       fit <- if (backend == "native") do.call(l0nnPois, args) else
         do.call(l0glmFit, c(args, list(family = poisson(identity),
                                       nonnegative = TRUE, openmp = FALSE)))
@@ -28,7 +28,7 @@ test_that("entry masks persist through grouped passes and relaxed refits", {
   for (sparse in c(FALSE, TRUE)) for (grouped in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y, start = start,
                  lambda = 0.05, maxit = 15L, group.maxit = 3L,
-                 grouped = grouped, relaxed = TRUE, parallelize = FALSE)
+                 grouped = grouped,  parallelize = FALSE)
     native <- do.call(l0nnPois, args)
     general <- do.call(l0glmFit, c(args, list(family = poisson(identity),
       nonnegative = TRUE, openmp = FALSE)))
@@ -76,7 +76,7 @@ test_that("zero-start mandatory coefficients remain eligible and unpenalized", {
   X <- cbind(0, seq_len(10), seq_len(10)^2)
   for (backend in c("general", "native")) {
     args <- list(X = X, y = 2 * X[, 2], start = 0, always.include = 2L,
-                 thresh = 2, lambda = 1e5, relaxed = TRUE,
+                 thresh = 2, lambda = 1e5,
                  parallelize = FALSE, maxit = 10L)
     fit <- if (backend == "native") do.call(l0nnPois, args) else
       do.call(l0glmFit, c(args, list(family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))

@@ -380,7 +380,7 @@ L0glm.chol.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                              family = poisson(identity), 
                              lambda = IC, # or tune_zoomed$lambda_best
                              nonnegative = TRUE,
-                             relaxed = FALSE,
+
                              thresh = 1E-5,
                              # verbose = TRUE,
                              solver = "eigen",

@@ -28,18 +28,18 @@ X <- matrix(rnorm(350*20), 350, 20)
 mu <- exp(.4 + X[, 2] - .8*X[, 7])
 y <- rnbinom(350, mu=mu, size=2)
 fit <- l0glmFit(X, y, family=mgcv::nb(), intercept=TRUE,
-  lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+  lambda="gic", maxit=100, tol=1e-8)
 fit
 fit$theta
 predict(fit, X[1:5, ], type="response")
 fixed <- l0glmFit(X, y, family=mgcv::nb(theta=2), intercept=TRUE,
-  lambda="gic", relaxed=TRUE)
+  lambda="gic")
 coef(fixed)[c(1, 3, 8), , drop=FALSE]
 ```
 
 For multichannel counts, supply an observation-by-channel matrix. `grouped=TRUE`
-selects predictor rows jointly; `relaxed=TRUE` refits eligible coefficients in the
-selected rows. Shapes may be estimated separately by channel.
+selects predictor rows jointly. A criterion-checked support refit can refine
+eligible coefficients in the selected rows. Shapes may be estimated separately by channel.
 
 ## NB1 with a constant variance-to-mean ratio
 
@@ -52,7 +52,7 @@ Use `nb1(dispersion=phi)` when the variance grows in proportion to the mean,
 phi <- 2
 y1 <- rnbinom(nrow(X), mu=mu, size=mu/(phi - 1))
 fit1 <- l0glmFit(X, y1, family=nb1(dispersion=phi), intercept=TRUE,
-  lambda="gic", relaxed=TRUE)
+  lambda="gic")
 predict(fit1, X[1:5, ], type="response")
 ```
 
@@ -60,9 +60,9 @@ predict(fit1, X[1:5, ], type="response")
 
 ```{r tuning, eval=FALSE}
 gic <- l0glmTune(X, y, family=mgcv::nb(), intercept=TRUE,
-  tune="gic", nlambda=10, relaxed=TRUE, maxit=100)
+  tune="gic", nlambda=10, maxit=100)
 cv <- l0glmTune(X, y, family=mgcv::nb(), intercept=TRUE,
-  tune="cv", nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
+  tune="cv", nfolds=5, nlambda=10, maxit=100)
 predict(cv$fit_1se, X[1:5, ])
 ```
 

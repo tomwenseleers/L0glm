@@ -36,7 +36,7 @@ test_that("native and R group passes use the same final Pearson residual scale",
   Y <- X[,1:2] %*% matrix(c(2,-1,-2,1.5),2L) + matrix(rnorm(n*2L),n,2L)
   w <- c(0,runif(n-1L,.5,2))
   args <- list(X=X,y=Y,weights=w,group=seq_len(ncol(X)),intercept=TRUE,lambda=0,
-    grouped=TRUE,relaxed=TRUE,dispersion=c(-1,2),parallelize=FALSE,local.search=FALSE)
+    grouped=TRUE,dispersion=c(-1,2),parallelize=FALSE,local.search=FALSE)
   native <- do.call(l0glmFit,args)
   reference <- do.call(l0glmFit,c(args,list(openmp=FALSE)))
   k <- sum(coef(native)[,1]!=0) + sum(coef(native)[native$always.include,1]==0)

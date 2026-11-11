@@ -15,7 +15,7 @@ test_that("one native driver supports every weighted-ridge solver", {
       eigen <- startsWith(solver, "eigen")
       args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y,
         family = gaussian(), lambda = "gic", intercept = TRUE,
-        grouped = TRUE, group.maxit = 2L, relaxed = TRUE, maxit = 12L,
+        grouped = TRUE, group.maxit = 2L,  maxit = 12L,
         parallelize = FALSE, solver = if (eigen) "eigen" else solver,
         method = if (eigen) as.integer(sub("eigen", "", solver)) else 1L)
       reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE))))
@@ -49,7 +49,7 @@ test_that("native grouped fits retain masks, signed starts, priors and input met
     args <- list(X = X, y = y, lambda = "gic", intercept = TRUE,
       always.include = 1L, start = start, prior.mean = rep(.01, 15),
       weights = weights, offset = offset, normalize = normalize,
-      grouped = TRUE, relaxed = TRUE, group.maxit = 2L, parallelize = FALSE)
+      grouped = TRUE,  group.maxit = 2L, parallelize = FALSE)
     reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE))))
     native <- suppressWarnings(do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE))))
     expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-7)
@@ -69,7 +69,7 @@ test_that("native dispersion pilots preserve RNG and fixed/free scale convention
   y <- 1.2 * X[, 1] - .6 * X[, 2] + rnorm(180, sd = .4)
   for (dispersion in list(NULL, .16, -.1)) {
     args <- list(X = X, y = y, dispersion = dispersion, lambda = "gic",
-      relaxed = TRUE, parallelize = FALSE)
+       parallelize = FALSE)
     state <- .Random.seed
     native <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
     expect_identical(.Random.seed, state)
@@ -115,9 +115,9 @@ test_that("native rectangular solver fallbacks remain safe in OpenMP workers", {
   for (sparse in c(FALSE, TRUE)) {
     design <- Matrix::Matrix(X, sparse = sparse)
     reference <- l0glmFit(local.search=FALSE, design, y, lambda = "gic", grouped = FALSE,
-      relaxed = FALSE, parallelize = FALSE)
+       parallelize = FALSE)
     expect_warning(fit <- l0glmFit(local.search=FALSE, design, y, lambda = "gic", grouped = FALSE,
-      relaxed = FALSE, method = 6L, control.solver = control,
+       method = 6L, control.solver = control,
       parallelize = TRUE, ncores = 2L), "Cholesky LLT was used as fallback")
     expect_equal(fit$coefficients, reference$coefficients, tolerance = 1e-7)
   }

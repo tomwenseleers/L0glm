@@ -16,7 +16,7 @@ Current results (current.csv):
 | ABESS | 53.31 | 2595.51 | 0.763 | 0.785 | 37 | 37 | 0 | 23 |
 | Relaxed LASSO | 30.21 | 2825.64 | 0.000 | NA | 0 | 0 | 0 | 60 |
 
-SIS screens 160 predictors once. ISIS admits up to 20 new candidates per round (plus current support), with start=NULL, gamma=2 and relaxed=TRUE; it returns the best GIC round. Full L0glm uses the same GIC preset and fitting options. ABESS searches consecutive sizes 0:150 with warm starts and no intercept. Relaxed LASSO requests ten lambda values; six admissible relaxed models remain after glmnet's near-saturation support restriction. Full L0glm at the GIC preset returns the null fit; GIC selects the null model along the relaxed-LASSO path. MCC is undefined (NA) for these constant selections.
+SIS screens 160 predictors once. ISIS admits up to 20 new candidates per round (plus current support), with start=NULL, inverse-square penalties; it returns the best GIC round. Full L0glm uses the same GIC preset and fitting options. ABESS searches consecutive sizes 0:150 with warm starts and no intercept. Relaxed LASSO requests ten lambda values; six admissible relaxed models remain after glmnet's near-saturation support restriction. Full L0glm at the GIC preset returns the null fit; GIC selects the null model along the relaxed-LASSO path. MCC is undefined (NA) for these constant selections.
 
 The main fitting interface now exposes the same screening workflow:
 
@@ -25,7 +25,7 @@ fit <- l0glmFit(X, y)                  # automatic ISIS on this ultra-wide desig
 fit$screening$history
 isis <- l0glmFit(X, y, screen = "ISIS") # force iterative screening
 sis <- l0glmFit(X, y, screen = "SIS")   # one-pass screening
-full <- l0glmFit(X, y, screen = "none", lambda = "gic", relaxed = TRUE)
+full <- l0glmFit(X, y, screen = "none", lambda = "gic")
 ```
 
 The automatic trigger is `p_eligible > 10*n`, with `n` equal to the training row count. Mandatory terms and predictors excluded by zero starts in every response channel do not count toward `p_eligible`. There is no separate minimum sample size or predictor count. `l0glmTune()` applies the same rule independently within each full-data or CV training fit. Screened fits use GIC, relaxed refitting and serial candidate fits when those arguments are omitted. `nsis` and `screen.maxit` can override the default batch and outer-round limit. Coefficients retain all original predictor rows. The benchmark script explicitly uses `screen="none"` for its full-design comparison.

@@ -4,7 +4,7 @@ test_that('local support refinement is opt-in, monotone and reproducible', {
   set.seed(8801)
   X <- matrix(rnorm(180*16),180,16)
   y <- 2*X[,1]-1.5*X[,2]+rnorm(180)
-  a <- list(X=X,y=y,lambda='gic',intercept=TRUE,relaxed=TRUE,parallelize=FALSE)
+  a <- list(X=X,y=y,lambda='gic',intercept=TRUE,parallelize=FALSE)
   plain <- do.call(l0glmFit,c(a,list(local.search=FALSE)))
   off <- do.call(l0glmFit,c(a,list(local.search=FALSE)))
   fit <- do.call(l0glmFit,c(a,list(local.search=TRUE,control.local=local_budget)))
@@ -100,7 +100,7 @@ test_that('local search is disabled for pilot-only initialization fits', {
   set.seed(8806)
   X <- matrix(rnorm(60*4),60,4);y <- X[,1]+rnorm(60)
   calls <- 0L
-  local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control) {
+  local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control,support.only=FALSE) {
     calls <<- calls+1L
     stop('unexpected pilot refinement')
   })
@@ -154,9 +154,9 @@ test_that('default refinement executes once after each complete orchestrated fit
   set.seed(8813)
   original <- L0glm_local_refine
   calls <- list()
-  local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control) {
+  local_mocked_bindings(.package='L0glm',L0glm_local_refine=function(fit,args,control,support.only=FALSE) {
     calls[[length(calls)+1L]] <<- list(screening=fit$screening,clustering=fit$preclustering)
-    original(fit,args,control)
+    original(fit,args,control,support.only)
   })
   X <- matrix(rnorm(80*40),80,40);y <- 2*X[,1]+rnorm(80)
   screened <- l0glmFit(X,y,screen='ISIS',nsis=8,screen.maxit=2,
@@ -174,7 +174,7 @@ test_that('default refinement executes once after each complete orchestrated fit
 
 test_that('exact Gaussian fits retain a finite criterion at their fitted scale', {
   fit <- l0glmFit(diag(3),cbind(c(1,0,0),c(-1,0,0)),lambda=.01,
-    grouped=TRUE,relaxed=TRUE,normalize=FALSE,parallelize=FALSE)
+    grouped=TRUE,normalize=FALSE,parallelize=FALSE)
   expect_true(all(fit$dispersion > 0))
   expect_true(is.finite(fit$local.search$final$value))
   expect_equal(nrow(fit$local.search$history),1L)

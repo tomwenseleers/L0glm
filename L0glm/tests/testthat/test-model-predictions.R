@@ -17,7 +17,7 @@ test_that("ordinary predictions match glm on training and original-scale new dat
       control=glm.control(epsilon=1e-12,maxit=100))
     for (normalization in c("none","rms")) {
       fit <- l0glmFit(X,y,family=family,weights=weights,offset=off,intercept=TRUE,
-        normalize=normalization,lambda=0,thresh=0,relaxed=FALSE,
+        normalize=normalization,lambda=0,thresh=0,
         parallelize=FALSE,maxit=100,tol=1e-14)
       expect_equal(as.numeric(fitted(fit)),as.numeric(fitted(ref)),tolerance=1e-6)
       expect_equal(fitted.values(fit),fitted(fit))
@@ -99,7 +99,7 @@ test_that("multinomial predictions are stable probabilities and deterministic cl
   Y <- factor(rep(c("A","B","C"),40))
   off <- matrix(rnorm(360,sd=.1),120,3)
   fit <- l0glmFit(X,Y,family=mgcv::multinom(K=2),offset=off,
-    intercept=TRUE,lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
+    intercept=TRUE,lambda=0,maxit=100,tol=1e-9)
   expected_eta <- as.matrix(cbind(1,X) %*% coef(fit)) + off
   expected_eta <- expected_eta-rowMeans(expected_eta)
   expect_equal(predict(fit,type="link"),expected_eta,ignore_attr=TRUE)
@@ -111,7 +111,7 @@ test_that("multinomial predictions are stable probabilities and deterministic cl
   expect_equal(predict(fit,X[1:5,],offset=off[1:5,]),probability[1:5,,drop=FALSE])
   # Compare against an independently fitted multinomial likelihood without offsets.
   plain <- l0glmFit(X,Y,family=mgcv::multinom(K=2),intercept=TRUE,
-    lambda=0,relaxed=FALSE,maxit=100,tol=1e-9)
+    lambda=0,maxit=100,tol=1e-9)
   ref <- nnet::multinom(Y ~ a+b+c,data=data.frame(Y=Y,X),trace=FALSE,
     maxit=300,abstol=1e-12,reltol=1e-12)
   expect_equal(predict(plain,X[1:5,]),predict(ref,newdata=as.data.frame(X[1:5,]),type="probs"),ignore_attr=TRUE,tolerance=1e-5)
@@ -129,13 +129,13 @@ test_that("NB means and Cox risks use the original linear predictor", {
   X <- matrix(rnorm(300),100,3,dimnames=list(NULL,c("a","b","c")))
   off <- runif(100,-.3,.3)
   nb <- l0glmFit(X,rnbinom(100,mu=exp(.2+.4*X[,1]+off),size=2),
-    family=mgcv::nb(theta=2),offset=off,lambda=2,intercept=TRUE,relaxed=FALSE)
+    family=mgcv::nb(theta=2),offset=off,lambda=2,intercept=TRUE)
   expect_equal(fitted(nb),exp(as.matrix(cbind(1,X) %*% coef(nb)) + off),ignore_attr=TRUE)
   expect_equal(predict(nb,X[1:4,],offset=off[1:4]),fitted(nb)[1:4,,drop=FALSE])
   event <- rexp(100,exp(.5*X[,1]+off)); censor <- rexp(100,.3)
   Y <- survival::Surv(pmin(event,censor),event <= censor)
   fit <- l0glmFit(X,Y,family=mgcv::cox.ph(),offset=off,lambda=0,
-    relaxed=FALSE,maxit=100,tol=1e-9)
+    maxit=100,tol=1e-9)
   ref <- survival::coxph(Y ~ X+offset(off),ties="breslow")
   expected <- exp(as.numeric(X %*% coef(fit)) + off)
   expect_equal(fitted(fit),expected)

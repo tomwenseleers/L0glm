@@ -30,7 +30,7 @@ censor <- rexp(400, .3)
 y <- survival::Surv(pmin(event, censor), event <= censor)
 
 fit <- l0glmFit(X, y, family=mgcv::cox.ph(),
-  lambda="gic", relaxed=TRUE, maxit=100, tol=1e-8)
+  lambda="gic", maxit=100, tol=1e-8)
 fit
 predict(fit, X[1:5, ], type="risk")
 ```
@@ -42,9 +42,9 @@ The implementation uses the Breslow treatment of tied event times.
 
 ```{r tuning, eval=FALSE}
 gic <- l0glmTune(X, y, family=mgcv::cox.ph(), tune="gic",
-  nlambda=10, relaxed=TRUE, maxit=100)
+  nlambda=10, maxit=100)
 cv <- l0glmTune(X, y, family=mgcv::cox.ph(), tune="cv",
-  nfolds=5, nlambda=10, relaxed=TRUE, maxit=100)
+  nfolds=5, nlambda=10, maxit=100)
 ```
 
 Cox CV uses partial-likelihood subtraction with the full risk sets.

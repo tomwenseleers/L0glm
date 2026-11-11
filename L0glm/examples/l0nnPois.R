@@ -11,7 +11,7 @@ system.time(fit.mc <- l0nnPois(
   sim.pois.mc$y,
   lambda = "gic",
   grouped = TRUE,
-  relaxed = TRUE,
+
   parallelize = TRUE,
   ncores = 4L
 ))
@@ -38,7 +38,7 @@ system.time(fit.sc <- l0nnPois(
   sim.pois.mc$y[, 1L],
   lambda = "gic",
   grouped = FALSE,
-  relaxed = FALSE,
+
   parallelize = FALSE
 ))
 

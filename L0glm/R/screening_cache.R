@@ -4,7 +4,7 @@ L0glm_isis_cache_size <- function(X,family,args,nonnegative,full,niter,nsis,mand
   if(!inherits(X,'L0glm_data') || X$format!='bigmemory' || X$missing!='error' ||
      !identical(X$descriptor@description$sharedType,'FileBacked') ||
      niter<3L || full || nonnegative || family$family!='gaussian' || family$link!='identity' ||
-     !isTRUE(args$relaxed) || !is.null(args$prior.mean) || !is.null(args$validation) ||
+      !is.null(args$prior.mean) || !is.null(args$validation) ||
      !is.null(args$maxit) && args$maxit<=1L ||
      !is.null(args$solver) && args$solver!='eigen' ||
      !is.null(args$method) && args$method!=1L ||

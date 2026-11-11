@@ -6,7 +6,7 @@ test_that("Cox tied weighted offset fits and survival predictions match coxph", 
   time <- round(pmin(event, censor), 1); status <- as.numeric(event <= censor)
   y <- survival::Surv(time, status); w <- sample(1:3, 300, TRUE)
   fit <- l0glmFit(X, y, family = mgcv::cox.ph(), weights = w, offset = off,
-    lambda = 0, maxit = 100, relaxed = FALSE, tol = 1e-9)
+    lambda = 0, maxit = 100,  tol = 1e-9)
   ref <- survival::coxph(y ~ X + offset(off), weights = w, ties = "breslow",
     control = survival::coxph.control(eps = 1e-11))
   expect_equal(as.numeric(fit$coefficients), unname(coef(ref)), tolerance = 1e-7)
@@ -22,7 +22,7 @@ test_that("Cox tied weighted offset fits and survival predictions match coxph", 
   index <- sample.int(300)
   other <- l0glmFit(Matrix::Matrix(X[index, ], sparse = TRUE), y[index, ],
     family = mgcv::cox.ph(), weights = w[index], offset = off[index],
-    lambda = 0, maxit = 100, relaxed = FALSE, tol = 1e-9)
+    lambda = 0, maxit = 100,  tol = 1e-9)
   expect_equal(as.matrix(other$coefficients), as.matrix(fit$coefficients), tolerance = 1e-7)
   expect_error(l0glmFit(X, survival::Surv(rep(0, 300), time + 1, status),
                          family = mgcv::cox.ph()), "right censoring")

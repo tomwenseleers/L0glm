@@ -56,7 +56,7 @@
 #' \eqn{h}, its nonzero fixed point obeys
 #' \eqn{r^2-\widehat r r+\lambda a_g/(4h)=0}; its existence boundary
 #' \eqn{h\widehat r^2=\lambda a_g} matches the block-L0 selection threshold.
-#' The relaxed refit removes shrinkage on selected blocks. Coefficients can be
+#' The unpenalized refit removes shrinkage on selected blocks. Coefficients can be
 #' zero inside a retained group, for example at a nonnegative boundary.
 #'
 #' Hard thresholding removes whole blocks using `thresh` and normalized norms.
@@ -105,11 +105,11 @@
 #' beta <- c(1.5, -1.5, 0, 0, 1, -1, rep(0, 6))
 #' y <- 1 + as.numeric(X %*% beta) + rnorm(200)
 #' fit <- l0glmFit(X, y, group=group, lambda="gic", intercept=TRUE,
-#'   relaxed=TRUE, local.search=FALSE)
+#'   local.search=FALSE)
 #' l0glmMetrics(fit)[c("gic", "group_support_size", "group_df", "group_objective")]
 #' same <- l0glmFit(X, y, group=group, lambda=fit$init.lambda,
 #'   group.multiplier=fit$group.multiplier, intercept=TRUE,
-#'   relaxed=TRUE, local.search=FALSE)
+#'   local.search=FALSE)
 #' max(abs(coef(fit) - coef(same)))
 NULL
 
@@ -223,7 +223,8 @@ L0glm_group_fit <- function(args, gaussian.pilot=FALSE) {
   mode <- L0glm_local_mode(args$local.search)
   if(is.null(args$control.local$target))args$control.local$target <-
     if(is.character(args$lambda) || isTRUE(attr(args$group.multiplier,'dimension_based')))'IC'else'L0'
-  if(!isFALSE(mode))return(L0glm_local_fit(l0glmFit,args,mode,args$control.local))
+  if(!isFALSE(mode))return(L0glm_local_fit(L0glm_internal_fit,args,mode,args$control.local))
+  if(is.null(args$relaxed))args$relaxed <- isTRUE(args$lambda==0)
   thread_state <- L0glm_set_thread_count(args$nthreads)
   if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state),add=TRUE)
   family <- args$family

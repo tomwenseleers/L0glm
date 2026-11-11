@@ -98,7 +98,7 @@ table(rowMeans(coef_real_mc)!=0,
 #                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_mc, 
 #                                        grouped = TRUE,
-#                                        relaxed = TRUE, 
+#
 #                                        family = gaussian(identity), 
 #                                        nonnegative = TRUE, 
 #                                        parallelize = TRUE, 
@@ -116,7 +116,7 @@ system.time(L0glm.chol.mgaus <- l0glmFit(data.mc.gaus$x, data.mc.gaus$y,
                                          start = NULL, # TODO try different possible initialisations
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-                                         relaxed = TRUE, # gives best result for multichannel
+                                          # gives best result for multichannel
                                          parallelize = TRUE,
                                          solver = "eigen", # osqp gives very similar solution
                                          method = 1L))  # use eigen Cholesky LLT solver
@@ -235,7 +235,7 @@ table(coef_abess_sc!=0,
 #                                        tune = crit,
 #                                        plot = FALSE, coefs.true = coef_real_sc, 
 #                                        grouped = FALSE,
-#                                        relaxed = FALSE, 
+#
 #                                        family = gaussian(identity), 
 #                                        nonnegative = TRUE, 
 #                                        parallelize = TRUE, 
@@ -253,7 +253,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(data.sc.gaus$x, data.sc.gaus$y,
                                           start = NULL, # rep(1, p), # NULL, # TODO try different possible initialisations
                                           nonnegative = TRUE,
                                           grouped = FALSE,
-                                          relaxed = FALSE, # gives best result for multichannel
+                                           # gives best result for multichannel
                                           parallelize = FALSE,
                                           solver = "eigen", # osqp gives very similar solution
                                           method = 1L))  # use Cholesky LLT solver

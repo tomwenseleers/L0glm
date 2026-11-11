@@ -2,7 +2,7 @@
 test_that("a supplied common start replays every lambda independently", {
   X <- diag(6); y <- c(4, 1, 0.2, -0.1, 0.1, 0.2)
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
-    start = c(1, 0, 1, 1, 0, 1), parallelize = FALSE, relaxed = FALSE)
+    start = c(1, 0, 1, 1, 0, 1), parallelize = FALSE)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(nlambda = 4, lambda_min = 0.01,
     plot = FALSE, printbest = FALSE)), list(local.search=FALSE)))
   expect_equal(tuned$start, args$start)
@@ -41,7 +41,7 @@ test_that("pilot starts match independent fits and reproduce the full tuning pat
   X <- matrix(rnorm(70 * 10), 70, 10)
   y <- 1 + 2 * X[, 1] - X[, 3] + rnorm(70)
   args <- list(X = X, y = y, family = gaussian(), intercept = TRUE,
-    parallelize = FALSE, relaxed = FALSE)
+    parallelize = FALSE)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(start = "pilot", nlambda = 4,
     plot = FALSE, printbest = FALSE)), list(local.search=FALSE)))
   coefficients <- vapply(tuned$pilot$lambda, function(lambda)
@@ -102,7 +102,7 @@ test_that("multichannel common starts preserve each channel's restrictions", {
   for (sparse in c(FALSE, TRUE)) {
     tuned <- l0glmTune(local.search=FALSE, Matrix::Matrix(X, sparse = sparse), y,
       family = poisson(identity), nonnegative = TRUE, grouped = TRUE,
-      group.maxit = 2L, start = start, relaxed = TRUE, nlambda = 3L,
+      group.maxit = 2L, start = start,  nlambda = 3L,
       plot = FALSE, printbest = FALSE, parallelize = FALSE)
     for (beta in tuned$coefficients) {
       expect_s4_class(beta, "dgCMatrix")

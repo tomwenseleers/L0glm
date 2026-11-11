@@ -118,7 +118,7 @@
 #'
 #' Adaptive weights come from exactly one
 #' `l0glmFit(start=NULL, lambda="gic", maxit=1, grouped=FALSE,
-#' relaxed=FALSE, thresh=0)` call. Independent-channel weights are
+#' thresh=0)` call. Independent-channel weights are
 #' \eqn{\max(|\widetilde\beta_{jk}|,\epsilon)^{-\gamma}}. Grouped and
 #' multinomial glmnet paths use pilot row RMS instead of signed averages;
 #' multinomial factors are shared across categories even for ungrouped fits.

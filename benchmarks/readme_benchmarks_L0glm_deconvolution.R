@@ -499,7 +499,7 @@ tuning_paths <- list()
 l0_single <- safe_time("single L0glm", l0glmFit(
   single$X, single$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
-  nonnegative = TRUE, relaxed = FALSE,
+  nonnegative = TRUE,
   intercept = FALSE, solver = "eigen", method = 1L,
   openmp = cfg$openmp, parallelize = FALSE, nthreads = 1L
 ))
@@ -531,7 +531,7 @@ l0_multi <- safe_time("multichannel grouped L0glm",
                       l0glmFit(
   multi$X, multi$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
-  nonnegative = TRUE, grouped = TRUE, relaxed = TRUE,
+  nonnegative = TRUE, grouped = TRUE,
   intercept = FALSE, solver = "eigen", method = 1L,
   openmp = cfg$openmp,
   parallelize = cfg$ncores > 1L, ncores = cfg$ncores, nthreads = 1L,

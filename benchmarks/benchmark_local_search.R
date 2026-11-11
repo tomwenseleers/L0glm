@@ -28,7 +28,7 @@ benchmark_local_search <- function(output = "benchmarks/plots/website",
       for (variant in c("disabled", names(controls))) {
         seconds <- system.time(fit <- L0glm::l0glmFit(train$x, train$y,
           family = if (model == "gaussian") gaussian() else binomial(), lambda = "gic",
-          intercept = TRUE, relaxed = TRUE, parallelize = FALSE, ncores = 1L, screen = "none",
+          intercept = TRUE,  parallelize = FALSE, ncores = 1L, screen = "none",
           local.search = if (variant == "disabled") FALSE else "auto",
           control.local = if (variant == "disabled") list() else controls[[variant]]))[["elapsed"]]
         metrics <- L0glm::l0glmMetrics(fit, beta_true = matrix(c(0, train$beta), ncol = 1L),
@@ -62,7 +62,7 @@ benchmark_local_deconvolution <- function(output = "benchmarks/plots/website",
     for (mode in list(FALSE, "auto", TRUE)) {
       seconds <- system.time(fit <- L0glm::l0glmFit(sim$X, sim$y,
         family = poisson("identity"), lambda = "gic", nonnegative = TRUE,
-        grouped = multichannel, relaxed = TRUE, parallelize = multichannel,
+        grouped = multichannel,  parallelize = multichannel,
         ncores = if (multichannel) 8L else 1L, screen = "none", local.search = mode,
         control.local = list(maxit = 3L, max.evals = 36L, nthreads = 8L)))[["elapsed"]]
       if (identical(mode, FALSE)) plain <- fit

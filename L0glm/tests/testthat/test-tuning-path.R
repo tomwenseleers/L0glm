@@ -3,7 +3,7 @@ test_that("independent tuning can recover features excluded at the preset", {
   X <- diag(6)
   y <- c(4, 1, .2, -.1, .1, .2)
   args <- list(X=X, y=y, family=gaussian(), dispersion=1,
-               parallelize=FALSE, grouped=FALSE, relaxed=FALSE, maxit=100)
+               parallelize=FALSE, grouped=FALSE,  maxit=100)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(tune="aic", lambda_min=.01, nlambda=5, plot=FALSE,
                                          printbest=FALSE)), list(local.search=FALSE)))
   preset <- do.call(l0glmFit, utils::modifyList(c(args, list(lambda=tuned$lambda_preset)), list(local.search=FALSE)))

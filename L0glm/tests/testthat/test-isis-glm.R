@@ -6,7 +6,7 @@ test_that("one-round ISIS matches the direct candidate fit and original-p GIC", 
     intercept=TRUE,always.include=3,return_stats=TRUE)
   selected <- result$candidates
   direct <- l0glmFit(X[,selected],y,weights=w,offset=off,lambda=result$lambda,
-    intercept=TRUE,always.include=match(3,selected),relaxed=TRUE,parallelize=FALSE)
+    intercept=TRUE,always.include=match(3,selected),parallelize=FALSE,local.search=FALSE)
   rows <- c(1,selected+1)
   expect_equal(as.matrix(coef(result$fit)[rows,,drop=FALSE]),as.matrix(coef(direct)),tolerance=1e-8)
   expect_true(all(coef(result$fit)[setdiff(1:81,rows),]==0))
@@ -36,7 +36,7 @@ test_that("ISIS keeps the best round, starts afresh and stops on a repeated cand
   expect_true(result$converged);expect_lt(result$iterations,10)
   expect_null(result$stats);expect_null(result$ranking)
   expect_equal(result$nsis,length(result$indices));expect_equal(result$screen_size,35)
-  direct <- l0glmFit(X[,result$candidates],y,lambda=result$lambda,relaxed=TRUE,parallelize=FALSE)
+  direct <- l0glmFit(X[,result$candidates],y,lambda=result$lambda,parallelize=FALSE,local.search=FALSE)
   expect_equal(as.numeric(coef(result$fit)[result$candidates,]),as.numeric(coef(direct)),tolerance=1e-7)
   expect_equal(as.numeric(coef(result$fit)[-result$candidates,]),rep(0,300-length(result$candidates)))
   again <- sisGLM(X,y,nsis=35,iterative=TRUE,niter=10,return_stats=FALSE)
@@ -49,7 +49,7 @@ test_that("ISIS preserves scalar starts, initial zero masks, prior centers and m
   for(norm in c("none","rms","l2")) {
     result <- sisGLM(X,y,nsis=10,iterative=TRUE,niter=1,start=1,normalize=norm,intercept=TRUE)
     direct <- l0glmFit(X[,result$candidates],y,start=1,normalize=norm,intercept=TRUE,
-      lambda=result$lambda,relaxed=TRUE,parallelize=FALSE)
+      lambda=result$lambda,parallelize=FALSE,local.search=FALSE)
     expect_equal(as.numeric(coef(result$fit)[c(1,result$candidates+1),]),as.numeric(coef(direct)),tolerance=1e-8)
   }
   Y <- cbind(y,-y);start <- matrix(1,31,2)

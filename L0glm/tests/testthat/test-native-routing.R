@@ -27,7 +27,7 @@ test_that("native and R wide multichannel fits agree with storage preserved", {
   for (sparse in c(FALSE, TRUE)) for (grouped in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y,
                  family = poisson(identity), lambda = 2, start = 0.5,
-                 grouped = grouped, relaxed = TRUE, maxit = 8L,
+                 grouped = grouped,  maxit = 8L,
                  group.maxit = 2L, parallelize = FALSE)
     native <- do.call(l0nnPois, args)
     general <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))

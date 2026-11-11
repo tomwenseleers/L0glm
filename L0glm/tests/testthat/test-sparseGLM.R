@@ -64,7 +64,7 @@ test_that("CV uses shared row folds and exact fold-local adaptive pilots", {
   for (k in 1:3) {
     train <- folds != k
     pilot <- l0glmFit(sim$X[train,],sim$y[train,],start=NULL,lambda="gic",maxit=1,
-      grouped=FALSE,relaxed=FALSE,thresh=0,intercept=TRUE,parallelize=FALSE)
+      grouped=FALSE,thresh=0,intercept=TRUE,parallelize=FALSE)
     expected <- 1/pmax(abs(as.matrix(coef(pilot))[-1,,drop=FALSE]),1e-8)
     for (method in c("adaptive_lasso","adaptive_relaxed_lasso")) {
       saved <- result$tuning[[method]]$cv$adaptive[[k]]

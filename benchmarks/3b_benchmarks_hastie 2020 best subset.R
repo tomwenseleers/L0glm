@@ -80,8 +80,7 @@ system.time(L0glm_bestfit <- l0glmFit(X = X, # X[,beta_true_set,drop=F], # X
                           # dispersion = dispersion, 
                           solver = "glmnet", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                           method = 1L, #
-                          thresh = 1E-5,
-                          relaxed = FALSE
+                          thresh = 1E-5
 ))  # 10s
 # beta_bestest = rep(0, ncol(X))
 # beta_bestest[beta_true_set] = L0glm_bestfit$coefficients
@@ -762,7 +761,7 @@ metrics_ncvreg_SCAD
 #   # dispersion = dispersion,
 #   solver = "eigen",
 #   method = 1L, # Cholesky, TODO CHECK LSCG=4 should be fastest for dense but gives out of memory, either in line Matrix::tcrossprod(D, Xw) in lmRidge.R#631 or rbind2(as(Matrix(Xw, sparse = T), "generalMatrix"), Diagonal(x = sqrt(lambdas))) at lmRidge.R#722
-#   relaxed = FALSE))[[3]]
+#   ))[[3]]
 # timing_fullL0glm
 # # 34s
 # 
@@ -964,7 +963,7 @@ timing_cvglmnet = system.time(glmnet_cvfit <- cv_glmnet_parallel(x = X, y = y,
                                                         nfolds = 5,
                                                         intercept=F, 
                                                         nlambda=10,
-                                                        relaxed=F,
+                                                        relax=FALSE,
                                                         alpha=1))[[3]] 
 timing_cvglmnet # 95s
 plot(glmnet_cvfit)
@@ -975,7 +974,7 @@ bestlambdaCV2 # 0.3441614
 timing_glmnetfull = system.time(glmnet_fit <- glmnet(x = X, y = y, 
                                                      intercept = F, 
                                                      nlambda=10,
-                                                     relaxed=F,
+                                                     relax=FALSE,
                                                      alpha = 1))[[3]] 
 timing_glmnetfull # 8.6s
 timing_glmnet = timing_cvglmnet+timing_glmnetfull

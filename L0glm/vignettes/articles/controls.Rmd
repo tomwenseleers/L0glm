@@ -24,7 +24,7 @@ offset <- rep(log(2), 300)
 y <- rpois(300, exp(.5 + .8*X[, 1] + offset))
 fit <- l0glmFit(X, y, family=poisson("log"), intercept=TRUE,
   weights=seq(.8, 1.2, length.out=300), offset=offset,
-  lambda="gic", relaxed=TRUE, maxit=100)
+  lambda="gic", maxit=100)
 predict(fit, X[1:3, ], offset=offset[1:3])
 ```
 

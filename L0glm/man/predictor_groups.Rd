@@ -64,7 +64,7 @@ majorization of a log-norm penalty. For an orthogonal block with curvature
 \eqn{h}, its nonzero fixed point obeys
 \eqn{r^2-\widehat r r+\lambda a_g/(4h)=0}; its existence boundary
 \eqn{h\widehat r^2=\lambda a_g} matches the block-L0 selection threshold.
-The relaxed refit removes shrinkage on selected blocks. Coefficients can be
+The unpenalized refit removes shrinkage on selected blocks. Coefficients can be
 zero inside a retained group, for example at a nonnegative boundary.
 
 Hard thresholding removes whole blocks using \code{thresh} and normalized norms.
@@ -109,11 +109,11 @@ group[11:12] <- 0
 beta <- c(1.5, -1.5, 0, 0, 1, -1, rep(0, 6))
 y <- 1 + as.numeric(X \%*\% beta) + rnorm(200)
 fit <- l0glmFit(X, y, group=group, lambda="gic", intercept=TRUE,
-  relaxed=TRUE, local.search=FALSE)
+  local.search=FALSE)
 l0glmMetrics(fit)[c("gic", "group_support_size", "group_df", "group_objective")]
 same <- l0glmFit(X, y, group=group, lambda=fit$init.lambda,
   group.multiplier=fit$group.multiplier, intercept=TRUE,
-  relaxed=TRUE, local.search=FALSE)
+  local.search=FALSE)
 max(abs(coef(fit) - coef(same)))
 }
 \seealso{

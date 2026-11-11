@@ -226,7 +226,7 @@ Backends unable to constrain a nonnegative Gaussian/Poisson intercept
 report this limitation; L0glm and L0Learn support that bound.
 
 Adaptive weights come from exactly one
-\code{l0glmFit(start=NULL, lambda="gic", maxit=1, grouped=FALSE, relaxed=FALSE, thresh=0)} call. Independent-channel weights are
+\code{l0glmFit(start=NULL, lambda="gic", maxit=1, grouped=FALSE, thresh=0)} call. Independent-channel weights are
 \eqn{\max(|\widetilde\beta_{jk}|,\epsilon)^{-\gamma}}. Grouped and
 multinomial glmnet paths use pilot row RMS instead of signed averages;
 multinomial factors are shared across categories even for ungrouped fits.
@@ -312,7 +312,7 @@ y_wide <- as.numeric(wide\%*\%truth_wide)+rnorm(100)
 screened <- sparseGLM(wide,y_wide,method=c("L0glm","lasso","relaxed_lasso"),
   screen="ISIS",nsis=10,nlambda=5,beta_true=truth_wide,
   lambda=list(L0glm=presetLambda("gic",ncol(wide),nrow(wide))),
-  options=list(L0glm=list(relaxed=TRUE)))
+  options=list(L0glm=list()))
 l0glmMetrics(screened)[c("method","screen","seconds","gic","TP","FP","F1_score","MCC")]
 # With tune="cv", all screening and adaptive pilots use training rows only.
 screened_cv <- sparseGLM(wide,y_wide,method="lasso",screen="SIS",nsis=20,
@@ -349,7 +349,7 @@ comparison_single <- sparseGLM(single,family=poisson(identity),
   method=comparison_methods,tune="gic",nlambda=10,
   nonnegative=TRUE,intercept=FALSE,approximation="wls",
   support.size=1:100,lambda=list(L0glm=lambda_gic),
-  options=list(L0glm=list(relaxed=FALSE),abess=list(warm.start=TRUE)))
+  options=list(L0glm=list(),abess=list(warm.start=TRUE)))
 l0glmMetrics(comparison_single)[fields]
 plot(comparison_single,which=c(1,2,4,5))
 
@@ -362,7 +362,7 @@ comparison_multi <- sparseGLM(multi,family=poisson(identity),
   method=comparison_methods,tune="gic",nlambda=10,
   nonnegative=TRUE,intercept=FALSE,approximation="wls_grouped",
   support.size=1:20,lambda=list(L0glm=lambda_gic),
-  options=list(L0glm=list(relaxed=TRUE),abess=list(warm.start=TRUE)))
+  options=list(L0glm=list(),abess=list(warm.start=TRUE)))
 # ABESS and glmnet select rows jointly using Gaussian shared-row-weight WLS;
 # L0glm fits the exact grouped Poisson model. L0Learn fits channels independently.
 # GIC, deviance and prediction R-squared always use the original Poisson model.

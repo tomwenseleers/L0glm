@@ -169,7 +169,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # NULL, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                          method = 1L,
-                         relaxed = FALSE,
+
                          thresh = 1E-20, # had to set this to low value here # TODO thresh should also be multiplied by scaling if normalize=T
                          maxit = 20,
                          tol = 1E-5
@@ -383,7 +383,7 @@ metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), function (i) {
                          start = NULL, # start, # rep(0.1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                          solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                          method = 1L,
-                         relaxed = FALSE,
+
                          thresh = 1E-5,
   )$coefficients
   coefmat[i,] <<- as.vector(L0glm.out)
@@ -509,7 +509,7 @@ system.time(L0glm_gaus_presetlambda <- l0glmFit(X = Matrix(X, sparse=T),
                                                  start = rep(sqrt(100), ncol(X)), # rep(sqrt(100), ncol(X)), # /scaleX(data_gaus$X), NULL, # =rep(sqrt(5), ncol(data_gaus$X))/scaling, # NULL, # rep(sqrt(5), ncol(data_gaus$X))*scaling, # NULL, # start_coefs(X, family=gaussian(identity)), # = rep(sqrt(5), ncol(data_gaus$X)) / scaling, 
                                                  solver = "eigen", # 
                                                  method = 1L, #
-                                                 relaxed = FALSE,
+
                                                  thresh = min(abs(beta_true[!beta_true==0])) # 1E-5
 )) # XXs with method 1L
 sum(L0glm_gaus_presetlambda$coefficients!=0)  # 51
@@ -575,8 +575,7 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                          start = start, # 
                          solver = "eigen", # eigen, glmnet or osqp, # note: constrained solvers glmnet & osqp better than eigen for very small lambda values
                          method = 4L, # historically LSCG was twice as fast as Cholesky LLT here
-                         thresh = 1E-5,
-                         relaxed = FALSE 
+                         thresh = 1E-5
   )$coefficients 
   coefmat[i,] <<- as.vector(L0glm.out)
   return( unlist(c(lambda=lambda, get.metrics(beta = L0glm.out, 

@@ -33,7 +33,7 @@ run <- function() {
     elapsed <- system.time(fit <- l0glmFit(X[training,,drop=FALSE],y[training],
       family=binomial(),weights=weights[training],offset=offset[training],
       intercept=TRUE,screen='SIS',nsis=cfg$nsis,screen.nthreads=threads,
-      lambda='gic',relaxed=TRUE,local.search=FALSE,nthreads=1L))[[3L]]
+      lambda='gic',local.search=FALSE,nthreads=1L))[[3L]]
     if(is.null(reference))reference <- coef(fit)else stopifnot(identical(reference,coef(fit)))
     score <- l0glmMetrics(fit,beta_true=truth)[c('gic','TP','FP','FN','F1_score','MCC')]
     results[[length(results)+1L]] <- cbind(method='SIS',threads,seconds=elapsed,score,
@@ -42,7 +42,7 @@ run <- function() {
   elapsed <- system.time(fit <- l0glmFit(X[training,,drop=FALSE],y[training],
     family=binomial(),weights=weights[training],offset=offset[training],
     intercept=TRUE,screen='ISIS',screen.maxit=3L,screen.nthreads=8L,
-    lambda='gic',relaxed=TRUE,local.search='auto',nthreads=1L))[[3L]]
+    lambda='gic',local.search='auto',nthreads=1L))[[3L]]
   score <- l0glmMetrics(fit,beta_true=truth)[c('gic','TP','FP','FN','F1_score','MCC')]
   results[[length(results)+1L]] <- cbind(method='ISIS',threads=8L,seconds=elapsed,score,
     logloss=-mean(dbinom(y[test],1,predict(fit,X[test,,drop=FALSE],offset=offset[test]),log=TRUE)))

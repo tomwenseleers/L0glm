@@ -20,7 +20,7 @@ test_that("multichannel parallel fit matches serial fit", {
     lambda = "gic",
     nonnegative = TRUE,
     grouped = TRUE,
-    relaxed = TRUE,
+
     parallelize = FALSE,
     solver = "eigen",
     method = 1L,
@@ -34,7 +34,7 @@ test_that("multichannel parallel fit matches serial fit", {
     lambda = "gic",
     nonnegative = TRUE,
     grouped = TRUE,
-    relaxed = TRUE,
+
     parallelize = TRUE,
     ncores = 2L,
     solver = "eigen",
@@ -59,7 +59,7 @@ test_that("grouped relaxed fit keeps rows with cancelling channel coefficients",
     lambda = 0.01,
     nonnegative = FALSE,
     grouped = TRUE,
-    relaxed = TRUE,
+
     parallelize = FALSE,
     intercept = FALSE,
     normalize = FALSE,
@@ -91,7 +91,7 @@ test_that("serial nthreads setting is restored after fit", {
     lambda = "gic",
     nonnegative = TRUE,
     grouped = FALSE,
-    relaxed = FALSE,
+
     parallelize = FALSE,
     nthreads = 1L,
     solver = "eigen",

@@ -164,8 +164,8 @@ The group count is
 \]
 
 This objective favours a compact support without the persistent linear shrinkage
-of an L1 penalty. The optional relaxed refit estimates effects on the selected
-support with negligible ridge penalization.
+of an L1 penalty. Adaptive penalties remain in the returned fit. Local support
+search can also accept restricted likelihood refits when they improve the target criterion.
 
 **Selection units and model dimensions.** Grouping determines which predictors
 enter together. Reported information criteria charge the dimension of the
@@ -298,7 +298,7 @@ F(b_{t+1})\leq Q(b_{t+1}\mid b_t)
 
 IRLS supplies a local likelihood approximation. L0glm checks the frozen-penalty
 smooth step by backtracking where needed, then thresholds the accepted
-coefficients. Dispersion updates, changing supports and relaxed refits form the
+coefficients. Dispersion updates and changing supports form the
 surrounding sparse-model search. The reported information criterion evaluates
 the likelihood and parameter count of the returned model.
 
@@ -345,7 +345,7 @@ contains \(E(\beta_j^2\mid y)=\widehat\beta_j^2+
 \operatorname{Var}(\beta_j\mid y)\); the inverse-square rule uses the fitted
 coefficient magnitude. The IC calibration sets the proportionality constant,
 and hard thresholding implements the limiting concentration at zero. The
-relaxed refit then estimates the retained effects with negligible shrinkage.
+restricted local-search refits can further reduce bias when they improve the target.
 
 ### One hierarchical construction
 
@@ -396,7 +396,7 @@ b^2-\widehat b_jb+\frac{\lambda\phi}{4s_j}=0.
 
 Its discriminant is nonnegative exactly when
 \(s_j\widehat b_j^2/\phi\geq\lambda\): the same selection boundary.
-The relaxed fit removes the remaining ridge shrinkage. This calibration also
+An accepted restricted refit in local search can remove the remaining ridge shrinkage. This calibration also
 works well approximately for non-orthogonal designs, as supported by the
 simulations of [Frommlet & Nuel (2016)](https://doi.org/10.1371/journal.pone.0148620)
 and the examples here. If desired, `l0glmTune()` efficiently searches a grid
@@ -492,20 +492,25 @@ During selection the default rule removes coefficients satisfying
 Thresholding uses the solver's normalized coefficient coordinates where scaling
 is enabled. A zero coefficient has an infinite adaptive penalty and remains
 excluded from that selection pass. This shrinking active set saves substantial
-work. Final relaxed refitting applies no hard cutoff. Explicit zero starts
+work. Internal restricted likelihood refits apply no hard cutoff. Explicit zero starts
 restrict eligible coefficients in advance, with mandatory terms retained.
 
-Before removing the penalty, the relaxed pass checks whether its admitted
+Before a restricted likelihood refit, the algorithm checks whether its admitted
 coefficients have sufficient structural information. The selected design must
 have full numerical column rank on positive-weight observations; an estimated
 dispersion also needs positive residual degrees of freedom. Multinomial checks
 use the admitted CLR contrast space, and Cox checks use risk-set information.
-An unsupported pass retains the penalized selection estimate and records
-`relaxationSkipped`. Independent channels use their own selected supports;
-grouped refits use eligible coefficients in the selected row union.
-Local support refinement rejects unsupported trial refits as well. When the
-initial requested relaxed pass is unsupported, refinement retains the returned
-fit and reports `stopping="insufficient_information"`.
+Unsupported trial refits are rejected. Independent channels use their own selected
+supports; grouped refits use eligible coefficients in the selected row union.
+These checks apply to local search, selected-support inference and explicitly
+unpenalized fits requested with `lambda=0`.
+
+With `local.search="auto"`, multichannel models above the combinatorial-search
+size limit still compare one selected-support refit with the adaptive-ridge fit.
+Grouped refits admit the eligible entries in retained rows. The algorithm keeps
+the refit only when the same criterion improves; a supplied validation set uses
+its predictive loss instead. Large single-channel fits retain their adaptive
+penalties. `local.search=FALSE` disables both kinds of support refinement.
 
 Default initialization is training-based. Estimated dispersions use a permissive
 ridge pilot and bounded updates, with inexpensive random-sign probes to guard
@@ -963,7 +968,7 @@ setting. **Output:** \(\phi\) and a flag recording whether it may be updated.
    Three successive updates with unchanged support and
    \(|\phi_P/\phi^t-1|<0.01\) freeze the scale. A support change unfreezes
    an estimated scale. Invalid/nonpositive targets leave its value unchanged.
-7. A relaxed ordinary GLM refit uses the full Pearson target after each
+7. An internal unpenalized GLM refit uses the full Pearson target after each
    accepted step with positive residual degrees of freedom. A supplied
    positive scale stays fixed. Refresh the reported scale after any
    boundary polish.
@@ -1052,11 +1057,10 @@ and convergence diagnostics.
 6. Stop after at least two iterations when the coefficient-change measure
    below is less than `tol` and scale updating is complete, or when scale
    estimation is unavailable at the current large support after iteration 3.
-   Unpenalized and relaxed passes can stop without freezing the scale.
+   Unpenalized passes can stop without freezing the scale.
    Also stop at the iteration limit or the validation patience limit.
-7. If `relaxed=TRUE`, restrict to the selected terms together with \(M\),
-   start from their fitted coefficients and repeat with \(\lambda=10^{-30}\)
-   and hard thresholding disabled. Restore the original coefficient dimensions.
+7. Restore the original coefficient dimensions. Optional local support search
+   follows selection and accepts proposals only when the target improves.
 :::
 
 **Smooth-step routine.** Freeze \(D\), the ridge center and current nuisance
@@ -1132,12 +1136,8 @@ matrix on the original scale.
    value, allowing further optimization from the previous estimate. A fixed
    channel dispersion stays positive. Validation can stop these passes and
    restore their best checkpoint.
-6. For a relaxed refit, check selected-design rank and, for estimated
-   dispersion, positive residual degrees of freedom. Retain unsupported
-   channels' penalized estimates. Otherwise refit eligible entries using
-   \(\lambda=10^{-30}\), with thresholding disabled. Grouped selection pools
-   the retained rows once more; independent channels keep their own support.
-   Originally excluded starting entries remain excluded. Return all \(q\) rows.
+6. Return all \(q\) coefficient rows, with excluded starting entries retained
+   as zero. Optional local search follows the grouped selection passes.
 :::
 
 The common rows and pooled starts couple the ordinary channel fits. Each inner
@@ -1200,11 +1200,9 @@ at \(v\) and estimates it; `nb(theta=v)` fixes it at \(v>0\).
    iteration/validation limit. Special-family relative changes divide by
    \(\max(1,\|B_{\rm new,selectable}\|_F)\) and
    \(\max(1,\|ZB_{\rm new}\|_F)\), respectively.
-6. For `relaxed=TRUE`, set \(\lambda=0\), disable thresholding and refit.
-   Grouped refits admit eligible entries in selected rows; ungrouped refits
-   retain selected entries. Estimated shapes continue updating in the refit.
-   Retain the selection fit if its admitted design is rank deficient or leaves
-   no residual degrees of freedom for estimating shape.
+6. Return the selected coefficients and channel shapes. Optional local support
+   search checks selected-design rank and positive residual degrees of freedom
+   before evaluating restricted refits.
 :::
 
 **Pearson shape step.** At the accepted mean \(\mu\), let \(N\) count
@@ -1222,7 +1220,7 @@ residual sum is positive. Use the nearer bound when the root lies outside
 the interval. Apply the same eligibility, damping and stability rules as
 for ordinary dispersion.
 
-A constrained relaxed fit checks conditional likelihood even when the
+A constrained internal refit checks conditional likelihood even when the
 clipped working solution changes the zero pattern. If the proposal
 stalls, let \(g\) be half the objective gradient and let \(H\) be the
 positive diagonal of the working Hessian divided by two. Project
@@ -1308,13 +1306,9 @@ class-symmetric CLR coordinates.
    two allowed entries becomes zero. Keep the unthresholded smooth point if
    thresholding makes the likelihood invalid.
 6. Use the special-family coefficient/predictor convergence measures in
-   Algorithm 3, or the iteration/validation limits. For a relaxed grouped fit,
-   refit all originally eligible categories within retained rows with
-   \(\lambda=0\). An ungrouped refit keeps only selected CLR entries.
-   Check rank in this admitted zero-sum space before refitting; retain the
-   selection fit if the information is deficient.
-   No hard cutoff is applied during the refit. Return full-size CLR coefficients
-   and category probabilities.
+   Algorithm 3, or the iteration/validation limits. Return full-size CLR
+   coefficients and category probabilities. Optional local search works in
+   the admitted zero-sum space and rejects information-deficient trial refits.
 :::
 
 The default curvature is the exact joint multinomial IRLS curvature. The
@@ -1392,9 +1386,8 @@ V_\eta=\operatorname{diag}(q)-\operatorname{diag}(e)\,C\,\operatorname{diag}(e),
    the direct working-system path; `cox="direct"` explicitly selects it.
 6. Apply special-family backtracking and scalar thresholding. Stop using the
    special-family convergence measure, iteration limit or validation rule.
-   For `relaxed=TRUE`, repeat on selected terms with \(\lambda=0\) and no
-   thresholding, provided the risk-set information has full selected rank.
-   Otherwise retain the selection fit. Return the full coefficient vector; estimate baseline
+   Optional local search requires full selected rank in the risk-set information.
+   Return the full coefficient vector; estimate baseline
    cumulative hazard by \(\widehat H_0(t)=\sum_{r:t_r\le t}d_r/S_r\).
 :::
 
@@ -1505,7 +1498,8 @@ size \(b\); one round for SIS or up to `screen.maxit=10` rounds for ISIS.
     start or the supplied start restricted to these rows. Free dispersion or
     NB shape starts from the preceding fit when available. Quasi-Poisson uses
     the first fit's scale for every candidate so the quasi-criteria are
-    comparable. Screening defaults to a relaxed fit with serial channel solves.
+     comparable. Each candidate fit retains its adaptive penalties and uses serial
+     channel solves by default. Local refinement follows the selected screening round.
 4. Expand this fit to the original coefficient dimensions, with zero rows
    outside \(C_r\), and set \(S_r\) to its nonzero row support together
    with the mandatory predictors. Record its likelihood, parameter dimension,
@@ -1522,7 +1516,7 @@ fitted predictor enters the next **screening** offset; every joint fit uses
 the original model offset.
 
 For large complete double-precision bigmemory Gaussian identity designs,
-unconstrained relaxed GIC fits can additionally cache up to 10,000 predictors,
+unconstrained GIC fits can additionally cache up to 10,000 predictors,
 bounded by `l0glmData()`'s `working.columns` and `max.cells` controls. The first
 global screen supplies this pool. Restricted ISIS fits use the original
 predictor count for both lambda and scoring, while the ordinary global
@@ -1591,8 +1585,8 @@ Stop when the minimum iteration has been reached and the patience count is
 exhausted. Restore the best coefficients and nuisance parameters, including
 dispersion or NB shape, plus their support/penalty state. Ordinary/native
 working quantities are refreshed at a restored checkpoint. Grouped ordinary
-models also track validation across shared-support passes. A relaxed pass can
-retain its selection checkpoint as its starting best fit.
+models also track validation across shared-support passes. A restricted internal
+refit can retain its selection checkpoint as its starting best fit.
 
 Ordinary GLMs use weighted mean unit deviance; NB with estimated shape uses
 predictive log loss relative to a fixed Poisson saturated reference; fixed-shape

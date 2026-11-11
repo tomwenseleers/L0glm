@@ -1,3 +1,4 @@
+# Internal restricted-refit kernels; the public fitters retain adaptive penalties.
 test_that("wide Gaussian relaxation agrees with native glmnet on each support", {
   skip_if_not_installed("glmnet")
   set.seed(610)

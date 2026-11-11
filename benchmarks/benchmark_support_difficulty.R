@@ -50,7 +50,7 @@ benchmark_support_difficulty <- function(output="benchmarks/plots/website",
           prediction=if(model=="gaussian")sqrt(mean((mu-y.test)^2))else auc(y.test,mu))
       }
       elapsed <- system.time(fit <- L0glm::l0glmFit(X,y,family=family,intercept=TRUE,
-        lambda="gic",relaxed=TRUE,screen.nthreads=1L,parallelize=FALSE))[["elapsed"]]
+        lambda="gic",screen.nthreads=1L,parallelize=FALSE))[["elapsed"]]
       records[[length(records)+1L]] <- collect(fit,"L0glm","gic",elapsed)
       for(tuning in c("gic","cv")) {
         selected <- if(tuning=="gic")methods else c("lasso","relaxed_lasso")

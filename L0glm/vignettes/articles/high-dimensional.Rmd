@@ -52,7 +52,7 @@ X <- matrix(rnorm(250*5000), 250, 5000)
 beta <- numeric(5000); beta[c(5, 50, 500)] <- c(2, -1.5, 1)
 y <- as.numeric(X %*% beta) + rnorm(250)
 fit <- l0glmFit(X, y, family=gaussian(), lambda="gic",
-  screen="ISIS", screen.nthreads=2L, relaxed=TRUE)
+  screen="ISIS", screen.nthreads=2L)
 l0glmMetrics(fit, beta_true=beta)[c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 ```
 
@@ -156,7 +156,7 @@ comparison <- sparseGLM(X, y,
   method=c("L0glm", "abess", "lasso", "relaxed_lasso"),
   screen="ISIS", nsis=10, tune="gic", nlambda=10,
   lambda=list(L0glm=presetLambda("gic", ncol(X), nrow(X))),
-  options=list(L0glm=list(relaxed=TRUE)), beta_true=beta)
+  options=list(L0glm=list()), beta_true=beta)
 l0glmMetrics(comparison)[c("method", "screen", "seconds", "gic",
   "TP", "FP", "F1_score", "MCC")]
 ```
@@ -198,9 +198,9 @@ uses biglasso with its required free intercept.
 
 ```{r tuning, eval=FALSE}
 gic <- l0glmTune(X, y, family=gaussian(), screen="ISIS",
-  screen.nthreads=8L, tune="gic", nlambda=10, relaxed=TRUE)
+  screen.nthreads=8L, tune="gic", nlambda=10)
 cv <- l0glmTune(X, y, family=gaussian(), screen="ISIS",
-  screen.nthreads=8L, tune="cv", nfolds=5, nlambda=10, relaxed=TRUE)
+  screen.nthreads=8L, tune="cv", nfolds=5, nlambda=10)
 ```
 
 Each fold screens its training observations independently. Validation can also

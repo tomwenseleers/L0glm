@@ -67,7 +67,7 @@ system.time(L0glm.out <- l0glmFit(X, y,
                            ridge.center = NULL, 
                            nonnegative = TRUE,
                            start = rep(1, ncol(X)),
-                           relaxed = FALSE, 
+
                            thresh = 1E-10,
                            warmupiters = 1,
                            warmupiters.nzc = 10)) 
@@ -114,7 +114,7 @@ system.time(L0glm.out <- l0glmFit(X, y,
                            nonzero.centered = TRUE, # gives slightly better solution based on IC, about the same speed or slightly faster
                            ridge.center = NULL, 
                            nonnegative = TRUE,
-                           relaxed = FALSE, # TODO: CHECK: relaxed argument has no effect in single channel fit - is this as intended? Should one not be allowed to fit an L0glm and then refit all selected variables unpenalized with lambda=0? 
+                            # TODO: CHECK: relaxed argument has no effect in single channel fit - is this as intended? Should one not be allowed to fit an L0glm and then refit all selected variables unpenalized with lambda=0?
                            warmupiters = 1)) # should be set to 1 for gaussian
 # 0.18s
 points(sim$x, L0glm.out, pch = 16, col= 'blue')
@@ -165,7 +165,7 @@ system.time(L0glm.out <- l0glmFit(X, y,
                            nonnegative = TRUE,
                            grouped = TRUE,
                            group.maxit = 20,
-                           relaxed = FALSE,
+
                            warmupiters = 4))
 # 30s for n=p=10000, 12.64s for n=p=100
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')
@@ -216,7 +216,7 @@ system.time(L0glm.out <- l0glmFit(X, y,
                            nonnegative = TRUE,
                            grouped = TRUE,
                            group.maxit = 20,
-                           relaxed = FALSE,
+
                            warmupiters = 1)) # TODO: FOR GAUSSIAN GIVES BEST SOLUTION
 # XXs for n=p=10000, 25.87s for n=p=100
 abline(v=which(rowMin(L0glm.out)!=0), col = 'cyan')

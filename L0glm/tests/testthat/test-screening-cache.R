@@ -10,7 +10,7 @@ test_that('cached Gaussian paths retain full ISIS quality and original coordinat
     descriptorfile='design.desc',backingpath=folder,dimnames=dimnames(A));M[,] <- A
   X <- l0glmData(M,control=list(max.cells=1e5,working.columns=500L))
   options <- list(y=y,weights=w,offset=off,intercept=TRUE,always.include=18L,
-    screen='ISIS',nsis=12L,screen.maxit=6L,local.search=FALSE,relaxed=TRUE)
+    screen='ISIS',nsis=12L,screen.maxit=6L,local.search=FALSE)
   for(dispersion in list(NULL,1,-1))for(start in list(NULL,1)) {
     args <- c(options,list(dispersion=dispersion,start=start))
     baseline <- X;baseline$control$working.columns <- 0L
@@ -48,7 +48,7 @@ test_that('working pools preserve unsupported-option and starting-mask paths', {
   X <- l0glmData(M,control=list(max.cells=10000,working.columns=100L))
   call <- function(...)l0glmFit(X,y,screen='ISIS',nsis=8L,screen.maxit=3L,
     local.search=FALSE,...)
-  for(result in list(call(relaxed=FALSE),call(lambda='aic'),call(maxit=1L),
+  for(result in list(call(lambda='aic'),call(maxit=1L),
     call(validation=list(X=A,y=y)),call(prior.mean=0)))
     expect_null(result$screening$working.set)
   start <- rep(1,1201);start[2] <- 0;start[3] <- 0
@@ -88,7 +88,7 @@ test_that('tuning and CV preserve original dimensions with cached source control
   X <- l0glmData(M,control=list(max.cells=6000,working.columns=80L))
   for(tune in c('gic','cv')) {
     result <- l0glmTune(X,y,family=gaussian(),tune=tune,nlambda=3L,prop_range=.1,
-      nfolds=3L,intercept=TRUE,relaxed=TRUE,screen='ISIS',nsis=6L,screen.maxit=3L,
+      nfolds=3L,intercept=TRUE,screen='ISIS',nsis=6L,screen.maxit=3L,
       local.search=FALSE,screen.path='preset',plot=FALSE,printbest=FALSE)
     expect_true(is.finite(result$lambda_best))
     expect_identical(dim(coef(result$fit_best)),c(901L,1L))

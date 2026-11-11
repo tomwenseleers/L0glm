@@ -21,7 +21,7 @@ n <- 300L
 X <- matrix(rnorm(n * 20L), n, 20L)
 eta <- 0.4 + 0.6 * X[, 2] - 0.5 * X[, 7] + 0.4 * X[, 12]
 fit <- function(y, family) {
-  l0glmFit(X, y, family=family, intercept=TRUE, lambda="gic", relaxed=TRUE)
+  l0glmFit(X, y, family=family, intercept=TRUE, lambda="gic")
 }
 selected <- function(model) which(as.numeric(coef(model))[-1L] != 0)
 ```
@@ -52,7 +52,7 @@ binary <- fit(rbinom(n, 1, prob), binomial())
 trials <- rep(12, n)
 successes <- rbinom(n, trials, plogis(qlogis(prob) + rnorm(n, sd=0.5)))
 quasi_binary <- l0glmFit(X, successes / trials, weights=trials,
-  family=quasibinomial(), intercept=TRUE, lambda="gic", relaxed=TRUE)
+  family=quasibinomial(), intercept=TRUE, lambda="gic")
 selected(binary)
 selected(quasi_binary)
 ```
