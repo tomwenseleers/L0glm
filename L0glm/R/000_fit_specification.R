@@ -4,6 +4,7 @@ L0glm_recorded_fitter <- function(kernel,engine) {
   formals(wrapper) <- formals(kernel)
   body(wrapper) <- substitute({
     supplied <- names(match.call())[-1L]
+    L0glm_iteration_limit(maxit)
     forwarded <- stats::setNames(lapply(supplied,as.name),supplied)
     call <- as.call(c(list(quote(KERNEL)),forwarded))
     source <- inherits(X,'L0glm_data')

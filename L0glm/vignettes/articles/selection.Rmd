@@ -98,36 +98,27 @@ predict(cv$fit_1se, X[1:5, , drop=FALSE], type="response")
 lambda with mean deviance within one SE of the minimum. The GIC preset remains
 available through `lambda_preset` for comparison.
 
-## Joint tuning of lambda and iteration count
+## Validation-based stopping
 
-For prediction, early adaptive-ridge estimates can retain useful weak effects.
-Pass a vector to `maxit` to select both the penalty and the IRLS iteration limit
-by CV. Each pair starts independently, and every candidate uses the same folds.
-Screening, normalization and noise estimation use only the training rows.
+An independent validation set can choose a predictive checkpoint during a
+single fit. The training data determine the coefficients, screening and noise
+parameters. Validation deviance is monitored after each iteration; the fit
+restores its best checkpoint after a short patience period without improvement.
+This is available for ordinary GLMs, negative binomial, multinomial and Cox
+models, and for native nonnegative identity-link Poisson fits.
 
-```{r joint-cv, eval=FALSE}
-joint <- l0glmTune(X, y, family=gaussian(), tune="cv", foldid=folds,
-  nlambda=10L, prop_range=.25, maxit=c(1:10, 25),
-  relaxed=FALSE, local.search=FALSE, plot=TRUE)
-c(lambda=joint$lambda_best, maxit=joint$maxit_best)
-c(lambda=joint$lambda_1se, maxit=joint$maxit_1se)
-joint$metrics[c("lambda", "maxit", "cv_deviance", "cv_se")]
-predict(joint$fit_best, X[1:5, , drop=FALSE])
+```{r validation, eval=FALSE}
+set.seed(11)
+training <- sample.int(nrow(X), floor(.8*nrow(X)))
+fit <- l0glmFit(X[training, ], y[training], family=gaussian(),
+  lambda="gic", maxit=100L, local.search=FALSE,
+  validation=list(X=X[-training, ], y=y[-training]))
+fit$validation$selection[c("best_iteration", "iterations", "deviance")]
 ```
 
-The selection minimizes mean held-out deviance over all evaluated
-\((\lambda,t)\) pairs. The coefficient panel shows the path at `maxit_best`;
-the CV panel shows a curve and standard-error bars for each iteration limit.
-The one-SE model uses the largest eligible lambda, then the largest iteration
-limit among ties at that lambda. `fit_best` and `fit_1se` use all observations
-with their respective selected settings.
-
-A scalar `maxit` keeps ordinary lambda tuning. The limit applies per IRLS
-pass, so grouped passes, relaxed refits and local support refinement are
-separate stages. Disabling relaxation and local search lets CV compare the
-early shrinkage estimates directly. For shorter fits, the upper grid endpoint
-can retain nonzero coefficients; the zero endpoint is checked at the largest
-iteration limit.
+`maxit` is a single iteration limit. `l0glmTune()` searches lambda at that
+limit; validation stopping lets the predictive fit choose how far to proceed.
+Keep a separate test set for an independent assessment of predictive accuracy.
 
 ## Optional local support refinement
 

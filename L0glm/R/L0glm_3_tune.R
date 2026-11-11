@@ -1,11 +1,11 @@
 #' @name l0glmTune
 #' @aliases l0glmTune
-#' @title Tune regularization and IRLS iteration limits
+#' @title Tunes the regularisation parameter lambda of an L0glm fit
 #'
 #' @importFrom qlcMatrix colMax colMin
 #' 
 #' @description
-#' Tunes lambda and optionally the IRLS iteration limit for \code{\link{l0glmFit}}
+#' Tunes the lambda parameter for the \code{\link{l0glmFit}}
 #' function. It uses a sequence of penalty parameter values (\code{lambda}) to fit 
 #' L0-penalized GLMs, and selects the best lambda by an information criterion
 #' or held-out deviance from cross-validation. It can handle multiple output variables (channels),
@@ -99,14 +99,6 @@
 #' \code{"ebic"}, \code{"mbic"}, or \code{"cv"}. Defaults to \code{"gic"}.
 #' Cross-validation minimizes mean held-out deviance.
 #' See \link{information_criteria} for formulas, guidance and references.
-#' @param maxit Positive integer IRLS iteration limit (default 25). With
-#'   \code{tune="cv"}, a vector such as \code{c(1:10, 25)} jointly
-#'   tunes lambda and this limit. Every pair starts independently and uses the
-#'   same folds and lambda grid. The limit applies to each IRLS pass, as in
-#'   \code{l0glmFit()}; grouped passes, relaxed refits and local search remain
-#'   separate fitting stages. To select an early adaptive-ridge estimate for
-#'   prediction, use \code{relaxed=FALSE} and \code{local.search=FALSE}.
-#'   A scalar retains ordinary lambda tuning. Multiple limits require CV.
 #' @param nfolds Number of cross-validation folds (default 5), used when
 #' \code{tune = "cv"}. Must be at least 2 and no larger than the number of
 #' positive-weight observation rows.
@@ -189,6 +181,11 @@
 #'   \code{mu.floor} inherits \code{mu_floor} for consistent scoring.
 #' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
+#' \item \code{maxit}: a single positive integer giving the iteration limit
+#' for each fit (default 25). Lambda is the tuning parameter. For a
+#' prediction-oriented fit with an independent validation set, pass
+#' \code{validation=list(X=X_validation, y=y_validation)} directly to
+#' \code{l0glmFit()}; the best validation checkpoint is restored after stopping.
 #' \item \code{interactions}, \code{control.interactions}: staged products of
 #' selected main effects. \code{interactions=1L} adds pairwise terms and
 #' \code{2L} also considers three-way terms; \code{0L} (default)
@@ -363,18 +360,6 @@
 #' after tuning.
 #' }
 #'
-#' With a vector of \code{maxit} values, the largest limit constructs the common
-#' lambda grid and the shared preset screening pool when requested. Every
-#' training fold estimates its own preprocessing, dispersion, pilot starts,
-#' screening candidates and channel partition. The CV minimum selects a
-#' lambda/iteration pair. The one-SE choice is the largest lambda whose mean
-#' deviance lies within one SE of the global minimum; ties at that lambda use
-#' the largest iteration limit. This tie rule is deterministic and does not
-#' require support sizes to vary monotonically with the iteration limit.
-#' The coefficient panel shows the path at \code{maxit_best}, and the CV panel
-#' shows a curve for each limit. The zero-support endpoint is verified at the
-#' largest limit; shorter fits can retain nonzero coefficients there.
-#'
 #' @return
 #' \code{l0glmTune} returns a list containing the following elements:
 #' \item{\code{tune}}{chosen selection method.}
@@ -391,12 +376,8 @@
 #' \item{\code{preprocessing}}{training preprocessing of the full-data fit.}
 #' \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
 #' with different regularization parameters; CV adds \code{cv_deviance} and
-#' \code{cv_se}. Joint iteration tuning adds \code{maxit}, with one row per
-#' lambda/iteration pair.}
+#' \code{cv_se}.}
 #' \item{\code{lambda_best}}{best lambda by the chosen selection method.}
-#' \item{\code{maxit_best}, \code{maxit_1se}}{iteration limits corresponding to
-#' \code{fit_best} and \code{fit_1se}; the latter is \code{NULL} for IC tuning.}
-#' \item{\code{maxits}}{sorted unique iteration limits evaluated.}
 #' \item{\code{lambda_1se}}{largest evaluated lambda within one SE of the
 #' minimum CV mean deviance, using the SE at that minimum; \code{NULL} for
 #' information-criterion tuning.}
@@ -404,8 +385,7 @@
 #' to approximately optimise the chosen criterion, or GIC when tuning by CV.}
 #' \item{\code{lambda_reference}}{positive grid reference; normally identical
 #' to \code{lambda_preset}, but at least \code{lambda_min}.}
-#' \item{\code{lambdas}}{evaluated lambdas in the same order as \code{metrics}
-#' and \code{coefficients}; repeated for each limit in joint iteration tuning.}
+#' \item{\code{lambdas}}{a vector containing all the lambdas that were used.}
 #' \item{\code{lambda_min}}{lower endpoint of the full numerical path.}
 #' \item{\code{lambda_max}}{upper endpoint of the full numerical path.}
 #' \item{\code{lambda_nonzero}}{nonzero lower bracket for the refined endpoint,
@@ -426,10 +406,6 @@
 #' penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
 #' full-data fits, not individual fold models. Also contains each fold's
 #' \code{starts}, \code{pilots} and training \code{preprocessing}.}
-#' The vector \code{cv$maxit} gives the iteration limit for each row of
-#' \code{cv$deviance}. Both selected fits use all observations. To reproduce
-#' \code{fit_1se}, use \code{lambda_1se} and replace \code{fit_args$maxit}
-#' by \code{maxit_1se}; \code{fit_args} already reproduces \code{fit_best}.
 #'
 #' When channel preclustering is requested, \code{preclustering} retains the
 #' full-data partition and cut diagnostics, and \code{cv$preclustering} retains
@@ -458,7 +434,6 @@ l0glmTune <- function(X, y,
                        lambda_min   = 2,
                        start        = NULL,
                        ...,
-                       maxit        = 25L,
                        screen.path  = c("independent", "preset"),
                        local.search = "auto",
                        control.local = list())
@@ -466,10 +441,9 @@ l0glmTune <- function(X, y,
   tune <- L0glm_ic_name(if (missing(tune)) tune[1L] else tune, allow_cv = TRUE)
   screen.path <- match.arg(screen.path)
   do_cv <- tune == "cv"
-  maxits <- L0glm_tune_iterations(maxit, do_cv)
   if (!inherits(family, "family")) family <- family()
   dots <- L0glm_group_tune_cost(X,y,family,list(...))
-  if (!missing(maxit)) dots$maxit <- max(maxits)
+  if ("maxit" %in% names(dots)) L0glm_iteration_limit(dots$maxit)
   interactions <- !is.null(dots$interactions) && L0glm_interaction_order(dots$interactions)>0L
   if(interactions && identical(start,'pilot'))
     stop('Interaction tuning uses start=NULL or numeric starts; pilot starts require a fixed feature space.',call.=FALSE)
@@ -494,7 +468,7 @@ l0glmTune <- function(X, y,
     if (missing(offset)) NULL else offset, dispersion, tune, nlambda, prop_range,
     coefs.true, printbest, plot, mu_floor,
     if (missing(nfolds) && !is.null(foldid)) NULL else nfolds,
-    foldid, lambda_min, start, dots, screen.path, maxits))
+    foldid, lambda_min, start, dots, screen.path))
   if (!is.numeric(nlambda) || length(nlambda) != 1L || !is.finite(nlambda) ||
       nlambda < 2 || nlambda != as.integer(nlambda))
     stop("nlambda must be an integer of at least 2.", call. = FALSE)
@@ -540,10 +514,8 @@ l0glmTune <- function(X, y,
     list(start = start, pilot = NULL)
   args$start <- initialization$start
   quasi_estimated <- NULL
-  fit_lambda <- function(lambda, iterations = NULL) {
-    a <- args
-    if (!is.null(iterations)) a$maxit <- iterations
-    fit <- do.call(l0glmFit, c(a, list(lambda = lambda)))
+  fit_lambda <- function(lambda) {
+    fit <- do.call(l0glmFit, c(args, list(lambda = lambda)))
     if (!is.null(quasi_estimated)) fit$dispersion.estimated <- quasi_estimated
     fit
   }
@@ -617,19 +589,16 @@ l0glmTune <- function(X, y,
   }
   if (anyDuplicated(lambda_grid))
     stop("prop_range is too small to produce distinct lambda values.", call. = FALSE)
-  iteration_grid <- rep(maxits, each = length(lambda_grid))
-  if (length(maxits) > 1L) lambda_grid <- rep(lambda_grid, length(maxits))
   cv <- if (do_cv) L0glm_cross_validate(cv_args, preset_fit$X, lambda_grid,
-    foldid, family, mu_floor, pilot_bounds, screen.path, lambda_reference,
-    if (length(maxits) > 1L) iteration_grid else NULL) else NULL
+    foldid, family, mu_floor, pilot_bounds, screen.path, lambda_reference) else NULL
   if (do_cv && !any(is.finite(cv$mean)))
     stop("No lambda has finite cross-validated deviance; check predictions or use a positive mu_floor.",
          call. = FALSE)
   lambda_1se <- NULL
   if (do_cv) {
-    choice <- L0glm_cv_choice(cv, lambda_grid, iteration_grid)
-    cv$maxit <- iteration_grid
-    lambda_1se <- lambda_grid[choice$one_se]
+    cv_best <- which.min(cv$mean)
+    within_1se <- is.finite(cv$mean) & cv$mean <= cv$mean[cv_best] + cv$se[cv_best]
+    lambda_1se <- max(lambda_grid[within_1se])
   }
   metric_rows <- vector("list", length(lambda_grid))     # each element numeric
   coefficients <- vector("list", length(lambda_grid))
@@ -642,11 +611,9 @@ l0glmTune <- function(X, y,
   for (i in seq_along(lambda_grid)) {
     lambda <- lambda_grid[i]
     
-    iterations <- iteration_grid[i]
-    fit <- if (iterations == max(maxits) && lambda == lambda_reference) preset_fit else
-      if (iterations == max(maxits) && lambda == lambda_max) endpoint_fit else
-        fit_lambda(lambda, if (length(maxits) > 1L) iterations else NULL)
-    if (do_cv && i == choice$one_se) fit_1se <- fit
+    fit <- if (lambda == lambda_reference) preset_fit else
+      if (lambda == lambda_max) endpoint_fit else fit_lambda(lambda)
+    if (do_cv && lambda == lambda_1se) fit_1se <- fit
     
     beta_hat <- fit$coefficients                           # p x m (sparse)
     coefficients[[i]] <- beta_hat
@@ -668,7 +635,6 @@ l0glmTune <- function(X, y,
   metrics <- as.data.frame(do.call(rbind, metric_rows),
                            check.names = FALSE,
                            stringsAsFactors = FALSE)
-  if (length(maxits) > 1L) metrics$maxit <- iteration_grid
   if (do_cv) {
     metrics$cv_deviance <- cv$mean
     metrics$cv_se <- cv$se
@@ -690,9 +656,6 @@ l0glmTune <- function(X, y,
   if (printbest)
     message(sprintf("Best lambda by %s = %.3g",
                     if (do_cv) paste0(cv$nfolds, "-fold CV") else toupper(tune), lambda_best))
-  if (printbest && length(maxits) > 1L)
-    message("Best maxit = ", iteration_grid[best.index])
-  if (length(maxits) > 1L) args$maxit <- iteration_grid[best.index]
   
   ## ----------------------------------------------------------------- return
   result <- list(tune         = tune,
@@ -705,9 +668,6 @@ l0glmTune <- function(X, y,
        metrics      = metrics,
        lambda_best  = lambda_best, # 
        lambda_1se   = lambda_1se,
-       maxit_best   = iteration_grid[best.index],
-       maxit_1se    = if (do_cv) iteration_grid[choice$one_se] else NULL,
-       maxits       = maxits,
        lambda_preset    = lambda_preset, # lambda preset expected to optimise chosen IC
        lambda_reference = lambda_reference,
        lambdas      = lambda_grid,

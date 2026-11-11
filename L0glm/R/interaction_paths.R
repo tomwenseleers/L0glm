@@ -54,10 +54,8 @@ L0glm_interaction_finish_path <- function(result,models,X,p,truth,mu_floor) {
     if(is.null(s$support_size_estimated))s$support_size_estimated <- s$selected
     s
   })
-  iterations <- result$metrics$maxit
   result$metrics <- do.call(rbind,lapply(seq_along(models),function(i)
     cbind(lambda=result$lambdas[i],scores[[i]])))
-  if(!is.null(iterations))result$metrics$maxit <- iterations
   if(result$tune=='cv') {
     result$metrics$cv_deviance <- result$cv$mean
     result$metrics$cv_se <- result$cv$se
@@ -66,12 +64,7 @@ L0glm_interaction_finish_path <- function(result,models,X,p,truth,mu_floor) {
   result$metrics$tuning_score <- selection
   best <- which.min(selection)
   result$lambda_best <- result$lambdas[best];result$fit_best <- models[[best]]
-  if(!is.null(result$lambda_1se)) {
-    one <- match(result$lambda_1se,result$lambdas)
-    if(!is.null(iterations))one <- which(result$lambdas==result$lambda_1se &
-      iterations==result$maxit_1se)[1L]
-    result$fit_1se <- models[[one]]
-  }
+  if(!is.null(result$lambda_1se))result$fit_1se <- models[[match(result$lambda_1se,result$lambdas)]]
   result$coefficients <- lapply(models,coef);result$p <- full
   result$preprocessing <- result$fit_best$preprocessing
   result$interaction_terms <- terms

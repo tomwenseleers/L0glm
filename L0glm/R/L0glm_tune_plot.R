@@ -3,15 +3,6 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   metrics <- object$metrics
   cv <- object$cv
   do_cv <- object$tune == "cv"
-  joint <- do_cv && length(object$maxits) > 1L
-  all_cv <- cv
-  if (joint) {
-    path <- which(metrics$maxit == object$maxit_best)
-    metrics <- metrics[path, , drop = FALSE]
-    object$coefficients <- object$coefficients[path]
-    cv$mean <- cv$mean[path]
-    cv$se <- cv$se[path]
-  }
   has_1se <- do_cv && !is.null(object$lambda_1se)
   has_preset <- is.finite(object$lambda_preset) && object$lambda_preset > 0
   x <- log10(metrics$lambda)
@@ -79,40 +70,20 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
     graphics::abline(h = as.vector(coefs.true[coefs.true != 0]),
                      col = scales::alpha("blue", 0.1))
   }
-  annotate(if (joint) paste0("Regularisation path (maxit = ", object$maxit_best, ")") else
-    "Regularisation path")
+  annotate("Regularisation path")
 
   selection <- if (do_cv) metrics$cv_deviance else
     if (!is.null(object$kind)) metrics$tuning_score else metrics[[object$tune]]
   finite <- is.finite(selection)
   limits <- if (do_cv) range(cv$mean[finite] - cv$se[finite],
                              cv$mean[finite] + cv$se[finite]) else NULL
-  if (joint) {
-    finite_all <- is.finite(all_cv$mean) & is.finite(all_cv$se)
-    limits <- range(all_cv$mean[finite_all] - all_cv$se[finite_all],
-                    all_cv$mean[finite_all] + all_cv$se[finite_all])
-  }
-  graphics::plot(x, replace(selection, !finite, NA_real_), type = if (joint) "n" else "b", pch = 19,
+  graphics::plot(x, replace(selection, !finite, NA_real_), type = "b", pch = 19,
     xlim = xlim,
     log = if (!do_cv && any(finite) && all(selection[finite] > 0)) "y" else "",
     ylim = if (any(finite)) limits else c(0, 1),
     xlab = expression(log[10](lambda)),
     ylab = if (do_cv) "Mean held-out deviance" else toupper(object$tune))
-  if (joint) {
-    iteration_colors <- grDevices::hcl.colors(length(object$maxits), "Dark 3")
-    for (j in seq_along(object$maxits)) {
-      keep <- all_cv$maxit == object$maxits[j] & is.finite(all_cv$mean)
-      xx <- log10(all_cv$lambda[keep])
-      yy <- all_cv$mean[keep]
-      ee <- all_cv$se[keep]
-      graphics::lines(xx, yy, type = "b", pch = 19, col = iteration_colors[j])
-      graphics::segments(xx, yy - ee, xx, yy + ee, col = iteration_colors[j])
-    }
-    graphics::legend("bottomleft", paste("maxit =", object$maxits),
-      col = iteration_colors, lty = 1, pch = 19, bty = "o", box.col = NA,
-      bg = "white", cex = .7, ncol = ceiling(length(object$maxits)/4))
-  }
-  if (do_cv && !joint) {
+  if (do_cv) {
     bars <- finite & is.finite(cv$se) & cv$se > 0
     if (any(bars)) {
       lower <- cv$mean[bars] - cv$se[bars]
@@ -128,17 +99,11 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
     graphics::abline(v = log10(object$lambda_1se), col = "royalblue3", lty = 4)
   if (has_preset)
     graphics::abline(v = log10(object$lambda_preset), col = "red", lty = 3)
-  if (joint) {
-    chosen <- c(which.min(all_cv$mean), which(all_cv$lambda == object$lambda_1se &
-      all_cv$maxit == object$maxit_1se)[1L])
-    graphics::points(log10(all_cv$lambda[chosen]), all_cv$mean[chosen], pch = 21,
-      bg = "white", col = c("red", "royalblue3"), cex = 1.2)
-  }
   if (do_cv)
     graphics::legend("top", c("Best CV", if (has_1se) "CV 1-SE", if (has_preset) "GIC preset"),
       col = c("red", if (has_1se) "royalblue3", if (has_preset) "red"),
       lty = c(2, if (has_1se) 4, if (has_preset) 3),
-      bty = "o", box.col = NA, bg = "white", cex = 0.8, ncol = if (joint) 3L else 1L)
+      bty = "o", box.col = NA, bg = "white", cex = 0.8)
   annotate(if (do_cv) paste0(cv$nfolds, "-fold cross-validation") else
              paste("Tuning -", toupper(object$tune)))
   if (any(!finite)) graphics::mtext("Non-finite scores omitted", side = 3,

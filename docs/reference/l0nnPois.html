@@ -314,8 +314,10 @@ disable penalization. Predictor groups use dimension-based preset costs;
 see <a href="predictor_groups.html">predictor_groups</a> for numeric group costs and multipliers.
 Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
-In <code><a href="l0glmFit.html">l0glmFit()</a></code>, an omitted penalty is <code>"gic"</code> with
-screening and 1 otherwise. <code>l0nnPois()</code> defaults to <code>"gic"</code>.</p></dd>
+In <code><a href="l0glmFit.html">l0glmFit()</a></code>, an omitted penalty is <code>"gic"</code> with screening,
+<code>"bic"</code> for eligible wide multitask Gaussian fits
+(<a href="dispersion_calibration.html">dispersion_calibration</a>), and 1 otherwise. <code>l0nnPois()</code>
+defaults to <code>"gic"</code>.</p></dd>
 
 
 <dt id="arg-intercept">intercept<a class="anchor" aria-label="anchor" href="#arg-intercept"></a></dt>

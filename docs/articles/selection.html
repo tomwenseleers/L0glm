@@ -244,34 +244,27 @@ SE of the minimum. The GIC preset remains available through
 <code>lambda_preset</code> for comparison.</p>
 </div>
 <div class="section level2">
-<h2 id="joint-tuning-of-lambda-and-iteration-count">Joint tuning of lambda and iteration count<a class="anchor" aria-label="anchor" href="#joint-tuning-of-lambda-and-iteration-count"></a>
+<h2 id="validation-based-stopping">Validation-based stopping<a class="anchor" aria-label="anchor" href="#validation-based-stopping"></a>
 </h2>
-<p>For prediction, early adaptive-ridge estimates can retain useful weak
-effects. Pass a vector to <code>maxit</code> to select both the penalty
-and the IRLS iteration limit by CV. Each pair starts independently, and
-every candidate uses the same folds. Screening, normalization and noise
-estimation use only the training rows.</p>
+<p>An independent validation set can choose a predictive checkpoint
+during a single fit. The training data determine the coefficients,
+screening and noise parameters. Validation deviance is monitored after
+each iteration; the fit restores its best checkpoint after a short
+patience period without improvement. This is available for ordinary
+GLMs, negative binomial, multinomial and Cox models, and for native
+nonnegative identity-link Poisson fits.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">joint</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmTune.html">l0glmTune</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>, tune<span class="op">=</span><span class="st">"cv"</span>, foldid<span class="op">=</span><span class="va">folds</span>,</span>
-<span>  nlambda<span class="op">=</span><span class="fl">10L</span>, prop_range<span class="op">=</span><span class="fl">.25</span>, maxit<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span>, <span class="fl">25</span><span class="op">)</span>,</span>
-<span>  relaxed<span class="op">=</span><span class="cn">FALSE</span>, local.search<span class="op">=</span><span class="cn">FALSE</span>, plot<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda<span class="op">=</span><span class="va">joint</span><span class="op">$</span><span class="va">lambda_best</span>, maxit<span class="op">=</span><span class="va">joint</span><span class="op">$</span><span class="va">maxit_best</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>lambda<span class="op">=</span><span class="va">joint</span><span class="op">$</span><span class="va">lambda_1se</span>, maxit<span class="op">=</span><span class="va">joint</span><span class="op">$</span><span class="va">maxit_1se</span><span class="op">)</span></span>
-<span><span class="va">joint</span><span class="op">$</span><span class="va">metrics</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lambda"</span>, <span class="st">"maxit"</span>, <span class="st">"cv_deviance"</span>, <span class="st">"cv_se"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">joint</span><span class="op">$</span><span class="va">fit_best</span>, <span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, , drop<span class="op">=</span><span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p>The selection minimizes mean held-out deviance over all evaluated
-<span class="math inline">(\lambda,t)</span> pairs. The coefficient
-panel shows the path at <code>maxit_best</code>; the CV panel shows a
-curve and standard-error bars for each iteration limit. The one-SE model
-uses the largest eligible lambda, then the largest iteration limit among
-ties at that lambda. <code>fit_best</code> and <code>fit_1se</code> use
-all observations with their respective selected settings.</p>
-<p>A scalar <code>maxit</code> keeps ordinary lambda tuning. The limit
-applies per IRLS pass, so grouped passes, relaxed refits and local
-support refinement are separate stages. Disabling relaxation and local
-search lets CV compare the early shrinkage estimates directly. For
-shorter fits, the upper grid endpoint can retain nonzero coefficients;
-the zero endpoint is checked at the largest iteration limit.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">11</span><span class="op">)</span></span>
+<span><span class="va">training</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="fl">.8</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="va">training</span>, <span class="op">]</span>, <span class="va">y</span><span class="op">[</span><span class="va">training</span><span class="op">]</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, maxit<span class="op">=</span><span class="fl">100L</span>, local.search<span class="op">=</span><span class="cn">FALSE</span>,</span>
+<span>  validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">X</span><span class="op">[</span><span class="op">-</span><span class="va">training</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y</span><span class="op">[</span><span class="op">-</span><span class="va">training</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">selection</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"best_iteration"</span>, <span class="st">"iterations"</span>, <span class="st">"deviance"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p><code>maxit</code> is a single iteration limit.
+<code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> searches lambda at that limit; validation
+stopping lets the predictive fit choose how far to proceed. Keep a
+separate test set for an independent assessment of predictive
+accuracy.</p>
 </div>
 <div class="section level2">
 <h2 id="optional-local-support-refinement">Optional local support refinement<a class="anchor" aria-label="anchor" href="#optional-local-support-refinement"></a>

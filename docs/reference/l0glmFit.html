@@ -344,10 +344,8 @@ channel; fixed and estimated channels may be mixed. Zero and non-finite
 values are invalid. Poisson, binomial and negative binomial with known
 \(\theta\) have dispersion fixed at 1; other fixed-scale families respect
 <code>family$dispersion</code>. See Details for initialization and updating.
-Automatic grouped multichannel fits also check whether independent-channel
-calibration can improve an inflated noise estimate; see
-<a href="dispersion_calibration.html">dispersion_calibration</a>. Single-channel fits retain the guarded pilot
-and bounded updates. Supplied dispersion values bypass this calibration.</p></dd>
+See <a href="dispersion_calibration.html">dispersion_calibration</a> for the Pearson update and the
+additional pilots for eligible Gaussian and negative-binomial fits.</p></dd>
 
 
 <dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
@@ -430,8 +428,10 @@ disable penalization. Predictor groups use dimension-based preset costs;
 see <a href="predictor_groups.html">predictor_groups</a> for numeric group costs and multipliers.
 Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
-In <code>l0glmFit()</code>, an omitted penalty is <code>"gic"</code> with
-screening and 1 otherwise. <code><a href="l0nnPois.html">l0nnPois()</a></code> defaults to <code>"gic"</code>.</p></dd>
+In <code>l0glmFit()</code>, an omitted penalty is <code>"gic"</code> with screening,
+<code>"bic"</code> for eligible wide multitask Gaussian fits
+(<a href="dispersion_calibration.html">dispersion_calibration</a>), and 1 otherwise. <code><a href="l0nnPois.html">l0nnPois()</a></code>
+defaults to <code>"gic"</code>.</p></dd>
 
 
 <dt id="arg-intercept">intercept<a class="anchor" aria-label="anchor" href="#arg-intercept"></a></dt>
@@ -755,9 +755,10 @@ whether outcome channels run concurrently.</p></dd>
 
 <dt id="arg-control-family">control.family<a class="anchor" aria-label="anchor" href="#arg-control-family"></a></dt>
 <dd><p>Family-specific IRLS controls. A named list with
-<code>dispersion.calibration="auto"</code> for guarded cross-channel noise
-calibration; <code>FALSE</code> disables it and <code>TRUE</code> requests a check
-without the automatic width/inflation trigger. See <a href="dispersion_calibration.html">dispersion_calibration</a>.
+<code>dispersion.calibration="auto"</code> or <code>TRUE</code> for the eligible
+dispersion and shape pilots. <code>FALSE</code> uses the ordinary initializers.
+All three settings use the same updates during fitting. See
+<a href="dispersion_calibration.html">dispersion_calibration</a>.
 Other controls are
 <code>multinomial="irls"</code> (joint block IRLS) or <code>"bound"</code>
 (upper curvature bound), <code>theta.min=1e-6</code>, <code>theta.max=1e7</code>,
@@ -932,10 +933,9 @@ and flags distinguishing estimated from fixed dispersion for ordinary GLMs.
 Special families retain their nuisance-parameter information separately.</p></dd>
 
 <dt><code>dispersionCalibration</code></dt>
-<dd><p>when applicable, cross-channel calibration
-diagnostics: whether a repair was applied, fallback reason, calibrated noise,
-channel folds, calibration supports, residual degrees of freedom and timings.
-See <a href="dispersion_calibration.html">dispersion_calibration</a>.</p></dd>
+<dd><p>when applicable, the pilot method,
+initial and calibrated noise values, reliability flags and, for Gaussian
+fits, pilot residual degrees of freedom. See <a href="dispersion_calibration.html">dispersion_calibration</a>.</p></dd>
 
 <dt><code>initialDispersion</code>, <code>initialTheta</code></dt>
 <dd><p>initial noise parameters
@@ -1138,15 +1138,11 @@ consecutive updates with unchanged support and a target within 1% of the
 current dispersion, it is held fixed until the support changes again.
 A later support loss reactivates these bounded updates in the same IRLS loop.
 Each subsequent grouped selection pass may update it again on the new support.
-A relaxed refit holds dispersion fixed during its coefficient solves and
-reports the final Pearson residual scale for estimated channels; user-supplied
-positive dispersions remain fixed throughout.
-Eligible grouped multichannel fits can then calibrate unknown noise using
-predictor sets selected from independent channel subsets. A successful repair
-holds the calibrated values fixed in its final fit while retaining their
-data-estimated parameter counts. Unreliable calibration retains the original
-fit. See <a href="dispersion_calibration.html">dispersion_calibration</a> for the variance-function calculation,
-negative-binomial shape, assumptions and single-channel fallback.</p>
+A relaxed refit uses the full Pearson residual target with positive
+residual degrees of freedom. Supplied positive dispersions stay fixed.
+Model likelihood and information criteria use the fitted dispersion.
+See <a href="dispersion_calibration.html">dispersion_calibration</a> for the Gaussian and negative-binomial
+starting values and the bounded shape equation.</p>
 <p>These inexpensive Pearson moment updates use the active coefficient count
 to approximate residual degrees of freedom. In nearly interpolating models,
 little residual information is available to estimate noise; if the active

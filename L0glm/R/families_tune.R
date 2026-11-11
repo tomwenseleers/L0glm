@@ -1,7 +1,7 @@
 # Extended-family tuning is isolated from the ordinary-GLM path. Each fit starts
 # independently, including theta and preprocessing inside every training fold.
 L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
-                        screen.path, reference, maxit = NULL) {
+                        screen.path, reference) {
   response <- args$y
   mass <- switch(kind, nb = rowSums(args$weights) * ncol(response)/ncol(args$weights),
     multinomial = args$weights[, 1L] * rowSums(response),
@@ -18,7 +18,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
   lambda_train <- outer(lambdas, fractions)
   loss <- matrix(NA_real_, length(lambdas), K)
   starts <- pilots <- preprocessing <- theta <- vector("list", K)
-  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference, maxit)
+  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
   candidates <- vector("list", K)
   interaction_terms <- if(!is.null(args$interactions) && args$interactions>0L)vector('list',K)else NULL
   preclustering <- if (isTRUE(args$precluster)) vector("list", K) else NULL
@@ -32,7 +32,6 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
     starts[k] <- list(a$start); pilots[k] <- list(initialization$pilot)
     theta[[k]] <- vector("list", length(lambdas))
     for (i in path_order) {
-      if (!is.null(maxit)) a$maxit <- maxit[i]
       fit <- tryCatch(do.call(l0glmFit, c(a, list(lambda = lambda_train[i, k]))),
         error = function(e) stop(sprintf("CV fold %d, lambda %.4g: %s", k, lambdas[i], conditionMessage(e)), call. = FALSE))
       if (i == path_order[1L]) {
@@ -76,7 +75,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
 
 L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
                             nlambda, prop_range, coefs.true, printbest, plot,
-                            mu_floor, nfolds, foldid, lambda_min, start, dots, screen.path, maxits) {
+                            mu_floor, nfolds, foldid, lambda_min, start, dots, screen.path) {
   if (length(nlambda) != 1L || !is.finite(nlambda) || nlambda < 2 || nlambda != floor(nlambda) ||
       length(prop_range) != 1L || !is.finite(prop_range) || prop_range <= 0 || prop_range > 1 ||
       length(lambda_min) != 1L || !is.finite(lambda_min) || lambda_min <= 0 ||
@@ -111,11 +110,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     max(lambda_min, presetLambda("gic", max(1, p), max(2, n_ic)))) else NULL
   initialization <- if (pilot_start) L0glm_pilot_start(args, pilot_bounds) else list(start = start, pilot = NULL)
   args$start <- initialization$start
-  fit_lambda <- function(lambda, iterations = NULL) {
-    a <- args
-    if (!is.null(iterations)) a$maxit <- iterations
-    do.call(l0glmFit, c(a, list(lambda = lambda)))
-  }
+  fit_lambda <- function(lambda) do.call(l0glmFit, c(args, list(lambda = lambda)))
   preset_fit <- fit_lambda(reference)
   args <- L0glm_precluster_reuse(args, preset_fit)
   args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
@@ -148,14 +143,11 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   if (nlambda > 2L || low == r) grid[which.min(abs(log10(grid) - r))] <- reference
   if (prop_range == 1) grid[c(1L, length(grid))] <- c(lambda_min, lambda_max)
   if (anyDuplicated(grid)) stop("prop_range is too small for distinct lambda values.", call. = FALSE)
-  iteration_grid <- rep(maxits, each = length(grid))
-  if (length(maxits) > 1L) grid <- rep(grid, length(maxits))
   cv <- if (do_cv) L0glm_ext_cv(cv_args, grid, foldid, kind, mu_floor, pilot_bounds,
-    screen.path, reference, if (length(maxits) > 1L) iteration_grid else NULL) else NULL
+    screen.path, reference) else NULL
   if (do_cv && !any(is.finite(cv$mean))) stop("No finite CV score.", call. = FALSE)
-  choice <- if (do_cv) L0glm_cv_choice(cv, grid, iteration_grid) else NULL
-  if (do_cv) cv$maxit <- iteration_grid
-  lambda_1se <- if (do_cv) grid[choice$one_se] else NULL
+  cv_best <- if (do_cv) which.min(cv$mean) else NULL
+  lambda_1se <- if (do_cv) max(grid[is.finite(cv$mean) & cv$mean <= cv$mean[cv_best] + cv$se[cv_best]]) else NULL
   rows <- coefficients <- theta <- vector("list", length(grid))
   interactions <- !is.null(dots$interactions) && dots$interactions>0L
   models <- if(interactions)vector('list',length(grid))else NULL
@@ -164,10 +156,7 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
   # Keep coefficient paths, not one large design matrix for every lambda.
   for (i in seq_along(grid)) {
     lambda <- grid[i]
-    iterations <- iteration_grid[i]
-    fit <- if (iterations == max(maxits) && lambda == reference) preset_fit else
-      if (iterations == max(maxits) && lambda == lambda_max) endpoint else
-        fit_lambda(lambda, if (length(maxits) > 1L) iterations else NULL)
+    fit <- if (lambda == reference) preset_fit else if (lambda == lambda_max) endpoint else fit_lambda(lambda)
     if(interactions)models[[i]] <- fit
     met <- l0glmMetrics(fit, mu_floor = mu_floor)
     met$support_size_estimated <- met$selected
@@ -189,19 +178,15 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     rows[[i]] <- cbind(lambda = lambda, met)
     coefficients[[i]] <- fit$coefficients; theta[i] <- list(fit$theta)
     if (is.finite(score) && score < best_score) { best <- i; best_score <- score; fit_best <- fit }
-    if (do_cv && i == choice$one_se) fit_1se <- fit
+    if (do_cv && lambda == lambda_1se) fit_1se <- fit
   }
   metrics <- do.call(rbind, rows)
-  if (length(maxits) > 1L) metrics$maxit <- iteration_grid
   if (do_cv) { metrics$cv_deviance <- cv$mean; metrics$cv_se <- cv$se }
   if (is.na(best)) stop("No finite tuning score.", call. = FALSE)
-  if (length(maxits) > 1L) args$maxit <- iteration_grid[best]
   result <- list(tune = tune, kind = kind, always.include = preset_fit$always.include, p = p,
     start = initialization$start, pilot = initialization$pilot,
     fit_args = args[setdiff(names(args), c("X", "y"))], preprocessing = fit_best$preprocessing,
     metrics = metrics, lambda_best = grid[best], lambda_1se = lambda_1se,
-    maxit_best = iteration_grid[best],
-    maxit_1se = if (do_cv) iteration_grid[choice$one_se] else NULL, maxits = maxits,
     lambda_preset = lambda_preset, lambda_reference = reference, lambdas = grid,
     lambda_min = lambda_min, lambda_max = lambda_max, lambda_nonzero = lambda_nonzero,
     endpoint_zero = is_zero(endpoint), mu_floor = mu_floor,
@@ -215,7 +200,6 @@ L0glm_ext_tune <- function(X, y, family, weights, offset, dispersion, tune,
     result <- aligned$result;coefs.true <- aligned$truth
   }
   if (printbest) message(sprintf("Best lambda by %s = %.4g", toupper(tune), grid[best]))
-  if (printbest && length(maxits) > 1L) message("Best maxit = ", result$maxit_best)
   if (plot) L0glm_plot_tuning(result, coefs.true)
   result
 }

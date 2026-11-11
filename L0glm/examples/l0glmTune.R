@@ -4,19 +4,6 @@
 # for plots and recovery metrics, never for fitting or choosing lambda.
 old_par <- par(mgp=c(2, .7, 0))
 
-# Joint lambda and iteration tuning can retain useful weak effects for prediction.
-# Every candidate uses the same five folds and independent starting values.
-set.seed(17)
-X_predict <- matrix(rnorm(120 * 20), 120, 20)
-y_predict <- as.numeric(X_predict[, 1:6] %*% rep(.4, 6)) + rnorm(120)
-joint_cv <- l0glmTune(X_predict, y_predict, family=gaussian(), tune="cv",
-  nfolds=5, nlambda=3, prop_range=.25, maxit=c(1:10, 25),
-  relaxed=FALSE, local.search=FALSE, parallelize=FALSE, plot=TRUE)
-c(lambda=joint_cv$lambda_best, maxit=joint_cv$maxit_best)
-c(lambda=joint_cv$lambda_1se, maxit=joint_cv$maxit_1se)
-joint_cv$metrics[c("lambda", "maxit", "cv_deviance", "cv_se")]
-predict(joint_cv$fit_best, X_predict[1:3, , drop=FALSE])
-
 # Single-channel Poisson deconvolution.
 # Zoom around the GIC preset; use prop_range=1 for the full lambda range.
 single <- simul(method=2, n=500, p=500, s=.1, seed=2)
