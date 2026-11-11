@@ -2,7 +2,7 @@
 % Please edit documentation in R/L0glm_3_tune.R
 \name{l0glmTune}
 \alias{l0glmTune}
-\title{Tunes the regularisation parameter lambda of an L0glm fit}
+\title{Tune regularization and IRLS iteration limits}
 \usage{
 l0glmTune(
   X,
@@ -23,6 +23,7 @@ l0glmTune(
   lambda_min = 2,
   start = NULL,
   ...,
+  maxit = 25L,
   screen.path = c("independent", "preset"),
   local.search = "auto",
   control.local = list()
@@ -245,6 +246,15 @@ units.
 See Special families below and \code{\link{l0glmFit}} for support restrictions
 and further details of these arguments.}
 
+\item{maxit}{Positive integer IRLS iteration limit (default 25). With
+\code{tune="cv"}, a vector such as \code{c(1:10, 25)} jointly
+tunes lambda and this limit. Every pair starts independently and uses the
+same folds and lambda grid. The limit applies to each IRLS pass, as in
+\code{l0glmFit()}; grouped passes, relaxed refits and local search remain
+separate fitting stages. To select an early adaptive-ridge estimate for
+prediction, use \code{relaxed=FALSE} and \code{local.search=FALSE}.
+A scalar retains ordinary lambda tuning. Multiple limits require CV.}
+
 \item{screen.path}{With ISIS screening, use \code{"independent"} (default)
 to search at each lambda or \code{"preset"} to reuse the candidate pool
 from the preset fit. Each lambda estimates its own coefficients and can
@@ -278,8 +288,12 @@ result$fit_args))} reproduces \code{fit_best} with the same package version.}
 \item{\code{preprocessing}}{training preprocessing of the full-data fit.}
 \item{\code{metrics}}{a data frame containing metrics evaluating the models fit
 with different regularization parameters; CV adds \code{cv_deviance} and
-\code{cv_se}.}
+\code{cv_se}. Joint iteration tuning adds \code{maxit}, with one row per
+lambda/iteration pair.}
 \item{\code{lambda_best}}{best lambda by the chosen selection method.}
+\item{\code{maxit_best}, \code{maxit_1se}}{iteration limits corresponding to
+\code{fit_best} and \code{fit_1se}; the latter is \code{NULL} for IC tuning.}
+\item{\code{maxits}}{sorted unique iteration limits evaluated.}
 \item{\code{lambda_1se}}{largest evaluated lambda within one SE of the
 minimum CV mean deviance, using the SE at that minimum; \code{NULL} for
 information-criterion tuning.}
@@ -287,7 +301,8 @@ information-criterion tuning.}
 to approximately optimise the chosen criterion, or GIC when tuning by CV.}
 \item{\code{lambda_reference}}{positive grid reference; normally identical
 to \code{lambda_preset}, but at least \code{lambda_min}.}
-\item{\code{lambdas}}{a vector containing all the lambdas that were used.}
+\item{\code{lambdas}}{evaluated lambdas in the same order as \code{metrics}
+and \code{coefficients}; repeated for each limit in joint iteration tuning.}
 \item{\code{lambda_min}}{lower endpoint of the full numerical path.}
 \item{\code{lambda_max}}{upper endpoint of the full numerical path.}
 \item{\code{lambda_nonzero}}{nonzero lower bracket for the refined endpoint,
@@ -308,13 +323,17 @@ matrix, \code{foldid}, \code{nfolds}, \code{fold_weights}, and the training
 penalties \code{lambda_train}. \code{fit_best}, \code{fit_1se} and \code{coefficients} are
 full-data fits, not individual fold models. Also contains each fold's
 \code{starts}, \code{pilots} and training \code{preprocessing}.}
+The vector \code{cv$maxit} gives the iteration limit for each row of
+\code{cv$deviance}. Both selected fits use all observations. To reproduce
+\code{fit_1se}, use \code{lambda_1se} and replace \code{fit_args$maxit}
+by \code{maxit_1se}; \code{fit_args} already reproduces \code{fit_best}.
 
 When channel preclustering is requested, \code{preclustering} retains the
 full-data partition and cut diagnostics, and \code{cv$preclustering} retains
 the corresponding training-only diagnostics for every fold.
 }
 \description{
-Tunes the lambda parameter for the \code{\link{l0glmFit}}
+Tunes lambda and optionally the IRLS iteration limit for \code{\link{l0glmFit}}
 function. It uses a sequence of penalty parameter values (\code{lambda}) to fit 
 L0-penalized GLMs, and selects the best lambda by an information criterion
 or held-out deviance from cross-validation. It can handle multiple output variables (channels),
@@ -451,6 +470,18 @@ and NB uses deviance per weighted response. The common lambda grid uses
 full data. An independent test set or nested CV can assess prediction error
 after tuning.
 }
+
+With a vector of \code{maxit} values, the largest limit constructs the common
+lambda grid and the shared preset screening pool when requested. Every
+training fold estimates its own preprocessing, dispersion, pilot starts,
+screening candidates and channel partition. The CV minimum selects a
+lambda/iteration pair. The one-SE choice is the largest lambda whose mean
+deviance lies within one SE of the global minimum; ties at that lambda use
+the largest iteration limit. This tie rule is deterministic and does not
+require support sizes to vary monotonically with the iteration limit.
+The coefficient panel shows the path at \code{maxit_best}, and the CV panel
+shows a curve for each limit. The zero-support endpoint is verified at the
+largest limit; shorter fits can retain nonzero coefficients there.
 }
 \examples{
 # Small versions of the l0glmFit deconvolution and Gaussian ISIS examples.
@@ -458,6 +489,19 @@ after tuning.
 # nlambda and nfolds for a finer search. True coefficients are only used
 # for plots and recovery metrics, never for fitting or choosing lambda.
 old_par <- par(mgp=c(2, .7, 0))
+
+# Joint lambda and iteration tuning can retain useful weak effects for prediction.
+# Every candidate uses the same five folds and independent starting values.
+set.seed(17)
+X_predict <- matrix(rnorm(120 * 20), 120, 20)
+y_predict <- as.numeric(X_predict[, 1:6] \%*\% rep(.4, 6)) + rnorm(120)
+joint_cv <- l0glmTune(X_predict, y_predict, family=gaussian(), tune="cv",
+  nfolds=5, nlambda=3, prop_range=.25, maxit=c(1:10, 25),
+  relaxed=FALSE, local.search=FALSE, parallelize=FALSE, plot=TRUE)
+c(lambda=joint_cv$lambda_best, maxit=joint_cv$maxit_best)
+c(lambda=joint_cv$lambda_1se, maxit=joint_cv$maxit_1se)
+joint_cv$metrics[c("lambda", "maxit", "cv_deviance", "cv_se")]
+predict(joint_cv$fit_best, X_predict[1:3, , drop=FALSE])
 
 # Single-channel Poisson deconvolution.
 # Zoom around the GIC preset; use prop_range=1 for the full lambda range.

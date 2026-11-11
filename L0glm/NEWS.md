@@ -46,7 +46,8 @@
   Poisson, tuning and CV. Prediction supports shared or channel-specific offsets.
 
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,
-  one-standard-error models and coefficient-path plots. `presetLambda()`
+  optional joint CV of lambda and IRLS iteration limits, full-data minimum
+  and one-standard-error models, and coefficient-path plots. `presetLambda()`
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
   Ordinary and special-family IC paths use the parameter counts reported by
   the S3 criterion methods, including multinomial zero-sum constraints.

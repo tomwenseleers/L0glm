@@ -98,6 +98,37 @@ predict(cv$fit_1se, X[1:5, , drop=FALSE], type="response")
 lambda with mean deviance within one SE of the minimum. The GIC preset remains
 available through `lambda_preset` for comparison.
 
+## Joint tuning of lambda and iteration count
+
+For prediction, early adaptive-ridge estimates can retain useful weak effects.
+Pass a vector to `maxit` to select both the penalty and the IRLS iteration limit
+by CV. Each pair starts independently, and every candidate uses the same folds.
+Screening, normalization and noise estimation use only the training rows.
+
+```{r joint-cv, eval=FALSE}
+joint <- l0glmTune(X, y, family=gaussian(), tune="cv", foldid=folds,
+  nlambda=10L, prop_range=.25, maxit=c(1:10, 25),
+  relaxed=FALSE, local.search=FALSE, plot=TRUE)
+c(lambda=joint$lambda_best, maxit=joint$maxit_best)
+c(lambda=joint$lambda_1se, maxit=joint$maxit_1se)
+joint$metrics[c("lambda", "maxit", "cv_deviance", "cv_se")]
+predict(joint$fit_best, X[1:5, , drop=FALSE])
+```
+
+The selection minimizes mean held-out deviance over all evaluated
+\((\lambda,t)\) pairs. The coefficient panel shows the path at `maxit_best`;
+the CV panel shows a curve and standard-error bars for each iteration limit.
+The one-SE model uses the largest eligible lambda, then the largest iteration
+limit among ties at that lambda. `fit_best` and `fit_1se` use all observations
+with their respective selected settings.
+
+A scalar `maxit` keeps ordinary lambda tuning. The limit applies per IRLS
+pass, so grouped passes, relaxed refits and local support refinement are
+separate stages. Disabling relaxation and local search lets CV compare the
+early shrinkage estimates directly. For shorter fits, the upper grid endpoint
+can retain nonzero coefficients; the zero endpoint is checked at the largest
+iteration limit.
+
 ## Optional local support refinement
 
 Set `local.search=TRUE` to test additions, deletions and small predictor

@@ -214,6 +214,11 @@ coef(cv$fit_1se)
 predict(cv$fit_best, newdata=multi$X, type="response")
 ```
 
+For prediction-oriented CV, pass `maxit=c(1:10, 25)`,
+`relaxed=FALSE` and `local.search=FALSE` to jointly select lambda and the
+IRLS iteration limit. The selected limits are returned as `maxit_best` and
+`maxit_1se`; see [joint tuning](https://tomwenseleers.github.io/L0glm/articles/selection.html#joint-tuning-of-lambda-and-iteration-count).
+
 CV returns `lambda_best`, `lambda_1se`, `fit_best` and `fit_1se`, with both
 models refitted on all observations. Plots show coefficient paths and mean
 validation deviance ± one standard error.

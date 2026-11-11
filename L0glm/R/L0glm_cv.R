@@ -46,7 +46,7 @@ L0glm_cv_folds <- function(weights, nfolds, foldid) {
 # needs lambda * (training weight / full weight) on the fitter's sum-loss scale.
 L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor,
                                 pilot_bounds = NULL, screen.path = "independent",
-                                reference = NULL) {
+                                reference = NULL, maxit = NULL) {
   nfolds <- max(foldid)
   fold_weights <- vapply(seq_len(nfolds), function(k)
     sum(args$weights[foldid == k, , drop = FALSE]), numeric(1))
@@ -56,7 +56,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   deviance <- matrix(NA_real_, length(lambdas), nfolds,
                      dimnames = list(NULL, paste0("Fold", seq_len(nfolds))))
   starts <- pilots <- preprocessing <- vector("list", nfolds)
-  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference)
+  path_order <- L0glm_cv_path_order(lambdas, screen.path, reference, maxit)
   candidates <- vector("list", nfolds)
   interaction_terms <- if(!is.null(args$interactions) && args$interactions>0L)vector('list',nfolds)else NULL
   preclustering <- if (isTRUE(args$precluster)) vector("list", nfolds) else NULL
@@ -79,6 +79,7 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     yy <- args$y[validation, , drop = FALSE]
     off <- L0glm_observation_broadcast(args$offset[validation, , drop = FALSE])
     for (i in path_order) {
+      if (!is.null(maxit)) train_args$maxit <- maxit[i]
       fit <- tryCatch(do.call(l0glmFit, c(train_args, list(lambda = fold_lambdas[i, k]))),
         error = function(e) stop(sprintf("CV fit failed in fold %d at lambda %.4g: %s",
                                          k, lambdas[i], conditionMessage(e)), call. = FALSE))
@@ -129,9 +130,33 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
   result
 }
 
-L0glm_cv_path_order <- function(lambdas, screen.path, reference) {
+L0glm_cv_path_order <- function(lambdas, screen.path, reference, maxit = NULL) {
   indices <- seq_along(lambdas)
   if (screen.path != "preset") return(indices)
   anchor <- which.min(abs(log(lambdas) - log(reference)))
+  if (!is.null(maxit)) {
+    tied <- which(lambdas == lambdas[anchor])
+    anchor <- tied[which.max(maxit[tied])]
+  }
   c(anchor, indices[-anchor])
+}
+
+# A scalar follows the ordinary path; a vector defines a CV candidate grid.
+L0glm_tune_iterations <- function(maxit, do_cv) {
+  if (!is.numeric(maxit) || !length(maxit) || anyNA(maxit) ||
+      any(!is.finite(maxit) | maxit < 1 | maxit > .Machine$integer.max | maxit != floor(maxit)))
+    stop("maxit must contain positive finite integers.", call. = FALSE)
+  maxit <- sort(unique(as.integer(maxit)))
+  if (length(maxit) > 1L && !do_cv)
+    stop('A vector of maxit values requires tune = "cv".', call. = FALSE)
+  maxit
+}
+
+# The one-SE rule keeps its largest-lambda meaning. Resolve ties at that
+# lambda by the largest iteration cap; it is a deterministic convention.
+L0glm_cv_choice <- function(cv, lambdas, maxit) {
+  best <- which.min(cv$mean)
+  eligible <- which(is.finite(cv$mean) & cv$mean <= cv$mean[best] + cv$se[best])
+  list(best = best,
+       one_se = eligible[order(-lambdas[eligible], -maxit[eligible])][1L])
 }
