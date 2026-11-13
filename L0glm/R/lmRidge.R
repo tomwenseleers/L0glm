@@ -75,9 +75,11 @@
 #'   systems or Jacobi SVD for sparse systems).
 #'
 #'   LSCG uses Eigen's diagonal least-squares preconditioner without additional
-#'   external column equilibration. A finite approximate LSCG solution is
-#'   retained with a warning if the requested tolerance is not reached; a
-#'   missing or nonfinite solution triggers the Cholesky fallback. OSQP uses
+#'   external column equilibration. The default LSCG tolerance is \code{1e-12}.
+#'   Its normal-equation residual is recomputed before accepting a solution.
+#'   If the requested accuracy is not reached, or coefficients are nonfinite,
+#'   a warning is issued and the working system is solved by Cholesky LLT.
+#'   This fallback forms normal equations for rectangular working designs. OSQP uses
 #'   the original coefficient coordinates and reports a warning when its
 #'   requested accuracy is not reached. On a failed OSQP setup or solve,
 #'   an infeasible/nonconvex status, or an invalid returned coefficient vector,
@@ -353,17 +355,7 @@ lmridge.glmnet <- function(Xw, yw,
 }
 
 
-lscg_coefficients <- function(solution, iteration) {
-  coefs <- solution$coefficients
-  if (is.null(coefs) || any(!is.finite(coefs))) return(NULL)
-  if (!isTRUE(solution$status)) {
-    warning(sprintf(paste0("LSCG did not converge to the requested accuracy in IRLS iteration %s; ",
-                           "using its finite approximate solution."), iteration), call. = FALSE)
-  }
-  as.vector(coefs)
-}
-
-eigen_ridge_solve <- function(A, b, start, control, iteration) {
+eigen_ridge_solve <- function(A, b, start, control, iteration, least_squares = FALSE) {
   sparse <- issparse(A)
   A <- if (sparse) as(as(A, "generalMatrix"), "CsparseMatrix") else as.matrix(A)
   b <- as.matrix(b)
@@ -390,9 +382,18 @@ eigen_ridge_solve <- function(A, b, start, control, iteration) {
       solve_dense_SVD(A, b, svd = control$svd, precond = control$precond,
                       threshold = control$threshold),
     stop("Invalid method."))
-  if (method == "LSCG") return(lscg_coefficients(solution, iteration))
   coefs <- solution$coefficients
-  if (is.null(coefs) || any(!is.finite(coefs))) return(NULL)
+  valid <- !is.null(coefs) && all(is.finite(coefs))
+  if (method == "LSCG" && (!isTRUE(solution$status) || !valid)) {
+    warning(sprintf(paste0("LSCG did not reach the requested accuracy in IRLS iteration %s; ",
+                           "using Cholesky LLT as fallback."), iteration), call. = FALSE)
+    if (least_squares) {
+      b <- Matrix::crossprod(A, b)
+      A <- Matrix::crossprod(A)
+    }
+    return(eigen_ridge_solve(A, b, start, controlSolverGen("eigen", 1L), iteration))
+  }
+  if (!valid) return(NULL)
   if (method == "CG" && !isTRUE(solution$status)) {
     warning(sprintf(paste0("CG did not converge to the requested accuracy in IRLS iteration %s; ",
                            "using its finite approximate solution."), iteration), call. = FALSE)
@@ -484,7 +485,8 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
         if(is.matrix(A))diag(A) <- diag(A)+lambdas else A <- A+Matrix::Diagonal(x=lambdas)
       }
     }
-    coefs <- eigen_ridge_solve(A, rhs, start, control.solver, iteration)
+    coefs <- eigen_ridge_solve(A, rhs, start, control.solver, iteration,
+                               least_squares = rectangular)
   }
   if (is.null(coefs) && control.solver$method != "chol") {
     warning(sprintf("eigen %s solver failed in IRLS iteration %s, trying Cholesky LLT solver as fallback.",

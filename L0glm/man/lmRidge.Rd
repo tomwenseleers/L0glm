@@ -118,9 +118,11 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   systems or Jacobi SVD for sparse systems).
 
   LSCG uses Eigen's diagonal least-squares preconditioner without additional
-  external column equilibration. A finite approximate LSCG solution is
-  retained with a warning if the requested tolerance is not reached; a
-  missing or nonfinite solution triggers the Cholesky fallback. OSQP uses
+  external column equilibration. The default LSCG tolerance is \code{1e-12}.
+  Its normal-equation residual is recomputed before accepting a solution.
+  If the requested accuracy is not reached, or coefficients are nonfinite,
+  a warning is issued and the working system is solved by Cholesky LLT.
+  This fallback forms normal equations for rectangular working designs. OSQP uses
   the original coefficient coordinates and reports a warning when its
   requested accuracy is not reached. On a failed OSQP setup or solve,
   an infeasible/nonconvex status, or an invalid returned coefficient vector,

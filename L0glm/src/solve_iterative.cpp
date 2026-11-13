@@ -30,17 +30,36 @@ SolverResult cg_solve(SparseRef A,DenseRef b,DenseRef start,double tol,int maxit
   return iterative_solve<Eigen::ConjugateGradient<SparseMatrix<double>,
     Eigen::Lower|Eigen::Upper,Eigen::DiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
 }
+// Check the actual normal residual, including every right-hand side, rather
+// than accepting only the residual updated recursively by CGLS.
+template<class Matrix> SolverResult check_lscg(SolverResult result,const Matrix& A,DenseRef b,double tol) {
+  if(!result.finite())return result;
+  Eigen::MatrixXd residual=A.transpose()*(b-A*result.coefficients),rhs=A.transpose()*b;
+  result.error=0;
+  for(int j=0;j<b.cols();++j) {
+    double numerator=residual.col(j).norm(),denominator=rhs.col(j).norm();
+    double error=denominator>0?numerator/denominator:
+      (numerator==0?0:std::numeric_limits<double>::infinity());
+    if(!std::isfinite(error)){result.error=std::numeric_limits<double>::infinity();break;}
+    result.error=std::max(result.error,error);
+  }
+  result.success=result.error<=(tol>0?tol:std::numeric_limits<double>::epsilon());
+  result.info=result.success?Eigen::Success:Eigen::NoConvergence;
+  return result;
+}
 SolverResult lscg_solve(DenseRef A,DenseRef b,DenseRef start,double tol,int maxit,unsigned int precond) {
-  if(precond==0)return iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
-    Eigen::IdentityPreconditioner>>(A,b,start,tol,maxit);
-  return iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
-    Eigen::LeastSquareDiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
+  auto result=precond==0? iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
+    Eigen::IdentityPreconditioner>>(A,b,start,tol,maxit):
+    iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::MatrixXd,
+      Eigen::LeastSquareDiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
+  return check_lscg(std::move(result),A,b,tol);
 }
 SolverResult lscg_solve(SparseRef A,DenseRef b,DenseRef start,double tol,int maxit,unsigned int precond) {
-  if(precond==0)return iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
-    Eigen::IdentityPreconditioner>>(A,b,start,tol,maxit);
-  return iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
-    Eigen::LeastSquareDiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
+  auto result=precond==0?iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
+    Eigen::IdentityPreconditioner>>(A,b,start,tol,maxit):
+    iterative_solve<Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>,
+      Eigen::LeastSquareDiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
+  return check_lscg(std::move(result),A,b,tol);
 }
 }
 // [[Rcpp::export]]

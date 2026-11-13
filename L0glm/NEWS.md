@@ -83,6 +83,9 @@
 * CG defaults to incomplete Cholesky preconditioning for dense and sparse
   systems. `controlSolverGen("eigen", 3L, precond=1L)` selects diagonal
   preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.
+* LSCG checks its actual normal-equation residual, defaults to a tolerance
+  of `1e-12` and uses Cholesky LLT when the requested accuracy is not reached.
+  R and native drivers share this policy for dense, sparse and Woodbury systems.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening

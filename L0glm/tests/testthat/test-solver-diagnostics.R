@@ -15,7 +15,7 @@ test_that("LSCG solves finite ridge systems with nonzero prior means", {
   }
 })
 
-test_that("LSCG iteration limits retain finite iterates and report nonconvergence", {
+test_that("LSCG iteration limits trigger an accurate Cholesky fallback", {
   set.seed(716)
   X <- matrix(rnorm(80 * 20), 80, 20)
   y <- rnorm(80)
@@ -23,14 +23,14 @@ test_that("LSCG iteration limits retain finite iterates and report nonconvergenc
     estimate <- lmRidge(X, y, lambdas = rep(1, 20), method = 4L,
                         control.solver = controlSolverGen("eigen", method = 4L,
                                                             tol = 1e-14, maxit = 1L)),
-    "LSCG did not converge.*finite approximate solution"
+    "LSCG did not reach.*Cholesky LLT"
   )
   native <- solve_dense_LSCG(A=rbind(X,diag(20)),b=matrix(c(y,rep(0,20))),
                              x0=matrix(0,20),tol=1e-14,maxit=1L,precond=TRUE)
-  expect_equal(estimate,as.numeric(native$coefficients),tolerance=1e-12)
+  expect_equal(estimate,lmRidge(X,y,lambdas=rep(1,20)),tolerance=1e-12)
   expect_false(isTRUE(native$status))
-  expect_null(lscg_coefficients(list(status=FALSE,coefficients=NULL),1))
-  expect_null(lscg_coefficients(list(status=FALSE,coefficients=c(1,Inf)),1))
+  expect_true(all(is.finite(native$coefficients)))
+  expect_false(isTRUE(all.equal(estimate,as.numeric(native$coefficients),tolerance=1e-6)))
 })
 
 test_that("OSQP preserves bounds and nonzero ridge targets in original coordinates", {

@@ -20,9 +20,9 @@ test_that("profiling preserves dense or sparse observation-space systems", {
   X <- cbind(1, matrix(seq_len(8 * 31) %% 17, 8, 31))
   original <- eigen_ridge_solve
   seen <- list()
-  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration) {
+  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration, ...) {
     seen[[length(seen) + 1L]] <<- list(dim = dim(A), sparse = issparse(A), rhs = dim(b))
-    original(A, b, start, control, iteration)
+    original(A, b, start, control, iteration, ...)
   })
   for (sparse in c(FALSE, TRUE)) {
     lmRidge(Matrix::Matrix(X, sparse = sparse), 1:8, lambdas = c(0, rep(1, 31)))
@@ -85,9 +85,9 @@ test_that("sparse Woodbury crossproducts discard zero-scaled nuisance entries", 
   y <- seq_len(n) %% 7
   original <- eigen_ridge_solve
   seen <- NULL
-  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration) {
+  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration, ...) {
     seen <<- A
-    original(A, b, start, control, iteration)
+    original(A, b, start, control, iteration, ...)
   })
   beta <- eigen_ridge_dual(X, y, penalty, rep(0, ncol(X)),
                           controlSolverGen("eigen", 1L), 1L)

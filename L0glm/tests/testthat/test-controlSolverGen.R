@@ -83,7 +83,7 @@ test_that("controlSolverGen handles all methods for eigen solver", {
       expect_equal(params$precond, 2L)
     } else if (method == 4) {
       expect_equal(params$method, "LSCG")
-      expect_equal(params$tol, 1E-7)
+      expect_equal(params$tol, 1E-12)
       expect_true(is.null(params$rowaug) || params$rowaug)
       expect_equal(params$precond, 1L)
     } else if (method == 5) {
@@ -157,7 +157,7 @@ test_that("controlSolverGen exposes CG preconditioners with incomplete Cholesky 
 
 test_that("an explicit CG tolerance overrides its more accurate default", {
   expect_equal(controlSolverGen("eigen", 3L, tol = 1e-6)$tol, 1e-6)
-  expect_equal(controlSolverGen("eigen", 4L)$tol, 1e-7)
+  expect_equal(controlSolverGen("eigen", 4L)$tol, 1e-12)
 })
 
 test_that("controlSolverGen handles invalid methods for eigen solver", {

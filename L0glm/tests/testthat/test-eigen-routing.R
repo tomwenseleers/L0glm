@@ -29,10 +29,10 @@ test_that("wide systems use the requested kernel in observation coordinates", {
   X <- matrix(rnorm(8 * 31), 8, 31)
   original <- eigen_ridge_solve
   calls <- list()
-  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration) {
+  local_mocked_bindings(eigen_ridge_solve = function(A, b, start, control, iteration, ...) {
     calls[[length(calls) + 1L]] <<- list(dim = dim(A), sparse = issparse(A),
                                        method = control$method, start = length(start))
-    original(A, b, start, control, iteration)
+    original(A, b, start, control, iteration, ...)
   })
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
     beta <- lmRidge(Matrix::Matrix(X, sparse = sparse), rnorm(8),

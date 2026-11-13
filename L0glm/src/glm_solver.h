@@ -41,7 +41,7 @@ template<class Matrix> bool eigen_coefficients(const Matrix& A,const MatrixXd& b
   const MatrixXd& start,const SolverControl& control,State& state,MatrixXd& answer,
   bool least_squares=false) {
   auto result=eigen_solve(A,b,start,control);
-  if(result.finite()) {
+  if(result.finite() && (result.success || control.method!=2)) {
     if(!result.success && (control.method==1||control.method==2))++state.solver_inexact;
     answer=result.coefficients;return true;
   }
