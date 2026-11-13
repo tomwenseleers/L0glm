@@ -80,6 +80,9 @@
   All Eigen solvers share their kernels with the R interfaces and parallelize
   channels through OpenMP. OSQP and `bigGlm` use the native driver with their
   R-facing solver interfaces and independent workers for concurrent channels.
+* CG defaults to incomplete Cholesky preconditioning for dense and sparse
+  systems. `controlSolverGen("eigen", 3L, precond=1L)` selects diagonal
+  preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening

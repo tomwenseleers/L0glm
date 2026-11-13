@@ -2,9 +2,22 @@
 #include "solver_native.h"
 // Solver wrappers adapted from nk027/sanic.
 namespace L0glm {
+// Keep the dense CG operator; only the IC factorization needs sparse storage.
+// Preserve every nonzero entry, including small adaptive-ridge diagonals.
+class DenseIncompleteCholesky : public Eigen::IncompleteCholesky<double> {
+public:
+  template<class Matrix> DenseIncompleteCholesky& compute(const Matrix& A) {
+    Eigen::SparseMatrix<double> sparse=A.sparseView(0.,0.);
+    Eigen::IncompleteCholesky<double>::compute(sparse);
+    return *this;
+  }
+};
+
 SolverResult cg_solve(DenseRef A,DenseRef b,DenseRef start,double tol,int maxit,unsigned int precond) {
   if(precond==0)return iterative_solve<Eigen::ConjugateGradient<Eigen::MatrixXd,
     Eigen::Lower|Eigen::Upper,Eigen::IdentityPreconditioner>>(A,b,start,tol,maxit);
+  if(precond==2)return iterative_solve<Eigen::ConjugateGradient<Eigen::MatrixXd,
+    Eigen::Lower|Eigen::Upper,DenseIncompleteCholesky>>(A,b,start,tol,maxit);
   return iterative_solve<Eigen::ConjugateGradient<Eigen::MatrixXd,
     Eigen::Lower|Eigen::Upper,Eigen::DiagonalPreconditioner<double>>>(A,b,start,tol,maxit);
 }
@@ -45,13 +58,13 @@ Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd &A,const Eigen::MatrixXd b,con
 }
 // [[Rcpp::export]]
 Rcpp::List solve_sparse_CG(Eigen::MappedSparseMatrix<double> &A,Eigen::Map<Eigen::MatrixXd> b,
-    Eigen::Map<Eigen::MatrixXd> x0,double tol=0,int maxit=0,unsigned int precond=1) {
-  if(precond>2)Rcpp::warning("No valid preconditioner requested -- using default.");
+    Eigen::Map<Eigen::MatrixXd> x0,double tol=0,int maxit=0,unsigned int precond=2) {
+  if(precond>2){Rcpp::warning("No valid preconditioner requested -- using incomplete Cholesky.");precond=2;}
   return L0glm::cg_solve(L0glm::SparseRef(A),L0glm::DenseRef(b),L0glm::DenseRef(x0),tol,maxit,precond).list(1);
 }
 // [[Rcpp::export]]
 Rcpp::List solve_dense_CG(Eigen::Map<Eigen::MatrixXd> &A,Eigen::Map<Eigen::MatrixXd> b,
-    Eigen::Map<Eigen::MatrixXd> x0,double tol=0,int maxit=0,unsigned int precond=1) {
-  if(precond>2)Rcpp::warning("No valid preconditioner requested for dense CG -- using default.");
+    Eigen::Map<Eigen::MatrixXd> x0,double tol=0,int maxit=0,unsigned int precond=2) {
+  if(precond>2){Rcpp::warning("No valid preconditioner requested -- using incomplete Cholesky.");precond=2;}
   return L0glm::cg_solve(L0glm::DenseRef(A),L0glm::DenseRef(b),L0glm::DenseRef(x0),tol,maxit,precond).list(1);
 }

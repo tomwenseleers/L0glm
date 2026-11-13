@@ -68,8 +68,9 @@
 #'
 #'   The \code{method} parameter specifies the specific method to be used when
 #'   the \code{"eigen"} solver is used (1=Cholesky LLT, 2=Cholesky LDLT,
-#'   3=CG with incomplete Cholesky preconditioning for sparse systems or
-#'   diagonal preconditioning for dense systems, 4=LSCG with diagonal
+#'   3=CG with incomplete Cholesky preconditioning by default (dense and sparse),
+#'   with diagonal preconditioning available through \code{controlSolverGen},
+#'   4=LSCG with diagonal
 #'   least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
 #'   systems or Jacobi SVD for sparse systems).
 #'

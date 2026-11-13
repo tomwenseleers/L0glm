@@ -339,7 +339,9 @@
 #'   \code{2L} = Cholesky LDLT solver, with sparse AMD ordering by default
 #'
 #'   \code{3L} = Preconditioned Conjugate Gradient (PCG) with incomplete
-#'   Cholesky preconditioner
+#'   Cholesky preconditioner by default for dense and sparse systems.
+#'   Use \code{controlSolverGen("eigen", 3L, precond=1L)} for diagonal
+#'   preconditioning.
 #'
 #'   \code{4L} = Least Squares Conjugate Gradient (LSCG) with least squares
 #'   diagonal preconditioner

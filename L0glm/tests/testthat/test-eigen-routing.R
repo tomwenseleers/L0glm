@@ -57,20 +57,39 @@ test_that("unpenalized wide solves return the minimum norm solution", {
   }
 })
 
-test_that("dense CG uses its diagonal preconditioner without sparse conversion", {
+test_that("dense and sparse CG honor the selected preconditioner", {
   set.seed(1605)
   X <- matrix(rnorm(80 * 25), 80, 25)
   A <- crossprod(X) + diag(25)
   b <- matrix(rnorm(25))
-  for (limit in c(1L, 100L)) {
-    a <- solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12, maxit = limit, precond = 1L)
-    b2 <- solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12, maxit = limit, precond = 2L)
-    expect_equal(a, b2)
+  sparse <- as(as(Matrix::Matrix(A, sparse = TRUE), "generalMatrix"), "CsparseMatrix")
+  original <- A + 0
+  for (precond in 0:2) for (limit in c(1L, 100L)) {
+    dense <- solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12,
+                            maxit = limit, precond = precond)
+    sparse_fit <- solve_sparse_CG(sparse, b, matrix(0, 25), tol = 1e-12,
+                                  maxit = limit, precond = precond)
+    expect_identical(dense$status, sparse_fit$status)
+    expect_equal(dense$coefficients, sparse_fit$coefficients, tolerance = 1e-10)
+    if (limit == 100L) {
+      expect_true(dense$status)
+      expect_lt(sqrt(sum((A %*% dense$coefficients - b)^2) / sum(b^2)), 1e-12)
+    }
   }
+  diagonal <- solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12, maxit = 1L, precond = 1L)
+  ic <- solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12, maxit = 1L, precond = 2L)
+  expect_false(diagonal$status)
+  expect_true(ic$status)
+  expect_equal(ic$coefficients, solve(A, b), tolerance = 1e-10)
+  expect_equal(solve_dense_CG(A, b, matrix(0, 25), tol = 1e-12, maxit = 1L), ic)
+  expect_equal(solve_sparse_CG(sparse, b, matrix(0, 25), tol = 1e-12, maxit = 1L), ic,
+               tolerance = 1e-10)
+  expect_identical(A, original)
 })
 
 test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
-  for (sparse in c(FALSE, TRUE)) {
+  coefficients <- list()
+  for (sparse in c(FALSE, TRUE)) for (native in c(FALSE, TRUE)) {
     sim <- simul(method = 1L, n = 500L, p = 500L, sparse = sparse,
                  seed = 1L, options = list(sd_noise = 1))
     lambda <- presetLambda("gic", 500, 500)
@@ -78,7 +97,7 @@ test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
     fits <- lapply(c(1L, 3L), function(method)
       l0glmFit(sim$X, sim$y, family = gaussian(), start = start, lambda = lambda,
         nonnegative = TRUE,  parallelize = FALSE,
-        openmp = FALSE, method = method))
+        openmp = native, ncores = 1L, method = method))
     reference <- get.metrics(fits[[1L]]$coefficients, sim$X, sim$y,
                              family = gaussian(), beta_true = sim$beta_true)
     actual <- get.metrics(fits[[2L]]$coefficients, sim$X, sim$y,
@@ -87,5 +106,10 @@ test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
                      as.numeric(fits[[2L]]$coefficients) != 0)
     expect_lt(abs(actual$deviance_true - reference$deviance_true) / 500, 5e-5)
     expect_equal(actual$R2_coefs, reference$R2_coefs, tolerance = 1e-5)
+    coefficients[[length(coefficients) + 1L]] <- as.numeric(fits[[2L]]$coefficients)
+  }
+  for (beta in coefficients[-1L]) {
+    expect_identical(beta != 0, coefficients[[1L]] != 0)
+    expect_equal(beta, coefficients[[1L]], tolerance = 1e-5)
   }
 })

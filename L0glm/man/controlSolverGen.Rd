@@ -27,8 +27,7 @@ controlSolverGen(
 
 \item{method}{Solver-specific method. For \code{solver="eigen"}, the exposed methods are
 \code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
-incomplete Cholesky preconditioning for sparse systems or diagonal
-preconditioning for dense systems, \code{4L}=LSCG with least-squares
+incomplete Cholesky preconditioning by default, \code{4L}=LSCG with least-squares
 diagonal preconditioner, \code{5L}=column-pivoted QR, and
 \code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.}
 
@@ -47,11 +46,14 @@ coordinates; no additional external column equilibration is performed.}
 
 \item{block_size}{Optional block size used by solvers that support blocked updates.}
 
-\item{precond}{Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
-Eigen iterative methods this is fixed by the chosen method: method
-\code{3L} uses incomplete Cholesky CG for sparse systems and diagonal CG
-for dense systems; method \code{4L} uses LSCG with
-least-squares diagonal preconditioning.}
+\item{precond}{For Eigen CG (\code{method=3L}), \code{0L} selects no preconditioning,
+\code{1L} diagonal preconditioning and \code{2L} incomplete Cholesky
+(the default for both dense and sparse systems). Dense CG retains its dense
+matrix operator; only the incomplete Cholesky preconditioner uses a sparse
+copy containing every nonzero entry. For fully populated systems this
+factorization can cost more time and memory than diagonal preconditioning.
+LSCG (\code{method=4L}) uses least-squares diagonal preconditioning.
+This argument also specifies the preconditioner code for Eigen Jacobi SVD.}
 
 \item{pivot}{Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
 are method-specific.}
@@ -91,6 +93,11 @@ solver (\code{controlSolverGen}) & allows fine control over its options.
 }
 \examples{
 controlSolverGen(solver="osqp")
+
+# CG uses incomplete Cholesky for both dense and sparse systems.
+controlSolverGen("eigen", method=3L)
+# Diagonal preconditioning is a cheaper alternative for fully dense systems.
+controlSolverGen("eigen", method=3L, precond=1L)
 }
 \seealso{
 \code{\link{l0glmFit}}

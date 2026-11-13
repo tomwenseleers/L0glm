@@ -138,10 +138,17 @@ test_that("controlSolverGen exposes only column-pivoted QR", {
   expect_equal(qr_forced$pivot, 1L)
 })
 
-test_that("controlSolverGen exposes only selected iterative preconditioners", {
-  cg_forced <- controlSolverGen(solver = "eigen", method = 3L, precond = 1L)
-  expect_equal(cg_forced$method, "CG")
-  expect_equal(cg_forced$precond, 2L)
+test_that("controlSolverGen exposes CG preconditioners with incomplete Cholesky default", {
+  expect_identical(controlSolverGen("eigen", 3L)$precond, 2L)
+  for (precond in 0:2) {
+    cg <- controlSolverGen("eigen", 3L, precond = precond)
+    expect_equal(cg$method, "CG")
+    expect_identical(cg$precond, precond)
+  }
+  for (invalid in list(-1L, 3L, 1.5, NA_real_, Inf, numeric(), c(1L, 2L), "2")) {
+    expect_error(controlSolverGen("eigen", 3L, precond = invalid),
+                 "Eigen CG precond must be")
+  }
 
   lscg_forced <- controlSolverGen(solver = "eigen", method = 4L, precond = 0L)
   expect_equal(lscg_forced$method, "LSCG")

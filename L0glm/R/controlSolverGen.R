@@ -12,8 +12,7 @@
 #' @param method
 #' Solver-specific method. For \code{solver="eigen"}, the exposed methods are
 #' \code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
-#' incomplete Cholesky preconditioning for sparse systems or diagonal
-#' preconditioning for dense systems, \code{4L}=LSCG with least-squares
+#' incomplete Cholesky preconditioning by default, \code{4L}=LSCG with least-squares
 #' diagonal preconditioner, \code{5L}=column-pivoted QR, and
 #' \code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.
 #' @param maxit
@@ -32,11 +31,14 @@
 #' @param block_size
 #' Optional block size used by solvers that support blocked updates.
 #' @param precond
-#' Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
-#' Eigen iterative methods this is fixed by the chosen method: method
-#' \code{3L} uses incomplete Cholesky CG for sparse systems and diagonal CG
-#' for dense systems; method \code{4L} uses LSCG with
-#' least-squares diagonal preconditioning.
+#' For Eigen CG (\code{method=3L}), \code{0L} selects no preconditioning,
+#' \code{1L} diagonal preconditioning and \code{2L} incomplete Cholesky
+#' (the default for both dense and sparse systems). Dense CG retains its dense
+#' matrix operator; only the incomplete Cholesky preconditioner uses a sparse
+#' copy containing every nonzero entry. For fully populated systems this
+#' factorization can cost more time and memory than diagonal preconditioning.
+#' LSCG (\code{method=4L}) uses least-squares diagonal preconditioning.
+#' This argument also specifies the preconditioner code for Eigen Jacobi SVD.
 #' @param pivot
 #' Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
 #' are method-specific.
@@ -177,10 +179,11 @@ controlSolverGen <- function(solver,
       if (tol_was_null) tol <- 1e-10
       # Resolve the storage-dependent default in lmridge.eigen.
       if(is.null(maxit)) maxit <- 5000L
-      if(!is.null(precond) && as.integer(precond[1L]) != 2L && verbose) {
-        print("Eigen CG method 3 uses incomplete Cholesky preconditioning; precond was set to 2.")
+      if(is.null(precond)) precond <- 2L
+      if(!is.numeric(precond) || length(precond) != 1L ||
+         !is.finite(precond) || !precond %in% 0:2) {
+        stop("Eigen CG precond must be 0 (none), 1 (diagonal), or 2 (incomplete Cholesky).")
       }
-      precond <- 2L
       l <- list(method = "CG", tol = tol, maxit = as.integer(maxit), precond = as.integer(precond), rowaug = rowaug)
     } else if (method == 4){
       if(is.null(rowaug)) rowaug <- TRUE
