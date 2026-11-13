@@ -78,6 +78,13 @@
 #' \eqn{G\beta=h}, this setting uses CG directly on \eqn{G}, avoiding a second
 #' squaring of the condition number.
 #'
+#' Before each incomplete-Cholesky LSCG solve, the previous-solution guess is
+#' compared with zero. Zero is used when
+#' \eqn{\|A^T(b-A\beta_{\mathrm{previous}})\|_2 > \|A^T b\|_2}.
+#' This guards against poorly scaled inner guesses when adaptive ridge weights
+#' change. The public starting coefficients still determine model initialization
+#' and feature eligibility; penalties and prior means retain their specified values.
+#'
 #' Each LSCG right-hand side is checked using the freshly computed relative
 #' normal residual \eqn{\|A^T(b-A\beta)\|_2/\|A^T b\|_2}. If recursive
 #' convergence fails this check, incomplete-Cholesky LSCG can restart once from

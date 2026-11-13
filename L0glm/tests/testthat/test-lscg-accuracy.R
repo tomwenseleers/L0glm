@@ -142,3 +142,28 @@ test_that("hybrid CG failures retain the strict LSCG fallback on quadratic syste
     expect_equal(actual, as.numeric(solve(G, b)), tolerance=1e-10)
   }
 })
+
+test_that("native multichannel Poisson fits avoid the extreme-ridge fallback", {
+  sim <- simulateSpikeTrain(n=500L,k=50L,m=4L,mean_beta=2000,
+    family=poisson("identity"),sd_noise=1,sparse=FALSE,clip=TRUE,seed=1L)
+  Y <- as.matrix(sim$y);lambda <- presetLambda("GIC",500L,500L)
+  start <- vapply(seq_len(ncol(Y)),function(j)init_coefs(
+    sim$X,Y[,j],mu=pmax(Y[,j],.1),family=sim$family,lambda=lambda),numeric(500L))
+  common <- list(X=sim$X,y=sim$y,family=sim$family,start=start,lambda=lambda,
+    nonnegative=TRUE,grouped=TRUE,parallelize=FALSE,openmp=TRUE,ncores=1L)
+  reference <- do.call(l0glmFit,c(common,list(method=1L)))
+  original <- glm_native_cpp;counts <- integer()
+  actual <- expect_no_warning(with_mocked_bindings(
+    do.call(l0glmFit,c(common,list(method=4L))),glm_native_cpp=function(...) {
+      z <- original(...);counts <<- c(counts,z$native_stats$solver_fallbacks);z
+    },.package="L0glm"))
+  expect_gt(length(counts),0L)
+  expect_equal(sum(counts),0)
+  expect_identical(as.numeric(coef(actual))!=0,as.numeric(coef(reference))!=0)
+  expect_equal(coef(actual),coef(reference),tolerance=1e-9)
+  expect_equal(GIC(actual),GIC(reference),tolerance=1e-10)
+  metric <- l0glmMetrics(actual,beta_true=sim$beta_true)
+  truth <- l0glmMetrics(reference,beta_true=sim$beta_true)
+  for(name in c("F1_score","MCC","within_row_F1_score","within_row_MCC"))
+    expect_identical(metric[[name]],truth[[name]])
+})

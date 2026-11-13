@@ -85,10 +85,13 @@
   preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.
 * LSCG defaults to incomplete Cholesky of the working normal matrix and a
   tolerance of `1e-12`; `controlSolverGen("eigen", 4L, precond=1L)` selects
-  diagonal preconditioning. It checks every right-hand side using a fresh
-  residual and can reuse its factorization for one restart within the iteration
-  limit. Already formed Gram and Woodbury systems use CG directly. Inexact or
-  nonfinite solutions use Cholesky LLT in both R and native drivers.
+  diagonal preconditioning. An inner-guess guard chooses zero when its normal
+  residual is smaller than that of the previous working solution, protecting
+  solves with large changes in adaptive ridge weights. It checks every
+  right-hand side using a fresh residual and can reuse its factorization for
+  one restart within the iteration limit. Already formed Gram and Woodbury
+  systems use CG directly. Inexact or nonfinite solutions use Cholesky LLT in
+  both R and native drivers.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening

@@ -346,8 +346,8 @@
 #'   \code{4L} = Least Squares Conjugate Gradient (LSCG) with incomplete Cholesky
 #'   preconditioning by default. Use \code{controlSolverGen("eigen", 4L, precond=1L)}
 #'   for least-squares diagonal preconditioning. Already formed Gram or Woodbury
-#'   systems use CG with incomplete Cholesky. Checked residuals, one bounded
-#'   LSCG restart and a Cholesky LLT fallback protect numerical accuracy; see
+#'   systems use CG with incomplete Cholesky. Checked inner guesses and residuals,
+#'   one bounded LSCG restart and a Cholesky LLT fallback protect numerical accuracy; see
 #'   \code{\link{controlSolverGen}}.
 #'
 #'   \code{5L} = Column-pivoted QR solver. Sparse QR uses numerical column

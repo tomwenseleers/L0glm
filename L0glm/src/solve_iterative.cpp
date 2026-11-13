@@ -64,6 +64,11 @@ template<class Preconditioner,class Matrix> SolverResult checked_lscg(
   for(int j=0;j<b.cols();++j) {
     Eigen::VectorXd guess=start.col(j),x;
     const double denominator=(A.transpose()*b.col(j)).norm();
+    // Changing ridge weights can make a previous solution a harmful guess.
+    // Prefer zero when it has a smaller normal residual for this new system.
+    if constexpr(std::is_same_v<Preconditioner,LeastSquaresIncompleteCholesky>) {
+      if((A.transpose()*(b.col(j)-A*guess)).norm()>denominator)guess.setZero();
+    }
     double error=0;int used=0;
     for(int attempt=0;;++attempt) {
       const int remaining=budget-used;solver.setMaxIterations(remaining);

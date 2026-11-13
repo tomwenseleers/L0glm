@@ -121,6 +121,10 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   least-squares diagonal preconditioning available through
   \code{controlSolverGen("eigen", 4L, precond=1L)}. Already formed Gram and
   Woodbury systems use CG with the same incomplete Cholesky setting.
+  Incomplete-Cholesky LSCG uses zero as its inner starting guess when this
+  gives a smaller normal-equation residual than the supplied guess. This
+  protects solves with large changes in ridge weights while retaining the
+  specified penalties and prior means.
   The default LSCG tolerance is \code{1e-12}. Its normal-equation residual is
   recomputed before accepting a solution; one restart with the existing
   factorization is allowed within the iteration limit for incomplete Cholesky.

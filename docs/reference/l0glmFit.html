@@ -529,8 +529,8 @@ Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
 <p><code>4L</code> = Least Squares Conjugate Gradient (LSCG) with incomplete Cholesky
   preconditioning by default. Use <code>controlSolverGen("eigen", 4L, precond=1L)</code>
   for least-squares diagonal preconditioning. Already formed Gram or Woodbury
-  systems use CG with incomplete Cholesky. Checked residuals, one bounded
-  LSCG restart and a Cholesky LLT fallback protect numerical accuracy; see
+  systems use CG with incomplete Cholesky. Checked inner guesses and residuals,
+  one bounded LSCG restart and a Cholesky LLT fallback protect numerical accuracy; see
   <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p>
 <p><code>5L</code> = Column-pivoted QR solver. Sparse QR uses numerical column
   pivoting and COLAMD fill-reducing ordering by default.</p>

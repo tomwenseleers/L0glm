@@ -190,6 +190,12 @@ preconditioner. Every nonzero normal-matrix entry is retained when constructing
 the sparse preconditioner. For already formed Gram or Woodbury systems
 \(G\beta=h\), this setting uses CG directly on \(G\), avoiding a second
 squaring of the condition number.</p>
+<p>Before each incomplete-Cholesky LSCG solve, the previous-solution guess is
+compared with zero. Zero is used when
+\(\|A^T(b-A\beta_{\mathrm{previous}})\|_2 &gt; \|A^T b\|_2\).
+This guards against poorly scaled inner guesses when adaptive ridge weights
+change. The public starting coefficients still determine model initialization
+and feature eligibility; penalties and prior means retain their specified values.</p>
 <p>Each LSCG right-hand side is checked using the freshly computed relative
 normal residual \(\|A^T(b-A\beta)\|_2/\|A^T b\|_2\). If recursive
 convergence fails this check, incomplete-Cholesky LSCG can restart once from
