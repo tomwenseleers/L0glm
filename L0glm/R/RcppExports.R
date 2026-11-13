@@ -125,11 +125,11 @@ solve_dense_chol <- function(A, b, pivot = 1L) {
     .Call('_L0glm_solve_dense_chol', PACKAGE = 'L0glm', A, b, pivot)
 }
 
-solve_sparse_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
+solve_sparse_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 2L) {
     .Call('_L0glm_solve_sparse_LSCG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 
-solve_dense_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 1L) {
+solve_dense_LSCG <- function(A, b, x0, tol = 0, maxit = 0L, precond = 2L) {
     .Call('_L0glm_solve_dense_LSCG', PACKAGE = 'L0glm', A, b, x0, tol, maxit, precond)
 }
 

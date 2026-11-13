@@ -22,7 +22,7 @@ test_that("LSCG iteration limits trigger an accurate Cholesky fallback", {
   expect_warning(
     estimate <- lmRidge(X, y, lambdas = rep(1, 20), method = 4L,
                         control.solver = controlSolverGen("eigen", method = 4L,
-                                                            tol = 1e-14, maxit = 1L)),
+                                                            tol = 1e-14, maxit = 1L, precond = 1L)),
     "LSCG did not reach.*Cholesky LLT"
   )
   native <- solve_dense_LSCG(A=rbind(X,diag(20)),b=matrix(c(y,rep(0,20))),

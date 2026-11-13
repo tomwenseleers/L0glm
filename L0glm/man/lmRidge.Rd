@@ -113,13 +113,17 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   the \code{"eigen"} solver is used (1=Cholesky LLT, 2=Cholesky LDLT,
   3=CG with incomplete Cholesky preconditioning by default (dense and sparse),
   with diagonal preconditioning available through \code{controlSolverGen},
-  4=LSCG with diagonal
-  least-squares preconditioner, 5=column-pivoted QR, 6=BDCSVD for dense
+  4=LSCG with incomplete Cholesky preconditioning by default,
+  5=column-pivoted QR, 6=BDCSVD for dense
   systems or Jacobi SVD for sparse systems).
 
-  LSCG uses Eigen's diagonal least-squares preconditioner without additional
-  external column equilibration. The default LSCG tolerance is \code{1e-12}.
-  Its normal-equation residual is recomputed before accepting a solution.
+  LSCG defaults to incomplete Cholesky of the working normal matrix, with
+  least-squares diagonal preconditioning available through
+  \code{controlSolverGen("eigen", 4L, precond=1L)}. Already formed Gram and
+  Woodbury systems use CG with the same incomplete Cholesky setting.
+  The default LSCG tolerance is \code{1e-12}. Its normal-equation residual is
+  recomputed before accepting a solution; one restart with the existing
+  factorization is allowed within the iteration limit for incomplete Cholesky.
   If the requested accuracy is not reached, or coefficients are nonfinite,
   a warning is issued and the working system is solved by Cholesky LLT.
   This fallback forms normal equations for rectangular working designs. OSQP uses

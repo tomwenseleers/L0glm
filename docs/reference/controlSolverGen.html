@@ -91,9 +91,8 @@ solver (<code>controlSolverGen</code>) &amp; allows fine control over its option
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Solver-specific method. For <code>solver="eigen"</code>, the exposed methods are
 <code>1L</code>=Cholesky LLT, <code>2L</code>=Cholesky LDLT, <code>3L</code>=CG with
-incomplete Cholesky preconditioning for sparse systems or diagonal
-preconditioning for dense systems, <code>4L</code>=LSCG with least-squares
-diagonal preconditioner, <code>5L</code>=column-pivoted QR, and
+incomplete Cholesky preconditioning by default, <code>4L</code>=LSCG with
+incomplete Cholesky preconditioning by default, <code>5L</code>=column-pivoted QR, and
 <code>6L</code>=BDCSVD for dense systems or Jacobi SVD for sparse systems.</p></dd>
 
 
@@ -111,9 +110,10 @@ diagonal preconditioner, <code>5L</code>=column-pivoted QR, and
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
 <dd><p>Relative convergence tolerance for Eigen iterative solvers. For
-CG the default is <code>1e-10</code>; LSCG defaults to <code>1e-7</code>. For
-LSCG, Eigen tests the normal-equation residual in the original coefficient
-coordinates; no additional external column equilibration is performed.</p></dd>
+CG the default is <code>1e-10</code>; LSCG defaults to <code>1e-12</code>. LSCG
+checks the normal-equation residual for every right-hand side by
+recomputing it from the returned coefficients. A solve that does not
+reach the requested accuracy uses the Cholesky LLT fallback.</p></dd>
 
 
 <dt id="arg-abstol">abstol<a class="anchor" aria-label="anchor" href="#arg-abstol"></a></dt>
@@ -125,11 +125,16 @@ coordinates; no additional external column equilibration is performed.</p></dd>
 
 
 <dt id="arg-precond">precond<a class="anchor" aria-label="anchor" href="#arg-precond"></a></dt>
-<dd><p>Optional integer preconditioner code for Eigen Jacobi SVD. For exposed
-Eigen iterative methods this is fixed by the chosen method: method
-<code>3L</code> uses incomplete Cholesky CG for sparse systems and diagonal CG
-for dense systems; method <code>4L</code> uses LSCG with
-least-squares diagonal preconditioning.</p></dd>
+<dd><p>For Eigen CG and LSCG (<code>method=3L</code> or <code>method=4L</code>),
+<code>0L</code> selects no preconditioning,
+<code>1L</code> diagonal preconditioning and <code>2L</code> incomplete Cholesky
+(the default for both dense and sparse systems). Dense CG retains its dense
+matrix operator; only the incomplete Cholesky preconditioner uses a sparse
+copy containing every nonzero entry. For fully populated systems this
+factorization can cost more time and memory than diagonal preconditioning.
+For LSCG, incomplete Cholesky factors the normal matrix of the working
+least-squares design; <code>1L</code> uses its least-squares diagonal instead.
+This argument also specifies the preconditioner code for Eigen Jacobi SVD.</p></dd>
 
 
 <dt id="arg-pivot">pivot<a class="anchor" aria-label="anchor" href="#arg-pivot"></a></dt>
@@ -178,13 +183,42 @@ weighted least squares <code>lmRidge</code> ridge regression using the given sol
 and method.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>LSCG retains the working least-squares operator \(A\), including any ridge
+rows, and uses incomplete Cholesky of \(A^T A\) as its default
+preconditioner. Every nonzero normal-matrix entry is retained when constructing
+the sparse preconditioner. For already formed Gram or Woodbury systems
+\(G\beta=h\), this setting uses CG directly on \(G\), avoiding a second
+squaring of the condition number.</p>
+<p>Each LSCG right-hand side is checked using the freshly computed relative
+normal residual \(\|A^T(b-A\beta)\|_2/\|A^T b\|_2\). If recursive
+convergence fails this check, incomplete-Cholesky LSCG can restart once from
+its returned coefficients, reusing the same factorization and the remaining
+iteration budget. A zero normal right-hand side passes only with a zero
+normal residual. Inexact or nonfinite results use the Cholesky LLT fallback.
+Forming the normal matrix for incomplete Cholesky can require quadratic
+storage for fully populated designs; diagonal preconditioning avoids that
+allocation in rectangular LSCG solves.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="l0glmFit.html">l0glmFit</a></code></p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">controlSolverGen</span><span class="op">(</span>solver<span class="op">=</span><span class="st">"osqp"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">controlSolverGen</span><span class="op">(</span>solver<span class="op">=</span><span class="st">"osqp"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># CG uses incomplete Cholesky for both dense and sparse systems.</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="co"># Diagonal preconditioning is a cheaper alternative for fully dense systems.</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">3L</span>, precond<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># LSCG also defaults to incomplete Cholesky, with checked residuals and an</span></span>
+<span><span class="co"># LLT fallback. Select diagonal preconditioning to avoid forming its normal</span></span>
+<span><span class="co"># matrix for a rectangular solve.</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">4L</span><span class="op">)</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">4L</span>, precond<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

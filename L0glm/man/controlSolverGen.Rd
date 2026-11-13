@@ -27,8 +27,8 @@ controlSolverGen(
 
 \item{method}{Solver-specific method. For \code{solver="eigen"}, the exposed methods are
 \code{1L}=Cholesky LLT, \code{2L}=Cholesky LDLT, \code{3L}=CG with
-incomplete Cholesky preconditioning by default, \code{4L}=LSCG with least-squares
-diagonal preconditioner, \code{5L}=column-pivoted QR, and
+incomplete Cholesky preconditioning by default, \code{4L}=LSCG with
+incomplete Cholesky preconditioning by default, \code{5L}=column-pivoted QR, and
 \code{6L}=BDCSVD for dense systems or Jacobi SVD for sparse systems.}
 
 \item{maxit}{The maximum number of iterations.}
@@ -39,21 +39,23 @@ diagonal preconditioner, \code{5L}=column-pivoted QR, and
 
 \item{tol}{Relative convergence tolerance for Eigen iterative solvers. For
 CG the default is \code{1e-10}; LSCG defaults to \code{1e-12}. LSCG
-checks the normal-equation residual in the original coefficient coordinates
-by recomputing it from the returned coefficients. A solve that does not
+checks the normal-equation residual for every right-hand side by
+recomputing it from the returned coefficients. A solve that does not
 reach the requested accuracy uses the Cholesky LLT fallback.}
 
 \item{abstol}{XXX}
 
 \item{block_size}{Optional block size used by solvers that support blocked updates.}
 
-\item{precond}{For Eigen CG (\code{method=3L}), \code{0L} selects no preconditioning,
+\item{precond}{For Eigen CG and LSCG (\code{method=3L} or \code{method=4L}),
+\code{0L} selects no preconditioning,
 \code{1L} diagonal preconditioning and \code{2L} incomplete Cholesky
 (the default for both dense and sparse systems). Dense CG retains its dense
 matrix operator; only the incomplete Cholesky preconditioner uses a sparse
 copy containing every nonzero entry. For fully populated systems this
 factorization can cost more time and memory than diagonal preconditioning.
-LSCG (\code{method=4L}) uses least-squares diagonal preconditioning.
+For LSCG, incomplete Cholesky factors the normal matrix of the working
+least-squares design; \code{1L} uses its least-squares diagonal instead.
 This argument also specifies the preconditioner code for Eigen Jacobi SVD.}
 
 \item{pivot}{Optional integer pivoting code for Eigen QR and Cholesky methods. Defaults
@@ -92,6 +94,24 @@ and method.
 This functions generates a list with all the required parameters for the lmRidge
 solver (\code{controlSolverGen}) & allows fine control over its options.
 }
+\details{
+LSCG retains the working least-squares operator \eqn{A}, including any ridge
+rows, and uses incomplete Cholesky of \eqn{A^T A} as its default
+preconditioner. Every nonzero normal-matrix entry is retained when constructing
+the sparse preconditioner. For already formed Gram or Woodbury systems
+\eqn{G\beta=h}, this setting uses CG directly on \eqn{G}, avoiding a second
+squaring of the condition number.
+
+Each LSCG right-hand side is checked using the freshly computed relative
+normal residual \eqn{\|A^T(b-A\beta)\|_2/\|A^T b\|_2}. If recursive
+convergence fails this check, incomplete-Cholesky LSCG can restart once from
+its returned coefficients, reusing the same factorization and the remaining
+iteration budget. A zero normal right-hand side passes only with a zero
+normal residual. Inexact or nonfinite results use the Cholesky LLT fallback.
+Forming the normal matrix for incomplete Cholesky can require quadratic
+storage for fully populated designs; diagonal preconditioning avoids that
+allocation in rectangular LSCG solves.
+}
 \examples{
 controlSolverGen(solver="osqp")
 
@@ -99,6 +119,12 @@ controlSolverGen(solver="osqp")
 controlSolverGen("eigen", method=3L)
 # Diagonal preconditioning is a cheaper alternative for fully dense systems.
 controlSolverGen("eigen", method=3L, precond=1L)
+
+# LSCG also defaults to incomplete Cholesky, with checked residuals and an
+# LLT fallback. Select diagonal preconditioning to avoid forming its normal
+# matrix for a rectangular solve.
+controlSolverGen("eigen", method=4L)
+controlSolverGen("eigen", method=4L, precond=1L)
 }
 \seealso{
 \code{\link{l0glmFit}}

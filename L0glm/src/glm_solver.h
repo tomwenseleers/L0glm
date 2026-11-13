@@ -40,7 +40,11 @@ template<class Matrix> L0glm::SolverResult eigen_solve(const Matrix& A,const Mat
 template<class Matrix> bool eigen_coefficients(const Matrix& A,const MatrixXd& b,
   const MatrixXd& start,const SolverControl& control,State& state,MatrixXd& answer,
   bool least_squares=false) {
-  auto result=eigen_solve(A,b,start,control);
+  // For an already formed SPD system, solve G beta = h directly with CG-IC.
+  // Applying LSCG here would instead work with G' G and worsen conditioning.
+  SolverControl kernel=control;
+  if(control.method==2&&!least_squares&&control.precond==2)kernel.method=1;
+  auto result=eigen_solve(A,b,start,kernel);
   if(result.finite() && (result.success || control.method!=2)) {
     if(!result.success && (control.method==1||control.method==2))++state.solver_inexact;
     answer=result.coefficients;return true;

@@ -85,7 +85,7 @@ test_that("controlSolverGen handles all methods for eigen solver", {
       expect_equal(params$method, "LSCG")
       expect_equal(params$tol, 1E-12)
       expect_true(is.null(params$rowaug) || params$rowaug)
-      expect_equal(params$precond, 1L)
+      expect_equal(params$precond, 2L)
     } else if (method == 5) {
       expect_equal(params$method, "QR")
       expect_false(params$rowaug)
@@ -138,21 +138,19 @@ test_that("controlSolverGen exposes only column-pivoted QR", {
   expect_equal(qr_forced$pivot, 1L)
 })
 
-test_that("controlSolverGen exposes CG preconditioners with incomplete Cholesky default", {
-  expect_identical(controlSolverGen("eigen", 3L)$precond, 2L)
-  for (precond in 0:2) {
-    cg <- controlSolverGen("eigen", 3L, precond = precond)
-    expect_equal(cg$method, "CG")
-    expect_identical(cg$precond, precond)
+test_that("CG and LSCG expose preconditioners with incomplete Cholesky default", {
+  for (method in c(3L, 4L)) {
+    expect_identical(controlSolverGen("eigen", method)$precond, 2L)
+    for (precond in 0:2) {
+      control <- controlSolverGen("eigen", method, precond = precond)
+      expect_equal(control$method, if (method == 3L) "CG" else "LSCG")
+      expect_identical(control$precond, precond)
+    }
+    for (invalid in list(-1L, 3L, 1.5, NA_real_, Inf, numeric(), c(1L, 2L), "2")) {
+      expect_error(controlSolverGen("eigen", method, precond = invalid),
+                   "precond must be")
+    }
   }
-  for (invalid in list(-1L, 3L, 1.5, NA_real_, Inf, numeric(), c(1L, 2L), "2")) {
-    expect_error(controlSolverGen("eigen", 3L, precond = invalid),
-                 "Eigen CG precond must be")
-  }
-
-  lscg_forced <- controlSolverGen(solver = "eigen", method = 4L, precond = 0L)
-  expect_equal(lscg_forced$method, "LSCG")
-  expect_equal(lscg_forced$precond, 1L)
 })
 
 test_that("an explicit CG tolerance overrides its more accurate default", {

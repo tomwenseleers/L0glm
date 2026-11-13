@@ -388,9 +388,15 @@ Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
 <p><code>1L</code> = Cholesky LLT solver, with sparse AMD ordering by default</p>
 <p><code>2L</code> = Cholesky LDLT solver, with sparse AMD ordering by default</p>
 <p><code>3L</code> = Preconditioned Conjugate Gradient (PCG) with incomplete
-  Cholesky preconditioner</p>
-<p><code>4L</code> = Least Squares Conjugate Gradient (LSCG) with least squares
-  diagonal preconditioner</p>
+  Cholesky preconditioner by default for dense and sparse systems.
+  Use <code>controlSolverGen("eigen", 3L, precond=1L)</code> for diagonal
+  preconditioning.</p>
+<p><code>4L</code> = Least Squares Conjugate Gradient (LSCG) with incomplete Cholesky
+  preconditioning by default. Use <code>controlSolverGen("eigen", 4L, precond=1L)</code>
+  for least-squares diagonal preconditioning. Already formed Gram or Woodbury
+  systems use CG with incomplete Cholesky. Checked residuals, one bounded
+  LSCG restart and a Cholesky LLT fallback protect numerical accuracy; see
+  <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p>
 <p><code>5L</code> = Column-pivoted QR solver. Sparse QR uses numerical column
   pivoting and COLAMD fill-reducing ordering by default.</p>
 <p><code>6L</code> = BDCSVD solver for dense systems, or Jacobi SVD for sparse
