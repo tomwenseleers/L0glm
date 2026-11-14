@@ -1,5 +1,6 @@
 # BENCHMARKS & TIMINGS OF L0GLM FITS BY PROBLEM SIZE AND SOLVER ####
-# Uses high-resolution timing and the general R fitting path for each solver.
+# Uses repeated warm timings and the general R fitting path for each solver.
+# Shared unit starts and disabled support search isolate the ridge solvers.
 # "Dense" and "sparse" describe input storage: solvers may compress exact zeros.
 
 library(L0glm)
@@ -8,8 +9,10 @@ library(tidyr)
 library(tidyselect)
 library(microbenchmark)
 
-output_dir <- normalizePath("..\\benchmarks\\1_benchmarks_solvers_problem_sizes")
+repository_dir <- if (file.exists("L0glm/DESCRIPTION")) "." else ".."
+output_dir <- file.path(repository_dir, "benchmarks", "1_benchmarks_solvers_problem_sizes")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+output_dir <- normalizePath(output_dir)
                              
 # Simulation sizes (with n = p)
 sizes <- c(100, 500, 1000, 10000)
@@ -18,7 +21,7 @@ sizes <- c(100, 500, 1000, 10000)
 # uses a different outer loop and can compress dense inputs automatically.
 use_openmp <- FALSE
 blas_threads <- 1L
-timing_repetitions <- 1L # increase for repeated fits; Time is the median
+timing_repetitions <- 3L # median after one untimed warm fit per condition
 fit_maxit <- 25L
 fit_tol <- 1e-10
 RhpcBLASctl::blas_set_num_threads(blas_threads)
@@ -58,19 +61,23 @@ solver_colours <- c(
   "eigen PLSCG" = "cyan2"
 )
 solver_shapes <- stats::setNames(c(16, 17, 0, 15, 18, 4), names(solver_colours))
+solver_labels <- stats::setNames(
+  c("OSQP", "bigGlm + polish", "Eigen LLT", "Eigen LDLT", "Eigen CG-IC", "Eigen LSCG-IC"),
+  solver_grid$Solver)
+metric_labels <- c(Time="Time (s)", Precision="Precision", Recall="Recall",
+  F1="F1", MCC="MCC", R2="Coefficient R-squared",
+  RMSE_coefficients="Coefficient RMSE", deviance="True-signal deviance / n")
 
 family_grid <- list(
   poisson = list(
     label = "Poisson",
     family = poisson(identity),
-    simulation_method = 2L,
-    start_mu_offset = 0.1
+    simulation_method = 2L
   ),
   gaussian = list(
     label = "Gaussian",
     family = gaussian(identity),
-    simulation_method = 1L,
-    start_mu_offset = 0
+    simulation_method = 1L
   )
 )
 
@@ -91,31 +98,20 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   fit_warnings <- character()
   metric_values <- empty_metrics()
 
+  run_fit <- function() L0glm::l0glmFit(
+    X = X, y = y, start = start_values, family = family, lambda = lambda,
+    nonnegative = TRUE, local.search = FALSE,
+    maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,
+    openmp = use_openmp, parallelize = FALSE, nthreads = blas_threads,
+    solver = solver_backend, method = solver_method,
+    control.solver = L0glm::controlSolverGen(solver_backend, solver_method))
+
   timed_fit <- withCallingHandlers(
     tryCatch(
-      microbenchmark::microbenchmark({
-        fit <- L0glm::l0glmFit(
-          X = X,
-          y = y,
-          start = start_values,
-          family = family,
-          lambda = lambda,
-          nonnegative = TRUE,
-
-          maxit = fit_maxit,
-          tol = fit_tol,
-          thresh = 1e-5,
-          openmp = use_openmp,
-          parallelize = FALSE,
-          nthreads = blas_threads,
-          solver = solver_backend,
-          method = solver_method,
-          control.solver = do.call(
-            L0glm::controlSolverGen,
-            list(solver = solver_backend, method = solver_method)
-          )
-        )
-      }, times = timing_repetitions),
+      {
+        fit <- run_fit()
+        microbenchmark::microbenchmark({fit <- run_fit()}, times = timing_repetitions)
+      },
       error = function(e) {
         fit_error <<- conditionMessage(e)
         NULL
@@ -182,7 +178,10 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       OpenMP = use_openmp,
       BLAS_threads = blas_threads,
       Timing_repetitions = timing_repetitions,
+      Warmup_fits = 1L,
       Timing_clock = "microbenchmark",
+      Start = "1",
+      Local_search = FALSE,
       Maxit = fit_maxit,
       Tolerance = fit_tol,
       Iterations = if (is.null(fit)) NA_integer_ else max(fit$convergence$iterations),
@@ -273,18 +272,12 @@ for (family_name in names(family_grid)) {
       y <- sim$y
       beta_true <- sim$beta_true
 
-      lambda_preset <- L0glm:::presetLambda(
+      lambda_preset <- L0glm::presetLambda(
         IC = criterion,
         p = ncol(X),
         n = nrow(X)
       )
-      start_values <- L0glm:::init_coefs(
-        X = X,
-        y = y,
-        mu = y + family_config$start_mu_offset,
-        family = family,
-        lambda = lambda_preset
-      )
+      start_values <- 1
 
       for (solver_idx in seq_len(nrow(solver_grid))) {
         solver_spec <- solver_grid[solver_idx, ]
@@ -338,9 +331,9 @@ results <- results[order(
   results$Solver
 ), ]
 
-metrics_file <- normalizePath(file.path(output_dir, "metrics_all_conditions.csv"))
+metrics_file <- file.path(output_dir, "metrics_all_conditions.csv")
 write.csv(results, metrics_file, row.names = FALSE)
-saveRDS(results, normalizePath(file.path(output_dir, "metrics_all_conditions.rds")))
+saveRDS(results, file.path(output_dir, "metrics_all_conditions.rds"))
 
 results_long <- tidyr::pivot_longer(
   results,
@@ -350,7 +343,7 @@ results_long <- tidyr::pivot_longer(
 )
 results_long$Solver <- factor(results_long$Solver, levels = solver_grid$Solver)
 
-metrics_long_file <- normalizePath(file.path(output_dir, "metrics_all_conditions_long.csv"))
+metrics_long_file <- file.path(output_dir, "metrics_all_conditions_long.csv")
 write.csv(results_long, metrics_long_file, row.names = FALSE)
 
 write.csv(
@@ -359,7 +352,7 @@ write.csv(
     Colour = unname(solver_colours),
     stringsAsFactors = FALSE
   ),
-  normalizePath(file.path(output_dir, "solver_colours.csv")),
+  file.path(output_dir, "solver_colours.csv"),
   row.names = FALSE
 )
 
@@ -378,32 +371,29 @@ for (family_name in names(family_grid)) {
       ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
     ) +
       solver_layers(condition_long) +
-      ggplot2::facet_wrap(~metric, scales = "free_y") +
+      ggplot2::facet_wrap(~metric, scales = "free_y",
+                         labeller = ggplot2::as_labeller(metric_labels)) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
-        title = paste0(
-          "Benchmarks different L0glm solvers for varying problem sizes\n",
-          "(deconvolution of blurred spike train with ",
-          family_label,
-          " noise, ",
-          matrix_label,
-          " covariate matrix)"
-        ),
+        title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
+        subtitle = "start = 1; local.search = FALSE; common GIC preset",
         colour = "solver",
         x = "Problem size (n = p)",
         y = NULL
       ) +
-      ggplot2::theme(legend.position = "right") +
+      ggplot2::theme(legend.position = "bottom") +
+      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3)) +
       ggplot2::scale_x_continuous(trans = "log10") +
       ggplot2::scale_color_manual(
         values = solver_colours,
+        labels = solver_labels,
         limits = names(solver_colours),
         drop = FALSE
       )
 
     save_plot(
       metrics_plot,
-      sprintf("timings_metrics_%s_%s", matrix_name, family_name)
+      sprintf("timings_metrics_%s_%s", matrix_name, family_name), width = 10, height = 7
     )
 
     time_data <- subset(condition_long, metric == "Time")
@@ -416,23 +406,19 @@ for (family_name in names(family_grid)) {
       solver_layers(time_data) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
-        title = paste0(
-          "Timings different L0glm solvers for varying problem sizes\n",
-          "(deconvolution of blurred spike train with ",
-          family_label,
-          " noise, ",
-          matrix_label,
-          " covariate matrix)"
-        ),
+        title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
+        subtitle = "start = 1; local.search = FALSE; median warm fitting time",
         colour = "solver",
         x = "Problem size (n = p)",
         y = "Time (s)"
       ) +
-      ggplot2::theme(legend.position = "right") +
+      ggplot2::theme(legend.position = "bottom") +
+      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3)) +
       ggplot2::scale_x_continuous(trans = "log10") +
       ggplot2::scale_y_continuous(trans = "log10") +
       ggplot2::scale_color_manual(
         values = solver_colours,
+        labels = solver_labels,
         limits = names(solver_colours),
         drop = FALSE
       )
@@ -455,7 +441,7 @@ combined_timing_plot <- ggplot2::ggplot(
   ggplot2::theme_minimal() +
   ggplot2::labs(
     title = "L0glm solver timings by problem size",
-    subtitle = sprintf("openmp = %s; BLAS threads = %d; timed fits per condition = %d",
+    subtitle = sprintf("start = 1; local.search = FALSE; openmp = %s; BLAS threads = %d; median of %d fits",
                        use_openmp, blas_threads, timing_repetitions),
     colour = "solver",
     shape = "solver",
@@ -469,9 +455,11 @@ combined_timing_plot <- ggplot2::ggplot(
                             labels = scales::label_number(big.mark = ",")) +
   ggplot2::scale_y_continuous(trans = "log10") +
   ggplot2::scale_shape_manual(values = solver_shapes,
+                            labels = solver_labels,
                              limits = names(solver_shapes), drop = FALSE) +
   ggplot2::scale_color_manual(
     values = solver_colours,
+    labels = solver_labels,
     limits = names(solver_colours),
     drop = FALSE
   )
@@ -485,24 +473,16 @@ run_summary <- c(
   paste("OpenMP/native dispatch:", use_openmp),
   paste("BLAS threads:", blas_threads),
   paste("High-resolution timing repetitions:", timing_repetitions),
+  "Untimed warm fits per condition: 1",
+  "Starting coefficients: 1 (working coefficient coordinates)",
+  "Automatic local support search: FALSE",
   paste("Maximum IRLS iterations:", fit_maxit),
   paste("Convergence tolerance:", fit_tol),
+  paste("L0glm version:", packageVersion("L0glm")),
+  paste("glmnet version:", if (isNamespaceLoaded("glmnet"))
+    as.character(getNamespaceVersion("glmnet")) else "not loaded"),
+  paste("R version:", R.version.string),
   paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 )
-writeLines(run_summary, normalizePath(file.path(output_dir, "run_summary.txt")))
+writeLines(run_summary, file.path(output_dir, "run_summary.txt"))
 message(paste(run_summary, collapse = "\n"))
-
-
-# TODOS ####
-#
-# - For Gaussian noise, check whether the bigGlm solution quality can be
-#   improved; in the original benchmark notes it was markedly worse than the
-#   eigen and osqp solutions.
-# - Check whether the PLSCG solution quality can be made to match the PCG
-#   solver with incomplete Cholesky preconditioning, possibly by tuning solver
-#   settings or adding an incomplete Cholesky preconditioner in the Rcpp solver.
-# - Check whether all eigen solvers can be tuned to match osqp solution quality
-#   more closely, especially in the Gaussian cases where osqp had lower
-#   deviance but was much slower.
-# - Check whether dense Gaussian eigen solver settings can be tuned to get
-#   closer to the osqp solution while retaining the eigen solvers' speed.

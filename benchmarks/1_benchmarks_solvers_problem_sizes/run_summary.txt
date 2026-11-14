@@ -1,9 +1,15 @@
 Output directory: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes
-Wide metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions.csv
-Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes\metrics_all_conditions_long.csv
+Wide metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv
+Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes/metrics_all_conditions_long.csv
 OpenMP/native dispatch: FALSE
 BLAS threads: 1
-High-resolution timing repetitions: 1
+High-resolution timing repetitions: 3
+Untimed warm fits per condition: 1
+Starting coefficients: 1 (working coefficient coordinates)
+Automatic local support search: FALSE
 Maximum IRLS iterations: 25
 Convergence tolerance: 1e-10
-Run completed: 2026-10-18 00:00:35 CEST
+L0glm version: 0.2.0.9002
+glmnet version: 5.1
+R version: R version 4.5.0 (2025-04-11 ucrt)
+Run completed: 2026-11-14 16:11:37 CET
