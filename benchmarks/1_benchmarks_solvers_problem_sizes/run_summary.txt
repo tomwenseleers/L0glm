@@ -7,9 +7,12 @@ High-resolution timing repetitions: 3
 Untimed warm fits per condition: 1
 Starting coefficients: 1 (working coefficient coordinates)
 Automatic local support search: FALSE
+OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish
+Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1
+GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8
 Maximum IRLS iterations: 25
 Convergence tolerance: 1e-10
 L0glm version: 0.2.0.9002
 glmnet version: 5.1
 R version: R version 4.5.0 (2025-04-11 ucrt)
-Run completed: 2026-11-14 16:11:37 CET
+Run completed: 2026-11-14 17:49:58 CET

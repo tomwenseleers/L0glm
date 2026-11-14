@@ -1,769 +1,865 @@
 "Noise_family","Link","Matrix_density","Sparse","Size","Lambda","Solver","Solver_backend","Solver_method","OpenMP","BLAS_threads","Timing_repetitions","Warmup_fits","Timing_clock","Start","Local_search","Maxit","Tolerance","Iterations","Converged","Status","Warnings","Error","metric","value"
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0492806
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.818181818181818
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.841616983265781
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997718584145095
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",68.1444362676745
-"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.271805304045973
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999466657816514
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",989.665508078057
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.051503
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.997718585408986
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",68.1444148813259
+"poisson","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263808527
+"poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999466657816514
+"poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",989.665508078057
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0613092
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.997718585408986
 "poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",68.1444148813259
-"poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263608527
+"poisson","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263808527
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279557
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0267619
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491543
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091732
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491732
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279557
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0265903
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491541
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091778
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491778
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279555
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0272586
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491542
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091768
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491768
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279556
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0322764
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.402017649154
-"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091719
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.104738
+"poisson","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491719
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99943289583264
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4606.30981203277
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1479636
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.957902447268376
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740368606285
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.182014161632146
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95790244817185
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740365335103
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.17594389407395
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99943289583264
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4606.30981203277
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1920363
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95790244817185
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740365335103
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.182014151834651
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.17594389407395
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850736
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0415393
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572761
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451047
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840599
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079898
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850736
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0466412
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572762
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451043
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.1780097818406
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079899
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850722
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.04339
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572796
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378450921
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840252
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079551
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850737
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0388542
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572762
 "poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451045
-"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840631
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1993181
+"poisson","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.17193952407993
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999344870432372
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9418.30469589765
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.3815137
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.807692307692308
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.84
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.823529411764706
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.803685041486804
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95220384002305
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.802421734828
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.368523057519099
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95220383293249
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.802443186926
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.3685230345213
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999344870432372
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9418.30469589765
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.4233852
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.807692307692308
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.84
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.823529411764706
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.803685041486804
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95220383293249
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.802443186926
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.3685230324013
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.3685230345213
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0548286
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114028
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773311
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990783
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110783
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907491
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0565356
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114028
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773309
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990799
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110799
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907491
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0597605
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114031
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773302
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990798
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110798
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0539356
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114028
 "poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.95598377331
-"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990775
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.8054441
+"poisson","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110775
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999524378754113
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102398.082482063
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",21.2834637
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.835984095427435
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.841
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.838484546360917
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.820483257443385
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.882086074218616
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",630.828169266657
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.265210980122603
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.882085138404514
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",630.830692231009
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.263871957557349
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999524378754113
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102398.082482063
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.9968327
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.835984095427435
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.841
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.838484546360917
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.820483257443385
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.882085138404514
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",630.830692231009
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.265211300293622
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.263871957557349
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858866388
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448558073
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2850689
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644100261
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396468816
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.26609096200234
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619270066
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858866388
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448558072
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2775805
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644100261
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396468816
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962002233
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.26475161926996
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99952685886634
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448559019
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.315333
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644098852
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396473664
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962119955
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619387682
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858866388
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448558079
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.291659
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644100251
 "poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396468849
-"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962003083
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0538895
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.818181818181818
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.841616983265781
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997718584145094
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",68.1444362676745
-"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.27180530404598
+"poisson","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619270809
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999466657816514
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",989.665508078057
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0525252
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.997718585408986
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",68.1444148813268
+"poisson","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263808504
+"poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999466657816514
+"poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",989.665508078057
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0683052
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.997718585408986
 "poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",68.1444148813268
-"poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263608504
+"poisson","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",0.271805263808504
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279556
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0228176
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491542
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091723
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491723
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279557
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0229223
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491544
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091728
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491728
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279557
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0351425
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.4020176491543
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091685
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491685
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999482916948783
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",989.264468279556
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0304701
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.999084408515437
 "poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",40.402017649154
-"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893091719
-"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1192432
+"poisson","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.199215893491719
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99943289583264
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4606.30981203276
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1727984
 "poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
-"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.957902447268377
-"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740368606281
-"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.182014161632139
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.957902448171852
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740365335097
+"poisson","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.175943894073933
+"poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99943289583264
+"poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4606.30981203276
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1989991
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.957902448171852
 "poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",298.740365335097
-"poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.182014151834634
+"poisson","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.175943894073933
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850737
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0552298
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572762
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451046
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840653
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079952
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850736
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0573217
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572762
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451045
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840604
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079904
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850722
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0513454
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572792
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378450938
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840272
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079571
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999438840355087
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",4601.22833850737
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0501883
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.849056603773585
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.87378640776699
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.859760633115009
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.958319943572762
 "poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",296.853378451045
-"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.178009781840618
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2452595
+"poisson","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.171939524079918
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999344870432372
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9418.30469589765
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.4535024
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.807692307692308
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.84
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.823529411764706
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.803685041486804
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.95220384002305
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.80242173483
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.36852305751909
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.952203832932489
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.802443186928
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.368523034521314
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999344870432372
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9418.30469589765
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.5027922
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.807692307692308
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.84
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.823529411764706
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.803685041486804
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.952203832932489
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",287.802443186928
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.368523032401314
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.368523034521314
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1111959
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114029
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773308
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990794
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110794
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.098464
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114027
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773312
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990803
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110802
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1094723
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114031
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.955983773302
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990797
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110797
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999355236764514
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9389.57697907492
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0966994
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.825242718446602
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.85
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.83743842364532
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.819189756801483
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.953231347114028
 "poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",284.95598377331
-"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406123990772
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"Time",52.9492825
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"Precision",0.835984095427435
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"Recall",0.841
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"F1",0.838484546360917
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"MCC",0.820483257443385
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"R2",0.882360096931951
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"RMSE_coefficients",630.088948872732
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","OSQP did not converge to the requested accuracy in IRLS iteration 2: maximum iterations reached",NA,"deviance",0.265033427989165
+"poisson","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.343406126110772
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999524378754113
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102398.082482063
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",26.3252011
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.835984095427435
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.841
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.838484546360917
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.882085138404533
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",630.830692230956
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.263871957557338
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999524378754113
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102398.082482063
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.022871
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.835984095427435
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.841
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.838484546360917
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.820483257443385
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.882085138404533
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",630.830692230956
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.265211300293612
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.263871957557338
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858737795
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.451071422
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",5.7446384
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599640281545
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441409605177
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266091274816421
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751932084147
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858866388
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448558074
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.0229632
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644100257
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396468828
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962002502
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619270228
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99952685886634
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448559018
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.1909827
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644098853
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.44139647366
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962119891
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619387618
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999526858866388
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",102316.448558079
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.1056349
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.842629482071713
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.846
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.844311377245509
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.826976302646523
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.921599644100252
 "poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",514.441396468849
-"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.266090962003086
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.0549534
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.818181818181818
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.857142857142857
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.841616983265781
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.99450166629938
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",110.088415167804
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",431.839561935041
+"poisson","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",0.264751619270812
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999943803097819
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",975.986830516307
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0529477
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.994502480779768
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",110.080340809492
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",431.841612579003
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999943803097819
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",975.986830516307
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0727609
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.994502480779768
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",110.080340809492
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",431.841612579003
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179872
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0293479
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542315
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454736
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179871
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.027183
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542318
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454733
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807514
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"GIC",828.521800735232
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Time",0.041383
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"R2",0.999366874288282
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532554419995
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"deviance",94.9046948310774
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179872
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0295237
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542318
 "gaussian","identity","sparse",TRUE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454741
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1913673
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999999758437091
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",2513.31572805588
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.1083096
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.888888888888889
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.923076923076923
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.915006196415353
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.996628513474212
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",84.3476532572471
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.92222860247457
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997651726015867
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",70.2373635520568
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.91732850397592
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999999758437091
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",2513.31572692481
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2719971
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.888888888888889
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.923076923076923
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.915006196415353
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997651726013128
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",70.2373635926602
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.91732850391232
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308863
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",2095.96704779132
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0401647
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.986226814658532
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347625463216
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.497444791706703
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308863
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",2095.96704779164
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0526702
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.986226814658537
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347625463218
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.497444791704058
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308873
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",2095.96700275756
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0666296
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.98622681034332
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347650336958
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",0.497444973829811
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308864
+"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"GIC",2095.96704631407
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Time",0.0585151
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"R2",0.986226814507919
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347626328206
 "gaussian","identity","sparse",TRUE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"deviance",0.497444798906519
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.430838
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999973802125782
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9752.80843608215
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.9778286
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.861111111111111
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.93
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.894230769230769
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.882787668372559
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992309658088999
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.604634255131
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.085870611939
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992308532236191
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.608957109637
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.108115562839
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999973802125782
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9752.80843608213
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.7886098
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.861111111111111
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.93
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.894230769230769
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.882787668372559
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992308532236191
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.608957109637
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.108115562835
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545192
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",6961.93959240229
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0428172
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.995697614480201
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196068576951
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",14.2458925913645
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545192
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",6961.93959240229
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0489573
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.9956976144802
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196068577059
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",14.2458925913646
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545239
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"GIC",6961.93956716851
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Time",0.0537078
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"R2",0.995697611054645
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"RMSE_coefficients",86.219641203853
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"deviance",14.2458920684387
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545193
+"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"GIC",6961.93959226305
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Time",0.0410255
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"R2",0.995697614461299
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196070472162
 "gaussian","identity","sparse",TRUE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"deviance",14.2458925884789
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.5233138
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.856203007518797
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.911
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.882751937984496
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.869793943894988
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.982970463850315
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",240.888228486448
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",262.164874204389
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999984580389473
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",105751.305487251
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",67.4711134
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.875829383886256
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.924
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.899270072992701
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.989116575009776
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",193.643410828231
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",261.916130601638
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999984580389473
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",105751.305487251
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",4.4807572
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.875829383886256
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.924
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.899270072992701
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.888139174891328
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.989116575009776
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",193.643410828231
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",261.916130601638
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181404279
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2563995
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532683623
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.561035785912
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.7195172943977
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181404275
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2585836
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532683623
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.561035785909
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.7195172943942
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99999652523688
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181363001
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.7748172
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532680794
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.561035825098
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.71951726113
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"GIC",90480.6181404311
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Time",2.8290543
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Precision",0.911196911196911
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Recall",0.944
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"F1",0.927308447937132
-"gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"MCC",0.919250738367097
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"R2",0.995973532683623
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"RMSE_coefficients",116.561035785915
 "gaussian","identity","sparse",TRUE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"deviance",58.7195172944322
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.058226
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.818181818181818
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.9
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.857142857142857
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.841616983265781
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.994501666299378
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",110.088415167824
-"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",431.839561935038
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999943803097819
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",975.986830516307
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0588954
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.994502480779768
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",110.080340809492
+"gaussian","identity","dense",FALSE,100,7.032922081419,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",431.841612579003
+"gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999943803097819
+"gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"GIC",975.986830516307
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Time",0.0684127
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Precision",0.818181818181818
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"F1",0.857142857142857
-"gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"MCC",0.841616983265781
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"R2",0.994502480779768
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"RMSE_coefficients",110.080340809492
 "gaussian","identity","dense",FALSE,100,7.032922081419,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,22,TRUE,"ok",NA,NA,"deviance",431.841612579003
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179873
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0190328
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542317
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454747
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179873
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0194962
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542315
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454745
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807514
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"GIC",828.521800735233
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Time",0.0198924
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"R2",0.999366874288282
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532554420001
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"deviance",94.904694831078
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999987891807453
+"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",828.521801179873
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0228503
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.75
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.9
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.818181818181818
-"gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.800094691365663
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.999366874300605
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",34.1532550542318
 "gaussian","identity","dense",FALSE,100,7.032922081419,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",94.9046951454743
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.1912596
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999999758437091
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",2513.3157280559
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.0284386
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.888888888888889
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.923076923076923
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.915006196415353
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.996628046261758
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",84.3534974540382
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.92223914641234
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997651726015869
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",70.2373635520304
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.91732850397592
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999999758437091
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",2513.3157269248
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.2472808
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.888888888888889
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.923076923076923
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.915006196415353
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.997651726013128
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",70.2373635926652
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",1.91732850391222
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308863
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",2095.96704779281
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0488039
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.986226814658358
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347625464571
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.497444791688002
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308863
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"GIC",2095.96704779258
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Time",0.0485426
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"R2",0.986226814658434
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347625464026
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,24,TRUE,"ok",NA,NA,"deviance",0.497444791692767
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308872
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",2095.96700281869
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.078285
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.986226810348573
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347650307197
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",0.497444973553264
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999999897308864
+"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"GIC",2095.96704631395
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Time",0.076426
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Precision",0.872727272727273
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"F1",0.914285714285714
-"gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"MCC",0.90553726047584
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"R2",0.986226814507915
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"RMSE_coefficients",173.347626328229
 "gaussian","identity","dense",FALSE,500,11.3534841006714,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,21,TRUE,"ok",NA,NA,"deviance",0.497444798906513
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.4212628
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999973802125782
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9752.80843608174
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",1.8529904
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.861111111111111
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.93
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.894230769230769
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.882787668372559
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992309658088999
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.604634255139
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.085870611831
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992308532236191
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.608957109643
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.108115562743
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999973802125782
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",9752.80843608174
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",0.7827906
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.861111111111111
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.93
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.894230769230769
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.882787668372559
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.992308532236191
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",117.608957109643
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",232.108115562741
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545192
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",6961.93959240228
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.074028
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.9956976144802
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196068577019
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",14.2458925913645
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545192
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"GIC",6961.93959240228
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Time",0.0780954
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"R2",0.995697614480199
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196068577197
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,20,TRUE,"ok",NA,NA,"deviance",14.2458925913644
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545239
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"GIC",6961.9395671685
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Time",0.0657895
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"R2",0.995697611054642
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196412038763
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,16,TRUE,"ok",NA,NA,"deviance",14.2458920684385
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"adj_R2_weighted",0.999998332545193
+"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"GIC",6961.93959226305
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Time",0.0738347
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Precision",0.914285714285714
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"Recall",0.96
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"F1",0.936585365853659
-"gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"MCC",0.929691141463423
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"R2",0.995697614461299
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"RMSE_coefficients",86.2196070472162
 "gaussian","identity","dense",FALSE,1000,13.3502368631057,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,19,TRUE,"ok",NA,NA,"deviance",14.2458925884789
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",10.8803087
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.856203007518797
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.911
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.882751937984496
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.869793943894988
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.982970463850328
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",240.888228486358
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",262.164874204266
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999984580389472
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",105751.305487489
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",73.7889227
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.875829383886256
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.924
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.899270072992701
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.989116575009752
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",193.643410828426
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"osqp","osqp",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",261.916130607706
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999984580389472
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",105751.305487489
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",8.4165142
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.875829383886256
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.924
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.899270072992701
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.888139174891328
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.989116575009752
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",193.643410828426
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"bigGlm","bigGlm",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",261.916130607706
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181404266
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",5.5905446
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532683621
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.561035785933
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LLT","eigen",1,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.7195172943874
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181404263
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",5.0777108
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532683621
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.561035785934
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen Cholesky LDLT","eigen",2,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.719517294385
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"adj_R2_weighted",0.99999652523688
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"GIC",90480.6181379092
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Time",6.7826083
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Precision",0.911196911196911
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"Recall",0.944
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"F1",0.927308447937132
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"MCC",0.919250738367097
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"R2",0.995973532682261
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"RMSE_coefficients",116.56103580437
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PCG incomplete Cholesky precond","eigen",3,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok",NA,NA,"deviance",58.7195172730746
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"adj_R2_weighted",0.999996525236879
+"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"GIC",90480.6181404283
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Time",7.3077642
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Precision",0.911196911196911
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"Recall",0.944
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"F1",0.927308447937132
-"gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"MCC",0.919250738367097
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"R2",0.99597353268362
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"RMSE_coefficients",116.561035785952
 "gaussian","identity","dense",FALSE,10000,20.4499656236707,"eigen PLSCG","eigen",4,FALSE,1,3,1,"microbenchmark","1",FALSE,25,1e-10,25,FALSE,"ok","LSCG did not reach the requested accuracy in IRLS iteration 2; using Cholesky LLT as fallback.",NA,"deviance",58.7195172944118

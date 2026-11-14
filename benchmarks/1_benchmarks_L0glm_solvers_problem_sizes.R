@@ -28,11 +28,12 @@ RhpcBLASctl::blas_set_num_threads(blas_threads)
 
 criterion <- "gic"
 metric_columns <- c(
+  "adj_R2_weighted",
+  "GIC",
   "Time",
   "Precision",
   "Recall",
   "F1",
-  "MCC",
   "R2",
   "RMSE_coefficients",
   "deviance"
@@ -60,12 +61,16 @@ solver_colours <- c(
   "eigen PCG incomplete Cholesky precond" = "purple",
   "eigen PLSCG" = "cyan2"
 )
-solver_shapes <- stats::setNames(c(16, 17, 0, 15, 18, 4), names(solver_colours))
+solver_shapes <- stats::setNames(c(1, 17, 0, 15, 18, 4), names(solver_colours))
+solver_linetypes <- stats::setNames(
+  c("dashed", "solid", "solid", "dotted", "longdash", "dotdash"),
+  names(solver_colours))
 solver_labels <- stats::setNames(
-  c("OSQP", "bigGlm + polish", "Eigen LLT", "Eigen LDLT", "Eigen CG-IC", "Eigen LSCG-IC"),
+  c("OSQP + polish", "bigGlm + polish", "Eigen LLT", "Eigen LDLT", "Eigen CG-IC", "Eigen LSCG-IC"),
   solver_grid$Solver)
-metric_labels <- c(Time="Time (s)", Precision="Precision", Recall="Recall",
-  F1="F1", MCC="MCC", R2="Coefficient R-squared",
+metric_labels <- c(adj_R2_weighted="Adjusted weighted prediction R-squared",
+  GIC="GIC", Time="Time (s)", Precision="Precision", Recall="Recall",
+  F1="F1", R2="Coefficient R-squared",
   RMSE_coefficients="Coefficient RMSE", deviance="True-signal deviance / n")
 
 family_grid <- list(
@@ -133,13 +138,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   if (!is.null(fit)) {
     metric_error <- NA_character_
     metrics <- tryCatch(
-      L0glm:::get.metrics(
-        beta = fit$coefficients,
-        X = X,
-        y = y,
-        family = family,
-        beta_true = as.vector(beta_true)
-      ),
+      L0glm::l0glmMetrics(fit, beta_true = as.vector(beta_true)),
       error = function(e) {
         metric_error <<- conditionMessage(e)
         NULL
@@ -147,10 +146,11 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
     )
 
     if (!is.null(metrics)) {
+      metric_values$adj_R2_weighted <- metrics$adj_R2_weighted
+      metric_values$GIC <- metrics$gic
       metric_values$Precision <- metrics$precision
       metric_values$Recall <- metrics$recall
       metric_values$F1 <- metrics$F1_score
-      metric_values$MCC <- metrics$MCC
       metric_values$R2 <- metrics$R2_coefs
       metric_values$RMSE_coefficients <- metrics$RMSE_coefs
       metric_values$deviance <- metrics$deviance_true / nrow(X)
@@ -200,15 +200,24 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
 
 solver_layers <- function(data, point_size = 1.5, point_stroke = 0.5) {
   llt <- data$Solver == "eigen Cholesky LLT"
-  # Draw LLT after every other solver's lines AND points, irrespective of
-  # factor levels or row order. Keep the legend order unchanged.
-  list(
-    ggplot2::geom_line(data = data[!llt, ], linewidth = 1, na.rm = TRUE),
-    ggplot2::geom_point(data = data[!llt, ], size = point_size,
-                       stroke = point_stroke, na.rm = TRUE),
-    ggplot2::geom_line(data = data[llt, ], linewidth = 1, na.rm = TRUE),
-    ggplot2::geom_point(data = data[llt, ], size = point_size,
+  osqp <- data$Solver == "osqp"
+  # Dashed OSQP lines overlay solid bigGlm lines so both remain visible when
+  # they coincide. LLT stays on top; the legend retains the solver order.
+  unlist(lapply(list(!llt & !osqp, osqp, llt), function(rows) list(
+    ggplot2::geom_line(data = data[rows, ], linewidth = 0.85, na.rm = TRUE),
+    ggplot2::geom_point(data = data[rows, ], size = point_size,
                        stroke = point_stroke, na.rm = TRUE)
+  )), recursive = FALSE)
+}
+
+solver_scales <- function() {
+  list(
+    ggplot2::scale_colour_manual(values = solver_colours, labels = solver_labels,
+      limits = names(solver_colours), drop = FALSE),
+    ggplot2::scale_shape_manual(values = solver_shapes, labels = solver_labels,
+      limits = names(solver_shapes), drop = FALSE),
+    ggplot2::scale_linetype_manual(values = solver_linetypes, labels = solver_labels,
+      limits = names(solver_linetypes), drop = FALSE)
   )
 }
 
@@ -342,6 +351,7 @@ results_long <- tidyr::pivot_longer(
   values_to = "value"
 )
 results_long$Solver <- factor(results_long$Solver, levels = solver_grid$Solver)
+results_long$metric <- factor(results_long$metric, levels = metric_columns)
 
 metrics_long_file <- file.path(output_dir, "metrics_all_conditions_long.csv")
 write.csv(results_long, metrics_long_file, row.names = FALSE)
@@ -350,6 +360,8 @@ write.csv(
   data.frame(
     Solver = names(solver_colours),
     Colour = unname(solver_colours),
+    Shape = unname(solver_shapes),
+    Line_type = unname(solver_linetypes),
     stringsAsFactors = FALSE
   ),
   file.path(output_dir, "solver_colours.csv"),
@@ -368,32 +380,32 @@ for (family_name in names(family_grid)) {
 
     metrics_plot <- ggplot2::ggplot(
       condition_long,
-      ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+      ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
+                   linetype = Solver, group = Solver)
     ) +
       solver_layers(condition_long) +
-      ggplot2::facet_wrap(~metric, scales = "free_y",
+      ggplot2::facet_wrap(~metric, scales = "free_y", ncol = 3,
                          labeller = ggplot2::as_labeller(metric_labels)) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
         subtitle = "start = 1; local.search = FALSE; common GIC preset",
         colour = "solver",
+        shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
         y = NULL
       ) +
       ggplot2::theme(legend.position = "bottom") +
-      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3)) +
-      ggplot2::scale_x_continuous(trans = "log10") +
-      ggplot2::scale_color_manual(
-        values = solver_colours,
-        labels = solver_labels,
-        limits = names(solver_colours),
-        drop = FALSE
-      )
+      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3),
+                     shape = ggplot2::guide_legend(ncol = 3),
+                     linetype = ggplot2::guide_legend(ncol = 3)) +
+      ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
+                                labels = scales::label_number(big.mark = ",")) +
+      solver_scales()
 
     save_plot(
       metrics_plot,
-      sprintf("timings_metrics_%s_%s", matrix_name, family_name), width = 10, height = 7
+      sprintf("timings_metrics_%s_%s", matrix_name, family_name), width = 11, height = 8
     )
 
     time_data <- subset(condition_long, metric == "Time")
@@ -401,7 +413,8 @@ for (family_name in names(family_grid)) {
 
     timing_plot <- ggplot2::ggplot(
       time_data,
-      ggplot2::aes(x = Size, y = value, colour = Solver, group = Solver)
+      ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
+                   linetype = Solver, group = Solver)
     ) +
       solver_layers(time_data) +
       ggplot2::theme_minimal() +
@@ -409,19 +422,18 @@ for (family_name in names(family_grid)) {
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
         subtitle = "start = 1; local.search = FALSE; median warm fitting time",
         colour = "solver",
+        shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
         y = "Time (s)"
       ) +
       ggplot2::theme(legend.position = "bottom") +
-      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3)) +
-      ggplot2::scale_x_continuous(trans = "log10") +
+      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3),
+                     shape = ggplot2::guide_legend(ncol = 3),
+                     linetype = ggplot2::guide_legend(ncol = 3)) +
+      ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
+                                labels = scales::label_number(big.mark = ",")) +
       ggplot2::scale_y_continuous(trans = "log10") +
-      ggplot2::scale_color_manual(
-        values = solver_colours,
-        labels = solver_labels,
-        limits = names(solver_colours),
-        drop = FALSE
-      )
+      solver_scales()
 
     save_plot(
       timing_plot,
@@ -434,7 +446,8 @@ combined_timing_data <- subset(results_long, metric == "Time")
 combined_timing_data$value[combined_timing_data$value <= 0] <- NA_real_
 combined_timing_plot <- ggplot2::ggplot(
   combined_timing_data,
-  ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver, group = Solver)
+  ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
+               linetype = Solver, group = Solver)
 ) +
   solver_layers(combined_timing_data, point_size = 2, point_stroke = 0.7) +
   ggplot2::facet_grid(Matrix_density ~ Noise_family) +
@@ -445,24 +458,18 @@ combined_timing_plot <- ggplot2::ggplot(
                        use_openmp, blas_threads, timing_repetitions),
     colour = "solver",
     shape = "solver",
+    linetype = "solver",
     x = "Problem size (n = p)",
     y = "Time (s)"
   ) +
   ggplot2::theme(legend.position = "bottom", panel.spacing = grid::unit(1, "lines")) +
   ggplot2::guides(colour = ggplot2::guide_legend(ncol = 2),
-                  shape = ggplot2::guide_legend(ncol = 2)) +
+                  shape = ggplot2::guide_legend(ncol = 2),
+                  linetype = ggplot2::guide_legend(ncol = 2)) +
   ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
                             labels = scales::label_number(big.mark = ",")) +
   ggplot2::scale_y_continuous(trans = "log10") +
-  ggplot2::scale_shape_manual(values = solver_shapes,
-                            labels = solver_labels,
-                             limits = names(solver_shapes), drop = FALSE) +
-  ggplot2::scale_color_manual(
-    values = solver_colours,
-    labels = solver_labels,
-    limits = names(solver_colours),
-    drop = FALSE
-  )
+  solver_scales()
 
 save_plot(combined_timing_plot, "timings_all_conditions", width = 10, height = 7)
 
@@ -476,6 +483,9 @@ run_summary <- c(
   "Untimed warm fits per condition: 1",
   "Starting coefficients: 1 (working coefficient coordinates)",
   "Automatic local support search: FALSE",
+  "OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish",
+  "Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1",
+  "GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8",
   paste("Maximum IRLS iterations:", fit_maxit),
   paste("Convergence tolerance:", fit_tol),
   paste("L0glm version:", packageVersion("L0glm")),
