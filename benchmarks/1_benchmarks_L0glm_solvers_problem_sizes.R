@@ -22,7 +22,9 @@ sizes <- c(100, 500, 1000, 10000)
 use_openmp <- FALSE
 blas_threads <- 1L
 timing_repetitions <- 3L # median after one untimed warm fit per condition
-fit_maxit <- 25L
+# Generous benchmark-only ceiling: fits stop as soon as they converge.
+# The package default remains 25 iterations.
+fit_maxit <- 500L
 fit_tol <- 1e-10
 # Optional constrained polish for Eigen paths with an existing predictor Gram.
 # Rectangular LSCG and Woodbury solves bypass this correction.
@@ -395,7 +397,8 @@ for (family_name in names(family_grid)) {
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
-        subtitle = "start = 1; local.search = FALSE; common GIC preset",
+        subtitle = sprintf("start = 1; local.search = FALSE; GIC preset; maxit = %d; Eigen polish = %s",
+                           fit_maxit, nonnegative_polish),
         colour = "solver",
         shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
@@ -426,7 +429,8 @@ for (family_name in names(family_grid)) {
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
-        subtitle = "start = 1; local.search = FALSE; median warm fitting time",
+        subtitle = sprintf("start = 1; local.search = FALSE; maxit = %d; median warm fitting time",
+                           fit_maxit),
         colour = "solver",
         shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
@@ -460,8 +464,9 @@ combined_timing_plot <- ggplot2::ggplot(
   ggplot2::theme_minimal() +
   ggplot2::labs(
     title = "L0glm solver timings by problem size",
-    subtitle = sprintf("start = 1; local.search = FALSE; openmp = %s; BLAS threads = %d; median of %d fits",
-                       use_openmp, blas_threads, timing_repetitions),
+    subtitle = sprintf(paste0("start = 1; local.search = FALSE; maxit = %d; Eigen polish = %s\n",
+                              "openmp = %s; BLAS threads = %d; median of %d warm fits"),
+                       fit_maxit, nonnegative_polish, use_openmp, blas_threads, timing_repetitions),
     colour = "solver",
     shape = "solver",
     linetype = "solver",
@@ -489,10 +494,13 @@ run_summary <- c(
   "Untimed warm fits per condition: 1",
   "Starting coefficients: 1 (working coefficient coordinates)",
   "Automatic local support search: FALSE",
+  paste("Optional Eigen constrained polish:", nonnegative_polish),
   "OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish",
   "Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1",
   "GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8",
   paste("Maximum IRLS iterations:", fit_maxit),
+  paste("Converged fits:", sum(results$Converged, na.rm = TRUE), "of", nrow(results)),
+  paste("Largest observed iteration count:", max(results$Iterations, na.rm = TRUE)),
   paste("Convergence tolerance:", fit_tol),
   paste("L0glm version:", packageVersion("L0glm")),
   paste("glmnet version:", if (isNamespaceLoaded("glmnet"))
@@ -502,3 +510,6 @@ run_summary <- c(
 )
 writeLines(run_summary, file.path(output_dir, "run_summary.txt"))
 message(paste(run_summary, collapse = "\n"))
+if (any(!results$Converged, na.rm = TRUE))
+  warning("Some fits did not converge within the benchmark ceiling; inspect Converged and Iterations in the metrics table.",
+          call. = FALSE)
