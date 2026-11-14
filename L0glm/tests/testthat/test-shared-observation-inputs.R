@@ -4,8 +4,7 @@ test_that("shared row weights and offsets stay compact and match channel matrice
   off<-seq(.5,1.5,length.out=n);w<-runif(n,.7,1.3)
   y<-matrix(rpois(n*m,as.matrix(X%*%B)+off),n,m)
   for(openmp in c(FALSE,TRUE))for(grouped in c(FALSE,TRUE)) {
-    args<-list(X=X,y=y,family=poisson("identity"),lambda="gic",nonnegative=TRUE,
-      openmp=openmp,parallelize=FALSE,grouped=grouped)
+    args<-list(X=X,y=y,family=poisson("identity"),lambda="gic",nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=openmp)),ncores=1L,grouped=grouped)
     a<-do.call(l0glmFit,c(args,list(weights=w,offset=off)))
     b<-do.call(l0glmFit,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
     expect_equal(coef(a),coef(b),tolerance=1e-8)
@@ -29,7 +28,7 @@ test_that("tuning preserves compact shared inputs and equivalent CV scores", {
   y<-matrix(rpois(n*m,X%*%B+off),n,m)
   args<-list(X=X,y=y,family=poisson("identity"),tune="cv",nlambda=3L,
     foldid=rep(1:3,each=n/3),nfolds=3L,nonnegative=TRUE,
-    grouped=TRUE,openmp=TRUE,parallelize=FALSE,plot=FALSE,printbest=FALSE)
+    grouped=TRUE,control.solver=utils::modifyList(list(),list(.native=TRUE)),ncores=1L,plot=FALSE,printbest=FALSE)
   a<-do.call(l0glmTune,c(args,list(weights=w,offset=off)))
   b<-do.call(l0glmTune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
   expect_equal(a$cv$deviance,b$cv$deviance,tolerance=1e-10)
@@ -49,8 +48,7 @@ test_that("negative-binomial CV accounts for every channel with shared weights",
   w<-rep(c(0,.7,1.2),length.out=n);off<-seq(-.2,.2,length.out=n)
   y<-matrix(rnbinom(n*m,size=5,mu=exp(1+X[,2L]+off)),n,m)
   args<-list(X=X,y=y,family=mgcv::nb(theta=5,link="log"),tune="cv",
-    nlambda=3L,foldid=rep(1:3,each=n/3),nfolds=3L,maxit=15L,
-    parallelize=FALSE,plot=FALSE,printbest=FALSE)
+    nlambda=3L,foldid=rep(1:3,each=n/3),nfolds=3L,maxit=15L,ncores=1L,plot=FALSE,printbest=FALSE)
   a<-do.call(l0glmTune,c(args,list(weights=w,offset=off)))
   b<-do.call(l0glmTune,c(args,list(weights=matrix(w,n,m),offset=matrix(off,n,m))))
   expect_equal(a$cv$deviance,b$cv$deviance,tolerance=1e-10)

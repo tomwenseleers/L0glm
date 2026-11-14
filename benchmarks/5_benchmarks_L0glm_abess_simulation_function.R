@@ -116,8 +116,6 @@ system.time(L0glm.chol.mgaus <- l0glmFit(data.mc.gaus$x, data.mc.gaus$y,
                                          start = NULL, # TODO try different possible initialisations
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-                                          # gives best result for multichannel
-                                         parallelize = TRUE,
                                          solver = "eigen", # osqp gives very similar solution
                                          method = 1L))  # use eigen Cholesky LLT solver
 # 12s
@@ -252,9 +250,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(data.sc.gaus$x, data.sc.gaus$y,
                                           lambda = crit,
                                           start = NULL, # rep(1, p), # NULL, # TODO try different possible initialisations
                                           nonnegative = TRUE,
-                                          grouped = FALSE,
-                                           # gives best result for multichannel
-                                          parallelize = FALSE,
+                                          grouped = FALSE,ncores=1L,
                                           solver = "eigen", # osqp gives very similar solution
                                           method = 1L))  # use Cholesky LLT solver
 # 0.26s

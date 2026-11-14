@@ -29,7 +29,7 @@ benchmark_posterior_coverage <- function(n=1000L,p=n,npeaks=100L,nrep=200L,chann
         result <- tryCatch({
           fit <- l0glmFit(if(method=='oracle')X[,active,drop=FALSE]else X,Y,
             family=case$family,dispersion=if(case$known)if(case$sd==0)1 else case$sd^2 else NULL,
-            lambda=if(method=='oracle')0 else 'gic',nonnegative=TRUE,parallelize=FALSE)
+            lambda=if(method=='oracle')0 else 'gic',nonnegative=TRUE,ncores=1L)
           posterior <- summary(fit,inference='posterior',control.inference=control)$inference
           table <- posterior$coefficients
           beta <- if(method=='oracle')truth[active,,drop=FALSE]else truth

@@ -15,8 +15,7 @@ test_that("explicit signed starts set the first ridge penalties without mixing",
     fit <- L0glm_internal_fit(local.search=FALSE, Matrix::Matrix(diag(3), sparse = sparse), y,
                      family = gaussian(), nonnegative = FALSE,
                      start = start, lambda = 4, dispersion = 1,
-                     maxit = 1, thresh = 0, relaxed = FALSE,
-                     parallelize = FALSE, openmp = FALSE)
+                     maxit = 1, thresh = 0, relaxed = FALSE,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
     expect_equal(as.numeric(fit$coefficients), c(-1, 0, 3.2))
     expect_equal(as.numeric(fit$lambdas)[c(1, 3)], c(1, 0.25))
   }
@@ -53,8 +52,7 @@ test_that("scalar starts work for signed single and multichannel Gaussian fits",
         args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                      intercept = intercept, nonnegative = FALSE,
                      lambda = 4, maxit = 1, thresh = 0,
-                     grouped = FALSE, relaxed = FALSE,
-                     parallelize = FALSE, openmp = FALSE)
+                     grouped = FALSE, relaxed = FALSE,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
         for (start in c(1, -2)) {
           scalar <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(start = start)), list(local.search=FALSE)))
           expected_start <- matrix(start, p, m)
@@ -89,7 +87,7 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
       if (intercept) start <- c(1 - sum(center / scale), start)
       args <- list(X = X, y = c(2, 1, 4, 6), family = gaussian(), dispersion = 1,
         lambda = 4, normalize = mode, intercept = intercept, maxit = 1,
-        thresh = 0, relaxed = FALSE, parallelize = FALSE, openmp = FALSE)
+        thresh = 0, relaxed = FALSE,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
       unit <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(start = 1)), list(local.search=FALSE)))
       explicit <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(start = matrix(start, ncol = 1))), list(local.search=FALSE)))
       expect_equal(unit$coefficients, explicit$coefficients, tolerance = 1e-12)
@@ -101,11 +99,11 @@ test_that("unit starts use normalized coordinates and explicit starts keep input
 test_that("a remaining explicit one is not reinterpreted after starting-zero screening", {
   X <- diag(c(2, 3)); y <- c(3, 0)
   fit <- L0glm_internal_fit(local.search=FALSE, X, y, family = gaussian(), dispersion = 1, normalize = "l2",
-    start = c(1, 0), lambda = 4, maxit = 1, thresh = 0, parallelize = FALSE)
+    start = c(1, 0), lambda = 4, maxit = 1, thresh = 0,ncores=1L)
   expect_equal(as.numeric(fit$coefficients), c(6 / 5, 0))
   one_term <- L0glm_internal_fit(local.search=FALSE, matrix(2, 1, 1), 3, family = gaussian(), dispersion = 1,
     normalize = "l2", start = matrix(1, 1, 1), lambda = 4, maxit = 1,
-    thresh = 0, parallelize = FALSE)
+    thresh = 0,ncores=1L)
   expect_equal(as.numeric(one_term$coefficients), 6 / 5)
 })
 
@@ -119,11 +117,11 @@ test_that("normalized Poisson unit starts agree across general and native channe
       explicit <- matrix(c(if (intercept) 1, 1 / scale), 6 + intercept, 3)
       args <- list(X = X, y = y, normalize = mode, intercept = intercept,
         lambda = 1, maxit = 8, grouped = TRUE, relaxed = TRUE,
-        group.maxit = 2, parallelize = FALSE)
+        group.maxit = 2,ncores=1L)
       native <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(start = 1)), list(local.search=FALSE)))
       reference <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(start = explicit)), list(local.search=FALSE)))
       general <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(start = 1,
-        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
+        family = poisson(identity), nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE)))
       expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-10)
       expect_equal(native$coefficients, general$coefficients, tolerance = 1e-6)
     }
@@ -142,12 +140,11 @@ test_that("scalar Poisson starts cover intercepts, grouping and both backends", 
         for (grouped in c(FALSE, TRUE)) {
           args <- list(X = X, y = y, family = poisson(identity),
                        intercept = intercept, lambda = 0.5, maxit = 3,
-                       group.maxit = 2, grouped = grouped, relaxed = grouped,
-                       parallelize = FALSE)
+                       group.maxit = 2, grouped = grouped, relaxed = grouped,ncores=1L)
           for (backend in c("general", "native", "dispatch")) {
             fitter <- if (backend == "native") L0glm_internal_pois else L0glm_internal_fit
             controls <- if (backend == "native") list() else
-              list(nonnegative = TRUE, openmp = backend == "dispatch")
+              list(nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=backend == "dispatch")))
             scalar <- do.call(fitter, c(args, controls, list(start = 1)))
             explicit <- do.call(fitter,
               c(args, controls, list(start = matrix(1, p, ncol(y)))))
@@ -160,7 +157,7 @@ test_that("scalar Poisson starts cover intercepts, grouping and both backends", 
   }
 })
 
-test_that("scalar starts survive multichannel parallel job splitting", {
+test_that("scalar starts agree across multichannel thread counts", {
   cores <- parallel::detectCores()
   skip_if(is.na(cores) || cores < 2L, "parallel test requires two cores")
   set.seed(16013)
@@ -172,11 +169,11 @@ test_that("scalar starts survive multichannel parallel job splitting", {
   for (backend in c("general", "native")) {
     fitter <- if (backend == "native") L0glm_internal_pois else L0glm_internal_fit
     controls <- if (backend == "native") list() else
-      list(nonnegative = TRUE, openmp = FALSE)
+      list(nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))
     serial <- do.call(fitter,
-      c(args, controls, list(start = matrix(1, 5, 3), parallelize = FALSE)))
+      utils::modifyList(c(args, controls), list(start = matrix(1, 5, 3),ncores=1L)))
     parallel <- do.call(fitter,
-      c(args, controls, list(start = 1, parallelize = TRUE)))
+      c(args, controls, list(start = 1)))
     expect_identical(parallel$coefficients, serial$coefficients)
     expect_identical(parallel$lambdas, serial$lambdas)
   }
@@ -190,7 +187,7 @@ test_that("Gaussian initialization respects response units with fixed dispersion
   fit <- function(scale) L0glm_internal_fit(local.search=FALSE,
     X, y * scale, family = gaussian(), nonnegative = FALSE,
     dispersion = 0.25 * scale^2, lambda = "gic", maxit = 100,
-    relaxed = TRUE, parallelize = FALSE, openmp = FALSE)
+    relaxed = TRUE,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
   reference <- fit(1)$coefficients
   for (scale in c(0.01, 100))
     expect_equal(fit(scale)$coefficients / scale, reference, tolerance = 1e-8)

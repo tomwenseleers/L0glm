@@ -50,7 +50,6 @@ export(l0glmData)
 export(l0glmFit)
 export(l0glmMetrics)
 export(l0glmTune)
-export(l0nnPois)
 export(lmRidge)
 export(nb1)
 export(plotL0glmBenchmark)
@@ -89,13 +88,7 @@ importFrom(methods,
   as,
   is
 )
-importFrom(parallel,
-  clusterApply,
-  clusterCall,
-  detectCores,
-  makeCluster,
-  stopCluster
-)
+importFrom(parallel,detectCores)
 importFrom(qlcMatrix,
   colMax,
   colMin,

@@ -34,7 +34,7 @@ test_that("all ridge backends respect optional nonnegativity including Gaussian 
             intercept = TRUE, nonnegative = nonnegative, normalize = normalize,
             always.include = 2L,
             lambda = 1e-12, dispersion = 1, solver = backends[i], method = methods[i],
-             relaxed = TRUE, parallelize = FALSE, maxit = 30
+             relaxed = TRUE,ncores=1L, maxit = 30
           )
           expected <- if (nonnegative) c(0, 3, 0) else c(-2, 3, -1.5)
           expect_equal(as.numeric(fit$coefficients), expected, tolerance = 1e-5,
@@ -57,8 +57,7 @@ test_that("binomial intercepts remain free across solvers and explicit intercept
           Matrix::Matrix(X, sparse = sparse), y, family = binomial,
           weights = rep(1000, length(y)), intercept = !explicit,
           nonnegative = TRUE, normalize = TRUE, lambda = 1e-12,
-          solver = solver,  relaxed = TRUE,
-          parallelize = FALSE, maxit = 60
+          solver = solver,  relaxed = TRUE,ncores=1L, maxit = 60
         )
         beta <- as.numeric(fit$coefficients)
         if (explicit) beta <- rev(beta)
@@ -80,14 +79,14 @@ test_that("binomial slopes remain constrained through grouped, relaxed and paral
         family = binomial(), weights = rep(1000, length(x)),
         nonnegative = TRUE, lambda = 1e-8, grouped = grouped, relaxed = relaxed, group.maxit = 2L, maxit = 50L
       )
-      serial <- do.call(L0glm_internal_fit, c(args, list(parallelize = FALSE)))
+      serial <- do.call(L0glm_internal_fit, c(args, list(ncores=1L)))
       beta <- as.matrix(serial$coefficients)
       expect_true(all(beta[1, ] < 0))
       expect_true(all(beta[2, ] >= 0))
       expect_gt(beta[2, 1], 0.9)
       expect_equal(unname(beta[2, 2]), 0)
       if (grouped && relaxed) {
-        parallel <- do.call(L0glm_internal_fit, c(args, list(parallelize = TRUE, ncores = 2L)))
+        parallel <- do.call(L0glm_internal_fit, c(args, list( ncores = 2L)))
         expect_equal(parallel$coefficients, serial$coefficients, tolerance = 1e-12)
       }
     }
@@ -103,8 +102,7 @@ test_that("non-binomial intercepts follow nonnegative for other GLM families", {
     for (nonnegative in c(FALSE, TRUE)) {
       fit <- L0glm_internal_fit(
         X, y, family = family, intercept = TRUE, nonnegative = nonnegative,
-        lambda = 1e-10, dispersion = 1, start = c(-1, 0.4),
-        parallelize = FALSE, maxit = 60
+        lambda = 1e-10, dispersion = 1, start = c(-1, 0.4),ncores=1L, maxit = 60
       )
       beta <- as.numeric(fit$coefficients)
       expect_true(all(is.finite(beta)))
@@ -125,12 +123,10 @@ test_that("l0nnPois enforces nonnegativity on intercepts, starts and refits", {
             X = Matrix::Matrix(X, sparse = sparse),
             y = if (multichannel) cbind(y, y + 1) else y,
             offset = rep(4, length(y)), intercept = TRUE, normalize = normalize,
-            lambda = 1e-8, start = c(-1, 2), grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,
-            parallelize = multichannel && sparse && normalize && relaxed, ncores = 2L
-          )
+            lambda = 1e-8, start = c(-1, 2), grouped = TRUE, group.maxit = 2, relaxed = relaxed, maxit = 40,ncores=if(isTRUE(multichannel && sparse && normalize && relaxed)) 2L else 1L)
           fast <- do.call(L0glm_internal_pois, args)
           general <- do.call(L0glm_internal_fit, c(args, list(family = poisson(identity),
-                                                   nonnegative = TRUE, openmp = FALSE)))
+                                                   nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
           expect_true(all(is.finite(fast$coefficients)))
           expect_true(all(fast$coefficients >= 0))
           expect_true(all(as.matrix(fast$coefficients)[1, ] == 0))
@@ -142,8 +138,7 @@ test_that("l0nnPois enforces nonnegativity on intercepts, starts and refits", {
   }
   unrestricted <- L0glm_internal_fit(
     X, y, family = poisson(identity), offset = rep(4, length(y)),
-    intercept = TRUE, nonnegative = FALSE, lambda = 1e-12, start = c(-1, 2),
-     parallelize = FALSE, maxit = 50
+    intercept = TRUE, nonnegative = FALSE, lambda = 1e-12, start = c(-1, 2),ncores=1L, maxit = 50
   )
   expect_equal(as.numeric(unrestricted$coefficients), c(-2, 3), tolerance = 1e-6)
 })

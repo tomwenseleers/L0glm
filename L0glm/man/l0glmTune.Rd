@@ -191,6 +191,9 @@ initialize the next fit.}
 
 \item{...}{Other arguments passed to \code{l0glmFit}, including:
 \itemize{
+\item \code{ncores}: the OpenMP outcome-thread budget; \code{1L} gives
+serial fitting. Custom callbacks and R-based solver bridges remain serial
+and use this budget for BLAS unless \code{nthreads} overrides it.
 \item \code{maxit}: a single positive integer giving the iteration limit
 for each fit (default 25). Lambda is the tuning parameter. For a
 prediction-oriented fit with an independent validation set, pass
@@ -356,7 +359,7 @@ is raised to \code{lambda_min} if necessary; the reported preset is unchanged.
 The common
 grid is constructed from full-data fits; all coefficient initialization,
 dispersion estimation and grouped selection in each fold use training rows
-only. Folds are fitted sequentially; \code{parallelize} still controls
+only. Folds are fitted sequentially; \code{ncores} controls
 response-channel parallelism within each fit.
 With \code{start = "pilot"}, each fold constructs its own seed from its
 training rows, using training-weight-scaled pilot penalties. Full-data
@@ -452,14 +455,14 @@ old_par <- par(mgp=c(2, .7, 0))
 single <- simul(method=2, n=500, p=500, s=.1, seed=2)
 single_gic <- l0glmTune(single$X, single$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=single$beta_true,
-  nonnegative=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE,ncores=1L, plot=TRUE)
 
 # Venetian-blind CV: train on two out of every three time points.
 folds <- rep(1:3, length.out=nrow(single$X))
 single_cv <- l0glmTune(single$X, single$y, family=poisson(identity),
   tune="cv", nlambda=5, prop_range=.25, nfolds=3, foldid=folds,
   coefs.true=single$beta_true,
-  nonnegative=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE,ncores=1L, plot=TRUE)
 c(GIC=single_gic$lambda_best, CV=single_cv$lambda_best,
   CV_1se=single_cv$lambda_1se, GIC_preset=single_cv$lambda_preset)
 single_cv$metrics[c("lambda", "cv_deviance", "cv_se")]
@@ -474,14 +477,14 @@ fitted(single_cv$fit_1se)[1:6, , drop=FALSE]
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
 multi_gic <- l0glmTune(multi$X, multi$y, family=poisson(identity),
   tune="gic", nlambda=5, prop_range=.25, coefs.true=multi$beta_true,
-  nonnegative=TRUE, grouped=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, grouped=TRUE,ncores=1L, plot=TRUE)
 
 # All channels of each time point share one fold assignment.
 folds <- rep(1:3, length.out=nrow(multi$X))
 multi_cv <- l0glmTune(multi$X, multi$y, family=poisson(identity),
   tune="cv", nlambda=5, prop_range=.25, nfolds=3, foldid=folds,
   coefs.true=multi$beta_true,
-  nonnegative=TRUE, grouped=TRUE, parallelize=FALSE, plot=TRUE)
+  nonnegative=TRUE, grouped=TRUE,ncores=1L, plot=TRUE)
 c(GIC=multi_gic$lambda_best, CV=multi_cv$lambda_best,
   CV_1se=multi_cv$lambda_1se, GIC_preset=multi_cv$lambda_preset)
 l0glmMetrics(multi_gic$fit_best, beta_true=multi$beta_true)[

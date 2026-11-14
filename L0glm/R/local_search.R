@@ -207,14 +207,14 @@ L0glm_local_refit <- function(mask,current,d,control) {
     args <- list(X=A,y=d$original.y,family=d$family,weights=d$W,offset=d$O,
       intercept=FALSE,always.include=included,lambda=0,start=B,
       nonnegative=d$nonnegative,normalize=d$normalize,solver=d$solver,method=d$method,
-      parallelize=FALSE,ncores=control$ncores,nthreads=1L,openmp=TRUE,
+      ncores=control$ncores,nthreads=1L,
       maxit=control$refit.maxit,tol=control$refit.tol,thresh=0,
       grouped=d$grouped,group.maxit=1L,screen="none",local.search=FALSE,
       control.solver=d$control.solver,control.family=d$control.family)
     if(d$nonnegative && identical(d$family$family,'poisson') && identical(d$family$link,'identity') &&
        identical(d$solver,'eigen') && isTRUE(d$method==1L))args$control.solver$.refit.only <- TRUE
     # The constrained native backend uses ncores for its outcome threads.
-    args$parallelize <- control$ncores>1L
+    args$ncores <- control$ncores
     if(is.null(d$kind)) {
       phi <- L0glm_local_phi(current,d)
       if(!length(d$common.phi)) phi[d$estimated] <- -phi[d$estimated]

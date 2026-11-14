@@ -84,43 +84,6 @@ L0glm_native_solver_bridge <- function(solver,control) {
   }
 }
 
-# Dependency wrappers use R's API. Parallelize their complete native channel
-# passes in independent R workers; grouped support and dispersion remain in C++.
-L0glm_native_workers <- function(design,descriptor,probes,control,bridge,threads,nthreads) {
-  type <- if(Sys.info()[['sysname']]=='Windows')'PSOCK'else'FORK'
-  cluster <- if(type=='PSOCK')parallel::makeCluster(threads,type=type,useXDR=FALSE,
-    master='127.0.0.1',rscript_args='--vanilla')else parallel::makeCluster(threads,type=type)
-  ready <- FALSE
-  on.exit(if(!ready)parallel::stopCluster(cluster))
-  init <- L0glm_worker_init;environment(init) <- baseenv()
-  dll <- getLoadedDLLs()[['L0glm']]
-  dev <- requireNamespace('pkgload',quietly=TRUE) && pkgload::is_dev_package('L0glm')
-  parallel::clusterCall(cluster,init,.libPaths(),if(is.null(dll))NULL else dll[['path']],
-    nthreads,getNamespaceInfo('L0glm','path'),dev)
-  parallel::clusterCall(cluster,function(data){assign('.L0glm_native_worker',data,.GlobalEnv);NULL},
-    list(design=design,descriptor=descriptor,probes=probes,control=control,bridge=bridge))
-  run <- function(contexts) {
-    chunks <- split(seq_along(contexts),cut(seq_along(contexts),threads,labels=FALSE))
-    jobs <- lapply(chunks,function(i)contexts[i])
-    results <- parallel::clusterApply(cluster,jobs,L0glm_native_worker_pass)
-    messages <- unique(unlist(lapply(results,attr,'warnings'),use.names=FALSE))
-    for(message in messages)warning(message,call.=FALSE)
-    do.call(c,results)
-  }
-  ready <- TRUE
-  list(run=run,stop=function()parallel::stopCluster(cluster))
-}
-L0glm_native_worker_pass <- function(contexts) {
-  data <- get('.L0glm_native_worker',.GlobalEnv,inherits=FALSE)
-  messages <- character()
-  result <- withCallingHandlers(do.call(glm_native_pass_cpp,
-    c(list(design=data$design,contexts=contexts),data$descriptor,
-      list(probes=data$probes,solver_control=data$control,solver_bridge=data$bridge))),
-    warning=function(w){messages<<-c(messages,conditionMessage(w));invokeRestart('muffleWarning')})
-  attr(result,'warnings') <- unique(messages)
-  result
-}
-
 L0glm_native_model <- function(frame,descriptor,ncores=1L) {
   take <- function(name)get(name,frame,inherits=TRUE)
   X <- take('X');Y <- take('y');p <- ncol(X);m <- ncol(Y);family <- take('family')
@@ -160,21 +123,18 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
   threads <- as.integer(min(m,ncores))
   solver_control[c('.native.context','.native.centered','.native.intercept')] <- NULL
   bridge <- L0glm_native_solver_bridge(take('solver'),solver_control)
-  if(threads>1L) {
-    thread_state <- L0glm_set_thread_count(take('worker_nthreads'))
+  if(!is.null(bridge))threads <- 1L
+  blas_threads <- if(!is.null(bridge) && is.null(take('nthreads')))take('ncores')else
+    if(threads>1L)1L else take('nthreads')
+  if(!is.null(blas_threads)) {
+    thread_state <- L0glm_set_thread_count(blas_threads)
     on.exit(L0glm_restore_thread_count(thread_state),add=TRUE)
   }
   probes <- if(any(vapply(contexts,function(a)a$auto_phi,TRUE))) L0glm_native_probes(nrow(X)) else numeric()
-  executor <- NULL
-  if(!is.null(bridge) && threads>1L) {
-    pool <- L0glm_native_workers(design,descriptor,probes,solver_control,bridge,threads,take('worker_nthreads'))
-    on.exit(pool$stop(),add=TRUE)
-    executor <- pool$run
-  }
   result <- do.call(glm_native_cpp,c(list(design=design,contexts=contexts),descriptor,
     list(nthreads=threads,probes=probes,max_passes=if(m>1L && take('grouped'))as.integer(take('group.maxit'))else 1L,
       relaxed=take('relaxed'),nonnegative=take('nonnegative'),
-      solver_control=solver_control,solver_bridge=bridge,executor=executor)))
+      solver_control=solver_control,solver_bridge=bridge)))
   result$initialDispersion <- result$initial_dispersion
   if(isTRUE(take('verbose')))print(result$convergence,row.names=FALSE)
   status <- result$native_stats;result$native_stats <- NULL

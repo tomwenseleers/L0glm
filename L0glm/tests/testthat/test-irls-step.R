@@ -65,10 +65,9 @@ test_that("feasible first solves retain eligible terms from an invalid start", {
   X <- matrix(c(1, -2, 1, 1, 1, 2), ncol = 2L, byrow = TRUE)
   y <- c(3, 6, 7)
   args <- list(X = X, y = y, family = poisson("identity"), start = 1,
-    normalize = "none", nonnegative = TRUE, lambda = 1e-4,
-     parallelize = FALSE)
-  a <- do.call(l0glmFit, c(args, list(openmp = FALSE)))
-  b <- do.call(l0glmFit, c(args, list(openmp = TRUE)))
+    normalize = "none", nonnegative = TRUE, lambda = 1e-4,ncores=1L)
+  a <- do.call(l0glmFit, c(args, list(control.solver=utils::modifyList(list(),list(.native=FALSE)))))
+  b <- do.call(l0glmFit, c(args, list(control.solver=utils::modifyList(list(),list(.native=TRUE)))))
   expect_true(all(coef(a) > 0))
   expect_true(all(fitted(a) > 0))
   expect_equal(coef(a), coef(b), tolerance = 1e-7)
@@ -78,7 +77,7 @@ test_that("feasible first solves retain eligible terms from an invalid start", {
 test_that("native infeasible starts retain a finite anchor with a warning", {
   X <- matrix(c(1, 0, -1, 1, 0), ncol = 1L)
   expect_warning(fit <- l0nnPois(X, c(1, 2, 3, 4, 5), start = 1,
-    normalize = "none", lambda = .01,  parallelize = FALSE))
+    normalize = "none", lambda = .01,ncores=1L))
   expect_equal(as.numeric(coef(fit)), 0)
   expect_false(fit$convergence$converged)
 })

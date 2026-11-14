@@ -3,7 +3,7 @@
 #' @name information_criteria
 #' @md
 #' @description
-#' Both [l0glmFit()] and [l0nnPois()] accept a numeric \code{lambda} or a
+#' [l0glmFit()] accepts a numeric \code{lambda} or a
 #' case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 #' \code{"ebic"}, or \code{"mbic"}.
 #' For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
@@ -145,11 +145,9 @@
 #' y <- rpois(40, 1 + 3 * X[, 1])
 #' fit <- l0glmFit(X, y, family = poisson(identity),
 #'   nonnegative = TRUE, intercept = TRUE, lambda = "GIC",
-#'   parallelize = FALSE)
-#' fast <- l0nnPois(X, y, intercept = TRUE, lambda = "gic",
-#'   parallelize = FALSE)
-#' # Both presets use p = 3 selectable predictors, excluding the intercept.
-#' c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
+#'   ncores=1L)
+#' # The preset uses p = 3 selectable predictors, excluding the intercept.
+#' c(fit$init.lambda, presetLambda("GIC", p=3, n=40))
 #'
-#' @seealso [presetLambda()], [l0glmFit()], [l0nnPois()], [l0glmTune()]
+#' @seealso [presetLambda()], [l0glmFit()], [l0glmTune()]
 NULL

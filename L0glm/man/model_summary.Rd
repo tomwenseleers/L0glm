@@ -89,7 +89,7 @@ a coefficient table and covariance or bootstrap diagnostics. \code{print()}
 methods return their input invisibly.
 }
 \description{
-Concise S3 displays for \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}} and \code{\link[=sparseGLM]{sparseGLM()}}
+Concise S3 displays for \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=sparseGLM]{sparseGLM()}}
 results, including negative-binomial, multinomial and Cox models.
 }
 \details{
@@ -123,7 +123,7 @@ truth is available. No fitted models or adaptive pilots are recomputed.
 set.seed(4)
 X <- matrix(rnorm(240), 60, 4)
 y <- 2 * X[, 1] + rnorm(60)
-fit <- l0glmFit(X, y, lambda="gic", parallelize=FALSE)
+fit <- l0glmFit(X, y, lambda="gic", ncores=1L)
 print(fit)
 details <- summary(fit)
 print(details, max.rows=10)

@@ -20,8 +20,7 @@ l0glmFit(
   normalize = "auto",
   solver = "eigen",
   method = 1L,
-  parallelize = TRUE,
-  ncores = L0glm_default_ncores(parallelize),
+  ncores = L0glm_default_ncores(),
   nthreads = NULL,
   maxit = 25,
   grouped = TRUE,
@@ -31,7 +30,6 @@ l0glmFit(
   tol = 1e-10,
   control.solver = do.call("controlSolverGen", list(solver = solver, method = method)),
   verbose = FALSE,
-  openmp = TRUE,
   control.family = list(),
   screen = "auto",
   nsis = NULL,
@@ -199,15 +197,14 @@ Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
 In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with screening,
 \code{"bic"} for eligible wide multitask Gaussian fits
-(\link{dispersion_calibration}), and 1 otherwise. \code{l0nnPois()}
-defaults to \code{"gic"}.}
+(\link{dispersion_calibration}), and 1 otherwise.}
 
 \item{intercept}{Logical: Whether to include an intercept term in the model.
 If `TRUE`, a column of ones will be added to the design matrix `X`, and
 this term will **not** be penalized. If `FALSE`, no intercept column will
 be added, and the user must ensure that `X` already contains an intercept
 if needed. Defaults to `TRUE` for binomial models and `FALSE` otherwise
-in `l0glmFit()`, and to `FALSE` in `l0nnPois()`. With
+in `l0glmFit()`. With
 `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
 except for binomial and quasibinomial models, where it may have either sign.}
 
@@ -228,8 +225,7 @@ nonnegative. For binomial and quasibinomial models only, intercept columns
 (columns of ones, whether supplied in \code{X} or added by
 \code{intercept = TRUE}) remain unrestricted. If \code{FALSE}, all
 coefficients may have either sign. Defaults to \code{FALSE} in
-\code{l0glmFit()}. The specialized \code{l0nnPois()} function always
-enforces nonnegativity and has no \code{nonnegative} argument.
+\code{l0glmFit()}.
 Unpenalized terms use a constrained conditional solve, while selectable
 coefficients use the chosen ridge solver. See [compulsory_terms].}
 
@@ -243,7 +239,7 @@ accounted for and the norms use centered columns. The original \code{X}
 and \code{y} are unchanged. Dense working columns are centered once;
 sparse working columns are shifted only when this adds no stored entries,
 with the other means handled by the intercept. A constrained intercept
-prevents this centering, including in \code{l0nnPois()}. Mandatory terms
+prevents this centering. Mandatory terms
 and zero-scale columns use scale one. Penalties, starts, ridge centers and
 bounds are transformed consistently. Returned coefficients and explicit
 vector/matrix starts retain their input units; numeric scalar \code{start=1}
@@ -300,28 +296,27 @@ Use \code{method=1L} for Eigen Cholesky LLT.}
 
   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.}
 
-\item{parallelize}{A logical value indicating whether in the multivariate
-case, the columns of the response matrix \code{y} should be fitted in
-parallel. If \code{TRUE}, each column of \code{y} is fitted concurrently,
-potentially speeding up computation. If \code{FALSE}, the columns are
-fitted sequentially.}
-
-\item{ncores}{Optional integer specifying the number of cores to use when
-\code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to half the
-detected number of physical cores when that can be determined, falling back
-to half the number of logical cores. The requested value is capped at the
-detected number of physical cores when that can be determined.
-Native Eigen fits use this many OpenMP threads sharing the design matrix;
-OSQP, \code{bigGlm} and the general R path use independent R workers.
-With \code{l0nnPois}, the OpenMP thread count is capped at the logical
-core count.}
+\item{ncores}{Positive integer limiting OpenMP outcome-channel threads.
+Defaults to half the detected physical cores, falling back to half the
+logical cores or one if detection is unavailable.
+Set \code{ncores=1L} for serial execution. Built-in scalar family and link
+implementations use native code automatically, including one-thread fits.
+Custom R family/link callbacks and R-based solver bridges run serially.
+No socket or fork workers are created. BLAS threads are limited within
+native multichannel passes to avoid nested parallelism.
+For serial custom-family and external-solver paths, omitted
+\code{nthreads} uses \code{ncores} as the BLAS thread budget. This
+benefits dense operations when a multithreaded BLAS is installed;
+sparse kernels retain their own threading behavior. All thread settings
+are restored on return, including when fitting raises an error.}
 
 \item{nthreads}{Optional integer specifying the number of BLAS threads
-to use per fit process. The default \code{NULL} leaves the main R session's
-thread settings unchanged and uses one BLAS thread per parallel
-worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
-tune per-worker threading on systems with a multithreaded BLAS.
-The \code{l0nnPois} backend uses \code{ncores}; it ignores \code{nthreads}.}
+to use for serial fitting. With \code{NULL}, ordinary single-channel native
+fits retain the session's BLAS settings, while serial custom-family and
+external-solver paths use \code{ncores}. Parallel native channels always
+use one BLAS thread each. Setting \code{nthreads} can be useful to benchmark serial fits or
+tune serial threading on systems with a multithreaded BLAS.
+The specialized Poisson identity backend follows the same threading rule.}
 
 \item{maxit}{Integer specifying the maximum number of IRLS iterations to
 perform per channel and fitting pass (default 25). Fits stop
@@ -450,20 +445,6 @@ rectangular and Woodbury solves; see \code{\link{controlSolverGen}}.}
 
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}
-
-\item{openmp}{Logical; defaults to \code{TRUE}. Selects a native driver for
-built-in scalar GLM families and fixed-noise signal families, including
-coefficient initialization, dispersion updates, grouped selection and
-unpenalized refitting. All Eigen methods are supported and share the design
-across OpenMP threads. OSQP and \code{bigGlm} use the same native IRLS
-driver, calling their dependency interfaces on the R thread; concurrent
-channels use independent R workers for these two solvers.
-Eligible nonnegative identity-link Poisson LLT fits use the specialized
-\code{\link{l0nnPois}} backend, including native validation stopping.
-Custom family callbacks, general validation stopping and structured
-special-family algorithms retain their R orchestration. Set \code{FALSE}
-to request the general R driver. \code{parallelize} separately controls
-whether outcome channels run concurrently.}
 
 \item{control.family}{Family-specific IRLS controls. A named list with
 \code{dispersion.calibration="auto"} or \code{TRUE} for the eligible
@@ -947,8 +928,8 @@ chosen.
 
 \subsection{Screening}{
 Screening reuses \code{\link{sisGLM}} for all ordinary and special families.
-With screening enabled, omitted \code{lambda} and \code{parallelize} use
-\code{"gic"} and \code{FALSE}, respectively. Each screening round retains
+With screening enabled, omitted \code{lambda} and \code{ncores} use
+\code{"gic"} and \code{1L}, respectively. Each screening round retains
 its penalized estimate. Explicit arguments are
 preserved. Other defaults are unchanged.
 This reproduces the small-batch ISIS workflow used in the ultra-wide
@@ -980,10 +961,10 @@ coordinates, with a default free intercept and invariant grouped row penalties.
 Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
 sets and automatic LLT/matrix-free PCG routing. See
 \link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
-for the mathematics, examples and controls. These family loops
-are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
-\code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
-use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
+for the mathematics, examples and controls. These structured family loops
+use serial coordination and the requested BLAS thread budget.
+Ordinary GLM and native Poisson paths use \code{ncores} to limit
+OpenMP outcome-channel threads.
 }
 
 \subsection{Validation-based stopping}{
@@ -1022,7 +1003,7 @@ point, so use separate test observations to assess prediction performance.
 # Single-channel Poisson deconvolution: shifted copies of a known PSF.
 single <- simul(method=2, n=500, p=500, s=.1, seed=2)
 fit_single <- l0glmFit(single$X, single$y, family=poisson(identity),
-  lambda="gic", nonnegative=TRUE, parallelize=FALSE)
+  lambda="gic", nonnegative=TRUE,ncores=1L)
 l0glmMetrics(fit_single, beta_true=single$beta_true)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC")]
 
@@ -1053,7 +1034,7 @@ legend("topright", c("Observed signal", "True signal", "True spikes",
 # Retain every mass channel generated by the simulation.
 multi <- simul(method=4, n=500, p=500, s=.05, seed=2)
 fit_multi <- l0glmFit(multi$X, multi$y, family=poisson(identity),
-  lambda="gic", nonnegative=TRUE, grouped=TRUE, parallelize=FALSE)
+  lambda="gic", nonnegative=TRUE, grouped=TRUE,ncores=1L)
 l0glmMetrics(fit_multi, beta_true=multi$beta_true)[
   c("gic", "TP", "FP", "FN", "TN", "F1_score", "MCC",
     "within_row_F1_score", "within_row_MCC")]
@@ -1070,7 +1051,7 @@ par(old_par)
 # then refine and return coefficients for every original mass channel.
 system.time(fit_multi_clustered <- l0glmFit(multi$X, multi$y,
   family=poisson(identity), lambda="gic", nonnegative=TRUE,
-  grouped=TRUE, parallelize=TRUE, ncores=4L,
+  grouped=TRUE, ncores=4L,
   precluster=TRUE, cluster.refit=TRUE,
   control.precluster=list(k.max=32L, rowbins=5L)))
 fit_multi_clustered$preclustering$clusters
@@ -1135,23 +1116,23 @@ X <- matrix(x, ncol=1)
 # Nonnegativity includes the Gaussian intercept.
 constrained <- l0glmFit(X, -2+3*x, family=gaussian(),
   intercept=TRUE, nonnegative=TRUE, lambda=1e-8,
-  dispersion=1, parallelize=FALSE)
+  dispersion=1,ncores=1L)
 as.numeric(constrained$coefficients)
 
 # Estimate Gaussian variance from an automatic or user-supplied start.
 set.seed(1)
 y_gaussian <- 2*x + rnorm(length(x), sd=.5)
 automatic <- l0glmFit(X, y_gaussian, family=gaussian(),
-  lambda="gic", dispersion=NULL, maxit=100, parallelize=FALSE)
+  lambda="gic", dispersion=NULL, maxit=100,ncores=1L)
 initialized <- l0glmFit(X, y_gaussian, family=gaussian(),
-  lambda="gic", dispersion=-.25, maxit=100, parallelize=FALSE)
+  lambda="gic", dispersion=-.25, maxit=100,ncores=1L)
 # dispersion=.25 instead keeps the variance fixed at .25.
 
 # A binomial intercept may remain negative with a nonnegative slope.
 y <- round(1000*plogis(-2+x))/1000
 logistic <- l0glmFit(X, y, family=binomial(),
   weights=rep(1000, length(y)), nonnegative=TRUE,
-  lambda=1e-8, parallelize=FALSE)
+  lambda=1e-8,ncores=1L)
 as.numeric(logistic$coefficients)
 
 # Gaussian validation-based stopping: keep a separate test set for assessment.
@@ -1161,8 +1142,7 @@ y_validation <- 3 + 2*X_validation[, 1] - X_validation[, 2] + rnorm(200)
 train <- 1:120
 fit_stopped <- l0glmFit(X_validation[train, ], y_validation[train],
   intercept=TRUE, lambda="gic", maxit=100,
-  validation=list(X=X_validation[-train, ], y=y_validation[-train]),
-  parallelize=FALSE)
+  validation=list(X=X_validation[-train, ], y=y_validation[-train]),ncores=1L)
 fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
 
 # Optionally select the ISIS batch on the same validation set.
@@ -1170,8 +1150,7 @@ fit_stopped$validation$selection[c("best_iteration", "iterations", "stopped")]
 fit_batch <- l0glmFit(X_validation[train, ], y_validation[train],
   intercept=TRUE, lambda="gic", screen="ISIS", nsis=c(1, 3, 5, 10),
   maxit=100, validation=list(
-    X=X_validation[-train, ], y=y_validation[-train], rule="1se"),
-  parallelize=FALSE)
+    X=X_validation[-train, ], y=y_validation[-train], rule="1se"),ncores=1L)
 fit_batch$validation[c("selected_start", "selected_nsis", "deviance")]
 fit_batch$validation$starts
 # Sparse special families: GIC preset fits, GIC tuning and three-fold CV.

@@ -11,7 +11,7 @@ validation_data <- function() {
 test_that("validation returns the best checkpoint and records both fitting stages", {
   d <- validation_data()
   fit <- l0glmFit(local.search=FALSE, d$X, d$y, lambda = "gic",  maxit = 100,
-    validation = list(X = d$V, y = d$v), parallelize = FALSE)
+    validation = list(X = d$V, y = d$v),ncores=1L)
   loss <- mean((d$v - as.numeric(predict(fit, d$V)))^2)
   expect_equal(loss, fit$validation$deviance, tolerance = 1e-12)
   expect_lte(loss, mean(d$v^2))
@@ -30,15 +30,14 @@ test_that("validation returns the best checkpoint and records both fitting stage
   expect_equal(dim(coef(fit)), c(20L, 1L))
   # A validation target opposed to the training signal favors the null model.
   null <- l0glmFit(local.search=FALSE, d$X, d$y, lambda = "gic",  maxit = 100,
-    validation = list(X = d$V, y = numeric(70), patience = 2L, minit = 3L),
-    parallelize = FALSE)
+    validation = list(X = d$V, y = numeric(70), patience = 2L, minit = 3L),ncores=1L)
   expect_true(all(coef(null) == 0))
   expect_equal(null$validation$selection$best_iteration, 0L)
   first <- l0glmFit(local.search=FALSE, d$X, d$y, start = 1, dispersion = 1, lambda = "gic",
-    maxit = 1, parallelize = FALSE)
+    maxit = 1,ncores=1L)
   stopped <- l0glmFit(local.search=FALSE, d$X, d$y, start = 1, dispersion = 1, lambda = "gic", maxit = 100,
     validation = list(X = d$V, y = as.numeric(predict(first, d$V)),
-                      patience = 2L, minit = 3L), parallelize = FALSE)
+                      patience = 2L, minit = 3L),ncores=1L)
   expect_equal(coef(stopped), coef(first), tolerance = 1e-12)
   expect_equal(stopped$validation$selection$best_iteration, 1L)
   expect_true(stopped$validation$selection$stopped)
@@ -53,7 +52,7 @@ test_that("weighted validation respects offsets, predictor units and column name
   yy <- 2 + d$y + off; vv <- 2 + d$v + ov
   run <- function(X, V) l0glmFit(local.search=FALSE, X, yy, weights = w, offset = off,
     intercept = TRUE, lambda = "gic", maxit = 100,
-    validation = list(X = V, y = vv, weights = wv, offset = ov), parallelize = FALSE)
+    validation = list(X = V, y = vv, weights = wv, offset = ov),ncores=1L)
   a <- run(d$X, d$V[, 20:1])
   expected <- weighted.mean((vv - as.numeric(predict(a, d$V, offset = ov)))^2, wv)
   expect_equal(expected, a$validation$deviance, tolerance = 1e-10)
@@ -74,18 +73,18 @@ test_that("checkpointing preserves start masks, constraints and fixed dispersion
   start <- c(0, 1, rep(0, 19))
   fit <- l0glmFit(local.search=FALSE, d$X, d$y, intercept = TRUE, start = start, dispersion = 2,
     lambda = "gic",  maxit = 100,
-    validation = list(X = d$V, y = d$v), parallelize = FALSE)
+    validation = list(X = d$V, y = d$v),ncores=1L)
   expect_equal(dim(coef(fit)), c(21L, 1L))
   expect_true(all(coef(fit)[3:21, 1] == 0))
   expect_false(any(fit$validation$starts$start == "marginal"))
   expect_identical(fit$dispersion, 2)
   scaled <- l0glmFit(local.search=FALSE, d$X, 10 * d$y, intercept = TRUE, start = start * 10,
     dispersion = 200, lambda = "gic",  maxit = 100,
-    validation = list(X = d$V, y = 10 * d$v), parallelize = FALSE)
+    validation = list(X = d$V, y = 10 * d$v),ncores=1L)
   expect_equal(coef(fit), coef(scaled) / 10, tolerance = 1e-7)
   positive <- l0glmFit(local.search=FALSE, abs(d$X), abs(d$y), intercept = TRUE, nonnegative = TRUE,
     always.include = 3, lambda = "gic",
-    validation = list(X = abs(d$V), y = abs(d$v)), parallelize = FALSE)
+    validation = list(X = abs(d$V), y = abs(d$v)),ncores=1L)
   expect_true(all(coef(positive) >= 0))
   expect_equal(positive$always.include, c(1L, 4L))
 })
@@ -94,7 +93,7 @@ test_that("validation selects batches and starts by minimum error or the one-SE 
   d <- validation_data()
   run <- function(rule) l0glmFit(local.search=FALSE, d$X, d$y, screen = "isis", nsis = c(1:5, 10),
     screen.maxit = 4, lambda = "gic",  maxit = 100,
-    validation = list(X = d$V, y = d$v, rule = rule), parallelize = FALSE)
+    validation = list(X = d$V, y = d$v, rule = rule),ncores=1L)
   for (rule in c("min", "1se")) {
     fit <- run(rule)
     table <- fit$validation$starts
@@ -110,14 +109,14 @@ test_that("validation selects batches and starts by minimum error or the one-SE 
     expect_equal(as.numeric(predict(fit, d$V)), as.numeric(d$V %*% coef(fit)), tolerance = 1e-12)
   }
   fixed <- l0glmFit(local.search=FALSE, d$X, d$y, screen = "ISIS", lambda = "gic",
-    validation = list(X = d$V, y = d$v, starts = "default"), parallelize = FALSE)
+    validation = list(X = d$V, y = d$v, starts = "default"),ncores=1L)
   expected <- min(ncol(d$X), max(1, round(nrow(d$X) /
     (log(ncol(d$X)) * log(log(nrow(d$X)))))))
   expect_equal(fixed$validation$starts$nsis[fixed$validation$starts$start == "default"], expected)
   expect_equal(fixed$init.lambda, presetLambda("gic", ncol(d$X), nrow(d$X)))
   # With one equally weighted validation observation the empirical SE is zero.
   one <- l0glmFit(local.search=FALSE, d$X, d$y, lambda = "gic", validation = list(
-    X = d$V[1, , drop = FALSE], y = d$v[1], rule = "1se"), parallelize = FALSE)
+    X = d$V[1, , drop = FALSE], y = d$v[1], rule = "1se"),ncores=1L)
   expect_equal(one$validation$se, 0)
 })
 
@@ -140,7 +139,7 @@ test_that("a one-predictor marginal start retains original coefficient units", {
   expect_equal(dim(start), c(1L, 1L))
   expect_equal(as.numeric(start), 1)
   fit <- l0glmFit(local.search=FALSE, X, X[, 1], start = start, lambda = 0, dispersion = 1,
-    normalize = "rms", maxit = 1, parallelize = FALSE)
+    normalize = "rms", maxit = 1,ncores=1L)
   expect_equal(as.numeric(coef(fit)), 1, tolerance = 1e-12)
 })
 
@@ -149,7 +148,7 @@ test_that("screening uses validation checkpoints with original-dimension coeffic
   for (mode in c("SIS", "ISIS")) {
     fit <- l0glmFit(local.search=FALSE, Matrix::Matrix(d$X, sparse = TRUE), d$y, lambda = "gic",
       screen = mode, nsis = 3L, screen.maxit = 4L,  maxit = 100,
-      validation = list(X = Matrix::Matrix(d$V, sparse = TRUE), y = d$v), parallelize = FALSE)
+      validation = list(X = Matrix::Matrix(d$V, sparse = TRUE), y = d$v),ncores=1L)
     expect_equal(dim(coef(fit)), c(20L, 1L))
     expect_equal(ncol(fit$X), 20L)
     expect_equal(mean((d$v - as.numeric(predict(fit, d$V)))^2),

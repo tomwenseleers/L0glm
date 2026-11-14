@@ -1,5 +1,5 @@
 # BENCHMARKS & TIMINGS OF L0GLM FITS BY PROBLEM SIZE AND SOLVER ####
-# Uses repeated warm timings and the general R fitting path for each solver.
+# Uses automatic native fitting paths and repeated warm timings.
 # Shared unit starts and disabled support search isolate the ridge solvers.
 # "Dense" and "sparse" describe input storage: solvers may compress exact zeros.
 
@@ -17,9 +17,8 @@ output_dir <- normalizePath(output_dir)
 # Simulation sizes (with n = p)
 sizes <- c(100, 500, 1000, 10000)
 
-# Compare the general R fitting path for every solver. Native/OpenMP LLT
-# uses a different outer loop and can compress dense inputs automatically.
-use_openmp <- FALSE
+# Serial outcome fits give every solver the same thread budget.
+ncores_fit <- 1L
 blas_threads <- 1L
 timing_repetitions <- 3L # median after one untimed warm fit per condition
 # Generous benchmark-only ceiling: fits stop as soon as they converge.
@@ -112,8 +111,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
   run_fit <- function() L0glm::l0glmFit(
     X = X, y = y, start = start_values, family = family, lambda = lambda,
     nonnegative = TRUE, local.search = FALSE,
-    maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,
-    openmp = use_openmp, parallelize = FALSE, nthreads = blas_threads,
+    maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,ncores=ncores_fit, nthreads = blas_threads,
     solver = solver_backend, method = solver_method,
     control.solver = L0glm::controlSolverGen(solver_backend, solver_method,
       nonnegative.polish = solver_backend == "eigen" && nonnegative_polish))
@@ -182,7 +180,8 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       Solver = solver_name,
       Solver_backend = solver_backend,
       Solver_method = solver_method,
-      OpenMP = use_openmp,
+      Native_driver = TRUE,
+      Ncores = ncores_fit,
       BLAS_threads = blas_threads,
       Timing_repetitions = timing_repetitions,
       Warmup_fits = 1L,
@@ -465,8 +464,8 @@ combined_timing_plot <- ggplot2::ggplot(
   ggplot2::labs(
     title = "L0glm solver timings by problem size",
     subtitle = sprintf(paste0("start = 1; local.search = FALSE; maxit = %d; Eigen polish = %s\n",
-                              "openmp = %s; BLAS threads = %d; median of %d warm fits"),
-                       fit_maxit, nonnegative_polish, use_openmp, blas_threads, timing_repetitions),
+                              "native drivers; ncores = %d; BLAS threads = %d; median of %d warm fits"),
+                       fit_maxit, nonnegative_polish, ncores_fit, blas_threads, timing_repetitions),
     colour = "solver",
     shape = "solver",
     linetype = "solver",
@@ -488,7 +487,8 @@ run_summary <- c(
   paste("Output directory:", output_dir),
   paste("Wide metrics table:", metrics_file),
   paste("Long metrics table:", metrics_long_file),
-  paste("OpenMP/native dispatch:", use_openmp),
+  "Fitting driver: automatic native dispatch",
+  paste("Outcome thread budget:", ncores_fit),
   paste("BLAS threads:", blas_threads),
   paste("High-resolution timing repetitions:", timing_repetitions),
   "Untimed warm fits per condition: 1",

@@ -99,7 +99,7 @@ articles:
     contents: [articles/deconvolution]
 reference:
   - title: Fit, tune and compare sparse models
-    contents: [l0glmFit, l0glmTune, l0nnPois, sparseGLM, l0glmMetrics, preclustering, compulsory_terms, predictor_groups, interaction_models, local_search]
+    contents: [l0glmFit, l0glmTune, sparseGLM, l0glmMetrics, preclustering, compulsory_terms, predictor_groups, interaction_models, local_search]
   - title: Predictions, summaries and information criteria
     contents: [model_predictions, model_summary, coefficient_inference, model_criteria, information_criteria, presetLambda]
   - title: Special families

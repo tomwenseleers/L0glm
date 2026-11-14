@@ -17,9 +17,7 @@ settings <- data.frame(backend = c("General driver", rep("l0nnPois", 4)),
 fits <- vector("list", nrow(settings))
 results <- lapply(seq_len(nrow(settings)), function(i) {
   args <- list(X = sim$X, y = sim$y, family = poisson("identity"),
-    nonnegative = TRUE, lambda = "gic",  group.maxit = 3L,
-    openmp = settings$backend[i] == "l0nnPois", parallelize = settings$ncores[i] > 1L,
-    ncores = settings$ncores[i], validation = validation)
+    nonnegative = TRUE, lambda = "gic",  group.maxit = 3L,control.solver=utils::modifyList(list(),list(.native=settings$backend[i] == "l0nnPois")),ncores=if(isTRUE(settings$ncores[i] > 1L)) settings$ncores[i] else 1L, validation = validation)
   fit <- do.call(l0glmFit, args)
   seconds <- replicate(repetitions, system.time(fit <- do.call(l0glmFit, args))[["elapsed"]])
   fits[[i]] <<- fit

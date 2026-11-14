@@ -13,10 +13,9 @@ test_that("both public entry points reproduce the same original-channel workflow
   for(sparse in c(FALSE,TRUE)) {
     d<-precluster_fixture(sparse)
     controls<-list(clusterids=d$group)
-    a<-l0nnPois(local.search=FALSE, d$X,d$y,lambda="gic",offset=.2,precluster=TRUE,
-      parallelize=FALSE,control.precluster=controls)
+    a<-l0nnPois(local.search=FALSE, d$X,d$y,lambda="gic",offset=.2,precluster=TRUE,ncores=1L,control.precluster=controls)
     b<-l0glmFit(local.search=FALSE, d$X,d$y,family=poisson(identity),nonnegative=TRUE,
-      lambda="gic",offset=.2,precluster=TRUE,parallelize=FALSE,control.precluster=controls)
+      lambda="gic",offset=.2,precluster=TRUE,ncores=1L,control.precluster=controls)
     expect_identical(coef(a),coef(b));expect_s4_class(coef(a),"sparseMatrix")
     expect_equal(dim(coef(a)),c(ncol(d$X),ncol(d$y)))
     expect_identical(colnames(coef(a)),colnames(d$y))
@@ -36,12 +35,12 @@ test_that("preclustering matches an explicit aggregated screen and thin refit",{
   d<-precluster_fixture(TRUE);X<-d$X;Y<-d$y;g<-d$group;m<-ncol(Y)
   lambda<-L0glm:::presetLambda("gic",ncol(X),nrow(X))
   agg<-glmAggregate(Y,family=poisson(),clusterids=g)
-  reduced<-l0nnPois(local.search=FALSE, X,agg$Y_agg,offset=.4,lambda=.1*lambda,parallelize=FALSE)
+  reduced<-l0nnPois(local.search=FALSE, X,agg$Y_agg,offset=.4,lambda=.1*lambda,ncores=1L)
   rows<-which(Matrix::rowSums(abs(coef(reduced)))>0)
   start<-matrix(as.numeric(Matrix::rowSums(coef(reduced)[rows,,drop=FALSE]))/m,length(rows),m)
   manual<-l0nnPois(local.search=FALSE, X[,rows,drop=FALSE],Y,offset=.2,lambda=lambda,start=start,
-    group.maxit=2L,parallelize=FALSE)
-  fit<-l0nnPois(local.search=FALSE, X,Y,offset=.2,lambda=lambda,precluster=TRUE,parallelize=FALSE,
+    group.maxit=2L,ncores=1L)
+  fit<-l0nnPois(local.search=FALSE, X,Y,offset=.2,lambda=lambda,precluster=TRUE,ncores=1L,
     control.precluster=list(clusterids=g))
   expect_equal(as.matrix(coef(fit)[rows,,drop=FALSE]),as.matrix(coef(manual)),tolerance=0)
   expect_identical(fit$preclustering$candidates,as.integer(rows))
@@ -51,10 +50,10 @@ test_that("preclustering matches an explicit aggregated screen and thin refit",{
 test_that("aggregate-only fits retain the target penalty and summed response units",{
   d<-precluster_fixture();n<-nrow(d$X);w<-runif(n,.5,2)
   fit<-l0nnPois(local.search=FALSE, d$X,d$y,weights=w,offset=.2,lambda="gic",precluster=TRUE,
-    cluster.refit=FALSE,parallelize=FALSE,control.precluster=list(clusterids=d$group))
+    cluster.refit=FALSE,ncores=1L,control.precluster=list(clusterids=d$group))
   agg<-glmAggregate(d$y,weights=w,family=poisson(),clusterids=d$group)
   manual<-l0nnPois(local.search=FALSE, d$X,agg$Y_agg,weights=w,offset=.4,
-    lambda=fit$preclustering$lambda.target,parallelize=FALSE)
+    lambda=fit$preclustering$lambda.target,ncores=1L)
   expect_identical(coef(fit),coef(manual));expect_equal(fit$y,agg$Y_agg)
   expect_equal(dim(coef(fit)),c(ncol(d$X),4L));expect_equal(fit$offset,matrix(.4,n,4))
   expect_equal(fit$prior.weights,matrix(w,n,1L));expect_null(fit$preclustering$lambda.screen)
@@ -65,7 +64,7 @@ test_that("starts, compulsory terms, priors and normalized scalar one keep their
   d<-precluster_fixture(TRUE);p<-ncol(d$X);m<-ncol(d$y)
   S<-matrix(1,p,m);S[5,]<-0;S[3,1:2]<-0;S[1,]<-0
   fit<-l0nnPois(local.search=FALSE, d$X,d$y,start=S,prior.mean=.1,intercept=TRUE,
-    always.include=1L,offset=.2,precluster=TRUE,parallelize=FALSE,
+    always.include=1L,offset=.2,precluster=TRUE,ncores=1L,
     control.precluster=list(clusterids=d$group))
   expect_equal(dim(coef(fit)),c(p+1L,m));expect_true(fit$added_intercept)
   expect_equal(fit$always.include,c(1L,2L));expect_true(all(coef(fit)[6,]==0))
@@ -73,7 +72,7 @@ test_that("starts, compulsory terms, priors and normalized scalar one keep their
   expect_true(all(coef(fit)[1:2,]>=0))
   for(normalize in c("l2","rms")) {
     one<-l0nnPois(local.search=FALSE, d$X,d$y,start=1,normalize=normalize,offset=.2,
-      precluster=TRUE,parallelize=FALSE,control.precluster=list(clusterids=d$group))
+      precluster=TRUE,ncores=1L,control.precluster=list(clusterids=d$group))
     rows<-one$preclustering$candidates
     scales<-L0glm:::L0glm_column_scale(d$X,normalize)
     expect_equal(as.numeric(one$preclustering$initialization$values),1/scales[rows])
@@ -82,28 +81,27 @@ test_that("starts, compulsory terms, priors and normalized scalar one keep their
 
 test_that("preclustering threads and disabled defaults preserve fit behaviour",{
   d<-precluster_fixture(TRUE)
-  a<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,precluster=TRUE,parallelize=FALSE,
+  a<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,precluster=TRUE,ncores=1L,
     control.precluster=list(k=4L))
   b<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,precluster=TRUE,ncores=4L,
     control.precluster=list(k=4L,nthreads=4L))
   expect_identical(coef(a),coef(b))
-  base<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,parallelize=FALSE)
-  off<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,parallelize=FALSE,precluster=FALSE)
+  base<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,ncores=1L)
+  off<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,ncores=1L,precluster=FALSE)
   expect_identical(coef(base),coef(off));expect_null(off$preclustering)
-  zero<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=0,parallelize=FALSE,precluster=TRUE)
-  ordinary<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=0,parallelize=FALSE)
+  zero<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=0,ncores=1L,precluster=TRUE)
+  ordinary<-l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=0,ncores=1L)
   expect_identical(coef(zero),coef(ordinary));expect_false(zero$preclustering$used)
-  one<-l0nnPois(local.search=FALSE, d$X,d$y[,1],offset=.2,precluster=TRUE,parallelize=FALSE)
+  one<-l0nnPois(local.search=FALSE, d$X,d$y[,1],offset=.2,precluster=TRUE,ncores=1L)
   expect_false(one$preclustering$used)
-  expect_equal(l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,precluster=TRUE,group.maxit=3L,
-    parallelize=FALSE,control.precluster=list(clusterids=d$group))$preclustering$control$refit.passes,3L)
+  expect_equal(l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,precluster=TRUE,group.maxit=3L,ncores=1L,control.precluster=list(clusterids=d$group))$preclustering$control$refit.passes,3L)
 })
 
 test_that("validation retains original channels or the requested aggregate scale",{
   d<-precluster_fixture();X<-d$X;Y<-d$y;training<-1:75;testing<-76:100
   for(refit in c(TRUE,FALSE)) {
     fit<-l0nnPois(local.search=FALSE, X[training,],Y[training,],offset=.2,intercept=TRUE,
-      precluster=TRUE,cluster.refit=refit,parallelize=FALSE,
+      precluster=TRUE,cluster.refit=refit,ncores=1L,
       control.precluster=list(clusterids=d$group),
       validation=list(X=X[testing,ncol(X):1],y=Y[testing,],offset=.2,patience=2L))
     expect_true(is.finite(fit$validation$deviance))
@@ -111,7 +109,7 @@ test_that("validation retains original channels or the requested aggregate scale
   }
   colnames(X)<-NULL
   fit<-l0nnPois(local.search=FALSE, X[training,],Y[training,],intercept=TRUE,offset=.2,
-    precluster=TRUE,parallelize=FALSE,control.precluster=list(clusterids=d$group),
+    precluster=TRUE,ncores=1L,control.precluster=list(clusterids=d$group),
     validation=list(X=X[testing,],y=Y[testing,],offset=.2))
   expect_true(is.finite(fit$validation$deviance))
 })
@@ -133,8 +131,7 @@ test_that("working-family controls preserve channel dimensions and dispersion",{
   d<-precluster_fixture(TRUE)
   for(refit in c(TRUE,FALSE)) {
     fit<-l0glmFit(local.search=FALSE, d$X,d$y,family=poisson(identity),nonnegative=TRUE,
-      dispersion=rep(1,ncol(d$y)),lambda="gic",offset=.2,grouped=FALSE,
-      openmp=FALSE,parallelize=FALSE,precluster=TRUE,cluster.refit=refit,
+      dispersion=rep(1,ncol(d$y)),lambda="gic",offset=.2,grouped=FALSE,control.solver=utils::modifyList(list(),list(.native=FALSE)),ncores=1L,precluster=TRUE,cluster.refit=refit,
       control.precluster=list(clusterids=d$group))
     expect_equal(dim(coef(fit)),c(ncol(d$X),if(refit) ncol(d$y) else 4L))
     expect_equal(length(fit$dispersion),if(refit) ncol(d$y) else 4L)
@@ -153,7 +150,7 @@ test_that("CV learns partitions and size factors from training rows once per fol
     original(Y, ...)
   }, .package="L0glm")
   fit <- l0glmTune(local.search=FALSE, d$X, d$y, family=poisson(identity), offset=.2,
-    nonnegative=TRUE, precluster=TRUE, parallelize=FALSE,
+    nonnegative=TRUE, precluster=TRUE,ncores=1L,
     control.precluster=list(k=4L), tune="cv", foldid=foldid,
     nlambda=3L, prop_range=.3, plot=FALSE, printbest=FALSE)
   expect_length(seen, 4L)
@@ -170,7 +167,7 @@ test_that("CV learns partitions and size factors from training rows once per fol
   expect_s3_class(fit$fit_best, "L0glm_fit")
   expect_s3_class(fit$fit_1se, "L0glm_fit")
   direct <- l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=fit$lambda_best,
-    precluster=TRUE,parallelize=FALSE,control.precluster=list(k=4L))
+    precluster=TRUE,ncores=1L,control.precluster=list(k=4L))
   expect_equal(coef(fit$fit_best),coef(direct),tolerance=0)
   expect_equal(fit$preclustering$clusterids,direct$preclustering$clusterids)
   expect_null(fit$start)
@@ -179,7 +176,7 @@ test_that("CV learns partitions and size factors from training rows once per fol
   k <- 2L; i <- 2L; training <- foldid!=k
   controls <- list(clusterids=fit$cv$preclustering[[k]]$clusterids)
   direct <- l0nnPois(local.search=FALSE, d$X[training,],d$y[training,],offset=.2,
-    lambda=fit$cv$lambda_train[i,k],precluster=TRUE,parallelize=FALSE,
+    lambda=fit$cv$lambda_train[i,k],precluster=TRUE,ncores=1L,
     control.precluster=controls)
   mu <- predict(direct,d$X[!training,],offset=.2)
   expected <- sum(poisson()$dev.resids(d$y[!training,],mu,1))/length(mu)
@@ -194,13 +191,13 @@ test_that("IC paths reuse only memberships across independently fitted lambdas",
     original(...)
   }, .package="L0glm")
   fit <- l0glmTune(local.search=FALSE, d$X,d$y,family=poisson(identity),offset=.2,
-    nonnegative=TRUE,precluster=TRUE,parallelize=FALSE,
+    nonnegative=TRUE,precluster=TRUE,ncores=1L,
     control.precluster=list(k=4L),nlambda=4L,prop_range=.4,
     plot=FALSE,printbest=FALSE)
   expect_equal(calls,1L)
   for (i in seq_along(fit$lambdas)) {
     direct <- l0nnPois(local.search=FALSE, d$X,d$y,offset=.2,lambda=fit$lambdas[i],
-      precluster=TRUE,parallelize=FALSE,
+      precluster=TRUE,ncores=1L,
       control.precluster=list(clusterids=fit$preclustering$clusterids))
     expect_equal(fit$coefficients[[i]],coef(direct),tolerance=0)
   }

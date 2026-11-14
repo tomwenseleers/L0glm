@@ -1294,7 +1294,6 @@ system.time(L0glm.out_preset <- l0glmFit(X, y,
                                grouped = TRUE,
                                 # NOTE: CHECK setting relaxed to TRUE does not seem to improve solution quality
                                nonnegative = TRUE,
-                               parallelize = TRUE,
                                maxit = 10, # default 25
                                group.maxit = 4, # default 6
                                dispersion = 1,
@@ -1349,7 +1348,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                              solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                              method = 1L,
-                             parallelize = TRUE,
                              maxit = 10, # default 25
                              group.maxit = 4, # default 6
                              thresh = 1E-5
@@ -1491,7 +1489,6 @@ system.time(L0glm.out_preset <- l0glmFit(X, y,
                                # start = rep(1, ncol(sim$X)), # coefficient starting values - high value in combination with nonzero centere ridge regression enforces nonnegativity even when using unconstrained eigen solver
                                solver = "eigen", # note: solver osqp better than eigen for very small lambda values))
                                method = 1L,
-                               parallelize = TRUE, 
                                maxit = 20, # default 25
                                group.maxit = 4, # default 6
                                thresh = 1E-5
@@ -1539,7 +1536,6 @@ system.time(metrics <- data.frame(do.call(rbind, lapply(1:length(lambdas), funct
                              maxit = 10, # default 25
                              group.maxit = 4, # default 6
                              method = 1L,
-                             parallelize = TRUE, 
                              thresh = 1E-5
   )$coefficients
   coefmat[i,] <<- rowMeans(L0glm.out) # avg coefficients across tasks/channels

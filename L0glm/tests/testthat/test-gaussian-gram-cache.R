@@ -9,7 +9,7 @@ test_that("Gaussian Gram caching preserves weighted ridge selection", {
     args <- list(X = X, y = y, weights = weights, offset = offset,
       family = gaussian(), intercept = TRUE, lambda = lambda, method = method,
       prior.mean = rep(.1, 19), start = c(0, 1, 0, rep(1, 16)), always.include = 1L,
-      maxit = 80L, tol = 1e-10, parallelize = FALSE)
+      maxit = 80L, tol = 1e-10,ncores=1L)
     cached <- do.call(l0glmFit, args)
     control <- controlSolverGen("eigen", method)
     control$rowaug <- TRUE
@@ -31,12 +31,12 @@ test_that("zero-weight rows do not turn an effectively wide fit into a Gram solv
   }, .package = "L0glm")
   fit <- l0glmFit(X, y, weights = c(rep(1, 5), rep(0, 75)),
     family = gaussian(), intercept = TRUE, start = 1, dispersion = 1,
-    lambda = 2, maxit = 3L, parallelize = FALSE, openmp = FALSE)
+    lambda = 2, maxit = 3L,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
   expect_gt(calls, 0L)
   expect_equal(dim(fit$coefficients), c(11L, 1L))
   expect_true(all(is.finite(fit$coefficients)))
   native <- l0glmFit(X, y, weights = c(rep(1, 5), rep(0, 75)),
     family = gaussian(), intercept = TRUE, start = 1, dispersion = 1,
-    lambda = 2, maxit = 3L, parallelize = FALSE)
+    lambda = 2, maxit = 3L,ncores=1L)
   expect_equal(native$coefficients, fit$coefficients, tolerance = 1e-8)
 })

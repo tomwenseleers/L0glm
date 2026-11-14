@@ -130,7 +130,7 @@ test_that("native polish respects channel masks, mandatory terms and threading",
     fits <- lapply(c(1L, 4L), function(threads) l0glmFit(A, Y, family = poisson(identity),
       start = start, prior.mean = prior, always.include = 12L, nonnegative = TRUE,
       weights = seq(.5, 2, length.out = 120), offset = rep(3, 120),
-      local.search = FALSE, parallelize = TRUE, ncores = threads, nthreads = 1L,
+      local.search = FALSE, ncores = threads, nthreads = 1L,
       method = method, control.solver = controlSolverGen("eigen", method,
         rowaug = FALSE, nonnegative.polish = TRUE)))
     for (fit in fits) {
@@ -150,14 +150,14 @@ test_that("LLT and LDLT polish recover the correlated Poisson peak pair", {
     options = list(sd_noise = 1))
   for (native in c(FALSE, TRUE)) for (method in c(1L, 2L)) {
     fit <- l0glmFit(d$X, d$y, family = poisson(identity), nonnegative = TRUE,
-      start = NULL, lambda = "gic", local.search = FALSE, openmp = native, parallelize = FALSE,
-      method = method, control.solver = controlSolverGen("eigen", method, nonnegative.polish = TRUE))
+      start = NULL, lambda = "gic", local.search = FALSE,ncores=1L,
+      method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.polish = TRUE),list(.native=native)))
     b <- as.numeric(coef(fit))
     expect_true(all(b[c(836, 838)] > 0))
     expect_equal(b[c(837, 839)], c(0, 0))
     expect_gt(l0glmMetrics(fit, beta_true = d$beta_true)$R2_coefs, .95)
   }
-  direct <- l0nnPois(d$X, d$y, start = NULL, lambda = "gic", local.search = FALSE, parallelize = FALSE,
+  direct <- l0nnPois(d$X, d$y, start = NULL, lambda = "gic", local.search = FALSE,ncores=1L,
     control.solver = controlSolverGen("eigen", 1L, nonnegative.polish = TRUE))
   expect_gt(l0glmMetrics(direct, beta_true = d$beta_true)$R2_coefs, .95)
 })
@@ -169,9 +169,7 @@ test_that("native Gaussian caches and predictor groups accept the polish", {
   Y <- cbind(2 + 3 * X[, 1] + X[, 5], 1 + 2 * X[, 1] + 2 * X[, 5]) + rnorm(200)
   for (group in list(NULL, rep(1:6, each = 2L))) {
     fits <- lapply(c(FALSE, TRUE), function(native) l0glmFit(X, Y, family = gaussian(),
-      nonnegative = TRUE, intercept = TRUE, group = group, local.search = FALSE,
-      openmp = native, parallelize = FALSE,
-      control.solver = controlSolverGen("eigen", 1L, nonnegative.polish = TRUE)))
+      nonnegative = TRUE, intercept = TRUE, group = group, local.search = FALSE,ncores=1L,control.solver=utils::modifyList(controlSolverGen("eigen", 1L, nonnegative.polish = TRUE),list(.native=native))))
     for (fit in fits) expect_true(all(is.finite(coef(fit)) & coef(fit) >= 0))
     expect_equal(as.matrix(coef(fits[[1]])), as.matrix(coef(fits[[2]])), tolerance = 2e-5)
   }
@@ -183,8 +181,7 @@ test_that("a binomial intercept stays unrestricted with nonnegative polishing", 
   y <- rbinom(180, 1, plogis(-4 + X[, 1] + .7 * X[, 3]))
   for (native in c(FALSE, TRUE)) for (method in c(1L, 2L)) {
     fit <- l0glmFit(X, y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
-      local.search = FALSE, openmp = native, parallelize = FALSE, method = method,
-      control.solver = controlSolverGen("eigen", method, nonnegative.polish = TRUE))
+      local.search = FALSE,ncores=1L, method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.polish = TRUE),list(.native=native)))
     b <- as.numeric(coef(fit))
     expect_lt(b[1], 0)
     expect_true(all(b[-1] >= 0))
@@ -197,10 +194,10 @@ test_that("tuning forwards the constrained-polish control to candidate fits", {
   y <- rpois(80, 2 * X[, 1] + X[, 3])
   control <- controlSolverGen("eigen", 2L, nonnegative.polish = TRUE)
   tuned <- l0glmTune(X, y, family = poisson(identity), nonnegative = TRUE,
-    tune = "gic", nlambda = 3L, plot = FALSE, parallelize = FALSE,
+    tune = "gic", nlambda = 3L, plot = FALSE,ncores=1L,
     method = 2L, control.solver = control, local.search = FALSE)
   reference <- l0glmFit(X, y, family = poisson(identity), nonnegative = TRUE,
-    lambda = tuned$lambda_best, parallelize = FALSE,
+    lambda = tuned$lambda_best,ncores=1L,
     method = 2L, control.solver = control, local.search = FALSE)
   expect_equal(as.numeric(coef(tuned$fit_best)), as.numeric(coef(reference)), tolerance = 1e-8)
 })

@@ -4,7 +4,7 @@ test_that("screened local search preserves its original-coordinate search", {
   colnames(X) <- paste0("x",seq_len(ncol(X)))
   y <- 1+2*X[,2]-X[,7]+rnorm(160,sd=.5)
   args <- list(X=X,y=y,intercept=TRUE,always.include=4L,screen="SIS",nsis=12L,
-    screen.nthreads=1L,parallelize=FALSE,local.search=TRUE,
+    screen.nthreads=1L,ncores=1L,local.search=TRUE,
     control.local=list(maxit=3L,max.evals=45L))
   args$start <- c(0,rep(1,100));args$start[c(5,100)] <- 0
   fast <- do.call(l0glmFit,args)
@@ -41,7 +41,7 @@ test_that("compact workspaces preserve sparse channel masks and validation", {
   y <- as.matrix(X%*%B)+matrix(rnorm(280,sd=.4),140,2)
   start <- matrix(1,80,2);start[79,] <- 0;start[2,1] <- 0
   args <- list(X=X,y=y,start=start,screen="ISIS",nsis=12,screen.maxit=2,
-    screen.nthreads=1,grouped=TRUE,parallelize=FALSE,local.search=TRUE,
+    screen.nthreads=1,grouped=TRUE,ncores=1L,local.search=TRUE,
     control.local=list(maxit=2L,max.evals=20L),
     validation=list(X=X[1:30,80:1],y=y[1:30,],starts="default"))
   fast <- do.call(l0glmFit,args)
@@ -69,7 +69,7 @@ test_that("special-family compact searches retain original IC dimensions", {
       multinomial=factor(rep(1:3,length.out=130)),
       cox=survival::Surv(rexp(130,exp(.7*X[,1])),rep(1,130)))
     args <- list(X=X,y=y,family=family,screen="SIS",nsis=10L,
-      screen.nthreads=1L,parallelize=FALSE,local.search=TRUE,
+      screen.nthreads=1L,ncores=1L,local.search=TRUE,
       control.local=list(maxit=2L,max.evals=20L))
     fast <- do.call(l0glmFit,args)
     slow <- local({
@@ -91,7 +91,7 @@ test_that("an unchanged compact model retains its initial nuisance state", {
   y <- rpois(140,3+2*X[,2])
   args <- list(X=X,y=y,family=poisson("identity"),nonnegative=TRUE,
     intercept=TRUE,always.include=4L,lambda=10000,screen="SIS",nsis=8L,
-    screen.nthreads=1L,parallelize=FALSE,local.search=TRUE,
+    screen.nthreads=1L,ncores=1L,local.search=TRUE,
     control.local=list(maxit=1L,max.evals=8L,tol=1e-4))
   fast <- do.call(l0glmFit,args)
   slow <- local({

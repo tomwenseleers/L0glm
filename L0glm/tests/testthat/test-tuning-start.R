@@ -2,7 +2,7 @@
 test_that("a supplied common start replays every lambda independently", {
   X <- diag(6); y <- c(4, 1, 0.2, -0.1, 0.1, 0.2)
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
-    start = c(1, 0, 1, 1, 0, 1), parallelize = FALSE)
+    start = c(1, 0, 1, 1, 0, 1),ncores=1L)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(nlambda = 4, lambda_min = 0.01,
     plot = FALSE, printbest = FALSE)), list(local.search=FALSE)))
   expect_equal(tuned$start, args$start)
@@ -40,8 +40,7 @@ test_that("pilot starts match independent fits and reproduce the full tuning pat
   set.seed(1650)
   X <- matrix(rnorm(70 * 10), 70, 10)
   y <- 1 + 2 * X[, 1] - X[, 3] + rnorm(70)
-  args <- list(X = X, y = y, family = gaussian(), intercept = TRUE,
-    parallelize = FALSE)
+  args <- list(X = X, y = y, family = gaussian(), intercept = TRUE,ncores=1L)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(start = "pilot", nlambda = 4,
     plot = FALSE, printbest = FALSE)), list(local.search=FALSE)))
   coefficients <- vapply(tuned$pilot$lambda, function(lambda)
@@ -78,7 +77,7 @@ test_that("CV builds pilot starts and scales using only each fold's training row
     original(X, y, ...)
   },.package='L0glm')
   tuned <- l0glmTune(local.search=FALSE, X, y, family = gaussian(), start = "pilot", tune = "cv",
-    foldid = folds, nlambda = 3L, parallelize = FALSE, plot = FALSE, printbest = FALSE)
+    foldid = folds, nlambda = 3L,ncores=1L, plot = FALSE, printbest = FALSE)
   expect_length(observed, 3L * 13L)
   for (k in 1:3) {
     calls <- observed[(k - 1L) * 13L + 1:13]
@@ -103,7 +102,7 @@ test_that("multichannel common starts preserve each channel's restrictions", {
     tuned <- l0glmTune(local.search=FALSE, Matrix::Matrix(X, sparse = sparse), y,
       family = poisson(identity), nonnegative = TRUE, grouped = TRUE,
       group.maxit = 2L, start = start,  nlambda = 3L,
-      plot = FALSE, printbest = FALSE, parallelize = FALSE)
+      plot = FALSE, printbest = FALSE,ncores=1L)
     for (beta in tuned$coefficients) {
       expect_s4_class(beta, "dgCMatrix")
       expect_equal(dim(beta), c(6L, 2L))

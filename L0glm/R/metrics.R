@@ -231,7 +231,7 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 #'
 #' Return the numeric penalty associated with an information criterion, for
 #' inspection or use as the \code{lambda} argument of \code{\link{l0glmFit}}
-#' or \code{\link{l0nnPois}}.
+#' or \code{\link{l0glmFit}}.
 #'
 #' @param IC Case-insensitive criterion name: \code{"gic"} (default),
 #'   \code{"aic"}, \code{"bic"}, \code{"ebic"} or \code{"mbic"}.
@@ -262,7 +262,7 @@ L0glm_resolve_lambda <- function(lambda, p, n) {
 #' supplied here and the resulting penalty passed to a fitter.
 #'
 #' @return A numeric scalar containing the penalty per parameter.
-#' @seealso \code{\link{l0glmFit}}, \code{\link{l0nnPois}},
+#' @seealso \code{\link{l0glmFit}},
 #'   \code{\link{l0glmTune}}, \link{information_criteria}
 #' @examples
 #' presetLambda("gic", p = 10000, n = 10000)

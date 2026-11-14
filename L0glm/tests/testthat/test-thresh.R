@@ -25,8 +25,8 @@ test_that("selection uses a relative cutoff and preserves exact-zero exclusion",
     fun <- if(engine=="native")L0glm_internal_pois else L0glm_internal_fit
     args <- list(X=Matrix::Matrix(diag(2),sparse=sparse),y=c(1e6,0.02),family=poisson(identity),
                  start=c(1,1),lambda=0,thresh=0.01,
-                 grouped=FALSE,maxit=2,parallelize=FALSE)
-    if(engine=="R") args <- c(args,list(openmp=FALSE,nonnegative=TRUE))
+                 grouped=FALSE,maxit=2,ncores=1L)
+    if(engine=="R") args <- c(args,list(control.solver=utils::modifyList(list(),list(.native=FALSE)),nonnegative=TRUE))
     fit <- do.call(fun,args)
     expect_equal(as.vector(fit$coefficients),c(1e6,0),tolerance=1e-10)
     args$start <- c(0,1)
@@ -56,8 +56,8 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
     # Neither column is an intercept: both contribute to the relative cutoff.
     args <- list(X=Matrix::Matrix(matrix(c(1,0,1,1.01),2),sparse=sparse),
                  y=c(1.05,1),family=poisson(identity),start=c(1,1),lambda=1,thresh=0.1,
-                 grouped=FALSE,maxit=1,parallelize=FALSE)
-    if(engine=="R") args <- c(args,list(openmp=FALSE,nonnegative=TRUE))
+                 grouped=FALSE,maxit=1,ncores=1L)
+    if(engine=="R") args <- c(args,list(control.solver=utils::modifyList(list(),list(.native=FALSE)),nonnegative=TRUE))
     selection <- do.call(fun,args)
     expect_gt(min(selection$coefficients),max(selection$coefficients)*args$thresh)
     args$relaxed <- TRUE
@@ -73,7 +73,7 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
     expect_equal(as.matrix(serial$coefficients),args$y,tolerance=1e-12)
     expect_gt(as.numeric(serial$coefficients[1,1]),0)
     expect_lt(as.numeric(serial$coefficients[1,1]),1e-20)
-    args$parallelize <- TRUE; args$ncores <- 2L
+    args$ncores <- 2L
     parallel <- do.call(fun,args)
     expect_equal(parallel$coefficients,serial$coefficients,tolerance=1e-12)
   }
@@ -82,15 +82,14 @@ test_that("relaxed fits retain coefficients below both cutoffs in all execution 
 test_that("R and native penalties are unsmoothed and cutoffs respect coefficient signs", {
   args <- list(X=diag(3),y=c(2,3,4),family=poisson(identity),start=c(1,2,3),lambda=4,
                thresh=0.25,maxit=1,
-               grouped=FALSE,parallelize=FALSE)
+               grouped=FALSE,ncores=1L)
   native <- do.call(l0nnPois,utils::modifyList(args, list(local.search=FALSE)))
-  general <- do.call(l0glmFit,utils::modifyList(c(args,list(nonnegative=TRUE,openmp=FALSE)), list(local.search=FALSE)))
+  general <- do.call(l0glmFit,utils::modifyList(c(args,list(nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE)))
   expect_equal(as.numeric(native$lambdas),1/args$start^2)
   expect_equal(native$lambdas,general$lambdas)
   expect_equal(native$coefficients,general$coefficients,tolerance=1e-12)
   fit <- l0glmFit(local.search=FALSE, diag(3),c(-0.04,-0.5,0.4),family=gaussian(),
-                  nonnegative=FALSE,openmp=FALSE,lambda=0,thresh=0.1,
-                  start=rep(1,3),dispersion=1,maxit=1,
-                  parallelize=FALSE)
+                  nonnegative=FALSE,control.solver=utils::modifyList(list(),list(.native=FALSE)),lambda=0,thresh=0.1,
+                  start=rep(1,3),dispersion=1,maxit=1,ncores=1L)
   expect_equal(as.numeric(fit$coefficients),c(0,-0.5,0.4))
 })

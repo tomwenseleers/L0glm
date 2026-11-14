@@ -2,8 +2,7 @@
 test_that("independent tuning can recover features excluded at the preset", {
   X <- diag(6)
   y <- c(4, 1, .2, -.1, .1, .2)
-  args <- list(X=X, y=y, family=gaussian(), dispersion=1,
-               parallelize=FALSE, grouped=FALSE,  maxit=100)
+  args <- list(X=X, y=y, family=gaussian(), dispersion=1,ncores=1L, grouped=FALSE,  maxit=100)
   tuned <- do.call(l0glmTune, utils::modifyList(c(args, list(tune="aic", lambda_min=.01, nlambda=5, plot=FALSE,
                                          printbest=FALSE)), list(local.search=FALSE)))
   preset <- do.call(l0glmFit, utils::modifyList(c(args, list(lambda=tuned$lambda_preset)), list(local.search=FALSE)))
@@ -22,7 +21,7 @@ test_that("independent tuning can recover features excluded at the preset", {
 
 test_that("tuning bounds the full grid and preserves unique endpoints and anchors", {
   args <- list(X = diag(6), y = c(4, 1, .2, -.1, .1, .2),
-    family = gaussian(), dispersion = 1, tune = "aic", parallelize = FALSE,
+    family = gaussian(), dispersion = 1, tune = "aic",ncores=1L,
     plot = FALSE, printbest = FALSE)
   for (count in c(2L, 3L, 10L)) {
     fit <- do.call(l0glmTune, utils::modifyList(c(args, list(nlambda = count)), list(local.search=FALSE)))
@@ -57,16 +56,15 @@ test_that("automatic scale does not cancel a large fitted penalty", {
   set.seed(41)
   X <- matrix(rnorm(100*8),100)
   y <- 3*X[,1] + rnorm(100)
-  a <- l0glmFit(local.search=FALSE, X,y,family=gaussian(),lambda="gic",parallelize=FALSE)
-  b <- l0glmFit(local.search=FALSE, X,y,family=gaussian(),lambda=1e10,parallelize=FALSE)
+  a <- l0glmFit(local.search=FALSE, X,y,family=gaussian(),lambda="gic",ncores=1L)
+  b <- l0glmFit(local.search=FALSE, X,y,family=gaussian(),lambda=1e10,ncores=1L)
   expect_gt(sum(a$coefficients!=0),0)
   expect_equal(sum(b$coefficients!=0),0)
 })
 
 test_that("Poisson null likelihood is infinite rather than floored during tuning", {
   tuned <- l0glmTune(local.search=FALSE, diag(6), c(30,10,2,0,1,0), family=poisson(identity),
-    nonnegative=TRUE, nlambda=4, maxit=100, plot=FALSE, printbest=FALSE,
-    parallelize=FALSE, mu_floor=0)
+    nonnegative=TRUE, nlambda=4, maxit=100, plot=FALSE, printbest=FALSE,ncores=1L, mu_floor=0)
   expect_true(tuned$endpoint_zero)
   expect_identical(tail(tuned$metrics$gic,1), Inf)
   expect_true(is.finite(tuned$lambda_best))
@@ -76,7 +74,7 @@ test_that("default Poisson tuning scores zero predictions in every channel", {
   X <- rbind(diag(6),rep(0,6))
   y <- cbind(c(30,10,2,0,1,0,1),c(0,8,0,2,0,1,2))
   tuned <- l0glmTune(local.search=FALSE, X,y,family=poisson(identity),nonnegative=TRUE,
-    grouped=FALSE,parallelize=FALSE,nlambda=4,plot=FALSE,printbest=FALSE)
+    grouped=FALSE,ncores=1L,nlambda=4,plot=FALSE,printbest=FALSE)
   expect_true(all(is.finite(tuned$metrics$gic)))
   expect_true(tuned$lambda_best %in% tuned$lambdas)
   expect_true(tuned$endpoint_zero)
@@ -85,20 +83,20 @@ test_that("default Poisson tuning scores zero predictions in every channel", {
   expect_equal(tuned$metrics$loglik[which.min(tuned$metrics$gic)],expected)
   expect_equal(tuned$mu_floor,1e-8)
   expect_error(l0glmTune(local.search=FALSE, X,y,family=poisson(identity),nonnegative=TRUE,
-    grouped=FALSE,parallelize=FALSE,nlambda=2,plot=FALSE,printbest=FALSE,
+    grouped=FALSE,ncores=1L,nlambda=2,plot=FALSE,printbest=FALSE,
     mu_floor=0),"positive mu_floor")
 })
 
 test_that("endpoint refinement removes a conservative working-model bound", {
   testthat::local_mocked_bindings(maxlambda=function(...) 1e12)
   tuned <- l0glmTune(local.search=FALSE, diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
-    dispersion=1,tune="aic",nlambda=3,maxit=100,parallelize=FALSE,
+    dispersion=1,tune="aic",nlambda=3,maxit=100,ncores=1L,
     plot=FALSE,printbest=FALSE)
   expect_lt(tuned$lambda_max,100)
   expect_true(tuned$endpoint_zero)
   expect_lte(tuned$lambda_max/tuned$lambda_nonzero,1.05)
   nonzero <- l0glmFit(local.search=FALSE, diag(6),c(4,1,.2,-.1,.1,.2),family=gaussian(),
-    dispersion=1,lambda=tuned$lambda_nonzero,maxit=100,parallelize=FALSE)
+    dispersion=1,lambda=tuned$lambda_nonzero,maxit=100,ncores=1L)
   expect_gt(sum(nonzero$coefficients!=0),0)
   expect_equal(sum(tail(tuned$coefficients,1)[[1]]!=0),0)
 })
@@ -109,7 +107,7 @@ test_that("weighted offset tuning scores the fitted Gaussian model", {
   w <- seq(.5,2,length.out=80); off <- seq(3,6,length.out=80)
   y <- off + X[,1]*2 + rnorm(80)/sqrt(w)
   tuned <- l0glmTune(local.search=FALSE, X,y,family=gaussian(),dispersion=2,weights=w,offset=off,
-    nlambda=3,prop_range=.2,parallelize=FALSE,plot=FALSE,printbest=FALSE)
+    nlambda=3,prop_range=.2,ncores=1L,plot=FALSE,printbest=FALSE)
   for(i in seq_along(tuned$lambdas)) {
     b <- tuned$coefficients[[i]]
     ll <- sum(dnorm(y,as.numeric(X %*% b)+off,sd=sqrt(2/w),log=TRUE))
@@ -164,7 +162,7 @@ test_that("the working-model threshold checks every channel at its own scale", {
 
 test_that("tuning handles an empty preset, intercepts, and invalid controls", {
   args <- list(X=matrix(seq(-1,1,length.out=30),ncol=1), y=rep(1,30),
-               family=gaussian(), dispersion=1, parallelize=FALSE,
+               family=gaussian(), dispersion=1,ncores=1L,
                plot=FALSE,printbest=FALSE,tune="aic",nlambda=2)
   a <- do.call(l0glmTune,utils::modifyList(args, list(local.search=FALSE)))
   expect_true(a$endpoint_zero)

@@ -25,14 +25,16 @@ test_that("inexact LSCG refits the correct working system in R and native driver
   args <- list(y=y, family=gaussian(), lambda=2, start=rep(.2, 40),
     dispersion=1, weights=seq(.7, 1.3, length.out=70), offset=seq(0, .2, length.out=70),
     prior.mean=rep(.03, 40), always.include=1L, normalize="none",
-    maxit=1L, parallelize=FALSE, ncores=1L, local.search=FALSE)
+    maxit=1L,ncores=1L, local.search=FALSE)
   for (sparse in c(FALSE, TRUE)) for (native in c(FALSE, TRUE)) {
-    common <- c(list(X=Matrix::Matrix(X, sparse=sparse), openmp=native), args)
+    common <- c(list(X=Matrix::Matrix(X, sparse=sparse),control.solver=utils::modifyList(list(),list(.native=native))), args)
     reference <- do.call(l0glmFit, c(common, list(method=1L)))
     for (rowaug in c(FALSE, TRUE)) for (precond in c(1L, 2L)) {
-      expect_warning(actual <- do.call(l0glmFit, c(common, list(method=4L,
-        control.solver=controlSolverGen("eigen", 4L, tol=1e-14, maxit=1L,
-          rowaug=rowaug, precond=precond)))),
+      control <- controlSolverGen("eigen", 4L, tol=1e-14, maxit=1L,
+        rowaug=rowaug, precond=precond)
+      control$.native <- native
+      expect_warning(actual <- do.call(l0glmFit, utils::modifyList(common, list(method=4L,
+        control.solver=control))),
         "Cholesky LLT")
       expect_equal(actual$coefficients, reference$coefficients, tolerance=1e-10)
       expect_equal(predict(actual), predict(reference), tolerance=1e-10)
@@ -48,7 +50,7 @@ test_that("default LSCG preserves LLT Gaussian PSF quality for both storage type
     start <- init_coefs(sim$X, sim$y, mu=sim$y, family=gaussian(), lambda=lambda)
     for (native in c(FALSE, TRUE)) {
       args <- list(X=sim$X, y=sim$y, family=gaussian(), start=start, lambda=lambda,
-        nonnegative=TRUE, parallelize=FALSE, openmp=native, ncores=1L)
+        nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=native)),ncores=1L)
       reference <- do.call(l0glmFit, c(args, list(method=1L)))
       warnings <- character()
       actual <- withCallingHandlers(do.call(l0glmFit, c(args, list(method=4L))),
@@ -77,8 +79,7 @@ test_that("default LSCG preserves grouped Poisson deconvolution and threaded fit
         lambda=lambda), numeric(200L))
     for (native in c(FALSE, TRUE)) {
       args <- list(X=sim$X, y=sim$y, family=sim$family, start=start, lambda=lambda,
-        nonnegative=TRUE, grouped=TRUE, parallelize=native, openmp=native,
-        ncores=2L, local.search=FALSE)
+        nonnegative=TRUE, grouped=TRUE,control.solver=utils::modifyList(list(),list(.native=native)),ncores=if(isTRUE(native)) 2L else 1L, local.search=FALSE)
       reference <- suppressWarnings(do.call(l0glmFit, c(args, list(method=1L))))
       actual <- suppressWarnings(do.call(l0glmFit, c(args, list(method=4L))))
       expect_identical(as.numeric(coef(actual)) != 0, as.numeric(coef(reference)) != 0)
@@ -150,7 +151,7 @@ test_that("native multichannel Poisson fits avoid the extreme-ridge fallback", {
   start <- vapply(seq_len(ncol(Y)),function(j)init_coefs(
     sim$X,Y[,j],mu=pmax(Y[,j],.1),family=sim$family,lambda=lambda),numeric(500L))
   common <- list(X=sim$X,y=sim$y,family=sim$family,start=start,lambda=lambda,
-    nonnegative=TRUE,grouped=TRUE,parallelize=FALSE,openmp=TRUE,ncores=1L)
+    nonnegative=TRUE,grouped=TRUE,control.solver=utils::modifyList(list(),list(.native=TRUE)),ncores=1L)
   reference <- do.call(l0glmFit,c(common,list(method=1L)))
   original <- glm_native_cpp;counts <- integer()
   actual <- expect_no_warning(with_mocked_bindings(

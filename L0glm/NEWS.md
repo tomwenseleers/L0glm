@@ -79,7 +79,12 @@
   driver performs initialization, dispersion updates and grouped/relaxed passes.
   All Eigen solvers share their kernels with the R interfaces and parallelize
   channels through OpenMP. OSQP and `bigGlm` use the native driver with their
-  R-facing solver interfaces and independent workers for concurrent channels.
+  R-facing solver interfaces on the main R thread. `ncores` controls native
+  outcome-channel threading, with one thread for serial execution. Custom R
+  family/link callbacks stay serial, and no process workers are created.
+  Serial callbacks and solver bridges use `ncores` as their default BLAS budget;
+  explicit `nthreads` overrides it. OpenMP channel fits limit BLAS to one
+  thread per channel, restoring the caller's settings on return.
 * CG defaults to incomplete Cholesky preconditioning for dense and sparse
   systems. `controlSolverGen("eigen", 3L, precond=1L)` selects diagonal
   preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.
@@ -92,12 +97,13 @@
   one restart within the iteration limit. Already formed Gram and Woodbury
   systems use CG directly. Inexact or nonfinite solutions use Cholesky LLT in
   both R and native drivers.
-* Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
-  backend, including native validation stopping.
+* Nonnegative identity-link Poisson LLT fits automatically use a specialized
+  internal backend, including native validation stopping. `l0glmFit()` is
+  the public interface for every supported family.
 * `controlSolverGen(..., nonnegative.polish=TRUE)` optionally polishes infeasible
   nonnegative Eigen ridge proposals using batched constrained Cholesky solves.
   It reuses existing predictor Gram matrices, including LLT and LDLT paths,
-  supports native OpenMP fits and `l0nnPois`, and is off by default. Rectangular
+  supports the native GLM and specialized Poisson drivers, and is off by default. Rectangular
   and Woodbury solves retain their usual path. A fresh KKT check and a
   nonincreasing quadratic objective are required for acceptance.
 * OSQP uses diagonal equilibration and absolute and relative tolerances of

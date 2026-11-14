@@ -68,7 +68,7 @@
 #'
 #' Recognized scalar GLMs use a native C++ predictor-group IRLS driver, sharing
 #' the family calculations and ridge solvers with ordinary models. For multiple
-#' outcomes, `parallelize=TRUE` uses up to `ncores` OpenMP channel workers;
+#' outcomes, native fits use up to `ncores` OpenMP channel threads;
 #' BLAS runs with one thread inside those passes and its settings are restored.
 #' The group penalty, step halving, dispersion updates and convergence checks
 #' retain the same definitions in serial and parallel fits. External OSQP and
@@ -96,7 +96,7 @@
 #' @return Fits retain `group`, `group.multiplier`, eligible-entry masks and
 #'   selected-block masks, together with the usual fit fields. Use the stored
 #'   multipliers with a numeric lambda to reproduce an IC-preset or tuned fit.
-#' @seealso [l0glmFit()], [l0nnPois()], [l0glmTune()], [l0glmMetrics()]
+#' @seealso [l0glmFit()], [l0glmTune()], [l0glmMetrics()]
 #' @examples
 #' set.seed(41)
 #' X <- matrix(rnorm(200 * 12), 200, 12)
@@ -270,8 +270,8 @@ L0glm_group_fit <- function(args, gaussian.pilot=FALSE) {
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.',call.=FALSE)
   lambda <- L0glm_resolve_lambda(args$lambda,max(1,data$p_selectable),max(2,data$n_ic))
   options <- list(solver=args$solver,method=args$method,control.solver=args$control.solver,
-    validation=args$validation,predictor.groups=TRUE,openmp=args$openmp,
-    group.nthreads=if(args$parallelize)L0glm_normalize_thread_count(args$ncores)else 1L)
+    validation=args$validation,predictor.groups=TRUE,
+    group.nthreads=L0glm_normalize_thread_count(args$ncores))
   state <- if(kind=='nb')L0glm_ext_nb_state(data,args$control.solver)else list()
   B <- data$B
   if(kind=='glm') {

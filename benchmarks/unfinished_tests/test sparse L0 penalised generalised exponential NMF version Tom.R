@@ -70,8 +70,7 @@ L0BestRankGNMF <- function(D,
                                          intercept = FALSE,
                                          family = family,
                                          lambda = lambdaH,
-                                         nonnegative = TRUE,
-                                         parallelize = FALSE, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
+                                         nonnegative = TRUE,ncores=1L, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
                                          maxit = 10,
                                          group.maxit = 3,
                                          grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty
@@ -104,8 +103,7 @@ L0BestRankGNMF <- function(D,
                      intercept = FALSE,
                      family = family,
                      lambda = lambdaW,
-                     nonnegative = TRUE,
-                     parallelize = FALSE, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
+                     nonnegative = TRUE,ncores=1L, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
                      maxit = 10,
                      grouped = FALSE,
                      solver = "eigen", # use Cholesky solver
@@ -121,8 +119,7 @@ L0BestRankGNMF <- function(D,
                    intercept = FALSE,
                    family = family,
                    lambda = lambdaH,
-                   nonnegative = TRUE,
-                   parallelize = FALSE, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
+                   nonnegative = TRUE,ncores=1L, # TODO : fix: with parallelize=T returns error "object 'intercept' not found"
                    maxit = 10,
                    group.maxit = 3,
                    grouped = grouped_Hupdate, # apply L0 or grouped L0 penalty

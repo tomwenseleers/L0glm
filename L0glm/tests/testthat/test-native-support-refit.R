@@ -5,15 +5,14 @@ test_that('native support-only Poisson refits match the guarded refit pass', {
   for(sparse in c(FALSE,TRUE))for(normalize in c('none','rms')) {
     X<-Matrix::Matrix(A,sparse=sparse)
     args<-list(X=X,y=Y,offset=1,start=1,lambda='gic',grouped=TRUE,group.maxit=2L,
-      normalize=normalize,maxit=25L,tol=1e-10,parallelize=FALSE,local.search=FALSE)
+      normalize=normalize,maxit=25L,tol=1e-10,ncores=1L,local.search=FALSE)
     selected<-do.call(L0glm_internal_pois,args)
     old<-do.call(L0glm_internal_pois,c(args,list(relaxed=TRUE)))
     rows<-which(Matrix::rowSums(coef(selected)!=0)>0)
     start<-as.matrix(coef(selected)[rows,,drop=FALSE])
     start[start==0]<-1e-6
     direct<-L0glm_internal_pois(X[,rows,drop=FALSE],Y,offset=1,start=start,lambda=0,
-      normalize=normalize,grouped=TRUE,relaxed=TRUE,maxit=25L,tol=1e-10,
-      parallelize=FALSE,local.search=FALSE,control.solver=list(.refit.only=TRUE))
+      normalize=normalize,grouped=TRUE,relaxed=TRUE,maxit=25L,tol=1e-10,ncores=1L,local.search=FALSE,control.solver=list(.refit.only=TRUE))
     expect_equal(as.matrix(coef(direct)),as.matrix(coef(old)[rows,,drop=FALSE]),tolerance=1e-7)
     expect_true(all(is.finite(direct$weights)))
     expect_true(all(direct$convergence$stage=='relaxed'))

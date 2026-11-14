@@ -4,7 +4,7 @@
 #' @description
 #' Supply unpenalized columns through `always.include`, for example a low-df
 #' B-spline basis for a smooth chromatographic background. With `nonnegative=TRUE`,
-#' `l0glmFit()` and `l0nnPois()` refine these coefficients in a small constrained
+#' `l0glmFit()` and the internal Poisson identity backend refine these coefficients in a small constrained
 #' block, separately from sparse predictor selection.
 #'
 #' @details
@@ -56,7 +56,7 @@
 #' The fitted object contains `nuisance`, with compulsory indices, candidate rows,
 #' initialization, accepted/rejected scores, conditional KKT residuals and timings.
 #'
-#' @seealso [l0glmFit()], [l0nnPois()], [preclustering]
+#' @seealso [l0glmFit()], [preclustering]
 NULL
 
 # Conditional handling of nonnegative unpenalized terms.
@@ -177,7 +177,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
   if(!is.null(options$screen) && !isTRUE(options$precluster) &&
       L0glm_screen_method(options$screen,X,options$start,added,options$always.include)!="none") {
     if(!"lambda"%in%supplied) lambda <- L0glm_resolve_lambda("gic",max(1L,length(selectable)),max(2,n_ic))
-    if(!"parallelize"%in%supplied) options$parallelize <- FALSE
+    if(!"ncores"%in%supplied) options$ncores <- 1L
   }
   opt <- options;opt$lambda <- lambda;opt$intercept <- FALSE;opt$start <- S;opt$prior.mean <- P;opt$always.include <- included
   if(isTRUE(options$precluster) && !"group.maxit"%in%supplied) opt$group.maxit <- NULL
@@ -265,7 +265,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
     L0glm_validation_loss(validation,coefs,state=list(theta=model$theta))
   value <- merit(beta,fit)
   trace <- list(data.frame(cycle=0L,step="initialization",score=value,accepted=TRUE))
-  threads <- if(isTRUE(options$parallelize)) max(1L,as.integer(options$ncores)) else 1L
+  threads <- max(1L,as.integer(options$ncores))
   if(!is.finite(threads)) threads <- 1L
   details <- NULL;cycles <- 0L
   accept <- function(coefs,model,cycle,step) {

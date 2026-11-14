@@ -26,11 +26,11 @@ test_that("a frozen estimated dispersion restarts after a later support loss", {
 
 test_that("diagnostics distinguish iteration caps and converged coefficient updates", {
   capped <- l0glmFit(diag(4), 1:4, family = gaussian(), dispersion = 1,
-    start = 1, maxit = 1L, parallelize = FALSE)
+    start = 1, maxit = 1L,ncores=1L)
   expect_equal(capped$convergence$iterations, 1L)
   expect_false(capped$convergence$converged)
   converged <- l0glmFit(diag(4), 1:4, family = gaussian(), dispersion = 1,
-    start = 1, lambda = 0, maxit = 100L, parallelize = FALSE)
+    start = 1, lambda = 0, maxit = 100L,ncores=1L)
   expect_true(all(converged$convergence$converged))
   expect_equal(converged$convergence$stage, "selection")
   expect_true(all(converged$convergence$iterations < 5L))
@@ -43,10 +43,10 @@ test_that("native and R diagnostics describe every channel and fitting pass", {
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, start = 1,
       lambda = 2, grouped = TRUE, group.maxit = 2L,
-      maxit = 3L, parallelize = FALSE, local.search=FALSE)
+      maxit = 3L,ncores=1L, local.search=FALSE)
     a <- do.call(l0nnPois, args)
     b <- do.call(l0glmFit, c(args, list(family = poisson(identity),
-                                        nonnegative = TRUE, openmp = FALSE)))
+                                        nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     expect_equal(a$convergence, b$convergence)
     expect_equal(nrow(a$convergence), 6L)
     expect_equal(a$convergence$channel, rep(1:3, 2))
@@ -54,8 +54,8 @@ test_that("native and R diagnostics describe every channel and fitting pass", {
     expect_true(all(a$convergence$iterations <= 3L))
   }
   parallel <- l0nnPois(X, y, start = 1, lambda = 2, grouped = TRUE,
-    group.maxit = 2L,  maxit = 3L, parallelize = TRUE, ncores = 2L)
+    group.maxit = 2L,  maxit = 3L, ncores = 2L)
   serial <- l0nnPois(X, y, start = 1, lambda = 2, grouped = TRUE,
-    group.maxit = 2L,  maxit = 3L, parallelize = FALSE)
+    group.maxit = 2L,  maxit = 3L,ncores=1L)
   expect_equal(parallel$convergence, serial$convergence)
 })

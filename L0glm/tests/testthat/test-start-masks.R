@@ -5,10 +5,10 @@ test_that("all-zero starts fit only mandatory terms and retain sparse dimensions
     for (intercept in c(FALSE, TRUE)) for (backend in c("general", "native")) {
       args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y, start = 0,
                    intercept = intercept, lambda = "gic", maxit = 15L,
-                   grouped = TRUE,  parallelize = FALSE)
+                   grouped = TRUE,ncores=1L)
       fit <- if (backend == "native") do.call(l0nnPois, args) else
         do.call(l0glmFit, c(args, list(family = poisson(identity),
-                                      nonnegative = TRUE, openmp = FALSE)))
+                                      nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
       expect_s4_class(fit$coefficients, "dgCMatrix")
       expect_equal(dim(fit$coefficients), c(3L + as.integer(intercept), m))
       if (intercept) {
@@ -28,10 +28,10 @@ test_that("entry masks persist through grouped passes and relaxed refits", {
   for (sparse in c(FALSE, TRUE)) for (grouped in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y, start = start,
                  lambda = 0.05, maxit = 15L, group.maxit = 3L,
-                 grouped = grouped,  parallelize = FALSE)
+                 grouped = grouped,ncores=1L)
     native <- do.call(l0nnPois, args)
     general <- do.call(l0glmFit, c(args, list(family = poisson(identity),
-      nonnegative = TRUE, openmp = FALSE)))
+      nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     for (fit in list(native, general)) {
       expect_s4_class(fit$coefficients, "dgCMatrix")
       expect_equal(dimnames(fit$coefficients), list(letters[1:6], LETTERS[1:3]))
@@ -39,10 +39,10 @@ test_that("entry masks persist through grouped passes and relaxed refits", {
       expect_true(all(as.matrix(fit$lambdas)[start == 0] == 1e11))
     }
     expect_equal(as.matrix(native$coefficients), as.matrix(general$coefficients), tolerance = 1e-7)
-    parallel <- do.call(l0glmFit, c(modifyList(args, list(parallelize = TRUE, ncores = 2L)),
-                                   list(family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+    parallel <- do.call(l0glmFit, c(modifyList(args, list( ncores = 2L)),
+                                   list(family = poisson(identity), nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     expect_equal(parallel$coefficients, general$coefficients, tolerance = 1e-8)
-    threaded <- do.call(l0nnPois, modifyList(args, list(parallelize = TRUE, ncores = 2L)))
+    threaded <- do.call(l0nnPois, modifyList(args, list( ncores = 2L)))
     expect_equal(threaded$coefficients, native$coefficients, tolerance = 1e-8)
   }
 })
@@ -58,16 +58,16 @@ test_that("fixed zeros are removed before Gaussian dispersion initialization", {
   })
   y <- rnorm(40)
   fit <- l0glmFit(X, y, start = c(1, 0, 1, 0, 0, 0, 0),
-                   family = gaussian(), parallelize = FALSE, openmp = FALSE)
+                   family = gaussian(),ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
   expect_equal(seen, 2L)
   expect_equal(dim(fit$coefficients), c(7L, 1L))
   expect_true(all(fit$coefficients[-c(1, 3), ] == 0))
   native <- l0glmFit(X, y, start = c(1, 0, 1, 0, 0, 0, 0),
-                    family = gaussian(), parallelize = FALSE)
+                    family = gaussian(),ncores=1L)
   expect_equal(native$coefficients, fit$coefficients, tolerance = 1e-8)
   expect_equal(native$dispersion, fit$dispersion, tolerance = 1e-8)
   fit <- l0glmFit(X, rnorm(40), start = 0, family = gaussian(),
-                   dispersion = -2, parallelize = FALSE)
+                   dispersion = -2,ncores=1L)
   expect_true(is.finite(fit$dispersion) && fit$dispersion > 0)
   expect_true(all(fit$coefficients == 0))
 })
@@ -76,15 +76,14 @@ test_that("zero-start mandatory coefficients remain eligible and unpenalized", {
   X <- cbind(0, seq_len(10), seq_len(10)^2)
   for (backend in c("general", "native")) {
     args <- list(X = X, y = 2 * X[, 2], start = 0, always.include = 2L,
-                 thresh = 2, lambda = 1e5,
-                 parallelize = FALSE, maxit = 10L)
+                 thresh = 2, lambda = 1e5,ncores=1L, maxit = 10L)
     fit <- if (backend == "native") do.call(l0nnPois, args) else
-      do.call(l0glmFit, c(args, list(family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+      do.call(l0glmFit, c(args, list(family = poisson(identity), nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     expect_equal(as.numeric(fit$coefficients), c(0, 2, 0), tolerance = 1e-8)
     expect_equal(as.numeric(fit$lambdas)[2], 0)
   }
   fit <- l0glmFit(matrix(seq_len(10), 10, 1), rep(0.2, 10), weights = rep(20, 10),
                    family = binomial(), start = 0, intercept = TRUE,
-                   nonnegative = TRUE, parallelize = FALSE)
+                   nonnegative = TRUE,ncores=1L)
   expect_equal(as.numeric(fit$coefficients), c(qlogis(0.2), 0), tolerance = 1e-7)
 })

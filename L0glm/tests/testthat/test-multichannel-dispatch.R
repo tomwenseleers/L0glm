@@ -18,10 +18,9 @@ test_that("uneven parallel chunks preserve channel inputs through selection and 
     args <- list(X = X, y = y, family = gaussian(), weights = weights,
       offset = offset, prior.mean = prior, start = start, intercept = TRUE,
       always.include = 5L, dispersion = c(0.3, -2, -0.5), lambda = "gic",
-      grouped = grouped,  group.maxit = 3L, nthreads = 1L,
-      openmp = FALSE, parallelize = FALSE)
+      grouped = grouped,  group.maxit = 3L, nthreads = 1L,control.solver=utils::modifyList(list(),list(.native=FALSE)),ncores=1L)
     serial <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
-    parallel <- do.call(l0glmFit, utils::modifyList(modifyList(args, list(parallelize = TRUE, ncores = 2L)), list(local.search=FALSE)))
+    parallel <- do.call(l0glmFit, utils::modifyList(modifyList(args, list( ncores = 2L)), list(local.search=FALSE)))
     for (name in c("coefficients", "lambdas", "weights", "z", "dispersion"))
       expect_identical(parallel[[name]], serial[[name]])
     expect_equal(dim(coef(serial)), c(p + 1L, m))
@@ -41,10 +40,9 @@ test_that("empty multichannel supports retain their original sparse dimensions",
   X <- matrix(seq_len(36), 12, 3)
   y <- matrix(2, 12, 3)
   args <- list(X = X, y = y, family = gaussian(), start = 0,
-    grouped = TRUE,  parallelize = FALSE, nthreads = 1L,
-    openmp = FALSE)
+    grouped = TRUE,ncores=1L, nthreads = 1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
   serial <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
-  parallel <- do.call(l0glmFit, utils::modifyList(modifyList(args, list(parallelize = TRUE, ncores = 2L)), list(local.search=FALSE)))
+  parallel <- do.call(l0glmFit, utils::modifyList(modifyList(args, list( ncores = 2L)), list(local.search=FALSE)))
   expect_s4_class(coef(serial), "sparseMatrix")
   expect_equal(dim(coef(serial)), c(3L, 3L))
   expect_true(all(coef(serial) == 0))

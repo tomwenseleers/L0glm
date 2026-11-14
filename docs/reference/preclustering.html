@@ -4,14 +4,12 @@ response channels, screen predictors on the reduced responses, then refine
 the sparse fit on every original channel. The identity-link workflow
 supports Gaussian models with or without nonnegativity, and nonnegative
 Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
-includes gammaScale() and gammaCensored(). l0nnPois(precluster=TRUE)
-provides the same workflow for nonnegative identity-link Poisson models."><meta property="og:description" content="l0glmFit(precluster=TRUE) clusters and aggregates
+includes gammaScale() and gammaCensored()."><meta property="og:description" content="l0glmFit(precluster=TRUE) clusters and aggregates
 response channels, screen predictors on the reduced responses, then refine
 the sparse fit on every original channel. The identity-link workflow
 supports Gaussian models with or without nonnegativity, and nonnegative
 Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
-includes gammaScale() and gammaCensored(). l0nnPois(precluster=TRUE)
-provides the same workflow for nonnegative identity-link Poisson models."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
+includes gammaScale() and gammaCensored()."><meta property="og:image" content="https://tomwenseleers.github.io/L0glm/reference/figures/logo.png"><meta property="og:image:alt" content="L0glm hex logo with selected coefficient rows across response channels"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -70,8 +68,7 @@ response channels, screen predictors on the reduced responses, then refine
 the sparse fit on every original channel. The identity-link workflow
 supports Gaussian models with or without nonnegativity, and nonnegative
 Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
-includes <code><a href="signal_families.html">gammaScale()</a></code> and <code><a href="signal_families.html">gammaCensored()</a></code>. <code>l0nnPois(precluster=TRUE)</code>
-provides the same workflow for nonnegative identity-link Poisson models.</p>
+includes <code><a href="signal_families.html">gammaScale()</a></code> and <code><a href="signal_families.html">gammaCensored()</a></code>.</p>
     </div>
 
 
@@ -122,7 +119,7 @@ different data and should be compared on their own response scales.</p>
 <code>size_fac=NULL</code> (use training column totals for count responses), <code>nthreads=NULL</code> (physical
 cores), <code>screen.factor=0.1</code>, <code>refit.passes=2L</code> and <code>clusterids=NULL</code>.
 Supplied cluster labels reuse a partition; responses are always aggregated
-afresh. Clustering threads are serial when <code>parallelize=FALSE</code>.
+afresh. Clustering threads are serial when <code>ncores=1L,</code>.
 Five-row binning is useful for ordered chromatographic scans; the general
 default of one row avoids dependence on arbitrary observation order. Count
 responses use size-adjusted Poisson clustering. Gaussian and positive
@@ -152,7 +149,7 @@ all selectable rows use the ordinary fitter and record the bypass reason.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="glmCluster.html">glmCluster()</a></code>, <code><a href="glmCluster.html">glmAggregate()</a></code>, <code><a href="l0glmFit.html">l0glmFit()</a></code>, <code><a href="l0nnPois.html">l0nnPois()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="glmCluster.html">glmCluster()</a></code>, <code><a href="glmCluster.html">glmAggregate()</a></code>, <code><a href="l0glmFit.html">l0glmFit()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -162,12 +159,12 @@ all selectable rows use the ordinary fitter and record the bypass reason.</p>
 <span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">80</span>,<span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">B</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">12</span>,<span class="fl">35</span>,<span class="fl">64</span><span class="op">)</span>,<span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">24</span>,<span class="fl">2</span>,<span class="fl">12</span><span class="op">)</span>,<span class="fl">3</span>,<span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fl">80</span><span class="op">*</span><span class="fl">8</span>, <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">B</span> <span class="op">+</span> <span class="fl">.1</span><span class="op">)</span>,<span class="fl">80</span>,<span class="fl">8</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0nnPois.html">l0nnPois</a></span><span class="op">(</span><span class="va">X</span>,<span class="va">Y</span>,lambda<span class="op">=</span><span class="st">"gic"</span>,offset<span class="op">=</span><span class="fl">.1</span>,precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  parallelize<span class="op">=</span><span class="cn">FALSE</span>,control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmFit.html">l0glmFit</a></span><span class="op">(</span>family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, <span class="va">X</span>,<span class="va">Y</span>,lambda<span class="op">=</span><span class="st">"gic"</span>,offset<span class="op">=</span><span class="fl">.1</span>,precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  ncores<span class="op">=</span><span class="fl">1L</span>,control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">candidates</span></span>
-<span><span class="va">agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0nnPois.html">l0nnPois</a></span><span class="op">(</span><span class="va">X</span>,<span class="va">Y</span>,lambda<span class="op">=</span><span class="st">"gic"</span>,offset<span class="op">=</span><span class="fl">.1</span>,precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  cluster.refit<span class="op">=</span><span class="cn">FALSE</span>,parallelize<span class="op">=</span><span class="cn">FALSE</span>,control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="l0glmFit.html">l0glmFit</a></span><span class="op">(</span>family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, <span class="va">X</span>,<span class="va">Y</span>,lambda<span class="op">=</span><span class="st">"gic"</span>,offset<span class="op">=</span><span class="fl">.1</span>,precluster<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  cluster.refit<span class="op">=</span><span class="cn">FALSE</span>,ncores<span class="op">=</span><span class="fl">1L</span>,control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k<span class="op">=</span><span class="fl">4L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">agg</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

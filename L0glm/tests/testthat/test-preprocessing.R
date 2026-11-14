@@ -31,7 +31,7 @@ test_that("a constant training predictor cannot create enormous held-out estimat
   y <- 1 + 2 * X[, 2] + rnorm(60)
   for (sparse in c(FALSE, TRUE)) {
     fit <- l0glmFit(Matrix::Matrix(X, sparse = sparse), y, family = gaussian(),
-      intercept = TRUE, parallelize = FALSE, lambda = "gic")
+      intercept = TRUE,ncores=1L, lambda = "gic")
     expect_equal(as.numeric(fit$coefficients)[2], 0)
     expect_equal(fit$preprocessing$scale[2], 1)
     validation <- X; validation[, 1] <- seq(-10, 10, length.out = 60)
@@ -49,7 +49,7 @@ test_that("nearly constant free-intercept columns have a stable working origin",
   for (sparse in c(FALSE, TRUE)) {
     Z <- Matrix::Matrix(X, sparse = sparse)
     expect_warning(fit <- l0glmFit(Z, y, family = gaussian(), intercept = TRUE,
-      lambda = "gic", parallelize = FALSE), NA)
+      lambda = "gic",ncores=1L), NA)
     expect_gt(abs(as.numeric(fit$coefficients)[2]), 1e8)
     expect_lt(mean((y - as.numeric(fit$X %*% fit$coefficients))^2), 0.1)
     expect_identical(inherits(fit$X, "sparseMatrix"), sparse)
@@ -88,8 +88,7 @@ test_that("free-intercept automatic Gaussian fits are invariant to predictor uni
   y <- 2 + as.numeric(X %*% beta) + rnorm(100, sd = 0.6)
   units <- exp(seq(-2, 2, length.out = ncol(X)))
   origin <- seq(-3, 3, length.out = ncol(X))
-  args <- list(y = y, family = gaussian(), intercept = TRUE, maxit = 100,
-               parallelize = FALSE,  lambda = "gic")
+  args <- list(y = y, family = gaussian(), intercept = TRUE, maxit = 100,ncores=1L,  lambda = "gic")
   for (sparse in c(FALSE, TRUE)) {
     original <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = sparse)), args))
     Z <- sweep(sweep(X, 2, origin, "-"), 2, units, "/")
@@ -138,7 +137,7 @@ test_that("nonnegative binomial slopes permit centered initialization", {
   X <- matrix(rnorm(200 * 4), 200, 4)
   y <- rbinom(200, 1, plogis(-1 + 1.5 * X[, 1]))
   args <- list(y = y, family = binomial(), nonnegative = TRUE, intercept = TRUE,
-               lambda = 2, parallelize = FALSE, maxit = 100)
+               lambda = 2,ncores=1L, maxit = 100)
   a <- do.call(l0glmFit, c(list(X = X), args))
   b <- do.call(l0glmFit, c(list(X = sweep(X, 2, c(2, -1, 3, -2), "-")), args))
   recovered <- as.numeric(b$coefficients)
@@ -153,7 +152,7 @@ test_that("free intercepts are reprofiled after clipping or thresholding slopes"
   X <- matrix(rbinom(120 * 5, 1, 0.3), 120, 5)
   y <- rbinom(120, 1, plogis(-1 + 3 * X[, 1] - 3 * X[, 2]))
   args <- list(y = y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
-    start = 1, lambda = 2, maxit = 1L, parallelize = FALSE)
+    start = 1, lambda = 2, maxit = 1L,ncores=1L)
   dense <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = FALSE)), args))
   sparse <- do.call(l0glmFit, c(list(X = Matrix::Matrix(X, sparse = TRUE)), args))
   expect_equal(as.numeric(dense$coefficients), as.numeric(sparse$coefficients), tolerance = 1e-7)
@@ -169,10 +168,9 @@ test_that("canonical Poisson initialization agrees between native and R paths", 
   for (sparse in c(FALSE, TRUE)) for (mode in c("auto", "rms", "l2", "sd")) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, intercept = TRUE,
       family = poisson(identity),
-      normalize = mode,  grouped = TRUE, group.maxit = 2,
-      parallelize = FALSE, maxit = 30, lambda = 2)
+      normalize = mode,  grouped = TRUE, group.maxit = 2,ncores=1L, maxit = 30, lambda = 2)
     a <- do.call(l0nnPois, args)
-    b <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
+    b <- do.call(l0glmFit, c(args, list(nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     expect_equal(a$coefficients, b$coefficients, tolerance = 1e-7)
     expect_equal(a$preprocessing, b$preprocessing)
     expect_false(a$preprocessing$centered)

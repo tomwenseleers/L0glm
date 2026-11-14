@@ -8,8 +8,7 @@ test_that("historical iteration defaults are retained by both fitting paths", {
 test_that("single-channel native fitting does not evaluate unused core counts", {
   X <- diag(3)
   single <- l0nnPois(X, 1:3, ncores = stop("unused core count was forced"))
-  serial <- l0nnPois(X, cbind(1:3, 2:4), parallelize = FALSE,
-                    ncores = stop("unused core count was forced"))
+  serial <- l0nnPois(X, cbind(1:3, 2:4), ncores=1L)
   expect_s4_class(single$coefficients, "dgCMatrix")
   expect_equal(dim(serial$coefficients), c(3, 2))
 })

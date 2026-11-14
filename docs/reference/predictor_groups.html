@@ -136,7 +136,7 @@ predictor dimensions. <code>group_support_size</code>, <code>group_df</code> and
 in <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code> describe the group fit, alongside coefficient-based scores.</p>
 <p>Recognized scalar GLMs use a native C++ predictor-group IRLS driver, sharing
 the family calculations and ridge solvers with ordinary models. For multiple
-outcomes, <code>parallelize=TRUE</code> uses up to <code>ncores</code> OpenMP channel workers;
+outcomes, native fits use up to <code>ncores</code> OpenMP channel threads;
 BLAS runs with one thread inside those passes and its settings are restored.
 The group penalty, step halving, dispersion updates and convergence checks
 retain the same definitions in serial and parallel fits. External OSQP and
@@ -163,7 +163,7 @@ unpenalized group refit can fall back to pivoted QR.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="l0glmFit.html">l0glmFit()</a></code>, <code><a href="l0nnPois.html">l0nnPois()</a></code>, <code><a href="l0glmTune.html">l0glmTune()</a></code>, <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="l0glmFit.html">l0glmFit()</a></code>, <code><a href="l0glmTune.html">l0glmTune()</a></code>, <code><a href="l0glmMetrics.html">l0glmMetrics()</a></code></p></div>
     </div>
 
     <div class="section level2">

@@ -9,8 +9,7 @@ response channels, screen predictors on the reduced responses, then refine
 the sparse fit on every original channel. The identity-link workflow
 supports Gaussian models with or without nonnegativity, and nonnegative
 Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
-includes \code{\link[=gammaScale]{gammaScale()}} and \code{\link[=gammaCensored]{gammaCensored()}}. \code{l0nnPois(precluster=TRUE)}
-provides the same workflow for nonnegative identity-link Poisson models.
+includes \code{\link[=gammaScale]{gammaScale()}} and \code{\link[=gammaCensored]{gammaCensored()}}.
 }
 \details{
 For conditionally independent Poisson channels with an identity link,
@@ -62,7 +61,7 @@ different data and should be compared on their own response scales.
 \code{size_fac=NULL} (use training column totals for count responses), \code{nthreads=NULL} (physical
 cores), \code{screen.factor=0.1}, \code{refit.passes=2L} and \code{clusterids=NULL}.
 Supplied cluster labels reuse a partition; responses are always aggregated
-afresh. Clustering threads are serial when \code{parallelize=FALSE}.
+afresh. Clustering threads are serial when \verb{ncores=1L,}.
 Five-row binning is useful for ordered chromatographic scans; the general
 default of one row avoids dependence on arbitrary observation order. Count
 responses use size-adjusted Poisson clustering. Gaussian and positive
@@ -99,14 +98,14 @@ X <- diag(80)
 B <- matrix(0,80,8)
 B[c(12,35,64),] <- matrix(runif(24,2,12),3,8)
 Y <- matrix(rpois(80*8, X \%*\% B + .1),80,8)
-fit <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
-  parallelize=FALSE,control.precluster=list(k.max=4L))
+fit <- l0glmFit(family=poisson(identity), nonnegative=TRUE, X,Y,lambda="gic",offset=.1,precluster=TRUE,
+  ncores=1L,control.precluster=list(k.max=4L))
 dim(coef(fit))
 fit$preclustering$candidates
-agg <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
-  cluster.refit=FALSE,parallelize=FALSE,control.precluster=list(k=4L))
+agg <- l0glmFit(family=poisson(identity), nonnegative=TRUE, X,Y,lambda="gic",offset=.1,precluster=TRUE,
+  cluster.refit=FALSE,ncores=1L,control.precluster=list(k=4L))
 dim(coef(agg))
 }
 \seealso{
-\code{\link[=glmCluster]{glmCluster()}}, \code{\link[=glmAggregate]{glmAggregate()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}
+\code{\link[=glmCluster]{glmCluster()}}, \code{\link[=glmAggregate]{glmAggregate()}}, \code{\link[=l0glmFit]{l0glmFit()}}
 }

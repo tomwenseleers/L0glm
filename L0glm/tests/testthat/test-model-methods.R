@@ -25,7 +25,7 @@ test_that("Gaussian likelihood methods use prior weights, offsets and fitted sca
   ref <- glm(as.numeric(y) ~ X + offset(off), weights = w, family = gaussian())
   for (design in list(X, Matrix::Matrix(X, sparse = TRUE))) {
     fit <- l0glmFit(design, y, weights = w, offset = off, intercept = TRUE,
-      lambda = 0, thresh = 0,  parallelize = FALSE, maxit = 100)
+      lambda = 0, thresh = 0,ncores=1L, maxit = 100)
     expect_model_criteria(fit)
     expect_equal(as.numeric(coef(fit)), unname(coef(ref)), tolerance = 1e-8)
     expect_equal(fit$dispersion,summary(ref)$dispersion)
@@ -49,7 +49,7 @@ test_that("known and estimated multichannel scales retain their distinct likelih
   B <- matrix(c(1, -1, 0, 2, 0, 1), 3, 2)
   y <- X %*% B + off + matrix(rnorm(160), 80, 2)
   fit <- l0glmFit(X, y, weights = w, offset = off, dispersion = c(2, -1),
-    lambda = 0, thresh = 0, grouped = FALSE,  parallelize = FALSE)
+    lambda = 0, thresh = 0, grouped = FALSE,ncores=1L)
   expect_model_criteria(fit)
   mu <- as.matrix(X %*% coef(fit)) + off
   phi <- c(2, sum(w[, 2] * (y[, 2] - mu[, 2])^2)/(80-sum(coef(fit)[,2]!=0)))
@@ -73,8 +73,8 @@ test_that("R and native Poisson methods retain channel-specific prior weights", 
   for (design in list(X, Matrix::Matrix(X, sparse = TRUE))) {
     for (native in c(FALSE, TRUE)) {
       fit <- l0glmFit(design, y, weights = w, offset = off,
-        family = poisson(identity), nonnegative = TRUE, openmp = native,
-        lambda = 2, grouped = FALSE,  parallelize = FALSE)
+        family = poisson(identity), nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=native)),
+        lambda = 2, grouped = FALSE,ncores=1L)
       expect_model_criteria(fit)
       mu <- as.matrix(design %*% coef(fit)) + off
       expect_equal(as.numeric(logLik(fit)), sum(w * dpois(y, mu, log = TRUE)), tolerance = 1e-12)
@@ -88,7 +88,7 @@ test_that("R and native Poisson methods retain channel-specific prior weights", 
     }
   }
   single <- l0nnPois(X, y[, 1], weights = w[, 1], offset = off[, 1],
-    intercept = TRUE, parallelize = FALSE)
+    intercept = TRUE,ncores=1L)
   expect_model_criteria(single)
   expect_true(is.na(l0glmMetrics(single)$within_row_F1_score))
   expect_equal(l0glmMetrics(single, newdata = X[1:10, ], y = y[1:10, 1],
@@ -108,13 +108,13 @@ test_that("binomial and quasi likelihoods follow the family conventions", {
   off <- runif(100, -.2, .2); trials <- sample(2:6, 100, TRUE)
   y <- rbinom(100, trials, plogis(.2 + X %*% c(.5, -.4, 0) + off))/trials
   fit <- l0glmFit(X, y, family = binomial(), weights = trials, offset = off,
-    lambda = 0, thresh = 0, parallelize = FALSE,  maxit = 100)
+    lambda = 0, thresh = 0,ncores=1L,  maxit = 100)
   ref <- glm(y ~ X + offset(off), family = binomial(), weights = trials)
   expect_model_criteria(fit)
   expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-8)
   expect_equal(AIC(fit), AIC(ref), tolerance = 1e-8)
   quasi <- l0glmFit(X, y, family = quasibinomial(), weights = trials, offset = off,
-    intercept = TRUE, lambda = 0, parallelize = FALSE,  maxit = 100)
+    intercept = TRUE, lambda = 0,ncores=1L,  maxit = 100)
   expect_true(is.na(as.numeric(logLik(quasi))))
   for (criterion in list(AIC, BIC, GIC, EBIC, MBIC)) expect_true(is.na(criterion(quasi)))
 })
@@ -124,8 +124,7 @@ test_that("zero mandatory coefficients and excluded starts keep the correct mode
   X <- matrix(rnorm(120), 40, 3)
   y <- X[, 1] + rnorm(40)
   fit <- l0glmFit(X, y, dispersion = 1, intercept = TRUE,
-    always.include = 2, start = c(0, 1, 0, 0), lambda = 2,
-     parallelize = FALSE)
+    always.include = 2, start = c(0, 1, 0, 0), lambda = 2,ncores=1L)
   expect_model_criteria(fit)
   expect_equal(dim(coef(fit)), c(4L, 1L))
   expect_equal(as.numeric(coef(fit)[4, ]), 0)
@@ -145,7 +144,7 @@ test_that("Gamma and inverse Gaussian likelihoods use fixed or fitted dispersion
       statmod::rinvgauss(60, mean = mu, dispersion = phi)
     for (dispersion in list(phi, NULL)) {
       fit <- l0glmFit(X, y, family = family, weights = w, dispersion = dispersion,
-        intercept = TRUE, lambda = 2,  parallelize = FALSE, maxit = 100)
+        intercept = TRUE, lambda = 2,ncores=1L, maxit = 100)
       expect_model_criteria(fit)
       fitted_mean <- family$linkinv(as.numeric(cbind(1, X) %*% coef(fit)))
       if (!is.null(dispersion)) expect_equal(fit$dispersion, dispersion)
@@ -161,7 +160,7 @@ test_that("Gamma and inverse Gaussian likelihoods use fixed or fitted dispersion
 
 test_that("exact likelihood and optional scoring floors are distinguished", {
   fit <- l0nnPois(matrix(seq(.2, 1, length.out = 10), 10, 1), rep(1, 10),
-    lambda = 2, parallelize = FALSE)
+    lambda = 2,ncores=1L)
   fit$coefficients[,] <- 0
   expect_equal(as.numeric(logLik(fit)), -Inf)
   expect_equal(AIC(fit), Inf)

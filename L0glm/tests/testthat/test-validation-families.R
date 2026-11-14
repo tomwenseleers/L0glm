@@ -29,7 +29,7 @@ test_that("validation evaluates ordinary family deviances for every standard lin
   for (family in families) {
     d <- validation_family_sample(family)
     fit <- l0glmFit(local.search=FALSE, d$X, d$y, family = family, intercept = TRUE, lambda = "gic",
-      dispersion = 1,  maxit = 100, parallelize = FALSE,
+      dispersion = 1,  maxit = 100,ncores=1L,
       validation = list(X = d$V, y = d$v))
     mu <- as.numeric(predict(fit, d$V))
     if (family$family %in% c("poisson", "quasipoisson", "Gamma", "inverse.gaussian"))
@@ -51,7 +51,7 @@ test_that("special-family validation retains training parameters and uses fixed 
   for (theta in c(-1, 2)) {
     family <- mgcv::nb(theta = theta)
     fit <- l0glmFit(local.search=FALSE, d$X, y, family = family, intercept = TRUE, lambda = "gic",
-       maxit = 80, parallelize = FALSE, validation = list(X = d$V, y = v))
+       maxit = 80,ncores=1L, validation = list(X = d$V, y = v))
     mu <- as.numeric(predict(fit, d$V))
     saturated <- if (theta < 0) dpois(v, v, log = TRUE) else
       dnbinom(v, mu = v, size = theta, log = TRUE)

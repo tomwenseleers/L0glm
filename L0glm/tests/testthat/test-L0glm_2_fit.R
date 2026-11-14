@@ -14,28 +14,22 @@ test_that("multichannel parallel fit matches serial fit", {
   y <- matrix(rpois(n * m, as.vector(mu)), n, m)
 
   serial <- l0glmFit(
-    X, y,
-    openmp = FALSE,
+    X, y,control.solver=utils::modifyList(list(),list(.native=FALSE)),
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     solver = "eigen",
     method = 1L,
     maxit = 10L,
     group.maxit = 2L)
 
   parallel <- l0glmFit(
-    X, y,
-    openmp = FALSE,
+    X, y,control.solver=utils::modifyList(list(),list(.native=FALSE)),
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
     grouped = TRUE,
-
-    parallelize = TRUE,
     ncores = 2L,
     solver = "eigen",
     method = 1L,
@@ -58,9 +52,7 @@ test_that("grouped relaxed fit keeps rows with cancelling channel coefficients",
     family = gaussian(identity),
     lambda = 0.01,
     nonnegative = FALSE,
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     intercept = FALSE,
     normalize = FALSE,
     maxit = 10L,
@@ -85,14 +77,11 @@ test_that("serial nthreads setting is restored after fit", {
 
   sim <- simul(method = 4, n = 40L, p = 40L, s = 0.1, seed = 2)
   fit <- l0glmFit(
-    sim$X, sim$y[, 1L, drop = FALSE],
-    openmp = FALSE,
+    sim$X, sim$y[, 1L, drop = FALSE],control.solver=utils::modifyList(list(),list(.native=FALSE)),
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
-    grouped = FALSE,
-
-    parallelize = FALSE,
+    grouped = FALSE,ncores=1L,
     nthreads = 1L,
     solver = "eigen",
     method = 1L)

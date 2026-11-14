@@ -52,13 +52,13 @@ test_that("all scaling choices preserve native and general fit coordinates", {
   y <- rpois(30, 3)
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, lambda = 2,
-                 start = 0.2, maxit = 5L,  parallelize = FALSE,
+                 start = 0.2, maxit = 5L,ncores=1L,
                  prior.mean = rep(0.01, 45))
     reference <- do.call(l0nnPois, args)
     for (normalize in list(TRUE, "l2", "rms", "sd", "none")) {
       native <- do.call(l0nnPois, c(args, list(normalize = normalize)))
       general <- do.call(l0glmFit, c(args, list(normalize = normalize,
-        family = poisson(identity), nonnegative = TRUE, openmp = FALSE)))
+        family = poisson(identity), nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
       expect_equal(as.numeric(native$coefficients), as.numeric(reference$coefficients), tolerance = 1e-8)
       expect_equal(as.numeric(native$coefficients), as.numeric(general$coefficients), tolerance = 1e-8)
       expect_identical(inherits(native$X, "sparseMatrix"), sparse)

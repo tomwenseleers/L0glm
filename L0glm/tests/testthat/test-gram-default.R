@@ -47,7 +47,7 @@ test_that("IRLS resolves the automatic Gram route once per fit", {
     calls <<- calls + 1L
     original(X)
   })
-  fit <- l0glmFit(local.search=FALSE, X, y, family = binomial(), openmp = FALSE, start = 1,
+  fit <- l0glmFit(local.search=FALSE, X, y, family = binomial(),control.solver=utils::modifyList(list(),list(.native=FALSE)), start = 1,
     normalize = "none", maxit = 5L)
   expect_gt(max(fit$convergence$iterations), 1L)
   expect_equal(calls, 1L)

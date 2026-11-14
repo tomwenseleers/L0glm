@@ -29,7 +29,7 @@ test_that('default OSQP matches polished bigGlm on correlated PSF fits', {
     for(sparse in c(TRUE,FALSE)) {
       X <- if(sparse)d$X else as.matrix(d$X)
       args <- list(X=X,y=d$y,start=1,family=family,lambda='gic',
-        nonnegative=TRUE,openmp=FALSE,parallelize=FALSE,nthreads=1L,
+        nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)),ncores=1L,nthreads=1L,
         local.search=FALSE,maxit=25L,tol=1e-10,thresh=1e-5)
       reference <- do.call(l0glmFit,c(args,list(solver='bigGlm')))
       fit <- do.call(l0glmFit,c(args,list(solver='osqp')))

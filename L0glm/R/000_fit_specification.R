@@ -18,6 +18,12 @@ L0glm_recorded_fitter <- function(kernel,engine,public=TRUE) {
       }
       if('control.family'%in%supplied && is.list(control.family) && !is.null(control.family$dispersion.calibration))
         L0glm_calibration_mode(control.family$dispersion.calibration)
+      if('control.solver'%in%supplied && !is.null(control.solver$.native))
+        control.solver <- utils::modifyList(controlSolverGen(solver,method),control.solver,keep.null=TRUE)
+      if(is.null(nthreads) && (solver!='eigen' || is.null(L0glm_native_family(family)))) {
+        nthreads <- L0glm_normalize_thread_count(ncores)
+        call[['nthreads']] <- quote(nthreads)
+      }
     }
     result <- eval(call,environment())
     if(isTRUE(result$local.search$applied) && !is.null(result$lambdas))

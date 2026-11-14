@@ -30,7 +30,7 @@ test_that("multinomial adapters reconstruct reference coefficients and score cou
     train <- fit$foldid != k
     pilot <- l0glmFit(X[train,],label[train],family=mgcv::multinom(K=2),
       intercept=TRUE,lambda="gic",start=NULL,maxit=1,grouped=FALSE,
-      thresh=0,parallelize=FALSE)
+      thresh=0,ncores=1L)
     expect_equal(fit$tuning$adaptive_lasso$cv$adaptive[[k]]$coefficients,coef(pilot))
   }
   expect_warning(unsupported <- sparseGLM(X,label,family="multinomial",

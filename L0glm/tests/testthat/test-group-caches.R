@@ -11,7 +11,7 @@ test_that('cached group solves agree with equivalent family callbacks', {
     args <- list(X=A,y=Y,weights=w,offset=off,group=rep(1:8,each=3),
       start=start,always.include=22L,intercept=TRUE,dispersion=c(.7,1.2),
       lambda='gic',grouped=grouped,prior.mean=.03,
-      maxit=80L,local.search=FALSE,parallelize=FALSE)
+      maxit=80L,local.search=FALSE,ncores=1L)
     cached <- do.call(l0glmFit,c(args,list(family=gaussian())))
     reference <- do.call(l0glmFit,c(args,list(family=callback)))
     expect_equal(coef(cached),coef(reference),tolerance=1e-9)
@@ -26,7 +26,7 @@ test_that('cached group solves agree with equivalent family callbacks', {
 test_that('wide unpenalized group fits retain observation-space least squares', {
   set.seed(921);X <- matrix(rnorm(18*50),18,50);y <- rnorm(18)
   fit <- l0glmFit(X,y,group=rep(1:10,each=5),intercept=TRUE,lambda=0,
-    dispersion=1,start=1,local.search=FALSE,parallelize=FALSE)
+    dispersion=1,start=1,local.search=FALSE,ncores=1L)
   expect_equal(as.numeric(fitted(fit)),y,tolerance=1e-8)
   expect_true(all(is.finite(coef(fit))))
 })

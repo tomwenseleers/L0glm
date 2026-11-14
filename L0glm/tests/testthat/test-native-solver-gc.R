@@ -19,7 +19,7 @@ test_that('native solver callback arguments survive forced garbage collection', 
     A<-if(sparse)Matrix::Matrix(X,sparse=TRUE)else X
     fit<-l0glmFit(A,y,family=gaussian(),dispersion=1,start=1,offset=1,
       prior.mean=prior,lambda=1,nonnegative=TRUE,normalize='none',
-      solver='bigGlm',maxit=1L,openmp=TRUE,parallelize=FALSE,nthreads=1L,
+      solver='bigGlm',maxit=1L,control.solver=utils::modifyList(list(),list(.native=TRUE)),ncores=1L,nthreads=1L,
       local.search=FALSE,screen='none',intercept=FALSE)
     gctorture2(0L)
     args<-received$arguments
@@ -43,9 +43,9 @@ test_that('native bigGlm matches R fits for correlated dense and sparse designs'
     for(sparse in c(TRUE,FALSE)) {
       X<-if(sparse)d$X else as.matrix(d$X)
       args<-list(X=X,y=d$y,family=family,lambda='gic',start=NULL,
-        nonnegative=TRUE,local.search=FALSE,solver='bigGlm',parallelize=FALSE,nthreads=1L)
-      r<-do.call(l0glmFit,c(args,list(openmp=FALSE)))
-      native<-do.call(l0glmFit,c(args,list(openmp=TRUE)))
+        nonnegative=TRUE,local.search=FALSE,solver='bigGlm',ncores=1L,nthreads=1L)
+      r<-do.call(l0glmFit,c(args,list(control.solver=utils::modifyList(list(),list(.native=FALSE)))))
+      native<-do.call(l0glmFit,c(args,list(control.solver=utils::modifyList(list(),list(.native=TRUE)))))
       expect_equal(as.numeric(coef(native)),as.numeric(coef(r)),tolerance=1e-8)
       expect_identical(as.numeric(coef(native))!=0,as.numeric(coef(r))!=0)
       met<-l0glmMetrics(native,beta_true=d$beta_true)

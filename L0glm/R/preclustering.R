@@ -7,8 +7,7 @@
 #' the sparse fit on every original channel. The identity-link workflow
 #' supports Gaussian models with or without nonnegativity, and nonnegative
 #' Poisson, quasipoisson, NB1, NB2, Gamma and inverse Gaussian models. Gamma
-#' includes [gammaScale()] and [gammaCensored()]. `l0nnPois(precluster=TRUE)`
-#' provides the same workflow for nonnegative identity-link Poisson models.
+#' includes [gammaScale()] and [gammaCensored()].
 #'
 #' @details
 #' For conditionally independent Poisson channels with an identity link,
@@ -60,7 +59,7 @@
 #' `size_fac=NULL` (use training column totals for count responses), `nthreads=NULL` (physical
 #' cores), `screen.factor=0.1`, `refit.passes=2L` and `clusterids=NULL`.
 #' Supplied cluster labels reuse a partition; responses are always aggregated
-#' afresh. Clustering threads are serial when `parallelize=FALSE`.
+#' afresh. Clustering threads are serial when `ncores=1L,`.
 #' Five-row binning is useful for ordered chromatographic scans; the general
 #' default of one row avoids dependence on arbitrary observation order. Count
 #' responses use size-adjusted Poisson clustering. Gaussian and positive
@@ -91,19 +90,19 @@
 #' One-channel original fits, zero-penalty original fits and starts excluding
 #' all selectable rows use the ordinary fitter and record the bypass reason.
 #'
-#' @seealso [glmCluster()], [glmAggregate()], [l0glmFit()], [l0nnPois()]
+#' @seealso [glmCluster()], [glmAggregate()], [l0glmFit()]
 #' @examples
 #' set.seed(8)
 #' X <- diag(80)
 #' B <- matrix(0,80,8)
 #' B[c(12,35,64),] <- matrix(runif(24,2,12),3,8)
 #' Y <- matrix(rpois(80*8, X %*% B + .1),80,8)
-#' fit <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
-#'   parallelize=FALSE,control.precluster=list(k.max=4L))
+#' fit <- l0glmFit(family=poisson(identity), nonnegative=TRUE, X,Y,lambda="gic",offset=.1,precluster=TRUE,
+#'   ncores=1L,control.precluster=list(k.max=4L))
 #' dim(coef(fit))
 #' fit$preclustering$candidates
-#' agg <- l0nnPois(X,Y,lambda="gic",offset=.1,precluster=TRUE,
-#'   cluster.refit=FALSE,parallelize=FALSE,control.precluster=list(k=4L))
+#' agg <- l0glmFit(family=poisson(identity), nonnegative=TRUE, X,Y,lambda="gic",offset=.1,precluster=TRUE,
+#'   cluster.refit=FALSE,ncores=1L,control.precluster=list(k=4L))
 #' dim(coef(agg))
 NULL
 
@@ -276,7 +275,7 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
     if(any(W!=W[,1L])) stop("Preclustering requires observation weights shared across channels.",call.=FALSE)
     w<-W[,1L]
   }
-  threads<-if(isTRUE(options$parallelize)) L0glm_sis_threads(control$nthreads) else 1L
+  threads<-if(options$ncores>1L) min(options$ncores,L0glm_sis_threads(control$nthreads)) else 1L
   cluster_start<-proc.time()[[3L]]
   sizes<-if(size_adjusted) if(is.null(control$size_fac)) colSums(Y) else control$size_fac
   if(!size_adjusted&&!is.null(control$size_fac))

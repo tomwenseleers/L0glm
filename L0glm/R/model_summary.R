@@ -3,7 +3,7 @@
 #' @name model_summary
 #' @md
 #' @description
-#' Concise S3 displays for [l0glmFit()], [l0nnPois()] and [sparseGLM()]
+#' Concise S3 displays for [l0glmFit()] and [sparseGLM()]
 #' results, including negative-binomial, multinomial and Cox models.
 #'
 #' @param object An `L0glm_fit` model or `sparseGLM` comparison.
@@ -72,7 +72,7 @@
 #' set.seed(4)
 #' X <- matrix(rnorm(240), 60, 4)
 #' y <- 2 * X[, 1] + rnorm(60)
-#' fit <- l0glmFit(X, y, lambda="gic", parallelize=FALSE)
+#' fit <- l0glmFit(X, y, lambda="gic", ncores=1L)
 #' print(fit)
 #' details <- summary(fit)
 #' print(details, max.rows=10)

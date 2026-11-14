@@ -171,7 +171,7 @@ if (requireNamespace("mgcv", quietly=TRUE)) {
 regression <- simul("normal", n=150, p=30, n_nonzero=4, intercept=1.5,
   options=list(beta_range=c(-2, 2), error_sd=.5), seed=10)
 fit <- l0glmFit(regression$X, regression$y, family=regression$family,
-  intercept=regression$intercept, nonnegative=FALSE, parallelize=FALSE)
+  intercept=regression$intercept, nonnegative=FALSE,ncores=1L)
 l0glmMetrics(fit, beta_true=regression$beta_true)[c("gic", "F1_score", "MCC")]
 
 # sparseGLM reads family, intercept and coefficient truth from the simulation.

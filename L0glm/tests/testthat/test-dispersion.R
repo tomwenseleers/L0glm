@@ -3,7 +3,7 @@ test_that("positive dispersion is fixed and negative dispersion is an exact star
   X <- matrix(rnorm(240 * 6), 240)
   y <- as.numeric(X %*% c(2, -1, 0, 0, 0, 0)) + rnorm(240, sd = 3)
   args <- list(X = X, y = y, family = gaussian(), lambda = "gic",
-               start = rep(1, 6), parallelize = FALSE)
+               start = rep(1, 6),ncores=1L)
   fixed <- do.call(l0glmFit, c(args, list(dispersion = 2, maxit = 1)))
   initial <- do.call(l0glmFit, c(args, list(dispersion = -2, maxit = 1)))
   expect_equal(initial$coefficients, fixed$coefficients)
@@ -45,9 +45,9 @@ test_that("automatic ridge scale respects response units and preserves the RNG",
   expect_equal(initial(X, 10 * y), 100 * phi, tolerance = 1e-8)
   expect_equal(initial(Matrix::Matrix(X, sparse = TRUE), y), phi, tolerance = 1e-8)
   a <- l0glmFit(X, y, lambda = "gic", maxit = 100,
-                 family = gaussian(), parallelize = FALSE)
+                 family = gaussian(),ncores=1L)
   b <- l0glmFit(X, 10 * y, lambda = "gic", maxit = 100,
-                 family = gaussian(), parallelize = FALSE)
+                 family = gaussian(),ncores=1L)
   expect_equal(b$coefficients / 10, a$coefficients, tolerance = 1e-7)
   expect_equal(b$dispersion / 100, a$dispersion, tolerance = 1e-7)
 })
@@ -74,7 +74,7 @@ test_that("weighted offset fits use the final mean for estimated scale", {
   w[1:8] <- 0
   y <- offset + X[, 1] + rnorm(160)
   fit <- l0glmFit(X, y, weights = w, offset = offset, family = gaussian(),
-    dispersion = NULL, lambda = 1,  maxit = 100, parallelize = FALSE)
+    dispersion = NULL, lambda = 1,  maxit = 100,ncores=1L)
   mu <- offset + as.numeric(X %*% fit$coefficients)
   expect_equal(fit$dispersion, sum(w * (y - mu)^2) /
                  (sum(w > 0) - sum(fit$coefficients != 0)))
@@ -95,7 +95,7 @@ test_that("free non-Gaussian families report fresh Pearson scale after refitting
       quasibinomial = rbinom(160, 20, mu) / 20)
     fit <- L0glm_internal_fit(X, y, weights = w, family = family, intercept = FALSE,
       always.include = 1L, dispersion = NULL, lambda = 0.1,
-       relaxed = TRUE, maxit = 100, parallelize = FALSE)
+       relaxed = TRUE, maxit = 100,ncores=1L)
     fitted <- family$linkinv(as.numeric(X %*% fit$coefficients))
     expected <- sum(w * (y - fitted)^2 / family$variance(fitted)) /
       (160 - sum(fit$coefficients != 0))
@@ -110,12 +110,12 @@ test_that("fixed and estimated channels survive grouped and relaxed passes", {
   y <- cbind(2 * X[, 1] + rnorm(120), -X[, 1] + rnorm(120, sd = 2))
   args <- list(X = X, y = y, family = gaussian(), dispersion = c(4, -0.5),
     lambda = "gic", grouped = TRUE, group.maxit = 2,  maxit = 100)
-  serial <- do.call(l0glmFit, c(args, list(parallelize = FALSE)))
+  serial <- do.call(l0glmFit, c(args, list(ncores=1L)))
   expect_identical(serial$dispersion[1], 4)
   residual <- y[, 2] - as.numeric(X %*% serial$coefficients[, 2])
   expect_equal(serial$dispersion[2], sum(residual^2) /
                  (120 - sum(serial$coefficients[, 2] != 0)))
-  parallel <- do.call(l0glmFit, c(args, list(parallelize = TRUE, ncores = 2)))
+  parallel <- do.call(l0glmFit, c(args, list( ncores = 2)))
   expect_equal(parallel$coefficients, serial$coefficients)
   expect_equal(parallel$dispersion, serial$dispersion)
 })
@@ -125,13 +125,12 @@ test_that("known-scale families keep their dispersion on both execution paths", 
   y <- rep(1, 30)
   for (openmp in c(FALSE, TRUE)) {
     expect_warning(fit <- l0glmFit(X, y, family = poisson(identity),
-      nonnegative = TRUE, dispersion = -2, openmp = openmp,
-      parallelize = FALSE), "Dispersion is fixed at 1")
+      nonnegative = TRUE, dispersion = -2,control.solver=utils::modifyList(list(),list(.native=openmp)),ncores=1L), "Dispersion is fixed at 1")
     expect_equal(fit$dispersion, 1)
   }
   for (family in list(binomial(), MASS::negative.binomial(theta = 2))) {
     expect_warning(fit <- l0glmFit(X, y, family = family, dispersion = 3,
-      intercept = FALSE, parallelize = FALSE), "Dispersion is fixed at 1")
+      intercept = FALSE,ncores=1L), "Dispersion is fixed at 1")
     expect_equal(fit$dispersion, 1)
   }
 })
@@ -139,9 +138,7 @@ test_that("known-scale families keep their dispersion on both execution paths", 
 test_that("invalid dispersion inputs fail before fitting", {
   X <- matrix(seq_len(20), ncol = 1)
   for (bad in list(0, NA_real_, Inf, -Inf, NaN, "2", numeric(), c(1, 2), list(1))) {
-    expect_error(l0glmFit(X, seq_len(20), dispersion = bad,
-                          parallelize = FALSE), "dispersion must be")
-    expect_error(l0nnPois(X, seq_len(20), dispersion = bad,
-                         parallelize = FALSE), "dispersion must be")
+    expect_error(l0glmFit(X, seq_len(20), dispersion = bad,ncores=1L), "dispersion must be")
+    expect_error(l0nnPois(X, seq_len(20), dispersion = bad,ncores=1L), "dispersion must be")
   }
 })

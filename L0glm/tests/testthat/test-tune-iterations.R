@@ -14,7 +14,7 @@ test_that("scalar iteration limits retain ordinary lambda CV and replay", {
   X <- matrix(rnorm(48L*5L),48L)
   y <- 2*X[,1]-X[,3]+rnorm(48L)
   args <- list(X=X,y=y,family=gaussian(),tune="cv",foldid=rep(1:3,16L),maxit=4L,
-    nlambda=3L,prop_range=.1,local.search=FALSE,parallelize=FALSE,
+    nlambda=3L,prop_range=.1,local.search=FALSE,ncores=1L,
     plot=FALSE,printbest=FALSE)
   fit <- do.call(l0glmTune,args)
   expect_length(fit$lambdas,3L)

@@ -33,7 +33,7 @@ test_that("high-dispersion inverse-Gaussian tuning retains finite models", {
     options=list(beta_range=c(-.8, .8)), seed=21)
   expect_no_warning(tuned <- l0glmTune(local.search=FALSE, sim$X, sim$y, family=sim$family,
     weights=sim$weights, intercept=TRUE, nonnegative=FALSE, tune="gic",
-    nlambda=3, maxit=200, tol=1e-8, parallelize=FALSE, plot=FALSE))
+    nlambda=3, maxit=200, tol=1e-8,ncores=1L, plot=FALSE))
   expect_true(all(is.finite(tuned$fit_best$coefficients)))
   expect_true(all(is.finite(fitted(tuned$fit_best))))
   expect_true(all(fitted(tuned$fit_best) > 0))
@@ -58,13 +58,11 @@ test_that("inverse-Gaussian backtracking does not repeat ridge solves", {
       answer
     })
   fit <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family, weights=sim$weights,
-    intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
-     parallelize=FALSE, openmp=FALSE)
+    intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,ncores=1L,control.solver=utils::modifyList(list(),list(.native=FALSE)))
   expect_gt(halvings, 0L)
   expect_equal(solves, sum(fit$convergence$iterations))
   native <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family, weights=sim$weights,
-    intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,
-     parallelize=FALSE)
+    intercept=TRUE, lambda="gic", maxit=200, tol=1e-8,ncores=1L)
   expect_equal(native$coefficients, fit$coefficients, tolerance=1e-7)
   expect_equal(native$dispersion, fit$dispersion, tolerance=1e-7)
 })
@@ -89,7 +87,7 @@ test_that("unpenalized inverse-Gaussian IRLS agrees with likelihood optimization
     design <- if (sparse) Matrix::Matrix(sim$X, sparse=TRUE) else sim$X
     expect_no_warning(fit <- l0glmFit(local.search=FALSE, design, y, family=sim$family,
       weights=w, offset=offset, intercept=TRUE, lambda=0, thresh=0,
-      maxit=200, tol=1e-9, parallelize=FALSE))
+      maxit=200, tol=1e-9,ncores=1L))
     expect_true(all(fit$convergence$converged))
     expect_equal(as.numeric(fit$coefficients), reference$par, tolerance=5e-5)
     expect_equal(objective(as.numeric(fit$coefficients)), reference$value, tolerance=1e-8)
@@ -101,7 +99,7 @@ test_that("the initial inverse-Gaussian working fit cannot falsely converge", {
   w <- seq(.5, 1.5, length.out=80)
   fit <- l0glmFit(local.search=FALSE, matrix(numeric(), 80, 0), y, weights=w,
     family=inverse.gaussian("log"), intercept=TRUE, dispersion=1,
-    lambda=0, maxit=100, tol=1e-9, parallelize=FALSE)
+    lambda=0, maxit=100, tol=1e-9,ncores=1L)
   selection <- subset(fit$convergence,stage=='selection')
   expect_gt(selection$iterations, 1L)
   expect_true(all(fit$convergence$converged))
@@ -116,8 +114,8 @@ test_that("grouped inverse-Gaussian channels preserve masks on both execution pa
   args <- list(X=sim$X, y=sim$y, family=sim$family, intercept=TRUE,
     start=start, lambda="gic", grouped=TRUE,
     group.maxit=2, maxit=200, tol=1e-8)
-  expect_no_warning(serial <- do.call(l0glmFit, utils::modifyList(c(args, list(parallelize=FALSE)), list(local.search=FALSE))))
-  expect_no_warning(parallel <- do.call(l0glmFit, utils::modifyList(c(args, list(parallelize=TRUE, ncores=2)), list(local.search=FALSE))))
+  expect_no_warning(serial <- do.call(l0glmFit, utils::modifyList(c(args, list(ncores=1L)), list(local.search=FALSE))))
+  expect_no_warning(parallel <- do.call(l0glmFit, utils::modifyList(c(args, list( ncores=2)), list(local.search=FALSE))))
   expect_equal(parallel$coefficients, serial$coefficients)
   expect_equal(parallel$dispersion, serial$dispersion)
   expect_equal(dim(serial$coefficients), c(6L, 3L))
@@ -135,7 +133,7 @@ test_that("inverse-Gaussian damping respects exclusions, constraints and refits"
     expect_no_warning(fit <- l0glmFit(local.search=FALSE, sim$X, sim$y, family=sim$family,
       intercept=TRUE, start=start, prior.mean=rep(.01, 9),
       nonnegative=TRUE, normalize=normalize, lambda="gic",
-      maxit=200, tol=1e-8, parallelize=FALSE))
+      maxit=200, tol=1e-8,ncores=1L))
     expect_s4_class(fit$coefficients, "sparseMatrix")
     expect_equal(dim(fit$coefficients), c(9L, 1L))
     expect_true(all(fit$coefficients >= 0))

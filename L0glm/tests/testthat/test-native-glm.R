@@ -15,10 +15,9 @@ test_that("one native driver supports every weighted-ridge solver", {
       eigen <- startsWith(solver, "eigen")
       args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y,
         family = gaussian(), lambda = "gic", intercept = TRUE,
-        grouped = TRUE, group.maxit = 2L,  maxit = 12L,
-        parallelize = FALSE, solver = if (eigen) "eigen" else solver,
+        grouped = TRUE, group.maxit = 2L,  maxit = 12L,ncores=1L, solver = if (eigen) "eigen" else solver,
         method = if (eigen) as.integer(sub("eigen", "", solver)) else 1L)
-      reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE))))
+      reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE))))
       before <- calls
       native <- suppressWarnings(do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE))))
       expect_equal(calls, before + 1L, info = solver)
@@ -49,8 +48,8 @@ test_that("native grouped fits retain masks, signed starts, priors and input met
     args <- list(X = X, y = y, lambda = "gic", intercept = TRUE,
       always.include = 1L, start = start, prior.mean = rep(.01, 15),
       weights = weights, offset = offset, normalize = normalize,
-      grouped = TRUE,  group.maxit = 2L, parallelize = FALSE)
-    reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE))))
+      grouped = TRUE,  group.maxit = 2L,ncores=1L)
+    reference <- suppressWarnings(do.call(l0glmFit, utils::modifyList(c(args, list(control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE))))
     native <- suppressWarnings(do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE))))
     expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-7)
     expect_equal(native$dispersion, reference$dispersion, tolerance = 1e-7)
@@ -68,12 +67,11 @@ test_that("native dispersion pilots preserve RNG and fixed/free scale convention
   X <- matrix(rnorm(180 * 12), 180, 12)
   y <- 1.2 * X[, 1] - .6 * X[, 2] + rnorm(180, sd = .4)
   for (dispersion in list(NULL, .16, -.1)) {
-    args <- list(X = X, y = y, dispersion = dispersion, lambda = "gic",
-       parallelize = FALSE)
+    args <- list(X = X, y = y, dispersion = dispersion, lambda = "gic",ncores=1L)
     state <- .Random.seed
     native <- do.call(l0glmFit, utils::modifyList(args, list(local.search=FALSE)))
     expect_identical(.Random.seed, state)
-    reference <- do.call(l0glmFit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE)))
+    reference <- do.call(l0glmFit, utils::modifyList(c(args, list(control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE)))
     expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-7)
     expect_equal(native$dispersion, reference$dispersion, tolerance = 1e-7)
     if (identical(dispersion, .16)) expect_equal(native$dispersion, .16)
@@ -84,21 +82,21 @@ test_that("Poisson identity retains its specialization and custom callbacks rema
   local_mocked_bindings(glm_native_cpp = function(...) stop("unexpected general native call"))
   X <- diag(8); y <- c(0, 5, 0, 9, 0, 3, 0, 0)
   fit <- l0glmFit(local.search=FALSE, X, y, family = poisson("identity"), nonnegative = TRUE,
-    lambda = "gic", parallelize = FALSE)
-  direct <- l0nnPois(local.search=FALSE, X, y, lambda = "gic", parallelize = FALSE)
+    lambda = "gic",ncores=1L)
+  direct <- l0nnPois(local.search=FALSE, X, y, lambda = "gic",ncores=1L)
   actual <- without_fit_specification(fit);expected <- without_fit_specification(direct)
   expect_equal(actual[setdiff(names(actual), "family")], expected[setdiff(names(expected), "family")])
   expect_identical(fit$family$family, direct$family$family)
   expect_identical(fit$family$link, direct$family$link)
   family <- gaussian(); family$variance <- function(mu) rep(2, length(mu))
   expect_null(L0glm_native_family(family))
-  custom <- l0glmFit(local.search=FALSE, X, y, family = family, parallelize = FALSE)
+  custom <- l0glmFit(local.search=FALSE, X, y, family = family,ncores=1L)
   expect_true(all(is.finite(custom$coefficients)))
   poisson_custom <- poisson("identity")
   poisson_custom$variance <- function(mu) mu + mu^2
   expect_null(L0glm_native_family(poisson_custom))
   expect_s3_class(l0glmFit(local.search=FALSE, X, y, family = poisson_custom,
-    nonnegative = TRUE, parallelize = FALSE), "L0glm_fit")
+    nonnegative = TRUE,ncores=1L), "L0glm_fit")
   nb_custom <- MASS::negative.binomial(3)
   nb_custom$variance <- function(mu) mu + mu^2
   expect_null(L0glm_native_family(nb_custom))
@@ -114,11 +112,9 @@ test_that("native rectangular solver fallbacks remain safe in OpenMP workers", {
   control$precond <- 3L # NoQR cannot factor a rectangular augmented design.
   for (sparse in c(FALSE, TRUE)) {
     design <- Matrix::Matrix(X, sparse = sparse)
-    reference <- l0glmFit(local.search=FALSE, design, y, lambda = "gic", grouped = FALSE,
-       parallelize = FALSE)
+    reference <- l0glmFit(local.search=FALSE, design, y, lambda = "gic", grouped = FALSE,ncores=1L)
     expect_warning(fit <- l0glmFit(local.search=FALSE, design, y, lambda = "gic", grouped = FALSE,
-       method = 6L, control.solver = control,
-      parallelize = TRUE, ncores = 2L), "Cholesky LLT was used as fallback")
+       method = 6L, control.solver = control, ncores = 2L), "Cholesky LLT was used as fallback")
     expect_equal(fit$coefficients, reference$coefficients, tolerance = 1e-7)
   }
 })
@@ -129,7 +125,7 @@ test_that("native OpenMP restores caller thread settings", {
   y <- cbind(X[, 1] + rnorm(100), -X[, 1] + rnorm(100))
   blas <- RhpcBLASctl::blas_get_num_procs()
   omp <- RhpcBLASctl::omp_get_max_threads()
-  fit <- suppressWarnings(l0glmFit(local.search=FALSE, X, y, parallelize = TRUE, ncores = 2L, lambda = "gic"))
+  fit <- suppressWarnings(l0glmFit(local.search=FALSE, X, y, ncores = 2L, lambda = "gic"))
   expect_s3_class(fit, "L0glm_fit")
   expect_equal(RhpcBLASctl::blas_get_num_procs(), blas)
   expect_equal(RhpcBLASctl::omp_get_max_threads(), omp)
@@ -147,9 +143,8 @@ test_that("native Cholesky honors an ordering flag without an integer ordering",
     seen <<- solver_control$ordering
     original(..., solver_control = solver_control)
   })
-  native <- l0glmFit(local.search=FALSE, X, y, lambda = "gic", control.solver = control, parallelize = FALSE)
-  reference <- l0glmFit(local.search=FALSE, X, y, lambda = "gic", control.solver = control,
-    openmp = FALSE, parallelize = FALSE)
+  native <- l0glmFit(local.search=FALSE, X, y, lambda = "gic", control.solver = control,ncores=1L)
+  reference <- l0glmFit(local.search=FALSE, X, y, lambda = "gic",control.solver=utils::modifyList(control,list(.native=FALSE)),ncores=1L)
   expect_identical(seen, 1L)
   expect_equal(native$coefficients, reference$coefficients, tolerance = 1e-7)
 })

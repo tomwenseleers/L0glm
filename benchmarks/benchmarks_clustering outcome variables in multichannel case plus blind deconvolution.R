@@ -38,9 +38,7 @@ system.time(L0glm.chol_originaldata <- l0glmFit(X_true,
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
-                                         grouped = TRUE,
-
-                                         parallelize = FALSE,
+                                         grouped = TRUE,ncores=1L,
                                          solver = "eigen",
                                          method = 1L)) # 105s
 selected_features = which(rowSums(L0glm.chol_originaldata$coefficients!=0)!=0)
@@ -92,9 +90,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg1,
                                     intercept = FALSE,
                                     lambda = "gic",
                                     nonnegative = TRUE,
-                                    grouped = TRUE,
-
-                                    parallelize = F,
+                                    grouped = TRUE,ncores=if(isTRUE(F)) L0glm_default_ncores() else 1L,
                                     solver = "eigen",
                                     method = 1L)) # 10s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
@@ -109,10 +105,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                                family = poisson(identity), 
                                                lambda = "gic",
                                                nonnegative = TRUE,
-                                               grouped = FALSE,
-
-                                               # start = matrix(rowMeans(L0glm.chol_aggregated$coefficients[selected_features,,drop=F]), nrow=length(selected_features), ncol=ncol(Y)),
-                                               parallelize = FALSE,
+                                               grouped = FALSE,ncores=1L,
                                                solver = "eigen",
                                                method = 1L)) # 12s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
@@ -147,9 +140,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg2,
                                                family = poisson(identity), 
                                                lambda = "gic",
                                                nonnegative = TRUE,
-                                               grouped = TRUE,
-
-                                               parallelize = FALSE,
+                                               grouped = TRUE,ncores=1L,
                                                solver = "eigen",
                                                method = 1L)) # 2.5s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
@@ -163,9 +154,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
-                                         grouped = FALSE,
-
-                                         parallelize = FALSE,
+                                         grouped = FALSE,ncores=1L,
                                          solver = "eigen",
                                          method = 1L)) # 10s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
@@ -269,9 +258,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X_est, Yagg1,
                                                normalize = TRUE,
                                                lambda = "gic",
                                                nonnegative = TRUE,
-                                               grouped = TRUE,
-
-                                               parallelize = FALSE,
+                                               grouped = TRUE,ncores=1L,
                                                solver = "eigen",
                                                method = 1L)) # 0.31s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
@@ -290,10 +277,7 @@ system.time(L0glm.chol_full <- l0glmFit(X_est[,selected_features,drop=F],
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
-                                         grouped = FALSE,
-
-                                         # start = matrix(rowMeans(L0glm.chol_aggregated$coefficients[selected_features,,drop=F]), nrow=length(selected_features), ncol=ncol(Y)),
-                                         parallelize = FALSE,
+                                         grouped = FALSE,ncores=1L,
                                          solver = "eigen",
                                          method = 1L)) # 5s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]
@@ -353,9 +337,7 @@ system.time(L0glm.chol_aggregated <- l0glmFit(X, Yagg2,
                                                family = poisson(identity), 
                                                lambda = "gic",
                                                nonnegative = TRUE,
-                                               grouped = TRUE,
-
-                                               parallelize = FALSE,
+                                               grouped = TRUE,ncores=1L,
                                                solver = "eigen",
                                                method = 1L)) # 0.19s
 selected_features = which(rowSums(L0glm.chol_aggregated$coefficients!=0)!=0)
@@ -373,9 +355,7 @@ system.time(L0glm.chol_full <- l0glmFit(X[,selected_features,drop=F],
                                          family = poisson(identity), 
                                          lambda = "gic",
                                          nonnegative = TRUE,
-                                         grouped = FALSE,
-
-                                         parallelize = FALSE,
+                                         grouped = FALSE,ncores=1L,
                                          solver = "eigen",
                                          method = 1L)) # 6.8s with parallelize=F
 selected_features_full = selected_features[which(rowSums(L0glm.chol_full$coefficients!=0)!=0)]

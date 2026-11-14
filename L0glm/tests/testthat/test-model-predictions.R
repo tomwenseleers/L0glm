@@ -17,8 +17,7 @@ test_that("ordinary predictions match glm on training and original-scale new dat
       control=glm.control(epsilon=1e-12,maxit=100))
     for (normalization in c("none","rms")) {
       fit <- l0glmFit(X,y,family=family,weights=weights,offset=off,intercept=TRUE,
-        normalize=normalization,lambda=0,thresh=0,
-        parallelize=FALSE,maxit=100,tol=1e-14)
+        normalize=normalization,lambda=0,thresh=0,ncores=1L,maxit=100,tol=1e-14)
       expect_equal(as.numeric(fitted(fit)),as.numeric(fitted(ref)),tolerance=1e-6)
       expect_equal(fitted.values(fit),fitted(fit))
       expect_equal(predict(fit),fitted(fit))
@@ -51,7 +50,7 @@ test_that("native multichannel predictions retain offsets, intercepts and respon
     dimnames=list(NULL,c("mass1","mass2")))
   for (sparse in c(FALSE,TRUE)) {
     fit <- l0nnPois(Matrix::Matrix(X,sparse=sparse),Y,offset=off,
-      intercept=TRUE,parallelize=FALSE,lambda=2)
+      intercept=TRUE,ncores=1L,lambda=2)
     expected <- as.matrix(cbind(1,X) %*% coef(fit)) + off
     expect_equal(fitted(fit),expected,ignore_attr=TRUE)
     expect_equal(colnames(fitted(fit)),colnames(Y))
@@ -63,7 +62,7 @@ test_that("native multichannel predictions retain offsets, intercepts and respon
   }
   # Manual intercept columns are retained when no intercept was added by the API.
   manual <- l0glmFit(cbind(Intercept=1,X),Y,offset=off,family=poisson(identity),
-    nonnegative=TRUE,intercept=FALSE,lambda=2,parallelize=FALSE)
+    nonnegative=TRUE,intercept=FALSE,lambda=2,ncores=1L)
   expect_equal(predict(manual,cbind(Intercept=1,X)[1:4,],offset=off[1:4,]),
     fitted(manual)[1:4,,drop=FALSE])
 })
@@ -72,7 +71,7 @@ test_that("prediction validates dimensions, names, finite values and zero-start 
   set.seed(2603)
   X <- matrix(rnorm(240),80,3,dimnames=list(NULL,c("a","b","c")))
   y <- X[,1]+rnorm(80)
-  fit <- l0glmFit(X,y,intercept=TRUE,start=c(0,1,0,0),lambda=2,parallelize=FALSE)
+  fit <- l0glmFit(X,y,intercept=TRUE,start=c(0,1,0,0),lambda=2,ncores=1L)
   expect_equal(as.numeric(coef(fit)[3:4,]),c(0,0))
   expect_equal(as.numeric(predict(fit,X[1:4,])),as.numeric(cbind(1,X[1:4,]) %*% coef(fit)))
   expect_error(predict(fit,X[,1:2]),"prediction columns")
@@ -86,9 +85,9 @@ test_that("prediction validates dimensions, names, finite values and zero-start 
   expect_error(predict(fit,X[1:3,],offset="bad"),"numeric")
   expect_error(predict(fit,type="unknown"),"Prediction type")
   expect_error(fitted(fit,newdata=X),"Use predict")
-  single <- l0glmFit(X[,1,drop=FALSE],y,lambda=2,parallelize=FALSE)
+  single <- l0glmFit(X[,1,drop=FALSE],y,lambda=2,ncores=1L)
   expect_equal(predict(single,X[1:4,1]),predict(single,X[1:4,1,drop=FALSE]))
-  unnamed <- l0glmFit(unname(X),y,lambda=2,intercept=TRUE,parallelize=FALSE)
+  unnamed <- l0glmFit(unname(X),y,lambda=2,intercept=TRUE,ncores=1L)
   expect_equal(predict(unnamed,as.data.frame(X[1:4,])),predict(unnamed,unname(X[1:4,])))
 })
 

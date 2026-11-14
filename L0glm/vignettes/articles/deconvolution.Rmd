@@ -38,7 +38,7 @@ library(L0glm)
 single <- simul(method=2L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
 system.time(fit <- l0glmFit(single$X, single$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, intercept=FALSE, parallelize=TRUE, ncores=4L))
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, ncores=4L))
 l0glmMetrics(fit, beta_true=single$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC")]
 ```
@@ -95,7 +95,7 @@ spectral library. No channels are discarded for fitting or plotting.
 multi <- simul(method=4L, n=10000L, p=10000L,
   n_nonzero=1000L, seed=2L)
 system.time(fit_multi <- l0glmFit(multi$X, multi$y, family=poisson("identity"),
-  lambda="gic", nonnegative=TRUE, intercept=FALSE, grouped=TRUE, parallelize=TRUE, ncores=4L))
+  lambda="gic", nonnegative=TRUE, intercept=FALSE, grouped=TRUE, ncores=4L))
 l0glmMetrics(fit_multi, beta_true=multi$beta_true)[c("gic", "TP", "FP", "FN", "TN",
   "F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 ```

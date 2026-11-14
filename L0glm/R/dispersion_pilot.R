@@ -98,13 +98,13 @@ L0glm_gaussian_pilot_scale <- function(data, penalty, probes, channel) {
 }
 
 L0glm_nb_pilot <- function(X, y, family, weights, offset, intercept, always.include,
-                           nonnegative, normalize, grouped, openmp, control.family) {
+                           nonnegative, normalize, grouped, native, control.family) {
   control <- L0glm_ext_control(control.family)
   y <- as.matrix(y)
   pilot <- tryCatch(suppressWarnings(l0glmFit(X, y, weights=weights, offset=offset,
     family=stats::poisson(family$link), intercept=intercept, always.include=always.include,
-    nonnegative=nonnegative, normalize=normalize, grouped=grouped, openmp=openmp,
-    maxit=5L, thresh=0, lambda="gic",  parallelize=FALSE, screen="none",
+    nonnegative=nonnegative, normalize=normalize, grouped=grouped,control.solver=list(.native=native),
+    maxit=5L, thresh=0, lambda="gic",  ncores=1L, screen="none",
     local.search=FALSE)), error=function(e) NULL)
   if (is.null(pilot)) return(NULL)
   B <- as.matrix(coef(pilot))

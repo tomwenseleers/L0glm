@@ -138,8 +138,8 @@ relative tolerances of <code>1e-9</code>. Tall and square
 <code>bigGlm</code> and OSQP working systems use a shared constrained
 Cholesky polish, with a fresh KKT residual and an objective check; see
 <a href="../reference/lmRidge.html"><code>lmRidge()</code></a>. The
-native <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend specializes in nonnegative
-identity-link Poisson models.</p>
+native the internal Poisson identity backend backend specializes in
+nonnegative identity-link Poisson models.</p>
 <p>An optional constrained polish is also available for Eigen:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">control</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/controlSolverGen.html">controlSolverGen</a></span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
@@ -147,12 +147,12 @@ identity-link Poisson models.</p>
 <span>               lambda<span class="op">=</span><span class="st">"gic"</span>, control.solver<span class="op">=</span><span class="va">control</span><span class="op">)</span></span></code></pre></div>
 <p>This reuses an existing predictor Gram matrix for batched Cholesky
 solves on the free coefficients. It supports LLT, LDLT and other methods
-operating on an already formed Gram system, and the native
-<code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend. Rectangular and Woodbury paths skip the
-correction. A fresh KKT check and a nonincreasing ridge objective are
-required; otherwise the clipped proposal is retained. The option is off
-by default: it can improve correlated peak recovery, but also changes
-the adaptive selection trajectory and adds computation.</p>
+operating on an already formed Gram system, and the native the internal
+Poisson identity backend backend. Rectangular and Woodbury paths skip
+the correction. A fresh KKT check and a nonincreasing ridge objective
+are required; otherwise the clipped proposal is retained. The option is
+off by default: it can improve correlated peak recovery, but also
+changes the adaptive selection trajectory and adds computation.</p>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>
@@ -214,7 +214,7 @@ only.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="fl">300L</span>, <span class="fl">4L</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">validated</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0nnPois.html">l0nnPois</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, ncores<span class="op">=</span><span class="fl">2L</span>,</span>
+<span><span class="va">validated</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span>family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, <span class="va">sim</span><span class="op">$</span><span class="va">X</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, ncores<span class="op">=</span><span class="fl">2L</span>,</span>
 <span>  validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">sim</span><span class="op">$</span><span class="va">X</span>, y<span class="op">=</span><span class="va">v</span>, patience<span class="op">=</span><span class="fl">3L</span>, minit<span class="op">=</span><span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">validated</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">deviance</span></span>
 <span><span class="co">#&gt; [1] 0.499</span></span>

@@ -124,7 +124,7 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
       family=original$family, dispersion=original$dispersion, intercept=original$intercept,
       nonnegative=original$nonnegative, start=NULL,
       lambda=presetLambda("gic", original$p, nrow(original$X)), maxit=1,
-      grouped=FALSE,  thresh=0, parallelize=FALSE, screen="none",local.search=FALSE)
+      grouped=FALSE,  thresh=0, ncores=1L, screen="none",local.search=FALSE)
     pilot <- do.call(l0glmFit, utils::modifyList(pilot_options, fixed, keep.null=TRUE))
     B <- as.matrix(pilot$coefficients)
     if (data$intercept) B <- B[-1L, , drop=FALSE]
@@ -138,7 +138,7 @@ L0glm_benchmark_path_raw <- function(method, data, grid = NULL) {
     args <- utils::modifyList(list(X=data$X, y=data$y, family=data$family,
       weights=data$weights, offset=data$offset, dispersion=data$dispersion,
       intercept=data$intercept, nonnegative=data$nonnegative, grouped=grouped,
-      parallelize=FALSE, screen="none"), options, keep.null=TRUE)
+      ncores=1L, screen="none"), options, keep.null=TRUE)
     if (is.null(grid) && !grepl("^quasi", data$family$family)) {
       fit <- do.call(l0glmTune, c(args, list(tune=if (data$tune == "cv") "gic" else data$tune, nlambda=data$nlambda,
         plot=FALSE, printbest=FALSE, mu_floor=data$mu_floor)))

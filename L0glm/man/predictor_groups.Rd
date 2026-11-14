@@ -76,7 +76,7 @@ in \code{\link[=l0glmMetrics]{l0glmMetrics()}} describe the group fit, alongside
 
 Recognized scalar GLMs use a native C++ predictor-group IRLS driver, sharing
 the family calculations and ridge solvers with ordinary models. For multiple
-outcomes, \code{parallelize=TRUE} uses up to \code{ncores} OpenMP channel workers;
+outcomes, native fits use up to \code{ncores} OpenMP channel threads;
 BLAS runs with one thread inside those passes and its settings are restored.
 The group penalty, step halving, dispersion updates and convergence checks
 retain the same definitions in serial and parallel fits. External OSQP and
@@ -117,5 +117,5 @@ same <- l0glmFit(X, y, group=group, lambda=fit$init.lambda,
 max(abs(coef(fit) - coef(same)))
 }
 \seealso{
-\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \code{\link[=l0glmMetrics]{l0glmMetrics()}}
+\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \code{\link[=l0glmMetrics]{l0glmMetrics()}}
 }

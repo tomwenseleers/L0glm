@@ -9,7 +9,7 @@ test_that("simulated data and intercept truth can be fitted and scored directly"
       options=list(beta_range=c(-.6, .6)), seed=11)
     fit <- l0glmFit(sim$X, sim$y, family=sim$family, weights=sim$weights,
       intercept=sim$intercept, nonnegative=FALSE, grouped=TRUE,
-      maxit=100, tol=1e-8, parallelize=FALSE)
+      maxit=100, tol=1e-8,ncores=1L)
     expect_equal(dim(coef(fit)), dim(sim$beta_true))
     expect_true(all(is.finite(as.matrix(coef(fit)))))
     expect_true(is.finite(l0glmMetrics(fit, beta_true=sim$beta_true)$gic))

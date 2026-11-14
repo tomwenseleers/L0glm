@@ -1,6 +1,6 @@
-test_that("l0nnPois shares ordinary fitting arguments and enforces nonnegativity", {
+test_that("the internal Poisson driver shares fitting arguments and enforces nonnegativity", {
   expect_identical(names(formals(l0nnPois)),
-                   setdiff(names(formals(l0glmFit)), c("nonnegative", "openmp", "control.family",
+                   setdiff(names(formals(L0glm_internal_fit)), c("nonnegative", "control.family",
                      "screen", "nsis", "screen.maxit", "screen.nthreads")))
 })
 
@@ -14,14 +14,11 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
   y <- rpois(n, pmax(as.numeric(X %*% beta), 0.1))
 
   fit_l0 <- l0glmFit(
-    X, y,
-    openmp = FALSE,
+    X, y,control.solver=utils::modifyList(list(),list(.native=FALSE)),
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
-    grouped = FALSE,
-
-    parallelize = FALSE,
+    grouped = FALSE,ncores=1L,
     solver = "eigen",
     method = 1L,
     maxit = 15L
@@ -29,9 +26,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
   fit_nn <- l0nnPois(
     X, y,
     lambda = "gic",
-    grouped = FALSE,
-
-    parallelize = FALSE,
+    grouped = FALSE,ncores=1L,
     maxit = 15L
   )
 
@@ -51,14 +46,11 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
   ys <- rpois(n, pmax(as.numeric(Xs %*% beta), 0.1))
 
   fit_l0_s <- l0glmFit(
-    Xs, ys,
-    openmp = FALSE,
+    Xs, ys,control.solver=utils::modifyList(list(),list(.native=FALSE)),
     family = poisson(identity),
     lambda = "gic",
     nonnegative = TRUE,
-    grouped = FALSE,
-
-    parallelize = FALSE,
+    grouped = FALSE,ncores=1L,
     solver = "eigen",
     method = 1L,
     maxit = 15L
@@ -66,9 +58,7 @@ test_that("l0nnPois matches l0glmFit for dense and sparse single-channel fits", 
   fit_nn_s <- l0nnPois(
     Xs, ys,
     lambda = "gic",
-    grouped = FALSE,
-
-    parallelize = FALSE,
+    grouped = FALSE,ncores=1L,
     maxit = 15L
   )
 
@@ -95,18 +85,14 @@ test_that("l0nnPois ignores grouped outer passes for single-channel fits", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-    group.maxit = 4L,
-
-    parallelize = FALSE,
+    group.maxit = 4L,ncores=1L,
     maxit = 10L
   )
   ungrouped <- l0nnPois(
     X, y,
     lambda = "gic",
     grouped = FALSE,
-    group.maxit = 4L,
-
-    parallelize = FALSE,
+    group.maxit = 4L,ncores=1L,
     maxit = 10L
   )
 
@@ -131,18 +117,14 @@ test_that("l0nnPois accepts NaturalOrdering control for sparse Cholesky", {
   default <- l0nnPois(
     X, y,
     lambda = "gic",
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     maxit = 10L,
     group.maxit = 2L
   )
   natural <- l0nnPois(
     X, y,
     lambda = "gic",
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     maxit = 10L,
     group.maxit = 2L,
     control.solver = list(NaturalOrdering = TRUE)
@@ -150,9 +132,7 @@ test_that("l0nnPois accepts NaturalOrdering control for sparse Cholesky", {
   amd <- l0nnPois(
     X, y,
     lambda = "gic",
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     maxit = 10L,
     group.maxit = 2L,
     control.solver = list(NaturalOrdering = FALSE)
@@ -188,9 +168,7 @@ test_that("l0nnPois OpenMP multichannel fits match serial fits", {
   serial <- l0nnPois(
     X, y,
     lambda = "gic",
-    grouped = TRUE,
-
-    parallelize = FALSE,
+    grouped = TRUE,ncores=1L,
     maxit = 12L,
     group.maxit = 3L
   )
@@ -198,8 +176,6 @@ test_that("l0nnPois OpenMP multichannel fits match serial fits", {
     X, y,
     lambda = "gic",
     grouped = TRUE,
-
-    parallelize = TRUE,
     ncores = 2L,
     maxit = 12L,
     group.maxit = 3L

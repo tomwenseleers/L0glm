@@ -21,8 +21,7 @@ test_that("automatic identity starts recover peaks above compulsory backgrounds"
     d <- background_start_fixture(sparse)
     results <- lapply(c("none", "l2", "rms", "sd"), function(mode)
       l0glmFit(d$X, d$y, family = poisson(identity), nonnegative = TRUE,
-        always.include = d$mandatory, lambda = "gic", normalize = mode,
-        parallelize = FALSE))
+        always.include = d$mandatory, lambda = "gic", normalize = mode,ncores=1L))
     for (a in results) {
       selected <- as.numeric(Matrix::rowSums(coef(a)[1:240, ])) > 0
       truth <- rowSums(d$peaks) > 0
@@ -33,7 +32,7 @@ test_that("automatic identity starts recover peaks above compulsory backgrounds"
       expect_equal(fitted(a), as.matrix(d$X %*% coef(a)), tolerance = 1e-9, ignore_attr = TRUE)
     }
     for (a in results[-1L]) expect_equal(as.numeric(coef(a)), as.numeric(coef(results[[1L]])), tolerance = 1e-6)
-    native <- l0nnPois(d$X, d$y, always.include = d$mandatory, lambda = "gic", parallelize = FALSE)
+    native <- l0nnPois(d$X, d$y, always.include = d$mandatory, lambda = "gic",ncores=1L)
     expect_equal(coef(native), coef(results[[1L]]), tolerance = 0)
   }
 })
@@ -55,10 +54,10 @@ test_that("known-offset automatic starts agree between native and general Poisso
   X <- d$X[, 1:240, drop = FALSE]
   for (mode in c("none", "l2")) {
     a <- l0nnPois(X, d$y, offset = d$background, normalize = mode,
-      lambda = "gic", parallelize = FALSE)
+      lambda = "gic",ncores=1L)
     b <- l0glmFit(X, d$y, family = poisson(identity), nonnegative = TRUE,
-      offset = d$background, normalize = mode, openmp = FALSE,
-      lambda = "gic", parallelize = FALSE)
+      offset = d$background, normalize = mode,control.solver=utils::modifyList(list(),list(.native=FALSE)),
+      lambda = "gic",ncores=1L)
     selected <- as.numeric(Matrix::rowSums(coef(a))) > 0
     expect_true(all(selected[rowSums(d$peaks) > 0]))
     expect_equal(coef(a), coef(b), tolerance = 1e-6)
@@ -69,11 +68,11 @@ test_that("known-offset automatic starts agree between native and general Poisso
 test_that("explicit starting zeros and zero-information channels retain their contracts", {
   d <- background_start_fixture()
   S <- matrix(1, ncol(d$X), 3L); S[30, ] <- 0
-  a <- l0nnPois(d$X, d$y, start = S, always.include = d$mandatory, parallelize = FALSE)
+  a <- l0nnPois(d$X, d$y, start = S, always.include = d$mandatory,ncores=1L)
   expect_true(all(coef(a)[30, ] == 0))
   expect_equal(a$nuisance$initializer, "joint")
   d$y[, 3L] <- 0
-  b <- l0nnPois(d$X, d$y, always.include = d$mandatory, parallelize = FALSE)
+  b <- l0nnPois(d$X, d$y, always.include = d$mandatory,ncores=1L)
   expect_true(all(coef(b)[, 3L] == 0))
   expect_equal(dim(coef(b)), c(244L, 3L))
 })

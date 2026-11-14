@@ -244,8 +244,7 @@ quadratic programming solver.</p>
 <span>  normalize <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  solver <span class="op">=</span> <span class="st">"eigen"</span>,</span>
 <span>  method <span class="op">=</span> <span class="fl">1L</span>,</span>
-<span>  parallelize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  ncores <span class="op">=</span> <span class="fu">L0glm_default_ncores</span><span class="op">(</span><span class="va">parallelize</span><span class="op">)</span>,</span>
+<span>  ncores <span class="op">=</span> <span class="fu">L0glm_default_ncores</span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  nthreads <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  maxit <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -255,7 +254,6 @@ quadratic programming solver.</p>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  control.solver <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"controlSolverGen"</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>solver <span class="op">=</span> <span class="va">solver</span>, method <span class="op">=</span> <span class="va">method</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  openmp <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  control.family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  screen <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  nsis <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -432,8 +430,7 @@ Presets calibrate the adaptive ridge updates to
 the chosen selection criterion.
 In <code>l0glmFit()</code>, an omitted penalty is <code>"gic"</code> with screening,
 <code>"bic"</code> for eligible wide multitask Gaussian fits
-(<a href="dispersion_calibration.html">dispersion_calibration</a>), and 1 otherwise. <code><a href="l0nnPois.html">l0nnPois()</a></code>
-defaults to <code>"gic"</code>.</p></dd>
+(<a href="dispersion_calibration.html">dispersion_calibration</a>), and 1 otherwise.</p></dd>
 
 
 <dt id="arg-intercept">intercept<a class="anchor" aria-label="anchor" href="#arg-intercept"></a></dt>
@@ -442,7 +439,7 @@ If `TRUE`, a column of ones will be added to the design matrix `X`, and
 this term will **not** be penalized. If `FALSE`, no intercept column will
 be added, and the user must ensure that `X` already contains an intercept
 if needed. Defaults to `TRUE` for binomial models and `FALSE` otherwise
-in `l0glmFit()`, and to `FALSE` in `l0nnPois()`. With
+in `l0glmFit()`. With
 `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
 except for binomial and quasibinomial models, where it may have either sign.</p></dd>
 
@@ -467,8 +464,7 @@ nonnegative. For binomial and quasibinomial models only, intercept columns
 (columns of ones, whether supplied in <code>X</code> or added by
 <code>intercept = TRUE</code>) remain unrestricted. If <code>FALSE</code>, all
 coefficients may have either sign. Defaults to <code>FALSE</code> in
-<code>l0glmFit()</code>. The specialized <code><a href="l0nnPois.html">l0nnPois()</a></code> function always
-enforces nonnegativity and has no <code>nonnegative</code> argument.
+<code>l0glmFit()</code>.
 Unpenalized terms use a constrained conditional solve, while selectable
 coefficients use the chosen ridge solver. See [compulsory_terms].</p></dd>
 
@@ -484,7 +480,7 @@ accounted for and the norms use centered columns. The original <code>X</code>
 and <code>y</code> are unchanged. Dense working columns are centered once;
 sparse working columns are shifted only when this adds no stored entries,
 with the other means handled by the intercept. A constrained intercept
-prevents this centering, including in <code><a href="l0nnPois.html">l0nnPois()</a></code>. Mandatory terms
+prevents this centering. Mandatory terms
 and zero-scale columns use scale one. Penalties, starts, ridge centers and
 bounds are transformed consistently. Returned coefficients and explicit
 vector/matrix starts retain their input units; numeric scalar <code>start=1</code>
@@ -539,33 +535,30 @@ Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
 <p>Defaults to <code>1L</code> (Cholesky LLT), which is often the fastest.</p></dd>
 
 
-<dt id="arg-parallelize">parallelize<a class="anchor" aria-label="anchor" href="#arg-parallelize"></a></dt>
-<dd><p>A logical value indicating whether in the multivariate
-case, the columns of the response matrix <code>y</code> should be fitted in
-parallel. If <code>TRUE</code>, each column of <code>y</code> is fitted concurrently,
-potentially speeding up computation. If <code>FALSE</code>, the columns are
-fitted sequentially.</p></dd>
-
-
 <dt id="arg-ncores">ncores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
-<dd><p>Optional integer specifying the number of cores to use when
-<code>parallelize=TRUE</code>. If <code>parallelize=TRUE</code>, defaults to half the
-detected number of physical cores when that can be determined, falling back
-to half the number of logical cores. The requested value is capped at the
-detected number of physical cores when that can be determined.
-Native Eigen fits use this many OpenMP threads sharing the design matrix;
-OSQP, <code>bigGlm</code> and the general R path use independent R workers.
-With <code>l0nnPois</code>, the OpenMP thread count is capped at the logical
-core count.</p></dd>
+<dd><p>Positive integer limiting OpenMP outcome-channel threads.
+Defaults to half the detected physical cores, falling back to half the
+logical cores or one if detection is unavailable.
+Set <code>ncores=1L</code> for serial execution. Built-in scalar family and link
+implementations use native code automatically, including one-thread fits.
+Custom R family/link callbacks and R-based solver bridges run serially.
+No socket or fork workers are created. BLAS threads are limited within
+native multichannel passes to avoid nested parallelism.
+For serial custom-family and external-solver paths, omitted
+<code>nthreads</code> uses <code>ncores</code> as the BLAS thread budget. This
+benefits dense operations when a multithreaded BLAS is installed;
+sparse kernels retain their own threading behavior. All thread settings
+are restored on return, including when fitting raises an error.</p></dd>
 
 
 <dt id="arg-nthreads">nthreads<a class="anchor" aria-label="anchor" href="#arg-nthreads"></a></dt>
 <dd><p>Optional integer specifying the number of BLAS threads
-to use per fit process. The default <code>NULL</code> leaves the main R session's
-thread settings unchanged and uses one BLAS thread per parallel
-worker or native channel. Setting <code>nthreads</code> can be useful to benchmark serial fits or
-tune per-worker threading on systems with a multithreaded BLAS.
-The <code>l0nnPois</code> backend uses <code>ncores</code>; it ignores <code>nthreads</code>.</p></dd>
+to use for serial fitting. With <code>NULL</code>, ordinary single-channel native
+fits retain the session's BLAS settings, while serial custom-family and
+external-solver paths use <code>ncores</code>. Parallel native channels always
+use one BLAS thread each. Setting <code>nthreads</code> can be useful to benchmark serial fits or
+tune serial threading on systems with a multithreaded BLAS.
+The specialized Poisson identity backend follows the same threading rule.</p></dd>
 
 
 <dt id="arg-maxit">maxit<a class="anchor" aria-label="anchor" href="#arg-maxit"></a></dt>
@@ -701,22 +694,6 @@ rectangular and Woodbury solves; see <code><a href="controlSolverGen.html">contr
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical indicating if the algorithm progression should be
 printed to the console.</p></dd>
-
-
-<dt id="arg-openmp">openmp<a class="anchor" aria-label="anchor" href="#arg-openmp"></a></dt>
-<dd><p>Logical; defaults to <code>TRUE</code>. Selects a native driver for
-built-in scalar GLM families and fixed-noise signal families, including
-coefficient initialization, dispersion updates, grouped selection and
-unpenalized refitting. All Eigen methods are supported and share the design
-across OpenMP threads. OSQP and <code>bigGlm</code> use the same native IRLS
-driver, calling their dependency interfaces on the R thread; concurrent
-channels use independent R workers for these two solvers.
-Eligible nonnegative identity-link Poisson LLT fits use the specialized
-<code><a href="l0nnPois.html">l0nnPois</a></code> backend, including native validation stopping.
-Custom family callbacks, general validation stopping and structured
-special-family algorithms retain their R orchestration. Set <code>FALSE</code>
-to request the general R driver. <code>parallelize</code> separately controls
-whether outcome channels run concurrently.</p></dd>
 
 
 <dt id="arg-control-family">control.family<a class="anchor" aria-label="anchor" href="#arg-control-family"></a></dt>
@@ -1191,8 +1168,8 @@ chosen.</p>
 <div class="section">
 <h3 id="screening">Screening<a class="anchor" aria-label="anchor" href="#screening"></a></h3>
 <p>Screening reuses <code><a href="sisGLM.html">sisGLM</a></code> for all ordinary and special families.
-With screening enabled, omitted <code>lambda</code> and <code>parallelize</code> use
-<code>"gic"</code> and <code>FALSE</code>, respectively. Each screening round retains
+With screening enabled, omitted <code>lambda</code> and <code>ncores</code> use
+<code>"gic"</code> and <code>1L</code>, respectively. Each screening round retains
 its penalized estimate. Explicit arguments are
 preserved. Other defaults are unchanged.
 This reproduces the small-batch ISIS workflow used in the ultra-wide
@@ -1223,10 +1200,10 @@ coordinates, with a default free intercept and invariant grouped row penalties.
 Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
 sets and automatic LLT/matrix-free PCG routing. See
 <a href="L0glm_negative_binomial.html">L0glm_negative_binomial</a>, <a href="L0glm_multinomial.html">L0glm_multinomial</a> and <a href="L0glm_cox.html">L0glm_cox</a>
-for the mathematics, examples and controls. These family loops
-are serial: <code>parallelize</code>, <code>ncores</code>, <code>openmp</code> and
-<code>group.maxit</code> do not govern them. Ordinary GLM and native Poisson paths
-use the <code>parallelize</code>, <code>ncores</code> and <code>openmp</code> controls.</p>
+for the mathematics, examples and controls. These structured family loops
+use serial coordination and the requested BLAS thread budget.
+Ordinary GLM and native Poisson paths use <code>ncores</code> to limit
+OpenMP outcome-channel threads.</p>
 </div>
 
 <div class="section">
@@ -1301,7 +1278,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># Single-channel Poisson deconvolution: shifted copies of a known PSF.</span></span>
 <span><span class="va">single</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">2</span>, n<span class="op">=</span><span class="fl">500</span>, p<span class="op">=</span><span class="fl">500</span>, s<span class="op">=</span><span class="fl">.1</span>, seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">fit_single</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">single</span><span class="op">$</span><span class="va">X</span>, <span class="va">single</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit_single</span>, beta_true<span class="op">=</span><span class="va">single</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
@@ -1332,7 +1309,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Retain every mass channel generated by the simulation.</span></span>
 <span><span class="va">multi</span> <span class="op">&lt;-</span> <span class="fu"><a href="simul.html">simul</a></span><span class="op">(</span>method<span class="op">=</span><span class="fl">4</span>, n<span class="op">=</span><span class="fl">500</span>, p<span class="op">=</span><span class="fl">500</span>, s<span class="op">=</span><span class="fl">.05</span>, seed<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">fit_multi</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, grouped<span class="op">=</span><span class="cn">TRUE</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="l0glmMetrics.html">l0glmMetrics</a></span><span class="op">(</span><span class="va">fit_multi</span>, beta_true<span class="op">=</span><span class="va">multi</span><span class="op">$</span><span class="va">beta_true</span><span class="op">)</span><span class="op">[</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"gic"</span>, <span class="st">"TP"</span>, <span class="st">"FP"</span>, <span class="st">"FN"</span>, <span class="st">"TN"</span>, <span class="st">"F1_score"</span>, <span class="st">"MCC"</span>,</span>
 <span>    <span class="st">"within_row_F1_score"</span>, <span class="st">"within_row_MCC"</span><span class="op">)</span><span class="op">]</span></span>
@@ -1349,7 +1326,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># then refine and return coefficients for every original mass channel.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">fit_multi_clustered</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">multi</span><span class="op">$</span><span class="va">X</span>, <span class="va">multi</span><span class="op">$</span><span class="va">y</span>,</span>
 <span>  family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, parallelize<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  grouped<span class="op">=</span><span class="cn">TRUE</span>, ncores<span class="op">=</span><span class="fl">4L</span>,</span>
 <span>  precluster<span class="op">=</span><span class="cn">TRUE</span>, cluster.refit<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>  control.precluster<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>k.max<span class="op">=</span><span class="fl">32L</span>, rowbins<span class="op">=</span><span class="fl">5L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_multi_clustered</span><span class="op">$</span><span class="va">preclustering</span><span class="op">$</span><span class="va">clusters</span></span>
@@ -1414,23 +1391,23 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="co"># Nonnegativity includes the Gaussian intercept.</span></span>
 <span><span class="va">constrained</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X</span>, <span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="fl">3</span><span class="op">*</span><span class="va">x</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="fl">1e-8</span>,</span>
-<span>  dispersion<span class="op">=</span><span class="fl">1</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  dispersion<span class="op">=</span><span class="fl">1</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">constrained</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Estimate Gaussian variance from an automatic or user-supplied start.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y_gaussian</span> <span class="op">&lt;-</span> <span class="fl">2</span><span class="op">*</span><span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, sd<span class="op">=</span><span class="fl">.5</span><span class="op">)</span></span>
 <span><span class="va">automatic</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="cn">NULL</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="cn">NULL</span>, maxit<span class="op">=</span><span class="fl">100</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">initialized</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y_gaussian</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="op">-</span><span class="fl">.25</span>, maxit<span class="op">=</span><span class="fl">100</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, dispersion<span class="op">=</span><span class="op">-</span><span class="fl">.25</span>, maxit<span class="op">=</span><span class="fl">100</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="co"># dispersion=.25 instead keeps the variance fixed at .25.</span></span>
 <span></span>
 <span><span class="co"># A binomial intercept may remain negative with a nonnegative slope.</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">1000</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span><span class="op">+</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fl">1000</span></span>
 <span><span class="va">logistic</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  weights<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1000</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
-<span>  lambda<span class="op">=</span><span class="fl">1e-8</span>, parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  lambda<span class="op">=</span><span class="fl">1e-8</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">logistic</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Gaussian validation-based stopping: keep a separate test set for assessment.</span></span>
@@ -1440,8 +1417,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">train</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">120</span></span>
 <span><span class="va">fit_stopped</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_validation</span><span class="op">[</span><span class="va">train</span>, <span class="op">]</span>, <span class="va">y_validation</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, maxit<span class="op">=</span><span class="fl">100</span>,</span>
-<span>  validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span><span class="op">)</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">fit_stopped</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">selection</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"best_iteration"</span>, <span class="st">"iterations"</span>, <span class="st">"stopped"</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
 <span><span class="co"># Optionally select the ISIS batch on the same validation set.</span></span>
@@ -1449,8 +1425,7 @@ ORCID: <a href="https://orcid.org/0000-0002-1434-861X" class="external-link">000
 <span><span class="va">fit_batch</span> <span class="op">&lt;-</span> <span class="fu">l0glmFit</span><span class="op">(</span><span class="va">X_validation</span><span class="op">[</span><span class="va">train</span>, <span class="op">]</span>, <span class="va">y_validation</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
 <span>  intercept<span class="op">=</span><span class="cn">TRUE</span>, lambda<span class="op">=</span><span class="st">"gic"</span>, screen<span class="op">=</span><span class="st">"ISIS"</span>, nsis<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span>,</span>
 <span>  maxit<span class="op">=</span><span class="fl">100</span>, validation<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span>, rule<span class="op">=</span><span class="st">"1se"</span><span class="op">)</span>,</span>
-<span>  parallelize<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span>    X<span class="op">=</span><span class="va">X_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span>, <span class="op">]</span>, y<span class="op">=</span><span class="va">y_validation</span><span class="op">[</span><span class="op">-</span><span class="va">train</span><span class="op">]</span>, rule<span class="op">=</span><span class="st">"1se"</span><span class="op">)</span>,ncores<span class="op">=</span><span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="va">fit_batch</span><span class="op">$</span><span class="va">validation</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"selected_start"</span>, <span class="st">"selected_nsis"</span>, <span class="st">"deviance"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="va">fit_batch</span><span class="op">$</span><span class="va">validation</span><span class="op">$</span><span class="va">starts</span></span>
 <span><span class="co"># Sparse special families: GIC preset fits, GIC tuning and three-fold CV.</span></span>

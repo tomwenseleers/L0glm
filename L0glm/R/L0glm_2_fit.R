@@ -220,14 +220,13 @@
 #'   the chosen selection criterion.
 #'   In \code{l0glmFit()}, an omitted penalty is \code{"gic"} with screening,
 #'   \code{"bic"} for eligible wide multitask Gaussian fits
-#'   (\link{dispersion_calibration}), and 1 otherwise. \code{l0nnPois()}
-#'   defaults to \code{"gic"}.
+#'   (\link{dispersion_calibration}), and 1 otherwise.
 #' @param intercept Logical: Whether to include an intercept term in the model.
 #'   If `TRUE`, a column of ones will be added to the design matrix `X`, and
 #'   this term will **not** be penalized. If `FALSE`, no intercept column will
 #'   be added, and the user must ensure that `X` already contains an intercept
 #'   if needed. Defaults to `TRUE` for binomial models and `FALSE` otherwise
-#'   in `l0glmFit()`, and to `FALSE` in `l0nnPois()`. With
+#'   in `l0glmFit()`. With
 #'   `nonnegative = TRUE`, the intercept is also constrained to be nonnegative,
 #'   except for binomial and quasibinomial models, where it may have either sign.
 #' @param always.include A vector of coefficient indices that should always be
@@ -246,8 +245,7 @@
 #'   (columns of ones, whether supplied in \code{X} or added by
 #'   \code{intercept = TRUE}) remain unrestricted. If \code{FALSE}, all
 #'   coefficients may have either sign. Defaults to \code{FALSE} in
-#'   \code{l0glmFit()}. The specialized \code{l0nnPois()} function always
-#'   enforces nonnegativity and has no \code{nonnegative} argument.
+#'   \code{l0glmFit()}.
 #'   Unpenalized terms use a constrained conditional solve, while selectable
 #'   coefficients use the chosen ridge solver. See [compulsory_terms].
 #' @param normalize Preprocessing convention: \code{"auto"} (default) uses
@@ -260,7 +258,7 @@
 #'   and \code{y} are unchanged. Dense working columns are centered once;
 #'   sparse working columns are shifted only when this adds no stored entries,
 #'   with the other means handled by the intercept. A constrained intercept
-#'   prevents this centering, including in \code{l0nnPois()}. Mandatory terms
+#'   prevents this centering. Mandatory terms
 #'   and zero-scale columns use scale one. Penalties, starts, ridge centers and
 #'   bounds are transformed consistently. Returned coefficients and explicit
 #'   vector/matrix starts retain their input units; numeric scalar \code{start=1}
@@ -358,39 +356,26 @@
 #'
 #'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
 #'
-#' @param openmp Logical; defaults to \code{TRUE}. Selects a native driver for
-#'   built-in scalar GLM families and fixed-noise signal families, including
-#'   coefficient initialization, dispersion updates, grouped selection and
-#'   unpenalized refitting. All Eigen methods are supported and share the design
-#'   across OpenMP threads. OSQP and \code{bigGlm} use the same native IRLS
-#'   driver, calling their dependency interfaces on the R thread; concurrent
-#'   channels use independent R workers for these two solvers.
-#'   Eligible nonnegative identity-link Poisson LLT fits use the specialized
-#'   \code{\link{l0nnPois}} backend, including native validation stopping.
-#'   Custom family callbacks, general validation stopping and structured
-#'   special-family algorithms retain their R orchestration. Set \code{FALSE}
-#'   to request the general R driver. \code{parallelize} separately controls
-#'   whether outcome channels run concurrently.
-#' @param parallelize A logical value indicating whether in the multivariate
-#'   case, the columns of the response matrix \code{y} should be fitted in
-#'   parallel. If \code{TRUE}, each column of \code{y} is fitted concurrently,
-#'   potentially speeding up computation. If \code{FALSE}, the columns are
-#'   fitted sequentially.
-#' @param ncores Optional integer specifying the number of cores to use when
-#'   \code{parallelize=TRUE}. If \code{parallelize=TRUE}, defaults to half the
-#'   detected number of physical cores when that can be determined, falling back
-#'   to half the number of logical cores. The requested value is capped at the
-#'   detected number of physical cores when that can be determined.
-#'   Native Eigen fits use this many OpenMP threads sharing the design matrix;
-#'   OSQP, \code{bigGlm} and the general R path use independent R workers.
-#'   With \code{l0nnPois}, the OpenMP thread count is capped at the logical
-#'   core count.
+#' @param ncores Positive integer limiting OpenMP outcome-channel threads.
+#'   Defaults to half the detected physical cores, falling back to half the
+#'   logical cores or one if detection is unavailable.
+#'   Set \code{ncores=1L} for serial execution. Built-in scalar family and link
+#'   implementations use native code automatically, including one-thread fits.
+#'   Custom R family/link callbacks and R-based solver bridges run serially.
+#'   No socket or fork workers are created. BLAS threads are limited within
+#'   native multichannel passes to avoid nested parallelism.
+#'   For serial custom-family and external-solver paths, omitted
+#'   \code{nthreads} uses \code{ncores} as the BLAS thread budget. This
+#'   benefits dense operations when a multithreaded BLAS is installed;
+#'   sparse kernels retain their own threading behavior. All thread settings
+#'   are restored on return, including when fitting raises an error.
 #' @param nthreads Optional integer specifying the number of BLAS threads
-#'   to use per fit process. The default \code{NULL} leaves the main R session's
-#'   thread settings unchanged and uses one BLAS thread per parallel
-#'   worker or native channel. Setting \code{nthreads} can be useful to benchmark serial fits or
-#'   tune per-worker threading on systems with a multithreaded BLAS.
-#'   The \code{l0nnPois} backend uses \code{ncores}; it ignores \code{nthreads}.
+#'   to use for serial fitting. With \code{NULL}, ordinary single-channel native
+#'   fits retain the session's BLAS settings, while serial custom-family and
+#'   external-solver paths use \code{ncores}. Parallel native channels always
+#'   use one BLAS thread each. Setting \code{nthreads} can be useful to benchmark serial fits or
+#'   tune serial threading on systems with a multithreaded BLAS.
+#'   The specialized Poisson identity backend follows the same threading rule.
 #' @param maxit Integer specifying the maximum number of IRLS iterations to
 #'   perform per channel and fitting pass (default 25). Fits stop
 #'   when the convergence criterion is met; inspect \code{convergence} to
@@ -754,8 +739,8 @@
 #'
 #' \subsection{Screening}{
 #' Screening reuses \code{\link{sisGLM}} for all ordinary and special families.
-#' With screening enabled, omitted \code{lambda} and \code{parallelize} use
-#' \code{"gic"} and \code{FALSE}, respectively. Each screening round retains
+#' With screening enabled, omitted \code{lambda} and \code{ncores} use
+#' \code{"gic"} and \code{1L}, respectively. Each screening round retains
 #' its penalized estimate. Explicit arguments are
 #' preserved. Other defaults are unchanged.
 #' This reproduces the small-batch ISIS workflow used in the ultra-wide
@@ -787,10 +772,10 @@
 #' Cox fits use right-censored responses, Breslow ties, no intercept, cached risk
 #' sets and automatic LLT/matrix-free PCG routing. See
 #' \link{L0glm_negative_binomial}, \link{L0glm_multinomial} and \link{L0glm_cox}
-#' for the mathematics, examples and controls. These family loops
-#' are serial: \code{parallelize}, \code{ncores}, \code{openmp} and
-#' \code{group.maxit} do not govern them. Ordinary GLM and native Poisson paths
-#' use the \code{parallelize}, \code{ncores} and \code{openmp} controls.
+#' for the mathematics, examples and controls. These structured family loops
+#' use serial coordination and the requested BLAS thread budget.
+#' Ordinary GLM and native Poisson paths use \code{ncores} to limit
+#' OpenMP outcome-channel threads.
 #' }
 #'
 #' \subsection{Validation-based stopping}{
@@ -911,8 +896,7 @@
 #' \item P. McCullagh & J.A. Nelder, \emph{Generalized Linear Models}. London: Chapman and Hall (1989).
 #' }
 #'
-#' @importFrom parallel detectCores makeCluster clusterCall clusterApply
-#'   stopCluster
+#' @importFrom parallel detectCores
 #' @seealso \link{signal_families} for fixed-parameter NB1, common-scale Gamma
 #'   and censored Gamma models with exact likelihood scores.
 #'
@@ -952,8 +936,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       normalize     = "auto",
                       solver        = "eigen",
                       method        = 1L,
-                      parallelize   = TRUE,
-                      ncores        = L0glm_default_ncores(parallelize),
+                      ncores        = L0glm_default_ncores(),
                       nthreads      = NULL,
                       maxit         = 25,
                       grouped       = TRUE,
@@ -964,7 +947,6 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       tol           = 1e-10,
                       control.solver = do.call("controlSolverGen", list(solver = solver, method = method)),
                       verbose       = FALSE,
-                      openmp        = TRUE,
                       control.family = list(),
                       screen        = "auto",
                       nsis          = NULL,
@@ -993,7 +975,6 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
-    if (isFALSE(parallelize) || NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
     arguments <- mget(supplied, envir=environment(), inherits=FALSE)
     arguments$relaxed <- relaxed
     return(L0glm_local_fit(L0glm_internal_fit, arguments, mode, control.local))
@@ -1042,10 +1023,9 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
   }
-  if (!is.logical(openmp) || length(openmp) != 1L || is.na(openmp)) {
-    stop("openmp must be TRUE or FALSE.", call. = FALSE)
-  }
   if (!inherits(family, "family")) family <- family()
+
+  use_native <- !isFALSE(control.solver$.native)
 
   kind <- L0glm_ext_kind(family)
   screen_intercept <- if (missing(intercept)) identical(kind, "multinomial") || family$family == "binomial" else intercept
@@ -1074,7 +1054,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       maxit,lambda,control.family,always.include)) {
     if (missing(lambda)) lambda <- "bic"
     args <- mget(setdiff(names(formals(l0glmFit)), "ncores"), environment(), inherits=FALSE)
-    args$ncores <- if (isTRUE(parallelize)) ncores else 1L
+    args$ncores <- ncores
     args[["group"]] <- seq_len(ncol(X))
     args$group.multiplier <- as.numeric(NCOL(y))
     attr(args$group.multiplier,"dimension_based") <- TRUE
@@ -1087,7 +1067,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       !isTRUE(control.solver$.dispersion.fixed) && L0glm_pilot_enabled(control.family) &&
       (family$link=="log" || (family$link=="identity" && nonnegative))) {
     nb_pilot <- L0glm_nb_pilot(X,y,family,weights,offset,intercept,always.include,
-      nonnegative,normalize,grouped,openmp,control.family)
+      nonnegative,normalize,grouped,use_native,control.family)
     if (!is.null(nb_pilot)) {
       control.solver$.theta.start <- nb_pilot$theta
       start <- nb_pilot$start
@@ -1101,9 +1081,10 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       if(is.null(prior.mean)) NULL else L0glm_ext_matrix(prior.mean,ncol(X),m,0,"prior.mean"))
   }
   if (!is.null(kind)) {
+    serial_threads <- if(is.null(nthreads))L0glm_normalize_thread_count(ncores)else nthreads
     fit <- L0glm_ext_fit(X, y, weights, family, dispersion, start, offset, lambda,
       if (missing(intercept)) kind == "multinomial" else intercept,
-      always.include, nonnegative, normalize, solver, method, nthreads, maxit,
+      always.include, nonnegative, normalize, solver, method, serial_threads, maxit,
       grouped, relaxed,
       prior.mean, thresh, tol, control.solver, control.family, validation)
     fit$dispersionCalibration <- nb_pilot$diagnostic
@@ -1113,7 +1094,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   # Dispatch before R-specific coercion, initialization or worker creation.
   # Forward the public arguments unchanged so defaults and warm starts are
   # applied exactly once by l0nnPois.
-  if (openmp && nonnegative && identical(family$family, "poisson") &&
+  if (use_native && nonnegative && !is.null(L0glm_native_family(family)) &&
+      identical(family$family, "poisson") &&
       identical(family$link, "identity") && identical(solver, "eigen") &&
       isTRUE(method == 1L) &&
       (is.null(control.solver$method) || identical(control.solver$method, "chol")) &&
@@ -1125,7 +1107,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       dispersion = dispersion, start = start, offset = offset,
       lambda = lambda, intercept = intercept, always.include = always.include,
       normalize = normalize, solver = solver, method = method,
-      parallelize = parallelize, ncores = ncores, nthreads = nthreads,
+      ncores = ncores, nthreads = nthreads,
       maxit = maxit, grouped = grouped, group.maxit = group.maxit,
       relaxed = relaxed, prior.mean = prior.mean,
       thresh = thresh, tol = tol,
@@ -1138,9 +1120,11 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   issparse  <- function(M) inherits(M, "sparseMatrix")
   as_list <- function(d)
     if (is.null(d)) rep(list(NULL), m) else as.list(d)
-  thread_state <- L0glm_set_thread_count(nthreads)
+  serial_callback <- is.null(L0glm_native_family(family))
+  callback_threads <- if(serial_callback && is.null(nthreads))
+    L0glm_normalize_thread_count(ncores)else nthreads
+  thread_state <- L0glm_set_thread_count(callback_threads)
   if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state), add = TRUE)
-  worker_nthreads <- if (is.null(nthreads)) 1L else L0glm_normalize_thread_count(nthreads)
   
   # Check dimensions ------------ -------------------------------------------
   y = as.matrix(y) # ensure y is a matrix (n x m) & coerce y to dense
@@ -1225,7 +1209,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   # 6 misc --------------------------------------------------
   always.include.start <- always.include
   init.lambda <- lambda
-  native_family <- if(openmp && is.null(validation) && !(lambda==0 && p>=n))
+  native_family <- if(use_native && is.null(validation) && !(lambda==0 && p>=n))
     L0glm_native_family(family) else NULL
   
   
@@ -1262,56 +1246,15 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       }
     }
     
-    fit_multichannel <- function(do_parallel) {
+    fit_multichannel <- function() {
       if(!is.null(native_family)) return(L0glm_native_model(environment(),native_family,
-        if(do_parallel)min(m,ncores)else 1L))
+        min(m,ncores)))
       convergence <- list()
       empty_coefs <- Matrix(0, p, m, sparse = TRUE)
       empty_obs <- Matrix(0, n, m, sparse = TRUE)
       fit <- list(coefficients = empty_coefs, weights = empty_obs,
                   dispersion = dispersion, lambdas = empty_coefs,
                   convergence = NULL, z = empty_obs)
-      if (do_parallel) {
-        nworkers <- min(ncores, m)
-        cluster_type <- if (Sys.info()["sysname"] == "Windows") "PSOCK" else "FORK"
-        cl <- if (cluster_type == "PSOCK") {
-          parallel::makeCluster(nworkers, type = cluster_type, useXDR = FALSE,
-                                master = "127.0.0.1", rscript_args = "--vanilla")
-        } else {
-          parallel::makeCluster(nworkers, type = cluster_type)
-        }
-        on.exit(parallel::stopCluster(cl), add = TRUE)
-        L0glm_dll <- getLoadedDLLs()[["L0glm"]]
-        L0glm_dll_path <- if (!is.null(L0glm_dll)) L0glm_dll[["path"]] else NULL
-        L0glm_pkg_path <- getNamespaceInfo("L0glm", "path")
-        L0glm_is_dev <- requireNamespace("pkgload", quietly = TRUE) &&
-          pkgload::is_dev_package("L0glm")
-        worker_init <- L0glm_worker_init
-        environment(worker_init) <- baseenv()
-        parallel::clusterCall(cl, worker_init, .libPaths(), L0glm_dll_path,
-                              worker_nthreads, L0glm_pkg_path, L0glm_is_dev)
-      }
-
-      make_chunks <- function(vec, k) {
-        k <- min(as.integer(k), length(vec))
-        cs <- rep(length(vec) %/% k, k); extra <- length(vec) %% k
-        if (extra) cs[1:extra] <- cs[1:extra] + 1
-        split(vec, rep(seq_len(k), cs))
-      }
-      make_jobs <- function(chunks, vars, start.mat, validation_context) {
-        lapply(chunks, function(cols) {
-          job <- list(y          = y[, cols, drop = FALSE],
-               weights    = L0glm_observation_subset(weights,cols),
-               prior.mean = prior.mean[vars, cols, drop = FALSE],
-               dispersion = disp_list[cols],
-               start      = if (is.null(start.mat) || length(start.mat) == 1L)
-                 start.mat else start.mat[vars, cols, drop = FALSE],
-               offset     = L0glm_observation_subset(offset,cols))
-          if (!is.null(validation_context)) job$validation <-
-            L0glm_subset_validation(validation_context, vars, cols)
-          job
-        })
-      }
       group_support_start <- function(coefs) {
         support <- L0glm_group_start(coefs, nonnegative)
         support$vars <- sort(unique(c(support$vars, always.include.start)))
@@ -1325,18 +1268,6 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       fit_channels <- function(vars, start, lambda, hard_threshold = TRUE,
                                validation_context = validation) {
         included <- match(always.include.start[always.include.start %in% vars], vars)
-        if (do_parallel) {
-          chunks <- make_chunks(seq_len(m), length(cl))
-          jobs <- make_jobs(chunks, vars, start, validation_context)
-          channels <- parallel::clusterApply(cl, jobs, L0glmfun_chunk,
-            X = X[, vars, drop = FALSE], family = family, lambda = lambda,
-            hard_threshold = hard_threshold, maxit = maxit,
-            tol = tol, always.include = included, thresh = thresh,
-            solver = solver, lower = lower[vars], upper = upper[vars],
-            method = method, normalize = normalize,
-            preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
-            control.solver = control.solver, verbose = verbose)
-        } else {
           channels <- lapply(seq_len(m), function(col) {
             L0glm.fit.internal(X = X[, vars, drop = FALSE],
               y = y[, col, drop = FALSE], weights = L0glm_observation_column(weights,col),
@@ -1353,10 +1284,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
               validation = L0glm_subset_validation(validation_context, vars, col),
               verbose = verbose)
           })
-        }
         result <- L0glm_collect_channels(channels)
-        if (!is.null(validation_context) && do_parallel)
-          result$validation <- do.call(c, lapply(channels, `[[`, "validation"))
         if (length(vars) == p && identical(vars, seq_len(p))) {
           result$coefficients <- Matrix(result$coefficients, sparse = TRUE)
           result$lambdas <- Matrix(result$lambdas, sparse = TRUE)
@@ -1443,7 +1371,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       fit
     }
 
-    res_multi <- fit_multichannel(do_parallel = parallelize && ncores > 1)
+    res_multi <- fit_multichannel()
     
     coefficients <- res_multi$coefficients
     weights.ret  <- res_multi$weights
@@ -1593,7 +1521,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
 
 
 # ---------------------------------------------------------------------------
-#  PARALLEL HELPER (called on the cluster)
+#  THREAD BUDGETS AND RESTORATION
 # ---------------------------------------------------------------------------
 L0glm_detect_physical_cores <- function() {
   physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
@@ -1608,8 +1536,7 @@ L0glm_detect_physical_cores <- function() {
   }
 }
 
-L0glm_default_ncores <- function(parallelize = TRUE) {
-  if (!isTRUE(parallelize)) return(1L)
+L0glm_default_ncores <- function() {
   physical_cores <- L0glm_detect_physical_cores()
   if (!is.na(physical_cores)) return(max(1L, round(physical_cores/2)))
   logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
@@ -1692,48 +1619,7 @@ L0glm_restore_thread_count <- function(state) {
   invisible(NULL)
 }
 
-L0glm_worker_init <- function(lib_paths, dll_path, nthreads = 1L,
-                              package_path = NULL, is_dev_package = FALSE) {
-  .libPaths(lib_paths)
-  nthreads <- suppressWarnings(as.integer(nthreads[1L]))
-  if (is.na(nthreads) || nthreads < 1L) nthreads <- 1L
-  Sys.setenv(
-    OMP_NUM_THREADS = as.character(nthreads),
-    OPENBLAS_NUM_THREADS = as.character(nthreads),
-    MKL_NUM_THREADS = as.character(nthreads),
-    VECLIB_MAXIMUM_THREADS = as.character(nthreads)
-  )
-  if (requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-    try(
-      suppressMessages(suppressWarnings(
-        utils::capture.output(RhpcBLASctl::blas_set_num_threads(nthreads))
-      )),
-      silent = TRUE
-    )
-    try(
-      suppressMessages(suppressWarnings(
-        utils::capture.output(RhpcBLASctl::omp_set_num_threads(nthreads))
-      )),
-      silent = TRUE
-    )
-  }
-  if (!is.null(dll_path) && nzchar(dll_path) &&
-      file.exists(dll_path) &&
-      !("L0glm" %in% names(getLoadedDLLs()))) {
-    dyn.load(dll_path)
-  }
-  if (isTRUE(is_dev_package) && !is.null(package_path) &&
-      nzchar(package_path) && file.exists(file.path(package_path, "DESCRIPTION")) &&
-      requireNamespace("pkgload", quietly = TRUE)) {
-    # The parent has already built the DLL; workers only load it.
-    pkgload::load_all(package_path, quiet = TRUE, compile = FALSE)
-  } else if (!("L0glm" %in% loadedNamespaces())) {
-    requireNamespace("L0glm", quietly = TRUE)
-  }
-  NULL
-}
-
-# Combine either individual channels or already combined worker chunks.
+# Assemble serial custom-family channels in their original order.
 L0glm_collect_channels <- function(fit) {
   result <- list(coefficients = do.call(cbind, lapply(fit, `[[`, "coefficients")),
        weights = do.call(cbind, lapply(fit, `[[`, "weights")),
@@ -1746,61 +1632,6 @@ L0glm_collect_channels <- function(fit) {
     result$validation <- lapply(fit, `[[`, "validation")
   result
 }
-
-L0glmfun_chunk <- function(job, ...) {
-  fit <- L0glmfun(cols       = seq_len(ncol(job$y)),
-                  y          = job$y,
-                  weights    = job$weights,
-                  prior.mean = job$prior.mean,
-                  dispersion = job$dispersion,
-                  start      = job$start,
-                  offset     = job$offset,
-                  validation = job$validation,
-                  ...)
-
-  L0glm_collect_channels(fit)
-}
-
-L0glmfun <- function(cols, lambda, thresh, solver, method,
-                     normalize,
-                     X, y, family,
-                     prior.mean = NULL, weights = NULL, dispersion = NULL,
-                     start = NULL, lower, upper,
-                     verbose = FALSE, maxit, tol, offset, always.include = 0,
-                     control.solver = do.call("controlSolverGen",
-                                              list(solver = solver, method = method)),
-                     hard_threshold = TRUE, preprocessing = NULL, validation = NULL) {
-  
-  lapply(cols, function(col) {
-    disp_col <- if (is.list(dispersion)) dispersion[[col]] else dispersion
-    L0glm.fit.internal(
-      X            = X,
-      y            = as.vector(y[, col]),
-      weights      = as.vector(L0glm_observation_column(weights,col)),
-      family       = family,
-      lambda       = lambda,
-      dispersion   = disp_col,          # <- per channel list element (may be NULL)
-      start        = if (is.null(start) || length(start) == 1L)
-        start else start[, col, drop = FALSE],
-      maxit        = maxit,
-      tol          = tol,
-      always.include       = always.include,
-      lower        = lower,
-      offset       = as.vector(L0glm_observation_column(offset,col)),
-      upper        = upper,
-      prior.mean   = prior.mean[, col],
-      thresh        = thresh,
-      hard_threshold = hard_threshold,
-      solver       = solver,
-      normalize    = normalize,
-      preprocessing = preprocessing,
-      method       = method,
-      verbose      = verbose,
-      validation = L0glm_subset_validation(validation, channels = col),
-      control.solver = control.solver)
-  })
-}
-  
 
 L0glm_fit_kernel <- l0glmFit
 L0glm_internal_fit <- L0glm_recorded_fitter(L0glm_fit_kernel,'l0glmFit',public=FALSE)

@@ -3,8 +3,7 @@ model_summary_fixture <- function(m=1L) {
   X <- matrix(rnorm(320),64,5,dimnames=list(NULL,letters[1:5]))
   B <- matrix(rep(c(2,-1,0,0,0),m),5,m)
   y <- X %*% B + matrix(rnorm(64*m,sd=.5),64,m)
-  fit <- l0glmFit(X,y,lambda=0,thresh=0,intercept=TRUE,
-    parallelize=FALSE)
+  fit <- l0glmFit(X,y,lambda=0,thresh=0,intercept=TRUE,ncores=1L)
   list(fit=fit,X=X,y=y,truth=rbind(0,B))
 }
 
@@ -68,7 +67,7 @@ test_that("native summaries distinguish exact scores from optional positive-mean
   set.seed(2502)
   X <- matrix(runif(120),40,3)
   y <- rpois(40,1+X[,1])
-  fit <- l0nnPois(X,y,lambda=2,parallelize=FALSE)
+  fit <- l0nnPois(X,y,lambda=2,ncores=1L)
   fit$coefficients[,] <- 0
   expect_s3_class(summary(fit),"summary.L0glm_fit")
   expect_equal(summary(fit)$metrics$loglik,-Inf)

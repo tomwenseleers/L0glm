@@ -80,7 +80,7 @@ matrix. Multinomial classes are factors with the stored category levels.
 entries for failed or unavailable methods.
 }
 \description{
-S3 prediction methods for \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}} and \code{\link[=sparseGLM]{sparseGLM()}},
+S3 prediction methods for \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=sparseGLM]{sparseGLM()}},
 including negative-binomial, multinomial and right-censored Cox models.
 }
 \details{
@@ -113,7 +113,7 @@ full-data model; these are not out-of-fold predictions.
 set.seed(5)
 X <- matrix(rnorm(240),60,4)
 y <- 2*X[,1] + rnorm(60)
-fit <- l0glmFit(X,y,lambda="gic",parallelize=FALSE)
+fit <- l0glmFit(X,y,lambda="gic",ncores=1L)
 head(fitted(fit))
 predict(fit,X[1:3,,drop=FALSE])
 comparison <- sparseGLM(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)

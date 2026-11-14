@@ -902,12 +902,12 @@ freedom. This preserves the full-data cut criterion.</p>
 <h2 id="algorithm-appendix">Appendix: mathematical pseudocode<a class="anchor" aria-label="anchor" href="#algorithm-appendix"></a>
 </h2>
 <p>The following algorithms describe the computations used by
-<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code> and <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>. They share
-preprocessing, ridge solves and stopping routines. Here <span class="math inline">C</span> denotes the number of multinomial
-categories, <span class="math inline">m</span> the number of ordinary
-response channels, and <span class="math inline">q</span> the number of
-design columns after adding any intercept. The selectable predictor
-count is <span class="math inline">p</span>.</p>
+<code><a href="../reference/l0glmFit.html">l0glmFit()</a></code>, including its automatically selected Poisson
+identity specialization. They share preprocessing, ridge solves and
+stopping routines. Here <span class="math inline">C</span> denotes the
+number of multinomial categories, <span class="math inline">m</span> the
+number of ordinary response channels, and <span class="math inline">q</span> the number of design columns after adding
+any intercept. The selectable predictor count is <span class="math inline">p</span>.</p>
 <p>Jump to <a href="#appendix-initialization">initialization</a>, <a href="#appendix-glm">single-channel GLMs</a>, <a href="#appendix-multichannel">multichannel GLMs</a>, <a href="#appendix-nb">negative binomial</a>, <a href="#appendix-multinomial">multinomial</a>, <a href="#appendix-cox">Cox PH</a>, <a href="#appendix-sis">SIS</a>, <a href="#appendix-isis">ISIS</a>, or <a href="#appendix-validation">validation stopping</a>.</p>
 <div class="section level3">
 <h3 id="appendix-coordinates">A.1. Coordinates, eligibility and the ridge solve<a class="anchor" aria-label="anchor" href="#appendix-coordinates"></a>
@@ -971,7 +971,7 @@ an infeasible nonnegative Eigen proposal can instead receive a
 constrained polish. This option is off by default and reuses an existing
 predictor Gram matrix only; rectangular and Woodbury paths skip it. LLT,
 LDLT and other methods solving an already formed Gram system use the
-same correction, as does <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>.</p>
+same correction, as does the internal Poisson identity backend.</p>
 <p>For fixed adaptive penalties, let <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">q(b)=b^TGb/2-h^Tb</span>. Start from the clipped
 proposal. On each free set <span class="math inline">F</span>, solve</p>
 <p><span class="math display">
@@ -1021,8 +1021,9 @@ and <code>group.maxit=6</code>. Resolve character penalties using the
 selected information criterion. For GIC, <span class="math inline">\lambda=\log(p)\log\log(n_{\rm IC})</span>: ordinary
 GLMs use the number of rows, NB and multinomial use the number of
 positive-weight rows, and Cox uses the weighted number of events. The
-function defaults are <code>lambda=1</code> for <code><a href="../reference/l0glmFit.html">l0glmFit()</a></code>
-and <code>lambda="gic"</code> for <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>.</p>
+default is <code>lambda=1</code>, with GIC used for screened fits and
+BIC for eligible wide multitask Gaussian fits when the penalty is
+omitted.</p>
 </div>
 <div class="section level3">
 <h3 id="appendix-initialization">A.2. Ordinary-family initialization and dispersion<a class="anchor" aria-label="anchor" href="#appendix-initialization"></a>
@@ -1154,9 +1155,9 @@ conditional on that intercept. With <span class="math inline">d_j=\sum_iW_i^0X_{
 <span class="math inline">t_j=\sum_iW_i^0X_{ij}</span>, replace its seed
 by <span class="math inline">(r_j-t_jr_0/d_0)/(d_j-t_j^2/d_0)</span>.
 For Gaussian models multiply the whole seed by <span class="math inline">\sum_iW_i^0z_i^0(Xb^0)_i/\sum_iW_i^0(Xb^0)_i^2</span>,
-taking zero when its denominator vanishes. Clip to the bounds.
-<code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> uses the Poisson identity-link specialization of
-these diagonal formulas.</p>
+taking zero when its denominator vanishes. Clip to the bounds. the
+internal Poisson identity backend uses the Poisson identity-link
+specialization of these diagonal formulas.</p>
 <p>Supplied coefficient starts replace this coefficient-seeding
 calculation. The <strong>first working response and weights still use
 the family’s initialized means</strong>. Subsequent working means come
@@ -1359,9 +1360,8 @@ prediction-change ratio</p>
 </span></p>
 <p>Take the larger change. For a Gaussian identity-link dense direct
 solve, the weighted Gram matrix is cached while the active support
-shrinks. <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> specializes Algorithm 1 to nonnegative
-Poisson identity-link fitting: <span class="math inline">\phi=1</span>,
-<span class="math inline">W_i=a_i/\mu_i</span>, <span class="math inline">z_i=y_i-o_i</span>, with Eigen LLT, Woodbury where
+shrinks. the internal Poisson identity backend specializes Algorithm 1
+to nonnegative Poisson identity-link fitting: <span class="math inline">\phi=1</span>, <span class="math inline">W_i=a_i/\mu_i</span>, <span class="math inline">z_i=y_i-o_i</span>, with Eigen LLT, Woodbury where
 appropriate and OpenMP across channels.</p>
 </div>
 <div class="section level3">

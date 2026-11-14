@@ -69,7 +69,7 @@ for(case in names(cases))for(replication in seq_len(replications)) {
   }
   f <- if(cfg$family=='gaussian')gaussian()else binomial()
   args <- list(X=X,y=y,family=f,group=group,lambda='gic',intercept=TRUE,
-    dispersion=1,local.search='auto',parallelize=FALSE,nthreads=1L)
+    dispersion=1,local.search='auto',ncores=1L,nthreads=1L)
   seconds <- system.time(fit <- do.call(l0glmFit,args),gcFirst=FALSE)[['elapsed']]
   record('L0glm','GIC preset',as.numeric(coef(fit)),seconds,all(fit$convergence$converged),
     note='Known Gaussian variance 1; binomial dispersion 1')

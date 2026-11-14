@@ -16,15 +16,14 @@ test_that("native validation agrees with R for storage, groups, weights and offs
       args <- list(X = Matrix::Matrix(d$X, sparse = sparse), y = d$y,
         weights = matrix(seq(.5, 1.5, length.out = 300), 100, 3),
         offset = .3, family = poisson("identity"), lambda = 2,
-        start = 1, intercept = TRUE, normalize = "rms", nonnegative = TRUE,
-        parallelize = FALSE, grouped = grouped, relaxed = relaxed,
+        start = 1, intercept = TRUE, normalize = "rms", nonnegative = TRUE,ncores=1L, grouped = grouped, relaxed = relaxed,
         maxit = 20L, group.maxit = 3L,
         validation = list(X = Matrix::Matrix(d$V, sparse = vsparse), y = d$v,
           weights = matrix(seq(.6, 1.3, length.out = 180), 60, 3), offset = .2))
       # The public ordinary-GLM weight/offset format includes a shared vector.
       args$offset <- rep(.3, 100)
-      r <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(openmp = FALSE)), list(local.search=FALSE)))
-      native <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(openmp = TRUE)), list(local.search=FALSE)))
+      r <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE)))
+      native <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(control.solver=utils::modifyList(list(),list(.native=TRUE)))), list(local.search=FALSE)))
       expect_equal(coef(native), coef(r), tolerance = 1e-7)
       expect_equal(native$validation$deviance, r$validation$deviance, tolerance = 1e-9)
       expect_equal(as.matrix(native$weights), as.matrix(r$weights), tolerance = 1e-7)
@@ -38,7 +37,7 @@ test_that("native stopping restores iteration one and its working weights", {
   d <- native_validation_data(); y <- d$y[, 1]
   for (sparse in c(FALSE, TRUE)) {
     args <- list(X = Matrix::Matrix(d$X, sparse = sparse), y = y, start = 1,
-      lambda = 2, relaxed = FALSE, parallelize = FALSE)
+      lambda = 2, relaxed = FALSE,ncores=1L)
     first <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(maxit = 1L)), list(local.search=FALSE)))
     validation <- list(X = d$V, y = as.numeric(predict(first, d$V)),
       patience = 2L, minit = 3L, tol = 1e-10)
@@ -85,9 +84,9 @@ test_that("OpenMP native validation preserves explicit masks and checkpoint hist
     args <- list(X = Matrix::Matrix(d$X, sparse = sparse), y = d$y, start = start,
       always.include = 1L, lambda = 2, maxit = 15L, group.maxit = 3L,
       grouped = grouped, relaxed = TRUE, validation = list(X = d$V, y = d$v))
-    reference <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(parallelize = FALSE)), list(local.search=FALSE)))
+    reference <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(ncores=1L)), list(local.search=FALSE)))
     for (threads in c(1L, 2L, 4L, 8L)) {
-      fit <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(ncores = threads, parallelize = TRUE)), list(local.search=FALSE)))
+      fit <- do.call(L0glm_internal_pois, utils::modifyList(c(args, list(ncores = threads)), list(local.search=FALSE)))
       # Timing diagnostics vary across worker counts.
       fit$validation$starts$seconds <- reference$validation$starts$seconds
       if(!is.null(fit$nuisance)) fit$nuisance$seconds <- reference$nuisance$seconds
@@ -109,9 +108,9 @@ test_that("native validation handles wide systems, zero weights and mandatory nu
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = y, start = 1,
       family = poisson("identity"), lambda = "gic", maxit = 12L, relaxed = TRUE, intercept = TRUE,
       validation = list(X = V, y = rpois(12, V %*% beta + .2),
-        weights = c(0, rep(1, 11)), offset = rep(.2, 12)), parallelize = FALSE)
+        weights = c(0, rep(1, 11)), offset = rep(.2, 12)),ncores=1L)
     fit <- do.call(L0glm_internal_pois, utils::modifyList(args, list(local.search=FALSE)))
-    r <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(nonnegative = TRUE, openmp = FALSE)), list(local.search=FALSE)))
+    r <- do.call(L0glm_internal_fit, utils::modifyList(c(args, list(nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))), list(local.search=FALSE)))
     expect_equal(coef(fit), coef(r), tolerance = 1e-7)
     expect_equal(fit$validation$deviance, r$validation$deviance, tolerance = 1e-8)
     expect_true(all(is.finite(fitted(fit))))

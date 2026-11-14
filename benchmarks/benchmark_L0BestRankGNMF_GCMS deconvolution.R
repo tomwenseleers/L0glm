@@ -82,7 +82,7 @@ system.time(nmfDagg <- L0BestRankGNMF(Dagg,
                                   grouped_Hupdate = TRUE, # here in the H=t(S) with S=mass spectra we use a grouped L0 penalty 
                                   IC = IC, # information criterion to be optimised
                                   max_iter = 10, tol = 1e-4,
-                                  method = 1L, parallelize = FALSE,
+                                  method = 1L,ncores=1L,
                                   family = poisson(link="identity"))) # nonnegative identity link Poisson here
 # 27s unparallelized
 dim(nmfDagg$W) # 500 x 100

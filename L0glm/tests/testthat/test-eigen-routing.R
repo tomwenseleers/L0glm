@@ -96,8 +96,7 @@ test_that("default CG accuracy preserves LLT quality in the Gaussian PSF fit", {
     start <- init_coefs(sim$X, sim$y, mu = sim$y, family = gaussian(), lambda = lambda)
     fits <- lapply(c(1L, 3L), function(method)
       l0glmFit(sim$X, sim$y, family = gaussian(), start = start, lambda = lambda,
-        nonnegative = TRUE,  parallelize = FALSE,
-        openmp = native, ncores = 1L, method = method))
+        nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=native)),ncores=1L, method = method))
     reference <- get.metrics(fits[[1L]]$coefficients, sim$X, sim$y,
                              family = gaussian(), beta_true = sim$beta_true)
     actual <- get.metrics(fits[[2L]]$coefficients, sim$X, sim$y,

@@ -4,7 +4,7 @@
 \alias{local_search}
 \title{Final local support refinement}
 \description{
-Optional finite support refinement after \code{\link[=l0glmFit]{l0glmFit()}} or \code{\link[=l0nnPois]{l0nnPois()}}.
+Optional finite support refinement after \code{\link[=l0glmFit]{l0glmFit()}}.
 \code{\link[=l0glmTune]{l0glmTune()}} applies the same procedure independently in each full-data
 candidate and each cross-validation training fit.
 }
@@ -58,7 +58,7 @@ eligibility masks and diagnostic indices use the original coordinates.
 Explicit starting-zero exclusions and mandatory terms retain their meaning.
 Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 refits use the existing family engines; nonnegative identity-Poisson fits
-retain the native \code{\link[=l0nnPois]{l0nnPois()}} backend. Ordinary dispersion and NB shape are
+retain the specialized native backend. Ordinary dispersion and NB shape are
 scored at the fitted values. Quasi scale is held common across candidates.
 The original-dimension sparse coefficients are
 returned. Candidate supports are refitted without the adaptive penalty,
@@ -116,11 +116,11 @@ set.seed(42)
 X <- matrix(rnorm(120 * 12), 120, 12)
 y <- 2 * X[, 1] - X[, 2] + rnorm(120)
 fit <- l0glmFit(X, y, lambda="gic", local.search=TRUE,
-                parallelize=FALSE)
+                ncores=1L)
 fit$local.search$history
-automatic <- l0glmFit(X, y, local.search="auto", parallelize=FALSE)
+automatic <- l0glmFit(X, y, local.search="auto", ncores=1L)
 automatic$local.search[c("applied", "initial.size", "stopping")]
 }
 \seealso{
-\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \link{model_criteria}
+\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmTune]{l0glmTune()}}, \link{model_criteria}
 }

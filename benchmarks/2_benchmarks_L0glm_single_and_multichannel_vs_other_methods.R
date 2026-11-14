@@ -161,8 +161,6 @@ system.time(L0glm.chol.pois <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                          lambda = "gic",
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-
-                                         parallelize = TRUE,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
@@ -235,8 +233,6 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                          lambda = "gic", 
                                          nonnegative = TRUE,
                                          grouped = TRUE,
-
-                                         parallelize = TRUE,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
@@ -705,7 +701,6 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                      family = poisson(identity),
                                     nonnegative = TRUE, 
-                                    parallelize = TRUE, 
                                     grouped = FALSE,
                                     solver = "eigen", method = 1L,
                                     ncores = 4)) # openmp 2.96s
@@ -722,7 +717,6 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                        family = poisson(identity),
                                       nonnegative = TRUE, 
-                                      parallelize = TRUE, 
                                       grouped = FALSE,
                                       solver = "eigen", method = 1L,
                                       ncores = 4)) # openmp 3.31s
@@ -736,8 +730,6 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-
-                                    parallelize = TRUE,
                                     grouped = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
@@ -762,9 +754,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
                                     solver = "osqp")) 
 # time = 7.67s with parallelize=F, 5.2s with parallelize=T
@@ -784,7 +774,6 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                      family = poisson(identity),
                                     nonnegative = TRUE, 
-                                    parallelize = TRUE, 
                                     grouped = TRUE,
                                     solver = "eigen", method = 1L,
                                     ncores = 4)) # openmp 4.47s
@@ -801,7 +790,6 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                        family = poisson(identity),
                                       nonnegative = TRUE, 
-                                      parallelize = TRUE, 
                                       grouped = TRUE,
                                       solver = "eigen", method = 1L,
                                       ncores = 4)) # openmp 5.75s
@@ -816,8 +804,6 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-
-                                    parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
                                     method = 1L,
@@ -830,9 +816,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
 system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp"))
 # 33.17s
@@ -851,7 +835,6 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                      family = poisson(identity),
                                     nonnegative = TRUE, 
-                                    parallelize = TRUE, 
                                     grouped = TRUE,
                                     solver = "eigen", method = 1L,
                                     ncores = 4)) # openmp 5s
@@ -868,7 +851,6 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
                                        family = poisson(identity),
                                       nonnegative = TRUE, 
-                                      parallelize = TRUE, 
                                       grouped = TRUE,
                                       solver = "eigen", method = 1L,
                                       ncores = 4)) # openmp 5.66s
@@ -882,8 +864,6 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
                                     nonnegative = TRUE,
-
-                                    parallelize = TRUE,
                                     grouped = TRUE,
                                     solver = "eigen",
                                     method = 1L))  # openmp 0.28s
@@ -908,9 +888,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     family = poisson(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp")) 
 # 58s
@@ -932,8 +910,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     coefs.true = sim.gaus.mc$beta_true, 
 
                                     family = gaussian(identity), 
-                                    nonnegative = TRUE, 
-                                    parallelize = FALSE, 
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
                                     solver = "eigen", method = 1L)) # 85s
 tune_full$lambda_best # 11.35348
@@ -950,8 +927,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       coefs.true = sim.gaus.mc$beta_true, 
 
                                       family = gaussian(identity), 
-                                      nonnegative = TRUE, 
-                                      parallelize = FALSE, 
+                                      nonnegative = TRUE,ncores=1L,
                                       grouped = FALSE,
                                       solver = "eigen", method = 1L)) # 89.75s
 tune_zoomed$lambda_best # 11.35348
@@ -962,9 +938,7 @@ L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
@@ -990,9 +964,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
                                     solver = "osqp")) 
 # 18.54s
@@ -1012,8 +984,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     coefs.true = sim.gaus.mc$beta_true, 
 
                                     family = gaussian(identity), 
-                                    nonnegative = TRUE, 
-                                    parallelize = FALSE, 
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "eigen", method = 1L)) # 242.34s
 tune_full$lambda_best # 11.35348
@@ -1030,8 +1001,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       coefs.true = sim.gaus.mc$beta_true, 
 
                                       family = gaussian(identity), 
-                                      nonnegative = TRUE, 
-                                      parallelize = FALSE, 
+                                      nonnegative = TRUE,ncores=1L,
                                       grouped = TRUE,
                                       solver = "eigen", method = 1L)) # 300.46s
 tune_zoomed$lambda_best # 11.35348
@@ -1042,9 +1012,7 @@ L0glm:::presetLambda(IC="gic", p, n) # 11.35348
 system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.chol.mc$lambda_best,
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "eigen",
                                     method = 1L)) # 26.09s
@@ -1067,9 +1035,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune.osqp.mc$lambda_best,
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp")) 
 # 52.86s
@@ -1088,8 +1054,7 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     coefs.true = sim.gaus.mc$beta_true, 
 
                                     family = gaussian(identity), 
-                                    nonnegative = TRUE, 
-                                    parallelize = FALSE, 
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "eigen", method = 1L)) # 277.47s
 tune_full$lambda_best # 11.35348 (best lambda tune)
@@ -1106,8 +1071,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       coefs.true = sim.gaus.mc$beta_true, 
 
                                       family = gaussian(identity), 
-                                      nonnegative = TRUE, 
-                                      parallelize = FALSE, 
+                                      nonnegative = TRUE,ncores=1L,
                                       grouped = TRUE,
                                       solver = "eigen", method = 1L)) # 281.16s
 tune_zoomed$lambda_best # 3.361205 (best lambda tune)
@@ -1119,9 +1083,7 @@ L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "eigen",
                                     method = 1L)) 
@@ -1146,9 +1108,7 @@ plot(x_vals, y_vals, pch = 16, col = "steelblue",
 system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     family = gaussian(identity), 
                                     lambda = "gic", # or tune_zoomed$lambda_best
-                                    nonnegative = TRUE,
-
-                                    parallelize = FALSE,
+                                    nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp")) 
 # 51.46s

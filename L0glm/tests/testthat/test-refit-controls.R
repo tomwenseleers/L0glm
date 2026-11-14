@@ -1,18 +1,16 @@
 test_that("public fitters retain penalized estimates and omit relaxed controls", {
   expect_false("relaxed"%in%names(formals(l0glmFit)))
-  expect_false("relaxed"%in%names(formals(l0nnPois)))
   set.seed(7110)
   X <- matrix(runif(90L*6L),90L)
   Y <- matrix(rpois(270,2+outer(X[,1],c(8,4,2))),90L)
   for(openmp in c(FALSE,TRUE)) {
     f <- l0glmFit(X,Y,family=poisson(identity),offset=2,nonnegative=TRUE,
-      lambda="gic",openmp=openmp,local.search=FALSE,parallelize=FALSE)
+      lambda="gic",control.solver=utils::modifyList(list(),list(.native=openmp)),local.search=FALSE,ncores=1L)
     expect_false(any(f$convergence$stage=="relaxed"))
     expect_true(all(coef(f)>=0))
     expect_false("relaxed"%in%names(f$specification))
   }
   expect_error(l0glmFit(X,Y,relaxed=TRUE),"unused argument")
-  expect_error(l0nnPois(X,Y,relaxed=TRUE),"unused argument")
   expect_error(l0glmTune(X,Y,family=poisson(),relaxed=TRUE),"not a fitting argument")
 })
 
@@ -27,8 +25,7 @@ test_that("screening, special families and predictor groups retain penalties", {
     list(y=factor(rep(1:3,30)),family=mgcv::multinom(2)),
     list(y=survival::Surv(rexp(90,exp(.5*X[,1])),rep(c(1,1,0),30)),family=mgcv::cox.ph()))
   for(case in cases)for(group in list(NULL,c(1,1,2,2,3,3))) {
-    f <- do.call(l0glmFit,c(list(X=X,group=group,lambda="gic",local.search=FALSE,
-      parallelize=FALSE,screen="none"),case))
+    f <- do.call(l0glmFit,c(list(X=X,group=group,lambda="gic",local.search=FALSE,ncores=1L,screen="none"),case))
     expect_false(any(f$convergence$stage=="relaxed"))
     expect_true(any(as.numeric(f$lambdas)>0)|is.null(f$lambdas))
   }
@@ -61,8 +58,7 @@ test_that('large multichannel models get one criterion-checked support refit', {
     Y <- if(family$family=='gaussian')mu+matrix(rnorm(300),100)else
       if(family$family=='poisson')matrix(rpois(300,mu),100)else matrix(rnbinom(300,mu=mu,size=5),100)
     start <- matrix(1,6,3);start[6,] <- 0
-    fit <- l0glmFit(X,Y,family=family,offset=2,start=start,lambda='gic',nonnegative=TRUE,
-      parallelize=FALSE,control.local=list(size.max=0L))
+    fit <- l0glmFit(X,Y,family=family,offset=2,start=start,lambda='gic',nonnegative=TRUE,ncores=1L,control.local=list(size.max=0L))
     search <- fit$local.search
     expect_identical(search$stopping,'support_refit_only')
     expect_equal(search$evaluations,1L)

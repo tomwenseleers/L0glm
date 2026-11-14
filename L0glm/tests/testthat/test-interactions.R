@@ -4,7 +4,7 @@ test_that('interaction settings add pairwise then three-way products', {
   y <- 1+2*X[,1]-2*X[,2]+2*X[,3]+2*X[,1]*X[,2]+
     2*X[,1]*X[,2]*X[,3]+rnorm(300)
   args <- list(X=X,y=y,lambda='gic',dispersion=1,intercept=TRUE,
-    local.search=FALSE,maxit=70L,parallelize=FALSE)
+    local.search=FALSE,maxit=70L,ncores=1L)
   main <- do.call(l0glmFit,args)
   for(order in 0L) {
     fit <- do.call(l0glmFit,c(args,list(interactions=order)))
@@ -51,7 +51,7 @@ test_that('interaction views preserve storage, indexing and original predictor u
   }
   y <- 1+2*X[,1]-2*X[,2]+2*X[,1]*X[,2]+rnorm(140,sd=.4)
   args <- list(X=X,y=y,interactions=1L,lambda='gic',intercept=TRUE,
-    dispersion=1,local.search=FALSE,maxit=60L,parallelize=FALSE)
+    dispersion=1,local.search=FALSE,maxit=60L,ncores=1L)
   fit <- do.call(l0glmFit,args)
   for(A in list(as(X,'dgCMatrix'),X*rep(10^seq(-2,2,length.out=6),each=140))) {
     alternative <- do.call(l0glmFit,modifyList(args,list(X=A)))
@@ -66,7 +66,7 @@ test_that('interaction starts preserve channel masks and compulsory main effects
   start <- matrix(1,7,2);start[2,1] <- 0;start[4,] <- 0;start[7,] <- 0
   fit <- l0glmFit(X,Y,interactions=1L,intercept=TRUE,always.include=6L,
     start=start,prior.mean=matrix(.1,7,2),lambda='gic',
-    dispersion=1,local.search=FALSE,maxit=60L,parallelize=FALSE)
+    dispersion=1,local.search=FALSE,maxit=60L,ncores=1L)
   expect_equal(as.numeric(coef(fit)[2,1]),0)
   expect_true(all(coef(fit)[4,]==0))
   expect_true(7L%in%fit$always.include)
@@ -90,7 +90,7 @@ test_that('native Poisson interactions accept compact weights, offsets and precl
   Y <- matrix(rpois(n*4,rep(mu,4)),n,4)
   w <- runif(n,.7,1.3);offset <- rep(1,n)
   args <- list(X=X,y=Y,interactions=1L,lambda='gic',weights=w,offset=offset,
-    local.search=FALSE,maxit=40L,parallelize=FALSE)
+    local.search=FALSE,maxit=40L,ncores=1L)
   fast <- do.call(l0nnPois,args)
   general <- do.call(l0glmFit,c(args,list(family=poisson(identity),nonnegative=TRUE)))
   expanded <- do.call(l0nnPois,modifyList(args,list(weights=matrix(w,n,4),offset=matrix(offset,n,4))))

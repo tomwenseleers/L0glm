@@ -6,7 +6,7 @@
 \description{
 Supply unpenalized columns through \code{always.include}, for example a low-df
 B-spline basis for a smooth chromatographic background. With \code{nonnegative=TRUE},
-\code{l0glmFit()} and \code{l0nnPois()} refine these coefficients in a small constrained
+\code{l0glmFit()} and the internal Poisson identity backend refine these coefficients in a small constrained
 block, separately from sparse predictor selection.
 }
 \details{
@@ -59,5 +59,5 @@ The fitted object contains \code{nuisance}, with compulsory indices, candidate r
 initialization, accepted/rejected scores, conditional KKT residuals and timings.
 }
 \seealso{
-\code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \link{preclustering}
+\code{\link[=l0glmFit]{l0glmFit()}}, \link{preclustering}
 }

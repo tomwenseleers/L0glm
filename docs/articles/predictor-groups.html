@@ -135,11 +135,11 @@ the supplied design directly; use <code>screen='none'</code> when its
 dimensions would otherwise activate automatic ISIS.</p>
 <p>Recognized scalar GLMs run predictor-group IRLS in C++, with the same
 group penalties, step halving, dispersion updates and convergence
-checks. Multiple outcomes can use OpenMP channel workers through
-<code>parallelize=TRUE, ncores=4</code>. BLAS uses one thread within
-those parallel passes, and the caller’s thread settings are restored.
-Custom and special-family adapters and validation checkpoints use the
-structured R driver.</p>
+checks. Multiple outcomes use OpenMP channel threads when
+<code>ncores&gt;1</code>, for example <code>ncores=4</code>. BLAS uses
+one thread within those parallel passes, and the caller’s thread
+settings are restored. Custom and special-family adapters and validation
+checkpoints use the structured R driver.</p>
 </div>
 <div class="section level2">
 <h2 id="gic-and-group-size">GIC and group size<a class="anchor" aria-label="anchor" href="#gic-and-group-size"></a>

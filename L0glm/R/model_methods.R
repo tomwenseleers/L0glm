@@ -5,10 +5,10 @@
 #' @md
 #' @description
 #' Extract the fitted log likelihood, parameter-count information criteria,
-#' coefficient matrix or criterion sample size from [l0glmFit()] and
-#' [l0nnPois()] models, including the special families.
+#' coefficient matrix or criterion sample size from [l0glmFit()] models,
+#' including the special families.
 #'
-#' @param object A model returned by [l0glmFit()] or [l0nnPois()].
+#' @param object A model returned by [l0glmFit()].
 #' @param ... Further arguments. [stats::AIC()] and [stats::BIC()] also accept
 #'   several fitted models for comparison.
 #' @param mu_floor Nonnegative scoring-only floor for positive-family means.
@@ -81,7 +81,7 @@
 #' set.seed(7)
 #' X <- matrix(rnorm(240), 60, 4)
 #' y <- 2 * X[, 1] + rnorm(60)
-#' fit <- l0glmFit(X, y, lambda = "gic", parallelize = FALSE)
+#' fit <- l0glmFit(X, y, lambda = "gic", ncores=1L)
 #' logLik(fit)
 #' c(AIC = AIC(fit), BIC = BIC(fit), GIC = GIC(fit),
 #'   EBIC = EBIC(fit), MBIC = MBIC(fit))

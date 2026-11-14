@@ -4,7 +4,7 @@
 #' @importFrom stats fitted
 #' @md
 #' @description
-#' S3 prediction methods for [l0glmFit()], [l0nnPois()] and [sparseGLM()],
+#' S3 prediction methods for [l0glmFit()] and [sparseGLM()],
 #' including negative-binomial, multinomial and right-censored Cox models.
 #'
 #' @param object A fitted model or `sparseGLM` comparison.
@@ -69,7 +69,7 @@
 #' set.seed(5)
 #' X <- matrix(rnorm(240),60,4)
 #' y <- 2*X[,1] + rnorm(60)
-#' fit <- l0glmFit(X,y,lambda="gic",parallelize=FALSE)
+#' fit <- l0glmFit(X,y,lambda="gic",ncores=1L)
 #' head(fitted(fit))
 #' predict(fit,X[1:3,,drop=FALSE])
 #' comparison <- sparseGLM(X,y,method=c("lasso","relaxed_lasso"),nlambda=4)

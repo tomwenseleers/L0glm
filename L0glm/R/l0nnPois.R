@@ -1,83 +1,4 @@
-#' Fast nonnegative identity-link Poisson L0 or grouped L0 penalized fit
-#'
-#' `l0nnPois()` is a fast RcppEigen/OpenMP implementation of
-#' [l0glmFit()] for the nonnegative Poisson model with identity link. It shares
-#' the main fitting arguments with `l0glmFit()` for use in deconvolution
-#' workflows, and internally uses the sparse or dense Eigen Cholesky LLT ridge solver.
-#' `l0glmFit(openmp = TRUE)` selects this backend automatically for eligible
-#' fits. Its specialized Poisson updates and the general native Eigen driver
-#' keep the design matrix `X` in shared memory across outcome channels.
-#' Dense inputs retain dense storage and sparse inputs retain sparse storage.
-#' The dense solver forms weighted crossproducts using R's BLAS library.
-#' Eligible wide active systems use the Woodbury identity to factor an
-#' observation-space system rather than a predictor-space system.
-#' The default penalty is `lambda = "gic"`. Optional `precluster=TRUE`
-#' screens summed channel groups and refines on the original responses; see
-#' [preclustering] for aggregate-only output and clustering controls.
-#' Smooth IRLS updates use the same fixed-penalty backtracking safeguard as
-#' `l0glmFit()`, followed by the selection cutoff. Trial steps reuse predictor
-#' differences and require no additional ridge solve.
-#' Every coefficient, including any intercept, is constrained to be nonnegative.
-#' The LLT sparse-selection update clamps negative proposals to zero.
-#' Unpenalized intercepts and `always.include` terms are refined using a small
-#' constrained Poisson solve; see [compulsory_terms].
-#' With positive active effects and well-chosen regularization such as
-#' `lambda="gic"`, ridge shrinkage often keeps genuine active effects positive.
-#' See the solver discussion in [l0glmFit()] for measured comparisons with
-#' the formally constrained alternatives.
-#' This constraint cannot be disabled. Use `l0glmFit(nonnegative = FALSE)`
-#' if coefficients of either sign are required.
-#'
-#' @inheritParams l0glmFit
-#' @param family The identity-link Poisson family, \code{poisson("identity")}.
-#' @param validation Optional held-out data and stopping controls as in
-#'   \code{l0glmFit()}. Held-out deviance is scored directly in C++,
-#'   retaining OpenMP threading across channels and restoring the best selection
-#'   or relaxed-refit checkpoint. Validation predictors are shared across threads.
-#' @param dispersion Poisson dispersion is fixed at 1. Accepts \code{NULL}
-#'   or 1; other finite nonzero numeric values are ignored with a warning.
-#'   Negative values cannot request dispersion estimation for this family.
-#' @param intercept Logical; if \code{TRUE}, add an intercept column to \code{X}.
-#'   The intercept is constrained to be nonnegative, just like every other
-#'   coefficient. Defaults to \code{FALSE}.
-#' @param ncores Optional integer specifying the number of OpenMP threads to use
-#'   across outcome channels when \code{parallelize=TRUE}. For \code{l0nnPois},
-#'   the requested value is capped only at the detected number of logical cores,
-#'   not at the number of physical cores.
-#' @param control.solver Optional list of solver controls. \code{l0nnPois}
-#'   always uses Eigen Cholesky LLT internally, but for sparse matrices
-#'   \code{control.solver$NaturalOrdering} can be set to \code{TRUE} or
-#'   \code{FALSE} to choose Eigen \code{NaturalOrdering} or
-#'   \code{AMDOrdering}. The default is \code{FALSE}. Integer
-#'   \code{control.solver$ordering} uses \code{1L} for
-#'   natural ordering and \code{0L} meaning AMD ordering.
-#'   Set \code{nonnegative.polish=TRUE} to enable the batched constrained
-#'   Cholesky polish of infeasible ridge proposals. It reuses an existing
-#'   predictor Gram matrix, preserves OpenMP channel parallelism and skips
-#'   Woodbury solves. The default is \code{FALSE}; see
-#'   \code{\link{controlSolverGen}} for the numerical checks.
-#'
-#' @return An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:
-#'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
-#'   `family`, `z`, `X`, and `y`. Original prior weights and offsets are
-#'   retained separately from the working weights for scoring.
-#'   The logical vector `relaxationSkipped` flags unsupported unpenalized refits,
-#'   for which the penalized selection estimates are retained. Methods
-#'   \code{coef()}, \code{logLik()}, \code{AIC()}, \code{BIC()}, \code{GIC()},
-#'   \code{EBIC()} and \code{MBIC()} are available; see \link{model_criteria}.
-#'   \code{print()} and \code{summary()} provide compact model displays;
-#'   see \link{model_summary}.
-#'   \code{predict()} and \code{fitted()} return original-scale Poisson means;
-#'   see \link{model_predictions} for new data and prediction offsets.
-#'
-#' @seealso \link{l0glmFit}, \link{information_criteria} for case-insensitive
-#'   criterion presets, penalty formulas, guidance and original references.
-#'   See \href{https://tomwenseleers.github.io/L0glm/articles/performance.html}{the benchmark article}
-#'   for measured deconvolution and validation timings.
-#'
-#' @example examples/l0nnPois.R
-#'
-#' @export
+# Specialized nonnegative identity-link Poisson backend.
 l0nnPois <- function(X,
                      y,
                      weights       = NULL,
@@ -91,8 +12,7 @@ l0nnPois <- function(X,
                      normalize     = "auto",
                      solver        = "eigen",
                      method        = 1L,
-                     parallelize   = TRUE,
-                     ncores        = L0glm_default_ncores(parallelize),
+                     ncores        = L0glm_default_ncores(),
                      nthreads      = NULL,
                      maxit         = 25,
                      grouped       = TRUE,
@@ -133,7 +53,7 @@ l0nnPois <- function(X,
   if (!identical(local.search, FALSE)) {
     mode <- L0glm_local_mode(local.search)
     supplied <- setdiff(names(match.call())[-1L], c("local.search", "control.local"))
-    if (isFALSE(parallelize) || NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
+    if (NCOL(y)==1L) supplied <- setdiff(supplied,"ncores")
     arguments <- mget(supplied, envir=environment(), inherits=FALSE)
     arguments$relaxed <- relaxed
     return(L0glm_local_fit(L0glm_internal_pois, arguments, mode, control.local, nonnegative=TRUE))
@@ -156,7 +76,7 @@ l0nnPois <- function(X,
       if(!is.null(validation) && !inherits(validation,"L0glm_validation")) {
         args <- mget(supplied,envir=environment(),inherits=FALSE)
         args$family <- family
-        args$nonnegative <- TRUE; args$openmp <- TRUE; args$screen <- "none"
+        args$nonnegative <- TRUE; args$screen <- "none"
         return(L0glm_validated_fit(args))
       }
       options <- mget(setdiff(names(formals(L0glm_nnpois_kernel)),c("X","y")),envir=environment(),inherits=FALSE)
@@ -186,16 +106,13 @@ l0nnPois <- function(X,
   if (!is.null(validation) && !inherits(validation, "L0glm_validation")) {
     args <- mget(names(match.call())[-1L], envir = environment(), inherits = FALSE)
     args$family <- family; args$lambda <- lambda; args$intercept <- intercept
-    args$nonnegative <- TRUE; args$openmp <- TRUE
+    args$nonnegative <- TRUE
     args$solver <- "eigen"; args$method <- 1L
     # Direct calls keep this specialized backend; l0glmFit owns screening.
     args$screen <- "none"
     args$control.solver <- control.solver[intersect(names(control.solver),
       c("NaturalOrdering", "ordering", "nonnegative.polish"))]
     return(do.call(L0glm_internal_fit, args))
-  }
-  if (!is.null(nthreads) && verbose) {
-    message("l0nnPois uses ncores for OpenMP outcome-interactions threading; nthreads is ignored.")
   }
   natural_ordering <- FALSE
   if (!is.null(control.solver)) {
@@ -295,7 +212,7 @@ l0nnPois <- function(X,
   always.include <- always.include[!is.na(always.include) &
                                      always.include >= 1L &
                                      always.include <= p]
-  if (isTRUE(parallelize) && m > 1L) {
+  if (m > 1L) {
     ncores <- suppressWarnings(as.integer(ncores[1L]))
     if (is.na(ncores) || ncores < 1L) ncores <- 1L
     logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
@@ -308,6 +225,8 @@ l0nnPois <- function(X,
   } else {
     ncores <- 1L
   }
+  thread_state <- L0glm_set_thread_count(if(ncores>1L)1L else nthreads)
+  if(!is.null(thread_state))on.exit(L0glm_restore_thread_count(thread_state),add=TRUE)
   if (is.null(start) && maxit > 1L && any(offset != 0))
     start <- L0glm_signal_start(X,y,offset,weights,always.include,prior.mean,ncores)
   allowed <- if (is.null(start)) NULL else start != 0
@@ -389,4 +308,4 @@ l0nnPois <- function(X,
 
 L0glm_nnpois_kernel <- l0nnPois
 L0glm_internal_pois <- L0glm_recorded_fitter(L0glm_nnpois_kernel,'l0nnPois',public=FALSE)
-l0nnPois <- L0glm_recorded_fitter(L0glm_nnpois_kernel,'l0nnPois')
+l0nnPois <- L0glm_internal_pois

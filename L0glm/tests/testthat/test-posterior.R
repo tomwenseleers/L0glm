@@ -71,7 +71,7 @@ test_that('posterior sampling respects support masks, RNG state and cached model
 
 test_that('accepted full support refits use a flat prior', {
   set.seed(7143);X<-matrix(rnorm(120*6),120,6);y<-2*X[,1]+rnorm(120)
-  fit<-l0glmFit(X,y,lambda='gic',parallelize=FALSE)
+  fit<-l0glmFit(X,y,lambda='gic',ncores=1L)
   expect_true(fit$support.refit)
   p<-summary(fit,inference='posterior',control.inference=list(nsim=100L))$inference
   expect_identical(p$prior.source,'flat prior on the refitted support')
@@ -86,7 +86,7 @@ test_that('automatic multichannel support-only refits use a flat prior', {
   X<-qr.Q(qr(matrix(rnorm(n*30),n,30)))*sqrt(n)
   B<-matrix(2,30,3)
   Y<-X%*%B+matrix(rnorm(n*3),n,3)
-  fit<-l0glmFit(X,Y,dispersion=1,parallelize=FALSE)
+  fit<-l0glmFit(X,Y,dispersion=1,ncores=1L)
   expect_identical(fit$local.search$stopping,'support_refit_only')
   expect_true(fit$support.refit)
   p<-summary(fit,inference='posterior',control.inference=list(nsim=100L,seed=8))$inference
@@ -107,7 +107,7 @@ test_that('ordinary and special posterior families converge on their valid space
     rpois(n,mu),rgamma(n,4,scale=mu/4),{v<-rgamma(n,4,scale=mu/4);ifelse(v<.5,0,v)})
   for(i in seq_along(families)) {
     fit<-l0glmFit(X,outcomes[[i]],family=families[[i]],lambda='aic',
-      intercept=i!=8L,local.search=FALSE,parallelize=FALSE)
+      intercept=i!=8L,local.search=FALSE,ncores=1L)
     p<-summary(fit,inference='posterior',control.inference=list(nsim=100L,seed=6))$inference
     expect_true(p$converged,info=families[[i]]$family)
     expect_true(all(is.finite(p$draws)),info=families[[i]]$family)

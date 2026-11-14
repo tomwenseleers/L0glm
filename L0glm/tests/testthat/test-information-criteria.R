@@ -28,8 +28,7 @@ test_that("both fitters resolve every named preset before fitting", {
   set.seed(71)
   X <- matrix(runif(160), 40, 4)
   y <- rpois(40, 2 + 4 * X[, 1])
-  args <- list(X = X, y = y, family = poisson(identity), intercept = TRUE,
-               parallelize = FALSE, grouped = FALSE,
+  args <- list(X = X, y = y, family = poisson(identity), intercept = TRUE,ncores=1L, grouped = FALSE,
                maxit = 5)
 
   for (fitter in list(l0glmFit, l0nnPois)) {
@@ -60,7 +59,7 @@ test_that("GIC works for sparse grouped and relaxed fits", {
   penalty <- log(8) * log(log(40))
   args <- list(X = X, y = y, family = poisson(identity),
                offset = rep(1, 40), intercept = FALSE,
-               grouped = TRUE, parallelize = FALSE, group.maxit = 2,
+               grouped = TRUE,ncores=1L, group.maxit = 2,
                maxit = 8)
   for (fitter in list(L0glm_internal_fit, L0glm_internal_pois)) {
     if ("nonnegative" %in% names(formals(fitter))) args$nonnegative <- TRUE
@@ -98,7 +97,7 @@ test_that("tuning selects EBIC scores with case-insensitive names", {
   y <- 8 * X[, 1] + 2 * X[, 2] + rnorm(60, sd = 0.2)
   args <- list(X = X, y = y, family = gaussian(), dispersion = 1,
                nlambda = 3, prop_range = 0.2, printbest = FALSE, plot = FALSE,
-               grouped = FALSE, parallelize = FALSE, maxit = 20)
+               grouped = FALSE,ncores=1L, maxit = 20)
   lower <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "ebic")), list(local.search=FALSE)))
   upper <- do.call(l0glmTune, utils::modifyList(c(args, list(tune = "EBIC")), list(local.search=FALSE)))
   expect_identical(upper, lower)
@@ -116,7 +115,7 @@ test_that("tuning selects EBIC scores with case-insensitive names", {
 test_that("invalid criteria and lambda values fail clearly in both fitters", {
   X <- cbind(1, seq(0, 1, length.out = 12))
   for (fitter in list(l0glmFit, l0nnPois)) {
-    args <- list(X = X, y = rep(2, 12), parallelize = FALSE)
+    args <- list(X = X, y = rep(2, 12),ncores=1L)
     for (bad in list("unknown", "hbic", "HBIC", "mebic", "MEBIC", "",
                      NA_character_, c("aic", "bic"))) {
       expect_error(do.call(fitter, c(args, list(lambda = bad))),

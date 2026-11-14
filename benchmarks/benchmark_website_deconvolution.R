@@ -29,8 +29,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
       gc()
       times[run] <- system.time(fit <- l0glmFit(sim$X, sim$y,
         family=poisson("identity"), lambda="gic", nonnegative=TRUE,
-        intercept=FALSE,  grouped=TRUE,
-        parallelize=TRUE, ncores=ncores))[["elapsed"]]
+        intercept=FALSE,  grouped=TRUE, ncores=ncores))[["elapsed"]]
       if (run>1L) stopifnot(identical(coef(fit), previous))
       previous <- coef(fit)
     }

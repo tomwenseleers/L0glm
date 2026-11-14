@@ -181,6 +181,9 @@
 #'   \code{mu.floor} inherits \code{mu_floor} for consistent scoring.
 #' @param ... Other arguments passed to \code{l0glmFit}, including:
 #' \itemize{
+#' \item \code{ncores}: the OpenMP outcome-thread budget; \code{1L} gives
+#' serial fitting. Custom callbacks and R-based solver bridges remain serial
+#' and use this budget for BLAS unless \code{nthreads} overrides it.
 #' \item \code{maxit}: a single positive integer giving the iteration limit
 #' for each fit (default 25). Lambda is the tuning parameter. For a
 #' prediction-oriented fit with an independent validation set, pass
@@ -259,7 +262,7 @@
 #' The common
 #' grid is constructed from full-data fits; all coefficient initialization,
 #' dispersion estimation and grouped selection in each fold use training rows
-#' only. Folds are fitted sequentially; \code{parallelize} still controls
+#' only. Folds are fitted sequentially; \code{ncores} controls
 #' response-channel parallelism within each fit.
 #' With \code{start = "pilot"}, each fold constructs its own seed from its
 #' training rows, using training-weight-scaled pilot penalties. Full-data

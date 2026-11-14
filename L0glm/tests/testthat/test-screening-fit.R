@@ -72,10 +72,10 @@ test_that("explicit fitting controls and all starting-zero exclusions survive sc
   start[1,] <- 0;start[8,] <- 0
   prior <- matrix(0,41,2);prior[5,] <- 100
   fit <- l0glmFit(local.search=FALSE, X,Y,screen="ISIS",nsis=15,screen.maxit=2,intercept=TRUE,
-    start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
+    start=start,prior.mean=prior,always.include=7,grouped=FALSE,ncores=1L,
     lambda=3,normalize="none",maxit=5,tol=1e-6)
   expected <- sisGLM(X,Y,nsis=15,iterative=TRUE,niter=2,return_stats=FALSE,intercept=TRUE,
-    start=start,prior.mean=prior,always.include=7,grouped=FALSE,parallelize=FALSE,
+    start=start,prior.mean=prior,always.include=7,grouped=FALSE,ncores=1L,
     lambda=3,normalize="none",maxit=5,tol=1e-6)
   expect_equal(coef(fit),coef(expected$fit),tolerance=1e-10)
   expect_true(all(coef(fit)[5,]==0));expect_equal(coef(fit)[6,1],0)
@@ -92,9 +92,9 @@ test_that("screened fits support nonnegative grouped Poisson and all special fam
   set.seed(2614);n <- 120;X <- Matrix::rsparsematrix(n,15,.2);P <- abs(X)
   Y <- matrix(rpois(n*2,2+as.numeric(P[,1])*2),n,2)
   for (openmp in c(TRUE,FALSE)) {
-    fit <- l0glmFit(local.search=FALSE, P,Y,family=poisson(identity),nonnegative=TRUE,openmp=openmp,
-      screen="ISIS",nsis=6,screen.maxit=2,parallelize=FALSE)
-    expected <- sisGLM(P,Y,family=poisson(identity),nonnegative=TRUE,openmp=openmp,
+    fit <- l0glmFit(local.search=FALSE, P,Y,family=poisson(identity),nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=openmp)),
+      screen="ISIS",nsis=6,screen.maxit=2,ncores=1L)
+    expected <- sisGLM(P,Y,family=poisson(identity),nonnegative=TRUE,control.solver=utils::modifyList(list(),list(.native=openmp)),
       nsis=6,niter=2,iterative=TRUE,return_stats=FALSE)
     expect_equal(coef(fit),coef(expected$fit),tolerance=1e-8)
     expect_true(all(coef(fit)>=0));expect_identical(dim(coef(fit)),c(15L,2L))

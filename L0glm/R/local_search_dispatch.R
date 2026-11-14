@@ -3,7 +3,7 @@
 #' @name local_search
 #' @md
 #' @description
-#' Optional finite support refinement after [l0glmFit()] or [l0nnPois()].
+#' Optional finite support refinement after [l0glmFit()].
 #' [l0glmTune()] applies the same procedure independently in each full-data
 #' candidate and each cross-validation training fit.
 #'
@@ -57,7 +57,7 @@
 #' Explicit starting-zero exclusions and mandatory terms retain their meaning.
 #' Multinomial refits respect CLR zero sums and entry masks. Ordinary and NB
 #' refits use the existing family engines; nonnegative identity-Poisson fits
-#' retain the native [l0nnPois()] backend. Ordinary dispersion and NB shape are
+#' retain the specialized native backend. Ordinary dispersion and NB shape are
 #' scored at the fitted values. Quasi scale is held common across candidates.
 #' The original-dimension sparse coefficients are
 #' returned. Candidate supports are refitted without the adaptive penalty,
@@ -110,15 +110,15 @@
 #' positives for better prediction. The size rule limits automatic refinement;
 #' `FALSE` returns the adaptive-ridge fit directly.
 #'
-#' @seealso [l0glmFit()], [l0nnPois()], [l0glmTune()], [model_criteria]
+#' @seealso [l0glmFit()], [l0glmTune()], [model_criteria]
 #' @examples
 #' set.seed(42)
 #' X <- matrix(rnorm(120 * 12), 120, 12)
 #' y <- 2 * X[, 1] - X[, 2] + rnorm(120)
 #' fit <- l0glmFit(X, y, lambda="gic", local.search=TRUE,
-#'                 parallelize=FALSE)
+#'                 ncores=1L)
 #' fit$local.search$history
-#' automatic <- l0glmFit(X, y, local.search="auto", parallelize=FALSE)
+#' automatic <- l0glmFit(X, y, local.search="auto", ncores=1L)
 #' automatic$local.search[c("applied", "initial.size", "stopping")]
 NULL
 
@@ -230,7 +230,7 @@ L0glm_local_control <- function(control, args=list()) {
     args$screen.nthreads <- L0glm_sis_threads(args$screen.nthreads)
   defaults <- list(size.max=50L,top=2L,drop=2L,maxit=12L,max.evals=160L,max.swap=2L,
     nthreads=if(is.null(args$screen.nthreads))1L else args$screen.nthreads,
-    ncores=if(is.null(args$ncores))L0glm_default_ncores(!isFALSE(args$parallelize))else args$ncores,
+    ncores=if(is.null(args$ncores))L0glm_default_ncores()else args$ncores,
     adjust.max=24L,scope="auto",target="IC",criterion=NULL,
     refit.maxit=75L,refit.tol=1e-8,tol=1e-8,mu.floor=1e-4,
     conditional=TRUE,entry.moves=TRUE,channel.refit=TRUE,refit.every.round=FALSE,

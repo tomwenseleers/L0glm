@@ -4,7 +4,7 @@ test_that('orthogonal group selection preserves opposing signs and matches block
   truth <- c(.5,-.5,.04,-.04,0,0,.8,-.6)
   fit <- l0glmFit(X,as.numeric(X%*%truth),group=rep(1:4,each=2),
     family=gaussian(),dispersion=1,normalize='none',lambda=4,
-    maxit=100L,local.search=FALSE,parallelize=FALSE)
+    maxit=100L,local.search=FALSE,ncores=1L)
   truth[3:6] <- 0
   # At an orthogonal BAR fixed point, each retained block has this shrinkage.
   expected <- truth
@@ -24,7 +24,7 @@ test_that('group presets, sparse storage and predictor units give reproducible f
   y <- .5+as.numeric(X%*%beta)+rnorm(180,sd=.4)
   group <- rep(letters[1:6],each=2)
   args <- list(X=X,y=y,group=group,lambda='gic',intercept=TRUE,dispersion=1,
-    local.search=FALSE,maxit=100L,parallelize=FALSE)
+    local.search=FALSE,maxit=100L,ncores=1L)
   fit <- do.call(l0glmFit,args)
   sparse <- do.call(l0glmFit,modifyList(args,list(X=as(X,'dgCMatrix'))))
   expect_equal(as.matrix(coef(fit)),as.matrix(coef(sparse)),tolerance=1e-8)
@@ -47,7 +47,7 @@ test_that('group zero, compulsory terms and starting-entry masks retain their me
   for(grouped in c(FALSE,TRUE)) {
     fit <- l0glmFit(X,Y,group=group,intercept=TRUE,start=start,
       lambda='gic',dispersion=1,grouped=grouped,
-      maxit=70L,local.search=FALSE,parallelize=FALSE)
+      maxit=70L,local.search=FALSE,ncores=1L)
     expect_equal(fit$always.include,c(1L,8L,9L))
     expect_equal(dim(coef(fit)),c(9L,2L))
     expect_equal(as.numeric(coef(fit)[2,1]),0)
@@ -125,7 +125,7 @@ test_that('nonnegative Poisson and scalar noise families support predictor group
   group <- rep(1:3,each=2)
   Y <- cbind(rpois(140,mu),rpois(140,mu))
   fit <- l0nnPois(X,Y,group=group,offset=2,lambda='gic',
-    local.search=FALSE,maxit=60L,parallelize=FALSE)
+    local.search=FALSE,maxit=60L,ncores=1L)
   expect_true(all(coef(fit)>=0))
   expect_true(is.finite(GIC(fit)))
   expect_equal(dim(coef(fit)),c(6L,2L))

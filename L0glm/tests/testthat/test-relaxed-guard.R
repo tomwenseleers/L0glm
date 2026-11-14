@@ -15,8 +15,7 @@ test_that('ordinary and specialized drivers retain unsupported selected fits', {
   counts <- matrix(rpois(2*n,10),n,2)
   positive <- matrix(rgamma(2*n,3),n,2)
   common <- list(intercept=FALSE,start=1,lambda=.01,normalize='none',
-    grouped=TRUE,maxit=1L,group.maxit=1L,local.search=FALSE,
-    parallelize=FALSE,nthreads=1L,screen='none')
+    grouped=TRUE,maxit=1L,group.maxit=1L,local.search=FALSE,ncores=1L,nthreads=1L,screen='none')
   for(sparse in c(FALSE,TRUE)) {
     common$X <- if(sparse)Matrix::Matrix(X,sparse=TRUE)else X
     for(f in list(gaussian(),poisson(identity),poisson(log),binomial(),
@@ -39,7 +38,7 @@ test_that('special-family refits check their joint information space', {
   skip_if_not_installed('mgcv');skip_if_not_installed('survival')
   set.seed(9004);n <- 24L;p <- 36L
   common <- list(intercept=FALSE,lambda=.01,normalize='none',start=1,
-    maxit=1L,grouped=TRUE,group.maxit=1L,local.search=FALSE,parallelize=FALSE,
+    maxit=1L,grouped=TRUE,group.maxit=1L,local.search=FALSE,ncores=1L,
     screen='none',nthreads=1L)
   for(sparse in c(FALSE,TRUE)) {
     X <- matrix(rnorm(n*p),n,p)
@@ -58,7 +57,7 @@ test_that('special-family refits check their joint information space', {
 test_that('rank deficiency is checked even when selected size is below n', {
   set.seed(9002);A <- cbind(rnorm(60),rnorm(60));A <- cbind(A,A[,1])
   common <- list(X=A,intercept=TRUE,start=1,lambda=.01,normalize='rms',maxit=1L,
-    local.search=FALSE,parallelize=FALSE,screen='none',nthreads=1L)
+    local.search=FALSE,ncores=1L,screen='none',nthreads=1L)
   for(f in list(gaussian(),poisson(log),binomial(),Gamma(log))) {
     y <- if(f$family=='gaussian')rnorm(60)else if(f$family=='binomial')rbinom(60,1,.5)else
       if(f$family=='Gamma')rgamma(60,3)else rpois(60,5)
@@ -71,8 +70,7 @@ test_that('channel masks preserve supported refits and original starting exclusi
   Y <- matrix(rnorm(2*n),n,2);weights <- matrix(1,n,2);weights[9:n,2] <- 0
   start <- matrix(1,p,2);start[p,] <- 0
   args <- list(X=X,y=Y,weights=weights,dispersion=1,start=start,lambda=.01,
-    normalize='none',maxit=1L,group.maxit=1L,local.search=FALSE,
-    parallelize=FALSE,screen='none',nthreads=1L)
+    normalize='none',maxit=1L,group.maxit=1L,local.search=FALSE,ncores=1L,screen='none',nthreads=1L)
   selected <- do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE)))
   fit <- do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE)))
   expect_identical(fit$relaxationSkipped,c(FALSE,TRUE))
@@ -87,8 +85,7 @@ test_that('independent channels refit their own selected supports', {
   start <- matrix(0,p,2);start[1:21,1] <- 1;start[22:42,2] <- 1
   Y <- matrix(rnorm(2*n),n,2)
   fit <- L0glm_internal_fit(X,Y,start=start,lambda=.01,dispersion=1,grouped=FALSE,
-    relaxed=TRUE,maxit=1L,normalize='none',local.search=FALSE,
-    parallelize=FALSE,screen='none')
+    relaxed=TRUE,maxit=1L,normalize='none',local.search=FALSE,ncores=1L,screen='none')
   expect_false(any(fit$relaxationSkipped))
   for(k in 1:2) {
     use <- which(start[,k]!=0)
@@ -102,7 +99,7 @@ test_that('independent native Poisson channels do not pool their refit support',
   X <- cbind(diag(30),diag(30));Y <- matrix(0,30,2);Y[1:20,] <- 10
   start <- matrix(0,60,2);start[1:20,1] <- 1;start[31:50,2] <- 1
   fit <- L0glm_internal_pois(X,Y,start=start,lambda=.01,grouped=FALSE,relaxed=TRUE,
-    maxit=3L,normalize='none',local.search=FALSE,parallelize=FALSE)
+    maxit=3L,normalize='none',local.search=FALSE,ncores=1L)
   expect_false(any(fit$relaxationSkipped))
   expect_equal(as.matrix(coef(fit))[start!=0],rep(10,40),tolerance=1e-9)
   expect_equal(as.matrix(coef(fit))[start==0],rep(0,80))
@@ -111,7 +108,7 @@ test_that('independent native Poisson channels do not pool their refit support',
 test_that('predictor groups and the R fallback share the refit guard', {
   set.seed(9007);n <- 24L;p <- 36L;X <- matrix(rnorm(n*p),n,p)
   common <- list(X=X,y=rnorm(n),start=1,lambda=.01,maxit=1L,
-    normalize='none',local.search=FALSE,parallelize=FALSE,screen='none')
+    normalize='none',local.search=FALSE,ncores=1L,screen='none')
   guard_pair(c(common,list(group=rep(1:12,each=3))))
   testthat::local_mocked_bindings(L0glm_native_family=function(...)NULL,.package='L0glm')
   guard_pair(common)
@@ -122,8 +119,7 @@ test_that('predictor groups and the R fallback share the refit guard', {
 test_that('identifiable Gaussian refits retain ordinary least-squares accuracy', {
   set.seed(9003);X <- matrix(rnorm(150*8),150,8)
   Y <- X[,1:3]%*%matrix(rnorm(6),3,2)+matrix(rnorm(300),150,2)
-  fit <- L0glm_internal_fit(X,Y,lambda='gic',intercept=TRUE,relaxed=TRUE,
-    parallelize=FALSE,nthreads=1L,local.search=FALSE)
+  fit <- L0glm_internal_fit(X,Y,lambda='gic',intercept=TRUE,relaxed=TRUE,ncores=1L,nthreads=1L,local.search=FALSE)
   active <- which(Matrix::rowSums(abs(coef(fit)))>0)
   A <- cbind(1,X)[,active,drop=FALSE]
   expect_false(any(fit$relaxationSkipped))
@@ -135,13 +131,13 @@ test_that('fixed scalar signal families share the guard', {
   set.seed(9008);X <- matrix(runif(24*36,0,.1),24,36);Y <- matrix(rpois(48,10),24,2)
   for(f in list(nb1(3,log),gammaScale(2,log,censor=.5),gammaCensored(.3,log)))
     guard_pair(list(X=X,y=Y,family=f,start=1,lambda=.01,maxit=1L,group.maxit=1L,
-      grouped=TRUE,local.search=FALSE,parallelize=FALSE,normalize='none',screen='none'))
+      grouped=TRUE,local.search=FALSE,ncores=1L,normalize='none',screen='none'))
 })
 
 test_that('an estimated scale requires residual degrees of freedom', {
   set.seed(9009);X <- matrix(rnorm(36),6,6);y <- rnorm(6)
   guard_pair(list(X=X,y=y,start=1,lambda=.001,maxit=1L,normalize='none',
-    local.search=FALSE,parallelize=FALSE,screen='none'))
+    local.search=FALSE,ncores=1L,screen='none'))
   X <- matrix(rnorm(24*23),24,23)
   expect_false(L0glm_relaxed_standard(X,NULL,matrix(TRUE,23,1),TRUE,nuisance_df=1L))
 })
@@ -152,13 +148,13 @@ test_that('external native solvers preserve skipped channels', {
   weights <- matrix(1,40,2);weights[9:40,2] <- 0
   args <- list(X=X,y=Y,start=1,weights=weights,dispersion=1,lambda=.001,
     maxit=1L,group.maxit=1L,normalize='none',local.search=FALSE,
-    solver='bigGlm',parallelize=FALSE,screen='none')
+    solver='bigGlm',ncores=1L,screen='none')
   selected <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE))))
   fit <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE))))
   expect_identical(fit$relaxationSkipped,c(FALSE,TRUE))
   expect_identical(coef(fit)[,2,drop=FALSE],coef(selected)[,2,drop=FALSE])
   expect_equal(summary(fit)$convergence$skipped,c(0L,1L))
-  args$parallelize <- TRUE;args$ncores <- 2L;args$nthreads <- 1L
+  args$ncores <- 2L;args$nthreads <- 1L
   parallel_fit <- suppressWarnings(do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE))))
   expect_identical(parallel_fit$relaxationSkipped,fit$relaxationSkipped)
   expect_equal(coef(parallel_fit),coef(fit),tolerance=1e-12)
@@ -181,7 +177,7 @@ test_that('default local search cannot undo a skipped relaxed refit', {
     y <- if(f$family=='gaussian')rnorm(20)else if(f$family=='binomial')rbinom(20,1,.4)else
       if(f$family=='Gamma')rgamma(20,3)else rpois(20,10)
     args <- list(X=X,y=y,family=f,start=1,lambda=1e-8,maxit=2L,thresh=0,
-      normalize='none',parallelize=FALSE,screen='none',dispersion=1)
+      normalize='none',ncores=1L,screen='none',dispersion=1)
     selected <- do.call(L0glm_internal_fit,c(args,list(relaxed=FALSE,local.search=FALSE)))
     for(mode in list('auto',TRUE)) {
       fit <- do.call(L0glm_internal_fit,c(args,list(relaxed=TRUE,local.search=mode)))

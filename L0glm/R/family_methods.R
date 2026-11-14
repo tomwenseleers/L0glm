@@ -89,7 +89,7 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #'
 #' @name l0glmMetrics
 #' @md
-#' @param object A model returned by [l0glmFit()] or [l0nnPois()], or a
+#' @param object A model returned by [l0glmFit()], or a
 #'   comparison from [sparseGLM()].
 #' @param newdata New predictor matrix, without an automatically added
 #'   intercept, or \code{NULL} for training data.
@@ -206,7 +206,8 @@ logLik.L0glm_extended_fit <- function(object, ...) {
 #' X <- matrix(runif(300), 60, 5)
 #' truth <- rbind(c(3, 0, 2), c(0, 4, 1), matrix(0, 3, 3))
 #' y <- matrix(rpois(180, 1 + X %*% truth), 60, 3)
-#' fit <- l0nnPois(X, y, offset = rep(1, 60), parallelize = FALSE)
+#' fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
+#'   lambda="gic", offset=rep(1,60), ncores=1L)
 #' scores <- l0glmMetrics(fit, beta_true = truth)
 #' scores[c("F1_score", "MCC", "within_row_F1_score", "within_row_MCC")]
 #' @export
@@ -222,7 +223,7 @@ l0glmMetrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = N
                           offset = NULL, mu_floor = 1e-8, beta_true = NULL,
                           r2_mu_floor = 0.1, ...) {
   if (!inherits(object, "L0glm_fit"))
-    stop("object must be a model returned by l0glmFit or l0nnPois.", call. = FALSE)
+    stop("object must be a model returned by l0glmFit.", call. = FALSE)
   if (!is.null(object[["group"]])) {
     plain <- object;plain[["group"]] <- NULL
     scores <- l0glmMetrics(plain,newdata,y,weights,offset,mu_floor,beta_true,r2_mu_floor,...)
@@ -301,7 +302,7 @@ l0glmMetrics.L0glm_fit <- function(object, newdata = NULL, y = NULL, weights = N
 #' @rdname l0glmMetrics
 #' @export
 l0glmMetrics.default <- function(object, ...) {
-  stop("object must be a model returned by l0glmFit or l0nnPois, or a benchmark result.", call. = FALSE)
+  stop("object must be a model returned by l0glmFit, or a benchmark result.", call. = FALSE)
 }
 
 # Ordinary GLMs retain prior weights separately from the final IRLS weights.

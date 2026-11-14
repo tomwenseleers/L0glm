@@ -12,7 +12,7 @@ test_that("native wide ridge updates match the explicit weighted objective", {
   for (sparse in c(FALSE, TRUE)) for (natural in c(FALSE, TRUE)) {
     fit <- l0nnPois(Matrix::Matrix(X, sparse = sparse), y,
                     start = start, prior.mean = target, lambda = 3,
-                    maxit = 1L, thresh = 0, parallelize = FALSE,
+                    maxit = 1L, thresh = 0,ncores=1L,
                     control.solver = controlSolverGen("eigen", 1L,
                                                         NaturalOrdering = natural))
     expect_equal(as.numeric(fit$coefficients), reference, tolerance = 1e-10)
@@ -28,9 +28,9 @@ test_that("native and R wide multichannel fits agree with storage preserved", {
     args <- list(X = Matrix::Matrix(X, sparse = sparse), y = Y,
                  family = poisson(identity), lambda = 2, start = 0.5,
                  grouped = grouped,  maxit = 8L,
-                 group.maxit = 2L, parallelize = FALSE)
+                 group.maxit = 2L,ncores=1L)
     native <- do.call(l0nnPois, args)
-    general <- do.call(l0glmFit, c(args, list(nonnegative = TRUE, openmp = FALSE)))
+    general <- do.call(l0glmFit, c(args, list(nonnegative = TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)))))
     expect_equal(as.matrix(native$coefficients), as.matrix(general$coefficients),
                  tolerance = 1e-7)
     expect_identical(inherits(native$X, "sparseMatrix"), sparse)

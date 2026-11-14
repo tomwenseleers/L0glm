@@ -51,7 +51,7 @@ coefficient accuracy for highly correlated peaks. OSQP uses diagonal equilibrati
 and absolute and relative tolerances of `1e-9`. Tall and square `bigGlm` and OSQP
 working systems use a shared constrained Cholesky polish, with a fresh KKT
 residual and an objective check; see [`lmRidge()`](../reference/lmRidge.html).
-The native `l0nnPois()` backend specializes in nonnegative identity-link Poisson models.
+The native the internal Poisson identity backend backend specializes in nonnegative identity-link Poisson models.
 
 An optional constrained polish is also available for Eigen:
 
@@ -63,7 +63,7 @@ fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
 
 This reuses an existing predictor Gram matrix for batched Cholesky solves on
 the free coefficients. It supports LLT, LDLT and other methods operating on
-an already formed Gram system, and the native `l0nnPois()` backend. Rectangular
+an already formed Gram system, and the native the internal Poisson identity backend backend. Rectangular
 and Woodbury paths skip the correction. A fresh KKT check and a nonincreasing
 ridge objective are required; otherwise the clipped proposal is retained.
 The option is off by default: it can improve correlated peak recovery, but
@@ -110,7 +110,7 @@ sim <- simul(n=300L, p=300L, n_nonzero=20L, m=4L, seed=7L)
 set.seed(8)
 v <- matrix(rpois(length(sim$y_true), sim$y_true), 300L, 4L)
 
-validated <- l0nnPois(sim$X, sim$y, lambda="gic", ncores=2L,
+validated <- l0glmFit(family=poisson(identity), nonnegative=TRUE, sim$X, sim$y, lambda="gic", ncores=2L,
   validation=list(X=sim$X, y=v, patience=3L, minit=3L))
 validated$validation$deviance
 validated$validation$selection$history

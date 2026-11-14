@@ -50,7 +50,6 @@ cfg <- list(
   seed_multi = 3L,
   nlambda = 100L,
   ncores = 8L,
-  openmp = TRUE,
   thresh = 1e-5, # relative selection cutoff; absolute floor is 1e-20
   run_glmnet = TRUE,
   mu_floor = 1e-8, # numerical floor for observed likelihood/GIC and path selection
@@ -500,8 +499,7 @@ l0_single <- safe_time("single L0glm", l0glmFit(
   single$X, single$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE,
-  intercept = FALSE, solver = "eigen", method = 1L,
-  openmp = cfg$openmp, parallelize = FALSE, nthreads = 1L
+  intercept = FALSE, solver = "eigen", method = 1L,ncores=1L, nthreads = 1L
 ))
 if (!is.null(l0_single$value)) {
   single_fits$L0glm <- l0_single$value$coefficients
@@ -532,9 +530,7 @@ l0_multi <- safe_time("multichannel grouped L0glm",
   multi$X, multi$y,
   family = poisson(identity), lambda = "gic", thresh = cfg$thresh,
   nonnegative = TRUE, grouped = TRUE,
-  intercept = FALSE, solver = "eigen", method = 1L,
-  openmp = cfg$openmp,
-  parallelize = cfg$ncores > 1L, ncores = cfg$ncores, nthreads = 1L,
+  intercept = FALSE, solver = "eigen", method = 1L,ncores=if(isTRUE(cfg$ncores > 1L)) cfg$ncores else 1L, nthreads = 1L,
   group.maxit = 6L
 ))
 if (!is.null(l0_multi$value)) {

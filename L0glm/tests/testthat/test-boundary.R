@@ -70,8 +70,7 @@ test_that("ordinary relaxed fits refresh their working quantities", {
   for(family in list(gaussian(),poisson("identity"),poisson("log"),binomial())) {
     eta<-as.numeric(X%*%beta)+offset;mu<-family$linkinv(eta)
     y<-switch(family$family,gaussian=rnorm(200,mu),poisson=rpois(200,mu),binomial=rbinom(200,1,mu))
-    fit<-L0glm_internal_fit(X,y,family=family,offset=offset,nonnegative=TRUE,intercept=TRUE,
-      openmp=FALSE,relaxed=TRUE,parallelize=FALSE,lambda=2)
+    fit<-L0glm_internal_fit(X,y,family=family,offset=offset,nonnegative=TRUE,intercept=TRUE,control.solver=utils::modifyList(list(),list(.native=FALSE)),relaxed=TRUE,ncores=1L,lambda=2)
     expect_true(all(is.finite(coef(fit))))
     expect_s4_class(coef(fit),"sparseMatrix")
     expect_equal(predict(fit,type="link"),as.numeric(fit$X%*%coef(fit))+offset,ignore_attr=TRUE)
@@ -97,16 +96,14 @@ test_that("special-family boundary passes use the fitted nuisance parameters", {
       expect_equal(out$state$theta,L0glm_nb_pearson_shape(y,mu,rep(1,120),
         sum(out$B!=0),data$control))
     }
-    fit<-L0glm_internal_fit(X,y,family=family,offset=.2,nonnegative=TRUE,relaxed=TRUE,
-      parallelize=FALSE,lambda=2,maxit=40)
+    fit<-L0glm_internal_fit(X,y,family=family,offset=.2,nonnegative=TRUE,relaxed=TRUE,ncores=1L,lambda=2,maxit=40)
     expect_true(is.finite(as.numeric(logLik(fit))))
   }
   event<-rexp(120,exp(X%*%b));y<-survival::Surv(round(event,1),rep(c(1,1,0),40))
   data<-L0glm_ext_prepare(X,y,mgcv::cox.ph(),NULL,.2,FALSE,NULL,TRUE,"none",1,NULL,list())
   result<-list(B=b,state=list());out<-L0glm_ext_boundary(data,result)
   expect_gte(L0glm_ext_loglik(data,out$B,out$state),L0glm_ext_loglik(data,b,result$state)-1e-10)
-  fit<-L0glm_internal_fit(X,y,family=mgcv::cox.ph(),offset=.2,nonnegative=TRUE,relaxed=TRUE,
-    parallelize=FALSE,lambda=2,maxit=40)
+  fit<-L0glm_internal_fit(X,y,family=mgcv::cox.ph(),offset=.2,nonnegative=TRUE,relaxed=TRUE,ncores=1L,lambda=2,maxit=40)
   expect_true(is.finite(as.numeric(logLik(fit))))
 })
 test_that("validation rejects a training-only boundary improvement", {

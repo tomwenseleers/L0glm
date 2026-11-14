@@ -66,7 +66,7 @@ outcome-fitting parallelism; use \code{screen.nthreads} in \code{\link[=l0glmFit
 \item{...}{Named \code{\link[=l0glmFit]{l0glmFit()}} arguments for ISIS, such as \code{lambda}, \code{start},
 \code{intercept}, \code{always.include}, \code{grouped}, \code{normalize} and solver controls.
 ISIS defaults to \code{lambda="gic"}, \code{start=NULL} and penalized estimates
-and \code{parallelize=FALSE}. Coefficient-shaped starts/prior means use the
+and \verb{ncores=1L,}. Coefficient-shaped starts/prior means use the
 original predictor dimensions, optionally including an added intercept;
 they are subset internally. Scalar \code{start=1} retains its normalized-coordinate
 meaning. Initial zero starts remain excluded, except mandatory terms.}

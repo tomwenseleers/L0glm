@@ -45,7 +45,7 @@ test_that("native profiling handles wide models with several mandatory terms", {
   for (sparse in c(FALSE, TRUE)) for (natural in c(FALSE, TRUE)) {
     fit <- l0nnPois(Matrix::Matrix(X, sparse = sparse), y,
                     always.include = 2L, lambda = 2, start = start,
-                    maxit = 1L,  thresh = 0, parallelize = FALSE,
+                    maxit = 1L,  thresh = 0,ncores=1L,
                     control.solver = controlSolverGen("eigen", 1L,
                                                         NaturalOrdering = natural))
     expect_equal(as.numeric(fit$coefficients), reference, tolerance = 1e-9)
@@ -60,7 +60,7 @@ test_that("GIC counts the original selectable pool despite intercepts and masks"
   for (fitter in list(l0glmFit, l0nnPois)) for (intercept in c(FALSE, TRUE)) {
     args <- list(X = X, y = y, family = poisson(identity), lambda = "gic",
                  intercept = intercept, always.include = 2L,
-                 start = c(1, 0, rep(0, 5)), maxit = 1L, parallelize = FALSE)
+                 start = c(1, 0, rep(0, 5)), maxit = 1L,ncores=1L)
     if (intercept) args$start <- c(0, args$start)
     if (identical(fitter, l0glmFit)) args$nonnegative <- TRUE
     fit <- do.call(fitter, args)
@@ -108,11 +108,10 @@ test_that("native wide sparse nuisance fits preserve dense and threaded results"
   X@x[seq.int(2L, n, by = 5L)] <- 0
   Y <- matrix(rpois(n * 3L, 5), n, 3L)
   opt <- list(y = Y, lambda = 2, start = 1, maxit = 1L, grouped = FALSE,
-               thresh = 0, parallelize = FALSE)
+               thresh = 0,ncores=1L)
   sparse <- do.call(l0nnPois, c(list(X = X), opt))
   dense <- do.call(l0nnPois, c(list(X = as.matrix(X)), opt))
   expect_equal(as.matrix(sparse$coefficients), as.matrix(dense$coefficients), tolerance = 1e-9)
-  opt$parallelize <- TRUE
   opt$ncores <- 2L
   threaded <- do.call(l0nnPois, c(list(X = X), opt))
   expect_identical(sparse$coefficients, threaded$coefficients)

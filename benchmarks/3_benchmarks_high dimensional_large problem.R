@@ -44,7 +44,7 @@ seconds["Full L0glm"] <- system.time(
   fits_high_dimensional[["Full L0glm"]] <- l0glmFit(X, y,
     family = gaussian(), lambda = lambda_gic, intercept = FALSE,
     nonnegative = FALSE, start = NULL, normalize = "auto",
-    solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L,
+    solver = "eigen", method = 1L,ncores=1L, nthreads = 1L,
     screen = "none")
 )[["elapsed"]]
 
@@ -60,7 +60,7 @@ for (name in c("SIS", "ISIS")) {
       nsis = if (name == "SIS") nsis else nsis_isis,
       screen.maxit = isis_rounds, lambda = lambda_gic, intercept = FALSE,
       nonnegative = FALSE, start = NULL, normalize = "auto",
-      solver = "eigen", method = 1L, parallelize = FALSE, nthreads = 1L)
+      solver = "eigen", method = 1L,ncores=1L, nthreads = 1L)
   )[["elapsed"]]
   screening[[name]] <- fits_high_dimensional[[label]]$screening
 }

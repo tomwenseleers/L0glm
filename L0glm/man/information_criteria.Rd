@@ -4,7 +4,7 @@
 \alias{information_criteria}
 \title{Information-criterion presets for sparse GLMs}
 \description{
-Both \code{\link[=l0glmFit]{l0glmFit()}} and \code{\link[=l0nnPois]{l0nnPois()}} accept a numeric \code{lambda} or a
+\code{\link[=l0glmFit]{l0glmFit()}} accepts a numeric \code{lambda} or a
 case-insensitive criterion name: \code{"aic"}, \code{"bic"}, \code{"gic"},
 \code{"ebic"}, or \code{"mbic"}.
 For example, \code{lambda = "GIC"} and \code{lambda = "gic"} are equivalent.
@@ -115,11 +115,9 @@ X <- matrix(runif(120), nrow = 40, ncol = 3)
 y <- rpois(40, 1 + 3 * X[, 1])
 fit <- l0glmFit(X, y, family = poisson(identity),
   nonnegative = TRUE, intercept = TRUE, lambda = "GIC",
-  parallelize = FALSE)
-fast <- l0nnPois(X, y, intercept = TRUE, lambda = "gic",
-  parallelize = FALSE)
-# Both presets use p = 3 selectable predictors, excluding the intercept.
-c(fit$init.lambda, fast$init.lambda, log(3) * log(log(40)))
+  ncores=1L)
+# The preset uses p = 3 selectable predictors, excluding the intercept.
+c(fit$init.lambda, presetLambda("GIC", p=3, n=40))
 
 }
 \references{
@@ -158,5 +156,5 @@ regularization. \emph{PLOS ONE}, 11, e0148620.
 \doi{10.1371/journal.pone.0148620}.
 }
 \seealso{
-\code{\link[=presetLambda]{presetLambda()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0nnPois]{l0nnPois()}}, \code{\link[=l0glmTune]{l0glmTune()}}
+\code{\link[=presetLambda]{presetLambda()}}, \code{\link[=l0glmFit]{l0glmFit()}}, \code{\link[=l0glmTune]{l0glmTune()}}
 }

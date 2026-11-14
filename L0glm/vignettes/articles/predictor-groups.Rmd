@@ -53,7 +53,7 @@ use `screen='none'` when its dimensions would otherwise activate automatic ISIS.
 
 Recognized scalar GLMs run predictor-group IRLS in C++, with the same group
 penalties, step halving, dispersion updates and convergence checks. Multiple
-outcomes can use OpenMP channel workers through `parallelize=TRUE, ncores=4`.
+outcomes use OpenMP channel threads when `ncores>1`, for example `ncores=4`.
 BLAS uses one thread within those parallel passes, and the caller's thread
 settings are restored. Custom and special-family adapters and validation
 checkpoints use the structured R driver.

@@ -760,8 +760,9 @@ degrees of freedom. This preserves the full-data cut criterion.
 
 ## Appendix: mathematical pseudocode {#algorithm-appendix}
 
-The following algorithms describe the computations used by `l0glmFit()` and
-`l0nnPois()`. They share preprocessing, ridge solves and stopping routines.
+The following algorithms describe the computations used by `l0glmFit()`,
+including its automatically selected Poisson identity specialization. They
+share preprocessing, ridge solves and stopping routines.
 Here \(C\) denotes the number of multinomial categories, \(m\) the number of
 ordinary response channels, and \(q\) the number of design columns after adding
 any intercept. The selectable predictor count is \(p\).
@@ -830,7 +831,7 @@ With `controlSolverGen("eigen", method, nonnegative.polish=TRUE)`, an infeasible
 nonnegative Eigen proposal can instead receive a constrained polish. This
 option is off by default and reuses an existing predictor Gram matrix only;
 rectangular and Woodbury paths skip it. LLT, LDLT and other methods solving
-an already formed Gram system use the same correction, as does `l0nnPois()`.
+an already formed Gram system use the same correction, as does the internal Poisson identity backend.
 
 For fixed adaptive penalties, let \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and
 \(q(b)=b^TGb/2-h^Tb\). Start from the clipped proposal. On each free set \(F\),
@@ -887,8 +888,9 @@ Unless supplied explicitly, the main iteration controls are `maxit=25`,
 using the selected information criterion. For GIC,
 \(\lambda=\log(p)\log\log(n_{\rm IC})\): ordinary GLMs use the number of rows,
 NB and multinomial use the number of positive-weight rows, and Cox uses the
-weighted number of events. The function defaults are `lambda=1` for
-`l0glmFit()` and `lambda="gic"` for `l0nnPois()`.
+weighted number of events. The default is `lambda=1`, with GIC used for
+screened fits and BIC for eligible wide multitask Gaussian fits when the
+penalty is omitted.
 
 ### A.2. Ordinary-family initialization and dispersion {#appendix-initialization}
 
@@ -969,7 +971,7 @@ unit intercept, compute each slope conditional on that intercept. With
 \((r_j-t_jr_0/d_0)/(d_j-t_j^2/d_0)\).
 For Gaussian models multiply the whole seed by
 \(\sum_iW_i^0z_i^0(Xb^0)_i/\sum_iW_i^0(Xb^0)_i^2\), taking zero when its
-denominator vanishes. Clip to the bounds. `l0nnPois()` uses the Poisson
+denominator vanishes. Clip to the bounds. the internal Poisson identity backend uses the Poisson
 identity-link specialization of these diagonal formulas.
 
 Supplied coefficient starts replace this coefficient-seeding calculation.
@@ -1161,7 +1163,7 @@ and, when mandatory terms exist, also the prediction-change ratio
 
 Take the larger change. For a Gaussian identity-link dense direct solve,
 the weighted Gram matrix is cached while the active support shrinks.
-`l0nnPois()` specializes Algorithm 1 to nonnegative Poisson identity-link
+the internal Poisson identity backend specializes Algorithm 1 to nonnegative Poisson identity-link
 fitting: \(\phi=1\), \(W_i=a_i/\mu_i\), \(z_i=y_i-o_i\), with Eigen LLT,
 Woodbury where appropriate and OpenMP across channels.
 

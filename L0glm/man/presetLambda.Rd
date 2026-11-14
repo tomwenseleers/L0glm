@@ -28,7 +28,7 @@ A numeric scalar containing the penalty per parameter.
 \description{
 Return the numeric penalty associated with an information criterion, for
 inspection or use as the \code{lambda} argument of \code{\link{l0glmFit}}
-or \code{\link{l0nnPois}}.
+or \code{\link{l0glmFit}}.
 }
 \details{
 The returned value is \eqn{\lambda} on the \eqn{-2\ell + \lambda d} scale,
@@ -53,6 +53,6 @@ vapply(c("aic", "bic", "gic", "ebic", "mbic"), presetLambda,
 presetLambda("ebic", p = 10000, n = 1000, gamma_ebic = 1)
 }
 \seealso{
-\code{\link{l0glmFit}}, \code{\link{l0nnPois}},
+\code{\link{l0glmFit}},
   \code{\link{l0glmTune}}, \link{information_criteria}
 }

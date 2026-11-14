@@ -65,7 +65,7 @@ test_that('bigGlm recovers Gaussian PSF coefficients in dense and sparse storage
     for(sparse in c(TRUE,FALSE)) {
       X <- if(sparse)d$X else as.matrix(d$X)
       fit <- l0glmFit(X,d$y,start=start,lambda=lambda,family=gaussian(),
-        nonnegative=TRUE,solver='bigGlm',openmp=FALSE,parallelize=FALSE,
+        nonnegative=TRUE,solver='bigGlm',control.solver=utils::modifyList(list(),list(.native=FALSE)),ncores=1L,
         local.search=FALSE,maxit=25L,tol=1e-10,thresh=1e-5)
       met <- l0glmMetrics(fit,beta_true=d$beta_true)
       expect_gt(met$R2_coefs,.997)
