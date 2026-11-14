@@ -139,6 +139,18 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   Finite-tolerance solutions can change the subsequent adaptive ridge
   selection path.
 
+  For \code{bigGlm}, tall and square working designs also receive a
+  constrained accuracy polish. Cholesky solves update the free coefficients;
+  steps stop at the first bound, and violated bound gradients release
+  coefficients for another solve. Diagonal equilibration preserves the
+  quadratic objective and bounds. The polished result must satisfy a fresh
+  relative projected-gradient check of \code{1e-10} and must not increase
+  the original augmented least-squares objective. Otherwise the coordinate
+  solution is retained. This avoids coefficient errors when a large null
+  deviance makes coordinate-change stopping too permissive. Wide designs
+  retain the coordinate-descent route without allocating an additional
+  predictor-by-predictor Gram matrix.
+
   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
   observation-space system of dimension \code{n}, rather than a predictor-space
   system of dimension \code{p}. The requested Eigen method is retained.

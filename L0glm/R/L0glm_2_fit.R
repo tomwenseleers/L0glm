@@ -316,7 +316,8 @@
 #' @param solver Solver used for the ridge regression step in the IRLS algorithm
 #'   (see details). It should be one of \code{"osqp"} (osqp quadratic
 #'   programming solver), \code{"bigGlm"} (using \code{\link[glmnet]{bigGlm}}
-#'   coordinate descent; alias \code{"glmnet"}) or \code{"eigen"} (one
+#'   coordinate descent with a constrained Cholesky accuracy polish for tall
+#'   and square working designs; alias \code{"glmnet"}) or \code{"eigen"} (one
 #'   of the \code{RcppEigen Eigen} solvers).
 #'   \code{"osqp"} and \code{"bigGlm"} support nonnegativity constraints
 #'   and scale well to larger problems, with especially \code{"bigGlm"} being
@@ -325,10 +326,9 @@
 #'   This works well in practice when the true active effects are positive and
 #'   regularization is well chosen, for example \code{lambda="gic"}:
 #'   ridge shrinkage stabilizes the updates and often keeps those effects
-#'   positive. In the package's deconvolution solver benchmarks, Eigen
-#'   Cholesky LLT generally gives better support recovery and coefficient
-#'   accuracy than the formally constrained alternatives, together with much
-#'   faster fits. See the
+#'   positive. Eigen Cholesky LLT is particularly fast; the formally constrained
+#'   alternatives can improve coefficient accuracy in highly correlated designs.
+#'   See the
 #'   \href{https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv}{measured solver comparisons}.
 #'   Use \code{method=1L} for Eigen Cholesky LLT.
 #' @param method When \code{solver="eigen"}, method used for the eigen solver

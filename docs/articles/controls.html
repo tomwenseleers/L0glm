@@ -131,10 +131,13 @@ positive and the regularization level is well chosen, for example
 often keeps genuine active effects positive. OSQP quadratic programming
 and glmnet/<code>bigGlm</code> coordinate descent also provide formally
 constrained ridge solves. In the package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
-solver benchmarks</a>, Eigen Cholesky LLT generally gives better support
-recovery and coefficient accuracy than these alternatives, together with
-much faster fits. The native <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend specializes
-in nonnegative identity-link Poisson models.</p>
+solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
+formal constraints can improve coefficient accuracy for highly
+correlated peaks. Tall and square <code>bigGlm</code> working systems
+use a constrained Cholesky polish, with a fresh KKT residual and an
+objective check; see <a href="../reference/lmRidge.html"><code>lmRidge()</code></a>. The native
+<code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend specializes in nonnegative identity-link
+Poisson models.</p>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>

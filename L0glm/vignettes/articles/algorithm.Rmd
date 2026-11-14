@@ -823,8 +823,18 @@ effects and well-chosen regularization, such as `lambda="gic"`, ridge shrinkage
 often keeps genuine active effects positive, and Eigen's simple clamping works
 very well. In the package's
 [deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
-Eigen Cholesky LLT generally gives better support recovery and coefficient
-accuracy than the formally constrained alternatives, with much faster fitting.
+Eigen Cholesky LLT is particularly fast, while formal constraints can improve
+coefficient accuracy for highly correlated peaks.
+
+For tall and square working designs, `bigGlm` polishes its coordinate-descent
+solution using Cholesky solves on the free coefficient block. Each step stops
+at the first bound; a bound coefficient is released if its gradient violates
+the corresponding KKT condition. Diagonal equilibration improves numerical
+scaling. A fresh relative projected-gradient residual must be at most
+\(10^{-10}\), and the augmented least-squares objective must not increase.
+Wide designs retain coordinate descent without an additional predictor-space
+Gram allocation. These checks concern the current ridge subproblem; its
+adaptive penalties remain fixed during the polish.
 
 Infinite diagonals in \(D\) remove entries from the solve; mandatory terms have diagonal
 zero. Free nuisance terms can be profiled by a Schur complement. For a wide

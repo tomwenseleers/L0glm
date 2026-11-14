@@ -94,6 +94,10 @@
   both R and native drivers.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
+* Tall and square `bigGlm` ridge steps receive a diagonally equilibrated
+  constrained Cholesky polish, checked against the box KKT conditions and the
+  augmented least-squares objective. Wide designs retain coordinate descent
+  without an additional predictor-space Gram allocation.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening
   (ISIS), with compiled OpenMP screening. Automatic ISIS uses
   `p_eligible > 10*n`, excluding mandatory predictors and rows locked out by

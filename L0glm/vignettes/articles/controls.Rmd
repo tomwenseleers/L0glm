@@ -46,8 +46,10 @@ shrinkage stabilizes the updates and often keeps genuine active effects positive
 OSQP quadratic programming and glmnet/`bigGlm` coordinate descent also provide
 formally constrained ridge solves. In the package's
 [deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
-Eigen Cholesky LLT generally gives better support recovery and coefficient
-accuracy than these alternatives, together with much faster fits.
+Eigen Cholesky LLT is particularly fast, while formal constraints can improve
+coefficient accuracy for highly correlated peaks. Tall and square `bigGlm`
+working systems use a constrained Cholesky polish, with a fresh KKT residual
+and an objective check; see [`lmRidge()`](../reference/lmRidge.html).
 The native `l0nnPois()` backend specializes in nonnegative identity-link Poisson models.
 
 ## Starts and normalization

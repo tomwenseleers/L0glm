@@ -611,6 +611,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// solve_bounded_gram
+Rcpp::List solve_bounded_gram(SEXP G, Eigen::VectorXd h, Eigen::VectorXd x, Eigen::VectorXd lower, Eigen::VectorXd upper);
+RcppExport SEXP _L0glm_solve_bounded_gram(SEXP GSEXP, SEXP hSEXP, SEXP xSEXP, SEXP lowerSEXP, SEXP upperSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type G(GSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type h(hSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type x(xSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type lower(lowerSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type upper(upperSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_bounded_gram(G, h, x, lower, upper));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solve_sparse_chol
 Rcpp::List solve_sparse_chol(const Eigen::MappedSparseMatrix<double>& A, const Eigen::Map<Eigen::MatrixXd> b, unsigned int pivot, unsigned int ordering);
 RcppExport SEXP _L0glm_solve_sparse_chol(SEXP ASEXP, SEXP bSEXP, SEXP pivotSEXP, SEXP orderingSEXP) {
@@ -772,6 +787,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},
     {"_L0glm_solve_sparse_SVD", (DL_FUNC) &_L0glm_solve_sparse_SVD, 5},
+    {"_L0glm_solve_bounded_gram", (DL_FUNC) &_L0glm_solve_bounded_gram, 5},
     {"_L0glm_solve_sparse_chol", (DL_FUNC) &_L0glm_solve_sparse_chol, 4},
     {"_L0glm_solve_dense_chol", (DL_FUNC) &_L0glm_solve_dense_chol, 3},
     {"_L0glm_solve_sparse_LSCG", (DL_FUNC) &_L0glm_solve_sparse_LSCG, 6},

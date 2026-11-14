@@ -33,9 +33,10 @@ incomplete Cholesky preconditioning by default, \code{5L}=column-pivoted QR, and
 
 \item{maxit}{The maximum number of iterations.}
 
-\item{standardize}{XXX}
+\item{standardize}{Whether \code{bigGlm} standardizes columns of the augmented working design.
+Returned coefficients retain the original scale.}
 
-\item{reltol}{XXX}
+\item{reltol}{Relative convergence tolerance for OSQP.}
 
 \item{tol}{Relative convergence tolerance for Eigen iterative solvers. For
 CG the default is \code{1e-10}; LSCG defaults to \code{1e-12}. LSCG
@@ -43,7 +44,10 @@ checks the normal-equation residual for every right-hand side by
 recomputing it from the returned coefficients. A solve that does not
 reach the requested accuracy uses the Cholesky LLT fallback.}
 
-\item{abstol}{XXX}
+\item{abstol}{Absolute tolerance for OSQP; coordinate-update stopping threshold for
+\code{bigGlm}. Tall and square \code{bigGlm} working systems also receive
+a Cholesky accuracy polish with a fresh projected-gradient check; see
+\code{\link{lmRidge}}.}
 
 \item{block_size}{Optional block size used by solvers that support blocked updates.}
 

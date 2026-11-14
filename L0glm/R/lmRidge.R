@@ -96,6 +96,18 @@
 #'   Finite-tolerance solutions can change the subsequent adaptive ridge
 #'   selection path.
 #'
+#'   For \code{bigGlm}, tall and square working designs also receive a
+#'   constrained accuracy polish. Cholesky solves update the free coefficients;
+#'   steps stop at the first bound, and violated bound gradients release
+#'   coefficients for another solve. Diagonal equilibration preserves the
+#'   quadratic objective and bounds. The polished result must satisfy a fresh
+#'   relative projected-gradient check of \code{1e-10} and must not increase
+#'   the original augmented least-squares objective. Otherwise the coordinate
+#'   solution is retained. This avoids coefficient errors when a large null
+#'   deviance makes coordinate-change stopping too permissive. Wide designs
+#'   retain the coordinate-descent route without allocating an additional
+#'   predictor-by-predictor Gram matrix.
+#'
 #'   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
 #'   observation-space system of dimension \code{n}, rather than a predictor-space
 #'   system of dimension \code{p}. The requested Eigen method is retained.
@@ -355,7 +367,24 @@ lmridge.glmnet <- function(Xw, yw,
   )
   bigglm_args <- bigglm_args[!vapply(bigglm_args, is.null, logical(1))]
   model <- do.call(glmnet::bigGlm, bigglm_args)
-  coefs <- coef(model)[-1]
+  coefs <- as.numeric(coef(model)[-1])
+
+  # Coordinate updates stop relative to the null deviance. With a large signal
+  # this can leave material errors in the constrained ridge step. For tall or
+  # square designs, polish on the free support and certify the box KKT residual.
+  # Keep wide problems on glmnet's coordinate path.
+  if (ncol(Xw) <= nrow(Xw)) {
+    G <- Matrix::crossprod(Xwaug)
+    G <- if (issparse(Xwaug)) as(as(G, "generalMatrix"), "CsparseMatrix") else as.matrix(G)
+    h <- as.numeric(Matrix::crossprod(Xwaug, ywaug))
+    polished <- solve_bounded_gram(G, h, coefs, as.numeric(lower), as.numeric(upper))
+    if (isTRUE(polished$success)) {
+      before <- sum((as.numeric(Xwaug %*% coefs) - ywaug)^2)
+      after <- sum((as.numeric(Xwaug %*% polished$coefficients) - ywaug)^2)
+      if (is.finite(after) && after <= before + 1e-10 * max(1, before))
+        coefs <- as.numeric(polished$coefficients)
+    }
+  }
 
   # apply box constraints in case coefs would slightly fall outside bounds
   coefs <- clamp(coefs, lower, upper) 

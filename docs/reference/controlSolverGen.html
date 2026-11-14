@@ -101,11 +101,12 @@ incomplete Cholesky preconditioning by default, <code>5L</code>=column-pivoted Q
 
 
 <dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
-<dd><p>XXX</p></dd>
+<dd><p>Whether <code>bigGlm</code> standardizes columns of the augmented working design.
+Returned coefficients retain the original scale.</p></dd>
 
 
 <dt id="arg-reltol">reltol<a class="anchor" aria-label="anchor" href="#arg-reltol"></a></dt>
-<dd><p>XXX</p></dd>
+<dd><p>Relative convergence tolerance for OSQP.</p></dd>
 
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
@@ -117,7 +118,10 @@ reach the requested accuracy uses the Cholesky LLT fallback.</p></dd>
 
 
 <dt id="arg-abstol">abstol<a class="anchor" aria-label="anchor" href="#arg-abstol"></a></dt>
-<dd><p>XXX</p></dd>
+<dd><p>Absolute tolerance for OSQP; coordinate-update stopping threshold for
+<code>bigGlm</code>. Tall and square <code>bigGlm</code> working systems also receive
+a Cholesky accuracy polish with a fresh projected-gradient check; see
+<code><a href="lmRidge.html">lmRidge</a></code>.</p></dd>
 
 
 <dt id="arg-block-size">block_size<a class="anchor" aria-label="anchor" href="#arg-block-size"></a></dt>

@@ -18,9 +18,10 @@
 #' @param maxit
 #' The maximum number of iterations.
 #' @param standardize
-#' XXX
+#' Whether \code{bigGlm} standardizes columns of the augmented working design.
+#' Returned coefficients retain the original scale.
 #' @param reltol
-#' XXX
+#' Relative convergence tolerance for OSQP.
 #' @param tol
 #' Relative convergence tolerance for Eigen iterative solvers. For
 #' CG the default is \code{1e-10}; LSCG defaults to \code{1e-12}. LSCG
@@ -28,7 +29,10 @@
 #' recomputing it from the returned coefficients. A solve that does not
 #' reach the requested accuracy uses the Cholesky LLT fallback.
 #' @param abstol
-#' XXX
+#' Absolute tolerance for OSQP; coordinate-update stopping threshold for
+#' \code{bigGlm}. Tall and square \code{bigGlm} working systems also receive
+#' a Cholesky accuracy polish with a fresh projected-gradient check; see
+#' \code{\link{lmRidge}}.
 #' @param block_size
 #' Optional block size used by solvers that support blocked updates.
 #' @param precond
