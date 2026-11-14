@@ -140,6 +140,19 @@ Cholesky polish, with a fresh KKT residual and an objective check; see
 <a href="../reference/lmRidge.html"><code>lmRidge()</code></a>. The
 native <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend specializes in nonnegative
 identity-link Poisson models.</p>
+<p>An optional constrained polish is also available for Eigen:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">control</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/controlSolverGen.html">controlSolverGen</a></span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>               lambda<span class="op">=</span><span class="st">"gic"</span>, control.solver<span class="op">=</span><span class="va">control</span><span class="op">)</span></span></code></pre></div>
+<p>This reuses an existing predictor Gram matrix for batched Cholesky
+solves on the free coefficients. It supports LLT, LDLT and other methods
+operating on an already formed Gram system, and the native
+<code><a href="../reference/l0nnPois.html">l0nnPois()</a></code> backend. Rectangular and Woodbury paths skip the
+correction. A fresh KKT check and a nonincreasing ridge objective are
+required; otherwise the clipped proposal is retained. The option is off
+by default: it can improve correlated peak recovery, but also changes
+the adaptive selection trajectory and adds computation.</p>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>
@@ -196,7 +209,7 @@ shape uses <code>mgcv::nb(theta=...)</code>; see its <a href="negative-binomial.
 useful when prediction favours a point before the final sparse-selection
 iteration. Coefficient updates continue to use training observations
 only.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>n<span class="op">=</span><span class="fl">300L</span>, p<span class="op">=</span><span class="fl">300L</span>, n_nonzero<span class="op">=</span><span class="fl">20L</span>, m<span class="op">=</span><span class="fl">4L</span>, seed<span class="op">=</span><span class="fl">7L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="fl">300L</span>, <span class="fl">4L</span><span class="op">)</span></span>

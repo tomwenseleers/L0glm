@@ -10,3 +10,8 @@ controlSolverGen("eigen", method=3L, precond=1L)
 # matrix for a rectangular solve.
 controlSolverGen("eigen", method=4L)
 controlSolverGen("eigen", method=4L, precond=1L)
+
+# Optional constrained polish of nonnegative working ridge steps. This reuses
+# an existing predictor Gram matrix and is off by default.
+controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
+controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)

@@ -74,6 +74,15 @@
 #'   5=column-pivoted QR, 6=BDCSVD for dense
 #'   systems or Jacobi SVD for sparse systems).
 #'
+#'   Eigen normally clips proposals to the coefficient bounds. Set
+#'   \code{controlSolverGen("eigen", method, nonnegative.polish=TRUE)} to
+#'   polish infeasible nonnegative proposals using batched constrained Cholesky
+#'   solves. This reuses a predictor Gram matrix already formed by the selected
+#'   method, including LLT and LDLT; rectangular and Woodbury routes skip the
+#'   correction. The default is \code{FALSE}. The polish preserves prior means,
+#'   scaling and bounds and must pass a fresh KKT and quadratic-objective check.
+#'   See \code{\link{controlSolverGen}} for details.
+#'
 #'   LSCG defaults to incomplete Cholesky of the working normal matrix, with
 #'   least-squares diagonal preconditioning available through
 #'   \code{controlSolverGen("eigen", 4L, precond=1L)}. Already formed Gram and
@@ -519,11 +528,12 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   # With no penalty this is the minimum-norm observation-space least-squares solve.
   dual <- p > n && all(lambdas >= 0) &&
     (all(lambdas == 0) || sum(lambdas == 0) <= n)
+  gram_available <- !dual
   if (!is.null(cached)) {
     A <- cached$xx
     if(is.matrix(A))diag(A) <- diag(A)+lambdas else A <- A+Matrix::Diagonal(x=lambdas)
-    coefs <- eigen_ridge_solve(A,
-      cached$xy + lambdas * prior.mean, start, control.solver, iteration)
+    rhs <- cached$xy + lambdas * prior.mean
+    coefs <- eigen_ridge_solve(A, rhs, start, control.solver, iteration)
   } else if (dual) {
     coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
   } else {
@@ -537,6 +547,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
     # Rectangular QR, SVD and LSCG avoid squaring the condition number.
     rectangular <- isTRUE(control.solver$rowaug) &&
       control.solver$method %in% c("QR", "LSCG", "SVD")
+    gram_available <- !rectangular
     if (!rectangular) {
       if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {
         rhs <- Matrix::crossprod(A, rhs)
@@ -554,12 +565,21 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
     warning(sprintf("eigen %s solver failed in IRLS iteration %s, trying Cholesky LLT solver as fallback.",
                     control.solver$method, iteration), call. = FALSE)
     return(lmridge.eigen(Xw, yw, lambdas, lower, upper, start,
-                        controlSolverGen("eigen", 1L), prior.mean, verbose, iteration))
+                        controlSolverGen("eigen", 1L,
+                          nonnegative.polish = isTRUE(control.solver$nonnegative.polish)),
+                        prior.mean, verbose, iteration))
   }
   if (is.null(coefs)) {
     warning(sprintf("Eigen Cholesky failed in IRLS iteration %s; retaining previous coefficients.",
                     iteration), call. = FALSE)
     coefs <- start
+  }
+  if (isTRUE(control.solver$nonnegative.polish) && gram_available && p <= n &&
+      any(lower >= 0) && any(coefs < lower | coefs > upper)) {
+    G <- if (issparse(A)) as(as(A, "generalMatrix"), "CsparseMatrix") else as.matrix(A)
+    polished <- solve_bounded_gram(G, as.numeric(rhs), coefs,
+      as.numeric(lower), as.numeric(upper), batched = TRUE)
+    if (isTRUE(polished$success)) coefs <- as.numeric(polished$coefficients)
   }
   clamp(coefs, lower, upper)
 }

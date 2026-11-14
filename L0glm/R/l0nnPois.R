@@ -51,6 +51,11 @@
 #'   \code{AMDOrdering}. The default is \code{FALSE}. Integer
 #'   \code{control.solver$ordering} uses \code{1L} for
 #'   natural ordering and \code{0L} meaning AMD ordering.
+#'   Set \code{nonnegative.polish=TRUE} to enable the batched constrained
+#'   Cholesky polish of infeasible ridge proposals. It reuses an existing
+#'   predictor Gram matrix, preserves OpenMP channel parallelism and skips
+#'   Woodbury solves. The default is \code{FALSE}; see
+#'   \code{\link{controlSolverGen}} for the numerical checks.
 #'
 #' @return An object of class \code{L0glm_fit}, with the same main components as [l0glmFit()]:
 #'   `coefficients`, `weights`, `dispersion`, `init.lambda`, `lambdas`,
@@ -186,7 +191,7 @@ l0nnPois <- function(X,
     # Direct calls keep this specialized backend; l0glmFit owns screening.
     args$screen <- "none"
     args$control.solver <- control.solver[intersect(names(control.solver),
-      c("NaturalOrdering", "ordering"))]
+      c("NaturalOrdering", "ordering", "nonnegative.polish"))]
     return(do.call(L0glm_internal_fit, args))
   }
   if (!is.null(nthreads) && verbose) {
@@ -317,13 +322,15 @@ l0nnPois <- function(X,
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
-      natural_ordering, validation,isTRUE(control.solver$.refit.only))
+      natural_ordering, validation,isTRUE(control.solver$.refit.only),
+      isTRUE(control.solver$nonnegative.polish))
   } else {
     fit <- L0nnpois_dense_cpp(
       X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
-      natural_ordering, validation,isTRUE(control.solver$.refit.only))
+      natural_ordering, validation,isTRUE(control.solver$.refit.only),
+      isTRUE(control.solver$nonnegative.polish))
   }
 
   coefficients <- fit$coefficients

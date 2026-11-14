@@ -19,7 +19,8 @@ controlSolverGen(
   NaturalOrdering = NULL,
   threshold = NULL,
   verbose = FALSE,
-  rowaug = NULL
+  rowaug = NULL,
+  nonnegative.polish = FALSE
 )
 }
 \arguments{
@@ -88,6 +89,12 @@ designs, including dense-stored matrices with at least one million entries
 and fewer than 10 percent nonzeros. Explicit \code{TRUE} or \code{FALSE}
 overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
 unchanged. Eligible wide Eigen systems use the Woodbury route instead.}
+
+\item{nonnegative.polish}{Logical, default \code{FALSE}. For Eigen working solves with nonnegative
+coefficients and an existing predictor Gram matrix, optionally replace
+clipping of an infeasible proposal by a batched constrained Cholesky polish.
+This includes LLT, LDLT and other methods solving an already formed Gram
+system. Rectangular least-squares and Woodbury solves skip this correction.}
 }
 \value{
 The function return a list with the required options to solve a linear
@@ -99,6 +106,24 @@ This functions generates a list with all the required parameters for the lmRidge
 solver (\code{controlSolverGen}) & allows fine control over its options.
 }
 \details{
+With \code{nonnegative.polish=TRUE}, the polish solves the current weighted
+ridge quadratic on successive feasible coefficient sets. Bounds, prior means
+and column normalization are retained, including an unrestricted binomial
+intercept. Batched bound updates use Cholesky on the free set; cycling or an
+unsuccessful batch uses a sequential active-set solve. A fresh equilibrated
+box KKT residual must be at most \code{1e-10}, and the quadratic must not
+increase relative to the clipped proposal. An unsuccessful correction keeps
+that proposal. Dense and sparse Gram matrices retain their storage type.
+All native channel work remains compatible with OpenMP.
+
+The option does not form a predictor Gram matrix solely for polishing: it
+reuses one from a tall or square active working design. A feasible
+unconstrained proposal needs no correction.
+Consequently, rectangular QR, SVD and LSCG paths and observation-space
+Woodbury paths keep their usual solves. This optional correction can recover
+peaks lost through clipping in correlated nonnegative designs, but can also
+change the selected support and increase fitting time. It is off by default.
+
 OSQP working systems are diagonally equilibrated, with bounds and starting
 coefficients transformed consistently. Returned coefficients retain their
 original units. Tall and square working designs also receive the same checked
@@ -142,6 +167,11 @@ controlSolverGen("eigen", method=3L, precond=1L)
 # matrix for a rectangular solve.
 controlSolverGen("eigen", method=4L)
 controlSolverGen("eigen", method=4L, precond=1L)
+
+# Optional constrained polish of nonnegative working ridge steps. This reuses
+# an existing predictor Gram matrix and is off by default.
+controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
+controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)
 }
 \seealso{
 \code{\link{l0glmFit}}

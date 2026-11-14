@@ -53,6 +53,22 @@ working systems use a shared constrained Cholesky polish, with a fresh KKT
 residual and an objective check; see [`lmRidge()`](../reference/lmRidge.html).
 The native `l0nnPois()` backend specializes in nonnegative identity-link Poisson models.
 
+An optional constrained polish is also available for Eigen:
+
+```{r nonnegative-polish, eval=FALSE}
+control <- controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
+fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
+               lambda="gic", control.solver=control)
+```
+
+This reuses an existing predictor Gram matrix for batched Cholesky solves on
+the free coefficients. It supports LLT, LDLT and other methods operating on
+an already formed Gram system, and the native `l0nnPois()` backend. Rectangular
+and Woodbury paths skip the correction. A fresh KKT check and a nonincreasing
+ridge objective are required; otherwise the clipped proposal is retained.
+The option is off by default: it can improve correlated peak recovery, but
+also changes the adaptive selection trajectory and adds computation.
+
 ## Starts and normalization
 
 `start=NULL` uses a training-data ridge initializer. Scalar `start=1` initializes

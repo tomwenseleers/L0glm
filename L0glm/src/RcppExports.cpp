@@ -15,8 +15,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // L0nnpois_dense_cpp
-Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only);
-RcppExport SEXP _L0glm_L0nnpois_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP) {
+Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only, bool nonnegative_polish);
+RcppExport SEXP _L0glm_L0nnpois_dense_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP, SEXP nonnegative_polishSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -40,13 +40,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type natural_ordering(natural_orderingSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type validation(validationSEXP);
     Rcpp::traits::input_parameter< bool >::type refit_only(refit_onlySEXP);
-    rcpp_result_gen = Rcpp::wrap(L0nnpois_dense_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only));
+    Rcpp::traits::input_parameter< bool >::type nonnegative_polish(nonnegative_polishSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0nnpois_dense_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish));
     return rcpp_result_gen;
 END_RCPP
 }
 // L0nnpois_sparse_cpp
-Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only);
-RcppExport SEXP _L0glm_L0nnpois_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP) {
+Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X, const Eigen::Map<Eigen::MatrixXd>& y, const Eigen::Map<Eigen::MatrixXd>& weights, const Eigen::Map<Eigen::MatrixXd>& offset, const Eigen::Map<Eigen::MatrixXd>& prior_mean, Rcpp::Nullable<Rcpp::NumericMatrix> start, Rcpp::IntegerVector always_include, double lambda, int normalize, const Eigen::Map<Eigen::VectorXd>& scaling, bool grouped, bool relaxed, int group_maxit, int maxit, double thresh, double tol, int nthreads, bool natural_ordering, Rcpp::Nullable<Rcpp::List> validation, bool refit_only, bool nonnegative_polish);
+RcppExport SEXP _L0glm_L0nnpois_sparse_cpp(SEXP XSEXP, SEXP ySEXP, SEXP weightsSEXP, SEXP offsetSEXP, SEXP prior_meanSEXP, SEXP startSEXP, SEXP always_includeSEXP, SEXP lambdaSEXP, SEXP normalizeSEXP, SEXP scalingSEXP, SEXP groupedSEXP, SEXP relaxedSEXP, SEXP group_maxitSEXP, SEXP maxitSEXP, SEXP threshSEXP, SEXP tolSEXP, SEXP nthreadsSEXP, SEXP natural_orderingSEXP, SEXP validationSEXP, SEXP refit_onlySEXP, SEXP nonnegative_polishSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -70,7 +71,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type natural_ordering(natural_orderingSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type validation(validationSEXP);
     Rcpp::traits::input_parameter< bool >::type refit_only(refit_onlySEXP);
-    rcpp_result_gen = Rcpp::wrap(L0nnpois_sparse_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only));
+    Rcpp::traits::input_parameter< bool >::type nonnegative_polish(nonnegative_polishSEXP);
+    rcpp_result_gen = Rcpp::wrap(L0nnpois_sparse_cpp(X, y, weights, offset, prior_mean, start, always_include, lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit, thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -612,8 +614,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_bounded_gram
-Rcpp::List solve_bounded_gram(SEXP G, Eigen::VectorXd h, Eigen::VectorXd x, Eigen::VectorXd lower, Eigen::VectorXd upper);
-RcppExport SEXP _L0glm_solve_bounded_gram(SEXP GSEXP, SEXP hSEXP, SEXP xSEXP, SEXP lowerSEXP, SEXP upperSEXP) {
+Rcpp::List solve_bounded_gram(SEXP G, Eigen::VectorXd h, Eigen::VectorXd x, Eigen::VectorXd lower, Eigen::VectorXd upper, bool batched);
+RcppExport SEXP _L0glm_solve_bounded_gram(SEXP GSEXP, SEXP hSEXP, SEXP xSEXP, SEXP lowerSEXP, SEXP upperSEXP, SEXP batchedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -622,7 +624,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Eigen::VectorXd >::type x(xSEXP);
     Rcpp::traits::input_parameter< Eigen::VectorXd >::type lower(lowerSEXP);
     Rcpp::traits::input_parameter< Eigen::VectorXd >::type upper(upperSEXP);
-    rcpp_result_gen = Rcpp::wrap(solve_bounded_gram(G, h, x, lower, upper));
+    Rcpp::traits::input_parameter< bool >::type batched(batchedSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_bounded_gram(G, h, x, lower, upper, batched));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -758,8 +761,8 @@ RcppExport SEXP _L0glm_RcppExport_registerCCallable() {
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 20},
-    {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 20},
+    {"_L0glm_L0nnpois_dense_cpp", (DL_FUNC) &_L0glm_L0nnpois_dense_cpp, 21},
+    {"_L0glm_L0nnpois_sparse_cpp", (DL_FUNC) &_L0glm_L0nnpois_sparse_cpp, 21},
     {"_L0glm_boundary_dense_cpp", (DL_FUNC) &_L0glm_boundary_dense_cpp, 8},
     {"_L0glm_boundary_sparse_cpp", (DL_FUNC) &_L0glm_boundary_sparse_cpp, 8},
     {"_L0glm_L0glm_poissondist_cpp", (DL_FUNC) &_L0glm_L0glm_poissondist_cpp, 4},
@@ -787,7 +790,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_dense_QR", (DL_FUNC) &_L0glm_solve_dense_QR, 3},
     {"_L0glm_solve_dense_SVD", (DL_FUNC) &_L0glm_solve_dense_SVD, 5},
     {"_L0glm_solve_sparse_SVD", (DL_FUNC) &_L0glm_solve_sparse_SVD, 5},
-    {"_L0glm_solve_bounded_gram", (DL_FUNC) &_L0glm_solve_bounded_gram, 5},
+    {"_L0glm_solve_bounded_gram", (DL_FUNC) &_L0glm_solve_bounded_gram, 6},
     {"_L0glm_solve_sparse_chol", (DL_FUNC) &_L0glm_solve_sparse_chol, 4},
     {"_L0glm_solve_dense_chol", (DL_FUNC) &_L0glm_solve_dense_chol, 3},
     {"_L0glm_solve_sparse_LSCG", (DL_FUNC) &_L0glm_solve_sparse_LSCG, 6},

@@ -550,7 +550,12 @@ always uses Eigen Cholesky LLT internally, but for sparse matrices
 <code>FALSE</code> to choose Eigen <code>NaturalOrdering</code> or
 <code>AMDOrdering</code>. The default is <code>FALSE</code>. Integer
 <code>control.solver$ordering</code> uses <code>1L</code> for
-natural ordering and <code>0L</code> meaning AMD ordering.</p></dd>
+natural ordering and <code>0L</code> meaning AMD ordering.
+Set <code>nonnegative.polish=TRUE</code> to enable the batched constrained
+Cholesky polish of infeasible ridge proposals. It reuses an existing
+predictor Gram matrix, preserves OpenMP channel parallelism and skips
+Woodbury solves. The default is <code>FALSE</code>; see
+<code><a href="controlSolverGen.html">controlSolverGen</a></code> for the numerical checks.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

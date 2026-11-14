@@ -94,6 +94,12 @@
   both R and native drivers.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
+* `controlSolverGen(..., nonnegative.polish=TRUE)` optionally polishes infeasible
+  nonnegative Eigen ridge proposals using batched constrained Cholesky solves.
+  It reuses existing predictor Gram matrices, including LLT and LDLT paths,
+  supports native OpenMP fits and `l0nnPois`, and is off by default. Rectangular
+  and Woodbury solves retain their usual path. A fresh KKT check and a
+  nonincreasing quadratic objective are required for acceptance.
 * OSQP uses diagonal equilibration and absolute and relative tolerances of
   `1e-9`. Tall and square OSQP and `bigGlm` ridge steps receive a shared
   constrained Cholesky polish, checked against the box KKT conditions and the

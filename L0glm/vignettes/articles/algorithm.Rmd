@@ -826,6 +826,29 @@ very well. In the package's
 Eigen Cholesky LLT is particularly fast, while formal constraints can improve
 coefficient accuracy for highly correlated peaks.
 
+With `controlSolverGen("eigen", method, nonnegative.polish=TRUE)`, an infeasible
+nonnegative Eigen proposal can instead receive a constrained polish. This
+option is off by default and reuses an existing predictor Gram matrix only;
+rectangular and Woodbury paths skip it. LLT, LDLT and other methods solving
+an already formed Gram system use the same correction, as does `l0nnPois()`.
+
+For fixed adaptive penalties, let \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and
+\(q(b)=b^TGb/2-h^Tb\). Start from the clipped proposal. On each free set \(F\),
+solve
+
+\[
+G_{FF}b_F=h_F-G_{FB}b_B,
+\]
+
+where \(B\) contains the bound coefficients. Batch all newly violated bounds;
+once the free solution is feasible, release bound coefficients whose gradients
+have the wrong sign. Cycling or an unsuccessful batch invokes a sequential
+feasible active-set solve from the latest feasible point. Diagonal equilibration
+and a fresh relative box KKT residual of at most \(10^{-10}\) certify the result.
+Accept it only if \(q\) does not increase from the clipped proposal. The check
+concerns this ridge subproblem; subsequent adaptive penalties and support
+selection can follow a different trajectory.
+
 For OSQP, write \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and
 \(S=\operatorname{diag}(\sqrt{G_{jj}})\), using one for a zero diagonal entry.
 The transformed coefficients \(\theta=Sb\) have quadratic matrix

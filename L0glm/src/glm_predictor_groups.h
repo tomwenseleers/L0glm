@@ -76,7 +76,11 @@ inline bool group_cached_ridge(const DenseDesign& X,State& s,const std::vector<i
   success=eigen_coefficients(G,rhs,guess,qr,s,solution);
  }
  answer=s.beta;
- if(success)for(int j=0;j<p;++j)answer[active[j]]=solution(j,0);
+ if(success) {
+  VectorXd fit=solution.col(0);
+  if(control.polish)L0glm::nonnegative_polish_selected(G,VectorXd(rhs.col(0)),fit,active,s.scale,s.lower,s.upper);
+  for(int j=0;j<p;++j)answer[active[j]]=fit[j];
+ }
  else s.solver_failed=true;
  return true;
 }

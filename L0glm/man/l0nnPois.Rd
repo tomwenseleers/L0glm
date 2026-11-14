@@ -395,7 +395,12 @@ always uses Eigen Cholesky LLT internally, but for sparse matrices
 \code{FALSE} to choose Eigen \code{NaturalOrdering} or
 \code{AMDOrdering}. The default is \code{FALSE}. Integer
 \code{control.solver$ordering} uses \code{1L} for
-natural ordering and \code{0L} meaning AMD ordering.}
+natural ordering and \code{0L} meaning AMD ordering.
+Set \code{nonnegative.polish=TRUE} to enable the batched constrained
+Cholesky polish of infeasible ridge proposals. It reuses an existing
+predictor Gram matrix, preserves OpenMP channel parallelism and skips
+Woodbury solves. The default is \code{FALSE}; see
+\code{\link{controlSolverGen}} for the numerical checks.}
 
 \item{verbose}{Logical indicating if the algorithm progression should be
 printed to the console.}

@@ -117,6 +117,15 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   5=column-pivoted QR, 6=BDCSVD for dense
   systems or Jacobi SVD for sparse systems).
 
+  Eigen normally clips proposals to the coefficient bounds. Set
+  \code{controlSolverGen("eigen", method, nonnegative.polish=TRUE)} to
+  polish infeasible nonnegative proposals using batched constrained Cholesky
+  solves. This reuses a predictor Gram matrix already formed by the selected
+  method, including LLT and LDLT; rectangular and Woodbury routes skip the
+  correction. The default is \code{FALSE}. The polish preserves prior means,
+  scaling and bounds and must pass a fresh KKT and quadratic-objective check.
+  See \code{\link{controlSolverGen}} for details.
+
   LSCG defaults to incomplete Cholesky of the working normal matrix, with
   least-squares diagonal preconditioning available through
   \code{controlSolverGen("eigen", 4L, precond=1L)}. Already formed Gram and

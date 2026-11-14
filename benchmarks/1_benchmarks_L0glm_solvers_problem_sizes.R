@@ -24,6 +24,10 @@ blas_threads <- 1L
 timing_repetitions <- 3L # median after one untimed warm fit per condition
 fit_maxit <- 25L
 fit_tol <- 1e-10
+# Optional constrained polish for Eigen paths with an existing predictor Gram.
+# Rectangular LSCG and Woodbury solves bypass this correction.
+# Keep unit starts shared across all solvers when comparing this switch.
+nonnegative_polish <- FALSE
 RhpcBLASctl::blas_set_num_threads(blas_threads)
 
 criterion <- "gic"
@@ -109,7 +113,8 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
     maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,
     openmp = use_openmp, parallelize = FALSE, nthreads = blas_threads,
     solver = solver_backend, method = solver_method,
-    control.solver = L0glm::controlSolverGen(solver_backend, solver_method))
+    control.solver = L0glm::controlSolverGen(solver_backend, solver_method,
+      nonnegative.polish = solver_backend == "eigen" && nonnegative_polish))
 
   timed_fit <- withCallingHandlers(
     tryCatch(
@@ -182,6 +187,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       Timing_clock = "microbenchmark",
       Start = "1",
       Local_search = FALSE,
+      Nonnegative_polish = solver_backend == "eigen" && nonnegative_polish,
       Maxit = fit_maxit,
       Tolerance = fit_tol,
       Iterations = if (is.null(fit)) NA_integer_ else max(fit$convergence$iterations),

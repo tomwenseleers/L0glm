@@ -691,7 +691,11 @@ for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 <code>control.solver$NaturalOrdering</code> selects Eigen natural ordering
 (<code>TRUE</code>) or AMD ordering (<code>FALSE</code>, default). Sparse QR
 defaults to Eigen <code>COLAMDOrdering</code> (<code>ordering=1L</code>);
-<code>ordering=0L</code> uses AMD and <code>ordering=2L</code> uses NaturalOrdering.</p></dd>
+<code>ordering=0L</code> uses AMD and <code>ordering=2L</code> uses NaturalOrdering.
+<code>nonnegative.polish=TRUE</code> enables an optional batched constrained
+Cholesky correction for infeasible nonnegative Eigen proposals, reusing
+an existing predictor Gram matrix. It is off by default and skips
+rectangular and Woodbury solves; see <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

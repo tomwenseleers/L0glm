@@ -13,6 +13,7 @@
 #include <numeric>
 #include <vector>
 #include "ridge_profile.h"
+#include "bounded.h"
 #include "poisson_validation.h"
 #include "boundary.h"
 #include "relaxed_guard.h"
@@ -225,7 +226,7 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
                                   const VectorXd& lambdas,
                                   const VectorXd& prior_mean,
                                   const VectorXd& scaling,
-                                  const VectorXd& start) {
+                                  const VectorXd& start,bool polish) {
   const int n = X.rows();
   const int k = static_cast<int>(active.size());
   // Assemble weighted columns once, then use R's BLAS symmetric crossproduct.
@@ -270,6 +271,8 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
   VectorXd sol = solver.solve(b);
   if (solver.info() != Eigen::Success) return previous;
 
+  if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
+    VectorXd::Constant(k,std::numeric_limits<double>::infinity()),true);
   sol = constrain_vec(sol);
   for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
   return sol;
@@ -284,7 +287,7 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                    const VectorXd& prior_mean,
                                    const VectorXd& scaling,
                                    const VectorXd& start,
-                                   bool natural_ordering) {
+                                   bool natural_ordering,bool polish) {
   const int n = X.rows();
   const int k = static_cast<int>(active.size());
   VectorXd sqrtw(n);
@@ -348,6 +351,8 @@ inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
     if (solver.info() != Eigen::Success) return previous;
   }
 
+  if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
+    VectorXd::Constant(k,std::numeric_limits<double>::infinity()),true);
   sol = constrain_vec(sol);
   for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
   return sol;
@@ -449,6 +454,7 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            double tol,
                            bool natural_ordering,
                            bool hard_threshold,
+                           bool polish,
                            const PoissonValidation* validation);
 
 template <>
@@ -469,6 +475,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            double tol,
                                            bool natural_ordering,
                                            bool hard_threshold,
+                           bool polish,
                                            const PoissonValidation* validation) {
   (void) natural_ordering;
   const int n = X.rows();
@@ -548,7 +555,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
 
     VectorXd beta_sub = solve_ridge_dense(X, z, weights, vars, active, lambdas,
                                           prior_mean, scaling,
-                                          start_active);
+                                          start_active,polish);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
     }
@@ -614,6 +621,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     double tol,
     bool natural_ordering,
     bool hard_threshold,
+                           bool polish,
                                            const PoissonValidation* validation) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
@@ -692,7 +700,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
     VectorXd beta_sub = solve_ridge_sparse(X, z, weights, vars, active, lambdas,
                                            prior_mean, scaling,
-                                           start_active, natural_ordering);
+                                           start_active, natural_ordering,polish);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
     }
@@ -759,7 +767,7 @@ Rcpp::List fit_all_impl(const Design& X,
                         int nthreads,
                         bool natural_ordering,
                         Rcpp::Nullable<Rcpp::List> validation_r,
-                        bool refit_only) {
+                        bool refit_only,bool polish) {
   const int n = X.rows();
   const int p = X.cols();
   const int m = Ymap.cols();
@@ -858,7 +866,7 @@ Rcpp::List fit_all_impl(const Design& X,
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, scaling, maxit,
-        thresh, tol, natural_ordering, hard_threshold, validation);
+        thresh, tol, natural_ordering, hard_threshold, polish, validation);
     }
 
     coef.setZero();
@@ -1020,11 +1028,11 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               int nthreads,
                               bool natural_ordering,
                               Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
-                              bool refit_only = false) {
+                              bool refit_only = false, bool nonnegative_polish = false) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation, refit_only);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish);
 }
 
 // [[Rcpp::export]]
@@ -1047,9 +1055,9 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                int nthreads,
                                bool natural_ordering,
                                Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
-                               bool refit_only = false) {
+                               bool refit_only = false, bool nonnegative_polish = false) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation, refit_only);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish);
 }

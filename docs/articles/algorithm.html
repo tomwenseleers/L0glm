@@ -965,6 +965,27 @@ very well. In the package’s <a href="https://github.com/tomwenseleers/L0glm/bl
 solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
 formal constraints can improve coefficient accuracy for highly
 correlated peaks.</p>
+<p>With
+<code>controlSolverGen("eigen", method, nonnegative.polish=TRUE)</code>,
+an infeasible nonnegative Eigen proposal can instead receive a
+constrained polish. This option is off by default and reuses an existing
+predictor Gram matrix only; rectangular and Woodbury paths skip it. LLT,
+LDLT and other methods solving an already formed Gram system use the
+same correction, as does <code><a href="../reference/l0nnPois.html">l0nnPois()</a></code>.</p>
+<p>For fixed adaptive penalties, let <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">q(b)=b^TGb/2-h^Tb</span>. Start from the clipped
+proposal. On each free set <span class="math inline">F</span>, solve</p>
+<p><span class="math display">
+G_{FF}b_F=h_F-G_{FB}b_B,
+</span></p>
+<p>where <span class="math inline">B</span> contains the bound
+coefficients. Batch all newly violated bounds; once the free solution is
+feasible, release bound coefficients whose gradients have the wrong
+sign. Cycling or an unsuccessful batch invokes a sequential feasible
+active-set solve from the latest feasible point. Diagonal equilibration
+and a fresh relative box KKT residual of at most <span class="math inline">10^{-10}</span> certify the result. Accept it only
+if <span class="math inline">q</span> does not increase from the clipped
+proposal. The check concerns this ridge subproblem; subsequent adaptive
+penalties and support selection can follow a different trajectory.</p>
 <p>For OSQP, write <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">S=\operatorname{diag}(\sqrt{G_{jj}})</span>, using
 one for a zero diagonal entry. The transformed coefficients <span class="math inline">\theta=Sb</span> have quadratic matrix <span class="math inline">S^{-1}GS^{-1}</span>, linear term <span class="math inline">-S^{-1}h</span> and bounds <span class="math inline">S\ell\le\theta\le Su</span>. This diagonal
 equilibration preserves the objective and returns coefficients in their

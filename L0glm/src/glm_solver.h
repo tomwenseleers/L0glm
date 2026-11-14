@@ -6,7 +6,7 @@ struct SolverControl {
   int method=0, maxit=0;
   unsigned int pivot=0, ordering=0, precond=0, svd=0, sparse_svd=1;
   double tol=0, threshold=0;
-  bool rowaug=false;
+  bool rowaug=false,polish=false;
   SEXP bridge=R_NilValue;
   SolverControl()=default;
   template<class T> T option(List x,const char* name,T fallback) {
@@ -19,7 +19,7 @@ struct SolverControl {
     precond=option<unsigned int>(x,"precond",0);svd=option<unsigned int>(x,"svd",0);
     sparse_svd=option<unsigned int>(x,"sparse.svd",1);maxit=option<int>(x,"maxit",0);
     tol=option<double>(x,"tol",0);threshold=option<double>(x,"threshold",0);
-    rowaug=option<bool>(x,"rowaug",false);
+    rowaug=option<bool>(x,"rowaug",false);polish=option<bool>(x,"nonnegative.polish",false);
   }
   bool external() const {return bridge!=R_NilValue;}
 };
@@ -96,12 +96,15 @@ template<class Matrix> bool selected_dual(const Matrix& A,const VectorXd& respon
 }
 template<class Matrix> bool primal_ridge(const Matrix& A,const VectorXd& response,
   const VectorXd& penalty,const VectorXd& center,const VectorXd& start,
-  const SolverControl& control,State& state,VectorXd& fit) {
+  const SolverControl& control,State& state,VectorXd& fit,
+  const VectorXd& lower,const VectorXd& upper,bool polish_eligible) {
   Matrix G=sym_gram(A);add_diagonal(G,penalty);
   MatrixXd rhs=right_product(A,MatrixXd(response));rhs.col(0)+=penalty.cwiseProduct(center);
   MatrixXd solution;
   if(!eigen_coefficients(G,rhs,MatrixXd(start),control,state,solution))return false;
-  fit=solution.col(0);return true;
+  fit=solution.col(0);
+  if(control.polish&&polish_eligible)fit=L0glm::nonnegative_polish(G,VectorXd(rhs.col(0)),fit,lower,upper);
+  return true;
 }
 template<class Design> VectorXd ridge_selected(const Design& X,State& state,
   const std::vector<int>& active,const SolverControl& control,int iteration) {
@@ -137,11 +140,11 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
     if(control.method>=2) {
       MatrixXd solution;success=eigen_coefficients(augmented,MatrixXd(rhs),MatrixXd(guess),control,state,solution,true);
       if(success)fit=solution.col(0);
-    }else success=primal_ridge(augmented,rhs,VectorXd::Zero(p),VectorXd::Zero(p),guess,control,state,fit);
+    }else success=primal_ridge(augmented,rhs,VectorXd::Zero(p),VectorXd::Zero(p),guess,control,state,fit,lower,upper,p<=n);
   }else if(control.rowaug && control.method>=2) {
     MatrixXd solution;success=eigen_coefficients(A,MatrixXd(response),MatrixXd(guess),control,state,solution,true);
     if(success)fit=solution.col(0);
-  }else success=primal_ridge(A,response,d,center,guess,control,state,fit);
+  }else success=primal_ridge(A,response,d,center,guess,control,state,fit,lower,upper,p<=n);
   VectorXd result=state.beta;
   if(!success){state.solver_failed=true;return result;}
   for(int j=0;j<p;++j)result[active[j]]=fit[j]/state.scale[active[j]];
