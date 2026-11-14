@@ -13,6 +13,7 @@
 #include "ridge_profile.h"
 #include "solver_native.h"
 #include "bounded.h"
+#include "ridge_workspace.h"
 #include <algorithm>
 #include <cmath>
 #ifdef _OPENMP
@@ -123,8 +124,9 @@ VectorXd predict(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& b,co
 VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W,
  const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
  const VectorXd& scale,VectorXd previous,bool& failed,MatrixXd& cacheG,VectorXd& cacheXY,
- VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper) {
- std::vector<int> good;for(int i=0;i<W.size();++i)if(W[i]>0&&std::isfinite(z[i]))good.push_back(i);
+ VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper,L0glm::RidgeWorkspace<MatrixXd>* workspace=nullptr) {
+  L0glm::RidgeWorkspace<MatrixXd> temporary;auto& work=workspace?*workspace:temporary;
+  std::vector<int> good;for(int i=0;i<W.size();++i)if(W[i]>0&&std::isfinite(z[i]))good.push_back(i);
  const int n=good.size(),p=active.size();if(!n){failed=true;return previous;}
   MatrixXd A;VectorXd response(n),root(n),d(p),center(p);
   for(int i=0;i<n;++i){root[i]=std::sqrt(W[good[i]]);response[i]=root[i]*z[good[i]];}
@@ -134,7 +136,8 @@ VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W
       (W-cacheW).cwiseAbs().maxCoeff()>1e-12*std::max(1.,W.cwiseAbs().maxCoeff()))cacheG.resize(0,0);
   const bool use_cache=(cache||fixed)&&p<=n;
   if(!use_cache) {
-   A.resize(n,p);for(int j=0;j<p;++j)for(int i=0;i<n;++i)A(i,j)=X(good[i],active[j])*root[i]/scale[active[j]];
+   VectorXd selected_scale(p);for(int j=0;j<p;++j)selected_scale[j]=scale[active[j]];
+    work.update(X,good,active,W,selected_scale,z);
  }else if(!cacheG.rows()) {
    int full=X.cols();MatrixXd all(n,full);for(int j=0;j<full;++j)for(int i=0;i<n;++i)all(i,j)=X(good[i],j)*root[i]/scale[j];
   cacheG=MatrixXd::Zero(full,full);cacheXY=VectorXd::Zero(full);double one=1,zero=0;int inc=1;
@@ -144,7 +147,7 @@ VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W
  }
  VectorXd fit(p);
  if(p>n) {
-   if(!L0glm::ridge_dual(A,response,d,center,fit,false)){failed=true;return previous;}
+   if(!L0glm::ridge_dual(work.A,response,d,center,fit,false)){failed=true;return previous;}
  }else {
    MatrixXd G=MatrixXd::Zero(p,p);VectorXd rhs(p);double one=1,zero=0;int inc=1;
     if(use_cache) {
@@ -157,8 +160,7 @@ VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W
        rhs[j]=F77_CALL(ddot)(&total,X.col(active[j]).data(),&inc,wz.data(),&inc)/scale[active[j]];
      }
    }else {
-    F77_CALL(dsyrk)("L","T",&p,&n,&one,A.data(),&n,&zero,G.data(),&p FCONE FCONE);
-    F77_CALL(dgemv)("T",&n,&p,&one,A.data(),&n,response.data(),&inc,&zero,rhs.data(),&inc FCONE);
+    G=work.gram(true);rhs=work.rhs(true);
    }
    for(int j=0;j<p;++j){G(j,j)+=d[j];rhs[j]+=d[j]*center[j];}
    Eigen::LLT<MatrixXd> solver(G);if(solver.info()!=Eigen::Success){failed=true;return previous;}
@@ -169,34 +171,36 @@ VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W
  return previous;
 }
 VectorXd ridge(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& z,const VectorXd& W,
- const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
- const VectorXd& scale,VectorXd previous,bool& failed,MatrixXd& cacheG,VectorXd& cacheXY,
- VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper) {
-   auto rows=positive_rows(W);const int n=rows.size(),p=active.size();
+  const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
+  const VectorXd& scale,VectorXd previous,bool& failed,MatrixXd& cacheG,VectorXd& cacheXY,
+  VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper,
+  L0glm::RidgeWorkspace<SparseMatrix<double>>* workspace=nullptr) {
+  L0glm::RidgeWorkspace<SparseMatrix<double>> temporary;auto& work=workspace?*workspace:temporary;
+  auto rows=positive_rows(W);const int n=rows.size(),p=active.size();
   if(!n){failed=true;return previous;}
-  VectorXd response(n),d(p),center(p),inv(p);
-  for(int i=0;i<n;++i)response[i]=std::sqrt(W[rows[i]])*z[rows[i]];
+  VectorXd d(p),center(p),selected_scale(p);
   for(int j=0;j<p;++j) {
-    int a=active[j];inv[j]=1/scale[a];d[j]=penalties[a]/(scale[a]*scale[a]);center[j]=prior[a]*scale[a];
+    int a=active[j];selected_scale[j]=scale[a];d[j]=penalties[a]/(scale[a]*scale[a]);center[j]=prior[a]*scale[a];
   }
-  SparseMatrix<double> A=weighted_design(X,rows,active,W);A=A*inv.asDiagonal();VectorXd fit(p);
-if(p>n) {
-   if(!L0glm::ridge_dual(A,response,d,center,fit,false)){failed=true;return previous;}
- }else {
-   SparseMatrix<double> G=A.transpose()*A;VectorXd rhs=A.transpose()*response;
-   for(int j=0;j<p;++j){G.coeffRef(j,j)+=d[j];rhs[j]+=d[j]*center[j];}
-   G.makeCompressed();Eigen::SimplicialLLT<SparseMatrix<double>> solver;solver.compute(G);
-   if(solver.info()!=Eigen::Success){failed=true;return previous;}
-   fit=solver.solve(rhs);if(solver.info()!=Eigen::Success){failed=true;return previous;}
-   if(polish)L0glm::nonnegative_polish_selected(G,rhs,fit,active,scale,lower,upper);
- }
- for(int j=0;j<p;++j)previous[active[j]]=fit[j]/scale[active[j]];
- return previous;
+  work.update(X,rows,active,W,selected_scale,z,true);VectorXd fit(p);
+  if(p>n) {
+    if(!L0glm::ridge_dual(work.A,work.response,d,center,fit,false)){failed=true;return previous;}
+  }else {
+    SparseMatrix<double> G=work.gram();VectorXd rhs=work.rhs();
+    for(int j=0;j<p;++j){G.coeffRef(j,j)+=d[j];rhs[j]+=d[j]*center[j];}
+    G.makeCompressed();
+    if(!work.solve_sparse(G,rhs,fit)){failed=true;return previous;}
+    if(polish)L0glm::nonnegative_polish_selected(G,rhs,fit,active,scale,lower,upper);
+  }
+  for(int j=0;j<p;++j)previous[active[j]]=fit[j]/scale[active[j]];
+  return previous;
 }
 #include "glm_solver.h"
 template<class Design>
 void fit(const Design& X,State& s,const Family& f,const SolverControl& control) {
  const int n=X.rows(),p=X.cols();VectorXd old=s.beta;
+ using WorkMatrix=std::conditional_t<std::is_same_v<Design,Eigen::Map<MatrixXd>>,MatrixXd,SparseMatrix<double>>;
+ L0glm::RidgeWorkspace<WorkMatrix> workspace;
  s.W=VectorXd::Zero(n);s.z=VectorXd::Zero(n);s.lambdas=VectorXd::Constant(p,R_PosInf);
   s.Wret=VectorXd::Zero(n);s.zret=VectorXd::Zero(n);
  for(int iteration=0;iteration<s.maxit;++iteration) {
@@ -227,7 +231,7 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
     const bool fast_llt=!control.external()&&control.method==0&&control.pivot==0&&control.ordering==0&&
       (!control.rowaug||std::is_same_v<Design,Eigen::MappedSparseMatrix<double>>);
     VectorXd candidate=fast_llt?ridge(X,s.z,s.W,active,s.lambdas,s.prior,s.scale,s.beta,s.solver_failed,
-      s.cacheG,s.cacheXY,s.cacheW,s.cache,s.cache_weights,control.polish,s.lower,s.upper):ridge_selected(X,s,active,control,iteration+1);
+      s.cacheG,s.cacheXY,s.cacheW,s.cache,s.cache_weights,control.polish,s.lower,s.upper,control.cache_selected?&workspace:nullptr):ridge_selected(X,s,active,control,iteration+1,control.cache_selected?&workspace:nullptr);
   for(int j=0;j<p;++j)candidate[j]=std::max(s.lower[j],std::min(s.upper[j],candidate[j]));
   bool support_changed=false;
   for(int j=0;j<p;++j)if(!s.included[j]&&((candidate[j]!=0)!=(old[j]!=0)))support_changed=true;

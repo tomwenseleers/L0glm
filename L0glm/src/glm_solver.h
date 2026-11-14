@@ -6,7 +6,7 @@ struct SolverControl {
   int method=0, maxit=0;
   unsigned int pivot=0, ordering=0, precond=0, svd=0, sparse_svd=1;
   double tol=0, threshold=0;
-  bool rowaug=false,polish=false;
+  bool rowaug=false,polish=false,cache_selected=true;
   SEXP bridge=R_NilValue;
   SolverControl()=default;
   template<class T> T option(List x,const char* name,T fallback) {
@@ -19,6 +19,7 @@ struct SolverControl {
     precond=option<unsigned int>(x,"precond",0);svd=option<unsigned int>(x,"svd",0);
     sparse_svd=option<unsigned int>(x,"sparse.svd",1);maxit=option<int>(x,"maxit",0);
     tol=option<double>(x,"tol",0);threshold=option<double>(x,"threshold",0);
+    cache_selected=option<bool>(x,".cache.selected",true);
     rowaug=option<bool>(x,"rowaug",false);polish=option<bool>(x,"nonnegative.polish",false);
   }
   bool external() const {return bridge!=R_NilValue;}
@@ -97,9 +98,9 @@ template<class Matrix> bool selected_dual(const Matrix& A,const VectorXd& respon
 template<class Matrix> bool primal_ridge(const Matrix& A,const VectorXd& response,
   const VectorXd& penalty,const VectorXd& center,const VectorXd& start,
   const SolverControl& control,State& state,VectorXd& fit,
-  const VectorXd& lower,const VectorXd& upper,bool polish_eligible) {
-  Matrix G=sym_gram(A);add_diagonal(G,penalty);
-  MatrixXd rhs=right_product(A,MatrixXd(response));rhs.col(0)+=penalty.cwiseProduct(center);
+  const VectorXd& lower,const VectorXd& upper,bool polish_eligible,L0glm::RidgeWorkspace<Matrix>* workspace=nullptr) {
+  Matrix G=workspace?workspace->gram():sym_gram(A);add_diagonal(G,penalty);
+  MatrixXd rhs=workspace?MatrixXd(workspace->rhs()):right_product(A,MatrixXd(response));rhs.col(0)+=penalty.cwiseProduct(center);
   MatrixXd solution;
   if(!eigen_coefficients(G,rhs,MatrixXd(start),control,state,solution))return false;
   fit=solution.col(0);
@@ -107,9 +108,11 @@ template<class Matrix> bool primal_ridge(const Matrix& A,const VectorXd& respons
   return true;
 }
 template<class Design> VectorXd ridge_selected(const Design& X,State& state,
-  const std::vector<int>& active,const SolverControl& control,int iteration) {
+  const std::vector<int>& active,const SolverControl& control,int iteration,
+    L0glm::RidgeWorkspace<std::conditional_t<std::is_same_v<Design,Eigen::Map<MatrixXd>>,MatrixXd,SparseMatrix<double>>>* workspace=nullptr) {
+  using Matrix=std::conditional_t<std::is_same_v<Design,Eigen::Map<MatrixXd>>,MatrixXd,SparseMatrix<double>>;
+  L0glm::RidgeWorkspace<Matrix> temporary;auto& work=workspace?*workspace:temporary;
   auto rows=positive_rows(state.W);const int n=rows.size(),p=active.size();
-  auto A=weighted_design(X,rows,active,state.W);
   VectorXd response(n),inv(p),d(p),center(p),guess(p),lower(p),upper(p);
   bool scaled=(state.scale.array()!=1).any();
   for(int i=0;i<n;++i)response[i]=state.z[rows[i]]*std::sqrt(state.W[rows[i]]);
@@ -119,7 +122,9 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
     lower[j]=scaled&&state.lower[a]<=-DBL_MAX?R_NegInf:state.lower[a]*state.scale[a];
     upper[j]=scaled&&state.upper[a]>=DBL_MAX?R_PosInf:state.upper[a]*state.scale[a];
   }
-  A=A*inv.asDiagonal();VectorXd fit(p);bool success=false;
+  VectorXd selected_scale(p);for(int j=0;j<p;++j)selected_scale[j]=state.scale[active[j]];
+  work.update(X,rows,active,state.W,selected_scale,state.z,true);
+  const auto& A=work.A;VectorXd fit(p);bool success=false;
   if(control.external()) {
     // Dependency wrappers allocate R objects; callers execute this branch on
     // the R thread (or in independent R workers), never in OpenMP workers.
@@ -134,7 +139,7 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
     fit=as<VectorXd>(SEXP(answer));success=fit.size()==p&&fit.allFinite();
   }else if(p>n && (d.array()>=0).all() && ((d.array()==0).all() || (d.array()==0).count()<=n)) {
     success=selected_dual(A,response,d,center,control,state,fit);
-  }else if(control.rowaug && (d.array()!=0).any()) {
+  }else if(control.rowaug && control.method>=2 && (d.array()!=0).any()) {
     SparseMatrix<double> augmented=augmented_design(A,d);VectorXd rhs(n+p);rhs.head(n)=response;
     if((center.array()==0).all())rhs.tail(p).setZero();else rhs.tail(p)=d.cwiseSqrt().cwiseProduct(center);
     if(control.method>=2) {
@@ -144,7 +149,7 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
   }else if(control.rowaug && control.method>=2) {
     MatrixXd solution;success=eigen_coefficients(A,MatrixXd(response),MatrixXd(guess),control,state,solution,true);
     if(success)fit=solution.col(0);
-  }else success=primal_ridge(A,response,d,center,guess,control,state,fit,lower,upper,p<=n);
+  }else success=primal_ridge(A,response,d,center,guess,control,state,fit,lower,upper,p<=n,&work);
   VectorXd result=state.beta;
   if(!success){state.solver_failed=true;return result;}
   for(int j=0;j<p;++j)result[active[j]]=fit[j]/state.scale[active[j]];

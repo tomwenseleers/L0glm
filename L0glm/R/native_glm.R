@@ -84,6 +84,22 @@ L0glm_native_solver_bridge <- function(solver,control) {
   }
 }
 
+# Keep the public design unchanged; choose one shared numerical representation.
+L0glm_native_design <- function(X, control, compress=TRUE) {
+  sparse <- inherits(X,'sparseMatrix')
+  automatic <- is.null(control$rowaug)
+  rowaug <- if(automatic)eigen_rowaug_default(X)else isTRUE(control$rowaug)
+  if(!sparse && compress && rowaug && length(X)>=1e6 &&
+      (automatic || Matrix::nnzero(X)<.1*length(X))) {
+    X <- Matrix::Matrix(X,sparse=TRUE)
+    sparse <- TRUE
+  }
+  if(sparse)X <- as(as(X,'generalMatrix'),'CsparseMatrix')else {
+    X <- as.matrix(X);storage.mode(X) <- 'double'
+  }
+  list(X=X,rowaug=rowaug)
+}
+
 L0glm_native_model <- function(frame,descriptor,ncores=1L) {
   take <- function(name)get(name,frame,inherits=TRUE)
   X <- take('X');Y <- take('y');p <- ncol(X);m <- ncol(Y);family <- take('family')
@@ -92,6 +108,12 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
     control$ordering <- as.integer(isTRUE(control$NaturalOrdering))
   control$.native.context <- TRUE
   control$.native.centered <- L0glm_center_working_design(X,take('preprocessing'),take('lower'))
+  if(take('solver')=='eigen') {
+    working <- L0glm_native_design(control$.native.centered$X,control)
+    control$.native.centered$X <- working$X
+    control$rowaug <- working$rowaug
+  }
+
   control$.native.intercept <- intersect(take('always.include.start'),
     intersect(L0glm_unit_intercepts(control$.native.centered$X),which(take('lower')<0)))
   common <- list(X=X,family=family,lambda=take('lambda'),hard_threshold=TRUE,

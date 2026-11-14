@@ -85,6 +85,11 @@
   Serial callbacks and solver bridges use `ncores` as their default BLAS budget;
   explicit `nthreads` overrides it. OpenMP channel fits limit BLAS to one
   thread per channel, restoring the caller's settings on return.
+* Native fits share one prepared working design across outcome channels.
+  Automatic sparse routing compresses large exact-zero dense designs once,
+  retaining the original input/output storage and explicit dense routing.
+  Selected designs, fixed-weight crossproducts and sparse symbolic Cholesky
+  patterns are reused without changing the fitted objective or support rules.
 * CG defaults to incomplete Cholesky preconditioning for dense and sparse
   systems. `controlSolverGen("eigen", 3L, precond=1L)` selects diagonal
   preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.

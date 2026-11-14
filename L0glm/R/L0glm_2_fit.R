@@ -355,6 +355,14 @@
 #'   systems.
 #'
 #'   Defaults to \code{1L} (Cholesky LLT), which is often the fastest.
+#'   Native fits prepare one shared working design. Large dense-stored designs
+#'   with fewer than 10\% nonzero entries use exact-zero compression when
+#'   automatic row-augmentation routing selects sparse work. Explicit
+#'   \code{rowaug=FALSE} retains dense work. Returned \code{X} retains its
+#'   original dense or sparse storage. Selected columns and sparse symbolic
+#'   factorizations are reused while their pattern is unchanged; fixed working
+#'   weights also permit reuse of crossproducts.
+
 #'
 #' @param ncores Positive integer limiting OpenMP outcome-channel threads.
 #'   Defaults to half the detected physical cores, falling back to half the

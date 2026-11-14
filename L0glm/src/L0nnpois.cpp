@@ -13,6 +13,7 @@
 #include <numeric>
 #include <vector>
 #include "ridge_profile.h"
+#include "ridge_workspace.h"
 #include "bounded.h"
 #include "poisson_validation.h"
 #include "boundary.h"
@@ -219,145 +220,58 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
   return beta;
 }
 
-inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X, const VectorXd& z,
-                                  const VectorXd& w,
-                                  const std::vector<int>& vars,
-                                  const std::vector<int>& active,
-                                  const VectorXd& lambdas,
-                                  const VectorXd& prior_mean,
-                                  const VectorXd& scaling,
-                                  const VectorXd& start,bool polish) {
-  const int n = X.rows();
-  const int k = static_cast<int>(active.size());
-  // Assemble weighted columns once, then use R's BLAS symmetric crossproduct.
-  // The former a/i/b loop traversed X across columns in its innermost loop,
-  // producing O(n*k^2) scalar operations with poor cache locality.
-  const VectorXd sqrtw = w.array().max(0.0).sqrt();
-  const VectorXd zw = z.array() * sqrtw.array();
-  MatrixXd Xw(n, k);
-  for (int a = 0; a < k; ++a) {
-    const int pos = active[a];
-    Xw.col(a) = X.col(vars[pos]).array() * sqrtw.array() / scaling[pos];
+inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X,const VectorXd& z,
+  const VectorXd& w,const std::vector<int>& vars,const std::vector<int>& active,
+  const VectorXd& lambdas,const VectorXd& prior_mean,const VectorXd& scaling,
+  const VectorXd& start,bool polish,L0glm::RidgeWorkspace<MatrixXd>& work) {
+  const int k=active.size();std::vector<int> columns(k),rows;
+  for(int i=0;i<X.rows();++i)if(w[i]>0&&std::isfinite(z[i]))rows.push_back(i);
+  VectorXd penalty(k),center(k),scale(k),previous=start;
+  for(int j=0;j<k;++j) {
+    int a=active[j];columns[j]=vars[a];scale[j]=scaling[a];
+    penalty[j]=lambdas[a]/(scale[j]*scale[j]);center[j]=prior_mean[a]*scale[j];previous[j]/=scale[j];
   }
-  VectorXd penalty(k), center(k), previous = start;
-  for (int a = 0; a < k; ++a) {
-    const double scale = scaling[active[a]];
-    penalty[a] = lambdas[active[a]] / (scale * scale);
-    center[a] = prior_mean[active[a]] * scale;
-    previous[a] /= scale;
-  }
-  if (k > n && (penalty.array() >= 0.0).all() && ((penalty.array() == 0.0).all() || (penalty.array() == 0.0).count() <= n)) {
-    VectorXd sol;
-    if (!L0glm::ridge_dual(Xw, zw, penalty, center, sol, false)) return previous;
-    sol = constrain_vec(sol);
-    for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
-    return sol;
-  }
-  MatrixXd A = MatrixXd::Zero(k, k);
-  const double one = 1.0;
-  const double zero = 0.0;
-  // LLT reads the lower triangle only. BLAS computes it without the redundant
-  // upper triangle, and uses the optimized BLAS selected by the R installation.
-  F77_CALL(dsyrk)("L", "T", &k, &n, &one, Xw.data(), &n, &zero,
-                  A.data(), &k FCONE FCONE);
-  VectorXd b = Xw.transpose() * zw;
-  for (int a = 0; a < k; ++a) {
-    A(a, a) += penalty[a];
-    b[a] += penalty[a] * center[a];
-  }
-
-  Eigen::LLT<MatrixXd> solver(A);
-  if (solver.info() != Eigen::Success) return previous;
-  VectorXd sol = solver.solve(b);
-  if (solver.info() != Eigen::Success) return previous;
-
-  if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
-    VectorXd::Constant(k,std::numeric_limits<double>::infinity()),true);
-  sol = constrain_vec(sol);
-  for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
-  return sol;
-}
-
-inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,
-                                   const VectorXd& z,
-                                   const VectorXd& w,
-                                   const std::vector<int>& vars,
-                                   const std::vector<int>& active,
-                                   const VectorXd& lambdas,
-                                   const VectorXd& prior_mean,
-                                   const VectorXd& scaling,
-                                   const VectorXd& start,
-                                   bool natural_ordering,bool polish) {
-  const int n = X.rows();
-  const int k = static_cast<int>(active.size());
-  VectorXd sqrtw(n);
-  VectorXd zw(n);
-  for (int i = 0; i < n; ++i) {
-    sqrtw[i] = (w[i] > 0.0) ? std::sqrt(w[i]) : 0.0;
-    zw[i] = z[i] * sqrtw[i];
-  }
-
-  std::vector<Triplet<double> > triplets;
-  for (int a = 0; a < k; ++a) {
-    const int pos = active[a];
-    const int col = vars[pos];
-    const double scale = scaling[pos];
-    for (Eigen::MappedSparseMatrix<double>::InnerIterator it(X, col); it; ++it) {
-      const int row = it.row();
-      const double sw = sqrtw[row];
-      if (sw == 0.0) continue;
-      triplets.emplace_back(row, a, it.value() * sw / scale);
-    }
-  }
-
-  SparseMatrix<double> Xw(n, k);
-  Xw.setFromTriplets(triplets.begin(), triplets.end());
-  Xw.makeCompressed();
-
-  VectorXd penalty(k), center(k), previous = start;
-  for (int a = 0; a < k; ++a) {
-    const double scale = scaling[active[a]];
-    penalty[a] = lambdas[active[a]] / (scale * scale);
-    center[a] = prior_mean[active[a]] * scale;
-    previous[a] /= scale;
-  }
-  if (k > n && (penalty.array() >= 0.0).all() && ((penalty.array() == 0.0).all() || (penalty.array() == 0.0).count() <= n)) {
-    VectorXd sol;
-    if (!L0glm::ridge_dual(Xw, zw, penalty, center, sol, natural_ordering)) return previous;
-    sol = constrain_vec(sol);
-    for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
-    return sol;
-  }
-  SparseMatrix<double> A = Xw.transpose() * Xw;
-  VectorXd b = Xw.transpose() * zw;
-  for (int a = 0; a < k; ++a) {
-    A.coeffRef(a, a) += penalty[a];
-    b[a] += penalty[a] * center[a];
-  }
-  A.makeCompressed();
-
+  if(!work.update(X,rows,columns,w,scale,z))return previous;
   VectorXd sol;
-  if (natural_ordering) {
-    Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::NaturalOrdering<int> > solver;
-    solver.compute(A);
-    if (solver.info() != Eigen::Success) return previous;
-    sol = solver.solve(b);
-    if (solver.info() != Eigen::Success) return previous;
-  } else {
-    Eigen::SimplicialLLT<SparseMatrix<double>, Lower, Eigen::AMDOrdering<int> > solver;
-    solver.compute(A);
-    if (solver.info() != Eigen::Success) return previous;
-    sol = solver.solve(b);
-    if (solver.info() != Eigen::Success) return previous;
+  if(k>(int)rows.size()&&(penalty.array()>=0).all()&&((penalty.array()==0).all()||(penalty.array()==0).count()<=(int)rows.size())) {
+    if(!L0glm::ridge_dual(work.A,work.response,penalty,center,sol,false))return previous;
+  }else {
+    MatrixXd A=work.gram(true);VectorXd b=work.rhs(true);
+    for(int j=0;j<k;++j){A(j,j)+=penalty[j];b[j]+=penalty[j]*center[j];}
+    
+    Eigen::LLT<MatrixXd> solver(A);if(solver.info()!=Eigen::Success)return previous;
+  sol=solver.solve(b);if(solver.info()!=Eigen::Success)return previous;
+    if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
+      VectorXd::Constant(k,std::numeric_limits<double>::infinity()),true);
   }
-
-  if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
-    VectorXd::Constant(k,std::numeric_limits<double>::infinity()),true);
-  sol = constrain_vec(sol);
-  for (int a = 0; a < k; ++a) sol[a] /= scaling[active[a]];
-  return sol;
+  sol=constrain_vec(sol);for(int j=0;j<k;++j)sol[j]/=scale[j];return sol;
 }
 
+inline VectorXd solve_ridge_sparse(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& z,
+  const VectorXd& w,const std::vector<int>& vars,const std::vector<int>& active,
+  const VectorXd& lambdas,const VectorXd& prior_mean,const VectorXd& scaling,
+  const VectorXd& start,bool natural_ordering,bool polish,L0glm::RidgeWorkspace<SparseMatrix<double>>& work) {
+  const int k=active.size();std::vector<int> columns(k),rows;
+  for(int i=0;i<X.rows();++i)if(w[i]>0&&std::isfinite(z[i]))rows.push_back(i);
+  VectorXd penalty(k),center(k),scale(k),previous=start;
+  for(int j=0;j<k;++j) {
+    int a=active[j];columns[j]=vars[a];scale[j]=scaling[a];
+    penalty[j]=lambdas[a]/(scale[j]*scale[j]);center[j]=prior_mean[a]*scale[j];previous[j]/=scale[j];
+  }
+  if(!work.update(X,rows,columns,w,scale,z))return previous;
+  VectorXd sol;
+  if(k>(int)rows.size()&&(penalty.array()>=0).all()&&((penalty.array()==0).all()||(penalty.array()==0).count()<=(int)rows.size())) {
+    if(!L0glm::ridge_dual(work.A,work.response,penalty,center,sol,natural_ordering))return previous;
+  }else {
+    SparseMatrix<double> A=work.gram(false);VectorXd b=work.rhs(true);
+    for(int j=0;j<k;++j){A.coeffRef(j,j)+=penalty[j];b[j]+=penalty[j]*center[j];}
+    A.makeCompressed();
+    if(!work.solve_sparse(A,b,sol,natural_ordering))return previous;
+    if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),
+      VectorXd::Constant(k,std::numeric_limits<double>::infinity()));
+  }
+  sol=constrain_vec(sol);for(int j=0;j<k;++j)sol[j]/=scale[j];return sol;
+}
 inline double poisson_deviance(const VectorXd& y, const VectorXd& eta,
                                 const VectorXd& weights) {
   const double eps = std::numeric_limits<double>::epsilon();
@@ -525,6 +439,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
   int iterations = 0;
   bool converged = false;
   bool step_failed = false;
+  L0glm::RidgeWorkspace<MatrixXd> workspace;
   PoissonCheckpoint checkpoint;
   if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda);
 
@@ -555,7 +470,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
 
     VectorXd beta_sub = solve_ridge_dense(X, z, weights, vars, active, lambdas,
                                           prior_mean, scaling,
-                                          start_active,polish);
+                                          start_active,polish,workspace);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
     }
@@ -670,6 +585,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
   int iterations = 0;
   bool converged = false;
   bool step_failed = false;
+  L0glm::RidgeWorkspace<SparseMatrix<double>> workspace;
   PoissonCheckpoint checkpoint;
   if (validation) checkpoint.initialize(*validation, vars, always_include, channel, lambda);
 
@@ -700,7 +616,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
 
     VectorXd beta_sub = solve_ridge_sparse(X, z, weights, vars, active, lambdas,
                                            prior_mean, scaling,
-                                           start_active, natural_ordering,polish);
+                                           start_active, natural_ordering,polish,workspace);
     for (int a = 0; a < static_cast<int>(active.size()); ++a) {
       beta[active[a]] = beta_sub[a];
     }
