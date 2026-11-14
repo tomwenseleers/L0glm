@@ -98,6 +98,8 @@
   constrained Cholesky polish, checked against the box KKT conditions and the
   augmented least-squares objective. Wide designs retain coordinate descent
   without an additional predictor-space Gram allocation.
+  Native callbacks to OSQP and `bigGlm` keep their R arguments protected across
+  allocation and garbage collection for dense and sparse working designs.
 * Sure Independence Screening (SIS) and Iterative Sure Independence Screening
   (ISIS), with compiled OpenMP screening. Automatic ISIS uses
   `p_eligible > 10*n`, excluding mandatory predictors and rows locked out by

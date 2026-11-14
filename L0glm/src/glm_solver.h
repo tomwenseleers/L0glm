@@ -121,8 +121,14 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
     // Dependency wrappers allocate R objects; callers execute this branch on
     // the R thread (or in independent R workers), never in OpenMP workers.
     Function solve(control.bridge);
-    fit=as<VectorXd>(solve(wrap(A),wrap(response),wrap(d),wrap(center),wrap(guess),
-      wrap(lower),wrap(upper),iteration));success=fit.size()==p&&fit.allFinite();
+    // Keep every wrapped argument alive while the remaining arguments allocate.
+    // A large design wrap can trigger GC before the callback's call is built.
+    Shield<SEXP> rA(wrap(A)), rResponse(wrap(response)), rD(wrap(d));
+    Shield<SEXP> rCenter(wrap(center)), rGuess(wrap(guess));
+    Shield<SEXP> rLower(wrap(lower)), rUpper(wrap(upper));
+    Shield<SEXP> answer(solve(SEXP(rA),SEXP(rResponse),SEXP(rD),SEXP(rCenter),
+      SEXP(rGuess),SEXP(rLower),SEXP(rUpper),iteration));
+    fit=as<VectorXd>(SEXP(answer));success=fit.size()==p&&fit.allFinite();
   }else if(p>n && (d.array()>=0).all() && ((d.array()==0).all() || (d.array()==0).count()<=n)) {
     success=selected_dual(A,response,d,center,control,state,fit);
   }else if(control.rowaug && (d.array()!=0).any()) {
