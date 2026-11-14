@@ -87,26 +87,29 @@
 #'   factorization is allowed within the iteration limit for incomplete Cholesky.
 #'   If the requested accuracy is not reached, or coefficients are nonfinite,
 #'   a warning is issued and the working system is solved by Cholesky LLT.
-#'   This fallback forms normal equations for rectangular working designs. OSQP uses
-#'   the original coefficient coordinates and reports a warning when its
-#'   requested accuracy is not reached. On a failed OSQP setup or solve,
+#'   This fallback forms normal equations for rectangular working designs. OSQP
+#'   diagonally equilibrates its quadratic system, transforms bounds and starting
+#'   values consistently, and returns coefficients in their original units. Its
+#'   default absolute and relative tolerances are \code{1e-9}. If neither OSQP
+#'   nor the checked polish establishes accuracy, a warning is reported.
+#'   On a failed OSQP setup or solve,
 #'   an infeasible/nonconvex status, or an invalid returned coefficient vector,
 #'   a warning is issued and the previous IRLS coefficients (clipped to the
 #'   bounds) are retained. Such a warning does not establish convergence.
 #'   Finite-tolerance solutions can change the subsequent adaptive ridge
 #'   selection path.
 #'
-#'   For \code{bigGlm}, tall and square working designs also receive a
+#'   For \code{bigGlm} and \code{osqp}, tall and square working designs receive a
 #'   constrained accuracy polish. Cholesky solves update the free coefficients;
 #'   steps stop at the first bound, and violated bound gradients release
 #'   coefficients for another solve. Diagonal equilibration preserves the
 #'   quadratic objective and bounds. The polished result must satisfy a fresh
 #'   relative projected-gradient check of \code{1e-10} and must not increase
-#'   the original augmented least-squares objective. Otherwise the coordinate
+#'   the original augmented least-squares objective. Otherwise the solver's
 #'   solution is retained. This avoids coefficient errors when a large null
 #'   deviance makes coordinate-change stopping too permissive. Wide designs
-#'   retain the coordinate-descent route without allocating an additional
-#'   predictor-by-predictor Gram matrix.
+#'   retain their respective solver route. For \code{bigGlm}, no additional
+#'   predictor-by-predictor Gram matrix is allocated for wide designs.
 #'
 #'   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
 #'   observation-space system of dimension \code{n}, rather than a predictor-space
@@ -232,24 +235,27 @@ lmridge.osqp <- function(Xw,
     ywaug <- yw
   }
   
-  # Keep the historical coefficient coordinates. Additional external
-  # equilibration changes the finite-tolerance OSQP path and L0 selection.
   XtX <- crossprod(Xwaug)
   Xty <- as.numeric(crossprod(Xwaug, ywaug))
+  scale <- sqrt(Matrix::diag(XtX))
+  scale[!is.finite(scale) | scale <= 0] <- 1
+  inverse_scale <- Matrix::Diagonal(x = 1 / scale)
+  equilibrated <- inverse_scale %*% XtX %*% inverse_scale
+  if (is.null(start)) start <- rep(0, ncol(Xw))
+  guess <- start * scale
 
   # Obtain settings and create model
-  settings <- osqp_settings_from_control(control.solver, start)
+  settings <- osqp_settings_from_control(control.solver, guess)
   
-  if(is.null(start)) start <- rep(0, ncol(Xw))
   solution <- tryCatch({
-    model <- osqp::osqp(P = XtX, q = -Xty,
+    model <- osqp::osqp(P = equilibrated, q = -Xty / scale,
                        A = .sparseDiagonal(ncol(Xw)),
-                       l = lower, u = upper, pars = settings)
+                        l = lower * scale, u = upper * scale, pars = settings)
     if (inherits(model, "S7_object")) {
-      model@WarmStart(x = start)
+      model@WarmStart(x = guess)
       model@Solve()
     } else {
-      model$WarmStart(x = start)
+      model$WarmStart(x = guess)
       model$Solve()
     }
   }, error = function(e) e)
@@ -257,7 +263,18 @@ lmridge.osqp <- function(Xw,
     return(osqp_previous_coefficients(conditionMessage(solution), start,
                                        lower, upper, iteration))
   }
-  osqp_coefficients(solution, start, lower, upper, iteration)
+  status <- solution$info$status
+  valid <- is.character(status) && length(status) == 1L && !is.na(status) &&
+    !grepl("infeasible|non[ -]?convex|unsolved|unknown", tolower(status)) &&
+    is.numeric(solution$x) && length(solution$x) == length(start) &&
+    all(is.finite(solution$x))
+  if (valid && ncol(Xw) <= nrow(Xw)) {
+    coefs <- clamp(solution$x / scale, lower, upper)
+    polished <- ridge_box_polish(XtX, Xty, coefs, lower, upper, Xwaug, ywaug)
+    if (polished$success) return(clamp(polished$coefficients, lower, upper))
+  }
+  osqp_coefficients(solution, guess, lower * scale, upper * scale,
+                    iteration) / scale
 }
 
 osqp_previous_coefficients <- function(reason, start, lower, upper, iteration) {
@@ -375,20 +392,25 @@ lmridge.glmnet <- function(Xw, yw,
   # Keep wide problems on glmnet's coordinate path.
   if (ncol(Xw) <= nrow(Xw)) {
     G <- Matrix::crossprod(Xwaug)
-    G <- if (issparse(Xwaug)) as(as(G, "generalMatrix"), "CsparseMatrix") else as.matrix(G)
     h <- as.numeric(Matrix::crossprod(Xwaug, ywaug))
-    polished <- solve_bounded_gram(G, h, coefs, as.numeric(lower), as.numeric(upper))
-    if (isTRUE(polished$success)) {
-      before <- sum((as.numeric(Xwaug %*% coefs) - ywaug)^2)
-      after <- sum((as.numeric(Xwaug %*% polished$coefficients) - ywaug)^2)
-      if (is.finite(after) && after <= before + 1e-10 * max(1, before))
-        coefs <- as.numeric(polished$coefficients)
-    }
+    coefs <- ridge_box_polish(G, h, coefs, lower, upper, Xwaug, ywaug)$coefficients
   }
 
   # apply box constraints in case coefs would slightly fall outside bounds
   coefs <- clamp(coefs, lower, upper) 
   return(coefs)
+}
+
+ridge_box_polish <- function(G, h, coefs, lower, upper, X, y) {
+  G <- if (issparse(G)) as(as(G, "generalMatrix"), "CsparseMatrix") else as.matrix(G)
+  polished <- solve_bounded_gram(G, h, coefs, as.numeric(lower), as.numeric(upper))
+  if (isTRUE(polished$success)) {
+    before <- sum((as.numeric(X %*% coefs) - y)^2)
+    after <- sum((as.numeric(X %*% polished$coefficients) - y)^2)
+    if (is.finite(after) && after <= before + 1e-10 * max(1, before))
+      return(list(coefficients = as.numeric(polished$coefficients), success = TRUE))
+  }
+  list(coefficients = coefs, success = FALSE)
 }
 
 

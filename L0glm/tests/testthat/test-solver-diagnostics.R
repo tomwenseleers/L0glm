@@ -58,8 +58,9 @@ test_that("OSQP preserves bounds and nonzero ridge targets in original coordinat
   }
 })
 
-test_that("OSQP iteration limits are reported instead of silently accepted", {
+test_that("uncertified OSQP iteration limits are reported instead of silently accepted", {
   skip_if_not_installed("osqp")
+  local_mocked_bindings(solve_bounded_gram = function(...) list(success = FALSE))
   set.seed(717)
   X <- matrix(rnorm(80 * 20), 80, 20)
   expect_warning(

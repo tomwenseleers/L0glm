@@ -826,14 +826,22 @@ very well. In the package's
 Eigen Cholesky LLT is particularly fast, while formal constraints can improve
 coefficient accuracy for highly correlated peaks.
 
-For tall and square working designs, `bigGlm` polishes its coordinate-descent
-solution using Cholesky solves on the free coefficient block. Each step stops
+For OSQP, write \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and
+\(S=\operatorname{diag}(\sqrt{G_{jj}})\), using one for a zero diagonal entry.
+The transformed coefficients \(\theta=Sb\) have quadratic matrix
+\(S^{-1}GS^{-1}\), linear term \(-S^{-1}h\) and bounds
+\(S\ell\le\theta\le Su\). This diagonal equilibration preserves the objective
+and returns coefficients in their original units. OSQP's default absolute and
+relative tolerances are \(10^{-9}\).
+
+For tall and square working designs, both `bigGlm` and OSQP polish their
+solutions using Cholesky solves on the free coefficient block. Each step stops
 at the first bound; a bound coefficient is released if its gradient violates
 the corresponding KKT condition. Diagonal equilibration improves numerical
 scaling. A fresh relative projected-gradient residual must be at most
 \(10^{-10}\), and the augmented least-squares objective must not increase.
-Wide designs retain coordinate descent without an additional predictor-space
-Gram allocation. These checks concern the current ridge subproblem; its
+Wide designs retain their respective solver route; `bigGlm` avoids an additional
+predictor-space Gram allocation. These checks concern the current ridge subproblem; its
 adaptive penalties remain fixed during the polish.
 
 Infinite diagonals in \(D\) remove entries from the solve; mandatory terms have diagonal

@@ -21,7 +21,7 @@
 #' Whether \code{bigGlm} standardizes columns of the augmented working design.
 #' Returned coefficients retain the original scale.
 #' @param reltol
-#' Relative convergence tolerance for OSQP.
+#' Relative convergence tolerance for OSQP. The default is \code{1e-9}.
 #' @param tol
 #' Relative convergence tolerance for Eigen iterative solvers. For
 #' CG the default is \code{1e-10}; LSCG defaults to \code{1e-12}. LSCG
@@ -29,7 +29,7 @@
 #' recomputing it from the returned coefficients. A solve that does not
 #' reach the requested accuracy uses the Cholesky LLT fallback.
 #' @param abstol
-#' Absolute tolerance for OSQP; coordinate-update stopping threshold for
+#' Absolute tolerance for OSQP (default \code{1e-9}); coordinate-update stopping threshold for
 #' \code{bigGlm}. Tall and square \code{bigGlm} working systems also receive
 #' a Cholesky accuracy polish with a fresh projected-gradient check; see
 #' \code{\link{lmRidge}}.
@@ -75,6 +75,12 @@
 #' unchanged. Eligible wide Eigen systems use the Woodbury route instead.
 #'
 #' @details
+#' OSQP working systems are diagonally equilibrated, with bounds and starting
+#' coefficients transformed consistently. Returned coefficients retain their
+#' original units. Tall and square working designs also receive the same checked
+#' constrained Cholesky polish as \code{bigGlm}; an unsuccessful polish retains
+#' the OSQP coefficients. See \code{\link{lmRidge}}.
+#'
 #' LSCG retains the working least-squares operator \eqn{A}, including any ridge
 #' rows, and uses incomplete Cholesky of \eqn{A^T A} as its default
 #' preconditioner. Every nonzero normal-matrix entry is retained when constructing
@@ -139,8 +145,8 @@ controlSolverGen <- function(solver,
       if(verbose) print("Control.solver$maxit needs to be a positive integer fot the chosen solver. Value was set to solver default (10000).")
     }
     
-    if(is.null(abstol)) abstol <- 1e-7
-    if(is.null(reltol)) reltol <- 1e-7
+    if(is.null(abstol)) abstol <- 1e-9
+    if(is.null(reltol)) reltol <- 1e-9
     if(is.null(rowaug)) rowaug <- TRUE
     
     l <- list(verbose = verbose, eps_abs = abstol, eps_rel = reltol,

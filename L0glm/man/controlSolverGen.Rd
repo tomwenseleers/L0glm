@@ -36,7 +36,7 @@ incomplete Cholesky preconditioning by default, \code{5L}=column-pivoted QR, and
 \item{standardize}{Whether \code{bigGlm} standardizes columns of the augmented working design.
 Returned coefficients retain the original scale.}
 
-\item{reltol}{Relative convergence tolerance for OSQP.}
+\item{reltol}{Relative convergence tolerance for OSQP. The default is \code{1e-9}.}
 
 \item{tol}{Relative convergence tolerance for Eigen iterative solvers. For
 CG the default is \code{1e-10}; LSCG defaults to \code{1e-12}. LSCG
@@ -44,7 +44,7 @@ checks the normal-equation residual for every right-hand side by
 recomputing it from the returned coefficients. A solve that does not
 reach the requested accuracy uses the Cholesky LLT fallback.}
 
-\item{abstol}{Absolute tolerance for OSQP; coordinate-update stopping threshold for
+\item{abstol}{Absolute tolerance for OSQP (default \code{1e-9}); coordinate-update stopping threshold for
 \code{bigGlm}. Tall and square \code{bigGlm} working systems also receive
 a Cholesky accuracy polish with a fresh projected-gradient check; see
 \code{\link{lmRidge}}.}
@@ -99,6 +99,12 @@ This functions generates a list with all the required parameters for the lmRidge
 solver (\code{controlSolverGen}) & allows fine control over its options.
 }
 \details{
+OSQP working systems are diagonally equilibrated, with bounds and starting
+coefficients transformed consistently. Returned coefficients retain their
+original units. Tall and square working designs also receive the same checked
+constrained Cholesky polish as \code{bigGlm}; an unsuccessful polish retains
+the OSQP coefficients. See \code{\link{lmRidge}}.
+
 LSCG retains the working least-squares operator \eqn{A}, including any ridge
 rows, and uses incomplete Cholesky of \eqn{A^T A} as its default
 preconditioner. Every nonzero normal-matrix entry is retained when constructing

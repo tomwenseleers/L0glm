@@ -106,7 +106,7 @@ Returned coefficients retain the original scale.</p></dd>
 
 
 <dt id="arg-reltol">reltol<a class="anchor" aria-label="anchor" href="#arg-reltol"></a></dt>
-<dd><p>Relative convergence tolerance for OSQP.</p></dd>
+<dd><p>Relative convergence tolerance for OSQP. The default is <code>1e-9</code>.</p></dd>
 
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
@@ -118,7 +118,7 @@ reach the requested accuracy uses the Cholesky LLT fallback.</p></dd>
 
 
 <dt id="arg-abstol">abstol<a class="anchor" aria-label="anchor" href="#arg-abstol"></a></dt>
-<dd><p>Absolute tolerance for OSQP; coordinate-update stopping threshold for
+<dd><p>Absolute tolerance for OSQP (default <code>1e-9</code>); coordinate-update stopping threshold for
 <code>bigGlm</code>. Tall and square <code>bigGlm</code> working systems also receive
 a Cholesky accuracy polish with a fresh projected-gradient check; see
 <code><a href="lmRidge.html">lmRidge</a></code>.</p></dd>
@@ -188,7 +188,12 @@ and method.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>LSCG retains the working least-squares operator \(A\), including any ridge
+    <p>OSQP working systems are diagonally equilibrated, with bounds and starting
+coefficients transformed consistently. Returned coefficients retain their
+original units. Tall and square working designs also receive the same checked
+constrained Cholesky polish as <code>bigGlm</code>; an unsuccessful polish retains
+the OSQP coefficients. See <code><a href="lmRidge.html">lmRidge</a></code>.</p>
+<p>LSCG retains the working least-squares operator \(A\), including any ridge
 rows, and uses incomplete Cholesky of \(A^T A\) as its default
 preconditioner. Every nonzero normal-matrix entry is retained when constructing
 the sparse preconditioner. For already formed Gram or Woodbury systems

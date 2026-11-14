@@ -25,8 +25,8 @@ test_that("controlSolverGen handles osqp solver defaults and custom parameters",
   # Default parameters
   params <- controlSolverGen(solver = "osqp")
   expect_equal(params$max_iter, 1e5)
-  expect_equal(params$eps_abs, 1e-7)
-  expect_equal(params$eps_rel, 1e-7)
+  expect_equal(params$eps_abs, 1e-9)
+  expect_equal(params$eps_rel, 1e-9)
   expect_true(is.null(params$rowaug) || params$rowaug)
   
   # Custom parameters
@@ -183,8 +183,8 @@ test_that("controlSolverGen handles missing parameters gracefully", {
   # osqp
   params_osqp <- controlSolverGen(solver = "osqp")
   expect_equal(params_osqp$max_iter, 1e5)
-  expect_equal(params_osqp$eps_abs, 1e-7)
-  expect_equal(params_osqp$eps_rel, 1e-7)
+  expect_equal(params_osqp$eps_abs, 1e-9)
+  expect_equal(params_osqp$eps_rel, 1e-9)
   
   # bigGlm
   params_glmnet <- controlSolverGen(solver = "bigGlm")

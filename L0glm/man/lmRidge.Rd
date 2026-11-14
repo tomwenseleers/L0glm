@@ -130,26 +130,29 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   factorization is allowed within the iteration limit for incomplete Cholesky.
   If the requested accuracy is not reached, or coefficients are nonfinite,
   a warning is issued and the working system is solved by Cholesky LLT.
-  This fallback forms normal equations for rectangular working designs. OSQP uses
-  the original coefficient coordinates and reports a warning when its
-  requested accuracy is not reached. On a failed OSQP setup or solve,
+  This fallback forms normal equations for rectangular working designs. OSQP
+  diagonally equilibrates its quadratic system, transforms bounds and starting
+  values consistently, and returns coefficients in their original units. Its
+  default absolute and relative tolerances are \code{1e-9}. If neither OSQP
+  nor the checked polish establishes accuracy, a warning is reported.
+  On a failed OSQP setup or solve,
   an infeasible/nonconvex status, or an invalid returned coefficient vector,
   a warning is issued and the previous IRLS coefficients (clipped to the
   bounds) are retained. Such a warning does not establish convergence.
   Finite-tolerance solutions can change the subsequent adaptive ridge
   selection path.
 
-  For \code{bigGlm}, tall and square working designs also receive a
+  For \code{bigGlm} and \code{osqp}, tall and square working designs receive a
   constrained accuracy polish. Cholesky solves update the free coefficients;
   steps stop at the first bound, and violated bound gradients release
   coefficients for another solve. Diagonal equilibration preserves the
   quadratic objective and bounds. The polished result must satisfy a fresh
   relative projected-gradient check of \code{1e-10} and must not increase
-  the original augmented least-squares objective. Otherwise the coordinate
+  the original augmented least-squares objective. Otherwise the solver's
   solution is retained. This avoids coefficient errors when a large null
   deviance makes coordinate-change stopping too permissive. Wide designs
-  retain the coordinate-descent route without allocating an additional
-  predictor-by-predictor Gram matrix.
+  retain their respective solver route. For \code{bigGlm}, no additional
+  predictor-by-predictor Gram matrix is allocated for wide designs.
 
   Eligible wide Eigen ridge systems use the Woodbury identity to solve an
   observation-space system of dimension \code{n}, rather than a predictor-space

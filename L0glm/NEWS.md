@@ -94,7 +94,8 @@
   both R and native drivers.
 * Nonnegative identity-link Poisson LLT fits use the specialized `l0nnPois`
   backend, including native validation stopping.
-* Tall and square `bigGlm` ridge steps receive a diagonally equilibrated
+* OSQP uses diagonal equilibration and absolute and relative tolerances of
+  `1e-9`. Tall and square OSQP and `bigGlm` ridge steps receive a shared
   constrained Cholesky polish, checked against the box KKT conditions and the
   augmented least-squares objective. Wide designs retain coordinate descent
   without an additional predictor-space Gram allocation.

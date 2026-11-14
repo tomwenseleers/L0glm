@@ -965,16 +965,21 @@ very well. In the package’s <a href="https://github.com/tomwenseleers/L0glm/bl
 solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
 formal constraints can improve coefficient accuracy for highly
 correlated peaks.</p>
-<p>For tall and square working designs, <code>bigGlm</code> polishes its
-coordinate-descent solution using Cholesky solves on the free
+<p>For OSQP, write <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">S=\operatorname{diag}(\sqrt{G_{jj}})</span>, using
+one for a zero diagonal entry. The transformed coefficients <span class="math inline">\theta=Sb</span> have quadratic matrix <span class="math inline">S^{-1}GS^{-1}</span>, linear term <span class="math inline">-S^{-1}h</span> and bounds <span class="math inline">S\ell\le\theta\le Su</span>. This diagonal
+equilibration preserves the objective and returns coefficients in their
+original units. OSQP’s default absolute and relative tolerances are
+<span class="math inline">10^{-9}</span>.</p>
+<p>For tall and square working designs, both <code>bigGlm</code> and
+OSQP polish their solutions using Cholesky solves on the free
 coefficient block. Each step stops at the first bound; a bound
 coefficient is released if its gradient violates the corresponding KKT
 condition. Diagonal equilibration improves numerical scaling. A fresh
 relative projected-gradient residual must be at most <span class="math inline">10^{-10}</span>, and the augmented least-squares
-objective must not increase. Wide designs retain coordinate descent
-without an additional predictor-space Gram allocation. These checks
-concern the current ridge subproblem; its adaptive penalties remain
-fixed during the polish.</p>
+objective must not increase. Wide designs retain their respective solver
+route; <code>bigGlm</code> avoids an additional predictor-space Gram
+allocation. These checks concern the current ridge subproblem; its
+adaptive penalties remain fixed during the polish.</p>
 <p>Infinite diagonals in <span class="math inline">D</span> remove
 entries from the solve; mandatory terms have diagonal zero. Free
 nuisance terms can be profiled by a Schur complement. For a wide system,
