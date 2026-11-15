@@ -124,13 +124,13 @@ are constrained too, except that binomial and quasibinomial intercepts
 remain unrestricted. <code>always.include</code> identifies predictor
 columns that remain eligible and unpenalized; an added intercept is also
 unpenalized.</p>
-<p>Eigen solvers enforce nonnegativity by clamping negative proposals to
-zero. This works well in practice when the true active effects are
-positive and the regularization level is well chosen, for example
+<p>Eigen solvers default to clamping negative proposals to zero. This
+works well in practice when the true active effects are positive and the
+regularization level is well chosen, for example
 <code>lambda="gic"</code>. Ridge shrinkage stabilizes the updates and
 often keeps genuine active effects positive. OSQP quadratic programming
 and glmnet/<code>bigGlm</code> coordinate descent also provide formally
-constrained ridge solves. In the package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
+constrained ridge solves. In the package’s <a href="https://github.com/tomwenseleers/L0glm/tree/master/benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods" class="external-link">deconvolution
 solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
 formal constraints can improve coefficient accuracy for highly
 correlated peaks. OSQP uses diagonal equilibration and absolute and
@@ -152,8 +152,13 @@ constrained polish:</p>
 <p>This reuses an existing predictor Gram matrix for batched Cholesky
 solves on the free coefficients. It supports LLT, LDLT and other methods
 operating on an already formed Gram system, and the internal Poisson
-identity backend. Rectangular and Woodbury paths skip the correction, as
-do matrix-free solves. A fresh KKT check and a nonincreasing ridge
+identity backend. LSCG also supports constrained rectangular and wide
+solves: when its proposal violates bounds, it forms the equivalent
+predictor Gram matrix for the correction. The allocation must fit within
+<code>max.memory</code>; an insufficient budget gives an error rather
+than silently switching to clamping. The existing LLT fallback remains
+available for inaccurate LSCG solves. Other rectangular and Woodbury
+routes retain clamping. A fresh KKT check and a nonincreasing ridge
 objective are required; otherwise the clipped proposal is retained.
 Eigen’s constrained mode can improve correlated peak recovery, but also
 changes the adaptive selection trajectory and adds computation. To
@@ -161,6 +166,13 @@ compare OSQP or <code>bigGlm</code> with Eigen’s default clamping
 strategy, use
 <code>controlSolverGen("osqp", nonnegative.method="clamp")</code> or
 <code>controlSolverGen("bigGlm", nonnegative.method="clamp")</code>.</p>
+<p>For constrained LSCG, use the same <code>method</code> in the fit and
+its controls:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
+<span>  lambda<span class="op">=</span><span class="st">"gic"</span>, method<span class="op">=</span><span class="fl">4L</span>,</span>
+<span>  control.solver<span class="op">=</span><span class="fu"><a href="../reference/controlSolverGen.html">controlSolverGen</a></span><span class="op">(</span><span class="st">"eigen"</span>, <span class="fl">4L</span>,</span>
+<span>    nonnegative.method<span class="op">=</span><span class="st">"constrained"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>
@@ -217,7 +229,7 @@ shape uses <code>mgcv::nb(theta=...)</code>; see its <a href="negative-binomial.
 useful when prediction favours a point before the final sparse-selection
 iteration. Coefficient updates continue to use training observations
 only.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simul.html">simul</a></span><span class="op">(</span>n<span class="op">=</span><span class="fl">300L</span>, p<span class="op">=</span><span class="fl">300L</span>, n_nonzero<span class="op">=</span><span class="fl">20L</span>, m<span class="op">=</span><span class="fl">4L</span>, seed<span class="op">=</span><span class="fl">7L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="va">sim</span><span class="op">$</span><span class="va">y_true</span><span class="op">)</span>, <span class="fl">300L</span>, <span class="fl">4L</span><span class="op">)</span></span>

@@ -78,8 +78,10 @@
 #'   \code{controlSolverGen("eigen", method, nonnegative.method="constrained")} to
 #'   polish infeasible nonnegative proposals using batched constrained Cholesky
 #'   solves. This reuses a predictor Gram matrix already formed by the selected
-#'   method, including LLT and LDLT; rectangular and Woodbury routes skip the
-#'   correction. The default is \code{FALSE}. The polish preserves prior means,
+#'   method, including LLT and LDLT. LSCG also corrects rectangular and wide
+#'   proposals by forming a memory-checked Gram matrix when bounds are violated;
+#'   other rectangular and Woodbury routes skip the correction. The Eigen
+#'   default is \code{"clamp"}. The polish preserves prior means,
 #'   scaling and bounds and must pass a fresh KKT and quadratic-objective check.
 #'   See \code{\link{controlSolverGen}} for details.
 #'
@@ -575,8 +577,13 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
     coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
   } else {
     if (control.solver$method %in% c("CG","LSCG") &&
-        !L0glm_workspace_fits(Xw,control.solver))
-      return(clamp(L0glm_matrixfree_ridge(Xw,yw,lambdas,prior.mean,start,control.solver),lower,upper))
+        !L0glm_workspace_fits(Xw,control.solver)) {
+      beta <- L0glm_matrixfree_ridge(Xw,yw,lambdas,prior.mean,start,control.solver)
+      if (identical(control.solver$nonnegative.method,"constrained") &&
+          identical(control.solver$method,"LSCG") && any(lower>=0) && any(beta<lower|beta>upper))
+        L0glm_require_workspace(Xw,control.solver,operation="constrained LSCG polish")
+      return(clamp(beta,lower,upper))
+    }
     if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {
       A <- row_augX(Xw, lambdas)
       rhs <- augY(yw, p, prior.mean, lambdas)
@@ -616,7 +623,17 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                     iteration), call. = FALSE)
     coefs <- start
   }
-  if (identical(control.solver$nonnegative.method, "constrained") && gram_available && p <= n &&
+  if (identical(control.solver$nonnegative.method, "constrained") &&
+      identical(control.solver$method, "LSCG") &&
+      any(lower >= 0) && any(coefs < lower | coefs > upper) && (!gram_available || p > n)) {
+    L0glm_require_workspace(Xw,control.solver,operation="constrained LSCG polish")
+    A <- Matrix::crossprod(Xw)
+    if(is.matrix(A))diag(A) <- diag(A)+lambdas else A <- A+Matrix::Diagonal(x=lambdas)
+    rhs <- Matrix::crossprod(Xw,yw)+lambdas*prior.mean
+    gram_available <- TRUE
+  }
+  if (identical(control.solver$nonnegative.method, "constrained") && gram_available &&
+      (p <= n || identical(control.solver$method, "LSCG")) &&
       any(lower >= 0) && any(coefs < lower | coefs > upper)) {
     G <- if (issparse(A)) as(as(A, "generalMatrix"), "CsparseMatrix") else as.matrix(A)
     polished <- solve_bounded_gram(G, as.numeric(rhs), coefs,

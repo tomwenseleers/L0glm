@@ -704,9 +704,10 @@ for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 defaults to Eigen <code>COLAMDOrdering</code> (<code>ordering=1L</code>);
 <code>ordering=0L</code> uses AMD and <code>ordering=2L</code> uses NaturalOrdering.
 <code>nonnegative.method="constrained"</code> enables an optional batched constrained
-Cholesky correction for infeasible nonnegative Eigen proposals, reusing
-an existing predictor Gram matrix. It is off by default and skips
-rectangular and Woodbury solves; see <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p></dd>
+Cholesky correction for infeasible nonnegative Eigen proposals. LLT,
+LDLT and CG reuse an eligible predictor Gram matrix; LSCG can form one
+on demand, subject to <code>max.memory</code>, including rectangular and wide
+solves. Eigen defaults to <code>"clamp"</code>; see <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>

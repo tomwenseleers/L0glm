@@ -964,7 +964,7 @@ optimization; either can also use <code>"clamp"</code>. For nonnegative
 models with positive active effects and well-chosen regularization, such
 as <code>lambda="gic"</code>, ridge shrinkage often keeps genuine active
 effects positive, and Eigen’s simple clamping works very well. In the
-package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
+package’s <a href="https://github.com/tomwenseleers/L0glm/tree/master/benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods" class="external-link">deconvolution
 solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
 formal constraints can improve coefficient accuracy for highly
 correlated peaks.</p>
@@ -972,9 +972,13 @@ correlated peaks.</p>
 <code>controlSolverGen("eigen", method, nonnegative.method="constrained")</code>,
 an infeasible nonnegative Eigen proposal can instead receive a
 constrained polish. This mode reuses an existing predictor Gram matrix
-only; rectangular, matrix-free and Woodbury paths retain clamping. LLT,
-LDLT and other methods solving an already formed Gram system use the
-same correction, as does the internal Poisson identity backend.</p>
+for LLT, LDLT and other eligible Gram solves, including the internal
+Poisson identity backend. For rectangular or wide LSCG, a
+bound-violating proposal instead triggers construction of the equivalent
+predictor-space ridge quadratic below. Its allocation is checked against
+<code>max.memory</code>; insufficient space gives an error. LSCG’s
+checked solve and guarded LLT fallback are retained. Other rectangular,
+matrix-free and Woodbury routes retain clamping.</p>
 <p>For fixed adaptive penalties, let <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">q(b)=b^TGb/2-h^Tb</span>. Start from the clipped
 proposal. On each free set <span class="math inline">F</span>, solve</p>
 <p><span class="math display">

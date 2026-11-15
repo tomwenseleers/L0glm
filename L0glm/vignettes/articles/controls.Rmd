@@ -39,13 +39,13 @@ except that binomial and quasibinomial intercepts remain unrestricted.
 `always.include` identifies predictor columns that remain eligible and unpenalized;
 an added intercept is also unpenalized.
 
-Eigen solvers enforce nonnegativity by clamping negative proposals to zero.
+Eigen solvers default to clamping negative proposals to zero.
 This works well in practice when the true active effects are positive and the
 regularization level is well chosen, for example `lambda="gic"`. Ridge
 shrinkage stabilizes the updates and often keeps genuine active effects positive.
 OSQP quadratic programming and glmnet/`bigGlm` coordinate descent also provide
 formally constrained ridge solves. In the package's
-[deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
+[deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/tree/master/benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods),
 Eigen Cholesky LLT is particularly fast, while formal constraints can improve
 coefficient accuracy for highly correlated peaks. OSQP uses diagonal equilibration
 and absolute and relative tolerances of `1e-9`. Tall and square `bigGlm` and OSQP
@@ -65,14 +65,28 @@ fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
 
 This reuses an existing predictor Gram matrix for batched Cholesky solves on
 the free coefficients. It supports LLT, LDLT and other methods operating on
-an already formed Gram system, and the internal Poisson identity backend. Rectangular
-and Woodbury paths skip the correction, as do matrix-free solves. A fresh KKT check and a nonincreasing
-ridge objective are required; otherwise the clipped proposal is retained.
+an already formed Gram system, and the internal Poisson identity backend.
+LSCG also supports constrained rectangular and wide solves: when its proposal
+violates bounds, it forms the equivalent predictor Gram matrix for the correction.
+The allocation must fit within `max.memory`; an insufficient budget gives an
+error rather than silently switching to clamping. The existing LLT fallback
+remains available for inaccurate LSCG solves. Other rectangular and Woodbury
+routes retain clamping. A fresh KKT check and a nonincreasing ridge objective
+are required; otherwise the clipped proposal is retained.
 Eigen's constrained mode can improve correlated peak recovery, but also
 changes the adaptive selection trajectory and adds computation. To compare
 OSQP or `bigGlm` with Eigen's default clamping strategy, use
 `controlSolverGen("osqp", nonnegative.method="clamp")` or
 `controlSolverGen("bigGlm", nonnegative.method="clamp")`.
+
+For constrained LSCG, use the same `method` in the fit and its controls:
+
+```{r constrained-lscg, eval=FALSE}
+fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
+  lambda="gic", method=4L,
+  control.solver=controlSolverGen("eigen", 4L,
+    nonnegative.method="constrained"))
+```
 
 ## Starts and normalization
 

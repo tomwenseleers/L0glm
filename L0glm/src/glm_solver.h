@@ -173,6 +173,15 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
     MatrixXd solution;success=eigen_coefficients(A,MatrixXd(response),MatrixXd(guess),control,state,solution,true);
     if(success)fit=solution.col(0);
   }else success=primal_ridge(A,response,d,center,guess,control,state,fit,lower,upper,p<=n,&work);
+  // A rectangular LSCG solve is unconstrained. Certify its bound correction
+  // against the same predictor-space quadratic, including ridge centers.
+  // This is explicit opt-in work and remains subject to the Gram budget.
+  if(success&&control.polish&&control.method==2&&L0glm::nonnegative_polish_needed(fit,lower,upper)) {
+    L0glm::require_workspace(work.estimate(),control.workspace,"constrained LSCG polish");
+    Matrix G=work.gram();add_diagonal(G,d);
+    VectorXd h=work.rhs()+d.cwiseProduct(center);
+    fit=L0glm::nonnegative_polish(G,h,fit,lower,upper);
+  }
   VectorXd result=state.beta;
   if(!success){state.solver_failed=true;return result;}
   for(int j=0;j<p;++j)result[active[j]]=fit[j]/state.scale[active[j]];

@@ -825,15 +825,19 @@ For nonnegative models with positive active
 effects and well-chosen regularization, such as `lambda="gic"`, ridge shrinkage
 often keeps genuine active effects positive, and Eigen's simple clamping works
 very well. In the package's
-[deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv),
+[deconvolution solver benchmarks](https://github.com/tomwenseleers/L0glm/tree/master/benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods),
 Eigen Cholesky LLT is particularly fast, while formal constraints can improve
 coefficient accuracy for highly correlated peaks.
 
 With `controlSolverGen("eigen", method, nonnegative.method="constrained")`, an infeasible
 nonnegative Eigen proposal can instead receive a constrained polish. This
-mode reuses an existing predictor Gram matrix only; rectangular, matrix-free
-and Woodbury paths retain clamping. LLT, LDLT and other methods solving
-an already formed Gram system use the same correction, as does the internal Poisson identity backend.
+mode reuses an existing predictor Gram matrix for LLT, LDLT and other eligible
+Gram solves, including the internal Poisson identity backend. For rectangular
+or wide LSCG, a bound-violating proposal instead triggers construction of the
+equivalent predictor-space ridge quadratic below. Its allocation is checked
+against `max.memory`; insufficient space gives an error. LSCG's checked solve
+and guarded LLT fallback are retained. Other rectangular, matrix-free and
+Woodbury routes retain clamping.
 
 For fixed adaptive penalties, let \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and
 \(q(b)=b^TGb/2-h^Tb\). Start from the clipped proposal. On each free set \(F\),

@@ -6,7 +6,9 @@
   `"constrained"` working ridge solves across Eigen, OSQP and `bigGlm`.
   Defaults are `"clamp"` for Eigen and `"constrained"` for OSQP/`bigGlm`.
   Bounds, free intercepts, normalization, prior means and numerical guards
-  are preserved; Eigen constrained polishing reuses eligible Gram systems.
+  are preserved. Eigen constrained polishing reuses eligible Gram systems;
+  LSCG also corrects rectangular and wide proposals with an on-demand,
+  memory-checked predictor Gram matrix. Its LLT fallback remains available.
 
 * Gram and factor workspaces are checked against a configurable memory budget.
   CG/LSCG can use implicit ridge products with a fresh coefficient-space residual

@@ -74,7 +74,7 @@ test_that("polishing reuses the cached weighted Gram without accessing raw data"
   expect_equal(actual, expected, tolerance = 1e-9)
 })
 
-test_that("default, signed, rectangular and Woodbury paths bypass the polish", {
+test_that("default, signed and unsupported rectangular/Woodbury paths bypass the polish", {
   set.seed(16023)
   X <- matrix(rnorm(40 * 12), 40, 12); y <- rnorm(40)
   solve_original <- solve_bounded_gram
@@ -83,7 +83,7 @@ test_that("default, signed, rectangular and Woodbury paths bypass the polish", {
     calls <<- calls + 1L
     solve_original(...)
   })
-  for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
+  for (sparse in c(FALSE, TRUE)) for (method in c(1:3,5:6)) {
     A <- if (sparse) Matrix::Matrix(X, sparse = TRUE) else X
     ordinary <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method)
     explicit <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method,

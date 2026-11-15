@@ -87,10 +87,13 @@
 #' bounds and then clips to them; \code{"constrained"} enforces bounds within
 #' the weighted ridge solve. \code{NULL} preserves solver-specific defaults:
 #' \code{"clamp"} for Eigen and \code{"constrained"} for OSQP and \code{bigGlm}.
-#' For Eigen, constrained mode uses a checked active-set Cholesky polish only
-#' when a predictor Gram matrix is available. Rectangular least-squares,
-#' matrix-free and Woodbury routes retain clamping; an unsuccessful polish
-#' also retains the clamped proposal. Unrestricted intercepts remain free.
+#' For Eigen, constrained mode uses a checked active-set Cholesky polish.
+#' LLT, LDLT and CG reuse eligible predictor Gram matrices. LSCG also corrects
+#' rectangular and wide proposals, forming a predictor Gram matrix on demand
+#' when bounds are violated. This requires room under \code{max.memory}; an
+#' insufficient budget is an error. Other rectangular and Woodbury routes
+#' retain clamping. An unsuccessful numerical polish retains the clamped
+#' proposal. Unrestricted intercepts remain free.
 #' Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
 #' explicitly supplied in the control list.
 #'
@@ -105,11 +108,13 @@
 #' that proposal. Dense and sparse Gram matrices retain their storage type.
 #' All native channel work remains compatible with OpenMP.
 #'
-#' The option does not form a predictor Gram matrix solely for polishing: it
-#' reuses one from a tall or square active working design. A feasible
-#' unconstrained proposal needs no correction.
-#' Consequently, rectangular QR, SVD and LSCG paths and observation-space
-#' Woodbury paths keep their usual solves. This optional correction can recover
+#' LLT, LDLT and CG reuse a Gram matrix from a tall or square active working
+#' design. LSCG retains its least-squares operator for the initial solve and,
+#' only when needed, constructs the equivalent weighted ridge Gram system for
+#' the constrained correction. Its allocation is checked against the workspace
+#' budget. A feasible unconstrained proposal needs no correction. Rectangular
+#' QR/SVD and the other observation-space Woodbury paths keep their usual solves.
+#' This optional correction can recover
 #' peaks lost through clipping in correlated nonnegative designs, but can also
 #' change the selected support and increase fitting time. Eigen defaults to \code{"clamp"}.
 #'
