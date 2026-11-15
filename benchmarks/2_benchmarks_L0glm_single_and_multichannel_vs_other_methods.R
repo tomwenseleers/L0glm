@@ -43,7 +43,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois$X, sim.pois$y,
                                          nonnegative = TRUE,
                                          solver = "eigen",
                                          method = 1L)) 
-# 0.12s
+# 0.18s
 
 # The L0glm candidate uses the fastest Eigen Cholesky LLT solver and a lambda GIC preset; 
 # other methods are rescored with the common Poisson GIC. WLS is labelled in the table.
@@ -53,26 +53,26 @@ system.time(comparison.sc.pois <- sparseGLM(sim.pois, family = poisson(identity)
   tune = "gic", nonnegative = TRUE, intercept = FALSE, approximation = "wls",
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol$init.lambda),
-  options = list(abess = list(warm.start = TRUE)))) # 2s
+  options = list(abess = list(warm.start = TRUE)))) # 2.69s
 plot(comparison.sc.pois)
 
 benchmarks_1_1 <- l0glmMetrics(comparison.sc.pois)
 benchmarks_1_1 <- benchmarks_1_1[order(benchmarks_1_1[,"MCC"], decreasing = TRUE),]
 benchmarks_1_1[,!colSums(is.na(benchmarks_1_1))]
-#                   method status  scope        approximation tune parameter selected_parameter tuning_score seconds
-# 1                  L0glm     ok single                 none  gic    lambda       2.044997e+01     102765.2    0.17
-# 6 adaptive_relaxed_lasso     ok single identity_poisson_wls  gic    lambda       9.646484e+04     122003.4    0.49
-# 4          relaxed_lasso     ok single identity_poisson_wls  gic    lambda       1.044924e-01     122083.4    0.48
-# 5         adaptive_lasso     ok single identity_poisson_wls  gic    lambda       1.245891e+04     143856.3    0.25
-# 3                  lasso     ok single identity_poisson_wls  gic    lambda       4.850106e-03     145903.5    0.22
-# 2                L0Learn     ok single identity_poisson_wls  gic    lambda       3.296910e-03  891202271.5    0.58
+#                   method status  scope        approximation tune parameter selected_parameter tuning_score screen seconds
+# 1                  L0glm     ok single                 none  gic    lambda       2.044997e+01     102765.2   none    0.17
+# 6 adaptive_relaxed_lasso     ok single identity_poisson_wls  gic    lambda       9.646484e+04     122003.4   none    0.45
+# 4          relaxed_lasso     ok single identity_poisson_wls  gic    lambda       1.044924e-01     122083.4   none    0.40
+# 5         adaptive_lasso     ok single identity_poisson_wls  gic    lambda       1.245891e+04     143856.3   none    0.24
+# 3                  lasso     ok single identity_poisson_wls  gic    lambda       4.850106e-03     145903.5   none    0.21
+# 2                L0Learn     ok single identity_poisson_wls  gic    lambda       3.296910e-03  891202271.5   none    1.20
 #   path_seconds cv_seconds note     p     n m   df     deviance deviance_true        loglik  R2_weighted adj_R2_weighted
 # 1         0.17          0      10000 10000 1  999 9.607885e+03  2.665175e+03     -41167.85 9.995248e-01      0.99947208
-# 6         0.49          0      10000 10000 1 1900 1.042069e+04  4.229059e+03     -41574.25 9.994833e-01      0.99936212
-# 4         0.48          0      10000 10000 1 1904 1.041884e+04  4.226631e+03     -41573.32 9.994836e-01      0.99936213
-# 5         0.25          0      10000 10000 1 2857 1.270289e+04  6.739153e+03     -42715.35 9.993702e-01      0.99911834
-# 3         0.22          0      10000 10000 1 3046 1.088513e+04  4.980112e+03     -41806.47 9.994635e-01      0.99922856
-# 2         0.58          0      10000 10000 1   14 8.911293e+08  8.913185e+08 -445600992.61 3.607428e-06     -0.00139835
+# 6         0.45          0      10000 10000 1 1900 1.042069e+04  4.229059e+03     -41574.25 9.994833e-01      0.99936212
+# 4         0.40          0      10000 10000 1 1904 1.041884e+04  4.226631e+03     -41573.32 9.994836e-01      0.99936213
+# 5         0.24          0      10000 10000 1 2857 1.270289e+04  6.739153e+03     -42715.35 9.993702e-01      0.99911834
+# 3         0.21          0      10000 10000 1 3046 1.088513e+04  4.980112e+03     -41806.47 9.994635e-01      0.99922856
+# 2         1.20          0      10000 10000 1   14 8.911293e+08  8.913185e+08 -445600992.61 3.607428e-06     -0.00139835
 #   MAD_coefs RMSE_coefs  R2_coefs support_size_true support_size_estimated  TP   FP   TN  FN precision recall   F1_score
 # 1  66.33935   486.4906 0.9195383              1000                    999 845  154 8846 155 0.8458458  0.845 0.84542271
 # 6 186.90603   757.4528 0.8049317              1000                   1900 906  994 8006  94 0.4768421  0.906 0.62482759
@@ -103,7 +103,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                     nonnegative = TRUE,
                                     solver = "eigen",
                                     method = 1L)) 
-# 0.26s
+# 0.14s
 
 # The L0glm candidate uses the fastest Eigen Cholesky LLT solver and a lambda GIC preset; 
 # other methods share GIC scoring. glmnet uses 10 lambda values. 
@@ -112,7 +112,7 @@ system.time(comparison.sc.gaus <- sparseGLM(sim.gaus, family = gaussian(identity
   tune = "gic", nonnegative = TRUE, intercept = FALSE,
   support.size = seq_len(min(p, n - 1L, 2 * npeaks)),
   lambda = list(L0glm = L0glm.chol$init.lambda),
-  options = list(abess = list(warm.start = TRUE)))) # 2s
+  options = list(abess = list(warm.start = TRUE)))) # 1.86s
 plot(comparison.sc.gaus)
 
 benchmarks_1_2 <- l0glmMetrics(comparison.sc.gaus)
@@ -164,7 +164,7 @@ system.time(L0glm.chol.pois <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
-# openmp 6.57s, 99s with parallelize = FALSE, 38s with parallelize = TRUE and ncores = 4
+# 10.06s with ncores = 4
 
 # L0glm fits the exact grouped Poisson model. glmnet uses a
 # labelled Gaussian approximation with shared row weights 1/(rowMeans(y)+0.1).
@@ -236,7 +236,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                          ncores = 4,
                                          solver = "eigen",
                                          method = 1L)) 
-# 142s with parallelize = FALSE, 47s with parallelize = TRUE & ncores = 4
+# 37.64s with ncores = 4
 
 # Auto grouping uses native grouped fits where supported, independent paths
 # otherwise; the table records the scope of every method.
@@ -291,9 +291,6 @@ benchmarks_1_4[,!colSums(is.na(benchmarks_1_4))]
 # 2           0.4727635      0.4106558 16633518 16453212 15634855 14994202 17025219
 
 # l0glmFit is the clear winner
-# TODO timings could still be improved drastically by porting to Rcpp/OpenMP, 
-# maybe make L0nnls Rcpp/OpenMP function for the gaussian case, 
-# or port the whole l0glmFit function to Rcpp/OpenMP?
 
 
 
@@ -318,11 +315,11 @@ system.time(tune_full <- l0glmTune(X=sim.pois$X,
                                     prop_range = 1, # full range up to lambda_max
                                     plot = TRUE, 
                                     coefs.true = sim.pois$beta_true, 
-
                                     family = poisson(identity), 
                                     nonnegative = TRUE, 
                                     solver = "eigen", 
-                                    method = 1L)) # 4.05s
+                                    method = 1L)) # historical 4.05s
+# TODO fix instability of regularisation path & why much slower than before, now 17.63s
 tune_full$lambda_best # 12.84577 (best lambda tune)
 tune_full$lambda_preset # 20.44997 (lambda preset)
 min(tune_full$metrics$gic) # 102185
@@ -336,11 +333,11 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois$X,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.pois$beta_true, 
-
                                       family = poisson(identity), 
                                       nonnegative = TRUE, 
                                       solver = "eigen", 
-                                      method = 1L)) # 4.36s
+                                      method = 1L)) # historical 4.36s
+# TODO check why much slower than before
 # The dashed line marks the best grid value; the dotted line is the preset.
 # They need not coincide, especially for unrelaxed fits.
 tune_zoomed$lambda_best # 12.84577 (best lambda tune)
@@ -365,7 +362,6 @@ system.time(tune_full_bigglm <- l0glmTune(X=sim.pois$X,
                                            prop_range = 1, # full range up to lambda_max
                                            plot = TRUE, 
                                            coefs.true = sim.pois$beta_true, 
-
                                            family = poisson(identity), 
                                            nonnegative = TRUE, 
                                            solver = "bigGlm"))
@@ -393,7 +389,6 @@ system.time(tune_zoomed_cv <- l0glmTune(X=sim.pois$X,
                                          lambda_min = 2,
                                          plot = TRUE, 
                                          coefs.true = sim.pois$beta_true, 
-
                                          family = poisson(identity), 
                                          nonnegative = TRUE, 
                                          solver = "eigen", 
@@ -406,49 +401,44 @@ system.time(L0glm.chol.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          # verbose = TRUE,
                                          solver = "eigen",
                                          method = 1L)) 
-# 0.12s
+# 0.18s
 
 #### 1.1.2 L0GLM FIT WITH CG SOLVER WITH Incomplete Cholesky LLT preconditioner ####
 system.time(L0glm.CG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                        family = poisson(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
-
                                        solver = "eigen",
                                        method = 3L)) 
-# 0.33s
+# 0.31s
 
 #### 1.1.3 L0GLM FIT WITH preconditioned LSCG SOLVER ####
 system.time(L0glm.LSCG.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          solver = "eigen",
                                          method = 4L)) 
-# 0.78s
+# 0.75s
 
 #### 1.1.4 L0GLM FIT WITH OSQP SOLVER ####
 system.time(L0glm.osqp.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                          family = poisson(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          solver = "osqp")) 
-# 4.61s
+# 45.70s
 
 #### 1.1.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
 system.time(L0glm.bigGlm.pois <- l0glmFit(sim.pois$X, sim.pois$y,
                                            family = poisson(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
-
                                            solver = "bigGlm")) 
-# 1.74s with n=p=10000
+# 1.87s with n=p=10000
 
 
 
@@ -481,35 +471,29 @@ benchmarks_1_1 = rbind(
 )
 
 benchmarks_1_1 = benchmarks_1_1[order(benchmarks_1_1[,"deviance_true"]),] # sort by deviance relative to ground truth
-benchmarks_1_1
-#          method     p     n m deviance deviance_true    loglik    MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# 4   L0glm_PLSCG 10000 10000 1 9349.103      2988.746 -41036.03 -0.02861098  80.28593  0.07161198  0.9928605 0.9093004
-# 5     L0glm_PCG 10000 10000 1 9349.100      2988.750 -41036.03 -0.02861004  80.28585  0.07161198  0.9928607 0.9093003
-# 3 L0glm_cholLLT 10000 10000 1 9349.100      2988.750 -41036.03 -0.02861004  80.28585  0.07161198  0.9928607 0.9093003
-# 2  L0glm_bigglm 10000 10000 1 9422.418      3019.605 -41072.69 -0.02894092  83.72523  0.07347632  0.9936964 0.9045904
-# 1    L0glm_osqp 10000 10000 1 9462.048      3074.622 -41092.50 -0.02870220  80.66691  0.07307096  0.9914590 0.9085972
-#   MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
-# 4    265.3200     528.5209      0.3977446     0.9928605   0.9400566              1000                   1011
-# 5    265.3201     528.5201      0.3977446     0.9928607   0.9400565              1000                   1011
-# 3    265.3201     528.5201      0.3977446     0.9928607   0.9400565              1000                   1011
-# 2    243.4808     581.1132      0.4125746     0.9936964   0.9283964              1000                   1015
-# 1    270.6446     526.1757      0.4058395     0.9914590   0.9402930              1000                   1012
-#   estimated_over_true_support_size  TP  FP   TN  FN precision recall specificity accuracy  F1_score       MCC      gic
-# 4                            1.011 843 168 8832 157 0.8338279  0.843   0.9813333   0.9675 0.8383889 0.8203380 102747.0
-# 5                            1.011 843 168 8832 157 0.8338279  0.843   0.9813333   0.9675 0.8383889 0.8203380 102747.0
-# 3                            1.011 843 168 8832 157 0.8338279  0.843   0.9813333   0.9675 0.8383889 0.8203380 102747.0
-# 2                            1.015 842 173 8827 158 0.8295567  0.842   0.9807778   0.9669 0.8357320 0.8173569 102902.1
-# 1                            1.012 840 172 8828 160 0.8300395  0.840   0.9808889   0.9668 0.8349901 0.8165520 102880.4
-#       ebic      bic      aic     mbic
-# 4 100695.4 91383.71 84094.06 107203.9
-# 5 100695.4 91383.71 84094.06 107203.9
-# 3 100695.4 91383.71 84094.06 107203.9
-# 2 100842.4 91493.87 84175.38 107376.7
-# 1 100826.7 91505.87 84209.01 107341.7
+benchmarks_1_1[, !colSums(is.na(benchmarks_1_1)), drop = FALSE]
+#          method     p     n m   df deviance deviance_true    loglik R2_weighted adj_R2_weighted MAD_coefs RMSE_coefs
+# 4   L0glm_PLSCG 10000 10000 1 1011 9349.100      2988.750 -41036.03   0.9995603       0.9995109  80.28585   553.3250
+# 5     L0glm_PCG 10000 10000 1 1011 9349.100      2988.750 -41036.03   0.9995603       0.9995109  80.28585   553.3250
+# 3 L0glm_cholLLT 10000 10000 1 1011 9349.100      2988.750 -41036.03   0.9995603       0.9995109  80.28585   553.3250
+# 2  L0glm_bigglm 10000 10000 1 1012 9462.048      3074.622 -41092.50   0.9995555       0.9995054  80.66690   555.5264
+# 1    L0glm_osqp 10000 10000 1 1012 9462.048      3074.622 -41092.50   0.9995555       0.9995054  80.66690   555.5264
+#    R2_coefs support_size_true support_size_estimated  TP  FP   TN  FN precision recall  F1_score      MCC      gic     ebic
+# 4 0.9093003              1000                   1011 843 168 8832 157 0.8338279  0.843 0.8383889 0.820338 102747.0 100695.4
+# 5 0.9093003              1000                   1011 843 168 8832 157 0.8338279  0.843 0.8383889 0.820338 102747.0 100695.4
+# 3 0.9093003              1000                   1011 843 168 8832 157 0.8338279  0.843 0.8383889 0.820338 102747.0 100695.4
+# 2 0.9085972              1000                   1012 840 172 8828 160 0.8300395  0.840 0.8349901 0.816552 102880.4 100826.7
+# 1 0.9085972              1000                   1012 840 172 8828 160 0.8300395  0.840 0.8349901 0.816552 102880.4 100826.7
+#        bic      aic     mbic
+# 4 91383.71 84094.06 107203.9
+# 5 91383.71 84094.06 107203.9
+# 3 91383.71 84094.06 107203.9
+# 2 91505.87 84209.01 107341.7
+# 1 91505.87 84209.01 107341.7
 
-# cholesky LLT fastest & best solution quality (deviance_true)
+# cholesky LLT, CG & LSCG tied in terms of solution quality (deviance_true) & LLT fastest
 # eigen solvers all equally good & cholesky the fastest
-# osqp solver the worst
+# osqp solver the worst & the slowest
 
 
 ## 1.2. L0GLM FIT SINGLE CHANNEL WITH GAUSSIAN NOISE ####
@@ -523,7 +507,6 @@ system.time(tune_full <- l0glmTune(X=sim.gaus$X,
                                     prop_range = 1, # full range up to lambda_max
                                     plot = TRUE, 
                                     coefs.true = sim.gaus$beta_true, 
-
                                     family = gaussian(identity), 
                                     nonnegative = TRUE, 
                                     solver = "eigen", 
@@ -543,7 +526,6 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus$X,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus$beta_true, 
-
                                       family = gaussian(identity), 
                                       nonnegative = TRUE, 
                                       solver = "eigen", 
@@ -567,20 +549,18 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          solver = "eigen",
                                          method = 1L)) 
-# 0.28s
+# 0.16s
 
 #### 1.2.2 L0GLM FIT WITH PCG SOLVER WITH Incomplete Cholesky preconditioner ####
 system.time(L0glm.CG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                        family = gaussian(identity), 
                                        lambda = "gic", # or tune_zoomed$lambda_best
                                        nonnegative = TRUE,
-
                                        solver = "eigen",
                                        method = 3L)) 
-# 0.49s
+# 2.05s
 
 
 #### 1.2.3 L0GLM FIT WITH PLSCG SOLVER ####
@@ -588,10 +568,9 @@ system.time(L0glm.LSCG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          solver = "eigen",
                                          method = 4L)) 
-# 4.44s
+# 3.30s
 
 
 #### 1.2.4 L0GLM FIT WITH OSQP SOLVER ####
@@ -599,9 +578,8 @@ system.time(L0glm.osqp.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                          family = gaussian(identity), 
                                          lambda = "gic", # or tune_zoomed$lambda_best
                                          nonnegative = TRUE,
-
                                          solver = "osqp")) 
-# 52.24s
+# 115s
 
 
 #### 1.2.5 L0GLM FIT WITH bigGlm::bigGlm SOLVER ####
@@ -609,9 +587,8 @@ system.time(L0glm.bigGlm.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
                                            family = gaussian(identity), 
                                            lambda = "gic", # or tune_zoomed$lambda_best
                                            nonnegative = TRUE,
-
                                            solver = "bigGlm")) 
-# 7.04s
+# 11s
 
 
 
@@ -643,40 +620,36 @@ benchmarks_1_2 = rbind(
 )
 
 benchmarks_1_2 = benchmarks_1_2[order(benchmarks_1_2[,"deviance_true"]),] # sort by deviance relative to ground truth
-benchmarks_1_2
-#          method     p     n m deviance deviance_true    loglik      MD_coefs MAD_coefs sMAPE_coefs bias_coefs  R2_coefs
-# 1    L0glm_osqp 10000 10000 1 205112.1      34600.50 -29294.24 -0.0056724685  15.73137  0.02272312   1.001199 0.9898175
-# 3 L0glm_cholLLT 10000 10000 1 250925.1      84966.57 -30302.23 -0.0024510498  26.77883  0.03974676   1.015738 0.9805885
-# 5     L0glm_PCG 10000 10000 1 252476.9      87052.45 -30333.06 -0.0016494480  26.91941  0.03981904   1.015348 0.9801367
-# 4   L0glm_PLSCG 10000 10000 1 282882.2     114917.20 -30901.61  0.0001025945  28.74677  0.03839087   1.024859 0.9680017
-# 2  L0glm_bigglm 10000 10000 1 676200.0     519661.97 -35258.90  0.0372800564 102.84467  0.10652868   1.043044 0.8920861
-#   MD_selcoefs MAD_selcoefs sMAPE_selcoefs bias_selcoefs R2_selcoefs support_size_true support_size_estimated
-# 1    33.04374     118.7487      0.1517676      1.001199   0.9914453              1000                   1036
-# 3    61.99624     190.1353      0.2575024      1.015738   0.9839142              1000                   1062
-# 5    65.73558     187.9662      0.2565414      1.015348   0.9839054              1000                   1061
-# 4    67.45273     205.0295      0.2444633      1.024859   0.9720554              1000                   1055
-# 2    97.11852     722.0053      0.6745914      1.043044   0.8981086              1000                   1256
-#   estimated_over_true_support_size  TP  FP   TN  FN precision recall specificity accuracy  F1_score       MCC      gic
-# 1                            1.036 965  71 8929  35 0.9314672  0.965   0.9921111   0.9894 0.9479371 0.9422211 79795.10
-# 3                            1.062 938 124 8876  62 0.8832392  0.938   0.9862222   0.9814 0.9097963 0.8999435 82342.78
-# 5                            1.061 937 124 8876  63 0.8831291  0.937   0.9862222   0.9813 0.9092673 0.8993430 82383.98
-# 4                            1.055 937 118 8882  63 0.8881517  0.937   0.9868889   0.9819 0.9119221 0.9022452 83398.39
-# 2                            1.256 891 365 8635 109 0.7093949  0.891   0.9594444   0.9526 0.7898936 0.7698698 96223.42
-#       ebic      bic      aic      mbic
-# 1 77690.73 68139.61 60662.49  84366.68
-# 3 80185.65 70395.06 62730.47  87028.98
-# 5 80228.88 70447.50 62790.12  87065.77
-# 4 81255.46 71529.35 63915.23  88053.73
-# 2 93672.60 82095.21 73031.81 101764.86
+benchmarks_1_2[, !colSums(is.na(benchmarks_1_2)), drop = FALSE]
+#          method     p     n m   df deviance deviance_true    loglik R2_weighted adj_R2_weighted MAD_coefs RMSE_coefs
+# 2  L0glm_bigglm 10000 10000 1 1020 204546.7      33399.83 -29280.44   0.9999989       0.9999988  6.725961   89.38025
+# 1    L0glm_osqp 10000 10000 1 1020 204546.7      33399.83 -29280.44   0.9999989       0.9999988  6.725961   89.38025
+# 3 L0glm_cholLLT 10000 10000 1 1063 250925.1      84966.57 -30302.23   0.9999987       0.9999985 26.778825  257.46138
+# 4   L0glm_PLSCG 10000 10000 1 1063 250925.1      84966.57 -30302.23   0.9999987       0.9999985 26.778825  257.46137
+# 5     L0glm_PCG 10000 10000 1 1063 250925.4      84966.86 -30302.24   0.9999987       0.9999985 26.778759  257.46105
+#    R2_coefs support_size_true support_size_estimated  TP  FP   TN FN precision recall  F1_score       MCC      gic     ebic
+# 2 0.9976327              1000                   1019 976  43 8957 24 0.9578018  0.976 0.9668153 0.9631422 79419.85 77349.98
+# 1 0.9976327              1000                   1019 976  43 8957 24 0.9578018  0.976 0.9668153 0.9631422 79419.85 77349.98
+# 3 0.9805885              1000                   1062 938 124 8876 62 0.8832392  0.938 0.9097963 0.8999435 82342.78 80185.65
+# 4 0.9805885              1000                   1062 938 124 8876 62 0.8832392  0.938 0.9097963 0.8999435 82342.78 80185.65
+# 5 0.9805885              1000                   1062 938 124 8876 62 0.8832392  0.938 0.9097963 0.8999435 82342.79 80185.66
+#        bic      aic     mbic
+# 2 67955.43 60600.88 83916.48
+# 1 67955.43 60600.88 83916.48
+# 3 70395.06 62730.47 87028.98
+# 4 70395.06 62730.47 87028.98
+# 5 70395.07 62730.48 87028.99
 
-# -> here osqp solver gave best solution & bigGlm's bigGlm the worst
-# Cholesky comes in at 2nd place though & was by far the fastest
+# -> here osqp & bigGlm's solvers gave best solution 
+# Cholesky comes in at 3d place though & was by far the fastest
 # -> Cholesky performs best for different noise families & is fastest
+
+# TODO check how to get Eigen solvers to solution quality of osqp & bigGlm
 
 
 # 2. MULTICHANNEL ####
 
-# TODO: add option precluster = T or F to l0glmFit?
+# TODO: test option precluster = T or F?
 # (see ?glmCluster)
 
 # Simulate MC n=p=500
@@ -699,11 +672,11 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     nlambda = 10,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                     family = poisson(identity),
+                                    family = poisson(identity),
                                     nonnegative = TRUE, 
                                     grouped = FALSE,
                                     solver = "eigen", method = 1L,
-                                    ncores = 4)) # openmp 2.96s
+                                    ncores = 4)) # historical 2.96s, TODO check why now 25s
 tune_full$lambda_best # 4.005619 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -715,11 +688,11 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       nlambda = 10,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, coefs.true = sim.pois.mc$beta_true, 
-                                       family = poisson(identity),
+                                      family = poisson(identity),
                                       nonnegative = TRUE, 
                                       grouped = FALSE,
                                       solver = "eigen", method = 1L,
-                                      ncores = 4)) # openmp 3.31s
+                                      ncores = 4)) # historical 3.31s
 tune_zoomed$lambda_best # 8.022493 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -733,7 +706,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     grouped = FALSE,
                                     solver = "eigen",
                                     method = 1L)) 
-# openmp 0.13s
+# 0.29s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.pois.mc$beta_true))          # true
@@ -757,7 +730,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
                                     solver = "osqp")) 
-# time = 7.67s with parallelize=F, 5.2s with parallelize=T
+# 13.64s
 
 
 
@@ -776,7 +749,7 @@ system.time(tune_full <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                     nonnegative = TRUE, 
                                     grouped = TRUE,
                                     solver = "eigen", method = 1L,
-                                    ncores = 4)) # openmp 4.47s
+                                    ncores = 4)) # historical 4.47s, now 23s
 tune_full$lambda_best # 2.830413 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -792,7 +765,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.pois.mc$X, y=sim.pois.mc$y,
                                       nonnegative = TRUE, 
                                       grouped = TRUE,
                                       solver = "eigen", method = 1L,
-                                      ncores = 4)) # openmp 5.75s
+                                      ncores = 4)) # historical 5.75s, now 19s
 tune_zoomed$lambda_best # 8.022493 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -808,7 +781,7 @@ system.time(L0glm.chol <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     solver = "eigen",
                                     method = 1L,
                                     ncores = 4)) 
-# openmp 0.28s
+# 0.42s
 
 
 
@@ -819,7 +792,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.pois.mc$X, sim.pois.mc$y,
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp"))
-# 33.17s
+# 41.95s
 
 
 
@@ -908,7 +881,6 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, 
                                     coefs.true = sim.gaus.mc$beta_true, 
-
                                     family = gaussian(identity), 
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = FALSE,
@@ -929,7 +901,7 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       family = gaussian(identity), 
                                       nonnegative = TRUE,ncores=1L,
                                       grouped = FALSE,
-                                      solver = "eigen", method = 1L)) # 89.75s
+                                      solver = "eigen", method = 1L)) # 84s
 tune_zoomed$lambda_best # 11.35348
 tune_zoomed$lambda_preset # 11.35348 
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348
@@ -1015,7 +987,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "eigen",
-                                    method = 1L)) # 26.09s
+                                    method = 1L)) # 2.3s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
@@ -1038,7 +1010,7 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp")) 
-# 52.86s
+# 72.58s
 
 
 
@@ -1052,11 +1024,10 @@ system.time(tune_full <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                     prop_range = 1, # to zoom in around lambda_preset preset
                                     plot = TRUE, 
                                     coefs.true = sim.gaus.mc$beta_true, 
-
                                     family = gaussian(identity), 
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
-                                    solver = "eigen", method = 1L)) # 277.47s
+                                    solver = "eigen", method = 1L)) # 32.86s
 tune_full$lambda_best # 11.35348 (best lambda tune)
 tune_full$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
@@ -1069,12 +1040,11 @@ system.time(tune_zoomed <- l0glmTune(X=sim.gaus.mc$X, y=sim.gaus.mc$y,
                                       prop_range = 0.2, # to zoom in around lambda_preset preset
                                       plot = TRUE, 
                                       coefs.true = sim.gaus.mc$beta_true, 
-
                                       family = gaussian(identity), 
                                       nonnegative = TRUE,ncores=1L,
                                       grouped = TRUE,
-                                      solver = "eigen", method = 1L)) # 281.16s
-tune_zoomed$lambda_best # 3.361205 (best lambda tune)
+                                      solver = "eigen", method = 1L)) # 35.14s
+tune_zoomed$lambda_best # 10.59169 (best lambda tune)
 tune_zoomed$lambda_preset # 11.35348 (lambda preset)
 L0glm:::presetLambda(IC="gic", p, n) # 11.35348 (lambda preset)
 
@@ -1087,7 +1057,7 @@ system.time(L0glm.chol <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     grouped = TRUE,
                                     solver = "eigen",
                                     method = 1L)) 
-# 23.99s
+# 2.41s
 
 x_vals <- as.vector(rowMeans(L0glm.chol$coefficients))        # estimated
 y_vals <- as.vector(rowMeans(sim.gaus.mc$beta_true))               # true
@@ -1111,4 +1081,4 @@ system.time(L0glm.osqp <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                     nonnegative = TRUE,ncores=1L,
                                     grouped = TRUE,
                                     solver = "osqp")) 
-# 51.46s
+# 71s
