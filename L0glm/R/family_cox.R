@@ -49,7 +49,11 @@ L0glm_ext_cox_stats <- function(data, B) {
   L0glm_ext_cox_eta(eta, data$response, data$weights[, 1L], cache, sorted = TRUE)
 }
 
-L0glm_ext_cox_initial <- function(data) {
+L0glm_ext_cox_initial <- function(data,args=NULL) {
+  if(!is.null(args)) {
+    native <- L0glm_extended_native(data,data$B,data$allowed,list(),0,TRUE,0,1L,1e-10,args,initialize=TRUE)
+    if(!is.null(native))return(native)
+  }
   B <- matrix(0, data$p, 1L)
   D <- matrix(1e-3, data$p, 1L)
   proposal <- L0glm_ext_cox_ridge_pilot(data)

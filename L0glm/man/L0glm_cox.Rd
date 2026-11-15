@@ -6,6 +6,15 @@ Fit right-censored Cox proportional hazards models with Breslow ties,
 adaptive L0 selection, an optional relaxed refit, and automatic LLT/PCG routing.
 }
 \details{
+The Eigen fitting path coordinates initialization, adaptive penalties,
+backtracking, thresholding and convergence in C++. Time ordering and risk-set
+indices are prepared once. Risk statistics, selected working designs and PCG
+scratch vectors are reused across iterations. Small systems use direct
+information matrices and LLT; large systems use exact matrix-free Hessian
+products. Direct fallbacks respect the Gram/factor workspace budget.
+The \code{ncores} argument can parallelize risk-information columns; serial
+dense BLAS operations retain the \code{nthreads} budget.
+
 Use \code{family=mgcv::cox.ph()} as family metadata and supply
 \code{survival::Surv(time,status)} or a two-column time/status matrix.
 Status is zero for censoring and one for an observed event; it belongs in

@@ -313,7 +313,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
     D[data$included, ] <- 0
     B <- switch(data$kind,
       nb = L0glm_ext_nb_working(data, B, D, state, args),
-      cox = L0glm_ext_cox_initial(data),
+      cox = L0glm_ext_cox_initial(data,args),
       multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
   }
   if (data$kind == "cox") {

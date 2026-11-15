@@ -303,13 +303,16 @@ Use \code{method=1L} for Eigen Cholesky LLT.}
   factorizations are reused while their pattern is unchanged; fixed working
   weights also permit reuse of crossproducts.}
 
-\item{ncores}{Positive integer limiting OpenMP outcome-channel threads.
+\item{ncores}{Positive integer limiting native OpenMP threads.
 Defaults to half the detected physical cores, falling back to half the
 logical cores or one if detection is unavailable.
 Set \code{ncores=1L} for serial execution. Built-in scalar family and link
 implementations use native code automatically, including one-thread fits.
 Negative-binomial fits with estimated shape also coordinate their IRLS and
 shape updates natively for the built-in log, identity and square-root links.
+Joint multinomial fits parallelize independent information blocks; Cox fits
+parallelize risk-information columns where useful, retaining matrix-free
+coefficient updates for large systems.
 Custom R family/link callbacks and R-based solver bridges run serially.
 No socket or fork workers are created. BLAS threads are limited within
 native multichannel passes to avoid nested parallelism.

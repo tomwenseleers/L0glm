@@ -36,6 +36,7 @@ template<class Design> struct ExtendedModel {
       s.offset=offset.col(offset.cols()==1?0:k);s.prior=prior.col(k);s.lower=lower;
       s.upper=VectorXd::Constant(p,DBL_MAX);s.scale=VectorXd::Ones(p);s.phi=1;s.workspace=control.workspace;
     }
+    if(kind==2)cox_setup(c,cores);
   }
   const MatrixXd& prediction(const MatrixXd& B) {
     if(prediction_ready&&cached_B.rows()==B.rows()&&(cached_B.array()==B.array()).all())return cached_eta;
@@ -47,8 +48,10 @@ template<class Design> struct ExtendedModel {
     return NA_REAL;
   }
   #include "glm_multinomial.h"
+  #include "glm_cox.h"
   double loglik(const MatrixXd& B) {
     if(kind==1)return multinomial_loglik(B);
+    if(kind==2)return cox_stats(B).loglik;
     const MatrixXd& eta=prediction(B);std::vector<double> values(m,0);
     #ifdef _OPENMP
     #pragma omp parallel for schedule(static) num_threads(threads) if(threads>1)
@@ -64,6 +67,7 @@ template<class Design> struct ExtendedModel {
   }
   MatrixXd working(const MatrixXd& B,const MatrixXd& D) {
     if(kind==1)return multinomial_working(B,D);
+    if(kind==2)return cox_working(B,D);
     const MatrixXd& eta=prediction(B);MatrixXd answer=MatrixXd::Zero(p,m);std::vector<std::string> errors(m);
     auto run=[&](int k,int worker) {
       try {
@@ -157,13 +161,17 @@ template<class Design> struct ExtendedModel {
 template<class Design> List extended_pass(const Design& X,List context,const Family& family,
     const SolverControl& control,int nthreads) {
   ExtendedModel<Design> model(X,context,family,control,nthreads);
+  if(as<bool>(context["initialize"])) {
+    MatrixXd initial=model.cox_initial();return List::create(_["B"]=initial,_["diagnostic"]=model.cox_info(true));
+  }
   MatrixXd B=as<MatrixXd>(context["B"]);LogicalMatrix r_allowed=context["allowed"];
   Eigen::ArrayXXi allowed(B.rows(),B.cols());for(int k=0;k<B.cols();++k)for(int j=0;j<B.rows();++j)allowed(j,k)=r_allowed(j,k);
   const int p=B.rows(),m=B.cols(),G=model.multiplier.size(),maxit=as<int>(context["maxit"]);
   const double lambda=as<double>(context["lambda"]),thresh=as<double>(context["thresh"]),
     tol=as<double>(context["tol"]),theta_tol=as<double>(context["theta_tol"]);
   const bool grouped=as<bool>(context["grouped"]),refit=as<bool>(context["refit"]),pilot=as<bool>(context["pilot"]);
-  std::vector<double> h_ll,h_change,h_noise;std::vector<int> h_selected,h_halvings;
+  std::vector<double> h_ll,h_change,h_noise,h_residual;std::vector<int> h_selected,h_halvings,h_inner;
+  std::vector<std::string> h_backend;
   bool converged=false;int iteration=0,failed_iteration=0;
   const int blocks=grouped?G:G*m;
   auto block=[&](int j,int k){return model.ids[j]+(grouped?0:k*G);};
@@ -178,7 +186,11 @@ template<class Design> List extended_pass(const Design& X,List context,const Fam
     }
     if(pilot)D=as<MatrixXd>(context["D"]);
     MatrixXd proposal=model.working(B,D);
-    if(pilot)return List::create(_["B"]=proposal);
+    if(pilot) {
+      List result=List::create(_["B"]=proposal);
+      if(model.kind==2)result["diagnostic"]=model.cox_info();
+      return result;
+    }
     auto objective=[&](const MatrixXd& b) {
       long double ridge=0;for(int k=0;k<m;++k)for(int j=0;j<p;++j)if(std::isfinite(D(j,k)))
         ridge+=D(j,k)*std::pow(b(j,k)-model.prior(j,k),2);
@@ -236,13 +248,15 @@ template<class Design> List extended_pass(const Design& X,List context,const Fam
       std::sqrt((double)pn)/std::max(1.,std::sqrt((double)pd)));
     B=candidate;h_ll.push_back(model.loglik(B));h_change.push_back(change);h_noise.push_back(noise);
     h_selected.push_back(selected);h_halvings.push_back(halvings);
+    if(model.kind==2){h_backend.push_back(model.cox_diagnostic.backend);h_inner.push_back(model.cox_diagnostic.iterations);h_residual.push_back(model.cox_diagnostic.residual);}
     if(change<tol&&noise<theta_tol){converged=true;break;}
   }
   LogicalMatrix output_allowed(p,m);for(int k=0;k<m;++k)for(int j=0;j<p;++j)output_allowed(j,k)=allowed(j,k);
   IntegerVector iters(h_ll.size());for(int i=0;i<iters.size();++i)iters[i]=i+1;
+  DataFrame history=DataFrame::create(_["iteration"]=iters,_["loglik"]=h_ll,_["selected"]=h_selected,
+    _["step_halvings"]=h_halvings,_["coefficient_change"]=h_change,_["nuisance_change"]=h_noise);
+  if(model.kind==2){history["backend"]=h_backend;history["inner_iterations"]=h_inner;history["inner_residual"]=h_residual;}
   return List::create(_["B"]=B,_["allowed"]=output_allowed,_["state"]=model.state(),
-    _["converged"]=converged,_["iterations"]=std::min(iteration,maxit),_["failed_iteration"]=failed_iteration,
-    _["history"]=DataFrame::create(_["iteration"]=iters,_["loglik"]=h_ll,_["selected"]=h_selected,
-      _["step_halvings"]=h_halvings,_["coefficient_change"]=h_change,_["nuisance_change"]=h_noise));
+    _["converged"]=converged,_["iterations"]=std::min(iteration,maxit),_["failed_iteration"]=failed_iteration,_["history"]=history);
 }
 #endif

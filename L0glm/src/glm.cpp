@@ -16,6 +16,7 @@
 #include "bounded.h"
 #include "ridge_workspace.h"
 #include <algorithm>
+#include <numeric>
 #include <cmath>
 #ifdef _OPENMP
 #include <omp.h>

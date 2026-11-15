@@ -78,6 +78,8 @@ L0glm_ext_cox_ridge_pilot <- function(data) {
 }
 
 L0glm_ext_cox_working <- function(data, B, D, state, args) {
+  native <- L0glm_extended_native(data,B,is.finite(D),state,0,FALSE,0,1L,1e-10,args,D=D)
+  if(!is.null(native))return(native)
   active <- is.finite(D[, 1L]); k <- sum(active)
   if (!k) {
     answer <- matrix(0, data$p, 1L)

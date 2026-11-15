@@ -56,3 +56,22 @@ test_that('joint multinomial coordination stays native with CLR masks and wide s
     expect_true(all(coef(actual)[2,]==0))
   }
 })
+
+test_that('Cox initialization and complete IRLS passes avoid R numerical loops', {
+  set.seed(824);n <- 180L;p <- 15L
+  X <- matrix(rnorm(n*p),n,p);y <- cbind(round(rexp(n),2),rep(c(1,0,1),60))
+  args <- list(X=X,y=y,family=mgcv::cox.ph(),lambda=2,local.search=FALSE,
+    ncores=4L,maxit=50L,offset=rnorm(n,0,.1))
+  ctl <- controlSolverGen('eigen',1L);ctl$.native <- FALSE
+  reference <- do.call(l0glmFit,c(args,list(control.solver=ctl)))
+  actual <- with_mocked_bindings(do.call(l0glmFit,args),
+    L0glm_ext_cox_working=function(...)stop('R Cox working loop should not run'),
+    L0glm_ext_cox_ridge_pilot=function(...)stop('R Cox initializer should not run'),.package='L0glm')
+  expect_equal(as.numeric(coef(actual)),as.numeric(coef(reference)),tolerance=1e-7)
+  expect_identical(as.numeric(coef(actual))!=0,as.numeric(coef(reference))!=0)
+  expect_true(actual$initialization$converged)
+  ctl <- controlSolverGen('eigen',1L,max.memory=0)
+  matrixfree <- do.call(l0glmFit,c(args,list(control.solver=ctl)))
+  expect_equal(as.numeric(coef(matrixfree)),as.numeric(coef(reference)),tolerance=1e-7)
+  expect_true(all(matrixfree$history$selection$backend%in%c('pcg','empty')))
+})

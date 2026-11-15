@@ -62,7 +62,15 @@ adaptive L0 selection, an optional relaxed refit, and automatic LLT/PCG routing.
 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Use <code>family=mgcv::cox.ph()</code> as family metadata and supply
+    <p>The Eigen fitting path coordinates initialization, adaptive penalties,
+backtracking, thresholding and convergence in C++. Time ordering and risk-set
+indices are prepared once. Risk statistics, selected working designs and PCG
+scratch vectors are reused across iterations. Small systems use direct
+information matrices and LLT; large systems use exact matrix-free Hessian
+products. Direct fallbacks respect the Gram/factor workspace budget.
+The <code>ncores</code> argument can parallelize risk-information columns; serial
+dense BLAS operations retain the <code>nthreads</code> budget.</p>
+<p>Use <code>family=mgcv::cox.ph()</code> as family metadata and supply
 <code>survival::Surv(time,status)</code> or a two-column time/status matrix.
 Status is zero for censoring and one for an observed event; it belongs in
 the response, not in <code>weights</code>. No intercept is identifiable.

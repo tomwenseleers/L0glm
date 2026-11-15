@@ -1,6 +1,8 @@
 # R boundary for native extended-family coordination and working solves.
 L0glm_extended_native_spec <- function(data,args) {
   if(isFALSE(args$control.solver$.native))return(NULL)
+  if(data$kind=='cox')return(if(args$solver=='eigen')
+    list(family=0L,link=0L,theta=1,scalar=-1L,parameter=1,censor=0)else NULL)
   if(data$kind=='multinomial')return(if(args$solver=='eigen'&&data$control$multinomial=='irls')
     list(family=2L,link=0L,theta=1,scalar=-1L,parameter=1,censor=0)else NULL)
   if(data$kind!='nb')return(NULL)
@@ -15,15 +17,15 @@ L0glm_extended_native_spec <- function(data,args) {
 }
 
 L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,
-                                  refit=FALSE,D=NULL) {
+                                  refit=FALSE,D=NULL,initialize=FALSE) {
   spec <- L0glm_extended_native_spec(data,args)
-  if(is.null(spec)||is.null(D)&&!is.null(args$validation))return(NULL)
+  if(is.null(spec)||is.null(D)&&!initialize&&!is.null(args$validation))return(NULL)
   control <- L0glm_solver_memory(args$control.solver)
   cores <- if(!is.null(args$ncores))args$ncores else if(!is.null(args$group.nthreads))args$group.nthreads else 1L
-  cores <- max(1L,min(data$m,as.integer(cores)))
+  cores <- max(1L,min(if(data$kind=='cox')data$p else data$m,as.integer(cores)))
   bridge <- L0glm_native_solver_bridge(args$solver,control)
   if(!is.null(bridge))cores <- 1L
-  if(cores>1L) {
+  if(cores>1L&&data$kind!='cox') {
     old <- L0glm_set_thread_count(1L)
     on.exit(L0glm_restore_thread_count(old),add=TRUE)
   }
@@ -41,7 +43,7 @@ L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,max
     x <- as.matrix(x);if(typeof(x)!='double')storage.mode(x) <- 'double';x
   }
   nb <- data$kind=='nb'
-  context <- list(kind=if(nb)0L else 1L,B=B,y=numeric_matrix(data$y),weights=numeric_matrix(data$weights),offset=numeric_matrix(data$offset),
+  context <- list(kind=switch(data$kind,nb=0L,multinomial=1L,cox=2L),B=B,y=numeric_matrix(data$y),weights=numeric_matrix(data$weights),offset=numeric_matrix(data$offset),
     prior=numeric_matrix(data$prior),lower=data$lower,allowed=allowed,included=as.integer(data$included),
     theta=if(nb)state$theta else rep(1,data$m),estimated=if(nb)state$estimated else rep(FALSE,data$m),stable=if(is.null(state$stable))integer(data$m)else as.integer(state$stable),
     noise_df=if(is.null(data$noise.df))rep(-1,data$m)else as.numeric(data$noise.df),
@@ -49,11 +51,25 @@ L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,max
     theta_min=data$control$theta.min,theta_max=data$control$theta.max,
     fixed_noise=isTRUE(data$fixed.dispersion),max_working=as.integer(data$control$max.working),
     lambda=lambda,grouped=grouped,thresh=thresh,maxit=as.integer(maxit),tol=tol,
-    theta_tol=data$control$theta.tol,refit=refit,pilot=!is.null(D),D=D)
+    theta_tol=data$control$theta.tol,refit=refit,pilot=!is.null(D),D=D,initialize=initialize)
+  if(data$kind=='cox') {
+    context$y <- matrix(0,data$n,1L)
+    context$weights <- matrix(data$cox.cache$weights,ncol=1L)
+    context$offset <- numeric_matrix(data$offset[data$cox.cache$order,,drop=FALSE])
+    context$cox_cache <- data$cox.cache
+    context$cox_mode <- data$control$cox
+    context$cox_tol <- data$control$cox.cg.tol
+    context$cox_maxit <- as.integer(data$control$cox.cg.maxit)
+    cutoff <- data$control$cox.llt.max
+    context$cox_cutoff <- if(length(cutoff)==1L)cutoff else cutoff[if(inherits(data$Z,'sparseMatrix'))'sparse'else'dense']
+  }
   result <- do.call(glm_extended_cpp,c(list(design=working$X,context=context),spec,
     list(solver_control=control,solver_bridge=bridge,nthreads=cores)))
   dimnames(result$B) <- dimnames(B)
-  if(!is.null(D))return(result$B)
+  if(initialize||!is.null(D)) {
+    if(data$kind=='cox')attr(result$B,'cox.solve') <- result$diagnostic
+    return(result$B)
+  }
   if(nb) {
     state$theta <- as.numeric(result$state$theta)
     if(!is.null(state$stable)||any(state$estimated))state$stable <- result$state$stable

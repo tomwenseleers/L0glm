@@ -31,6 +31,9 @@
   Exact joint multinomial IRLS coordinates penalties, backtracking, CLR masks
   and convergence natively; independent Fisher-information blocks use OpenMP.
   Wide systems retain observation-space solves and CLR entrywise sparsity.
+  Cox initialization and IRLS also use native coordination, cached Breslow
+  risk statistics and reusable matrix-free scratch buffers. Small direct
+  systems retain LLT, and risk-information columns can run in OpenMP.
 * NB1, common-scale Gamma and censored Gamma signal models; quasi families
   expose scaled likelihood kernels and quasi-information criteria.
 
