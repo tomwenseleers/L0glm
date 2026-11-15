@@ -28,6 +28,9 @@
   Estimated-negative-binomial IRLS, shape updates and channel coordination use
   C++/OpenMP for recognized links. Working designs are reused across passes;
   per-channel NB shapes are copied without serializing caller workspaces.
+  Exact joint multinomial IRLS coordinates penalties, backtracking, CLR masks
+  and convergence natively; independent Fisher-information blocks use OpenMP.
+  Wide systems retain observation-space solves and CLR entrywise sparsity.
 * NB1, common-scale Gamma and censored Gamma signal models; quasi families
   expose scaled likelihood kernels and quasi-information criteria.
 

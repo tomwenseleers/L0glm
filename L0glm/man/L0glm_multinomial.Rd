@@ -6,6 +6,11 @@ Joint multinomial IRLS with centered log-ratio (CLR) coefficients, an invariant
 grouped L0 penalty, and an optional entrywise CLR L0 penalty.
 }
 \details{
+Exact joint IRLS uses native coordination for the Eigen solvers. Independent
+contrast-information blocks can use OpenMP through \code{ncores}; the response
+categories remain coupled in a single multinomial likelihood. Primal and
+observation-space working systems retain grouped or individual CLR penalties.
+
 For \eqn{C} categories, use \code{family=mgcv::multinom(K=C-1)}.
 Supply a factor/class vector or an integer count matrix with \eqn{C} columns.
 Every category must have positive weighted training count. For count vectors,

@@ -62,7 +62,11 @@ grouped L0 penalty, and an optional entrywise CLR L0 penalty.</p>
 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>For \(C\) categories, use <code>family=mgcv::multinom(K=C-1)</code>.
+    <p>Exact joint IRLS uses native coordination for the Eigen solvers. Independent
+contrast-information blocks can use OpenMP through <code>ncores</code>; the response
+categories remain coupled in a single multinomial likelihood. Primal and
+observation-space working systems retain grouped or individual CLR penalties.</p>
+<p>For \(C\) categories, use <code>family=mgcv::multinom(K=C-1)</code>.
 Supply a factor/class vector or an integer count matrix with \(C\) columns.
 Every category must have positive weighted training count. For count vectors,
 \(N_i=\sum_cY_{ic}\) and

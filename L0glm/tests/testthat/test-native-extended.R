@@ -37,3 +37,22 @@ test_that('native NB preserves weights, priors, start masks, links and grouped s
     expect_equal(as.numeric(coef(actual)[8,2]),0)
   }
 })
+
+test_that('joint multinomial coordination stays native with CLR masks and wide systems', {
+  set.seed(820)
+  for(wide in c(FALSE,TRUE))for(grouped in c(FALSE,TRUE)) {
+    n <- if(wide)30L else 100L;p <- if(wide)55L else 12L;C <- 3L
+    X <- matrix(rnorm(n*p),n,p);Y <- matrix(rmultinom(n,5,c(.3,.3,.4)),n,C,byrow=TRUE)
+    start <- matrix(rnorm(p*C,0,.1),p,C);start[2,] <- 0
+    args <- list(X=X,y=Y,family=mgcv::multinom(2),start=start,lambda=1,intercept=FALSE,
+      maxit=20L,local.search=FALSE,grouped=grouped,ncores=3L)
+    ctl <- controlSolverGen('eigen',1L);ctl$.native <- FALSE
+    reference <- do.call(l0glmFit,c(args,list(control.solver=ctl)))
+    actual <- with_mocked_bindings(do.call(l0glmFit,args),
+      L0glm_ext_multinomial_working=function(...)stop('R joint working loop should not run'),.package='L0glm')
+    expect_equal(as.matrix(coef(actual)),as.matrix(coef(reference)),tolerance=1e-7)
+    expect_identical(as.numeric(coef(actual))!=0,as.numeric(coef(reference))!=0)
+    expect_lt(max(abs(rowSums(coef(actual)))),1e-10)
+    expect_true(all(coef(actual)[2,]==0))
+  }
+})

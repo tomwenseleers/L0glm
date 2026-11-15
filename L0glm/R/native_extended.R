@@ -1,6 +1,9 @@
 # R boundary for native extended-family coordination and working solves.
 L0glm_extended_native_spec <- function(data,args) {
-  if(isFALSE(args$control.solver$.native)||data$kind!='nb')return(NULL)
+  if(isFALSE(args$control.solver$.native))return(NULL)
+  if(data$kind=='multinomial')return(if(args$solver=='eigen'&&data$control$multinomial=='irls')
+    list(family=2L,link=0L,theta=1,scalar=-1L,parameter=1,censor=0)else NULL)
+  if(data$kind!='nb')return(NULL)
   links <- c('identity','log','sqrt','inverse','logit','probit','cloglog','cauchit','1/mu^2')
   link <- match(data$family$link,links)-1L
   if(is.na(link)||!link%in%c(0:3,8L))return(NULL)
@@ -37,9 +40,10 @@ L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,max
   numeric_matrix <- function(x) {
     x <- as.matrix(x);if(typeof(x)!='double')storage.mode(x) <- 'double';x
   }
-  context <- list(kind=0L,B=B,y=numeric_matrix(data$y),weights=numeric_matrix(data$weights),offset=numeric_matrix(data$offset),
+  nb <- data$kind=='nb'
+  context <- list(kind=if(nb)0L else 1L,B=B,y=numeric_matrix(data$y),weights=numeric_matrix(data$weights),offset=numeric_matrix(data$offset),
     prior=numeric_matrix(data$prior),lower=data$lower,allowed=allowed,included=as.integer(data$included),
-    theta=state$theta,estimated=state$estimated,stable=if(is.null(state$stable))integer(data$m)else as.integer(state$stable),
+    theta=if(nb)state$theta else rep(1,data$m),estimated=if(nb)state$estimated else rep(FALSE,data$m),stable=if(is.null(state$stable))integer(data$m)else as.integer(state$stable),
     noise_df=if(is.null(data$noise.df))rep(-1,data$m)else as.numeric(data$noise.df),
     ids=as.integer(groups$id),multiplier=as.numeric(groups$multiplier),predictor_groups=!is.null(data$groups),
     theta_min=data$control$theta.min,theta_max=data$control$theta.max,
@@ -50,8 +54,10 @@ L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,max
     list(solver_control=control,solver_bridge=bridge,nthreads=cores)))
   dimnames(result$B) <- dimnames(B)
   if(!is.null(D))return(result$B)
-  state$theta <- as.numeric(result$state$theta)
-  if(!is.null(state$stable)||any(state$estimated))state$stable <- result$state$stable
+  if(nb) {
+    state$theta <- as.numeric(result$state$theta)
+    if(!is.null(state$stable)||any(state$estimated))state$stable <- result$state$stable
+  }
   result$state <- state
   if(result$failed_iteration)warning('No finite descent step in ',data$kind,' IRLS iteration ',result$failed_iteration,'.',call.=FALSE)
   result$failed_iteration <- NULL

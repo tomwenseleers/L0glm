@@ -54,6 +54,8 @@ L0glm_ext_quadratic <- function(H, rhs, B, D, lower, prior, args) {
 }
 
 L0glm_ext_multinomial_working <- function(data, B, D, state, args) {
+  native <- L0glm_extended_native(data,B,is.finite(D),state,0,FALSE,0,1L,1e-10,args,D=D)
+  if(!is.null(native))return(native)
   # Model, adaptive penalties and masks are CLR. Only the linear solve uses a
   # full-rank orthonormal basis of the zero-sum class plane.
   vars <- which(rowSums(is.finite(D)) > 1L)

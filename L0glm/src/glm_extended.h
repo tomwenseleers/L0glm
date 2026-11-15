@@ -46,7 +46,9 @@ template<class Design> struct ExtendedModel {
       case 3:return 1/mu;case 8:return 1/(mu*mu);}
     return NA_REAL;
   }
+  #include "glm_multinomial.h"
   double loglik(const MatrixXd& B) {
+    if(kind==1)return multinomial_loglik(B);
     const MatrixXd& eta=prediction(B);std::vector<double> values(m,0);
     #ifdef _OPENMP
     #pragma omp parallel for schedule(static) num_threads(threads) if(threads>1)
@@ -61,6 +63,7 @@ template<class Design> struct ExtendedModel {
     long double value=0;for(double v:values)value+=v;return (double)value;
   }
   MatrixXd working(const MatrixXd& B,const MatrixXd& D) {
+    if(kind==1)return multinomial_working(B,D);
     const MatrixXd& eta=prediction(B);MatrixXd answer=MatrixXd::Zero(p,m);std::vector<std::string> errors(m);
     auto run=[&](int k,int worker) {
       try {
@@ -116,7 +119,7 @@ template<class Design> struct ExtendedModel {
     return answer;
   }
   double update_noise(const MatrixXd& B,const MatrixXd& previous,int iteration,bool refit) {
-    if(fixed_noise)return 0;
+    if(kind!=0||fixed_noise)return 0;
     const MatrixXd& eta=prediction(B);std::vector<double> changes(m,0);
     #ifdef _OPENMP
     #pragma omp parallel for schedule(static) num_threads(threads) if(threads>1)
@@ -207,6 +210,11 @@ template<class Design> List extended_pass(const Design& X,List context,const Fam
       for(int k=0;k<m;++k)for(int j=0;j<p;++j)if(allowed(j,k)&&!model.compulsory[j]) {
         double magnitude=std::sqrt(norm[block(j,k)]);
         if(magnitude<largest[k]*thresh||magnitude<1e-20){cut(j,k)=0;cut_allowed(j,k)=0;}
+      }
+      if(model.kind==1)for(int j=0;j<p;++j) {
+        int count=0;double mean=0;for(int k=0;k<m;++k)if(cut_allowed(j,k)){++count;mean+=cut(j,k);}
+        if(count<2){cut.row(j).setZero();cut_allowed.row(j).setZero();}
+        else for(int k=0;k<m;++k)if(cut_allowed(j,k))cut(j,k)-=mean/count;
       }
       if(std::isfinite(model.loglik(cut))){candidate=cut;allowed=cut_allowed;}
     }
