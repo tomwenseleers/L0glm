@@ -258,6 +258,14 @@ form: $$\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta)
   constructs a sparse augmented matrix. Eigen's SVD requires a dense factorization
   internally even when its input is sparse. OSQP requires sparse arrays at
   its solver boundary.</p>
+<p>OSQP and <code>bigGlm</code> enforce coefficient bounds during the ridge solve
+by default. To compare them with Eigen's default clamping strategy, use
+<code>controlSolverGen(solver, nonnegative.clamp=TRUE)</code>. The solver then
+minimizes the unconstrained ridge quadratic and clamps its solution to
+the supplied bounds. Scaling, prior means and unrestricted coefficients
+retain their interpretation. In correlated designs this differs from
+solving the constrained quadratic; adaptive penalty updates can therefore
+converge to different sparse models.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

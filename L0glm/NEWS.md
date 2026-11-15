@@ -2,6 +2,11 @@
 
 ## Sparse generalized linear models
 
+* OSQP and `bigGlm` optionally solve unconstrained ridge steps and clamp
+  afterward through `controlSolverGen(nonnegative.clamp=TRUE)`. Exact bounds
+  remain their default; free intercepts, normalization and prior means are
+  preserved. Unconstrained OSQP steps use tight infeasibility tolerances.
+
 * Gram and factor workspaces are checked against a configurable memory budget.
   CG/LSCG can use implicit ridge products with a fresh coefficient-space residual
   check; oversized incomplete Cholesky switches to diagonal preconditioning.

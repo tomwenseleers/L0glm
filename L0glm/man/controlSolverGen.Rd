@@ -21,7 +21,8 @@ controlSolverGen(
   verbose = FALSE,
   rowaug = NULL,
   nonnegative.polish = FALSE,
-  max.memory = NULL
+  max.memory = NULL,
+  nonnegative.clamp = FALSE
 )
 }
 \arguments{
@@ -105,6 +106,16 @@ preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
 LLT fallbacks require their estimated workspace to fit.
 Allocation checks also cover dispersion pilots and serial special-family
 solver adapters.}
+
+\item{nonnegative.clamp}{Logical, default \code{FALSE}. For OSQP or \code{bigGlm}, solve each
+weighted ridge problem without coefficient bounds, then clamp the result
+to the supplied bounds. This reproduces the default Eigen constraint
+strategy when the inner solves agree. Unrestricted intercepts remain
+unrestricted. With \code{FALSE}, these solvers enforce the bounds during
+optimization. Existing numerical polishing uses the same working bounds.
+Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
+explicitly supplied in the control list, to protect ill-conditioned ridge
+systems from false infeasibility classifications.}
 }
 \value{
 The function return a list with the required options to solve a linear
@@ -182,6 +193,10 @@ controlSolverGen("eigen", method=4L, precond=1L)
 # an existing predictor Gram matrix and is off by default.
 controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
 controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)
+
+# Compare external backends using the same clamping strategy as default Eigen.
+controlSolverGen("osqp", nonnegative.clamp=TRUE)
+controlSolverGen("bigGlm", nonnegative.clamp=TRUE)
 }
 \seealso{
 \code{\link{l0glmFit}}

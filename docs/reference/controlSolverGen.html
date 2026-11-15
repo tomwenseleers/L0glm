@@ -78,7 +78,8 @@ solver (<code>controlSolverGen</code>) &amp; allows fine control over its option
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  rowaug <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nonnegative.polish <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  max.memory <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  max.memory <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nonnegative.clamp <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -200,6 +201,18 @@ LLT fallbacks require their estimated workspace to fit.
 Allocation checks also cover dispersion pilots and serial special-family
 solver adapters.</p></dd>
 
+
+<dt id="arg-nonnegative-clamp">nonnegative.clamp<a class="anchor" aria-label="anchor" href="#arg-nonnegative-clamp"></a></dt>
+<dd><p>Logical, default <code>FALSE</code>. For OSQP or <code>bigGlm</code>, solve each
+weighted ridge problem without coefficient bounds, then clamp the result
+to the supplied bounds. This reproduces the default Eigen constraint
+strategy when the inner solves agree. Unrestricted intercepts remain
+unrestricted. With <code>FALSE</code>, these solvers enforce the bounds during
+optimization. Existing numerical polishing uses the same working bounds.
+Unconstrained OSQP steps use infeasibility tolerances of <code>1e-12</code>, unless
+explicitly supplied in the control list, to protect ill-conditioned ridge
+systems from false infeasibility classifications.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -275,7 +288,11 @@ allocation in rectangular LSCG solves.</p>
 <span><span class="co"># Optional constrained polish of nonnegative working ridge steps. This reuses</span></span>
 <span><span class="co"># an existing predictor Gram matrix and is off by default.</span></span>
 <span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">2L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">2L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Compare external backends using the same clamping strategy as default Eigen.</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"osqp"</span>, nonnegative.clamp<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"bigGlm"</span>, nonnegative.clamp<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

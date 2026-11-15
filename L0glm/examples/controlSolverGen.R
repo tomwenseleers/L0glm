@@ -15,3 +15,7 @@ controlSolverGen("eigen", method=4L, precond=1L)
 # an existing predictor Gram matrix and is off by default.
 controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
 controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)
+
+# Compare external backends using the same clamping strategy as default Eigen.
+controlSolverGen("osqp", nonnegative.clamp=TRUE)
+controlSolverGen("bigGlm", nonnegative.clamp=TRUE)

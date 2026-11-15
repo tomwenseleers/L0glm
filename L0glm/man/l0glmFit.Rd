@@ -302,7 +302,12 @@ Use \code{method=1L} for Eigen Cholesky LLT.}
   original dense or sparse storage. Selected columns and sparse symbolic
   factorizations are reused while their pattern is unchanged; fixed working
   weights also permit reuse of crossproducts. Required sparse external-solver
-  boundaries reuse the packed working design as well.}
+  boundaries reuse the packed working design as well.
+  For OSQP and \code{bigGlm},
+  \code{controlSolverGen(..., nonnegative.clamp=TRUE)} optionally solves
+  each ridge step without bounds and clamps afterward, matching Eigen's
+  default constraint strategy. The default remains exact bounds for these
+  two backends.}
 
 \item{ncores}{Positive integer limiting native OpenMP threads.
 Defaults to half the detected physical cores, falling back to half the

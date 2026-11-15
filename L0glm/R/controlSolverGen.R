@@ -82,6 +82,16 @@
 #' LLT fallbacks require their estimated workspace to fit.
 #' Allocation checks also cover dispersion pilots and serial special-family
 #' solver adapters.
+#' @param nonnegative.clamp
+#' Logical, default \code{FALSE}. For OSQP or \code{bigGlm}, solve each
+#' weighted ridge problem without coefficient bounds, then clamp the result
+#' to the supplied bounds. This reproduces the default Eigen constraint
+#' strategy when the inner solves agree. Unrestricted intercepts remain
+#' unrestricted. With \code{FALSE}, these solvers enforce the bounds during
+#' optimization. Existing numerical polishing uses the same working bounds.
+#' Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
+#' explicitly supplied in the control list, to protect ill-conditioned ridge
+#' systems from false infeasibility classifications.
 #' @param nonnegative.polish
 #' Logical, default \code{FALSE}. For Eigen working solves with nonnegative
 #' coefficients and an existing predictor Gram matrix, optionally replace
@@ -165,8 +175,13 @@ controlSolverGen <- function(solver,
                                threshold = NULL,
                                verbose = FALSE,
                                rowaug = NULL,
-                               nonnegative.polish = FALSE, max.memory = NULL){
+                               nonnegative.polish = FALSE, max.memory = NULL,
+                               nonnegative.clamp = FALSE){
   L0glm_validate_memory(max.memory)
+  if (!is.logical(nonnegative.clamp) || length(nonnegative.clamp) != 1L || is.na(nonnegative.clamp))
+    stop("nonnegative.clamp must be TRUE or FALSE.", call. = FALSE)
+  if (nonnegative.clamp && solver == "eigen")
+    stop("nonnegative.clamp is an OSQP/bigGlm solver control; Eigen already clamps by default.", call. = FALSE)
   if (!is.logical(nonnegative.polish) || length(nonnegative.polish) != 1L || is.na(nonnegative.polish))
     stop("nonnegative.polish must be TRUE or FALSE.", call. = FALSE)
   if (nonnegative.polish && solver != "eigen")
@@ -283,6 +298,7 @@ controlSolverGen <- function(solver,
     stop("Chosen solver is not available.")
   }
   if (solver == "eigen") l$nonnegative.polish <- nonnegative.polish
+  if (nonnegative.clamp) l$nonnegative.clamp <- TRUE
   l$max.memory <- max.memory
   return(l)
 }

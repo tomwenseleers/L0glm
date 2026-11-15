@@ -137,6 +137,16 @@
 #' \code{\link{controlSolverGen}}
 #'
 #' @example examples/lmRidge.R
+#' @details
+#' OSQP and \code{bigGlm} enforce coefficient bounds during the ridge solve
+#' by default. To compare them with Eigen's default clamping strategy, use
+#' \code{controlSolverGen(solver, nonnegative.clamp=TRUE)}. The solver then
+#' minimizes the unconstrained ridge quadratic and clamps its solution to
+#' the supplied bounds. Scaling, prior means and unrestricted coefficients
+#' retain their interpretation. In correlated designs this differs from
+#' solving the constrained quadratic; adaptive penalty updates can therefore
+#' converge to different sparse models.
+#'
 #' @export
 #' @author Tom Wenseleers \email{tom.wenseleers@kuleuven.be} \\ Laboratory of
 #' Socioecology and Social Evolution, KU Leuven \\
@@ -231,6 +241,10 @@ lmridge.osqp <- function(Xw,
                          control.solver = do.call("controlSolverGen", list(solver = "osqp")), 
                          prior.mean = NULL,
                          iteration = 1){
+  output.lower <- lower; output.upper <- upper
+  if (isTRUE(control.solver$nonnegative.clamp)) {
+    lower <- rep(-Inf, length(lower)); upper <- rep(Inf, length(upper))
+  }
   if (!inherits(Xw, "dgCMatrix")) {
     Xw = as(Matrix(Xw, sparse = TRUE), "generalMatrix") # here always coercing Xw to sparse format
     # Xw <- Matrix(Xw, sparse = TRUE)
@@ -271,7 +285,7 @@ lmridge.osqp <- function(Xw,
   }, error = function(e) e)
   if (inherits(solution, "error")) {
     return(osqp_previous_coefficients(conditionMessage(solution), start,
-                                       lower, upper, iteration))
+                                       output.lower, output.upper, iteration))
   }
   status <- solution$info$status
   valid <- is.character(status) && length(status) == 1L && !is.na(status) &&
@@ -281,10 +295,10 @@ lmridge.osqp <- function(Xw,
   if (valid && ncol(Xw) <= nrow(Xw)) {
     coefs <- clamp(solution$x / scale, lower, upper)
     polished <- ridge_box_polish(XtX, Xty, coefs, lower, upper, Xwaug, ywaug)
-    if (polished$success) return(clamp(polished$coefficients, lower, upper))
+    if (polished$success) return(clamp(polished$coefficients, output.lower, output.upper))
   }
-  osqp_coefficients(solution, guess, lower * scale, upper * scale,
-                    iteration) / scale
+  clamp(osqp_coefficients(solution, guess, lower * scale, upper * scale,
+                    iteration) / scale, output.lower, output.upper)
 }
 
 osqp_previous_coefficients <- function(reason, start, lower, upper, iteration) {
@@ -314,6 +328,10 @@ osqp_coefficients <- function(solution, start, lower, upper, iteration) {
 
 osqp_settings_from_control <- function(control.solver, start = NULL) {
   args <- control.solver
+  if (isTRUE(args$nonnegative.clamp)) {
+    if (is.null(args$eps_dual_inf)) args$eps_dual_inf <- 1e-12
+    if (is.null(args$eps_prim_inf)) args$eps_prim_inf <- 1e-12
+  }
   args$rowaug <- NULL
   osqp_args <- names(formals(osqp::osqpSettings))
   
@@ -352,6 +370,10 @@ lmridge.glmnet <- function(Xw, yw,
                            control.solver = do.call("controlSolverGen", list(solver = "bigGlm")), 
                            prior.mean = NULL,
                            iteration = 1){
+  output.lower <- lower; output.upper <- upper
+  if (isTRUE(control.solver$nonnegative.clamp)) {
+    lower <- rep(-Inf, length(lower)); upper <- rep(Inf, length(upper))
+  }
   if (is.null(prior.mean)) prior.mean <- rep(0, ncol(Xw))
 
   # Use row augmentation plus unpenalized bigGlm so zero- and nonzero-centered
@@ -407,7 +429,7 @@ lmridge.glmnet <- function(Xw, yw,
   }
 
   # apply box constraints in case coefs would slightly fall outside bounds
-  coefs <- clamp(coefs, lower, upper) 
+  coefs <- clamp(coefs, output.lower, output.upper)
   return(coefs)
 }
 

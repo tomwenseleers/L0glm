@@ -29,6 +29,9 @@ fit_tol <- 1e-10
 # Rectangular LSCG and Woodbury solves bypass this correction.
 # Keep unit starts shared across all solvers when comparing this switch.
 nonnegative_polish <- FALSE
+# Solve OSQP/bigGlm ridge steps without bounds, then clamp as Eigen does.
+# Keep FALSE to compare their exact constraints with default Eigen clamping.
+nonnegative_clamp <- FALSE
 RhpcBLASctl::blas_set_num_threads(blas_threads)
 
 criterion <- "gic"
@@ -114,7 +117,8 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
     maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,ncores=ncores_fit, nthreads = blas_threads,
     solver = solver_backend, method = solver_method,
     control.solver = L0glm::controlSolverGen(solver_backend, solver_method,
-      nonnegative.polish = solver_backend == "eigen" && nonnegative_polish))
+      nonnegative.polish = solver_backend == "eigen" && nonnegative_polish,
+      nonnegative.clamp = solver_backend != "eigen" && nonnegative_clamp))
 
   timed_fit <- withCallingHandlers(
     tryCatch(
@@ -189,6 +193,7 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
       Start = "1",
       Local_search = FALSE,
       Nonnegative_polish = solver_backend == "eigen" && nonnegative_polish,
+      Nonnegative_clamp = solver_backend != "eigen" && nonnegative_clamp,
       Maxit = fit_maxit,
       Tolerance = fit_tol,
       Iterations = if (is.null(fit)) NA_integer_ else max(fit$convergence$iterations),
@@ -399,6 +404,7 @@ for (family_name in names(family_grid)) {
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
         subtitle = sprintf("start = 1; local.search = FALSE; GIC preset; maxit = %d; Eigen polish = %s",
                            fit_maxit, nonnegative_polish),
+        caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
         colour = "solver",
         shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
@@ -431,6 +437,7 @@ for (family_name in names(family_grid)) {
         title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
         subtitle = sprintf("start = 1; local.search = FALSE; maxit = %d; median warm fitting time",
                            fit_maxit),
+        caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
         colour = "solver",
         shape = "solver", linetype = "solver",
         x = "Problem size (n = p)",
@@ -467,6 +474,7 @@ combined_timing_plot <- ggplot2::ggplot(
     subtitle = sprintf(paste0("start = 1; local.search = FALSE; maxit = %d; Eigen polish = %s\n",
                               "native drivers; ncores = %d; BLAS threads = %d; median of %d warm fits"),
                        fit_maxit, nonnegative_polish, ncores_fit, blas_threads, timing_repetitions),
+    caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
     colour = "solver",
     shape = "solver",
     linetype = "solver",
@@ -496,6 +504,7 @@ run_summary <- c(
   "Starting coefficients: 1 (working coefficient coordinates)",
   "Automatic local support search: FALSE",
   paste("Optional Eigen constrained polish:", nonnegative_polish),
+  paste("Optional OSQP/bigGlm unconstrained solves followed by clamping:", nonnegative_clamp),
   "OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish",
   "Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1",
   "GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8",
