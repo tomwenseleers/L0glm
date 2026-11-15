@@ -303,7 +303,21 @@ L0glm_local_refine <- function(fit,args,control=list(),support.only=FALSE) {
   proposals <- list();stop.reason <- "iteration_limit"
   unbounded <- is.infinite(score$value) && score$value<0
   if(unbounded) stop.reason <- "unbounded_criterion"
-  for(iteration in if(unbounded)integer()else seq_len(control$maxit)) {
+  # A fixed-noise, compulsory-free null has one possible prediction. Once a
+  # tested nonzero model beats it, monotone support refinement cannot return
+  # to zero. Endpoint probes need only this certificate, not the final model.
+  null.value <- NULL
+  if(isTRUE(control$.endpoint) && is.null(kind) && is.null(family$scalar) && !any(estimated) &&
+     !length(mandatory) && is.null(d$validation)) {
+    null <- fit;null$coefficients <- Matrix::sparseMatrix(i=integer(),j=integer(),x=numeric(),dims=c(p,m))
+    zero.context <- d;zero.context$reference.B <- NULL
+    null.value <- L0glm_local_score(null,zero.context,control)$value
+  }
+  certified <- function(s) !is.null(null.value) && s$selected>0L &&
+    L0glm_local_better(s$value,null.value,control$tol)
+  endpoint.nonzero <- certified(score)
+  if(endpoint.nonzero)stop.reason <- "endpoint_nonzero_certificate"
+  for(iteration in if(unbounded||endpoint.nonzero)integer()else seq_len(control$maxit)) {
     cache <- new.env(parent=emptyenv());best <- list(model=current,score=score,move="none")
     base <- as.matrix(coef(current))!=0;base[d$mandatory,] <- TRUE
     active <- which(rowSums(base)>0)
@@ -350,6 +364,7 @@ L0glm_local_refine <- function(fit,args,control=list(),support.only=FALSE) {
         best<-list(model=current,score=score,move="none")
       }
     }
+    if(certified(score)) {endpoint.nonzero<-TRUE;stop.reason<-"endpoint_nonzero_certificate";break}
     scan <- L0glm_local_scan(current,d,control,active);screen.seconds <- screen.seconds+scan$seconds
     add <- scan$indices
     drops <- head(L0glm_local_drop_rank(current,d,scan$context),control$drop)
@@ -419,9 +434,10 @@ L0glm_local_refine <- function(fit,args,control=list(),support.only=FALSE) {
     history[[length(history)+1L]] <- data.frame(iteration,move=best$move,value=score$value,
       GIC=score$GIC,selected=score$selected,nonzero=score$nonzero,evaluations)
     if(control$trace) cat(iteration,best$move,format(score$value,digits=12),"\n")
+    if(certified(score)) {endpoint.nonzero<-TRUE;stop.reason<-"endpoint_nonzero_certificate";break}
     if(evaluations>=control$max.evals) {stop.reason<-"evaluation_limit";break}
   }
-  if(!unbounded && is.finite(control$block.max) && control$final.refit) {
+  if(!unbounded && !endpoint.nonzero && is.finite(control$block.max) && control$final.refit) {
     final.control<-control;final.control$block.max<-Inf;final.control$channel.refit<-FALSE
     mask<-as.matrix(coef(current))!=0;mask[d$mandatory,]<-TRUE
     t<-proc.time()[[3L]]

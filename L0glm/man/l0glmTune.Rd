@@ -327,6 +327,13 @@ Each lambda fit is initialized independently. The preset fit is used only
 to construct the grid; its selected support is not imposed on other fits.
 A common supplied start or pilot-derived seed can be reused independently
 at every lambda, avoiding dependence on the order of the grid.
+For correlated nonnegative deconvolution designs, \code{start="pilot"}
+can give a more stable path and improve the selected model. The pilot is
+constructed once, and each lambda estimates its own coefficients.
+For eligible fixed-noise models without compulsory terms, endpoint probes
+can stop once a nonzero candidate beats the unique zero-coefficient model.
+Monotone refinement cannot subsequently return to that zero model. Every
+model returned on the grid receives the full requested fitting controls.
 The preset calibrates adaptive ridge to the selected information criterion.
 Path tuning can improve its fit for correlated predictors or unrelaxed
 estimates that retain shrinkage.

@@ -226,6 +226,10 @@ L0glm_local_preprocessing <- function(fit, args) {
 }
 
 L0glm_local_control <- function(control, args=list()) {
+  endpoint <- if(is.list(control)) control$.endpoint else NULL
+  if(!is.null(endpoint) && (!is.logical(endpoint) || length(endpoint)!=1L || is.na(endpoint)))
+    stop("Invalid internal endpoint control.",call.=FALSE)
+  if(is.list(control))control$.endpoint <- NULL
   if (!is.null(args$screen.nthreads) && !"nthreads"%in%names(control))
     args$screen.nthreads <- L0glm_sis_threads(args$screen.nthreads)
   defaults <- list(size.max=50L,top=2L,drop=2L,maxit=12L,max.evals=160L,max.swap=2L,
@@ -261,5 +265,6 @@ L0glm_local_control <- function(control, args=list()) {
   defaults$scope <- match.arg(defaults$scope,c("auto","screened","all"))
   defaults$target <- match.arg(defaults$target,c("IC","L0"))
   if (!is.null(defaults$criterion)) L0glm_resolve_lambda(defaults$criterion,100L,100L)
+  if(isTRUE(endpoint))defaults$.endpoint <- TRUE
   defaults
 }

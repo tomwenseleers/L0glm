@@ -46,6 +46,11 @@
 
 ## Model specification and selection
 
+* Fixed-noise tuning endpoints use certified nonzero probes to avoid completing
+  unnecessary local searches. Returned grid fits retain full refinement,
+  independent starts and unchanged scoring. Correlated Poisson path examples
+  illustrate the common `start="pilot"` option.
+
 * Predictor-variable groups use norm-based block L0 penalties, with group 0
   unpenalized, dimension-calibrated IC presets, explicit numeric group costs,
   group-aware thresholding, guarded support refits and cross-validation.

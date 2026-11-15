@@ -18,6 +18,13 @@
 #' to construct the grid; its selected support is not imposed on other fits.
 #' A common supplied start or pilot-derived seed can be reused independently
 #' at every lambda, avoiding dependence on the order of the grid.
+#' For correlated nonnegative deconvolution designs, \code{start="pilot"}
+#' can give a more stable path and improve the selected model. The pilot is
+#' constructed once, and each lambda estimates its own coefficients.
+#' For eligible fixed-noise models without compulsory terms, endpoint probes
+#' can stop once a nonzero candidate beats the unique zero-coefficient model.
+#' Monotone refinement cannot subsequently return to that zero model. Every
+#' model returned on the grid receives the full requested fitting controls.
 #' The preset calibrates adaptive ridge to the selected information criterion.
 #' Path tuning can improve its fit for correlated predictors or unrelaxed
 #' estimates that retain shrinkage.
@@ -502,8 +509,15 @@ l0glmTune <- function(X, y,
     list(start = start, pilot = NULL)
   args$start <- initialization$start
   quasi_estimated <- NULL
-  fit_lambda <- function(lambda) {
-    fit <- do.call(l0glmFit, c(args, list(lambda = lambda)))
+  zero_prior <- is.null(dots$prior.mean) || all(dots$prior.mean == 0)
+  endpoint_search <- zero_prior && !interactions && !precluster && is.null(dots$validation) &&
+    !inherits(X,'L0glm_data') &&
+    (is.null(dots$screen) || identical(dots$screen,'auto') || identical(dots$screen,'none')) &&
+    (identical(dots$screen,'none') || ncol(X)<=10*n)
+  fit_lambda <- function(lambda, endpoint=FALSE) {
+    a <- args
+    if(endpoint && endpoint_search && !identical(local.search,FALSE))a$control.local$.endpoint <- TRUE
+    fit <- do.call(l0glmFit, c(a, list(lambda = lambda)))
     if (!is.null(quasi_estimated)) fit$dispersion.estimated <- quasi_estimated
     fit
   }
@@ -519,6 +533,8 @@ l0glmTune <- function(X, y,
   args <- L0glm_precluster_reuse(args, preset_fit)
   args <- L0glm_path_screen_reuse(args, preset_fit, screen.path)
   included <- preset_fit$always.include
+  endpoint_search <- endpoint_search && is.null(family$scalar) && !length(included) &&
+    !any(preset_fit$dispersion.estimated)
   is_zero <- function(fit) all(fit$coefficients[
     setdiff(seq_len(nrow(fit$coefficients)),fit$always.include),,drop=FALSE]==0)
 
@@ -528,12 +544,11 @@ l0glmTune <- function(X, y,
     weights = preset_fit$weights, z = preset_fit$z, dispersion = preset_fit$dispersion,
     always.include = included, coefs = preset_fit$coefficients, family = family,
     nonnegative = isTRUE(dots$nonnegative)))
-  endpoint_fit <- fit_lambda(lambda_max)
-  zero_prior <- is.null(dots$prior.mean) || all(dots$prior.mean == 0)
+  endpoint_fit <- fit_lambda(lambda_max,endpoint=TRUE)
   if (zero_prior) for (attempt in seq_len(30L)) {
     if (is_zero(endpoint_fit) || lambda_max > .Machine$double.xmax / 2) break
     lambda_max <- 2 * lambda_max
-    endpoint_fit <- fit_lambda(lambda_max)
+    endpoint_fit <- fit_lambda(lambda_max,endpoint=TRUE)
   }
   # Refine an overly conservative upper estimate without sharing coefficients
   # across fits. Keep both ends verified under the caller's iteration controls.
@@ -543,13 +558,15 @@ l0glmTune <- function(X, y,
     for (attempt in seq_len(16L)) {
       if (log(lambda_max) - log(lambda_nonzero) <= log(1.05)) break
       midpoint <- exp((log(lambda_max) + log(lambda_nonzero)) / 2)
-      candidate <- fit_lambda(midpoint)
+      candidate <- fit_lambda(midpoint,endpoint=TRUE)
       if (is_zero(candidate)) {
         lambda_max <- midpoint
         endpoint_fit <- candidate
       } else lambda_nonzero <- midpoint
     }
   }
+  # Return a fully fitted endpoint, never a partially refined probe.
+  if(endpoint_search && !identical(local.search,FALSE))endpoint_fit <- fit_lambda(lambda_max)
   endpoint_zero <- is_zero(endpoint_fit)
   if (!endpoint_zero)
     warning("The upper endpoint did not eliminate all penalized coefficients",
