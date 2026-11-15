@@ -203,10 +203,11 @@ template<class Design> List extended_pass(const Design& X,List context,const Fam
     auto search=[&](const MatrixXd& trial,int limit,double rtol) {
       for(int h=0;h<=limit;++h) {
         candidate=h==0?trial:B+std::ldexp(1.,-h)*(trial-B);
-        candidate_value=objective(candidate);
+        try {candidate_value=objective(candidate);}
+        catch(const std::exception&){candidate_value=R_PosInf;}
         if(std::isfinite(candidate_value)&&candidate_value<=baseline+rtol*std::max(1.,std::abs(baseline))) {halvings+=h;return true;}
       }
-      halvings+=limit;return false;
+      halvings+=limit+1;return false;
     };
     bool accepted=search(proposal,boundary_refit?10:30,boundary_refit?1e-12:1e-10);
     if(boundary_refit&&std::isfinite(baseline)&&(!accepted||candidate_value>=baseline-1e-12*std::max(1.,std::abs(baseline)))) {

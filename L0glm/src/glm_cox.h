@@ -179,7 +179,9 @@
     cox_diagnostic.space=wide?"observations":"coefficients";MatrixXd proposal=beta.cwiseMax(lower),candidate;
     const double baseline=-2*stats.loglik;bool accepted=false;
     for(int h=0;h<=30;++h) {
-      candidate=std::ldexp(1.,-h)*proposal;double objective=-2*cox_stats(candidate).loglik+ridge*candidate.squaredNorm();
+      candidate=std::ldexp(1.,-h)*proposal;double objective=R_PosInf;
+      try {objective=-2*cox_stats(candidate).loglik+ridge*candidate.squaredNorm();}
+      catch(const std::exception&){objective=R_PosInf;}
       if(std::isfinite(objective)&&objective<=baseline){accepted=true;cox_diagnostic.halvings=h;break;}
     }
     if(!accepted)stop("No descent step for the Cox ridge initializer.");
