@@ -1,527 +1,222 @@
-# BENCHMARKS & TIMINGS OF L0GLM FITS BY PROBLEM SIZE AND SOLVER ####
-# Uses automatic native fitting paths and repeated warm timings.
-# Shared unit starts and disabled support search isolate the ridge solvers.
-# "Dense" and "sparse" describe input storage: solvers may compress exact zeros.
+# One fit per solver, problem and constraint strategy; no untimed fitting warmup.
+# Run from the repository root, or from benchmarks/. Data generation, process
+# startup, namespace loading and metrics are outside the fitting timer.
+# Dense/sparse deconvolution labels describe input storage. Native solvers may
+# compress exact zeros. The Gaussian normal-design example is genuinely dense.
 
-library(L0glm)
-library(ggplot2)
-library(tidyr)
-library(tidyselect)
-library(microbenchmark)
+suppressPackageStartupMessages(library(L0glm))
+suppressPackageStartupMessages(library(ggplot2))
+if(!"nonnegative.method"%in%names(formals(L0glm::controlSolverGen)))
+  stop("Install a current L0glm version supporting controlSolverGen(nonnegative.method=...).")
 
-repository_dir <- if (file.exists("L0glm/DESCRIPTION")) "." else ".."
-output_dir <- file.path(repository_dir, "benchmarks", "1_benchmarks_solvers_problem_sizes")
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-output_dir <- normalizePath(output_dir)
-                             
-# Simulation sizes (with n = p)
-sizes <- c(100, 500, 1000, 10000)
+repository_dir <- if(file.exists("L0glm/DESCRIPTION"))"."else".."
+helper <- normalizePath(Sys.getenv("L0GLM_SOLVER_BENCHMARK_HELPER",
+  file.path(repository_dir,"benchmarks/solver_problem_sizes_helpers.R")),winslash="/")
+source(helper)
+output_dir <- Sys.getenv("L0GLM_SOLVER_BENCHMARK_OUTPUT",
+  file.path(repository_dir,"benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods"))
+dir.create(output_dir,recursive=TRUE,showWarnings=FALSE)
+output_dir <- normalizePath(output_dir,winslash="/")
 
-# Serial outcome fits give every solver the same thread budget.
-ncores_fit <- 1L
-blas_threads <- 1L
-timing_repetitions <- 3L # median after one untimed warm fit per condition
-# Generous benchmark-only ceiling: fits stop as soon as they converge.
-# The package default remains 25 iterations.
-fit_maxit <- 500L
-fit_tol <- 1e-10
-# Optional constrained polish for Eigen paths with an existing predictor Gram.
-# Rectangular LSCG and Woodbury solves bypass this correction.
-# Keep unit starts shared across all solvers when comparing this switch.
-nonnegative_polish <- FALSE
-# Solve OSQP/bigGlm ridge steps without bounds, then clamp as Eigen does.
-# Keep FALSE to compare their exact constraints with default Eigen clamping.
-nonnegative_clamp <- FALSE
-RhpcBLASctl::blas_set_num_threads(blas_threads)
+# Main settings: both strategies for nonnegative Gaussian/Poisson deconvolution.
+nonnegative_methods <- c("clamp","constrained")
+deconvolution_sizes <- c(100L,500L,1000L,10000L)
+# Two dense-normal sweeps, sharing the n=p=1000 condition.
+dense_sizes <- c(100L,1000L,10000L)
+dense_fixed_n <- dense_fixed_p <- 1000L
+config <- list(criterion="gic",maxit=500L,tol=1e-10,ncores=1L,blas_threads=1L,
+  max_memory=NULL,timeout=900,deconvolution_seed=1L,dense_seed=123L,
+  dense_noise_seed=1L,dense_effects=60L,dense_screen="ISIS")
 
-criterion <- "gic"
-metric_columns <- c(
-  "adj_R2_weighted",
-  "GIC",
-  "Time",
-  "Precision",
-  "Recall",
-  "F1",
-  "R2",
-  "RMSE_coefficients",
-  "deviance"
-)
+# Private-library overrides make the exact package used explicit and reproducible.
+# A fresh R worker per fit isolates caches and permits a hard per-fit timeout.
+arguments <- commandArgs(TRUE)
+plots_only <- "--plots-only" %in% arguments
+resume <- "--resume" %in% arguments
+smoke <- "--smoke" %in% arguments
+if(smoke) {
+  deconvolution_sizes <- 100L;dense_sizes <- c(100L,200L)
+  dense_fixed_n <- dense_fixed_p <- 100L;config$dense_effects <- 10L
+  if(!nzchar(Sys.getenv("L0GLM_SOLVER_BENCHMARK_OUTPUT"))) {
+    output_dir <- file.path(output_dir,"smoke")
+    dir.create(output_dir,recursive=TRUE,showWarnings=FALSE)
+    output_dir <- normalizePath(output_dir,winslash="/")
+  }
+}
+solver_grid <- data.frame(Solver=c("OSQP","bigGlm","Eigen LLT","Eigen LDLT","Eigen CG-IC","Eigen LSCG-IC"),
+  Solver_backend=c("osqp","bigGlm",rep("eigen",4L)),Solver_method=c(1L,1L,1L,2L,3L,4L))
+solver_colours <- setNames(c("blue","red2","green3","orange","purple","cyan3"),solver_grid$Solver)
+solver_shapes <- setNames(c(1,17,0,15,18,4),solver_grid$Solver)
+solver_linetypes <- setNames(c("dashed","solid","solid","dotted","longdash","dotdash"),solver_grid$Solver)
+metric_columns <- c("Time","GIC","adj_R2_weighted","R2","RMSE_coefficients","Precision","Recall","F1","deviance")
+metric_labels <- c(Time="Fitting time (s)",GIC="GIC",adj_R2_weighted="Adjusted weighted prediction R-squared",
+  R2="Coefficient R-squared",RMSE_coefficients="Coefficient RMSE",Precision="Precision",Recall="Recall",
+  F1="Support F1",deviance="True-signal deviance / n")
 
-solver_grid <- data.frame(
-  Solver = c(
-    "OSQP + polish",
-    "bigGlm + polish",
-    "Eigen LLT",
-    "Eigen LDLT",
-    "Eigen CG-IC",
-    "Eigen LSCG-IC"
-  ),
-  Solver_backend = c("osqp", "bigGlm", rep("eigen", 4)),
-  Solver_method = c(1L, 1L, 1L, 2L, 3L, 4L),
-  stringsAsFactors = FALSE
-)
-
-solver_colours <- c(
-  "OSQP + polish" = "blue",
-  "bigGlm + polish" = "red2",
-  "Eigen LLT" = "green2",
-  "Eigen LDLT" = "orange",
-  "Eigen CG-IC" = "purple",
-  "Eigen LSCG-IC" = "cyan2"
-)
-solver_shapes <- stats::setNames(c(1, 17, 0, 15, 18, 4), names(solver_colours))
-solver_linetypes <- stats::setNames(
-  c("dashed", "solid", "solid", "dotted", "longdash", "dotdash"),
-  names(solver_colours))
-solver_labels <- stats::setNames(
-  c("OSQP + polish", "bigGlm + polish", "Eigen LLT", "Eigen LDLT", "Eigen CG-IC", "Eigen LSCG-IC"),
-  solver_grid$Solver)
-metric_labels <- c(adj_R2_weighted="Adjusted weighted prediction R-squared",
-  GIC="GIC", Time="Time (s)", Precision="Precision", Recall="Recall",
-  F1="F1", R2="Coefficient R-squared",
-  RMSE_coefficients="Coefficient RMSE", deviance="True-signal deviance / n")
-
-family_grid <- list(
-  poisson = list(
-    label = "Poisson",
-    family = poisson(identity),
-    simulation_method = 2L
-  ),
-  gaussian = list(
-    label = "Gaussian",
-    family = gaussian(identity),
-    simulation_method = 1L
-  )
-)
-
-matrix_grid <- list(
-  sparse = list(label = "sparse", sparse = TRUE),
-  dense = list(label = "dense", sparse = FALSE)
-)
-
-empty_metrics <- function() {
-  as.list(stats::setNames(rep(NA_real_, length(metric_columns)), metric_columns))
+makeCases <- function() {
+  d <- expand.grid(Noise_family=c("poisson","gaussian"),Sparse=c(TRUE,FALSE),N=deconvolution_sizes,
+    Nonnegative_method=nonnegative_methods,stringsAsFactors=FALSE)
+  d$Experiment <- "deconvolution";d$P <- d$N
+  d$Matrix_density <- ifelse(d$Sparse,"sparse","dense")
+  dense <- unique(rbind(data.frame(N=dense_fixed_n,P=dense_sizes),data.frame(N=dense_sizes,P=dense_fixed_p)))
+  dense$Experiment <- "dense_normal";dense$Noise_family <- "gaussian";dense$Sparse <- FALSE
+  dense$Nonnegative_method <- "unrestricted";dense$Matrix_density <- "dense"
+  cases <- rbind(d,dense[,names(d)])
+  cases$Case <- paste(cases$Experiment,cases$Noise_family,cases$Matrix_density,
+    paste0("n",cases$N),paste0("p",cases$P),cases$Nonnegative_method,sep="-")
+  cases
 }
 
-fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
-                           solver_method, solver_name, start_values) {
-  fit <- NULL
-  fit_time <- NA_real_
-  fit_error <- NA_character_
-  fit_warnings <- character()
-  metric_values <- empty_metrics()
-
-  run_fit <- function() L0glm::l0glmFit(
-    X = X, y = y, start = start_values, family = family, lambda = lambda,
-    nonnegative = TRUE, local.search = FALSE,
-    maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,ncores=ncores_fit, nthreads = blas_threads,
-    solver = solver_backend, method = solver_method,
-    control.solver = L0glm::controlSolverGen(solver_backend, solver_method,
-      nonnegative.method = if (solver_backend == "eigen") {
-        if (nonnegative_polish) "constrained" else "clamp"
-      } else if (nonnegative_clamp) "clamp" else "constrained"))
-
-  timed_fit <- withCallingHandlers(
-    tryCatch(
-      {
-        fit <- run_fit()
-        microbenchmark::microbenchmark({fit <- run_fit()}, times = timing_repetitions)
-      },
-      error = function(e) {
-        fit_error <<- conditionMessage(e)
-        NULL
-      }
-    ),
-    warning = function(w) {
-      fit_warnings <<- c(fit_warnings, conditionMessage(w))
-      invokeRestart("muffleWarning")
+results_file <- file.path(output_dir,"metrics_all_conditions.csv")
+dir.create(file.path(output_dir,"fits"),showWarnings=FALSE)
+dir.create(file.path(output_dir,"logs"),showWarnings=FALSE)
+if(!plots_only) {
+  cases <- makeCases()
+  signature <- list(cases=cases,solvers=solver_grid,config=config,
+    L0glm=as.character(packageVersion("L0glm")),R=R.version.string,
+    DLL=unname(tools::md5sum(list.files(file.path(find.package("L0glm"),"libs"),
+      pattern="[.](dll|so)$",full.names=TRUE,recursive=TRUE))),
+    helper=unname(tools::md5sum(helper)))
+  manifest <- file.path(output_dir,"run_manifest.rds")
+  if(resume)stopifnot(file.exists(manifest),identical(signature,readRDS(manifest)))
+  saveRDS(signature,manifest)
+  jobs <- expand.grid(Case_index=seq_len(nrow(cases)),Solver_index=seq_len(nrow(solver_grid)))
+  jobs <- jobs[order(cases$Experiment[jobs$Case_index],cases$Noise_family[jobs$Case_index],
+    cases$Sparse[jobs$Case_index],cases$N[jobs$Case_index],cases$P[jobs$Case_index],
+    jobs$Solver_index,match(cases$Nonnegative_method[jobs$Case_index],nonnegative_methods)),]
+  rows <- list()
+  for(k in seq_len(nrow(jobs))) {
+    i <- jobs$Case_index[k];j <- jobs$Solver_index[k]
+    case <- cases[i,,drop=FALSE];solver <- solver_grid[j,,drop=FALSE]
+    key <- paste(case$Case,solver$Solver_backend,solver$Solver_method,sep="-")
+    file <- file.path(output_dir,"fits",paste0(key,".rds"))
+    message(sprintf("[%d/%d] %s; %s",k,nrow(jobs),case$Case,solver$Solver))
+    if(resume&&file.exists(file))out <- readRDS(file)else {
+      out <- tryCatch(callr::r(solverBenchmarkWorker,args=list(helper=helper,case=case,solver=solver,config=config),
+        libpath=.libPaths(),timeout=config$timeout,
+        stdout=file.path(output_dir,"logs",paste0(key,".out")),
+        stderr=file.path(output_dir,"logs",paste0(key,".err"))),error=function(e) {
+          row <- cbind(case,solver,data.frame(Nonnegative=case$Experiment=="deconvolution",
+            Start=if(case$Experiment=="deconvolution")"1"else"NULL",
+            Screen=if(case$Experiment=="dense_normal"&&case$P>case$N)config$dense_screen else "none",Local_search=FALSE,
+            Ncores=config$ncores,BLAS_threads=config$blas_threads,Timing_repetitions=1L,Warmup_fits=0L,
+            Fit_calls=NA_integer_,Timing_clock="microbenchmark",Maxit=config$maxit,Tolerance=config$tol,
+            Iterations=NA_integer_,Converged=NA,Dispersion=NA_real_,
+            Status=if(inherits(e,"callr_timeout_error"))"timeout"else"worker_error",Warnings=NA_character_,Error=conditionMessage(e)))
+          for(name in c(metric_columns,"MCC","TP","FP","FN","TN"))row[[name]] <- NA_real_
+          list(row=row,coefficients=NULL,truth=NULL,convergence=NULL)
+        })
+      saveRDS(out,file)
     }
-  )
-
-  if (!is.null(timed_fit)) {
-    # microbenchmark uses a high-resolution timer; system.time() rounded some
-    # successful fast fits to exactly zero, which cannot appear on a log axis.
-    fit_time <- median(timed_fit$time) / 1e9
-    metric_values$Time <- fit_time
+    rows[[length(rows)+1L]] <- out$row
+    results <- do.call(rbind,rows)
+    write.csv(results,results_file,row.names=FALSE)
+    saveRDS(results,file.path(output_dir,"metrics_all_conditions.rds"))
+    message(sprintf("  %s; %.4f s; GIC %.3f; coefficient R2 %.4f; F1 %.4f; converged %s",
+      out$row$Status,out$row$Time,out$row$GIC,out$row$R2,out$row$F1,out$row$Converged))
   }
+}else results <- read.csv(results_file,stringsAsFactors=FALSE)
 
-  if (!is.null(fit)) {
-    metric_error <- NA_character_
-    metrics <- tryCatch(
-      L0glm::l0glmMetrics(fit, beta_true = as.vector(beta_true)),
-      error = function(e) {
-        metric_error <<- conditionMessage(e)
-        NULL
-      }
-    )
+results$Solver <- factor(results$Solver,levels=solver_grid$Solver)
+results$Constraint_handling <- ifelse(!results$Nonnegative,"unrestricted",
+  ifelse(results$Nonnegative_method=="clamp","clamp",
+    ifelse(results$Solver_backend=="eigen"&results$Solver_method==4L,"clamp (rectangular LSCG)","constrained")))
+write.csv(results,results_file,row.names=FALSE)
+saveRDS(results,file.path(output_dir,"metrics_all_conditions.rds"))
+results_long <- tidyr::pivot_longer(results,cols=tidyselect::all_of(metric_columns),names_to="Metric",values_to="Value")
+results_long$Metric <- factor(results_long$Metric,levels=metric_columns)
+write.csv(results_long,file.path(output_dir,"metrics_all_conditions_long.csv"),row.names=FALSE)
 
-    if (!is.null(metrics)) {
-      metric_values$adj_R2_weighted <- metrics$adj_R2_weighted
-      metric_values$GIC <- metrics$gic
-      metric_values$Precision <- metrics$precision
-      metric_values$Recall <- metrics$recall
-      metric_values$F1 <- metrics$F1_score
-      metric_values$R2 <- metrics$R2_coefs
-      metric_values$RMSE_coefficients <- metrics$RMSE_coefs
-      metric_values$deviance <- metrics$deviance_true / nrow(X)
-    } else {
-      fit_error <- paste(
-        na.omit(c(fit_error, paste("Metric error:", metric_error))),
-        collapse = " | "
-      )
-    }
-  }
-
-  status <- if (is.null(fit)) {
-    "fit_error"
-  } else if (!is.na(fit_error) && nzchar(fit_error)) {
-    "metric_error"
-  } else {
-    "ok"
-  }
-
-  c(
-    list(
-      Solver = solver_name,
-      Solver_backend = solver_backend,
-      Solver_method = solver_method,
-      Native_driver = TRUE,
-      Ncores = ncores_fit,
-      BLAS_threads = blas_threads,
-      Timing_repetitions = timing_repetitions,
-      Warmup_fits = 1L,
-      Timing_clock = "microbenchmark",
-      Start = "1",
-      Local_search = FALSE,
-      Nonnegative_polish = solver_backend == "eigen" && nonnegative_polish,
-      Nonnegative_clamp = solver_backend != "eigen" && nonnegative_clamp,
-      Maxit = fit_maxit,
-      Tolerance = fit_tol,
-      Iterations = if (is.null(fit)) NA_integer_ else max(fit$convergence$iterations),
-      Converged = if (is.null(fit)) NA else all(fit$convergence$converged),
-      Status = status,
-      Warnings = if (length(fit_warnings) > 0) {
-        paste(unique(fit_warnings), collapse = " | ")
-      } else {
-        NA_character_
-      },
-      Error = fit_error
-    ),
-    metric_values
-  )
-}
-
-solver_layers <- function(data, point_size = 1.5, point_stroke = 0.5) {
-  llt <- data$Solver_backend == "eigen" & data$Solver_method == 1L
-  osqp <- data$Solver_backend == "osqp"
-  bigglm <- data$Solver_backend %in% c("bigGlm", "bigglm", "glmnet")
-  # Solid bigGlm and dashed OSQP are drawn last, so coincident constrained
-  # solutions remain visible. Routing identifiers are independent of labels.
-  unlist(lapply(list(!llt & !osqp & !bigglm, llt, bigglm, osqp), function(rows) list(
-    ggplot2::geom_line(data = data[rows, ], linewidth = 0.85, na.rm = TRUE),
-    ggplot2::geom_point(data = data[rows, ], size = point_size,
-                       stroke = point_stroke, na.rm = TRUE)
-  )), recursive = FALSE)
-}
-
-solver_scales <- function() {
-  list(
-    ggplot2::scale_colour_manual(values = solver_colours, labels = solver_labels,
-      limits = names(solver_colours), drop = FALSE),
-    ggplot2::scale_shape_manual(values = solver_shapes, labels = solver_labels,
-      limits = names(solver_shapes), drop = FALSE),
-    ggplot2::scale_linetype_manual(values = solver_linetypes, labels = solver_labels,
-      limits = names(solver_linetypes), drop = FALSE)
-  )
-}
-
-save_plot <- function(plot, filename_stem, width = 7, height = 5, dpi = 600) {
-  write_plot <- function(filename) {
-    withCallingHandlers(
-      ggplot2::ggsave(filename, plot, width = width, height = height, dpi = dpi),
-      warning = function(w) {
-        # Some PNG devices signal a failed write as a warning, not an error.
-        if (grepl("could not write|cannot open file", conditionMessage(w), ignore.case = TRUE))
-          stop(conditionMessage(w), call. = FALSE)
-      }
-    )
-  }
-  for (extension in c("png", "pdf")) {
-    filename <- file.path(output_dir, paste0(filename_stem, ".", extension))
-    tryCatch(
-      write_plot(filename),
-      error = function(e) {
-        # A PDF open in a Windows viewer may be locked against replacement.
-        alternate <- file.path(output_dir, paste0(filename_stem, "_",
-          format(Sys.time(), "%Y%m%d_%H%M%S"), ".", extension))
-        warning(sprintf("Could not save %s (%s); saving %s instead.",
-                        basename(filename), conditionMessage(e), basename(alternate)),
-                call. = FALSE)
-        write_plot(alternate)
-      }
-    )
+reportPlots <- list()
+savePlot <- function(plot,name,width=11,height=8) {
+  reportPlots[[name]] <<- plot
+  writePlot <- function(file)withCallingHandlers(
+    ggplot2::ggsave(file,plot,width=width,height=height,dpi=180),warning=function(w) {
+      if(grepl("could not write|cannot open file",conditionMessage(w),ignore.case=TRUE))
+        stop(conditionMessage(w),call.=FALSE)
+    })
+  for(extension in c("png","pdf")) {
+    file <- file.path(output_dir,paste0(name,".",extension))
+    tryCatch(writePlot(file),error=function(e) {
+      alternate <- file.path(output_dir,paste0(name,"_",format(Sys.time(),"%Y%m%d_%H%M%S"),".",extension))
+      warning("Could not replace ",basename(file),"; saving ",basename(alternate),call.=FALSE)
+      writePlot(alternate)
+    })
   }
 }
-
-result_rows <- list()
-
-for (family_name in names(family_grid)) {
-  family_config <- family_grid[[family_name]]
-  family <- family_config$family
-
-  for (matrix_name in names(matrix_grid)) {
-    matrix_config <- matrix_grid[[matrix_name]]
-
-    for (n in sizes) {
-      message(
-        sprintf(
-          "Simulating %s noise, %s matrix, n = p = %s",
-          family_config$label,
-          matrix_config$label,
-          n
-        )
-      )
-
-      sim <- L0glm::simul(
-        method = family_config$simulation_method,
-        n = n,
-        p = n,
-        sparse = matrix_config$sparse,
-        seed = 1L,
-        options = list(sd_noise = 1)
-      )
-
-      X <- sim$X
-      y <- sim$y
-      beta_true <- sim$beta_true
-
-      lambda_preset <- L0glm::presetLambda(
-        IC = criterion,
-        p = ncol(X),
-        n = nrow(X)
-      )
-      start_values <- 1
-
-      for (solver_idx in seq_len(nrow(solver_grid))) {
-        solver_spec <- solver_grid[solver_idx, ]
-
-        message(
-          sprintf(
-            "  Fitting %s, %s matrix, n = %s, solver = %s",
-            family_name,
-            matrix_name,
-            n,
-            solver_spec$Solver
-          )
-        )
-
-        fit_result <- fit_one_solver(
-          X = X,
-          y = y,
-          beta_true = beta_true,
-          family = family,
-          lambda = lambda_preset,
-          solver_backend = solver_spec$Solver_backend,
-          solver_method = solver_spec$Solver_method,
-          solver_name = solver_spec$Solver,
-          start_values = start_values
-        )
-
-        result_rows[[length(result_rows) + 1L]] <- data.frame(
-          Noise_family = family_name,
-          Link = family$link,
-          Matrix_density = matrix_name,
-          Sparse = matrix_config$sparse,
-          Size = n,
-          Lambda = lambda_preset,
-          fit_result,
-          stringsAsFactors = FALSE,
-          check.names = FALSE
-        )
-      }
-    }
+solverLayers <- function(data) {
+  has_path <- length(unique(data$N))>1L||length(unique(data$P))>1L
+  unlist(lapply(list(!data$Solver_backend%in%c("osqp","bigGlm"),data$Solver_backend=="bigGlm",data$Solver_backend=="osqp"),
+    function(use)list(if(has_path)geom_line(data=data[use,],linewidth=.8,na.rm=TRUE),
+      geom_point(data=data[use,],size=2,stroke=.65,na.rm=TRUE))),recursive=FALSE)
+}
+solverScales <- function()list(scale_colour_manual(values=solver_colours,drop=FALSE),
+  scale_shape_manual(values=solver_shapes,drop=FALSE),scale_linetype_manual(values=solver_linetypes,drop=FALSE))
+basePlot <- function(data,x,label) {
+  ggplot(data,aes(x=.data[[x]],y=Value,colour=Solver,shape=Solver,linetype=Solver,group=Solver))+
+    solverLayers(data)+solverScales()+theme_minimal(base_size=11)+
+    theme(legend.position="bottom")+guides(colour=guide_legend(nrow=2),shape=guide_legend(nrow=2),linetype=guide_legend(nrow=2))+
+    scale_x_log10(breaks=sort(unique(data[[x]])),labels=scales::label_number(big.mark=","))+
+    labs(x=label,y=NULL,colour="Solver",shape="Solver",linetype="Solver")
+}
+caption <- paste("One timed fit; no fitting warmup. Native dispatch; local search disabled.",
+  "OSQP dashed overlays bigGlm solid. Eigen rectangular LSCG retains clamping in both modes.")
+caption <- paste(strwrap(caption,width=130),collapse="\n")
+for(mode in nonnegative_methods) {
+  data <- subset(results_long,Experiment=="deconvolution"&Nonnegative_method==mode)
+  data$Noise_family <- factor(data$Noise_family,levels=c("poisson","gaussian"))
+  for(noise in c("poisson","gaussian"))for(storage in c("sparse","dense")) {
+    condition <- subset(data,Noise_family==noise&Matrix_density==storage)
+    plot <- basePlot(condition,"N","Problem size (n = p)")+
+      facet_wrap(~Metric,scales="free_y",ncol=3,labeller=as_labeller(metric_labels))+
+      labs(title=paste(tools::toTitleCase(noise),"deconvolution;",storage,"input;",mode),
+        subtitle=sprintf("GIC preset; start=1; screen=none; maxit=%d; ncores=%d; BLAS threads=%d",config$maxit,config$ncores,config$blas_threads),caption=caption)
+    savePlot(plot,paste("timings_metrics",storage,noise,mode,sep="_"))
   }
+  timing <- subset(data,Metric=="Time"&Value>0)
+  plot <- basePlot(timing,"N","Problem size (n = p)")+facet_grid(Matrix_density~Noise_family)+scale_y_log10()+
+    labs(title=paste("Deconvolution solver timings:",mode),
+      subtitle=sprintf("GIC preset; start=1; screen=none; maxit=%d; one core and one BLAS thread",config$maxit),
+      y="Fitting time (s)",caption=caption)
+  savePlot(plot,paste0("timings_all_conditions_",mode),width=11,height=7)
 }
 
-results <- do.call(rbind, result_rows)
-results$Noise_family <- factor(results$Noise_family, levels = names(family_grid))
-results$Matrix_density <- factor(results$Matrix_density, levels = names(matrix_grid))
-results$Solver <- factor(results$Solver, levels = solver_grid$Solver)
-results <- results[order(
-  results$Noise_family,
-  results$Matrix_density,
-  results$Size,
-  results$Solver
-), ]
-
-metrics_file <- file.path(output_dir, "metrics_all_conditions.csv")
-write.csv(results, metrics_file, row.names = FALSE)
-saveRDS(results, file.path(output_dir, "metrics_all_conditions.rds"))
-
-results_long <- tidyr::pivot_longer(
-  results,
-  cols = tidyselect::all_of(metric_columns),
-  names_to = "metric",
-  values_to = "value"
-)
-results_long$Solver <- factor(results_long$Solver, levels = solver_grid$Solver)
-results_long$metric <- factor(results_long$metric, levels = metric_columns)
-
-metrics_long_file <- file.path(output_dir, "metrics_all_conditions_long.csv")
-write.csv(results_long, metrics_long_file, row.names = FALSE)
-
-write.csv(
-  data.frame(
-    Solver = names(solver_colours),
-    Colour = unname(solver_colours),
-    Shape = unname(solver_shapes),
-    Line_type = unname(solver_linetypes),
-    stringsAsFactors = FALSE
-  ),
-  file.path(output_dir, "solver_colours.csv"),
-  row.names = FALSE
-)
-
-for (family_name in names(family_grid)) {
-  family_label <- family_grid[[family_name]]$label
-
-  for (matrix_name in names(matrix_grid)) {
-    matrix_label <- matrix_grid[[matrix_name]]$label
-    condition_long <- subset(
-      results_long,
-      Noise_family == family_name & Matrix_density == matrix_name
-    )
-
-    metrics_plot <- ggplot2::ggplot(
-      condition_long,
-      ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
-                   linetype = Solver, group = Solver)
-    ) +
-      solver_layers(condition_long) +
-      ggplot2::facet_wrap(~metric, scales = "free_y", ncol = 3,
-                         labeller = ggplot2::as_labeller(metric_labels)) +
-      ggplot2::theme_minimal() +
-      ggplot2::labs(
-        title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
-        subtitle = sprintf("start = 1; local.search = FALSE; GIC preset; maxit = %d; Eigen polish = %s",
-                           fit_maxit, nonnegative_polish),
-        caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
-        colour = "solver",
-        shape = "solver", linetype = "solver",
-        x = "Problem size (n = p)",
-        y = NULL
-      ) +
-      ggplot2::theme(legend.position = "bottom") +
-      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3),
-                     shape = ggplot2::guide_legend(ncol = 3),
-                     linetype = ggplot2::guide_legend(ncol = 3)) +
-      ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
-                                labels = scales::label_number(big.mark = ",")) +
-      solver_scales()
-
-    save_plot(
-      metrics_plot,
-      sprintf("timings_metrics_%s_%s", matrix_name, family_name), width = 11, height = 8
-    )
-
-    time_data <- subset(condition_long, metric == "Time")
-    time_data$value[time_data$value <= 0] <- NA_real_
-
-    timing_plot <- ggplot2::ggplot(
-      time_data,
-      ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
-                   linetype = Solver, group = Solver)
-    ) +
-      solver_layers(time_data) +
-      ggplot2::theme_minimal() +
-      ggplot2::labs(
-        title = sprintf("%s deconvolution (%s design)", family_label, matrix_label),
-        subtitle = sprintf("start = 1; local.search = FALSE; maxit = %d; median warm fitting time",
-                           fit_maxit),
-        caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
-        colour = "solver",
-        shape = "solver", linetype = "solver",
-        x = "Problem size (n = p)",
-        y = "Time (s)"
-      ) +
-      ggplot2::theme(legend.position = "bottom") +
-      ggplot2::guides(colour = ggplot2::guide_legend(ncol = 3),
-                     shape = ggplot2::guide_legend(ncol = 3),
-                     linetype = ggplot2::guide_legend(ncol = 3)) +
-      ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
-                                labels = scales::label_number(big.mark = ",")) +
-      ggplot2::scale_y_continuous(trans = "log10") +
-      solver_scales()
-
-    save_plot(
-      timing_plot,
-      sprintf("timings_%s_%s", matrix_name, family_name)
-    )
-  }
+for(sweep in c("vary_p","vary_n")) {
+  data <- subset(results_long,Experiment=="dense_normal")
+  if(sweep=="vary_p") {data <- subset(data,N==dense_fixed_n);axis <- "P";fixed <- paste("n =",dense_fixed_n)} else {
+    data <- subset(data,P==dense_fixed_p);axis <- "N";fixed <- paste("p =",dense_fixed_p)}
+  plot <- basePlot(data,axis,if(axis=="P")"Predictors (p)"else"Observations (n)")+
+    facet_wrap(~Metric,scales="free_y",ncol=3,labeller=as_labeller(metric_labels))+
+    labs(title=paste("Dense Gaussian regression:",fixed),
+      subtitle=sprintf("%d signed effects; unit Gaussian noise; GIC preset; start=NULL; ISIS when p>n; maxit=%d",config$dense_effects,config$maxit),
+      caption=paste(strwrap("One fresh-worker fit; no fitting warmup; one core and one BLAS thread. Full ISIS workflow timed when p>n; local search disabled. OSQP dashed overlays bigGlm solid; coefficients are unrestricted.",width=130),collapse="\n"))
+  savePlot(plot,paste0("timings_metrics_dense_normal_",sweep))
 }
 
-combined_timing_data <- subset(results_long, metric == "Time")
-combined_timing_data$value[combined_timing_data$value <= 0] <- NA_real_
-combined_timing_plot <- ggplot2::ggplot(
-  combined_timing_data,
-  ggplot2::aes(x = Size, y = value, colour = Solver, shape = Solver,
-               linetype = Solver, group = Solver)
-) +
-  solver_layers(combined_timing_data, point_size = 2, point_stroke = 0.7) +
-  ggplot2::facet_grid(Matrix_density ~ Noise_family) +
-  ggplot2::theme_minimal() +
-  ggplot2::labs(
-    title = "L0glm solver timings by problem size",
-    subtitle = sprintf(paste0("start = 1; local.search = FALSE; maxit = %d; Eigen polish = %s\n",
-                              "native drivers; ncores = %d; BLAS threads = %d; median of %d warm fits"),
-                       fit_maxit, nonnegative_polish, ncores_fit, blas_threads, timing_repetitions),
-    caption = if(nonnegative_clamp) "OSQP/bigGlm: unconstrained ridge steps followed by clamping." else NULL,
-    colour = "solver",
-    shape = "solver",
-    linetype = "solver",
-    x = "Problem size (n = p)",
-    y = "Time (s)"
-  ) +
-  ggplot2::theme(legend.position = "bottom", panel.spacing = grid::unit(1, "lines")) +
-  ggplot2::guides(colour = ggplot2::guide_legend(ncol = 2),
-                  shape = ggplot2::guide_legend(ncol = 2),
-                  linetype = ggplot2::guide_legend(ncol = 2)) +
-  ggplot2::scale_x_continuous(trans = "log10", breaks = sizes,
-                            labels = scales::label_number(big.mark = ",")) +
-  ggplot2::scale_y_continuous(trans = "log10") +
-  solver_scales()
-
-save_plot(combined_timing_plot, "timings_all_conditions", width = 10, height = 7)
-
-run_summary <- c(
-  paste("Output directory:", output_dir),
-  paste("Wide metrics table:", metrics_file),
-  paste("Long metrics table:", metrics_long_file),
-  "Fitting driver: automatic native dispatch",
-  paste("Outcome thread budget:", ncores_fit),
-  paste("BLAS threads:", blas_threads),
-  paste("High-resolution timing repetitions:", timing_repetitions),
-  "Untimed warm fits per condition: 1",
-  "Starting coefficients: 1 (working coefficient coordinates)",
-  "Automatic local support search: FALSE",
-  paste("Optional Eigen constrained polish:", nonnegative_polish),
-  paste("Optional OSQP/bigGlm unconstrained solves followed by clamping:", nonnegative_clamp),
-  "OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish",
-  "Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1",
-  "GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8",
-  "Coincident constrained solutions: dashed OSQP overlays solid bigGlm",
-  paste("Maximum IRLS iterations:", fit_maxit),
-  paste("Converged fits:", sum(results$Converged, na.rm = TRUE), "of", nrow(results)),
-  paste("Largest observed iteration count:", max(results$Iterations, na.rm = TRUE)),
-  paste("Convergence tolerance:", fit_tol),
-  paste("L0glm version:", packageVersion("L0glm")),
-  paste("glmnet version:", if (isNamespaceLoaded("glmnet"))
-    as.character(getNamespaceVersion("glmnet")) else "not loaded"),
-  paste("R version:", R.version.string),
-  paste("Run completed:", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
-)
-writeLines(run_summary, file.path(output_dir, "run_summary.txt"))
-message(paste(run_summary, collapse = "\n"))
-if (any(!results$Converged, na.rm = TRUE))
-  warning("Some fits did not converge within the benchmark ceiling; inspect Converged and Iterations in the metrics table.",
-          call. = FALSE)
+comparison <- subset(results,Experiment=="deconvolution")
+clamp <- subset(comparison,Nonnegative_method=="clamp")
+constrained <- subset(comparison,Nonnegative_method=="constrained")
+paired <- merge(clamp,constrained,by=c("Experiment","Noise_family","Matrix_density","Sparse","N","P","Solver","Solver_backend","Solver_method"),
+  suffixes=c("_clamp","_constrained"))
+paired$Time_ratio_constrained_clamp <- paired$Time_constrained/paired$Time_clamp
+for(metric in c("GIC","R2","RMSE_coefficients","F1","TP","FP"))
+  paired[[paste0("Change_",metric)]] <- paired[[paste0(metric,"_constrained")]]-paired[[paste0(metric,"_clamp")]]
+write.csv(paired,file.path(output_dir,"clamp_vs_constrained.csv"),row.names=FALSE)
+write.csv(subset(results,Experiment=="dense_normal"),file.path(output_dir,"dense_normal_results.csv"),row.names=FALSE)
+writeLines(c(paste("L0glm:",packageVersion("L0glm")),paste("R:",R.version.string),
+  paste("Fits:",nrow(results)),paste("Successful:",sum(results$Status=="ok")),
+  paste("Converged:",sum(results$Converged,na.rm=TRUE)),paste("Completed:",format(Sys.time(),"%Y-%m-%d %H:%M:%S %Z")),
+  caption,"Deconvolution: Gaussian/Poisson, sparse/dense input, unit starts, both nonnegative strategies.",
+  "Screening: none for deconvolution and n>=p; explicit ISIS for the dense p>n examples.",
+  sprintf("Dense normal design: %d signed effects drawn uniformly on [-0.8,0.8]; errors N(0,1); NULL starts.",config$dense_effects),
+  "Gaussian deconvolution retains the original simulation's zero clipping of negative observations.",
+  "Each input is regenerated from fixed seeds in an isolated worker; only l0glmFit is timed.",
+  "Failed or timed-out fits remain explicit NA rows; maxit and convergence are recorded.",
+  "GIC uses fitted dispersion and coefficient-count degrees of freedom.",
+  "The dense signed example has no bounds, so clamp/constrained modes are not duplicated."),
+  file.path(output_dir,"run_summary.txt"))
+grDevices::pdf(file.path(output_dir,"solver_size_comparison.pdf"),width=11,height=8)
+tryCatch(for(plot in reportPlots)print(plot),finally=grDevices::dev.off())
+message("Saved benchmark outputs in ",output_dir)
+if(any(results$Status!="ok"))warning("Some fits failed or timed out; inspect Status and Error.",call.=FALSE)
+if(any(!results$Converged,na.rm=TRUE))warning("Some fits reached the iteration ceiling; inspect Converged and Iterations.",call.=FALSE)
