@@ -1,7 +1,8 @@
 Output directory: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes
 Wide metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv
 Long metrics table: C:\Users\bherr\Documents\Github\L0glm\benchmarks\1_benchmarks_solvers_problem_sizes/metrics_all_conditions_long.csv
-OpenMP/native dispatch: FALSE
+Fitting driver: automatic native dispatch
+Outcome thread budget: 1
 BLAS threads: 1
 High-resolution timing repetitions: 3
 Untimed warm fits per condition: 1
@@ -11,6 +12,7 @@ Optional Eigen constrained polish: FALSE
 OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish
 Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1
 GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8
+Coincident constrained solutions: dashed OSQP overlays solid bigGlm
 Maximum IRLS iterations: 500
 Converged fits: 96 of 96
 Largest observed iteration count: 116
@@ -18,4 +20,4 @@ Convergence tolerance: 1e-10
 L0glm version: 0.2.0.9002
 glmnet version: 5.1
 R version: R version 4.5.0 (2025-04-11 ucrt)
-Run completed: 2026-11-14 20:41:34 CET
+Run completed: 2026-11-15 03:18:32 CET

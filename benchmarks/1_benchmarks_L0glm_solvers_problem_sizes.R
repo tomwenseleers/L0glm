@@ -46,12 +46,12 @@ metric_columns <- c(
 
 solver_grid <- data.frame(
   Solver = c(
-    "osqp",
-    "bigGlm",
-    "eigen Cholesky LLT",
-    "eigen Cholesky LDLT",
-    "eigen PCG incomplete Cholesky precond",
-    "eigen PLSCG"
+    "OSQP + polish",
+    "bigGlm + polish",
+    "Eigen LLT",
+    "Eigen LDLT",
+    "Eigen CG-IC",
+    "Eigen LSCG-IC"
   ),
   Solver_backend = c("osqp", "bigGlm", rep("eigen", 4)),
   Solver_method = c(1L, 1L, 1L, 2L, 3L, 4L),
@@ -59,12 +59,12 @@ solver_grid <- data.frame(
 )
 
 solver_colours <- c(
-  "osqp" = "blue",
-  "bigGlm" = "red2",
-  "eigen Cholesky LLT" = "green2",
-  "eigen Cholesky LDLT" = "orange",
-  "eigen PCG incomplete Cholesky precond" = "purple",
-  "eigen PLSCG" = "cyan2"
+  "OSQP + polish" = "blue",
+  "bigGlm + polish" = "red2",
+  "Eigen LLT" = "green2",
+  "Eigen LDLT" = "orange",
+  "Eigen CG-IC" = "purple",
+  "Eigen LSCG-IC" = "cyan2"
 )
 solver_shapes <- stats::setNames(c(1, 17, 0, 15, 18, 4), names(solver_colours))
 solver_linetypes <- stats::setNames(
@@ -206,11 +206,12 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
 }
 
 solver_layers <- function(data, point_size = 1.5, point_stroke = 0.5) {
-  llt <- data$Solver == "eigen Cholesky LLT"
-  osqp <- data$Solver == "osqp"
-  # Dashed OSQP lines overlay solid bigGlm lines so both remain visible when
-  # they coincide. LLT stays on top; the legend retains the solver order.
-  unlist(lapply(list(!llt & !osqp, osqp, llt), function(rows) list(
+  llt <- data$Solver_backend == "eigen" & data$Solver_method == 1L
+  osqp <- data$Solver_backend == "osqp"
+  bigglm <- data$Solver_backend %in% c("bigGlm", "bigglm", "glmnet")
+  # Solid bigGlm and dashed OSQP are drawn last, so coincident constrained
+  # solutions remain visible. Routing identifiers are independent of labels.
+  unlist(lapply(list(!llt & !osqp & !bigglm, llt, bigglm, osqp), function(rows) list(
     ggplot2::geom_line(data = data[rows, ], linewidth = 0.85, na.rm = TRUE),
     ggplot2::geom_point(data = data[rows, ], size = point_size,
                        stroke = point_stroke, na.rm = TRUE)
@@ -498,6 +499,7 @@ run_summary <- c(
   "OSQP: eps_abs = eps_rel = 1e-9; diagonal equilibration; checked Cholesky polish",
   "Prediction R-squared: adjusted, final GLM working weights; Poisson mean floor 0.1",
   "GIC: fitted dispersion, coefficient-count degrees of freedom, prediction mean floor 1e-8",
+  "Coincident constrained solutions: dashed OSQP overlays solid bigGlm",
   paste("Maximum IRLS iterations:", fit_maxit),
   paste("Converged fits:", sum(results$Converged, na.rm = TRUE), "of", nrow(results)),
   paste("Largest observed iteration count:", max(results$Iterations, na.rm = TRUE)),
