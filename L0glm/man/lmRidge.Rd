@@ -118,7 +118,7 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
   systems or Jacobi SVD for sparse systems).
 
   Eigen normally clips proposals to the coefficient bounds. Set
-  \code{controlSolverGen("eigen", method, nonnegative.polish=TRUE)} to
+  \code{controlSolverGen("eigen", method, nonnegative.method="constrained")} to
   polish infeasible nonnegative proposals using batched constrained Cholesky
   solves. This reuses a predictor Gram matrix already formed by the selected
   method, including LLT and LDLT; rectangular and Woodbury routes skip the
@@ -178,7 +178,7 @@ form: \deqn{\beta = \arg \min_{\beta} \left\{ \frac{1}{2} \| W^{1/2}(y - X \beta
 
 OSQP and \code{bigGlm} enforce coefficient bounds during the ridge solve
 by default. To compare them with Eigen's default clamping strategy, use
-\code{controlSolverGen(solver, nonnegative.clamp=TRUE)}. The solver then
+\code{controlSolverGen(solver, nonnegative.method="clamp")}. The solver then
 minimizes the unconstrained ridge quadratic and clamps its solution to
 the supplied bounds. Scaling, prior means and unrestricted coefficients
 retain their interpretation. In correlated designs this differs from

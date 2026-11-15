@@ -20,9 +20,8 @@ controlSolverGen(
   threshold = NULL,
   verbose = FALSE,
   rowaug = NULL,
-  nonnegative.polish = FALSE,
-  max.memory = NULL,
-  nonnegative.clamp = FALSE
+  nonnegative.method = NULL,
+  max.memory = NULL
 )
 }
 \arguments{
@@ -92,11 +91,16 @@ and fewer than 10 percent nonzeros. Explicit \code{TRUE} or \code{FALSE}
 overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
 unchanged. Eligible wide Eigen systems use the Woodbury route instead.}
 
-\item{nonnegative.polish}{Logical, default \code{FALSE}. For Eigen working solves with nonnegative
-coefficients and an existing predictor Gram matrix, optionally replace
-clipping of an infeasible proposal by a batched constrained Cholesky polish.
-This includes LLT, LDLT and other methods solving an already formed Gram
-system. Rectangular least-squares and Woodbury solves skip this correction.}
+\item{nonnegative.method}{Nonnegative working-solve strategy: \code{"clamp"} solves without coefficient
+bounds and then clips to them; \code{"constrained"} enforces bounds within
+the weighted ridge solve. \code{NULL} preserves solver-specific defaults:
+\code{"clamp"} for Eigen and \code{"constrained"} for OSQP and \code{bigGlm}.
+For Eigen, constrained mode uses a checked active-set Cholesky polish only
+when a predictor Gram matrix is available. Rectangular least-squares,
+matrix-free and Woodbury routes retain clamping; an unsuccessful polish
+also retains the clamped proposal. Unrestricted intercepts remain free.
+Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
+explicitly supplied in the control list.}
 
 \item{max.memory}{Optional Gram/factor workspace budget in GiB, shared across concurrent native
 channels. \code{NULL} uses 25 percent of currently available physical memory;
@@ -106,16 +110,6 @@ preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
 LLT fallbacks require their estimated workspace to fit.
 Allocation checks also cover dispersion pilots and serial special-family
 solver adapters.}
-
-\item{nonnegative.clamp}{Logical, default \code{FALSE}. For OSQP or \code{bigGlm}, solve each
-weighted ridge problem without coefficient bounds, then clamp the result
-to the supplied bounds. This reproduces the default Eigen constraint
-strategy when the inner solves agree. Unrestricted intercepts remain
-unrestricted. With \code{FALSE}, these solvers enforce the bounds during
-optimization. Existing numerical polishing uses the same working bounds.
-Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
-explicitly supplied in the control list, to protect ill-conditioned ridge
-systems from false infeasibility classifications.}
 }
 \value{
 The function return a list with the required options to solve a linear
@@ -127,7 +121,7 @@ This functions generates a list with all the required parameters for the lmRidge
 solver (\code{controlSolverGen}) & allows fine control over its options.
 }
 \details{
-With \code{nonnegative.polish=TRUE}, the polish solves the current weighted
+For Eigen with \code{nonnegative.method="constrained"}, the polish solves the current weighted
 ridge quadratic on successive feasible coefficient sets. Bounds, prior means
 and column normalization are retained, including an unrestricted binomial
 intercept. Batched bound updates use Cholesky on the free set; cycling or an
@@ -143,7 +137,7 @@ unconstrained proposal needs no correction.
 Consequently, rectangular QR, SVD and LSCG paths and observation-space
 Woodbury paths keep their usual solves. This optional correction can recover
 peaks lost through clipping in correlated nonnegative designs, but can also
-change the selected support and increase fitting time. It is off by default.
+change the selected support and increase fitting time. Eigen defaults to \code{"clamp"}.
 
 OSQP working systems are diagonally equilibrated, with bounds and starting
 coefficients transformed consistently. Returned coefficients retain their
@@ -191,12 +185,12 @@ controlSolverGen("eigen", method=4L, precond=1L)
 
 # Optional constrained polish of nonnegative working ridge steps. This reuses
 # an existing predictor Gram matrix and is off by default.
-controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
-controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)
+controlSolverGen("eigen", method=1L, nonnegative.method="constrained")
+controlSolverGen("eigen", method=2L, nonnegative.method="constrained")
 
 # Compare external backends using the same clamping strategy as default Eigen.
-controlSolverGen("osqp", nonnegative.clamp=TRUE)
-controlSolverGen("bigGlm", nonnegative.clamp=TRUE)
+controlSolverGen("osqp", nonnegative.method="clamp")
+controlSolverGen("bigGlm", nonnegative.method="clamp")
 }
 \seealso{
 \code{\link{l0glmFit}}

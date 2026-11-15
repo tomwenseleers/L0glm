@@ -817,9 +817,11 @@ Define the reusable operation
 (Z^T WZ+D)\widetilde b=Z^TWz+Dc.
 \]
 
-Eigen solves this system and clips to the specified bounds. The constrained
-glmnet/`bigGlm` coordinate-descent and OSQP quadratic-programming backends
-impose bounds during optimization. For nonnegative models with positive active
+With its default `nonnegative.method="clamp"`, Eigen solves this system and clips
+to the specified bounds. The glmnet/`bigGlm` coordinate-descent and OSQP
+quadratic-programming backends default to `nonnegative.method="constrained"`
+and impose bounds during optimization; either can also use `"clamp"`.
+For nonnegative models with positive active
 effects and well-chosen regularization, such as `lambda="gic"`, ridge shrinkage
 often keeps genuine active effects positive, and Eigen's simple clamping works
 very well. In the package's
@@ -827,10 +829,10 @@ very well. In the package's
 Eigen Cholesky LLT is particularly fast, while formal constraints can improve
 coefficient accuracy for highly correlated peaks.
 
-With `controlSolverGen("eigen", method, nonnegative.polish=TRUE)`, an infeasible
+With `controlSolverGen("eigen", method, nonnegative.method="constrained")`, an infeasible
 nonnegative Eigen proposal can instead receive a constrained polish. This
-option is off by default and reuses an existing predictor Gram matrix only;
-rectangular and Woodbury paths skip it. LLT, LDLT and other methods solving
+mode reuses an existing predictor Gram matrix only; rectangular, matrix-free
+and Woodbury paths retain clamping. LLT, LDLT and other methods solving
 an already formed Gram system use the same correction, as does the internal Poisson identity backend.
 
 For fixed adaptive penalties, let \(G=Z^TWZ+D\), \(h=Z^TWz+Dc\) and

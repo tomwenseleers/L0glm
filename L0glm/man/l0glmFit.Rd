@@ -304,7 +304,7 @@ Use \code{method=1L} for Eigen Cholesky LLT.}
   weights also permit reuse of crossproducts. Required sparse external-solver
   boundaries reuse the packed working design as well.
   For OSQP and \code{bigGlm},
-  \code{controlSolverGen(..., nonnegative.clamp=TRUE)} optionally solves
+  \code{controlSolverGen(..., nonnegative.method="clamp")} optionally solves
   each ridge step without bounds and clamps afterward, matching Eigen's
   default constraint strategy. The default remains exact bounds for these
   two backends.}
@@ -456,7 +456,7 @@ for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 (\code{TRUE}) or AMD ordering (\code{FALSE}, default). Sparse QR
 defaults to Eigen \code{COLAMDOrdering} (\code{ordering=1L});
 \code{ordering=0L} uses AMD and \code{ordering=2L} uses NaturalOrdering.
-\code{nonnegative.polish=TRUE} enables an optional batched constrained
+\code{nonnegative.method="constrained"} enables an optional batched constrained
 Cholesky correction for infeasible nonnegative Eigen proposals, reusing
 an existing predictor Gram matrix. It is off by default and skips
 rectangular and Woodbury solves; see \code{\link{controlSolverGen}}.}

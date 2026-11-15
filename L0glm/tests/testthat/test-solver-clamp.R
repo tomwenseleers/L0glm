@@ -1,13 +1,3 @@
-test_that('external clamping is an explicit validated solver control', {
-  for(solver in c('osqp','bigGlm','bigglm','glmnet')) {
-    expect_true(controlSolverGen(solver,nonnegative.clamp=TRUE)$nonnegative.clamp)
-    expect_false(isTRUE(controlSolverGen(solver)$nonnegative.clamp))
-  }
-  for(bad in list(NA,1,c(TRUE,FALSE),NULL))
-    expect_error(controlSolverGen('osqp',nonnegative.clamp=bad),'TRUE or FALSE')
-  expect_error(controlSolverGen('eigen',1L,nonnegative.clamp=TRUE),'already clamps')
-})
-
 test_that('external clamping solves the unconstrained ridge before projection', {
   H <- matrix(c(1,.8,.8,1),2)
   X <- chol(H);y <- solve(t(X),c(-1,1));lambda <- rep(.1,2)
@@ -18,7 +8,7 @@ test_that('external clamping solves the unconstrained ridge before projection', 
       Z <- if(sparse)Matrix::Matrix(X,sparse=TRUE)else X
       exact <- lmRidge(Z,y,lambdas=lambda,nonnegative=TRUE,solver=solver)
       clipped <- lmRidge(Z,y,lambdas=lambda,nonnegative=TRUE,solver=solver,
-        control.solver=controlSolverGen(solver,nonnegative.clamp=TRUE))
+        control.solver=controlSolverGen(solver,nonnegative.method="clamp"))
       expect_equal(clipped,expected,tolerance=1e-8)
       expect_equal(exact,c(0,1/1.1),tolerance=1e-8)
       expect_gt(abs(clipped[2]-exact[2]),1)
@@ -40,7 +30,7 @@ test_that('external projection preserves weights, priors, scaling and free bound
       fit <- lmRidge(if(sparse)Matrix::Matrix(X,sparse=TRUE)else X,y,
         lambdas=penalty,weights=w,lower=lower,upper=upper,prior.mean=prior,
         scaling=seq(.5,2,length.out=7),solver=solver,
-        control.solver=controlSolverGen(solver,nonnegative.clamp=TRUE))
+        control.solver=controlSolverGen(solver,nonnegative.method="clamp"))
       expect_equal(fit,target,tolerance=1e-7)
       expect_lt(fit[1],0)
       expect_equal(fit[2],.4,tolerance=1e-7)
@@ -59,7 +49,7 @@ test_that('native external bridges retain projected fit parity', {
     reference <- do.call(l0glmFit,c(args,list(solver='eigen',method=1L)))
     for(solver in c('osqp','bigGlm')) {
       fit <- do.call(l0glmFit,c(args,list(solver=solver,
-        control.solver=controlSolverGen(solver,nonnegative.clamp=TRUE))))
+        control.solver=controlSolverGen(solver,nonnegative.method="clamp"))))
       expect_equal(as.matrix(coef(fit)),as.matrix(coef(reference)),tolerance=1e-6)
       expect_identical(coef(fit)!=0,coef(reference)!=0)
       expect_equal(GIC(fit,mu_floor=1e-8),GIC(reference,mu_floor=1e-8),tolerance=1e-7)
@@ -79,7 +69,7 @@ test_that('external clamping retains a signed binomial intercept and starting ex
   reference <- do.call(l0glmFit,c(args,list(solver='eigen')))
   for(solver in c('osqp','bigGlm')) {
     fit <- do.call(l0glmFit,c(args,list(solver=solver,
-      control.solver=controlSolverGen(solver,nonnegative.clamp=TRUE))))
+      control.solver=controlSolverGen(solver,nonnegative.method="clamp"))))
     expect_equal(dim(coef(fit)),c(3L,2L))
     expect_true(all(coef(fit)[1,]<0))
     expect_true(all(coef(fit)[3,]==0))

@@ -13,9 +13,9 @@ controlSolverGen("eigen", method=4L, precond=1L)
 
 # Optional constrained polish of nonnegative working ridge steps. This reuses
 # an existing predictor Gram matrix and is off by default.
-controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
-controlSolverGen("eigen", method=2L, nonnegative.polish=TRUE)
+controlSolverGen("eigen", method=1L, nonnegative.method="constrained")
+controlSolverGen("eigen", method=2L, nonnegative.method="constrained")
 
 # Compare external backends using the same clamping strategy as default Eigen.
-controlSolverGen("osqp", nonnegative.clamp=TRUE)
-controlSolverGen("bigGlm", nonnegative.clamp=TRUE)
+controlSolverGen("osqp", nonnegative.method="clamp")
+controlSolverGen("bigGlm", nonnegative.method="clamp")

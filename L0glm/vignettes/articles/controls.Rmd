@@ -51,23 +51,28 @@ coefficient accuracy for highly correlated peaks. OSQP uses diagonal equilibrati
 and absolute and relative tolerances of `1e-9`. Tall and square `bigGlm` and OSQP
 working systems use a shared constrained Cholesky polish, with a fresh KKT
 residual and an objective check; see [`lmRidge()`](../reference/lmRidge.html).
-The native the internal Poisson identity backend backend specializes in nonnegative identity-link Poisson models.
+The internal Poisson identity backend specializes in nonnegative identity-link Poisson models.
 
-An optional constrained polish is also available for Eigen:
+All three backends accept `nonnegative.method="clamp"` or `"constrained"`
+through `controlSolverGen()`. Eigen defaults to `"clamp"`; OSQP and `bigGlm`
+default to `"constrained"`. For example, enable Eigen's constrained polish:
 
 ```{r nonnegative-polish, eval=FALSE}
-control <- controlSolverGen("eigen", method=1L, nonnegative.polish=TRUE)
+control <- controlSolverGen("eigen", method=1L, nonnegative.method="constrained")
 fit <- l0glmFit(X, y, family=poisson(identity), nonnegative=TRUE,
                lambda="gic", control.solver=control)
 ```
 
 This reuses an existing predictor Gram matrix for batched Cholesky solves on
 the free coefficients. It supports LLT, LDLT and other methods operating on
-an already formed Gram system, and the native the internal Poisson identity backend backend. Rectangular
-and Woodbury paths skip the correction. A fresh KKT check and a nonincreasing
+an already formed Gram system, and the internal Poisson identity backend. Rectangular
+and Woodbury paths skip the correction, as do matrix-free solves. A fresh KKT check and a nonincreasing
 ridge objective are required; otherwise the clipped proposal is retained.
-The option is off by default: it can improve correlated peak recovery, but
-also changes the adaptive selection trajectory and adds computation.
+Eigen's constrained mode can improve correlated peak recovery, but also
+changes the adaptive selection trajectory and adds computation. To compare
+OSQP or `bigGlm` with Eigen's default clamping strategy, use
+`controlSolverGen("osqp", nonnegative.method="clamp")` or
+`controlSolverGen("bigGlm", nonnegative.method="clamp")`.
 
 ## Starts and normalization
 

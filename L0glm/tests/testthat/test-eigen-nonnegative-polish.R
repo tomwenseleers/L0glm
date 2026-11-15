@@ -1,13 +1,3 @@
-test_that("nonnegative polish is an explicit Eigen control", {
-  for (method in 1:6) {
-    expect_false(controlSolverGen("eigen", method)$nonnegative.polish)
-    expect_true(controlSolverGen("eigen", method, nonnegative.polish = TRUE)$nonnegative.polish)
-  }
-  for (bad in list(NULL, NA, 1, c(TRUE, FALSE)))
-    expect_error(controlSolverGen("eigen", 1L, nonnegative.polish = bad), "TRUE or FALSE")
-  expect_error(controlSolverGen("osqp", nonnegative.polish = TRUE), "Eigen")
-})
-
 test_that("batched bounded solves match independent support enumeration", {
   for (seed in 1:6) {
     set.seed(7200 + seed)
@@ -62,7 +52,7 @@ test_that("all existing Gram solve paths can polish the same constrained ridge",
   reference <- solve_bounded_gram(G, h, pmax(lower, pmin(upper, solve(G, h))), lower, upper)$coefficients
   for (sparse in c(FALSE, TRUE)) for (method in 1:6) {
     A <- if (sparse) Matrix::Matrix(X, sparse = TRUE) else X
-    control <- controlSolverGen("eigen", method, rowaug = FALSE, nonnegative.polish = TRUE)
+    control <- controlSolverGen("eigen", method, rowaug = FALSE, nonnegative.method="constrained")
     fit <- lmRidge(A, y, weights = w, lambdas = d, lower = lower, upper = upper,
       prior.mean = center, method = method, control.solver = control)
     expect_equal(fit, as.numeric(reference), tolerance = 1e-7, info = paste(sparse, method))
@@ -75,7 +65,7 @@ test_that("all existing Gram solve paths can polish the same constrained ridge",
 test_that("polishing reuses the cached weighted Gram without accessing raw data", {
   set.seed(16022)
   X <- matrix(rnorm(100 * 8), 100, 8); y <- rnorm(100); w <- runif(100, .1, 3)
-  control <- controlSolverGen("eigen", 2L, nonnegative.polish = TRUE)
+  control <- controlSolverGen("eigen", 2L, nonnegative.method="constrained")
   expected <- lmRidge(X, y, weights = w, lambdas = rep(.3, 8), nonnegative = TRUE,
     method = 2L, control.solver = control)
   control$.crossprod <- list(xx = crossprod(X, w * X), xy = as.numeric(crossprod(X, w * y)))
@@ -97,21 +87,21 @@ test_that("default, signed, rectangular and Woodbury paths bypass the polish", {
     A <- if (sparse) Matrix::Matrix(X, sparse = TRUE) else X
     ordinary <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method)
     explicit <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method,
-      control.solver = controlSolverGen("eigen", method, nonnegative.polish = FALSE))
+      control.solver = controlSolverGen("eigen", method, nonnegative.method="clamp"))
     expect_identical(explicit, ordinary)
     signed <- lmRidge(A, y, lambdas = rep(1, 12), method = method)
     enabled <- lmRidge(A, y, lambdas = rep(1, 12), method = method,
-      control.solver = controlSolverGen("eigen", method, nonnegative.polish = TRUE))
+      control.solver = controlSolverGen("eigen", method, nonnegative.method="constrained"))
     expect_identical(enabled, signed)
     wide <- t(A)
     off <- lmRidge(wide, y[1:12], lambdas = rep(1, 40), nonnegative = TRUE, method = method)
     on <- lmRidge(wide, y[1:12], lambdas = rep(1, 40), nonnegative = TRUE, method = method,
-      control.solver = controlSolverGen("eigen", method, nonnegative.polish = TRUE))
+      control.solver = controlSolverGen("eigen", method, nonnegative.method="constrained"))
     expect_identical(on, off)
     if (method %in% c(4L, 5L, 6L)) {
-      control <- controlSolverGen("eigen", method, rowaug = TRUE, nonnegative.polish = TRUE)
+      control <- controlSolverGen("eigen", method, rowaug = TRUE, nonnegative.method="constrained")
       on <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method, control.solver = control)
-      control$nonnegative.polish <- FALSE
+      control$nonnegative.method <- "clamp"
       off <- lmRidge(A, y, lambdas = rep(1, 12), nonnegative = TRUE, method = method, control.solver = control)
       expect_identical(on, off)
     }
@@ -132,7 +122,7 @@ test_that("native polish respects channel masks, mandatory terms and threading",
       weights = seq(.5, 2, length.out = 120), offset = rep(3, 120),
       local.search = FALSE, ncores = threads, nthreads = 1L,
       method = method, control.solver = controlSolverGen("eigen", method,
-        rowaug = FALSE, nonnegative.polish = TRUE)))
+        rowaug = FALSE, nonnegative.method="constrained")))
     for (fit in fits) {
       b <- as.matrix(coef(fit))
       expect_equal(dim(b), c(12L, 4L))
@@ -151,14 +141,14 @@ test_that("LLT and LDLT polish recover the correlated Poisson peak pair", {
   for (native in c(FALSE, TRUE)) for (method in c(1L, 2L)) {
     fit <- l0glmFit(d$X, d$y, family = poisson(identity), nonnegative = TRUE,
       start = NULL, lambda = "gic", local.search = FALSE,ncores=1L,
-      method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.polish = TRUE),list(.native=native)))
+      method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.method="constrained"),list(.native=native)))
     b <- as.numeric(coef(fit))
     expect_true(all(b[c(836, 838)] > 0))
     expect_equal(b[c(837, 839)], c(0, 0))
     expect_gt(l0glmMetrics(fit, beta_true = d$beta_true)$R2_coefs, .95)
   }
   direct <- l0nnPois(d$X, d$y, start = NULL, lambda = "gic", local.search = FALSE,ncores=1L,
-    control.solver = controlSolverGen("eigen", 1L, nonnegative.polish = TRUE))
+    control.solver = controlSolverGen("eigen", 1L, nonnegative.method="constrained"))
   expect_gt(l0glmMetrics(direct, beta_true = d$beta_true)$R2_coefs, .95)
 })
 
@@ -169,7 +159,7 @@ test_that("native Gaussian caches and predictor groups accept the polish", {
   Y <- cbind(2 + 3 * X[, 1] + X[, 5], 1 + 2 * X[, 1] + 2 * X[, 5]) + rnorm(200)
   for (group in list(NULL, rep(1:6, each = 2L))) {
     fits <- lapply(c(FALSE, TRUE), function(native) l0glmFit(X, Y, family = gaussian(),
-      nonnegative = TRUE, intercept = TRUE, group = group, local.search = FALSE,ncores=1L,control.solver=utils::modifyList(controlSolverGen("eigen", 1L, nonnegative.polish = TRUE),list(.native=native))))
+      nonnegative = TRUE, intercept = TRUE, group = group, local.search = FALSE,ncores=1L,control.solver=utils::modifyList(controlSolverGen("eigen", 1L, nonnegative.method="constrained"),list(.native=native))))
     for (fit in fits) expect_true(all(is.finite(coef(fit)) & coef(fit) >= 0))
     expect_equal(as.matrix(coef(fits[[1]])), as.matrix(coef(fits[[2]])), tolerance = 2e-5)
   }
@@ -181,7 +171,7 @@ test_that("a binomial intercept stays unrestricted with nonnegative polishing", 
   y <- rbinom(180, 1, plogis(-4 + X[, 1] + .7 * X[, 3]))
   for (native in c(FALSE, TRUE)) for (method in c(1L, 2L)) {
     fit <- l0glmFit(X, y, family = binomial(), intercept = TRUE, nonnegative = TRUE,
-      local.search = FALSE,ncores=1L, method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.polish = TRUE),list(.native=native)))
+      local.search = FALSE,ncores=1L, method = method,control.solver=utils::modifyList(controlSolverGen("eigen", method, nonnegative.method="constrained"),list(.native=native)))
     b <- as.numeric(coef(fit))
     expect_lt(b[1], 0)
     expect_true(all(b[-1] >= 0))
@@ -192,7 +182,7 @@ test_that("tuning forwards the constrained-polish control to candidate fits", {
   set.seed(16026)
   X <- matrix(rexp(80 * 8), 80, 8)
   y <- rpois(80, 2 * X[, 1] + X[, 3])
-  control <- controlSolverGen("eigen", 2L, nonnegative.polish = TRUE)
+  control <- controlSolverGen("eigen", 2L, nonnegative.method="constrained")
   tuned <- l0glmTune(X, y, family = poisson(identity), nonnegative = TRUE,
     tune = "gic", nlambda = 3L, plot = FALSE,ncores=1L,
     method = 2L, control.solver = control, local.search = FALSE)

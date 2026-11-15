@@ -117,8 +117,9 @@ fit_one_solver <- function(X, y, beta_true, family, lambda, solver_backend,
     maxit = fit_maxit, tol = fit_tol, thresh = 1e-5,ncores=ncores_fit, nthreads = blas_threads,
     solver = solver_backend, method = solver_method,
     control.solver = L0glm::controlSolverGen(solver_backend, solver_method,
-      nonnegative.polish = solver_backend == "eigen" && nonnegative_polish,
-      nonnegative.clamp = solver_backend != "eigen" && nonnegative_clamp))
+      nonnegative.method = if (solver_backend == "eigen") {
+        if (nonnegative_polish) "constrained" else "clamp"
+      } else if (nonnegative_clamp) "clamp" else "constrained"))
 
   timed_fit <- withCallingHandlers(
     tryCatch(

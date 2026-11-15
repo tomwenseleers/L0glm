@@ -82,25 +82,20 @@
 #' LLT fallbacks require their estimated workspace to fit.
 #' Allocation checks also cover dispersion pilots and serial special-family
 #' solver adapters.
-#' @param nonnegative.clamp
-#' Logical, default \code{FALSE}. For OSQP or \code{bigGlm}, solve each
-#' weighted ridge problem without coefficient bounds, then clamp the result
-#' to the supplied bounds. This reproduces the default Eigen constraint
-#' strategy when the inner solves agree. Unrestricted intercepts remain
-#' unrestricted. With \code{FALSE}, these solvers enforce the bounds during
-#' optimization. Existing numerical polishing uses the same working bounds.
+#' @param nonnegative.method
+#' Nonnegative working-solve strategy: \code{"clamp"} solves without coefficient
+#' bounds and then clips to them; \code{"constrained"} enforces bounds within
+#' the weighted ridge solve. \code{NULL} preserves solver-specific defaults:
+#' \code{"clamp"} for Eigen and \code{"constrained"} for OSQP and \code{bigGlm}.
+#' For Eigen, constrained mode uses a checked active-set Cholesky polish only
+#' when a predictor Gram matrix is available. Rectangular least-squares,
+#' matrix-free and Woodbury routes retain clamping; an unsuccessful polish
+#' also retains the clamped proposal. Unrestricted intercepts remain free.
 #' Unconstrained OSQP steps use infeasibility tolerances of \code{1e-12}, unless
-#' explicitly supplied in the control list, to protect ill-conditioned ridge
-#' systems from false infeasibility classifications.
-#' @param nonnegative.polish
-#' Logical, default \code{FALSE}. For Eigen working solves with nonnegative
-#' coefficients and an existing predictor Gram matrix, optionally replace
-#' clipping of an infeasible proposal by a batched constrained Cholesky polish.
-#' This includes LLT, LDLT and other methods solving an already formed Gram
-#' system. Rectangular least-squares and Woodbury solves skip this correction.
+#' explicitly supplied in the control list.
 #'
 #' @details
-#' With \code{nonnegative.polish=TRUE}, the polish solves the current weighted
+#' For Eigen with \code{nonnegative.method="constrained"}, the polish solves the current weighted
 #' ridge quadratic on successive feasible coefficient sets. Bounds, prior means
 #' and column normalization are retained, including an unrestricted binomial
 #' intercept. Batched bound updates use Cholesky on the free set; cycling or an
@@ -116,7 +111,7 @@
 #' Consequently, rectangular QR, SVD and LSCG paths and observation-space
 #' Woodbury paths keep their usual solves. This optional correction can recover
 #' peaks lost through clipping in correlated nonnegative designs, but can also
-#' change the selected support and increase fitting time. It is off by default.
+#' change the selected support and increase fitting time. Eigen defaults to \code{"clamp"}.
 #'
 #' OSQP working systems are diagonally equilibrated, with bounds and starting
 #' coefficients transformed consistently. Returned coefficients retain their
@@ -175,18 +170,14 @@ controlSolverGen <- function(solver,
                                threshold = NULL,
                                verbose = FALSE,
                                rowaug = NULL,
-                               nonnegative.polish = FALSE, max.memory = NULL,
-                               nonnegative.clamp = FALSE){
+                               nonnegative.method = NULL, max.memory = NULL){
   L0glm_validate_memory(max.memory)
-  if (!is.logical(nonnegative.clamp) || length(nonnegative.clamp) != 1L || is.na(nonnegative.clamp))
-    stop("nonnegative.clamp must be TRUE or FALSE.", call. = FALSE)
-  if (nonnegative.clamp && solver == "eigen")
-    stop("nonnegative.clamp is an OSQP/bigGlm solver control; Eigen already clamps by default.", call. = FALSE)
-  if (!is.logical(nonnegative.polish) || length(nonnegative.polish) != 1L || is.na(nonnegative.polish))
-    stop("nonnegative.polish must be TRUE or FALSE.", call. = FALSE)
-  if (nonnegative.polish && solver != "eigen")
-    stop("nonnegative.polish is an Eigen solver control.", call. = FALSE)
-  
+  if (is.null(nonnegative.method))
+    nonnegative.method <- if (solver == "eigen") "clamp" else "constrained"
+  if (!is.character(nonnegative.method) || length(nonnegative.method) != 1L ||
+      is.na(nonnegative.method) || !nonnegative.method %in% c("clamp", "constrained"))
+    stop('nonnegative.method must be "clamp" or "constrained".', call. = FALSE)
+
   if(!(solver %in% c("bigGlm", "bigglm", "glmnet")) & !is.null(standardize) & verbose) {
     print("Selected solver does not support standardization. To enable standardization, please set the solver to bigGlm.")
   }
@@ -297,8 +288,7 @@ controlSolverGen <- function(solver,
   } else {
     stop("Chosen solver is not available.")
   }
-  if (solver == "eigen") l$nonnegative.polish <- nonnegative.polish
-  if (nonnegative.clamp) l$nonnegative.clamp <- TRUE
+  l$nonnegative.method <- nonnegative.method
   l$max.memory <- max.memory
   return(l)
 }

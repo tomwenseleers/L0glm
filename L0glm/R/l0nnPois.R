@@ -111,7 +111,7 @@ l0nnPois <- function(X,
     # Direct calls keep this specialized backend; l0glmFit owns screening.
     args$screen <- "none"
     args$control.solver <- control.solver[intersect(names(control.solver),
-      c("NaturalOrdering", "ordering", "nonnegative.polish", "max.memory", ".workspace.total"))]
+      c("NaturalOrdering", "ordering", "nonnegative.method", "max.memory", ".workspace.total"))]
     return(do.call(L0glm_internal_fit, args))
   }
   natural_ordering <- FALSE
@@ -246,14 +246,14 @@ l0nnPois <- function(X,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation,isTRUE(control.solver$.refit.only),
-      isTRUE(control.solver$nonnegative.polish))
+      identical(control.solver$nonnegative.method, "constrained"))
   } else {
     fit <- L0nnpois_dense_cpp(
       working$X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation,isTRUE(control.solver$.refit.only),
-      isTRUE(control.solver$nonnegative.polish))
+      identical(control.solver$nonnegative.method, "constrained"))
   }
 
   coefficients <- fit$coefficients

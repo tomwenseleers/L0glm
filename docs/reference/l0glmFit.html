@@ -495,7 +495,7 @@ remain sparse. The training centers and scales are returned in
 <dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of <code>"osqp"</code> (osqp quadratic
-programming solver), <code>"bigGlm"</code> (using <code><a href="https://glmnet.stanford.edu/reference/bigGlm.html" class="external-link">bigGlm</a></code>
+programming solver), <code>"bigGlm"</code> (using <code><a href="https://rdrr.io/pkg/glmnet/man/bigGlm.html" class="external-link">bigGlm</a></code>
 coordinate descent with a constrained Cholesky accuracy polish for tall
 and square working designs; alias <code>"glmnet"</code>) or <code>"eigen"</code> (one
 of the <code>RcppEigen Eigen</code> solvers).
@@ -542,7 +542,7 @@ Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
   weights also permit reuse of crossproducts. Required sparse external-solver
   boundaries reuse the packed working design as well.
   For OSQP and <code>bigGlm</code>,
-  <code>controlSolverGen(..., nonnegative.clamp=TRUE)</code> optionally solves
+  <code>controlSolverGen(..., nonnegative.method="clamp")</code> optionally solves
   each ridge step without bounds and clamps afterward, matching Eigen's
   default constraint strategy. The default remains exact bounds for these
   two backends.</p></dd>
@@ -703,7 +703,7 @@ for the different solvers. For sparse Eigen Cholesky LLT/LDLT,
 (<code>TRUE</code>) or AMD ordering (<code>FALSE</code>, default). Sparse QR
 defaults to Eigen <code>COLAMDOrdering</code> (<code>ordering=1L</code>);
 <code>ordering=0L</code> uses AMD and <code>ordering=2L</code> uses NaturalOrdering.
-<code>nonnegative.polish=TRUE</code> enables an optional batched constrained
+<code>nonnegative.method="constrained"</code> enables an optional batched constrained
 Cholesky correction for infeasible nonnegative Eigen proposals, reusing
 an existing predictor Gram matrix. It is off by default and skips
 rectangular and Woodbury solves; see <code><a href="controlSolverGen.html">controlSolverGen</a></code>.</p></dd>

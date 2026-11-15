@@ -556,7 +556,7 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,
 system.time(L0glm.chol.gaus.polished <- l0glmFit(sim.gaus$X, sim.gaus$y,
   family = gaussian(identity), lambda = "gic", nonnegative = TRUE,
   solver = "eigen", method = 1L,
-  control.solver = controlSolverGen("eigen", 1L, nonnegative.polish = TRUE)))
+  control.solver = controlSolverGen("eigen", 1L, nonnegative.method = "constrained")))
 
 #### 1.2.2 L0GLM FIT WITH PCG SOLVER WITH Incomplete Cholesky preconditioner ####
 system.time(L0glm.CG.gaus <- l0glmFit(sim.gaus$X, sim.gaus$y,

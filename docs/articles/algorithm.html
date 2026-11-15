@@ -955,21 +955,24 @@ omits an intercept.</li>
 \mathcal R(Z,z,W,D,c):\quad
 (Z^T WZ+D)\widetilde b=Z^TWz+Dc.
 </span></p>
-<p>Eigen solves this system and clips to the specified bounds. The
-constrained glmnet/<code>bigGlm</code> coordinate-descent and OSQP
-quadratic-programming backends impose bounds during optimization. For
-nonnegative models with positive active effects and well-chosen
-regularization, such as <code>lambda="gic"</code>, ridge shrinkage often
-keeps genuine active effects positive, and Eigen’s simple clamping works
-very well. In the package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
+<p>With its default <code>nonnegative.method="clamp"</code>, Eigen
+solves this system and clips to the specified bounds. The
+glmnet/<code>bigGlm</code> coordinate-descent and OSQP
+quadratic-programming backends default to
+<code>nonnegative.method="constrained"</code> and impose bounds during
+optimization; either can also use <code>"clamp"</code>. For nonnegative
+models with positive active effects and well-chosen regularization, such
+as <code>lambda="gic"</code>, ridge shrinkage often keeps genuine active
+effects positive, and Eigen’s simple clamping works very well. In the
+package’s <a href="https://github.com/tomwenseleers/L0glm/blob/master/benchmarks/1_benchmarks_solvers_problem_sizes/metrics_all_conditions.csv" class="external-link">deconvolution
 solver benchmarks</a>, Eigen Cholesky LLT is particularly fast, while
 formal constraints can improve coefficient accuracy for highly
 correlated peaks.</p>
 <p>With
-<code>controlSolverGen("eigen", method, nonnegative.polish=TRUE)</code>,
+<code>controlSolverGen("eigen", method, nonnegative.method="constrained")</code>,
 an infeasible nonnegative Eigen proposal can instead receive a
-constrained polish. This option is off by default and reuses an existing
-predictor Gram matrix only; rectangular and Woodbury paths skip it. LLT,
+constrained polish. This mode reuses an existing predictor Gram matrix
+only; rectangular, matrix-free and Woodbury paths retain clamping. LLT,
 LDLT and other methods solving an already formed Gram system use the
 same correction, as does the internal Poisson identity backend.</p>
 <p>For fixed adaptive penalties, let <span class="math inline">G=Z^TWZ+D</span>, <span class="math inline">h=Z^TWz+Dc</span> and <span class="math inline">q(b)=b^TGb/2-h^Tb</span>. Start from the clipped

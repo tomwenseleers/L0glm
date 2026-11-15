@@ -2,10 +2,11 @@
 
 ## Sparse generalized linear models
 
-* OSQP and `bigGlm` optionally solve unconstrained ridge steps and clamp
-  afterward through `controlSolverGen(nonnegative.clamp=TRUE)`. Exact bounds
-  remain their default; free intercepts, normalization and prior means are
-  preserved. Unconstrained OSQP steps use tight infeasibility tolerances.
+* `controlSolverGen(nonnegative.method=...)` selects `"clamp"` or
+  `"constrained"` working ridge solves across Eigen, OSQP and `bigGlm`.
+  Defaults are `"clamp"` for Eigen and `"constrained"` for OSQP/`bigGlm`.
+  Bounds, free intercepts, normalization, prior means and numerical guards
+  are preserved; Eigen constrained polishing reuses eligible Gram systems.
 
 * Gram and factor workspaces are checked against a configurable memory budget.
   CG/LSCG can use implicit ridge products with a fresh coefficient-space residual
@@ -134,7 +135,7 @@
 * Nonnegative identity-link Poisson LLT fits automatically use a specialized
   internal backend, including native validation stopping. `l0glmFit()` is
   the public interface for every supported family.
-* `controlSolverGen(..., nonnegative.polish=TRUE)` optionally polishes infeasible
+* `controlSolverGen(..., nonnegative.method="constrained")` optionally polishes infeasible
   nonnegative Eigen ridge proposals using batched constrained Cholesky solves.
   It reuses existing predictor Gram matrices, including LLT and LDLT paths,
   supports the native GLM and specialized Poisson drivers, and is off by default. Rectangular

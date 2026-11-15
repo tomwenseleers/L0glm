@@ -75,7 +75,7 @@
 #'   systems or Jacobi SVD for sparse systems).
 #'
 #'   Eigen normally clips proposals to the coefficient bounds. Set
-#'   \code{controlSolverGen("eigen", method, nonnegative.polish=TRUE)} to
+#'   \code{controlSolverGen("eigen", method, nonnegative.method="constrained")} to
 #'   polish infeasible nonnegative proposals using batched constrained Cholesky
 #'   solves. This reuses a predictor Gram matrix already formed by the selected
 #'   method, including LLT and LDLT; rectangular and Woodbury routes skip the
@@ -140,7 +140,7 @@
 #' @details
 #' OSQP and \code{bigGlm} enforce coefficient bounds during the ridge solve
 #' by default. To compare them with Eigen's default clamping strategy, use
-#' \code{controlSolverGen(solver, nonnegative.clamp=TRUE)}. The solver then
+#' \code{controlSolverGen(solver, nonnegative.method="clamp")}. The solver then
 #' minimizes the unconstrained ridge quadratic and clamps its solution to
 #' the supplied bounds. Scaling, prior means and unrestricted coefficients
 #' retain their interpretation. In correlated designs this differs from
@@ -242,7 +242,7 @@ lmridge.osqp <- function(Xw,
                          prior.mean = NULL,
                          iteration = 1){
   output.lower <- lower; output.upper <- upper
-  if (isTRUE(control.solver$nonnegative.clamp)) {
+  if (identical(control.solver$nonnegative.method, "clamp")) {
     lower <- rep(-Inf, length(lower)); upper <- rep(Inf, length(upper))
   }
   if (!inherits(Xw, "dgCMatrix")) {
@@ -328,7 +328,7 @@ osqp_coefficients <- function(solution, start, lower, upper, iteration) {
 
 osqp_settings_from_control <- function(control.solver, start = NULL) {
   args <- control.solver
-  if (isTRUE(args$nonnegative.clamp)) {
+  if (identical(args$nonnegative.method, "clamp")) {
     if (is.null(args$eps_dual_inf)) args$eps_dual_inf <- 1e-12
     if (is.null(args$eps_prim_inf)) args$eps_prim_inf <- 1e-12
   }
@@ -371,7 +371,7 @@ lmridge.glmnet <- function(Xw, yw,
                            prior.mean = NULL,
                            iteration = 1){
   output.lower <- lower; output.upper <- upper
-  if (isTRUE(control.solver$nonnegative.clamp)) {
+  if (identical(control.solver$nonnegative.method, "clamp")) {
     lower <- rep(-Inf, length(lower)); upper <- rep(Inf, length(upper))
   }
   if (is.null(prior.mean)) prior.mean <- rep(0, ncol(Xw))
@@ -491,7 +491,7 @@ eigen_ridge_solve <- function(A, b, start, control, iteration, least_squares = F
       b <- Matrix::crossprod(A, b)
       A <- Matrix::crossprod(A)
     }
-    fallback <- controlSolverGen('eigen',1L,nonnegative.polish=isTRUE(control$nonnegative.polish))
+    fallback <- controlSolverGen('eigen',1L,nonnegative.method=control$nonnegative.method)
     fallback$.workspace.total <- control$.workspace.total
     return(eigen_ridge_solve(A, b, start, fallback, iteration))
   }
@@ -608,7 +608,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                     control.solver$method, iteration), call. = FALSE)
     return(lmridge.eigen(Xw, yw, lambdas, lower, upper, start,
                         controlSolverGen("eigen", 1L,
-                          nonnegative.polish = isTRUE(control.solver$nonnegative.polish)),
+                          nonnegative.method = control.solver$nonnegative.method),
                         prior.mean, verbose, iteration))
   }
   if (is.null(coefs)) {
@@ -616,7 +616,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                     iteration), call. = FALSE)
     coefs <- start
   }
-  if (isTRUE(control.solver$nonnegative.polish) && gram_available && p <= n &&
+  if (identical(control.solver$nonnegative.method, "constrained") && gram_available && p <= n &&
       any(lower >= 0) && any(coefs < lower | coefs > upper)) {
     G <- if (issparse(A)) as(as(A, "generalMatrix"), "CsparseMatrix") else as.matrix(A)
     polished <- solve_bounded_gram(G, as.numeric(rhs), coefs,

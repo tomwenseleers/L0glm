@@ -23,7 +23,7 @@ struct SolverControl {
     sparse_svd=option<unsigned int>(x,"sparse.svd",1);maxit=option<int>(x,"maxit",0);
     tol=option<double>(x,"tol",0);threshold=option<double>(x,"threshold",0);
     cache_selected=option<bool>(x,".cache.selected",true);
-    rowaug=option<bool>(x,"rowaug",false);polish=option<bool>(x,"nonnegative.polish",false);
+    rowaug=option<bool>(x,"rowaug",false);polish=option<std::string>(x,"nonnegative.method","clamp")=="constrained";
   }
   bool external() const {return bridge!=R_NilValue;}
 };

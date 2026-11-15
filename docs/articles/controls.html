@@ -138,21 +138,29 @@ relative tolerances of <code>1e-9</code>. Tall and square
 <code>bigGlm</code> and OSQP working systems use a shared constrained
 Cholesky polish, with a fresh KKT residual and an objective check; see
 <a href="../reference/lmRidge.html"><code>lmRidge()</code></a>. The
-native the internal Poisson identity backend backend specializes in
-nonnegative identity-link Poisson models.</p>
-<p>An optional constrained polish is also available for Eigen:</p>
+internal Poisson identity backend specializes in nonnegative
+identity-link Poisson models.</p>
+<p>All three backends accept <code>nonnegative.method="clamp"</code> or
+<code>"constrained"</code> through <code><a href="../reference/controlSolverGen.html">controlSolverGen()</a></code>.
+Eigen defaults to <code>"clamp"</code>; OSQP and <code>bigGlm</code>
+default to <code>"constrained"</code>. For example, enable Eigen’s
+constrained polish:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">control</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/controlSolverGen.html">controlSolverGen</a></span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">control</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/controlSolverGen.html">controlSolverGen</a></span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.method<span class="op">=</span><span class="st">"constrained"</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/l0glmFit.html">l0glmFit</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span>, family<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="va">identity</span><span class="op">)</span>, nonnegative<span class="op">=</span><span class="cn">TRUE</span>,</span>
 <span>               lambda<span class="op">=</span><span class="st">"gic"</span>, control.solver<span class="op">=</span><span class="va">control</span><span class="op">)</span></span></code></pre></div>
 <p>This reuses an existing predictor Gram matrix for batched Cholesky
 solves on the free coefficients. It supports LLT, LDLT and other methods
-operating on an already formed Gram system, and the native the internal
-Poisson identity backend backend. Rectangular and Woodbury paths skip
-the correction. A fresh KKT check and a nonincreasing ridge objective
-are required; otherwise the clipped proposal is retained. The option is
-off by default: it can improve correlated peak recovery, but also
-changes the adaptive selection trajectory and adds computation.</p>
+operating on an already formed Gram system, and the internal Poisson
+identity backend. Rectangular and Woodbury paths skip the correction, as
+do matrix-free solves. A fresh KKT check and a nonincreasing ridge
+objective are required; otherwise the clipped proposal is retained.
+Eigen’s constrained mode can improve correlated peak recovery, but also
+changes the adaptive selection trajectory and adds computation. To
+compare OSQP or <code>bigGlm</code> with Eigen’s default clamping
+strategy, use
+<code>controlSolverGen("osqp", nonnegative.method="clamp")</code> or
+<code>controlSolverGen("bigGlm", nonnegative.method="clamp")</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="starts-and-normalization">Starts and normalization<a class="anchor" aria-label="anchor" href="#starts-and-normalization"></a>

@@ -77,9 +77,8 @@ solver (<code>controlSolverGen</code>) &amp; allows fine control over its option
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  rowaug <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  nonnegative.polish <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  max.memory <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  nonnegative.clamp <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  nonnegative.method <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max.memory <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -183,12 +182,17 @@ overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
 unchanged. Eligible wide Eigen systems use the Woodbury route instead.</p></dd>
 
 
-<dt id="arg-nonnegative-polish">nonnegative.polish<a class="anchor" aria-label="anchor" href="#arg-nonnegative-polish"></a></dt>
-<dd><p>Logical, default <code>FALSE</code>. For Eigen working solves with nonnegative
-coefficients and an existing predictor Gram matrix, optionally replace
-clipping of an infeasible proposal by a batched constrained Cholesky polish.
-This includes LLT, LDLT and other methods solving an already formed Gram
-system. Rectangular least-squares and Woodbury solves skip this correction.</p></dd>
+<dt id="arg-nonnegative-method">nonnegative.method<a class="anchor" aria-label="anchor" href="#arg-nonnegative-method"></a></dt>
+<dd><p>Nonnegative working-solve strategy: <code>"clamp"</code> solves without coefficient
+bounds and then clips to them; <code>"constrained"</code> enforces bounds within
+the weighted ridge solve. <code>NULL</code> preserves solver-specific defaults:
+<code>"clamp"</code> for Eigen and <code>"constrained"</code> for OSQP and <code>bigGlm</code>.
+For Eigen, constrained mode uses a checked active-set Cholesky polish only
+when a predictor Gram matrix is available. Rectangular least-squares,
+matrix-free and Woodbury routes retain clamping; an unsuccessful polish
+also retains the clamped proposal. Unrestricted intercepts remain free.
+Unconstrained OSQP steps use infeasibility tolerances of <code>1e-12</code>, unless
+explicitly supplied in the control list.</p></dd>
 
 
 <dt id="arg-max-memory">max.memory<a class="anchor" aria-label="anchor" href="#arg-max-memory"></a></dt>
@@ -201,18 +205,6 @@ LLT fallbacks require their estimated workspace to fit.
 Allocation checks also cover dispersion pilots and serial special-family
 solver adapters.</p></dd>
 
-
-<dt id="arg-nonnegative-clamp">nonnegative.clamp<a class="anchor" aria-label="anchor" href="#arg-nonnegative-clamp"></a></dt>
-<dd><p>Logical, default <code>FALSE</code>. For OSQP or <code>bigGlm</code>, solve each
-weighted ridge problem without coefficient bounds, then clamp the result
-to the supplied bounds. This reproduces the default Eigen constraint
-strategy when the inner solves agree. Unrestricted intercepts remain
-unrestricted. With <code>FALSE</code>, these solvers enforce the bounds during
-optimization. Existing numerical polishing uses the same working bounds.
-Unconstrained OSQP steps use infeasibility tolerances of <code>1e-12</code>, unless
-explicitly supplied in the control list, to protect ill-conditioned ridge
-systems from false infeasibility classifications.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -222,7 +214,7 @@ and method.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>With <code>nonnegative.polish=TRUE</code>, the polish solves the current weighted
+    <p>For Eigen with <code>nonnegative.method="constrained"</code>, the polish solves the current weighted
 ridge quadratic on successive feasible coefficient sets. Bounds, prior means
 and column normalization are retained, including an unrestricted binomial
 intercept. Batched bound updates use Cholesky on the free set; cycling or an
@@ -237,7 +229,7 @@ unconstrained proposal needs no correction.
 Consequently, rectangular QR, SVD and LSCG paths and observation-space
 Woodbury paths keep their usual solves. This optional correction can recover
 peaks lost through clipping in correlated nonnegative designs, but can also
-change the selected support and increase fitting time. It is off by default.</p>
+change the selected support and increase fitting time. Eigen defaults to <code>"clamp"</code>.</p>
 <p>OSQP working systems are diagonally equilibrated, with bounds and starting
 coefficients transformed consistently. Returned coefficients retain their
 original units. Tall and square working designs also receive the same checked
@@ -287,12 +279,12 @@ allocation in rectangular LSCG solves.</p>
 <span></span>
 <span><span class="co"># Optional constrained polish of nonnegative working ridge steps. This reuses</span></span>
 <span><span class="co"># an existing predictor Gram matrix and is off by default.</span></span>
-<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">2L</span>, nonnegative.polish<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">1L</span>, nonnegative.method<span class="op">=</span><span class="st">"constrained"</span><span class="op">)</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"eigen"</span>, method<span class="op">=</span><span class="fl">2L</span>, nonnegative.method<span class="op">=</span><span class="st">"constrained"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Compare external backends using the same clamping strategy as default Eigen.</span></span>
-<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"osqp"</span>, nonnegative.clamp<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"bigGlm"</span>, nonnegative.clamp<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"osqp"</span>, nonnegative.method<span class="op">=</span><span class="st">"clamp"</span><span class="op">)</span></span>
+<span><span class="fu">controlSolverGen</span><span class="op">(</span><span class="st">"bigGlm"</span>, nonnegative.method<span class="op">=</span><span class="st">"clamp"</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
