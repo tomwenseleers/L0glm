@@ -91,6 +91,55 @@ test_that("million-predictor paths draw only varying paths and one zero", {
   expect_equal(sort(colSums(abs(plotted))),c(0,3,4.5))
 })
 
+test_that("multinomial paths retain nonzero contrasts and draw one zero line", {
+  a <- c(1,-1,0)
+  b <- c(0,1,-1)
+  coefficients <- lapply(seq_along(a),function(k)
+    Matrix::sparseMatrix(i=c(1L,1L,3L,3L),j=c(1L,2L,2L,3L),
+      x=c(a[k],-a[k],b[k],-b[k]),dims=c(10L,3L),
+      dimnames=list(NULL,c("A","B","C"))))
+  object <- list(coefficients=coefficients,always.include=integer(),kind="multinomial",
+    metrics=data.frame(lambda=c(20,2,.2),support_size_estimated=c(1L,2L,1L),
+      tuning_score=c(5,6,7)),tune="gic",lambda_best=20,lambda_preset=20,lambda_max=20)
+  plotted <- styles <- NULL
+  testthat::local_mocked_bindings(matplot=function(x,y,...) {
+    plotted <<- y; styles <<- list(...)
+    graphics::plot.new();graphics::plot.window(xlim=range(x),ylim=range(y,c(-1,1)))
+  },.package="graphics")
+  expected <- cbind(a,0,-a,b,-b)
+  colors <- grDevices::hcl(h=(15+137.508*(c(1,2,1,3,3)-1))%%360,c=70,l=50)
+  for (sparse in c(TRUE,FALSE)) {
+    if (!sparse) object$coefficients <- lapply(coefficients,as.matrix)
+    with_plot_device(L0glm_plot_tuning(object))
+    expect_equal(unname(plotted),unname(expected))
+    expect_identical(styles$lty,c(1L,1L,2L,2L,3L))
+    expect_identical(styles$col,colors)
+  }
+  object$coefficients <- lapply(coefficients,function(B) B*0)
+  with_plot_device(L0glm_plot_tuning(object))
+  expect_equal(dim(plotted),c(3L,1L))
+  expect_true(all(plotted == 0))
+})
+
+test_that("zero channel means share one line without changing row support labels", {
+  B <- Matrix::Matrix(rbind(c(1,-1),c(0,0),c(2,-2)),sparse=TRUE)
+  object <- list(coefficients=list(B,B/2),always.include=integer(),
+    metrics=data.frame(lambda=c(20,2),support_size_estimated=c(2L,2L),gic=c(5,6)),
+    tune="gic",lambda_best=20,lambda_preset=20,lambda_max=20)
+  plotted <- NULL; labels <- list()
+  testthat::local_mocked_bindings(matplot=function(x,y,...) {
+    plotted <<- y
+    graphics::plot.new();graphics::plot.window(xlim=range(x),ylim=c(-1,1))
+  },axis=function(side,...) {
+    if (side == 3) labels[[length(labels)+1L]] <<- list(...)$labels
+  },.package="graphics")
+  with_plot_device(L0glm_plot_tuning(object))
+  expect_equal(dim(plotted),c(2L,1L))
+  expect_true(all(plotted == 0))
+  expect_length(labels,2L)
+  expect_true(all(unlist(labels) == 2L))
+})
+
 test_that("heatmaps stack responses, truth and methods with correct support lines", {
   object <- sparseglm_plot_fixture()
   calls <- lines <- list()

@@ -27,6 +27,15 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
                       nrow = length(selectable) * contrast_count))
   colors <- grDevices::hcl(h = (15 + 137.508 * (rep(selectable, contrast_count) - 1)) %% 360,
                           c = 70, l = 50)
+  line_types <- rep(seq_len(contrast_count), each = length(selectable))
+  # Category expansion and signed channel means can introduce further zero paths.
+  zero <- which(colSums(coefmat != 0) == 0)
+  if (length(zero) > 1L) {
+    keep <- setdiff(seq_len(ncol(coefmat)), zero[-1L])
+    coefmat <- coefmat[, keep, drop = FALSE]
+    colors <- colors[keep]
+    line_types <- line_types[keep]
+  }
 
   # Support is discrete: label the nearest evaluated model, never interpolate
   # counts or infer row support from channel means (which can cancel).
@@ -48,7 +57,7 @@ L0glm_plot_tuning <- function(object, coefs.true = NULL) {
   graphics::par(mar = margins)
 
   if (ncol(coefmat)) {
-    graphics::matplot(x, coefmat, type = "l", lty = rep(seq_len(contrast_count), each = length(selectable)), col = colors,
+    graphics::matplot(x, coefmat, type = "l", lty = line_types, col = colors,
                       xlim = xlim, xlab = expression(log[10](lambda)), ylab = "")
   } else graphics::plot(x, rep(0, length(x)), type = "n", xlim = xlim,
                          xlab = expression(log[10](lambda)), ylab = "")

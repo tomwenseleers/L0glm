@@ -77,6 +77,8 @@
 
 * Automatic information-criterion presets, lambda-path tuning, n-fold CV,
   full-data minimum and one-standard-error models, and coefficient-path plots.
+  All-zero coefficient paths share one plotted line, including multinomial
+  contrasts and zero multichannel means, preserving colours and support counts.
   Iteration limits are scalar; independent validation data can select the
   best predictive checkpoint during fitting. `presetLambda()`
   returns AIC, BIC, GIC, EBIC or mBIC penalty values directly.
