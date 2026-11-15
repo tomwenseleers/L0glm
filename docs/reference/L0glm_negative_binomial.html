@@ -76,6 +76,11 @@ $$\log\Gamma(y+\theta)-\log\Gamma(\theta)-\log\Gamma(y+1)
 The mean satisfies \(g(\mu)=X\beta+o\), where \(o\) is an offset.
 Log, identity and square-root links are supported through the family object;
 identity/square-root fits require valid positive means.</p>
+<p>For these built-in links, the IRLS loop, channel-specific shape updates and
+channel coordination run in C++. The codencores argument enables OpenMP
+across response channels, with one BLAS thread per concurrent channel.
+Selected working designs are reused while their support is unchanged.
+Custom link callbacks retain a serial R adapter.</p>
 <p><code><a href="https://rdrr.io/pkg/mgcv/man/negbin.html" class="external-link">mgcv::nb()</a></code> estimates shape starting from one;
 <code>mgcv::nb(theta=2)</code> fixes it at two; and
 <code>mgcv::nb(theta=-2)</code> estimates it starting from two. Each response channel

@@ -106,7 +106,7 @@ L0glm_sis_context <- function(y,family,n,weights,offset,nuisance,nonnegative=FAL
         theta <- if (family$n.theta>0) exp(stats::optimize(function(a)
           -sum(w[good,j]*stats::dnbinom(Y[good,j],mu=mu[good],size=exp(a),log=TRUE)),
           log(c(1e-6,1e7)))$minimum) else family$getTheta(TRUE)
-        f <- unserialize(serialize(family,NULL));f$putTheta(log(theta));context$theta[j] <- theta
+        f <- L0glm_copy_family(family);f$putTheta(log(theta));context$theta[j] <- theta
       }
       mu <- f$linkinv(eta);phi <- 1
     } else {

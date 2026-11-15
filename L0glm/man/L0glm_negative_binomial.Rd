@@ -19,6 +19,12 @@ The mean satisfies \eqn{g(\mu)=X\beta+o}, where \eqn{o} is an offset.
 Log, identity and square-root links are supported through the family object;
 identity/square-root fits require valid positive means.
 
+For these built-in links, the IRLS loop, channel-specific shape updates and
+channel coordination run in C++. The code{ncores} argument enables OpenMP
+across response channels, with one BLAS thread per concurrent channel.
+Selected working designs are reused while their support is unchanged.
+Custom link callbacks retain a serial R adapter.
+
 \code{mgcv::nb()} estimates shape starting from one;
 \code{mgcv::nb(theta=2)} fixes it at two; and
 \code{mgcv::nb(theta=-2)} estimates it starting from two. Each response channel

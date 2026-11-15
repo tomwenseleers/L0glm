@@ -25,6 +25,9 @@
 * Standard GLM families and links, negative binomial with fixed or estimated
   shape, joint multinomial models in CLR coordinates, and Cox proportional
   hazards models with direct or matrix-free quadratic updates.
+  Estimated-negative-binomial IRLS, shape updates and channel coordination use
+  C++/OpenMP for recognized links. Working designs are reused across passes;
+  per-channel NB shapes are copied without serializing caller workspaces.
 * NB1, common-scale Gamma and censored Gamma signal models; quasi families
   expose scaled likelihood kernels and quasi-information criteria.
 

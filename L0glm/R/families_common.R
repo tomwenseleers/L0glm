@@ -115,6 +115,7 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     family = family, B = B, allowed = allowed, explicit = explicit, m = m,
     added_intercept = intercept,
     p = p, n = n, p_selectable = p - length(included))
+  if(kind %in% c('nb','multinomial','cox'))data$native.cache <- new.env(parent=emptyenv())
   data$n_ic <- if (kind == "cox") sum(response$status * w[, 1L]) else
     if(kind=='glm')n else sum(rowSums(w) > 0)
   if (kind == "cox" && data$n_ic == 0) stop("Cox fitting needs an observed event.", call. = FALSE)
@@ -175,6 +176,8 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
   if(relaxed && any(!L0glm_relaxed_check(data,B,allowed)))
     return(list(B=B,allowed=allowed,state=state,iterations=0L,converged=FALSE,
       history=data.frame(),relaxation_skipped=rep(TRUE,data$m)))
+  native <- L0glm_extended_native(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
+  if(!is.null(native))return(native)
   if(data$kind=='glm' && !is.null(data$groups)) {
     native <- L0glm_group_native_pass(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
     if(!is.null(native))return(native)
@@ -286,7 +289,7 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
 L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lambda,
                            intercept, always.include, nonnegative, normalize, solver,
                            method, nthreads, maxit, grouped, relaxed, prior.mean,
-                           thresh, tol, control.solver, control.family, validation = NULL) {
+                           thresh, tol, control.solver, control.family, validation = NULL, ncores = 1L) {
   if (!is.numeric(maxit) || length(maxit) != 1L || maxit < 1 || !is.finite(maxit) ||
       !is.numeric(tol) || length(tol) != 1L || tol <= 0 || !is.finite(tol))
     stop("maxit and tol must be finite positive scalars.", call. = FALSE)
@@ -299,7 +302,7 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   data$p_selectable <- L0glm_criterion_size(data$p_selectable,control.solver)
   data$fixed.dispersion <- isTRUE(control.solver$.dispersion.fixed)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))
-  args <- list(solver = solver, method = method, control.solver = control.solver, validation = validation)
+  args <- list(solver = solver, method = method, control.solver = control.solver, validation = validation, ncores = ncores)
   if (data$kind == "cox" && data$control$cox == "pcg" &&
       (solver != "eigen" || any(data$lower > -1e100)))
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)

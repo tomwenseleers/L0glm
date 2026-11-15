@@ -40,6 +40,8 @@ L0glm_ext_nb_mean <- function(data, B) {
 }
 
 L0glm_ext_nb_working <- function(data, B, D, state, args) {
+  native <- L0glm_extended_native(data,B,is.finite(D),state,0,FALSE,0,1L,1e-10,args,D=D)
+  if(!is.null(native))return(native)
   mean <- L0glm_ext_nb_mean(data, B)
   answer <- B
   for (j in seq_len(data$m)) {

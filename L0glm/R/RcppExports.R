@@ -41,6 +41,10 @@ l0glm_bed_read_cpp <- function(path, n, p, rows, columns, nthreads = 1L) {
     .Call('_L0glm_l0glm_bed_read_cpp', PACKAGE = 'L0glm', path, n, p, rows, columns, nthreads)
 }
 
+glm_extended_cpp <- function(design, context, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, solver_control = NULL, solver_bridge = NULL, nthreads = 1L) {
+    .Call('_L0glm_glm_extended_cpp', PACKAGE = 'L0glm', design, context, family, link, theta, scalar, parameter, censor, solver_control, solver_bridge, nthreads)
+}
+
 glm_predictor_group_cpp <- function(design, context, family, link, theta = 1, scalar = -1L, parameter = 1, censor = 0, solver_control = NULL, solver_bridge = NULL, nthreads = 1L, cache = NULL) {
     .Call('_L0glm_glm_predictor_group_cpp', PACKAGE = 'L0glm', design, context, family, link, theta, scalar, parameter, censor, solver_control, solver_bridge, nthreads, cache)
 }

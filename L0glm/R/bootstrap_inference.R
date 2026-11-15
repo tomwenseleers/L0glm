@@ -32,7 +32,7 @@ L0glm_bootstrap_inference <- function(object,control) {
     rows <- sample.int(n,n,replace=TRUE);args <- options
     for(name in c('weights','offset'))if(!is.null(args[[name]]) && length(args[[name]])>1L)
       args[[name]] <- if(is.null(dim(args[[name]])))args[[name]][rows]else args[[name]][rows,,drop=FALSE]
-    if(!is.null(args$family))args$family <- unserialize(serialize(args$family,NULL))
+    if(!is.null(args$family))args$family <- L0glm_copy_family(args$family)
     args$X <- X[rows,,drop=FALSE];args$y <- y[rows,,drop=FALSE]
     snapshots[b] <- list(tryCatch(withCallingHandlers({
       fit <- if(is.null(control$refit))do.call(object$engine,args)else control$refit(args)

@@ -41,7 +41,7 @@ L0glm_ext_result <- function(data, result, passes, lambda, grouped, relaxed, arg
     data.frame(stage, iterations = passes[[stage]]$iterations,
                converged = passes[[stage]]$converged)))
   families <- if (data$kind == "nb") lapply(result$state$theta, function(theta) {
-    family <- unserialize(serialize(data$family, NULL))
+    family <- L0glm_copy_family(data$family)
     family$putTheta(log(theta))
     family
   }) else NULL

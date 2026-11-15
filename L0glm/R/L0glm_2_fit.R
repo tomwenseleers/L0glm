@@ -369,6 +369,8 @@
 #'   logical cores or one if detection is unavailable.
 #'   Set \code{ncores=1L} for serial execution. Built-in scalar family and link
 #'   implementations use native code automatically, including one-thread fits.
+#'   Negative-binomial fits with estimated shape also coordinate their IRLS and
+#'   shape updates natively for the built-in log, identity and square-root links.
 #'   Custom R family/link callbacks and R-based solver bridges run serially.
 #'   No socket or fork workers are created. BLAS threads are limited within
 #'   native multichannel passes to avoid nested parallelism.
@@ -1096,7 +1098,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       if (missing(intercept)) kind == "multinomial" else intercept,
       always.include, nonnegative, normalize, solver, method, serial_threads, maxit,
       grouped, relaxed,
-      prior.mean, thresh, tol, control.solver, control.family, validation)
+      prior.mean, thresh, tol, control.solver, control.family, validation, ncores = ncores)
     fit$dispersionCalibration <- nb_pilot$diagnostic
     return(fit)
   }

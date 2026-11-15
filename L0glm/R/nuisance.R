@@ -291,7 +291,7 @@ L0glm_nuisance_fit <- function(X,y,options,fit.fun,supplied=character()) {
       state <- L0glm_nb_scale_step(data,empty,empty,state,3L,TRUE)
       change <- max(abs(log(state$theta/model$theta)));model$theta <- state$theta
       model$families <- lapply(model$theta,function(theta) {
-        family <- unserialize(serialize(f,NULL));family$putTheta(log(theta));family
+        family <- L0glm_copy_family(f);family$putTheta(log(theta));family
       })
       if(m==1L) model$family <- model$families[[1L]]
       if(change<model$control.family$theta.tol) break

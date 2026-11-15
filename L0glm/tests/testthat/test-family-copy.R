@@ -1,0 +1,13 @@
+test_that('NB family copies have independent shape without copying caller data', {
+  original <- mgcv::nb(theta=-4)
+  first <- L0glm_copy_family(original);second <- L0glm_copy_family(original)
+  first$putTheta(log(2));second$putTheta(log(8))
+  expect_equal(original$getTheta(TRUE),4)
+  expect_equal(first$getTheta(TRUE),2)
+  expect_equal(second$getTheta(TRUE),8)
+  mu <- c(1,3,10)
+  expect_equal(first$variance(mu),mu+mu^2/2)
+  expect_equal(second$variance(mu),mu+mu^2/8)
+  expect_identical(body(first$linkinv),body(original$linkinv))
+  expect_identical(L0glm_copy_family(poisson()),poisson())
+})
