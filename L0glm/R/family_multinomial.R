@@ -85,6 +85,7 @@ L0glm_ext_multinomial_working <- function(data, B, D, state, args) {
   bound <- data$control$multinomial == "bound"
   M <- P %*% Q
   if (dimension <= n * m) {
+    L0glm_require_bytes(48*dimension^2,args$control.solver,'Multinomial Hessian')
     if (shared) {
       H <- matrix(0, dimension, dimension)
       for (j in seq_len(m)) for (k in seq_len(j)) {

@@ -102,7 +102,9 @@ channels. \code{NULL} uses 25 percent of currently available physical memory;
 \code{Inf} disables the guard. Estimates include working copies and factors;
 sparse fill depends on the design. Oversized incomplete Cholesky uses diagonal
 preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
-LLT fallbacks require their estimated workspace to fit.}
+LLT fallbacks require their estimated workspace to fit.
+Allocation checks also cover dispersion pilots and serial special-family
+solver adapters.}
 }
 \value{
 The function return a list with the required options to solve a linear

@@ -80,6 +80,8 @@
 #' sparse fill depends on the design. Oversized incomplete Cholesky uses diagonal
 #' preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
 #' LLT fallbacks require their estimated workspace to fit.
+#' Allocation checks also cover dispersion pilots and serial special-family
+#' solver adapters.
 #' @param nonnegative.polish
 #' Logical, default \code{FALSE}. For Eigen working solves with nonnegative
 #' coefficients and an existing predictor Gram matrix, optionally replace

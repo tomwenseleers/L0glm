@@ -51,3 +51,18 @@ test_that('reused working systems respect zero observation weights, offsets and 
     expect_equal(GIC(a,mu_floor=1e-8),GIC(b,mu_floor=1e-8),tolerance=1e-8)
   }
 })
+test_that('external solver boundaries reuse compressed exact-zero working designs', {
+  X <- as.matrix(Matrix::bandSparse(1000,1000,k=c(-1,0,1),diagonals=list(rep(.2,999),rep(1,1000),rep(.2,999))))
+  y <- as.numeric(X%*%rep(1,1000))
+  for(solver in c('osqp','bigGlm')) {
+    seen <- logical()
+    record <- function(Xw,...) {seen <<- c(seen,inherits(Xw,'sparseMatrix'));rep(1,ncol(Xw))}
+    fit <- with_mocked_bindings(l0glmFit(X,y,family=gaussian(),dispersion=1,
+      solver=solver,start=1,lambda=1,maxit=1L,local.search=FALSE,intercept=FALSE,ncores=1L),
+      lmridge.osqp=record,lmridge.glmnet=record,.package='L0glm')
+    expect_true(length(seen)>0L)
+    expect_true(all(seen))
+    expect_false(inherits(fit$X,'sparseMatrix'))
+    expect_equal(as.matrix(fit$X),X)
+  }
+})

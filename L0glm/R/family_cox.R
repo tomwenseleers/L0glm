@@ -103,6 +103,8 @@ L0glm_ext_cox_direct <- function(data, B, D, stats, args) {
     stop("Cox working system exceeds control.family$max.working; screen predictors or raise the limit.", call. = FALSE)
   beta <- B[active, 1L]
   d <- D[active, 1L]
+  L0glm_require_bytes(if(k<=nrow(X))48*k^2+8*k*sum(stats$d>0) else
+    48*nrow(X)^2+48*nrow(X)*k,args$control.solver,'Cox direct information')
   if (k <= nrow(X)) {
     H <- L0glm_ext_cox_information(X, stats)
     score <- as.numeric(Matrix::crossprod(X, stats$score))

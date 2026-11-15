@@ -22,6 +22,13 @@ L0glm_require_workspace <- function(X,control,gram=TRUE,rows=FALSE,nthreads=1L,o
       "with diagonal preconditioning, or increase controlSolverGen(max.memory=...).",call.=FALSE)
   invisible(NULL)
 }
+L0glm_require_bytes <- function(estimate,control,operation="Factorization") {
+  control <- L0glm_solver_memory(control)
+  if(estimate>control$.workspace.total)
+    stop(operation," exceeds the Gram/factor workspace budget; use screening, a matrix-free solver, ",
+      "or increase controlSolverGen(max.memory=...).",call.=FALSE)
+  invisible(NULL)
+}
 L0glm_matrixfree_ridge <- function(X,y,penalty,center,start,control,dual=FALSE) {
   X <- if(issparse(X))as(as(X,'generalMatrix'),'CsparseMatrix')else as.matrix(X)
   result <- ridge_matrixfree_cpp(X,as.numeric(y),penalty,center,start,

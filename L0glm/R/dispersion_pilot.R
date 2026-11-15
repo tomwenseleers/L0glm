@@ -37,7 +37,7 @@ L0glm_gaussian_pilot <- function(initial, lambda, tol, options) {
   norm <- rowSums(pilot$B^2)
   shape <- vapply(seq_len(data$m), function(j) {
     penalty <- lambda*data$m*state$phi[j]/(4*norm)
-    L0glm_gaussian_pilot_scale(data, penalty, probes, j)
+    L0glm_gaussian_pilot_scale(data, penalty, probes, j, options$control.solver)
   }, numeric(2))
   phi <- shape[1L,]
   reliable <- is.finite(phi) & phi > 0
@@ -53,7 +53,7 @@ L0glm_gaussian_pilot <- function(initial, lambda, tol, options) {
 
 # Residual trace of the frozen ridge smoother, with the compulsory terms
 # projected out. Use the same operator for the response and the four probes.
-L0glm_gaussian_pilot_scale <- function(data, penalty, probes, channel) {
+L0glm_gaussian_pilot_scale <- function(data, penalty, probes, channel, control=list()) {
   w <- L0glm_observation_column(data$weights, channel)
   good <- which(w > 0)
   n <- length(good)
@@ -71,7 +71,11 @@ L0glm_gaussian_pilot_scale <- function(data, penalty, probes, channel) {
   project <- function(x) if (ncol(Q)) x-Q%*%crossprod(Q,x) else x
   Z <- project(Xweights(X[,active,drop=FALSE], w))
   residual <- tryCatch({
-    if (!length(active)) project else if (length(active) > n) {
+    if (!length(active)) project else if(!L0glm_workspace_fits(Z,control,rows=length(active)>n)) {
+      design <- Z %*% Matrix::Diagonal(x=1/sqrt(penalty[active]))
+      if(!issparse(design))design <- as.matrix(design)
+      function(x)ridge_pilot_residual_cpp(design,matrix(numeric(),n,0L),as.matrix(project(x)),1)
+    } else if (length(active) > n) {
       Z <- Z %*% Matrix::Diagonal(x=1/sqrt(penalty[active]))
       factor <- chol(as.matrix(Matrix::tcrossprod(Z) + Matrix::Diagonal(n)))
       function(x) backsolve(factor, forwardsolve(t(factor), as.matrix(project(x))))
@@ -85,16 +89,21 @@ L0glm_gaussian_pilot_scale <- function(data, penalty, probes, channel) {
     }
   }, error=function(e) NULL)
   if (is.null(residual)) return(unavailable)
-  e <- as.matrix(residual(probes[good,,drop=FALSE]))
+  e <- tryCatch(as.matrix(residual(probes[good,,drop=FALSE])),error=function(e)NULL)
+  if(is.null(e))return(unavailable)
   df <- mean(colSums(e^2))
   if (!is.finite(df) || df <= 0) return(unavailable)
   if (df < min(10,n/5)) {
-    df4 <- mean(colSums(as.matrix(residual(e))^2))
+    repeated <- tryCatch(as.matrix(residual(e)),error=function(e)NULL)
+    if(is.null(repeated))return(unavailable)
+    df4 <- mean(colSums(repeated^2))
     if (!is.finite(df4) || df4 <= 0 || df^2/df4 < min(10,n/5)) return(c(NA_real_,df))
   }
   off <- L0glm_observation_column(data$offset,channel,good)
   rhs <- matrix(sqrt(w)*(data$y[good,channel]-off),ncol=1L)
-  c(sum(residual(rhs)^2)/df, df)
+  response <- tryCatch(residual(rhs),error=function(e)NULL)
+  if(is.null(response))return(unavailable)
+  c(sum(response^2)/df, df)
 }
 
 L0glm_nb_pilot <- function(X, y, family, weights, offset, intercept, always.include,

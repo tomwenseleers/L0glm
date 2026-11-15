@@ -108,11 +108,9 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
     control$ordering <- as.integer(isTRUE(control$NaturalOrdering))
   control$.native.context <- TRUE
   control$.native.centered <- L0glm_center_working_design(X,take('preprocessing'),take('lower'))
-  if(take('solver')=='eigen') {
-    working <- L0glm_native_design(control$.native.centered$X,control)
-    control$.native.centered$X <- working$X
-    control$rowaug <- working$rowaug
-  }
+  working <- L0glm_native_design(control$.native.centered$X,control)
+  control$.native.centered$X <- working$X
+  control$rowaug <- working$rowaug
 
   control$.native.intercept <- intersect(take('always.include.start'),
     intersect(L0glm_unit_intercepts(control$.native.centered$X),which(take('lower')<0)))

@@ -539,7 +539,8 @@ Use <code>method=1L</code> for Eigen Cholesky LLT.</p></dd>
   <code>rowaug=FALSE</code> retains dense work. Returned <code>X</code> retains its
   original dense or sparse storage. Selected columns and sparse symbolic
   factorizations are reused while their pattern is unchanged; fixed working
-  weights also permit reuse of crossproducts.</p></dd>
+  weights also permit reuse of crossproducts. Required sparse external-solver
+  boundaries reuse the packed working design as well.</p></dd>
 
 
 <dt id="arg-ncores">ncores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>

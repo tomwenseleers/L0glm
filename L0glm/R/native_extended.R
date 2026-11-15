@@ -33,7 +33,7 @@ L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,max
   cache <- data$native.cache;signature <- list(solver=args$solver,rowaug=control$rowaug)
   working <- if(!is.null(cache)&&identical(cache$Z,data$Z)&&identical(cache$signature,signature))cache$working else NULL
   if(is.null(working)) {
-    working <- L0glm_native_design(data$Z,control,compress=args$solver=='eigen')
+    working <- L0glm_native_design(data$Z,control)
     if(!is.null(cache)){cache$Z <- data$Z;cache$signature <- signature;cache$working <- working}
   }
   control$rowaug <- working$rowaug

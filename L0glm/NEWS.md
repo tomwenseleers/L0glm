@@ -7,6 +7,8 @@
   check; oversized incomplete Cholesky switches to diagonal preconditioning.
   Dispersion pilots support matrix-free solves, and LLT fallbacks are guarded.
   Fixed-weight multichannel fits share a common immutable Gram matrix.
+  The same allocation checks cover serial special-family solver adapters and
+  adaptive-ridge dispersion pilots.
 * L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
   criterion-checked support refinement. Large multichannel fits compare one
   unpenalized selected-support refit; large single-channel fits retain their
@@ -104,6 +106,7 @@
   retaining the original input/output storage and explicit dense routing.
   Selected designs, fixed-weight crossproducts and sparse symbolic Cholesky
   patterns are reused without changing the fitted objective or support rules.
+  Required sparse external-solver boundaries also reuse the packed design.
 * CG defaults to incomplete Cholesky preconditioning for dense and sparse
   systems. `controlSolverGen("eigen", 3L, precond=1L)` selects diagonal
   preconditioning; `precond=0L` disables it. Dense matrix operators remain dense.

@@ -43,3 +43,28 @@ test_that('matrix-free native fits and dispersion pilots retain the fitted solut
     expect_equal(answer$dispersion,reference$dispersion,tolerance=1e-6)
   }
 })
+test_that('the adaptive Gaussian pilot respects the workspace budget', {
+  set.seed(825);n <- 80L;p <- 180L
+  data <- list(Z=matrix(rnorm(n*p),n,p),y=matrix(rnorm(n*2),n,2),
+    weights=matrix(1,n,1),offset=matrix(0,n,1),included=integer())
+  probes <- matrix(sample(c(-1,1),n*4,TRUE),n,4)
+  reference <- L0glm_gaussian_pilot_scale(data,rep(.5,p),probes,1)
+  actual <- L0glm_gaussian_pilot_scale(data,rep(.5,p),probes,1,
+    controlSolverGen('eigen',3L,max.memory=0))
+  expect_true(all(is.finite(actual)))
+  expect_equal(actual,reference,tolerance=1e-7)
+})
+
+test_that('serial special-family adapters guard information before allocation', {
+  set.seed(826);X <- matrix(rnorm(80*8),80,8)
+  ctl <- controlSolverGen('eigen',1L,max.memory=0);ctl$.native <- FALSE
+  args <- list(solver='eigen',method=1L,control.solver=ctl)
+  data <- L0glm_ext_prepare(X,cbind(rexp(80),rep(c(1,0),40)),mgcv::cox.ph(),
+    NULL,NULL,FALSE,NULL,FALSE,'none',1,NULL,list(cox='direct'))
+  expect_error(with_mocked_bindings(L0glm_ext_cox_working(data,data$B,matrix(1,8,1),list(),args),
+    L0glm_ext_cox_information=function(...)stop('information allocated'),.package='L0glm'),'workspace budget')
+  data <- L0glm_ext_prepare(X,rep(0:2,length.out=80),mgcv::multinom(2),
+    NULL,NULL,FALSE,NULL,FALSE,'none',NULL,NULL,list())
+  expect_error(with_mocked_bindings(L0glm_ext_multinomial_working(data,data$B,matrix(1,8,3),list(),args),
+    L0glm_ext_quadratic=function(...)stop('information allocated'),.package='L0glm'),'workspace budget')
+})

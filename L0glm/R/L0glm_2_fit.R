@@ -361,7 +361,8 @@
 #'   \code{rowaug=FALSE} retains dense work. Returned \code{X} retains its
 #'   original dense or sparse storage. Selected columns and sparse symbolic
 #'   factorizations are reused while their pattern is unchanged; fixed working
-#'   weights also permit reuse of crossproducts.
+#'   weights also permit reuse of crossproducts. Required sparse external-solver
+#'   boundaries reuse the packed working design as well.
 
 #'
 #' @param ncores Positive integer limiting native OpenMP threads.
