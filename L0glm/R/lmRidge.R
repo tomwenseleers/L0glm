@@ -244,6 +244,7 @@ lmridge.osqp <- function(Xw,
     ywaug <- yw
   }
   
+  L0glm_require_workspace(Xwaug, control.solver, operation="OSQP solve")
   XtX <- crossprod(Xwaug)
   Xty <- as.numeric(crossprod(Xwaug, ywaug))
   scale <- sqrt(Matrix::diag(XtX))
@@ -399,7 +400,7 @@ lmridge.glmnet <- function(Xw, yw,
   # this can leave material errors in the constrained ridge step. For tall or
   # square designs, polish on the free support and certify the box KKT residual.
   # Keep wide problems on glmnet's coordinate path.
-  if (ncol(Xw) <= nrow(Xw)) {
+  if (ncol(Xw) <= nrow(Xw) && L0glm_workspace_fits(Xwaug,control.solver)) {
     G <- Matrix::crossprod(Xwaug)
     h <- as.numeric(Matrix::crossprod(Xwaug, ywaug))
     coefs <- ridge_box_polish(G, h, coefs, lower, upper, Xwaug, ywaug)$coefficients
@@ -424,12 +425,17 @@ ridge_box_polish <- function(G, h, coefs, lower, upper, X, y) {
 
 
 eigen_ridge_solve <- function(A, b, start, control, iteration, least_squares = FALSE) {
+  control <- L0glm_solver_memory(control)
+  if (least_squares && identical(control$method,"LSCG") &&
+      isTRUE(control$precond==2L) && !L0glm_workspace_fits(A,control)) control$precond <- 1L
+  if (control$method %in% c("chol","QR","SVD"))
+    L0glm_require_workspace(A,control,gram=least_squares,operation="Eigen factorization")
   sparse <- issparse(A)
   A <- if (sparse) as(as(A, "generalMatrix"), "CsparseMatrix") else as.matrix(A)
   b <- as.matrix(b)
   method <- control$method
   # Already formed Gram/Woodbury systems need CG on G, not LSCG on G'G.
-  kernel <- if (identical(method, "LSCG") && isTRUE(control$precond == 2L) &&
+  kernel <- if (identical(method, "LSCG") &&
                 !least_squares) "CG" else method
   solution <- switch(kernel,
     chol = if (sparse) solve_sparse_chol(A, b, pivot = control$pivot,
@@ -456,13 +462,16 @@ eigen_ridge_solve <- function(A, b, start, control, iteration, least_squares = F
   coefs <- solution$coefficients
   valid <- !is.null(coefs) && all(is.finite(coefs))
   if (method == "LSCG" && (!isTRUE(solution$status) || !valid)) {
+    L0glm_require_workspace(A,control,gram=least_squares,operation="LLT fallback")
     warning(sprintf(paste0("LSCG did not reach the requested accuracy in IRLS iteration %s; ",
                            "using Cholesky LLT as fallback."), iteration), call. = FALSE)
     if (least_squares) {
       b <- Matrix::crossprod(A, b)
       A <- Matrix::crossprod(A)
     }
-    return(eigen_ridge_solve(A, b, start, controlSolverGen("eigen", 1L), iteration))
+    fallback <- controlSolverGen('eigen',1L,nonnegative.polish=isTRUE(control$nonnegative.polish))
+    fallback$.workspace.total <- control$.workspace.total
+    return(eigen_ridge_solve(A, b, start, fallback, iteration))
   }
   if (!valid) return(NULL)
   if (method == "CG" && !isTRUE(solution$status)) {
@@ -474,6 +483,11 @@ eigen_ridge_solve <- function(A, b, start, control, iteration, least_squares = F
 
 eigen_ridge_dual <- function(Xw, yw, lambdas, prior.mean, control, iteration) {
   n <- nrow(Xw); p <- ncol(Xw)
+  if (!L0glm_workspace_fits(Xw,control,rows=TRUE)) {
+    if (!control$method %in% c("CG","LSCG"))
+      L0glm_require_workspace(Xw,control,rows=TRUE,operation="Woodbury factorization")
+    return(L0glm_matrixfree_ridge(Xw,yw,lambdas,prior.mean,rep(0,p),control,dual=TRUE))
+  }
   penalized <- any(lambdas > 0)
   free <- if (penalized) which(lambdas == 0) else integer()
   invsqrt <- if (penalized) ifelse(lambdas > 0, 1 / sqrt(lambdas), 0) else rep(1, p)
@@ -517,6 +531,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
       is.null(control.solver$ordering)) {
     control.solver$ordering <- as.integer(isTRUE(control.solver$NaturalOrdering))
   }
+  control.solver <- L0glm_solver_memory(control.solver)
   p <- ncol(Xw)
   n <- nrow(Xw)
   if (is.null(start)) start <- rep(0, p)
@@ -537,6 +552,9 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
   } else if (dual) {
     coefs <- eigen_ridge_dual(Xw, yw, lambdas, prior.mean, control.solver, iteration)
   } else {
+    if (control.solver$method %in% c("CG","LSCG") &&
+        !L0glm_workspace_fits(Xw,control.solver))
+      return(clamp(L0glm_matrixfree_ridge(Xw,yw,lambdas,prior.mean,start,control.solver),lower,upper))
     if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {
       A <- row_augX(Xw, lambdas)
       rhs <- augY(yw, p, prior.mean, lambdas)
@@ -549,6 +567,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
       control.solver$method %in% c("QR", "LSCG", "SVD")
     gram_available <- !rectangular
     if (!rectangular) {
+      L0glm_require_workspace(Xw,control.solver,operation="Eigen Gram solve")
       if (isTRUE(control.solver$rowaug) && any(lambdas != 0)) {
         rhs <- Matrix::crossprod(A, rhs)
         A <- Matrix::crossprod(A)
@@ -562,6 +581,7 @@ lmridge.eigen <- function(Xw, yw, lambdas = rep(0, ncol(Xw)),
                                least_squares = rectangular)
   }
   if (is.null(coefs) && control.solver$method != "chol") {
+    L0glm_require_workspace(Xw,control.solver,rows=dual,operation="LLT fallback")
     warning(sprintf("eigen %s solver failed in IRLS iteration %s, trying Cholesky LLT solver as fallback.",
                     control.solver$method, iteration), call. = FALSE)
     return(lmridge.eigen(Xw, yw, lambdas, lower, upper, start,

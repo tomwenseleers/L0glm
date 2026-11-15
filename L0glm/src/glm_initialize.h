@@ -62,28 +62,51 @@ inline SparseMatrix<double> append_columns(const MatrixXd& U,const SparseMatrix<
 }
 template<class Matrix,class Factor> struct PilotOperator {
  const Matrix& A;const MatrixXd& U;Matrix D;const Matrix* design;
- std::unique_ptr<Factor> factor;MatrixXd inverse_U,schur;double tau;bool dual;
- PilotOperator(const Matrix& a,const MatrixXd& u,double t):A(a),U(u),design(&a),tau(t),dual(a.cols()>a.rows()) {
+ std::unique_ptr<Factor> factor;MatrixXd inverse_U,schur;double tau;bool dual,implicit=false;
+  Eigen::VectorXd diagonal,penalty;
+ PilotOperator(const Matrix& a,const MatrixXd& u,double t,double budget):A(a),U(u),design(&a),tau(t),dual(a.cols()>a.rows()) {
   const int n=A.rows(),p=A.cols(),q=U.cols();if(!p)return;
-  if(dual) {
-   Matrix K=row_gram_native(A);add_diagonal(K,VectorXd::Constant(n,tau));
+   implicit=L0glm::gram_workspace(A,dual)>budget;
+   if(dual) {
+    if(implicit) {
+      diagonal=VectorXd::Constant(n,tau);
+      if constexpr(std::is_same_v<Matrix,SparseMatrix<double>>) {
+        for(int j=0;j<A.outerSize();++j)for(typename Matrix::InnerIterator it(A,j);it;++it)diagonal[it.row()]+=it.value()*it.value();
+      }else for(int j=0;j<A.cols();++j)diagonal.array()+=A.col(j).array().square();
+      if(q){inverse_U=solve(U);schur=U.transpose()*inverse_U;}
+      return;
+    }
+    Matrix K=row_gram_native(A);add_diagonal(K,VectorXd::Constant(n,tau));
    factor=std::make_unique<Factor>(K);
    if(q){inverse_U=factor->solve(U);schur=U.transpose()*inverse_U;}
   }else {
    if(q){D=append_columns(U,A);design=&D;}
-   Matrix K=sym_gram(*design);VectorXd penalty=VectorXd::Constant(p+q,tau);
-   if(q)penalty.head(q).setZero();
+    penalty=VectorXd::Constant(p+q,tau);if(q)penalty.head(q).setZero();
+    if(implicit) {
+      diagonal=penalty;for(int j=0;j<design->cols();++j)diagonal[j]+=design->col(j).squaredNorm();return;
+    }
+    Matrix K=sym_gram(*design);
    add_diagonal(K,penalty);factor=std::make_unique<Factor>(K);
   }
  }
- MatrixXd apply(const MatrixXd& B) const {
+  MatrixXd solve(const MatrixXd& B) const {
+    if(!implicit)return factor->solve(B);
+    auto op=[&](const VectorXd& v) {
+      if(dual)return VectorXd(A*(A.transpose()*v)+tau*v);
+      return VectorXd(design->transpose()*((*design)*v)+penalty.cwiseProduct(v));
+    };
+    auto result=L0glm::matrixfree_spd(op,B,diagonal,MatrixXd::Zero(B.rows(),B.cols()),1e-10,0);
+    if(!result.success)throw std::runtime_error("Matrix-free dispersion pilot did not converge.");
+    return result.coefficients;
+  }
+  MatrixXd apply(const MatrixXd& B) const {
   if(!A.cols())return B;
   if(dual) {
-   MatrixXd value=factor->solve(B);
+   MatrixXd value=solve(B);
    if(U.cols())value.noalias()-=inverse_U*qr_solve(schur,U.transpose()*value);
    return tau*value;
   }
-  return B-(*design)*factor->solve(right_product(*design,B));
+  return B-(*design)*solve(right_product(*design,B));
  }
 };
 inline MatrixXd select_columns(const MatrixXd& A,const std::vector<int>& cols) {
@@ -292,7 +315,7 @@ template<class Matrix> double dispersion_from_design(const Matrix& A,const Matri
  const int n=A.rows();const double target=std::min(10.,(n-U.cols())/5.);
  auto calculate=[&](double tau) {
   using Factor=std::conditional_t<std::is_same_v<Matrix,MatrixXd>,DenseFactor,SparseFactor>;
-  PilotOperator<Matrix,Factor> op(A,U,tau);MatrixXd residual=op.apply(B);
+  PilotOperator<Matrix,Factor> op(A,U,tau,s.workspace);MatrixXd residual=op.apply(B);
   double df2=residual.rightCols(4).squaredNorm()/4,eff=df2;
   if(canonical&&(!std::isfinite(df2)||df2<target)) {
    MatrixXd repeated=op.apply(MatrixXd(residual.rightCols(4)));

@@ -54,7 +54,8 @@ template<class Design> bool group_cached_ridge(const Design&,State&,const std::v
  const SolverControl&,GroupCacheEntry&,VectorXd&) {return false;}
 inline bool group_cached_ridge(const DenseDesign& X,State& s,const std::vector<int>& active,
  const SolverControl& control,GroupCacheEntry& cache,VectorXd& answer) {
- const int p=active.size();std::vector<int> index(X.cols(),-1);
+  const int p=active.size();if(48.*p*p>control.workspace)return false;
+  std::vector<int> index(X.cols(),-1);
  for(int j=0;j<(int)cache.active.size();++j)index[cache.active[j]]=j;
  bool rebuild=cache.active.empty();for(int a:active)if(index[a]<0)rebuild=true;
  if(rebuild) {
@@ -72,7 +73,7 @@ inline bool group_cached_ridge(const DenseDesign& X,State& s,const std::vector<i
  }
  bool success=eigen_coefficients(G,rhs,guess,control,s,solution);
  if(!success&&(s.lambdas.array()==0).count()==p) {
-  SolverControl qr;qr.method=3;qr.pivot=1;qr.ordering=1;
+  SolverControl qr=control;qr.method=3;qr.pivot=1;qr.ordering=1;
   success=eigen_coefficients(G,rhs,guess,qr,s,solution);
  }
  answer=s.beta;
@@ -123,7 +124,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
  std::vector<State> states(m);std::vector<std::string> errors(m);
  std::vector<char> relaxation_skipped(m,0);
  for(int k=0;k<m;++k) {
-  State& s=states[k];s.y=Y.col(k);s.w=weights.col(weights.cols()==1?0:k);
+  State& s=states[k];s.workspace=control.workspace;s.y=Y.col(k);s.w=weights.col(weights.cols()==1?0:k);
   s.offset=offset.col(offset.cols()==1?0:k);s.prior=prior.col(k);s.lower=lower;
   s.upper=VectorXd::Constant(p,DBL_MAX);s.scale=VectorXd::Ones(p);
   s.npositive=(s.w.array()>0).count();s.phi=phi[k];
@@ -191,7 +192,7 @@ template<class Design> List predictor_group_pass(const Design& X,List context,co
       bool previous=s.solver_failed;s.solver_failed=false;value=ridge_selected(X,s,active,channel_control,iteration);
       if(s.solver_failed&&control.method==0&&
          std::all_of(active.begin(),active.end(),[&](int j){return s.lambdas[j]==0;})) {
-       s.solver_failed=false;SolverControl qr;qr.method=3;qr.pivot=1;qr.ordering=1;
+       s.solver_failed=false;SolverControl qr=control;qr.method=3;qr.pivot=1;qr.ordering=1;
        value=ridge_selected(X,s,active,qr,iteration);
       }
       s.solver_failed=s.solver_failed||previous;

@@ -43,6 +43,7 @@ L0glm.fit.internal = function(X,
                               validation = NULL) {
 
   ## 1. sanity checks ---------------------------------------------------------
+  control.solver <- L0glm_solver_memory(control.solver)
   n <- nobs <- nrow(X); p <- nvars <- ncol(X)
   
   if (is.null(offset)) {
@@ -171,7 +172,7 @@ L0glm.fit.internal = function(X,
     as.numeric(X %*% beta) else numeric()
   if (is.null(dispersion)) {
     dispersion <- if (p) L0glm_initial_dispersion(X, y, mu, weights, offset, family,
-      always.include = always.include, preprocessing = preprocessing) else
+      always.include = always.include, preprocessing = preprocessing, control = control.solver) else
       L0glm_pearson_scale(y, linkinv(as.numeric(offset)), weights, family, 0L)
     if (!is.finite(dispersion) || dispersion <= 0) dispersion <- 1
   }

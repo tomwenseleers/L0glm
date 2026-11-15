@@ -3,12 +3,13 @@
 #include <memory>
 #include <cstring>
 #include <type_traits>
+#include "memory_budget.h"
 
 namespace L0glm {
 // One workspace per active channel pass. No R objects or global mutable state.
 template<class Matrix> struct RidgeWorkspace {
   Matrix A,base_gram;
-  Eigen::VectorXd response,base_rhs;
+  Eigen::VectorXd response,base_rhs;double gram_estimate=-1;
   std::vector<int> rows,columns;
   Eigen::VectorXd scales,last_weights,last_response,unweighted;
   bool ready=false,gram_ready=false,rhs_ready=false,lower_gram=false,inverse_scale=false,natural_mode=false;
@@ -28,7 +29,7 @@ template<class Matrix> struct RidgeWorkspace {
     const bool same_response=same&&last_response.size()==z.size()&&
       (last_response.array()==z.array()).all();
     if(!same) {
-      rows=selected_rows;columns=selected_columns;scales=scale;inverse_scale=inverse;
+      gram_estimate=-1;rows=selected_rows;columns=selected_columns;scales=scale;inverse_scale=inverse;
       if constexpr(std::is_same_v<Matrix,Eigen::SparseMatrix<double>>) {
         std::vector<int> map(X.rows(),-1);
         for(int i=0;i<(int)rows.size();++i)map[rows[i]]=i;
@@ -62,6 +63,7 @@ template<class Matrix> struct RidgeWorkspace {
     }
     ready=true;return !rows.empty();
   }
+  double estimate() {if(gram_estimate<0)gram_estimate=gram_workspace(A);return gram_estimate;}
   const Matrix& gram(bool lower=false) {
     if(!gram_ready||lower_gram!=lower) {
       if constexpr(std::is_same_v<Matrix,Eigen::MatrixXd>) {

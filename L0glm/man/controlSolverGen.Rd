@@ -20,7 +20,8 @@ controlSolverGen(
   threshold = NULL,
   verbose = FALSE,
   rowaug = NULL,
-  nonnegative.polish = FALSE
+  nonnegative.polish = FALSE,
+  max.memory = NULL
 )
 }
 \arguments{
@@ -95,6 +96,13 @@ coefficients and an existing predictor Gram matrix, optionally replace
 clipping of an infeasible proposal by a batched constrained Cholesky polish.
 This includes LLT, LDLT and other methods solving an already formed Gram
 system. Rectangular least-squares and Woodbury solves skip this correction.}
+
+\item{max.memory}{Optional Gram/factor workspace budget in GiB, shared across concurrent native
+channels. \code{NULL} uses 25 percent of currently available physical memory;
+\code{Inf} disables the guard. Estimates include working copies and factors;
+sparse fill depends on the design. Oversized incomplete Cholesky uses diagonal
+preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
+LLT fallbacks require their estimated workspace to fit.}
 }
 \value{
 The function return a list with the required options to solve a linear

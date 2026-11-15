@@ -2,6 +2,11 @@
 
 ## Sparse generalized linear models
 
+* Gram and factor workspaces are checked against a configurable memory budget.
+  CG/LSCG can use implicit ridge products with a fresh coefficient-space residual
+  check; oversized incomplete Cholesky switches to diagonal preconditioning.
+  Dispersion pilots support matrix-free solves, and LLT fallbacks are guarded.
+  Fixed-weight multichannel fits share a common immutable Gram matrix.
 * L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
   criterion-checked support refinement. Large multichannel fits compare one
   unpenalized selected-support refit; large single-channel fits retain their

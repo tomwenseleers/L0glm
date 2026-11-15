@@ -32,14 +32,14 @@ L0glm_pearson_scale <- function(y, mu, weights, family, k) {
 # factorization to estimate tr((I-H)'(I-H)), the residual noise degrees of freedom.
 # This is an initialization heuristic: omitted-signal bias is not removed by df.
 L0glm_initial_dispersion <- function(X, y, mu, weights, offset, family,
-                                    always.include = integer(), preprocessing = NULL) {
+                                    always.include = integer(), preprocessing = NULL, control = list()) {
   if (!is.null(preprocessing) && preprocessing$mode != "none")
     return(L0glm_canonical_dispersion(X, y, mu, weights, offset, family,
-                                     always.include, preprocessing$p))
-  L0glm_initial_dispersion_legacy(X, y, mu, weights, offset, family)
+                                     always.include, preprocessing$p, control))
+  L0glm_initial_dispersion_legacy(X, y, mu, weights, offset, family, control)
 }
 
-L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family) {
+L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family, control = list()) {
   eta <- family$linkfun(mu)
   derivative <- family$mu.eta(eta)
   W <- as.numeric(weights * derivative^2 / family$variance(mu))
@@ -62,6 +62,11 @@ L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family) {
     B <- cbind(response, probes)
     tau <- 1e-6
     dual <- ncol(A) > nrow(A)
+    implicit <- !L0glm_workspace_fits(A,control,rows=dual)
+    if(implicit) {
+      residual <- ridge_pilot_residual_cpp(if(issparse(A))A else as.matrix(A),
+        matrix(numeric(),nrow(A),0L),B,tau)
+    } else {
     K <- if (dual) Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau) else
       L0glm_pilot_gram(A, rep(tau, ncol(A)))
     rhs <- if (dual) B else Matrix::crossprod(A, B)
@@ -74,6 +79,7 @@ L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family) {
     }
     # The dual formula avoids subtracting almost equal fitted values when p > n.
     residual <- if (dual) tau * solution else B - A %*% solution
+    }
     df <- mean(Matrix::colSums(residual[, -1L, drop = FALSE]^2))
     if (is.finite(df) && df > 0) phi <- sum(residual[, 1L]^2) / df
   }
@@ -88,7 +94,7 @@ L0glm_initial_dispersion_legacy <- function(X, y, mu, weights, offset, family) {
 # column norms make this pilot independent of predictor units and, with a free
 # intercept, of their origin. The four probes share one matrix factorization.
 L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
-                                      always.include, p) {
+                                      always.include, p, control = list()) {
   eta <- family$linkfun(mu)
   derivative <- family$mu.eta(eta)
   W <- as.numeric(weights * derivative^2 / family$variance(mu))
@@ -141,6 +147,9 @@ L0glm_canonical_dispersion <- function(X, y, mu, weights, offset, family,
   pilot_scale <- function(tau) {
     if (!ncol(A)) {
       residual_operator <- identity
+    } else if (!L0glm_workspace_fits(A,control,rows=ncol(A)>nrow(A))) {
+      residual_operator <- function(rhs) ridge_pilot_residual_cpp(
+        if(issparse(A))A else as.matrix(A),as.matrix(U),as.matrix(rhs),tau)
     } else if (ncol(A) > nrow(A)) {
       K <- Matrix::tcrossprod(A) + Matrix::Diagonal(nrow(A), tau)
       solve <- make_solve(K)

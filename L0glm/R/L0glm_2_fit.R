@@ -668,8 +668,10 @@
 #' The pilot normally requires one factorization (two with the rare retry);
 #' subsequent scale updates require only
 #' \eqn{O(N)} arithmetic, without nested fitting or further factorizations.
-#' Supplying a dispersion value avoids the pilot factorization, which can be
-#' appreciable for very large dense designs even when the main solver is iterative.
+#' The pilot uses a matrix-free solve when its estimated factor workspace exceeds
+#' code{controlSolverGen(max.memory=...)}. Supplying a dispersion value skips
+#' the pilot. CG/LSCG also use implicit ridge products when their working Gram
+#' would exceed that budget; direct factorizations and LLT fallbacks are guarded.
 #'
 #' \subsection{Shared numerical safeguards}{
 #' Ordinary GLMs start their working model with \code{family$initialize}. Each ridge solve

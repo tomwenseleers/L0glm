@@ -10,6 +10,7 @@
 #include "boundary.h"
 #include "relaxed_guard.h"
 #include <L0glm/scalar_families.h>
+#include "memory_budget.h"
 #include "ridge_profile.h"
 #include "solver_native.h"
 #include "bounded.h"
@@ -103,6 +104,8 @@ struct State {
  int center_intercept=-1;
  double selection_lambda=0;
  bool identity_boundary=false;
+ double workspace=std::numeric_limits<double>::infinity();
+ std::shared_ptr<const MatrixXd> sharedG;
  int solver_inexact=0,solver_fallbacks=0;
 };
 VectorXd predict(const Eigen::Map<MatrixXd>& X,const VectorXd& b,const VectorXd& offset) {
@@ -124,21 +127,23 @@ VectorXd predict(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& b,co
 VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W,
  const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
  const VectorXd& scale,VectorXd previous,bool& failed,MatrixXd& cacheG,VectorXd& cacheXY,
- VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper,L0glm::RidgeWorkspace<MatrixXd>* workspace=nullptr) {
+ VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper,L0glm::RidgeWorkspace<MatrixXd>* workspace=nullptr,double budget=std::numeric_limits<double>::infinity(),
+ std::shared_ptr<const MatrixXd>* shared=nullptr) {
   L0glm::RidgeWorkspace<MatrixXd> temporary;auto& work=workspace?*workspace:temporary;
   std::vector<int> good;for(int i=0;i<W.size();++i)if(W[i]>0&&std::isfinite(z[i]))good.push_back(i);
  const int n=good.size(),p=active.size();if(!n){failed=true;return previous;}
+ L0glm::require_workspace(48.*std::min(n,p)*std::min(n,p),budget,"Dense Cholesky solve");
   MatrixXd A;VectorXd response(n),root(n),d(p),center(p);
   for(int i=0;i<n;++i){root[i]=std::sqrt(W[good[i]]);response[i]=root[i]*z[good[i]];}
  for(int j=0;j<p;++j){int a=active[j];d[j]=penalties[a]/(scale[a]*scale[a]);center[j]=prior[a]*scale[a];}
-  const bool fixed=cache_weights&&X.cols()<=n&&X.cols()<=2000;
+  const bool fixed=cache_weights&&X.cols()<=n&&X.cols()<=2000&&48.*X.cols()*X.cols()<=budget;
   if(fixed&&cacheW.size()&&
-      (W-cacheW).cwiseAbs().maxCoeff()>1e-12*std::max(1.,W.cwiseAbs().maxCoeff()))cacheG.resize(0,0);
-  const bool use_cache=(cache||fixed)&&p<=n;
+      (W-cacheW).cwiseAbs().maxCoeff()>1e-12*std::max(1.,W.cwiseAbs().maxCoeff())){cacheG.resize(0,0);if(shared)shared->reset();}
+  const bool use_cache=(cache||fixed)&&p<=n&&48.*X.cols()*X.cols()<=budget;
   if(!use_cache) {
    VectorXd selected_scale(p);for(int j=0;j<p;++j)selected_scale[j]=scale[active[j]];
     work.update(X,good,active,W,selected_scale,z);
- }else if(!cacheG.rows()) {
+ }else if(!cacheG.rows()&&!(shared&&*shared)) {
    int full=X.cols();MatrixXd all(n,full);for(int j=0;j<full;++j)for(int i=0;i<n;++i)all(i,j)=X(good[i],j)*root[i]/scale[j];
   cacheG=MatrixXd::Zero(full,full);cacheXY=VectorXd::Zero(full);double one=1,zero=0;int inc=1;
   F77_CALL(dsyrk)("L","T",&full,&n,&one,all.data(),&n,&zero,cacheG.data(),&full FCONE FCONE);
@@ -149,10 +154,10 @@ VectorXd ridge(const Eigen::Map<MatrixXd>& X,const VectorXd& z,const VectorXd& W
  if(p>n) {
    if(!L0glm::ridge_dual(work.A,response,d,center,fit,false)){failed=true;return previous;}
  }else {
-   MatrixXd G=MatrixXd::Zero(p,p);VectorXd rhs(p);double one=1,zero=0;int inc=1;
+   MatrixXd G=MatrixXd::Zero(p,p);VectorXd rhs(p);
     if(use_cache) {
     for(int j=0;j<p;++j){rhs[j]=cacheXY[active[j]];for(int k=0;k<=j;++k)
-      G(j,k)=cacheG(std::max(active[j],active[k]),std::min(active[j],active[k]));}
+      G(j,k)=(shared&&*shared?**shared:cacheG)(std::max(active[j],active[k]),std::min(active[j],active[k]));}
      if(fixed&&!cache) {
       const int total=X.rows();int inc=1;VectorXd wz(total);
       for(int i=0;i<total;++i)wz[i]=W[i]>0?W[i]*z[i]:0;
@@ -174,7 +179,8 @@ VectorXd ridge(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& z,cons
   const std::vector<int>& active,const VectorXd& penalties,const VectorXd& prior,
   const VectorXd& scale,VectorXd previous,bool& failed,MatrixXd& cacheG,VectorXd& cacheXY,
   VectorXd& cacheW,bool cache,bool cache_weights,bool polish,const VectorXd& lower,const VectorXd& upper,
-  L0glm::RidgeWorkspace<SparseMatrix<double>>* workspace=nullptr) {
+  L0glm::RidgeWorkspace<SparseMatrix<double>>* workspace=nullptr,double budget=std::numeric_limits<double>::infinity(),
+ std::shared_ptr<const MatrixXd>* shared=nullptr) {
   L0glm::RidgeWorkspace<SparseMatrix<double>> temporary;auto& work=workspace?*workspace:temporary;
   auto rows=positive_rows(W);const int n=rows.size(),p=active.size();
   if(!n){failed=true;return previous;}
@@ -183,6 +189,7 @@ VectorXd ridge(const Eigen::MappedSparseMatrix<double>& X,const VectorXd& z,cons
     int a=active[j];selected_scale[j]=scale[a];d[j]=penalties[a]/(scale[a]*scale[a]);center[j]=prior[a]*scale[a];
   }
   work.update(X,rows,active,W,selected_scale,z,true);VectorXd fit(p);
+   L0glm::require_workspace((p>n?L0glm::gram_workspace(work.A,true):work.estimate()),budget,"Sparse Cholesky solve");
   if(p>n) {
     if(!L0glm::ridge_dual(work.A,work.response,d,center,fit,false)){failed=true;return previous;}
   }else {
@@ -231,7 +238,7 @@ void fit(const Design& X,State& s,const Family& f,const SolverControl& control) 
     const bool fast_llt=!control.external()&&control.method==0&&control.pivot==0&&control.ordering==0&&
       (!control.rowaug||std::is_same_v<Design,Eigen::MappedSparseMatrix<double>>);
     VectorXd candidate=fast_llt?ridge(X,s.z,s.W,active,s.lambdas,s.prior,s.scale,s.beta,s.solver_failed,
-      s.cacheG,s.cacheXY,s.cacheW,s.cache,s.cache_weights,control.polish,s.lower,s.upper,control.cache_selected?&workspace:nullptr):ridge_selected(X,s,active,control,iteration+1,control.cache_selected?&workspace:nullptr);
+      s.cacheG,s.cacheXY,s.cacheW,s.cache,s.cache_weights,control.polish,s.lower,s.upper,control.cache_selected?&workspace:nullptr,control.workspace,&s.sharedG):ridge_selected(X,s,active,control,iteration+1,control.cache_selected?&workspace:nullptr);
   for(int j=0;j<p;++j)candidate[j]=std::max(s.lower[j],std::min(s.upper[j],candidate[j]));
   bool support_changed=false;
   for(int j=0;j<p;++j)if(!s.included[j]&&((candidate[j]!=0)!=(old[j]!=0)))support_changed=true;
@@ -307,10 +314,10 @@ void prefill_shared_gram(const Eigen::Map<MatrixXd>& X,std::vector<State>& state
  if(states.empty()||family.scalar>=0||!((family.kind==3&&family.link==1)||
      (family.kind==1&&family.link==2)))return;
  auto& first=states[0];const int p=X.cols();std::vector<int> good;
- bool ready=true;for(const auto& s:states)ready=ready&&s.cacheG.rows()==p;
+ bool ready=true;for(const auto& s:states)ready=ready&&(s.cacheG.rows()==p||(s.sharedG&&s.sharedG->rows()==p));
  if(ready)return;
  for(int i=0;i<X.rows();++i)if(first.w[i]>0)good.push_back(i);
- const int n=good.size();if(!first.cache_weights||p>n||p>2000||!p)return;
+ const int n=good.size();if(!first.cache_weights||p>n||p>2000||!p||48.*p*p>first.workspace)return;
  for(const auto& s:states)if(!s.cache_weights||s.cache||
     !(s.w.array()==first.w.array()).all()||!(s.scale.array()==first.scale.array()).all())return;
  const double multiplier=family.kind==1?4:1;
@@ -320,8 +327,9 @@ void prefill_shared_gram(const Eigen::Map<MatrixXd>& X,std::vector<State>& state
    A(i,j)=X(good[i],j)*root[i]/first.scale[j];
  MatrixXd G=MatrixXd::Zero(p,p);double one=1,zero=0;
  F77_CALL(dsyrk)("L","T",&p,&n,&one,A.data(),&n,&zero,G.data(),&p FCONE FCONE);
- for(auto& s:states) {
-  s.cacheG=G;s.cacheXY=VectorXd::Zero(p);s.cacheW=multiplier*s.w;
+  auto common=std::make_shared<const MatrixXd>(std::move(G));
+  for(auto& s:states) {
+   s.sharedG=common;s.cacheXY=VectorXd::Zero(p);s.cacheW=multiplier*s.w;
  }
 }
 void prefill_shared_gram(const Eigen::MappedSparseMatrix<double>&,
@@ -369,7 +377,7 @@ List glm_predictor_group_cpp(SEXP design,List context,int family,int link,double
  SEXP solver_bridge=R_NilValue,int nthreads=1,SEXP cache=R_NilValue) {
  L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
    -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
- L0glmNative::SolverControl control(solver_control,solver_bridge);
+ L0glmNative::SolverControl control(solver_control,solver_bridge,nthreads);
  nthreads=std::max(1,nthreads);
  if(Rf_isS4(design)) {
    Eigen::MappedSparseMatrix<double> X=as<Eigen::MappedSparseMatrix<double>>(design);
@@ -386,7 +394,7 @@ List glm_native_cpp(SEXP design,List contexts,int family,int link,double theta=1
  L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
   -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
  auto stream=as<std::vector<double>>(probes);
-  L0glmNative::SolverControl control(solver_control,solver_bridge);
+  L0glmNative::SolverControl control(solver_control,solver_bridge,nthreads);
  if(Rf_isS4(design)) {
   Eigen::MappedSparseMatrix<double> X=as<Eigen::MappedSparseMatrix<double>>(design);
     return L0glmNative::model(X,contexts,spec,stream,nthreads,max_passes,relaxed,nonnegative,control,executor);
@@ -400,13 +408,25 @@ List glm_native_pass_cpp(SEXP design,List contexts,int family,int link,double th
   List solver_control=R_NilValue,SEXP solver_bridge=R_NilValue) {
   L0glmNative::Family spec{family,link,scalar,theta,parameter,censor,
     -R::qnorm5(L0glmNative::eps,0,1,1,0),-R::qcauchy(L0glmNative::eps,0,1,1,0)};
-  auto stream=as<std::vector<double>>(probes);L0glmNative::SolverControl control(solver_control,solver_bridge);
+  auto stream=as<std::vector<double>>(probes);L0glmNative::SolverControl control(solver_control,solver_bridge,1);
   if(Rf_isS4(design)) {
     Eigen::MappedSparseMatrix<double> X=as<Eigen::MappedSparseMatrix<double>>(design);
     return L0glmNative::channel_pass(X,contexts,spec,stream,control);
   }
   NumericMatrix mat(design);Eigen::Map<MatrixXd> X(mat.begin(),mat.nrow(),mat.ncol());
   return L0glmNative::channel_pass(X,contexts,spec,stream,control);
+}
+// [[Rcpp::export(rng = false)]]
+Eigen::MatrixXd ridge_pilot_residual_cpp(SEXP design,Eigen::MatrixXd nuisance,Eigen::MatrixXd rhs,double tau=1e-6) {
+  if(nuisance.rows()!=rhs.rows()||tau<=0||!std::isfinite(tau))stop("Invalid pilot dimensions or ridge penalty.");
+  if(Rf_isS4(design)) {
+    SparseMatrix<double> X=as<SparseMatrix<double>>(design);
+    if(X.rows()!=rhs.rows())stop("Invalid pilot design dimensions.");
+    L0glmNative::PilotOperator<SparseMatrix<double>,L0glmNative::SparseFactor> op(X,nuisance,tau,0);
+    return op.apply(rhs);
+  }
+  MatrixXd X=as<MatrixXd>(design);if(X.rows()!=rhs.rows())stop("Invalid pilot design dimensions.");
+  L0glmNative::PilotOperator<MatrixXd,L0glmNative::DenseFactor> op(X,nuisance,tau,0);return op.apply(rhs);
 }
 // [[Rcpp::export(rng = false)]]
 List signal_start_cpp(SEXP design,NumericMatrix Y,NumericMatrix offset,NumericMatrix weights,

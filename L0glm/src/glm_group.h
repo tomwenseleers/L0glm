@@ -92,6 +92,7 @@ inline List pass_context(const State& s,List base) {
 template<class Design> List channel_pass(const Design& X,List contexts,const Family& family,
   const std::vector<double>& probes,const SolverControl& control) {
  auto states=load_states(X,contexts);List result(states.size());
+  for(auto& s:states)s.workspace=control.workspace;
  for(int k=0;k<(int)states.size();++k) {
    prepare_state(X,states[k],family,probes);fit(X,states[k],family,control);
    final_state(X,states[k],family);result[k]=pass_result(states[k]);
@@ -111,6 +112,7 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
  const int p=X.cols(),m=contexts.size(),n=X.rows();
  const bool grouped=as<bool>(as<List>(contexts[0])["grouped"]);
  std::vector<State> states=load_states(X,contexts);
+  for(auto& s:states)s.workspace=control.workspace;
  std::vector<std::vector<char>> fixed_allowed(m);std::vector<VectorXd> initial_eta(m),initial_mu(m);
  for(int j=0;j<m;++j){fixed_allowed[j]=states[j].allowed;initial_eta[j]=states[j].eta;initial_mu[j]=states[j].mu;center_prior(states[j]);}
  std::vector<char> active(p,0),last_active(p,0);

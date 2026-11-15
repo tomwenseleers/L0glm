@@ -1100,8 +1100,10 @@ model remains too large for an update, the starting scale is retained.
 The pilot normally requires one factorization (two with the rare retry);
 subsequent scale updates require only
 \(O(N)\) arithmetic, without nested fitting or further factorizations.
-Supplying a dispersion value avoids the pilot factorization, which can be
-appreciable for very large dense designs even when the main solver is iterative.</p>
+The pilot uses a matrix-free solve when its estimated factor workspace exceeds
+codecontrolSolverGen(max.memory=...). Supplying a dispersion value skips
+the pilot. CG/LSCG also use implicit ridge products when their working Gram
+would exceed that budget; direct factorizations and LLT fallbacks are guarded.</p>
 <div class="section">
 <h3 id="shared-numerical-safeguards">Shared numerical safeguards<a class="anchor" aria-label="anchor" href="#shared-numerical-safeguards"></a></h3>
 <p>Ordinary GLMs start their working model with <code>family$initialize</code>. Each ridge solve

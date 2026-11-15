@@ -5,14 +5,17 @@
 struct SolverControl {
   int method=0, maxit=0;
   unsigned int pivot=0, ordering=0, precond=0, svd=0, sparse_svd=1;
-  double tol=0, threshold=0;
+  double tol=0, threshold=0,workspace=std::numeric_limits<double>::infinity();
   bool rowaug=false,polish=false,cache_selected=true;
   SEXP bridge=R_NilValue;
   SolverControl()=default;
   template<class T> T option(List x,const char* name,T fallback) {
     return x.containsElementNamed(name)&&!Rf_isNull(x[name])?as<T>(x[name]):fallback;
   }
-  SolverControl(List x,SEXP callback):bridge(callback) {
+  SolverControl(List x,SEXP callback,int threads=1):bridge(callback) {
+    double total=option<double>(x,".workspace.total",-1);
+    if(total<0){double gb=option<double>(x,"max.memory",-1);total=gb<0?-1:gb*1073741824.;}
+    workspace=L0glm::workspace_budget(total,callback==R_NilValue?threads:1);
     std::string type=option<std::string>(x,"method","chol");
     method=type=="CG"?1:type=="LSCG"?2:type=="QR"?3:type=="SVD"?4:0;
     pivot=option<unsigned int>(x,"pivot",0);ordering=option<unsigned int>(x,"ordering",0);
@@ -44,14 +47,20 @@ template<class Matrix> bool eigen_coefficients(const Matrix& A,const MatrixXd& b
   // For an already formed SPD system, solve G beta = h directly with CG-IC.
   // Applying LSCG here would instead work with G' G and worsen conditioning.
   SolverControl kernel=control;
-  if(control.method==2&&!least_squares&&control.precond==2)kernel.method=1;
+  if(control.method==2&&!least_squares)kernel.method=1;
+  if(least_squares&&kernel.method==2&&kernel.precond==2&&
+      L0glm::gram_workspace(A)>control.workspace)kernel.precond=1;
+  if(kernel.method==0||kernel.method>=3)L0glm::require_workspace(
+    least_squares?L0glm::matrix_workspace(A):L0glm::matrix_workspace(A),control.workspace,"Eigen factorization");
   auto result=eigen_solve(A,b,start,kernel);
   if(result.finite() && (result.success || control.method!=2)) {
     if(!result.success && (control.method==1||control.method==2))++state.solver_inexact;
     answer=result.coefficients;return true;
   }
   if(control.method!=0) {
-    ++state.solver_fallbacks;SolverControl fallback;
+    L0glm::require_workspace(least_squares?L0glm::gram_workspace(A):L0glm::matrix_workspace(A),
+      control.workspace,"LLT fallback");
+    ++state.solver_fallbacks;SolverControl fallback=control;fallback.method=0;fallback.pivot=0;
     if(least_squares) {
       Matrix gram=sym_gram(A);
       MatrixXd rhs=right_product(A,b);
@@ -81,6 +90,13 @@ template<class Matrix> bool selected_dual(const Matrix& A,const VectorXd& respon
     if(penalty[j]==0){free.push_back(j);center[j]=0;}
   }else center[j]=0;
   Matrix Z=A*inv.asDiagonal();L0glm::drop_exact_zeros(Z);
+  if(L0glm::gram_workspace(Z,true)>control.workspace) {
+    if(control.method!=1&&control.method!=2)
+      L0glm::require_workspace(L0glm::gram_workspace(Z,true),control.workspace,"Woodbury factorization");
+    auto value=L0glm::matrixfree_dual(A,response,penalty,center,control.tol,control.maxit);
+    if(!value.success)return false;
+    fit=value.coefficients.col(0);return true;
+  }
   Matrix G=row_gram_native(Z);
   if(penalized)add_diagonal(G,VectorXd::Ones(n));
   MatrixXd rhs(n,free.size()+1),solution,U(n,free.size());rhs.col(0)=response-A*center;
@@ -99,6 +115,13 @@ template<class Matrix> bool primal_ridge(const Matrix& A,const VectorXd& respons
   const VectorXd& penalty,const VectorXd& center,const VectorXd& start,
   const SolverControl& control,State& state,VectorXd& fit,
   const VectorXd& lower,const VectorXd& upper,bool polish_eligible,L0glm::RidgeWorkspace<Matrix>* workspace=nullptr) {
+  double estimate=workspace?workspace->estimate():L0glm::gram_workspace(A);
+  if(estimate>control.workspace) {
+    if(control.method!=1&&control.method!=2)L0glm::require_workspace(estimate,control.workspace,"Eigen Gram solve");
+    auto value=L0glm::matrixfree_ridge(A,response,penalty,center,start,control.tol,control.maxit);
+    if(!value.success)return false;
+    fit=value.coefficients.col(0);return true;
+  }
   Matrix G=workspace?workspace->gram():sym_gram(A);add_diagonal(G,penalty);
   MatrixXd rhs=workspace?MatrixXd(workspace->rhs()):right_product(A,MatrixXd(response));rhs.col(0)+=penalty.cwiseProduct(center);
   MatrixXd solution;
@@ -127,7 +150,7 @@ template<class Design> VectorXd ridge_selected(const Design& X,State& state,
   const auto& A=work.A;VectorXd fit(p);bool success=false;
   if(control.external()) {
     // Dependency wrappers allocate R objects; callers execute this branch on
-    // the R thread (or in independent R workers), never in OpenMP workers.
+    // the R thread, never in OpenMP workers.
     Function solve(control.bridge);
     // Keep every wrapped argument alive while the remaining arguments allocate.
     // A large design wrap can trigger GC before the callback's call is built.

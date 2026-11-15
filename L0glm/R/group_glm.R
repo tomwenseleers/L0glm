@@ -1,5 +1,5 @@
 # Ordinary-family adapter for the shared grouped-penalty IRLS orchestration.
-L0glm_group_glm_initialize <- function(data,dispersion,lambda) {
+L0glm_group_glm_initialize <- function(data,dispersion,lambda,control=list()) {
   phi <- L0glm_dispersion(dispersion,data$family,data$m)
   estimate <- if(is.null(phi))rep(TRUE,data$m)else phi<0
   mu <- matrix(0,data$n,data$m)
@@ -27,7 +27,7 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda) {
       L0glm_observation_column(data$weights,j),data$family,0))
     L0glm_initial_dispersion(data$X[,allowed,drop=FALSE],data$y[,j],mu[,j],
       L0glm_observation_column(data$weights,j),L0glm_observation_column(data$offset,j),
-      data$family,match(data$included,allowed),L0glm_subset_preprocessing(data$preprocessing,allowed))
+      data$family,match(data$included,allowed),L0glm_subset_preprocessing(data$preprocessing,allowed),control)
   },1)
   phi <- abs(phi);phi[!is.finite(phi)|phi<=0] <- 1
   data$initial.mu <- mu

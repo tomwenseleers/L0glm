@@ -73,6 +73,13 @@
 #' and fewer than 10 percent nonzeros. Explicit \code{TRUE} or \code{FALSE}
 #' overrides this choice. Existing rectangular QR, SVD and LSCG defaults are
 #' unchanged. Eligible wide Eigen systems use the Woodbury route instead.
+#' @param max.memory
+#' Optional Gram/factor workspace budget in GiB, shared across concurrent native
+#' channels. \code{NULL} uses 25 percent of currently available physical memory;
+#' \code{Inf} disables the guard. Estimates include working copies and factors;
+#' sparse fill depends on the design. Oversized incomplete Cholesky uses diagonal
+#' preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
+#' LLT fallbacks require their estimated workspace to fit.
 #' @param nonnegative.polish
 #' Logical, default \code{FALSE}. For Eigen working solves with nonnegative
 #' coefficients and an existing predictor Gram matrix, optionally replace
@@ -156,7 +163,8 @@ controlSolverGen <- function(solver,
                                threshold = NULL,
                                verbose = FALSE,
                                rowaug = NULL,
-                               nonnegative.polish = FALSE){
+                               nonnegative.polish = FALSE, max.memory = NULL){
+  L0glm_validate_memory(max.memory)
   if (!is.logical(nonnegative.polish) || length(nonnegative.polish) != 1L || is.na(nonnegative.polish))
     stop("nonnegative.polish must be TRUE or FALSE.", call. = FALSE)
   if (nonnegative.polish && solver != "eigen")
@@ -273,5 +281,6 @@ controlSolverGen <- function(solver,
     stop("Chosen solver is not available.")
   }
   if (solver == "eigen") l$nonnegative.polish <- nonnegative.polish
+  l$max.memory <- max.memory
   return(l)
 }

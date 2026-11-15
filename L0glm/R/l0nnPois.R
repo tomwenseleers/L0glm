@@ -111,7 +111,7 @@ l0nnPois <- function(X,
     # Direct calls keep this specialized backend; l0glmFit owns screening.
     args$screen <- "none"
     args$control.solver <- control.solver[intersect(names(control.solver),
-      c("NaturalOrdering", "ordering", "nonnegative.polish"))]
+      c("NaturalOrdering", "ordering", "nonnegative.polish", "max.memory", ".workspace.total"))]
     return(do.call(L0glm_internal_fit, args))
   }
   natural_ordering <- FALSE
@@ -236,7 +236,10 @@ l0nnPois <- function(X,
     validation$X <- if (inherits(validation$X, "sparseMatrix"))
       methods::as(validation$X, "dgCMatrix") else as.matrix(validation$X)
   }
+  control.solver <- L0glm_solver_memory(control.solver)
   working <- L0glm_native_design(X,control.solver)
+  L0glm_require_workspace(working$X, control.solver, rows=ncol(X)>nrow(X),
+    nthreads=min(ncores,m), operation="Poisson Cholesky solve")
   if (inherits(working$X,'sparseMatrix')) {
     fit <- L0nnpois_sparse_cpp(
       working$X, y, weights, offset, prior.mean, start, always.include,

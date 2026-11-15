@@ -53,8 +53,24 @@ glm_native_pass_cpp <- function(design, contexts, family, link, theta = 1, scala
     .Call('_L0glm_glm_native_pass_cpp', PACKAGE = 'L0glm', design, contexts, family, link, theta, scalar, parameter, censor, probes, solver_control, solver_bridge)
 }
 
+ridge_pilot_residual_cpp <- function(design, nuisance, rhs, tau = 1e-6) {
+    .Call('_L0glm_ridge_pilot_residual_cpp', PACKAGE = 'L0glm', design, nuisance, rhs, tau)
+}
+
 signal_start_cpp <- function(design, Y, offset, weights, prior, mandatory, nthreads = 1L) {
     .Call('_L0glm_signal_start_cpp', PACKAGE = 'L0glm', design, Y, offset, weights, prior, mandatory, nthreads)
+}
+
+solver_workspace_budget_cpp <- function(requested = -1, nthreads = 1L) {
+    .Call('_L0glm_solver_workspace_budget_cpp', PACKAGE = 'L0glm', requested, nthreads)
+}
+
+solver_workspace_estimate_cpp <- function(design, gram = TRUE, rows = FALSE) {
+    .Call('_L0glm_solver_workspace_estimate_cpp', PACKAGE = 'L0glm', design, gram, rows)
+}
+
+ridge_matrixfree_cpp <- function(design, y, penalty, center, start, tol = 1e-10, maxit = 0L, dual = FALSE) {
+    .Call('_L0glm_ridge_matrixfree_cpp', PACKAGE = 'L0glm', design, y, penalty, center, start, tol, maxit, dual)
 }
 
 nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {

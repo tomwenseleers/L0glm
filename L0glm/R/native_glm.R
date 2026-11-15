@@ -103,7 +103,7 @@ L0glm_native_design <- function(X, control, compress=TRUE) {
 L0glm_native_model <- function(frame,descriptor,ncores=1L) {
   take <- function(name)get(name,frame,inherits=TRUE)
   X <- take('X');Y <- take('y');p <- ncol(X);m <- ncol(Y);family <- take('family')
-  control <- take('control.solver')
+  control <- L0glm_solver_memory(take('control.solver'))
   if(take('solver')=='eigen' && identical(control$method,'chol') && is.null(control$ordering))
     control$ordering <- as.integer(isTRUE(control$NaturalOrdering))
   control$.native.context <- TRUE

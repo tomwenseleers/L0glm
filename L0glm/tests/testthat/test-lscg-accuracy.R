@@ -100,7 +100,7 @@ test_that("invalid LSCG coefficients use the central fallback for quadratic fami
     solver <- function(...) list(status=TRUE, coefficients=coefficients)
     expect_warning(actual <- with_mocked_bindings(
       eigen_ridge_solve(A, b, rep(0, 12), control, 1L),
-      solve_dense_LSCG=solver, .package="L0glm"), "Cholesky LLT")
+      solve_dense_CG=solver, .package="L0glm"), "Cholesky LLT")
     expect_equal(actual, reference, tolerance=1e-10)
   }
 })

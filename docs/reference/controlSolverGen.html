@@ -77,7 +77,8 @@ solver (<code>controlSolverGen</code>) &amp; allows fine control over its option
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  rowaug <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  nonnegative.polish <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  nonnegative.polish <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  max.memory <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -187,6 +188,15 @@ coefficients and an existing predictor Gram matrix, optionally replace
 clipping of an infeasible proposal by a batched constrained Cholesky polish.
 This includes LLT, LDLT and other methods solving an already formed Gram
 system. Rectangular least-squares and Woodbury solves skip this correction.</p></dd>
+
+
+<dt id="arg-max-memory">max.memory<a class="anchor" aria-label="anchor" href="#arg-max-memory"></a></dt>
+<dd><p>Optional Gram/factor workspace budget in GiB, shared across concurrent native
+channels. <code>NULL</code> uses 25 percent of currently available physical memory;
+<code>Inf</code> disables the guard. Estimates include working copies and factors;
+sparse fill depends on the design. Oversized incomplete Cholesky uses diagonal
+preconditioning. CG/LSCG can use matrix-free ridge products; direct solves and
+LLT fallbacks require their estimated workspace to fit.</p></dd>
 
 </dl></div>
     <div class="section level2">

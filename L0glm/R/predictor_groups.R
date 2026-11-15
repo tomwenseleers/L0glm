@@ -276,7 +276,7 @@ L0glm_group_fit <- function(args, gaussian.pilot=FALSE) {
   B <- data$B
   if(kind=='glm') {
     pilot_lambda <- if (gaussian.pilot) presetLambda("gic", max(1,data$p_selectable), data$n_ic) else lambda
-    initial <- L0glm_group_glm_initialize(data,args$dispersion,pilot_lambda)
+    initial <- L0glm_group_glm_initialize(data,args$dispersion,pilot_lambda,args$control.solver)
     if (gaussian.pilot) initial <- L0glm_gaussian_pilot(initial,pilot_lambda,args$tol,options)
     data <- initial$data; state <- initial$state
     if(!data$explicit)B <- initial$B

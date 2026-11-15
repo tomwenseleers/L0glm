@@ -238,7 +238,7 @@ inline VectorXd solve_ridge_dense(const Map<MatrixXd>& X,const VectorXd& z,
   }else {
     MatrixXd A=work.gram(true);VectorXd b=work.rhs(true);
     for(int j=0;j<k;++j){A(j,j)+=penalty[j];b[j]+=penalty[j]*center[j];}
-    
+
     Eigen::LLT<MatrixXd> solver(A);if(solver.info()!=Eigen::Success)return previous;
   sol=solver.solve(b);if(solver.info()!=Eigen::Success)return previous;
     if(polish)sol=L0glm::nonnegative_polish(A,b,sol,VectorXd::Zero(k),

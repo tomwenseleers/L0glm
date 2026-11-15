@@ -268,6 +268,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// ridge_pilot_residual_cpp
+Eigen::MatrixXd ridge_pilot_residual_cpp(SEXP design, Eigen::MatrixXd nuisance, Eigen::MatrixXd rhs, double tau);
+RcppExport SEXP _L0glm_ridge_pilot_residual_cpp(SEXP designSEXP, SEXP nuisanceSEXP, SEXP rhsSEXP, SEXP tauSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< Eigen::MatrixXd >::type nuisance(nuisanceSEXP);
+    Rcpp::traits::input_parameter< Eigen::MatrixXd >::type rhs(rhsSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    rcpp_result_gen = Rcpp::wrap(ridge_pilot_residual_cpp(design, nuisance, rhs, tau));
+    return rcpp_result_gen;
+END_RCPP
+}
 // signal_start_cpp
 List signal_start_cpp(SEXP design, NumericMatrix Y, NumericMatrix offset, NumericMatrix weights, NumericMatrix prior, IntegerVector mandatory, int nthreads);
 RcppExport SEXP _L0glm_signal_start_cpp(SEXP designSEXP, SEXP YSEXP, SEXP offsetSEXP, SEXP weightsSEXP, SEXP priorSEXP, SEXP mandatorySEXP, SEXP nthreadsSEXP) {
@@ -281,6 +294,46 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerVector >::type mandatory(mandatorySEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
     rcpp_result_gen = Rcpp::wrap(signal_start_cpp(design, Y, offset, weights, prior, mandatory, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solver_workspace_budget_cpp
+double solver_workspace_budget_cpp(double requested, int nthreads);
+RcppExport SEXP _L0glm_solver_workspace_budget_cpp(SEXP requestedSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< double >::type requested(requestedSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(solver_workspace_budget_cpp(requested, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solver_workspace_estimate_cpp
+double solver_workspace_estimate_cpp(SEXP design, bool gram, bool rows);
+RcppExport SEXP _L0glm_solver_workspace_estimate_cpp(SEXP designSEXP, SEXP gramSEXP, SEXP rowsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< bool >::type gram(gramSEXP);
+    Rcpp::traits::input_parameter< bool >::type rows(rowsSEXP);
+    rcpp_result_gen = Rcpp::wrap(solver_workspace_estimate_cpp(design, gram, rows));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ridge_matrixfree_cpp
+Rcpp::List ridge_matrixfree_cpp(SEXP design, Eigen::VectorXd y, Eigen::VectorXd penalty, Eigen::VectorXd center, Eigen::VectorXd start, double tol, int maxit, bool dual);
+RcppExport SEXP _L0glm_ridge_matrixfree_cpp(SEXP designSEXP, SEXP ySEXP, SEXP penaltySEXP, SEXP centerSEXP, SEXP startSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP dualSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type y(ySEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type penalty(penaltySEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type center(centerSEXP);
+    Rcpp::traits::input_parameter< Eigen::VectorXd >::type start(startSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< bool >::type dual(dualSEXP);
+    rcpp_result_gen = Rcpp::wrap(ridge_matrixfree_cpp(design, y, penalty, center, start, tol, maxit, dual));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -774,7 +827,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_glm_predictor_group_cpp", (DL_FUNC) &_L0glm_glm_predictor_group_cpp, 12},
     {"_L0glm_glm_native_cpp", (DL_FUNC) &_L0glm_glm_native_cpp, 16},
     {"_L0glm_glm_native_pass_cpp", (DL_FUNC) &_L0glm_glm_native_pass_cpp, 11},
+    {"_L0glm_ridge_pilot_residual_cpp", (DL_FUNC) &_L0glm_ridge_pilot_residual_cpp, 4},
     {"_L0glm_signal_start_cpp", (DL_FUNC) &_L0glm_signal_start_cpp, 7},
+    {"_L0glm_solver_workspace_budget_cpp", (DL_FUNC) &_L0glm_solver_workspace_budget_cpp, 2},
+    {"_L0glm_solver_workspace_estimate_cpp", (DL_FUNC) &_L0glm_solver_workspace_estimate_cpp, 3},
+    {"_L0glm_ridge_matrixfree_cpp", (DL_FUNC) &_L0glm_ridge_matrixfree_cpp, 8},
     {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
