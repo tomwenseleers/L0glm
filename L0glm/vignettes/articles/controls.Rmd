@@ -155,3 +155,22 @@ standard error of the best candidate. Gaussian identity fits can compare default
 and conditional marginal starts; an explicit `start` fixes that choice.
 
 Use a separate test set to assess the model after selecting its stopping point.
+
+## Post-selection relaxed refitting
+
+`l0glmFit(relaxed=TRUE)` first performs the requested L0-penalized selection and
+then refits the selected support with the adaptive penalty removed, exactly or
+to numerical precision depending on the fitting engine, and with hard
+thresholding disabled. This can reduce
+shrinkage bias when the estimated coefficients will be used downstream. In a
+grouped multichannel fit, all eligible channel coefficients within a selected
+predictor row participate in the relaxed refit, but no new predictor row is
+introduced. Coefficient bounds, explicit starting-zero exclusions and mandatory
+terms remain in force. Inspect `convergence` and `relaxationSkipped` to verify
+that the requested refit was identifiable and completed.
+
+Set `local.search=FALSE` when the desired operation is exactly “select a support,
+then refit that support”; otherwise the usual local refinement may subsequently
+add, delete or exchange terms. This differs fundamentally from `lambda=0`,
+which fits a wholly unpenalized model and therefore performs no sparse support
+selection first.

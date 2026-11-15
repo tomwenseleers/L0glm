@@ -36,7 +36,8 @@ group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option grouped=TRUE). Fits on
 multichannel data can be parallelized. Penalized fits retain their adaptive
 ridge estimates and selected within-row zeroes. Optional local search
-accepts a restricted refit only when its selection target improves.
+accepts a restricted refit only when its selection target improves;
+relaxed=TRUE instead requests a support-conditional debiasing pass.
 The level of regularisation can be manually chosen (if a numeric value is
 passed to lambda) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See information_criteria for
@@ -94,7 +95,8 @@ group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option grouped=TRUE). Fits on
 multichannel data can be parallelized. Penalized fits retain their adaptive
 ridge estimates and selected within-row zeroes. Optional local search
-accepts a restricted refit only when its selection target improves.
+accepts a restricted refit only when its selection target improves;
+relaxed=TRUE instead requests a support-conditional debiasing pass.
 The level of regularisation can be manually chosen (if a numeric value is
 passed to lambda) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See information_criteria for
@@ -203,7 +205,8 @@ group-\(L_0\)/row-\(L_0\)/\(L_{2,0}\) penalty can be used to approximate
 Best Subset of Groups Selection (via option <code>grouped=TRUE</code>). Fits on
 multichannel data can be parallelized. Penalized fits retain their adaptive
 ridge estimates and selected within-row zeroes. Optional local search
-accepts a restricted refit only when its selection target improves.</p>
+accepts a restricted refit only when its selection target improves;
+<code>relaxed=TRUE</code> instead requests a support-conditional debiasing pass.</p>
 <p>The level of regularisation can be manually chosen (if a numeric value is
 passed to <code>lambda</code>) or preset to approximate an information criterion.
 Criterion names are case-insensitive. See <a href="information_criteria.html">information_criteria</a> for
@@ -249,6 +252,7 @@ quadratic programming solver.</p>
 <span>  maxit <span class="op">=</span> <span class="fl">25</span>,</span>
 <span>  grouped <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  group.maxit <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  relaxed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  prior.mean <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  thresh <span class="op">=</span> <span class="fl">1e-05</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
@@ -495,7 +499,7 @@ remain sparse. The training centers and scales are returned in
 <dt id="arg-solver">solver<a class="anchor" aria-label="anchor" href="#arg-solver"></a></dt>
 <dd><p>Solver used for the ridge regression step in the IRLS algorithm
 (see details). It should be one of <code>"osqp"</code> (osqp quadratic
-programming solver), <code>"bigGlm"</code> (using <code><a href="https://rdrr.io/pkg/glmnet/man/bigGlm.html" class="external-link">bigGlm</a></code>
+programming solver), <code>"bigGlm"</code> (using <code><a href="https://glmnet.stanford.edu/reference/bigGlm.html" class="external-link">bigGlm</a></code>
 coordinate descent with a constrained Cholesky accuracy polish for tall
 and square working designs; alias <code>"glmnet"</code>) or <code>"eigen"</code> (one
 of the <code>RcppEigen Eigen</code> solvers).
@@ -617,6 +621,24 @@ be refitted on the active row support using shared row-level starting
 values derived from the current coefficients, which then imposes a group
 penalty. This argument applies to ordinary GLMs, not the special-family
 loops; those update grouping within IRLS and use <code>maxit</code> per pass.</p></dd>
+
+
+<dt id="arg-relaxed">relaxed<a class="anchor" aria-label="anchor" href="#arg-relaxed"></a></dt>
+<dd><p>Logical, default <code>FALSE</code>. If <code>TRUE</code>, refit the
+selected support with the adaptive \(L_0\) penalty removed, exactly or
+to numerical precision depending on the fitting engine, and with hard
+thresholding disabled. Grouped
+multichannel fits admit every eligible channel coefficient within each
+selected predictor row; ungrouped fits retain only selected entries.
+No new predictor rows are introduced. Coefficient constraints, explicit
+starting-value exclusions and mandatory terms are preserved. The refit is
+skipped when its support is not identifiable from the available
+information; inspect <code>convergence</code> and <code>relaxationSkipped</code>.
+This option is useful for post-selection debiasing or downstream
+initialization. Subsequent local-search refinement can still modify the
+support; use <code>local.search=FALSE</code> when a strict selection-then-refit
+sequence is required. In contrast, <code>lambda=0</code> fits a wholly
+unpenalized model without first selecting a sparse support.</p></dd>
 
 
 <dt id="arg-prior-mean">prior.mean<a class="anchor" aria-label="anchor" href="#arg-prior-mean"></a></dt>
@@ -1113,7 +1135,7 @@ The pilot normally requires one factorization (two with the rare retry);
 subsequent scale updates require only
 \(O(N)\) arithmetic, without nested fitting or further factorizations.
 The pilot uses a matrix-free solve when its estimated factor workspace exceeds
-codecontrolSolverGen(max.memory=...). Supplying a dispersion value skips
+<code>controlSolverGen(max.memory=...)</code>. Supplying a dispersion value skips
 the pilot. CG/LSCG also use implicit ridge products when their working Gram
 would exceed that budget; direct factorizations and LLT fallbacks are guarded.</p>
 <div class="section">

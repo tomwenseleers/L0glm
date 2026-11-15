@@ -428,6 +428,11 @@ apply only during selection with positive lambda and are disabled during
 unpenalized refits. \code{thresh = 0} retains the absolute cutoff and does not
 smooth adaptive weights.
 All candidates and CV training fits retain their adaptive-ridge estimates.
+The tuning interface therefore rejects \code{relaxed}; after selecting a
+penalty, request any post-selection debiasing in a separate
+\code{l0glmFit(..., lambda=result$lambda_best, relaxed=TRUE)} call. This keeps
+candidate scoring and support selection distinct from the conditional
+unpenalized refit.
 Multinomial coefficients remain in their selected zero-sum CLR subspace;
 \eqn{s} admitted category entries give \eqn{s-1} free directions.
 Optional local support refinement tests restricted likelihood fits and accepts

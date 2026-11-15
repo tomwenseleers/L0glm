@@ -16,8 +16,11 @@ L0glm_recorded_fitter <- function(kernel,engine,public=TRUE) {
         family$consistent.scale <- TRUE
         call[['family']] <- quote(family)
       }
-      if('control.family'%in%supplied && is.list(control.family) && !is.null(control.family$dispersion.calibration))
-        L0glm_calibration_mode(control.family$dispersion.calibration)
+      if('control.family'%in%supplied) {
+        control_family <- get('control.family',envir=environment(),inherits=FALSE)
+        if(is.list(control_family) && !is.null(control_family$dispersion.calibration))
+          L0glm_calibration_mode(control_family$dispersion.calibration)
+      }
       if('control.solver'%in%supplied && !is.null(control.solver$.native))
         control.solver <- utils::modifyList(controlSolverGen(solver,method),control.solver,keep.null=TRUE)
       if(is.null(nthreads) && (solver!='eigen' || is.null(L0glm_native_family(family)))) {
@@ -29,7 +32,8 @@ L0glm_recorded_fitter <- function(kernel,engine,public=TRUE) {
     if(isTRUE(result$local.search$applied) && !is.null(result$lambdas))
       result$lambdas[is.infinite(result$lambdas)] <- 1e11
     if(source)result <- L0glm_data_restore(result,X)
-    if(ENGINE=='l0glmFit' && 'control.family'%in%supplied)force(control.family)
+    if(ENGINE=='l0glmFit' && 'control.family'%in%supplied)
+      get('control.family',envir=environment(),inherits=FALSE)
     recorded <- setdiff(supplied,c('X','y'))
     recorded <- recorded[!rlang::env_binding_are_lazy(environment(),recorded)]
     specification <- mget(recorded,envir=environment(),inherits=FALSE)

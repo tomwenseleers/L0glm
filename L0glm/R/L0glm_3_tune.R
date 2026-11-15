@@ -331,6 +331,11 @@
 #' unpenalized refits. \code{thresh = 0} retains the absolute cutoff and does not
 #' smooth adaptive weights.
 #' All candidates and CV training fits retain their adaptive-ridge estimates.
+#' The tuning interface therefore rejects \code{relaxed}; after selecting a
+#' penalty, request any post-selection debiasing in a separate
+#' \code{l0glmFit(..., lambda=result$lambda_best, relaxed=TRUE)} call. This keeps
+#' candidate scoring and support selection distinct from the conditional
+#' unpenalized refit.
 #' Multinomial coefficients remain in their selected zero-sum CLR subspace;
 #' \eqn{s} admitted category entries give \eqn{s-1} free directions.
 #' Optional local support refinement tests restricted likelihood fits and accepts
@@ -436,7 +441,7 @@ l0glmTune <- function(X, y,
   do_cv <- tune == "cv"
   if (!inherits(family, "family")) family <- family()
   if ("relaxed" %in% names(list(...)))
-    stop("relaxed is not a fitting argument; lambda=0 requests an unpenalized model.", call.=FALSE)
+    stop("relaxed is not supported by l0glmTune; apply it in a subsequent l0glmFit call.", call.=FALSE)
   dots <- L0glm_group_tune_cost(X,y,family,list(...))
   if ("maxit" %in% names(dots)) L0glm_iteration_limit(dots$maxit)
   interactions <- !is.null(dots$interactions) && L0glm_interaction_order(dots$interactions)>0L

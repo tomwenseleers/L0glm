@@ -1,5 +1,5 @@
-test_that("public fitters retain penalized estimates and omit relaxed controls", {
-  expect_false("relaxed"%in%names(formals(l0glmFit)))
+test_that("public fits retain penalized estimates by default and allow relaxed refits", {
+  expect_identical(formals(l0glmFit)$relaxed,FALSE)
   set.seed(7110)
   X <- matrix(runif(90L*6L),90L)
   Y <- matrix(rpois(270,2+outer(X[,1],c(8,4,2))),90L)
@@ -10,8 +10,19 @@ test_that("public fitters retain penalized estimates and omit relaxed controls",
     expect_true(all(coef(f)>=0))
     expect_false("relaxed"%in%names(f$specification))
   }
-  expect_error(l0glmFit(X,Y,relaxed=TRUE),"unused argument")
-  expect_error(l0glmTune(X,Y,family=poisson(),relaxed=TRUE),"not a fitting argument")
+  selected_fit <- l0glmFit(X,Y,family=poisson(identity),offset=2,
+    nonnegative=TRUE,lambda="gic",local.search=FALSE,ncores=1L)
+  selected <- rowSums(as.matrix(coef(selected_fit)) != 0) > 0
+  relaxed <- l0glmFit(X,Y,family=poisson(identity),offset=2,
+    nonnegative=TRUE,lambda="gic",relaxed=TRUE,local.search=FALSE,ncores=1L)
+  relaxed_selected <- rowSums(as.matrix(coef(relaxed)) != 0) > 0
+  expect_true(any(relaxed$convergence$stage=="relaxed"))
+  expect_true(all(which(relaxed_selected)%in%which(selected)))
+  expect_true(all(coef(relaxed)>=0))
+  expect_true(relaxed$specification$relaxed)
+  expect_error(l0glmFit(X,Y,relaxed=NA),"relaxed must be TRUE or FALSE")
+  expect_error(l0glmTune(X,Y,family=poisson(),relaxed=TRUE),
+    "not supported by l0glmTune")
 })
 
 test_that("screening, special families and predictor groups retain penalties", {
@@ -36,6 +47,10 @@ test_that("screening, special families and predictor groups retain penalties", {
     expect_false(any(f$convergence$stage=="relaxed"))
     expect_equal(dim(coef(f)),c(800L,1L))
   }
+  refitted <- l0glmFit(wide,y,screen="SIS",nsis=8L,relaxed=TRUE,
+    local.search=FALSE)
+  expect_true(any(refitted$convergence$stage=="relaxed"))
+  expect_true(refitted$specification$relaxed)
 })
 
 test_that("explicitly unpenalized fits use a single ordinary fitting pass", {

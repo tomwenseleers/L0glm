@@ -1,5 +1,5 @@
 #' @importFrom stats coef cor is.empty.model lm lm.fit logLik model.matrix model.response rnorm sd
-#' @importFrom utils data
+#' @importFrom utils combn data
 #' @importFrom qlcMatrix rowMax
 
 # Essential fit, coefficient and support metrics used by tuning and benchmarks.

@@ -270,6 +270,27 @@ starts; an explicit <code>start</code> fixes that choice.</p>
 <p>Use a separate test set to assess the model after selecting its
 stopping point.</p>
 </div>
+<div class="section level2">
+<h2 id="post-selection-relaxed-refitting">Post-selection relaxed refitting<a class="anchor" aria-label="anchor" href="#post-selection-relaxed-refitting"></a>
+</h2>
+<p><code>l0glmFit(relaxed=TRUE)</code> first performs the requested
+L0-penalized selection and then refits the selected support with the
+adaptive penalty removed, exactly or to numerical precision depending on
+the fitting engine, and with hard thresholding disabled. This can reduce
+shrinkage bias when the estimated coefficients will be used downstream.
+In a grouped multichannel fit, all eligible channel coefficients within
+a selected predictor row participate in the relaxed refit, but no new
+predictor row is introduced. Coefficient bounds, explicit starting-zero
+exclusions and mandatory terms remain in force. Inspect
+<code>convergence</code> and <code>relaxationSkipped</code> to verify
+that the requested refit was identifiable and completed.</p>
+<p>Set <code>local.search=FALSE</code> when the desired operation is
+exactly “select a support, then refit that support”; otherwise the usual
+local refinement may subsequently add, delete or exchange terms. This
+differs fundamentally from <code>lambda=0</code>, which fits a wholly
+unpenalized model and therefore performs no sparse support selection
+first.</p>
+</div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
 </div>

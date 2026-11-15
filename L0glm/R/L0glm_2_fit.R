@@ -52,7 +52,8 @@
 #' Best Subset of Groups Selection (via option \code{grouped=TRUE}). Fits on
 #' multichannel data can be parallelized. Penalized fits retain their adaptive
 #' ridge estimates and selected within-row zeroes. Optional local search
-#' accepts a restricted refit only when its selection target improves.
+#' accepts a restricted refit only when its selection target improves;
+#' \code{relaxed=TRUE} instead requests a support-conditional debiasing pass.
 #'
 #' The level of regularisation can be manually chosen (if a numeric value is
 #' passed to \code{lambda}) or preset to approximate an information criterion.
@@ -448,6 +449,21 @@
 #'   values derived from the current coefficients, which then imposes a group
 #'   penalty. This argument applies to ordinary GLMs, not the special-family
 #'   loops; those update grouping within IRLS and use \code{maxit} per pass.
+#' @param relaxed Logical, default \code{FALSE}. If \code{TRUE}, refit the
+#'   selected support with the adaptive \eqn{L_0} penalty removed, exactly or
+#'   to numerical precision depending on the fitting engine, and with hard
+#'   thresholding disabled. Grouped
+#'   multichannel fits admit every eligible channel coefficient within each
+#'   selected predictor row; ungrouped fits retain only selected entries.
+#'   No new predictor rows are introduced. Coefficient constraints, explicit
+#'   starting-value exclusions and mandatory terms are preserved. The refit is
+#'   skipped when its support is not identifiable from the available
+#'   information; inspect \code{convergence} and \code{relaxationSkipped}.
+#'   This option is useful for post-selection debiasing or downstream
+#'   initialization. Subsequent local-search refinement can still modify the
+#'   support; use \code{local.search=FALSE} when a strict selection-then-refit
+#'   sequence is required. In contrast, \code{lambda=0} fits a wholly
+#'   unpenalized model without first selecting a sparse support.
 #' @param prior.mean Optional finite centers for the ridge penalty in each IRLS
 #'   update. \code{NULL} (default) uses zero centers. Supply values in original
 #'   input coefficient units; normalization and any eligible predictor centering
@@ -681,7 +697,7 @@
 #' subsequent scale updates require only
 #' \eqn{O(N)} arithmetic, without nested fitting or further factorizations.
 #' The pilot uses a matrix-free solve when its estimated factor workspace exceeds
-#' code{controlSolverGen(max.memory=...)}. Supplying a dispersion value skips
+#' \code{controlSolverGen(max.memory=...)}. Supplying a dispersion value skips
 #' the pilot. CG/LSCG also use implicit ridge products when their working Gram
 #' would exceed that budget; direct factorizations and LLT fallbacks are guarded.
 #'
@@ -1045,6 +1061,9 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   if (!is.logical(nonnegative) || length(nonnegative) != 1L || is.na(nonnegative)) {
     stop("nonnegative must be TRUE or FALSE.", call. = FALSE)
   }
+  if (!is.logical(relaxed) || length(relaxed) != 1L || is.na(relaxed)) {
+    stop("relaxed must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!inherits(family, "family")) family <- family()
 
   use_native <- !isFALSE(control.solver$.native)
@@ -1055,8 +1074,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     validation <- L0glm_validation_context(validation, X, y, family, screen_intercept)
   screen_method <- L0glm_screen_method(screen, X, start, screen_intercept, always.include)
   if (screen_method != "none") {
-    # Pass explicit controls; the screening helper supplies GIC, relaxed refits
-    # and serial fitting when these are omitted, as in the standalone ISIS API.
+    # Pass explicit controls; the screening helper supplies GIC and serial
+    # fitting when these are omitted, as in the standalone ISIS API.
     supplied <- setdiff(names(match.call())[-1L], c("X", "y", "family", "weights",
       "offset", "nonnegative", "screen", "nsis", "screen.maxit", "screen.nthreads"))
     options <- mget(supplied, envir = environment(), inherits = FALSE)
@@ -1657,4 +1676,4 @@ L0glm_collect_channels <- function(fit) {
 
 L0glm_fit_kernel <- l0glmFit
 L0glm_internal_fit <- L0glm_recorded_fitter(L0glm_fit_kernel,'l0glmFit',public=FALSE)
-l0glmFit <- L0glm_recorded_fitter(L0glm_fit_kernel,'l0glmFit')
+l0glmFit <- L0glm_recorded_fitter(L0glm_fit_kernel,'l0glmFit',public=FALSE)

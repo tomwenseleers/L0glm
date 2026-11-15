@@ -52,7 +52,7 @@ channels may share a selected predictor support."><meta property="og:image" cont
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>L0-Penalized Negative Binomial Regression</h1>
-
+      <small class="dont-index">Source: <a href="https://github.com/tomwenseleers/L0glm/blob/master/L0glm/R/extended_family_reference_docs.R" class="external-link"><code>R/extended_family_reference_docs.R</code></a></small>
       <div class="d-none name"><code>L0glm_negative_binomial.Rd</code></div>
     </div>
 
@@ -77,7 +77,7 @@ The mean satisfies \(g(\mu)=X\beta+o\), where \(o\) is an offset.
 Log, identity and square-root links are supported through the family object;
 identity/square-root fits require valid positive means.</p>
 <p>For these built-in links, the IRLS loop, channel-specific shape updates and
-channel coordination run in C++. The codencores argument enables OpenMP
+channel coordination run in C++. The <code>ncores</code> argument enables OpenMP
 across response channels, with one BLAS thread per concurrent channel.
 Selected working designs are reused while their support is unchanged.
 Custom link callbacks retain a serial R adapter.</p>

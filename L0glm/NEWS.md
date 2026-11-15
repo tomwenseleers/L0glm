@@ -2,6 +2,17 @@
 
 ## Sparse generalized linear models
 
+* `l0glmFit(relaxed=TRUE)` is again available as an explicit opt-in
+  post-selection refit. It removes the adaptive L0 penalty on the selected
+  support while preserving constraints, starting-zero exclusions and mandatory
+  terms; grouped multichannel fits may reopen eligible entries within selected
+  rows but cannot add predictor rows. The default remains `relaxed=FALSE`.
+  Set `local.search=FALSE` for a strict selection-then-refit sequence.
+  Explicit relaxed requests are retained through SIS/ISIS screening and
+  generated-interaction fits rather than being silently discarded.
+  `l0glmTune()` continues to score penalized candidates and asks users to apply
+  any relaxed refit after choosing a penalty.
+
 * `controlSolverGen(nonnegative.method=...)` selects `"clamp"` or
   `"constrained"` working ridge solves across Eigen, OSQP and `bigGlm`.
   Defaults are `"clamp"` for Eigen and `"constrained"` for OSQP/`bigGlm`.
