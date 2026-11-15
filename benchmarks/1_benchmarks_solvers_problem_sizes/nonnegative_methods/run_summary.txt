@@ -3,9 +3,9 @@ R: R version 4.5.0 (2025-04-11 ucrt)
 Fits: 222
 Successful: 222
 Converged: 222
-Completed: 2026-11-15 17:30:46 CET
-One timed fit; no fitting warmup. Native dispatch; local search disabled. OSQP dashed overlays bigGlm solid. Eigen rectangular
-LSCG retains clamping in both modes.
+Completed: 2026-11-15 20:48:58 CET
+One timed fit; no fitting warmup. Native dispatch; local search disabled. OSQP dashed overlays bigGlm solid. Constrained LSCG
+uses checked bounded polishing.
 Deconvolution: Gaussian/Poisson, sparse/dense input, unit starts, both nonnegative strategies.
 Screening: none for deconvolution and n>=p; explicit ISIS for the dense p>n examples.
 Dense normal design: 60 signed effects drawn uniformly on [-0.8,0.8]; errors N(0,1); NULL starts.

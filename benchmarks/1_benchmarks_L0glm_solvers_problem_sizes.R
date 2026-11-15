@@ -118,9 +118,7 @@ if(!plots_only) {
 }else results <- read.csv(results_file,stringsAsFactors=FALSE)
 
 results$Solver <- factor(results$Solver,levels=solver_grid$Solver)
-results$Constraint_handling <- ifelse(!results$Nonnegative,"unrestricted",
-  ifelse(results$Nonnegative_method=="clamp","clamp",
-    ifelse(results$Solver_backend=="eigen"&results$Solver_method==4L,"clamp (rectangular LSCG)","constrained")))
+results$Constraint_handling <- ifelse(!results$Nonnegative,"unrestricted",results$Nonnegative_method)
 write.csv(results,results_file,row.names=FALSE)
 saveRDS(results,file.path(output_dir,"metrics_all_conditions.rds"))
 results_long <- tidyr::pivot_longer(results,cols=tidyselect::all_of(metric_columns),names_to="Metric",values_to="Value")
@@ -160,7 +158,7 @@ basePlot <- function(data,x,label) {
     labs(x=label,y=NULL,colour="Solver",shape="Solver",linetype="Solver")
 }
 caption <- paste("One timed fit; no fitting warmup. Native dispatch; local search disabled.",
-  "OSQP dashed overlays bigGlm solid. Eigen rectangular LSCG retains clamping in both modes.")
+  "OSQP dashed overlays bigGlm solid. Constrained LSCG uses checked bounded polishing.")
 caption <- paste(strwrap(caption,width=130),collapse="\n")
 for(mode in nonnegative_methods) {
   data <- subset(results_long,Experiment=="deconvolution"&Nonnegative_method==mode)

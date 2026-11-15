@@ -44,11 +44,17 @@ dense or sparse input storage, `start=1`, `lambda="gic"`, `screen="none"`,
 unit noise and truncates negative observations at zero. The "dense" PSF
 design contains exact structural zeros; native compression is allowed.
 
-Both `nonnegative.method="clamp"` and `"constrained"` are requested. Eigen
-LLT, LDLT and CG use the constrained polish on eligible Gram systems.
-Rectangular LSCG retains clamping under either setting. `Constraint_handling`
-records this distinction. Four n=p=10,000 Gaussian LSCG fits used one
-automatic LLT fallback each; their times include that fallback.
+Both `nonnegative.method="clamp"` and `"constrained"` are requested. All six
+engines use the requested strategy. Constrained Eigen LSCG retains its
+least-squares solve and applies a checked bound correction when needed, using
+a predictor Gram matrix subject to the memory budget. Initialization defaults
+and the guarded LLT fallback are unchanged. `Constraint_handling` records the
+strategy used. 2 fits reported an automatic LLT fallback; their
+times include it.
+
+The package's automatic initialization remains unchanged. These controlled
+deconvolution benchmarks explicitly use `start=1`; the dense normal designs
+use `start=NULL`.
 
 For this **unit-start** setup, clamping gives lower GIC and higher coefficient
 R-squared at n=p=10,000 for both noise families. The following quality values
@@ -66,12 +72,12 @@ Fitting times in seconds at n=p=10,000 with sparse PSF storage:
 
 | Solver | Gaussian clamp | Gaussian constrained | Poisson clamp | Poisson constrained |
 | --- | --- | --- | --- | --- |
-| OSQP | 62.823 | 77.586 | 2.639 | 54.088 |
-| bigGlm | 11.799 | 12.688 | 9.546 | 7.100 |
-| Eigen LLT | 0.274 | 0.691 | 0.496 | 0.584 |
-| Eigen LDLT | 0.292 | 0.811 | 0.488 | 0.622 |
-| Eigen CG-IC | 1.973 | 1.303 | 0.502 | 0.684 |
-| Eigen LSCG-IC | 2.913 | 2.854 | 0.572 | 0.561 |
+| OSQP | 60.167 | 77.556 | 1.173 | 23.671 |
+| bigGlm | 10.867 | 11.868 | 4.504 | 3.672 |
+| Eigen LLT | 0.295 | 0.751 | 0.306 | 0.426 |
+| Eigen LDLT | 0.311 | 0.778 | 0.342 | 0.454 |
+| Eigen CG-IC | 1.907 | 1.205 | 0.398 | 0.497 |
+| Eigen LSCG-IC | 2.840 | 1.723 | 0.462 | 0.596 |
 
 This is an empirical comparison of the complete adaptive-ridge trajectories.
 Solving the constrained ridge subproblem more accurately need not improve
@@ -107,11 +113,11 @@ Fitting times in seconds:
 
 | n | p | OSQP | bigGlm | Eigen LLT | Eigen LDLT | Eigen CG-IC | Eigen LSCG-IC |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 1,000 | 1.281 | 1.484 | 0.236 | 0.214 | 0.218 | 0.237 |
-| 1,000 | 100 | 0.523 | 0.647 | 0.122 | 0.140 | 0.136 | 0.358 |
-| 1,000 | 1,000 | 9.075 | 8.122 | 0.350 | 0.473 | 1.238 | 5.437 |
-| 1,000 | 10,000 | 3.071 | 2.866 | 0.230 | 0.243 | 0.256 | 1.027 |
-| 10,000 | 1,000 | 80.937 | 82.151 | 1.190 | 1.976 | 2.989 | 45.717 |
+| 100 | 1,000 | 0.973 | 1.308 | 0.195 | 0.193 | 0.178 | 0.211 |
+| 1,000 | 100 | 0.519 | 0.525 | 0.122 | 0.109 | 0.116 | 0.268 |
+| 1,000 | 1,000 | 6.494 | 6.590 | 0.314 | 0.388 | 1.306 | 4.400 |
+| 1,000 | 10,000 | 2.010 | 2.452 | 0.236 | 0.253 | 0.312 | 1.006 |
+| 10,000 | 1,000 | 74.266 | 77.386 | 1.188 | 2.018 | 2.766 | 45.570 |
 
 The n=100, p=1,000 case remains difficult for this 60-effect setup even with
 ISIS: every engine selects two true effects and one false positive. This
@@ -124,8 +130,12 @@ limitation is retained in the tables and figures.
 - All twelve dense p>n fits record `Screen="ISIS"`.
 - True coefficients are identical across solvers and strategies for a given problem.
 - Matched-strategy supports agree exactly. The largest relative coefficient
-  difference from LLT is 1.14e-6. LSCG's constrained requests are compared with
-  clamping because that is its effective strategy here.
+  difference from LLT is reported in `solver_agreement.csv`. Constrained LSCG
+  is compared directly with constrained LLT, including rectangular solves.
+- Across all 16 constrained LSCG fits, the largest relative coefficient
+  difference from LLT is 1.39e-08, and none requires LLT fallback.
+  All 206 configurations unaffected by the constraint correction return
+  bitwise identical coefficients in the regression check.
 - `metrics_all_conditions.csv` contains the complete results; the long version
   contains plotting values. `clamp_vs_constrained.csv` pairs the strategies,
   `dense_normal_results.csv` isolates the normal designs, and
