@@ -213,7 +213,7 @@ benchmarks_1_3[,!colSums(is.na(benchmarks_1_3))]
 # 5 0.6962279         69676         22885        127728          2547            0.7527576         0.9647342
 # 3 0.6847591         69464         23673        126032          2311            0.7458260         0.9678022
 # 2 0.4361743         33296           646        152088         39970            0.9809675         0.4544536
-#  within_row_F1_score within_row_MCC      gic     ebic     bic     aic     mbic
+#   within_row_F1_score within_row_MCC      gic     ebic     bic     aic     mbic
 # 1           0.9088179      0.8643182  5615963  5466112 4785984 4253544  5941502
 # 4           0.8533684      0.7819166  6138687  5947593 5080274 4401291  6553824
 # 6           0.8588509      0.7884679  6191576  5980606 5023071 4273462  6649894
@@ -236,8 +236,10 @@ system.time(L0glm.chol.gaus <- l0glmFit(sim.gaus.mc$X, sim.gaus.mc$y,
                                          grouped = TRUE,
                                          ncores = 4,
                                          solver = "eigen",
-                                         method = 1L)) 
-# 35.15s with ncores = 4
+                                         method = 1L
+                                         )) # control.solver = controlSolverGen("eigen", 1L, nonnegative.method = "constrained") 
+# 35.15s with ncores = 4 without nonnegative.method="constrained"
+# 67s with ncores = 4 with nonnegative.method="constrained"
 
 # Auto grouping uses native grouped fits where supported, independent paths
 # otherwise; the table records the scope of every method.
@@ -292,7 +294,7 @@ benchmarks_1_4[,!colSums(is.na(benchmarks_1_4))]
 # 2           0.4727635      0.4106558 16633518 16453212 15634855 14994202 17025219
 
 # l0glmFit is the clear winner
-
+# TODO check how to improve within row F1 score
 
 
 

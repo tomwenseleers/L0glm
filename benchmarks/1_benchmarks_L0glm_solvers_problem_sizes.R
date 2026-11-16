@@ -10,13 +10,9 @@ if(!"nonnegative.method"%in%names(formals(L0glm::controlSolverGen)))
   stop("Install a current L0glm version supporting controlSolverGen(nonnegative.method=...).")
 
 repository_dir <- if(file.exists("L0glm/DESCRIPTION"))"."else".."
-helper <- normalizePath(Sys.getenv("L0GLM_SOLVER_BENCHMARK_HELPER",
-  file.path(repository_dir,"benchmarks/solver_problem_sizes_helpers.R")),winslash="/")
+helper <- normalizePath(file.path(repository_dir,"benchmarks/solver_problem_sizes_helpers.R"),winslash="/")
 source(helper)
-output_dir <- Sys.getenv("L0GLM_SOLVER_BENCHMARK_OUTPUT",
-  file.path(repository_dir,"benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods"))
-dir.create(output_dir,recursive=TRUE,showWarnings=FALSE)
-output_dir <- normalizePath(output_dir,winslash="/")
+output_dir <- file.path(repository_dir,"benchmarks/1_benchmarks_solvers_problem_sizes/nonnegative_methods")
 
 # Main settings: both strategies for nonnegative Gaussian/Poisson deconvolution.
 nonnegative_methods <- c("clamp","constrained")
@@ -26,23 +22,28 @@ dense_sizes <- c(100L,1000L,10000L)
 dense_fixed_n <- dense_fixed_p <- 1000L
 config <- list(criterion="gic",maxit=500L,tol=1e-10,ncores=1L,blas_threads=1L,
   max_memory=NULL,timeout=900,deconvolution_seed=1L,dense_seed=123L,
-  dense_noise_seed=1L,dense_effects=60L,dense_screen="ISIS")
+  dense_noise_seed=1L,dense_effects=60L,dense_screen="none")   # or "ISIS"
 
-# Private-library overrides make the exact package used explicit and reproducible.
+# Use .libPaths() before sourcing to select a private package installation.
 # A fresh R worker per fit isolates caches and permits a hard per-fit timeout.
 arguments <- commandArgs(TRUE)
 plots_only <- "--plots-only" %in% arguments
 resume <- "--resume" %in% arguments
 smoke <- "--smoke" %in% arguments
+output_argument <- grep("^--output-dir=",arguments,value=TRUE)
+if(length(output_argument)>1L)stop("Supply --output-dir only once.")
+if(length(output_argument))output_dir <- sub("^--output-dir=","",output_argument)
+if(!nzchar(output_dir))stop("The output directory must not be empty.")
 if(smoke) {
   deconvolution_sizes <- 100L;dense_sizes <- c(100L,200L)
   dense_fixed_n <- dense_fixed_p <- 100L;config$dense_effects <- 10L
-  if(!nzchar(Sys.getenv("L0GLM_SOLVER_BENCHMARK_OUTPUT"))) {
-    output_dir <- file.path(output_dir,"smoke")
-    dir.create(output_dir,recursive=TRUE,showWarnings=FALSE)
-    output_dir <- normalizePath(output_dir,winslash="/")
-  }
+  output_dir <- file.path(output_dir,"smoke")
 }
+dir.create(output_dir,recursive=TRUE,showWarnings=FALSE)
+output_dir <- normalizePath(output_dir,winslash="/")
+screening_label <- if(config$dense_screen=="none")"screen=none"else paste(config$dense_screen,"when p>n")
+screening_caption <- if(config$dense_screen=="none")"Screening disabled for every problem."else
+  sprintf("The complete %s workflow is timed when p>n.",config$dense_screen)
 solver_grid <- data.frame(Solver=c("OSQP","bigGlm","Eigen LLT","Eigen LDLT","Eigen CG-IC","Eigen LSCG-IC"),
   Solver_backend=c("osqp","bigGlm",rep("eigen",4L)),Solver_method=c(1L,1L,1L,2L,3L,4L))
 solver_colours <- setNames(c("blue","red2","green3","orange","purple","cyan3"),solver_grid$Solver)
@@ -76,6 +77,8 @@ if(!plots_only) {
     L0glm=as.character(packageVersion("L0glm")),R=R.version.string,
     DLL=unname(tools::md5sum(list.files(file.path(find.package("L0glm"),"libs"),
       pattern="[.](dll|so)$",full.names=TRUE,recursive=TRUE))),
+    Rcode=unname(tools::md5sum(list.files(file.path(find.package("L0glm"),"R"),
+      pattern="[.](rdb|rdx)$",full.names=TRUE))),
     helper=unname(tools::md5sum(helper)))
   manifest <- file.path(output_dir,"run_manifest.rds")
   if(resume)stopifnot(file.exists(manifest),identical(signature,readRDS(manifest)))
@@ -186,8 +189,9 @@ for(sweep in c("vary_p","vary_n")) {
   plot <- basePlot(data,axis,if(axis=="P")"Predictors (p)"else"Observations (n)")+
     facet_wrap(~Metric,scales="free_y",ncol=3,labeller=as_labeller(metric_labels))+
     labs(title=paste("Dense Gaussian regression:",fixed),
-      subtitle=sprintf("%d signed effects; unit Gaussian noise; GIC preset; start=NULL; ISIS when p>n; maxit=%d",config$dense_effects,config$maxit),
-      caption=paste(strwrap("One fresh-worker fit; no fitting warmup; one core and one BLAS thread. Full ISIS workflow timed when p>n; local search disabled. OSQP dashed overlays bigGlm solid; coefficients are unrestricted.",width=130),collapse="\n"))
+      subtitle=sprintf("%d signed effects; unit Gaussian noise; GIC preset; start=NULL; %s; maxit=%d",config$dense_effects,screening_label,config$maxit),
+      caption=paste(strwrap(paste("One fresh-worker fit; no fitting warmup; one core and one BLAS thread.",screening_caption,
+        "Local search disabled. OSQP dashed overlays bigGlm solid; coefficients are unrestricted."),width=130),collapse="\n"))
   savePlot(plot,paste0("timings_metrics_dense_normal_",sweep))
 }
 
@@ -205,7 +209,7 @@ writeLines(c(paste("L0glm:",packageVersion("L0glm")),paste("R:",R.version.string
   paste("Fits:",nrow(results)),paste("Successful:",sum(results$Status=="ok")),
   paste("Converged:",sum(results$Converged,na.rm=TRUE)),paste("Completed:",format(Sys.time(),"%Y-%m-%d %H:%M:%S %Z")),
   caption,"Deconvolution: Gaussian/Poisson, sparse/dense input, unit starts, both nonnegative strategies.",
-  "Screening: none for deconvolution and n>=p; explicit ISIS for the dense p>n examples.",
+  screening_caption,
   sprintf("Dense normal design: %d signed effects drawn uniformly on [-0.8,0.8]; errors N(0,1); NULL starts.",config$dense_effects),
   "Gaussian deconvolution retains the original simulation's zero clipping of negative observations.",
   "Each input is regenerated from fixed seeds in an isolated worker; only l0glmFit is timed.",
