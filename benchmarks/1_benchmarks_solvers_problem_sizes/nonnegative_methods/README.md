@@ -3,8 +3,12 @@
 This experiment reports **222 fits**, each timed once with no fitting warmup:
 192 nonnegative deconvolution fits and 30 dense normal-design Gaussian fits.
 Every fit returned finite metrics and converged within the 500-iteration ceiling.
+**Screening is disabled throughout (`screen="none"`), including p>n.**
+Local support search is also disabled. This isolates solver comparisons from
+SIS/ISIS screening and support-search work; recovery metrics remain visible.
 The fitting package is L0glm 0.2.0.9002, including the `nonnegative.method`
-interface. The included results were obtained on 15 November 2026 on the
+interface, installed from [revision 9dab059](https://github.com/tomwenseleers/L0glm/commit/9dab059a25e5310df347f8825a9c52364a46c576)
+in an isolated library. The included results were obtained on 16 November 2026 on the
 HP ZBook Fury G8 workstation with an Intel Core i9-11950H processor
 (8 physical / 16 logical cores; nominal 2.60 GHz). Every fit uses one core and
 one BLAS thread.
@@ -22,10 +26,18 @@ Rscript benchmarks/1_benchmarks_L0glm_solvers_problem_sizes.R
 
 The script writes this directory. `--plots-only` redraws stored results without
 fitting. `--resume` reuses completed per-fit checkpoints only when the manifest
-matches the cases, settings, helper code, package DLL and R version. `--smoke`
+matches the cases, settings, helper code, installed R code, package DLL and R version. `--smoke`
 runs smaller validation cases in a separate `smoke/` subdirectory.
 Size grids, constraint strategies, iteration ceiling, thread counts and the
-per-fit timeout are selectable at the top of the script. The helper file
+per-fit timeout are selectable at the top of the script. Paths are explicit
+script settings; no configuration is read from environment variables.
+`--output-dir=path` selects a different output directory. For example:
+
+```sh
+Rscript benchmarks/1_benchmarks_L0glm_solvers_problem_sizes.R --output-dir=codex_sandbox/solver_comparison
+```
+
+The helper file
 `benchmarks/solver_problem_sizes_helpers.R` handles data generation and the
 single fitting call.
 
@@ -72,12 +84,12 @@ Fitting times in seconds at n=p=10,000 with sparse PSF storage:
 
 | Solver | Gaussian clamp | Gaussian constrained | Poisson clamp | Poisson constrained |
 | --- | --- | --- | --- | --- |
-| OSQP | 60.167 | 77.556 | 1.173 | 23.671 |
-| bigGlm | 10.867 | 11.868 | 4.504 | 3.672 |
-| Eigen LLT | 0.295 | 0.751 | 0.306 | 0.426 |
-| Eigen LDLT | 0.311 | 0.778 | 0.342 | 0.454 |
-| Eigen CG-IC | 1.907 | 1.205 | 0.398 | 0.497 |
-| Eigen LSCG-IC | 2.840 | 1.723 | 0.462 | 0.596 |
+| OSQP | 63.478 | 80.012 | 1.213 | 25.068 |
+| bigGlm | 11.996 | 12.414 | 4.943 | 3.905 |
+| Eigen LLT | 0.259 | 0.718 | 0.321 | 0.477 |
+| Eigen LDLT | 0.318 | 0.910 | 0.343 | 0.549 |
+| Eigen CG-IC | 2.503 | 1.761 | 0.479 | 0.535 |
+| Eigen LSCG-IC | 4.053 | 2.415 | 0.445 | 0.536 |
 
 This is an empirical comparison of the complete adaptive-ridge trajectories.
 Solving the constrained ridge subproblem more accurately need not improve
@@ -91,11 +103,10 @@ standard-normal predictors, 60 randomly selected effects uniform on
 123 and noise seed is 1. Two sweeps vary p with n=1,000, and n with p=1,000,
 using 100, 1,000 and 10,000 (five unique settings).
 
-These fits use `nonnegative=FALSE`, `start=NULL`, the GIC preset, and
-`local.search=FALSE`. **ISIS is explicitly enabled whenever p>n**, including
-its fitting/screening iterations in the timer; n>=p fits use `screen="none"`.
-This benchmark choice is separate from the package's automatic screening
-trigger. The change in workflow at p>n can make timing curves nonmonotone.
+These fits use `nonnegative=FALSE`, `start=NULL`, the GIC preset,
+`screen="none"` and `local.search=FALSE` for every size, including p>n.
+All solvers therefore receive the complete original design matrix.
+This benchmark setting overrides the package's automatic screening rule.
 No duplicate clamp/constrained fits are needed for unrestricted coefficients.
 
 All six engines recover the same support for each setting. Representative
@@ -103,39 +114,37 @@ quality metrics from LLT are:
 
 | n | p | Screen | GIC | Coefficient R2 | TP / 60 | FP | F1 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 1,000 | ISIS | 556.48 | 0.028155 | 2 | 1 | 0.0635 |
+| 100 | 1,000 | none | 563.23 | 0.039165 | 4 | 4 | 0.1176 |
 | 1,000 | 100 | none | 3,368.93 | 0.994835 | 56 | 0 | 0.9655 |
 | 1,000 | 1,000 | none | 3,595.86 | 0.991664 | 54 | 0 | 0.9474 |
-| 1,000 | 10,000 | ISIS | 3,898.02 | 0.981424 | 49 | 0 | 0.8991 |
+| 1,000 | 10,000 | none | 3,964.07 | 0.958332 | 42 | 0 | 0.8235 |
 | 10,000 | 1,000 | none | 29,497.08 | 0.999202 | 56 | 0 | 0.9655 |
 
 Fitting times in seconds:
 
 | n | p | OSQP | bigGlm | Eigen LLT | Eigen LDLT | Eigen CG-IC | Eigen LSCG-IC |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 1,000 | 0.973 | 1.308 | 0.195 | 0.193 | 0.178 | 0.211 |
-| 1,000 | 100 | 0.519 | 0.525 | 0.122 | 0.109 | 0.116 | 0.268 |
-| 1,000 | 1,000 | 6.494 | 6.590 | 0.314 | 0.388 | 1.306 | 4.400 |
-| 1,000 | 10,000 | 2.010 | 2.452 | 0.236 | 0.253 | 0.312 | 1.006 |
-| 10,000 | 1,000 | 74.266 | 77.386 | 1.188 | 2.018 | 2.766 | 45.570 |
+| 100 | 1,000 | 0.985 | 0.522 | 0.104 | 0.110 | 0.147 | 0.123 |
+| 1,000 | 100 | 0.472 | 0.592 | 0.110 | 0.104 | 0.123 | 0.271 |
+| 1,000 | 1,000 | 6.819 | 6.388 | 0.293 | 0.385 | 1.092 | 3.798 |
+| 1,000 | 10,000 | 597.324 | 3.637 | 1.378 | 1.386 | 2.196 | 2.898 |
+| 10,000 | 1,000 | 67.707 | 72.045 | 1.118 | 1.997 | 3.020 | 43.326 |
 
-The n=100, p=1,000 case remains difficult for this 60-effect setup even with
-ISIS: every engine selects two true effects and one false positive. This
-limitation is retained in the tables and figures.
+Wide problems may have poorer recovery without screening. The tables and
+figures report the observed solution quality rather than changing the
+initialization or selection settings to improve a particular solver's result.
 
 ## Checks and output files
 
 - All 222 configurations have exactly one measured fitting call, finite time,
   GIC, coefficient R-squared and coefficient RMSE, and reported convergence.
-- All twelve dense p>n fits record `Screen="ISIS"`.
+- All 222 fits record `Screen="none"` and `Local_search=FALSE`.
 - True coefficients are identical across solvers and strategies for a given problem.
-- Matched-strategy supports agree exactly. The largest relative coefficient
-  difference from LLT is reported in `solver_agreement.csv`. Constrained LSCG
+- All six engines recover the same support for each setting. The relative coefficient
+  differences from LLT are reported in `solver_agreement.csv`. Constrained LSCG
   is compared directly with constrained LLT, including rectangular solves.
 - Across all 16 constrained LSCG fits, the largest relative coefficient
   difference from LLT is 1.39e-08, and none requires LLT fallback.
-  All 206 configurations unaffected by the constraint correction return
-  bitwise identical coefficients in the regression check.
 - `metrics_all_conditions.csv` contains the complete results; the long version
   contains plotting values. `clamp_vs_constrained.csv` pairs the strategies,
   `dense_normal_results.csv` isolates the normal designs, and

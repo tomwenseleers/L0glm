@@ -191,12 +191,12 @@
 "deconvolution-poisson-sparse-n10000-p10000-constrained","Eigen CG-IC",5.82144267507996e-08,0.0059237600016786,0
 "deconvolution-poisson-sparse-n10000-p10000-clamp","Eigen LSCG-IC",2.14210577098566e-10,2.30465320782969e-05,0
 "deconvolution-poisson-sparse-n10000-p10000-constrained","Eigen LSCG-IC",3.67662595629956e-10,3.74144333363802e-05,0
-"dense_normal-gaussian-dense-n100-p1000-unrestricted","OSQP",5.88533414568952e-16,8.88178419700125e-16,0
-"dense_normal-gaussian-dense-n100-p1000-unrestricted","bigGlm",5.88533414568952e-16,8.88178419700125e-16,0
+"dense_normal-gaussian-dense-n100-p1000-unrestricted","OSQP",2.19996168738367e-13,3.38340466754516e-13,0
+"dense_normal-gaussian-dense-n100-p1000-unrestricted","bigGlm",8.40794013800938e-08,1.2935166715522e-07,0
 "dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen LLT",0,0,0
-"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen LDLT",5.27085260190246e-16,6.66133814775094e-16,0
-"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen CG-IC",6.81933186919062e-11,1.17323817327986e-10,0
-"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen LSCG-IC",1.80200820283976e-16,2.22044604925031e-16,0
+"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen LDLT",4.65085461933284e-16,6.66133814775094e-16,0
+"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen CG-IC",8.50202447364407e-11,1.64914359945811e-10,0
+"dense_normal-gaussian-dense-n100-p1000-unrestricted","Eigen LSCG-IC",4.67080119242908e-16,6.66133814775094e-16,0
 "dense_normal-gaussian-dense-n1000-p100-unrestricted","OSQP",1.41030689412295e-15,2.1094237467878e-15,0
 "dense_normal-gaussian-dense-n1000-p100-unrestricted","bigGlm",1.41030689412295e-15,2.1094237467878e-15,0
 "dense_normal-gaussian-dense-n1000-p100-unrestricted","Eigen LLT",0,0,0
@@ -209,12 +209,12 @@
 "dense_normal-gaussian-dense-n1000-p1000-unrestricted","Eigen LDLT",4.85852437688327e-16,7.7715611723761e-16,0
 "dense_normal-gaussian-dense-n1000-p1000-unrestricted","Eigen CG-IC",6.83170501827863e-11,2.40366671011571e-10,0
 "dense_normal-gaussian-dense-n1000-p1000-unrestricted","Eigen LSCG-IC",5.57788812753546e-16,8.88178419700125e-16,0
-"dense_normal-gaussian-dense-n1000-p10000-unrestricted","OSQP",1.56333053230057e-15,1.99840144432528e-15,0
-"dense_normal-gaussian-dense-n1000-p10000-unrestricted","bigGlm",1.56333053230057e-15,1.99840144432528e-15,0
+"dense_normal-gaussian-dense-n1000-p10000-unrestricted","OSQP",1.24414490604649e-15,1.55431223447522e-15,0
+"dense_normal-gaussian-dense-n1000-p10000-unrestricted","bigGlm",1.39584035275013e-13,1.8249290967276e-13,0
 "dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen LLT",0,0,0
-"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen LDLT",5.53487162006917e-16,7.7715611723761e-16,0
-"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen CG-IC",4.91435632504809e-16,5.55111512312578e-16,0
-"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen LSCG-IC",4.82714915980578e-16,5.55111512312578e-16,0
+"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen LDLT",3.75900448899319e-16,5.55111512312578e-16,0
+"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen CG-IC",8.45993457992955e-11,2.6213675674569e-10,0
+"dense_normal-gaussian-dense-n1000-p10000-unrestricted","Eigen LSCG-IC",4.17893812639663e-16,4.44089209850063e-16,0
 "dense_normal-gaussian-dense-n10000-p1000-unrestricted","OSQP",4.14017891970089e-15,7.21644966006352e-15,0
 "dense_normal-gaussian-dense-n10000-p1000-unrestricted","bigGlm",4.14017891970089e-15,7.21644966006352e-15,0
 "dense_normal-gaussian-dense-n10000-p1000-unrestricted","Eigen LLT",0,0,0
