@@ -11,6 +11,7 @@
 #include <sys/sysctl.h>
 #endif
 #include "memory_budget.h"
+#include "sparse_workspace.h"
 namespace L0glm {
 double available_memory() {
 #ifdef _WIN32
@@ -41,6 +42,11 @@ double solver_workspace_estimate_cpp(SEXP design,bool gram=true,bool rows=false)
   }
   Rcpp::NumericMatrix mat(design);Eigen::Map<Eigen::MatrixXd> X(mat.begin(),mat.nrow(),mat.ncol());
   return gram?L0glm::gram_workspace(X,rows):L0glm::matrix_workspace(X);
+}
+// [[Rcpp::export(rng = false)]]
+double solver_sparse_workspace_cpp(SEXP design,bool rows,double budget) {
+  auto X=Rcpp::as<Eigen::MappedSparseMatrix<double>>(design);
+  return L0glm::sparse_gram_workspace(X,rows,budget);
 }
 // [[Rcpp::export(rng = false)]]
 Rcpp::List ridge_matrixfree_cpp(SEXP design,Eigen::VectorXd y,Eigen::VectorXd penalty,

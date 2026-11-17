@@ -73,6 +73,10 @@ solver_workspace_estimate_cpp <- function(design, gram = TRUE, rows = FALSE) {
     .Call('_L0glm_solver_workspace_estimate_cpp', PACKAGE = 'L0glm', design, gram, rows)
 }
 
+solver_sparse_workspace_cpp <- function(design, rows, budget) {
+    .Call('_L0glm_solver_sparse_workspace_cpp', PACKAGE = 'L0glm', design, rows, budget)
+}
+
 ridge_matrixfree_cpp <- function(design, y, penalty, center, start, tol = 1e-10, maxit = 0L, dual = FALSE) {
     .Call('_L0glm_ridge_matrixfree_cpp', PACKAGE = 'L0glm', design, y, penalty, center, start, tol, maxit, dual)
 }

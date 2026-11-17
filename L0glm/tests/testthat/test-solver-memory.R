@@ -68,3 +68,49 @@ test_that('serial special-family adapters guard information before allocation', 
   expect_error(with_mocked_bindings(L0glm_ext_multinomial_working(data,data$B,matrix(1,8,3),list(),args),
     L0glm_ext_quadratic=function(...)stop('information allocated'),.package='L0glm'),'workspace budget')
 })
+
+test_that('sparse workspace refinement counts unique overlap and Cholesky fill', {
+  n <- 600L
+  X <- Matrix::bandSparse(n,k=-12:12,diagonals=lapply(-12:12,function(k)rep(1,n-abs(k))))
+  X <- as(X,'dgCMatrix');budget <- .01*1024^3
+  coarse <- solver_workspace_estimate_cpp(X,TRUE,FALSE)
+  refined <- solver_sparse_workspace_cpp(X,FALSE,budget)
+  expect_gt(coarse,budget)
+  expect_lt(refined,budget)
+  expect_true(L0glm_workspace_fits(X,controlSolverGen('eigen',1L,max.memory=.01)))
+  expect_true(is.infinite(solver_sparse_workspace_cpp(X,FALSE,1024)))
+  # One centre connected to every leaf has little Gram storage but dense
+  # fill under the supported natural ordering; the guard must count that fill.
+  star <- Matrix::sparseMatrix(i=rep(seq_len(299L),2L),
+    j=c(rep(1L,299L),2:300),x=1,dims=c(299L,300L))
+  expect_true(is.infinite(solver_sparse_workspace_cpp(star,FALSE,.5*1024^2)))
+  Z <- X;Z@x[seq(1L,length(Z@x),by=4L)] <- 0
+  expect_equal(solver_sparse_workspace_cpp(Z,FALSE,budget),
+    solver_sparse_workspace_cpp(Matrix::drop0(Z),FALSE,budget))
+})
+
+test_that('the Poisson guard accounts for profiled nuisance columns', {
+  n <- 600L
+  X <- as(Matrix::bandSparse(n,k=-12:12,
+    diagonals=lapply(-12:12,function(k)rep(1,n-abs(k)))),'dgCMatrix')
+  B <- Matrix::Matrix(splines::bs(seq_len(n),df=4L,intercept=TRUE),sparse=TRUE)
+  A <- as(cbind(X,B),'dgCMatrix');ctl <- controlSolverGen('eigen',1L,max.memory=.01)
+  expect_error(L0glm_require_workspace(A,ctl,rows=TRUE),'workspace budget')
+  expect_no_error(L0glm_require_workspace(A,ctl,rows=TRUE,
+    unpenalized=ncol(X)+seq_len(ncol(B))))
+})
+
+test_that('a corrected concurrent Poisson guard retains the fitted coefficients', {
+  set.seed(827);n <- 600L
+  X <- as(Matrix::bandSparse(n,k=-12:12,
+    diagonals=lapply(-12:12,function(k)rep(exp(-k*k/30),n-abs(k)))),'dgCMatrix')
+  beta <- matrix(0,n,4L);beta[c(130L,280L,460L),] <- 30
+  y <- matrix(rpois(n*4,as.numeric(X%*%beta)+.2),n,4L)
+  args <- list(X=X,y=y,family=poisson('identity'),nonnegative=TRUE,
+    grouped=TRUE,intercept=FALSE,offset=.2,lambda='gic',local.search=FALSE)
+  reference <- do.call(l0glmFit,c(args,list(ncores=1L)))
+  actual <- do.call(l0glmFit,c(args,list(ncores=4L,
+    control.solver=controlSolverGen('eigen',1L,max.memory=.04))))
+  expect_equal(as.matrix(coef(actual)),as.matrix(coef(reference)),tolerance=1e-10)
+  expect_equal(actual$deviance,reference$deviance,tolerance=1e-10)
+})

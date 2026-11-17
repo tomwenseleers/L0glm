@@ -28,6 +28,11 @@
   Fixed-weight multichannel fits share a common immutable Gram matrix.
   The same allocation checks cover serial special-family solver adapters and
   adaptive-ridge dispersion pilots.
+  Failed sparse preflight checks count unique Gram overlaps and symbolic
+  Cholesky fill before rejecting a fit, with a bounded probe and allowances
+  for copies and work arrays. The Poisson Woodbury check handles unpenalized
+  background columns separately. Banded convolution designs can therefore
+  use concurrent native channels without an artificial dense-workspace limit.
 * L0 and grouped L0 variable selection through adaptive-ridge IRLS, with
   criterion-checked support refinement. Large multichannel fits compare one
   unpenalized selected-support refit; large single-channel fits retain their

@@ -340,6 +340,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// solver_sparse_workspace_cpp
+double solver_sparse_workspace_cpp(SEXP design, bool rows, double budget);
+RcppExport SEXP _L0glm_solver_sparse_workspace_cpp(SEXP designSEXP, SEXP rowsSEXP, SEXP budgetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type design(designSEXP);
+    Rcpp::traits::input_parameter< bool >::type rows(rowsSEXP);
+    Rcpp::traits::input_parameter< double >::type budget(budgetSEXP);
+    rcpp_result_gen = Rcpp::wrap(solver_sparse_workspace_cpp(design, rows, budget));
+    return rcpp_result_gen;
+END_RCPP
+}
 // ridge_matrixfree_cpp
 Rcpp::List ridge_matrixfree_cpp(SEXP design, Eigen::VectorXd y, Eigen::VectorXd penalty, Eigen::VectorXd center, Eigen::VectorXd start, double tol, int maxit, bool dual);
 RcppExport SEXP _L0glm_ridge_matrixfree_cpp(SEXP designSEXP, SEXP ySEXP, SEXP penaltySEXP, SEXP centerSEXP, SEXP startSEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP dualSEXP) {
@@ -852,6 +864,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_signal_start_cpp", (DL_FUNC) &_L0glm_signal_start_cpp, 7},
     {"_L0glm_solver_workspace_budget_cpp", (DL_FUNC) &_L0glm_solver_workspace_budget_cpp, 2},
     {"_L0glm_solver_workspace_estimate_cpp", (DL_FUNC) &_L0glm_solver_workspace_estimate_cpp, 3},
+    {"_L0glm_solver_sparse_workspace_cpp", (DL_FUNC) &_L0glm_solver_sparse_workspace_cpp, 3},
     {"_L0glm_ridge_matrixfree_cpp", (DL_FUNC) &_L0glm_ridge_matrixfree_cpp, 8},
     {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
