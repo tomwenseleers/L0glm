@@ -46,6 +46,27 @@ namespace L0glm {
         return Rcpp::as<Rcpp::List >(rcpp_result_gen);
     }
 
+    inline Rcpp::List nuisance_poisson_checked_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& Prior, const Eigen::Map<Eigen::MatrixXd>& Start, int maxit = 60, double tol = 1e-8, int nthreads = 4) {
+        typedef SEXP(*Ptr_nuisance_poisson_checked_cpp)(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_nuisance_poisson_checked_cpp p_nuisance_poisson_checked_cpp = NULL;
+        if (p_nuisance_poisson_checked_cpp == NULL) {
+            validateSignature("Rcpp::List(*nuisance_poisson_checked_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int,double,int)");
+            p_nuisance_poisson_checked_cpp = (Ptr_nuisance_poisson_checked_cpp)R_GetCCallable("L0glm", "_L0glm_nuisance_poisson_checked_cpp");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_nuisance_poisson_checked_cpp(Shield<SEXP>(Rcpp::wrap(B)), Shield<SEXP>(Rcpp::wrap(Y)), Shield<SEXP>(Rcpp::wrap(Signal)), Shield<SEXP>(Rcpp::wrap(Prior)), Shield<SEXP>(Rcpp::wrap(Start)), Shield<SEXP>(Rcpp::wrap(maxit)), Shield<SEXP>(Rcpp::wrap(tol)), Shield<SEXP>(Rcpp::wrap(nthreads)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<Rcpp::List >(rcpp_result_gen);
+    }
+
     inline Eigen::VectorXd nuisance_poisson_deviance_cpp(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Mu, const Eigen::Map<Eigen::MatrixXd>& W, int nthreads = 4) {
         typedef SEXP(*Ptr_nuisance_poisson_deviance_cpp)(SEXP,SEXP,SEXP,SEXP);
         static Ptr_nuisance_poisson_deviance_cpp p_nuisance_poisson_deviance_cpp = NULL;

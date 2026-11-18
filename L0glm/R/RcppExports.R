@@ -85,6 +85,10 @@ nuisance_poisson_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 
     .Call('_L0glm_nuisance_poisson_cpp', PACKAGE = 'L0glm', B, Y, Signal, Prior, Start, maxit, tol, nthreads)
 }
 
+nuisance_poisson_checked_cpp <- function(B, Y, Signal, Prior, Start, maxit = 60L, tol = 1e-8, nthreads = 4L) {
+    .Call('_L0glm_nuisance_poisson_checked_cpp', PACKAGE = 'L0glm', B, Y, Signal, Prior, Start, maxit, tol, nthreads)
+}
+
 nuisance_poisson_deviance_cpp <- function(Y, Mu, W, nthreads = 4L) {
     .Call('_L0glm_nuisance_poisson_deviance_cpp', PACKAGE = 'L0glm', Y, Mu, W, nthreads)
 }

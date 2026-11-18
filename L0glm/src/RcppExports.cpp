@@ -410,6 +410,47 @@ RcppExport SEXP _L0glm_nuisance_poisson_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalS
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// nuisance_poisson_checked_cpp
+Rcpp::List nuisance_poisson_checked_cpp(const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Signal, const Eigen::Map<Eigen::MatrixXd>& Prior, const Eigen::Map<Eigen::MatrixXd>& Start, int maxit, double tol, int nthreads);
+static SEXP _L0glm_nuisance_poisson_checked_cpp_try(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Signal(SignalSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Prior(PriorSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Start(StartSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuisance_poisson_checked_cpp(B, Y, Signal, Prior, Start, maxit, tol, nthreads));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _L0glm_nuisance_poisson_checked_cpp(SEXP BSEXP, SEXP YSEXP, SEXP SignalSEXP, SEXP PriorSEXP, SEXP StartSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP nthreadsSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_L0glm_nuisance_poisson_checked_cpp_try(BSEXP, YSEXP, SignalSEXP, PriorSEXP, StartSEXP, maxitSEXP, tolSEXP, nthreadsSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // nuisance_poisson_deviance_cpp
 Eigen::VectorXd nuisance_poisson_deviance_cpp(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& Mu, const Eigen::Map<Eigen::MatrixXd>& W, int nthreads);
 static SEXP _L0glm_nuisance_poisson_deviance_cpp_try(SEXP YSEXP, SEXP MuSEXP, SEXP WSEXP, SEXP nthreadsSEXP) {
@@ -828,6 +869,7 @@ static int _L0glm_RcppExport_validate(const char* sig) {
     static std::set<std::string> signatures;
     if (signatures.empty()) {
         signatures.insert("Rcpp::List(*nuisance_poisson_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int,double,int)");
+        signatures.insert("Rcpp::List(*nuisance_poisson_checked_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int,double,int)");
         signatures.insert("Eigen::VectorXd(*nuisance_poisson_deviance_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,int)");
         signatures.insert("Eigen::VectorXd(*nuisance_quadratic_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::VectorXd>&,Rcpp::LogicalVector)");
         signatures.insert("Rcpp::List(*nuisance_gaussian_cpp)(const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,const Eigen::Map<Eigen::MatrixXd>&,Rcpp::LogicalVector,int)");
@@ -838,6 +880,7 @@ static int _L0glm_RcppExport_validate(const char* sig) {
 // registerCCallable (register entry points for exported C++ functions)
 RcppExport SEXP _L0glm_RcppExport_registerCCallable() { 
     R_RegisterCCallable("L0glm", "_L0glm_nuisance_poisson_cpp", (DL_FUNC)_L0glm_nuisance_poisson_cpp_try);
+    R_RegisterCCallable("L0glm", "_L0glm_nuisance_poisson_checked_cpp", (DL_FUNC)_L0glm_nuisance_poisson_checked_cpp_try);
     R_RegisterCCallable("L0glm", "_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC)_L0glm_nuisance_poisson_deviance_cpp_try);
     R_RegisterCCallable("L0glm", "_L0glm_nuisance_quadratic_cpp", (DL_FUNC)_L0glm_nuisance_quadratic_cpp_try);
     R_RegisterCCallable("L0glm", "_L0glm_nuisance_gaussian_cpp", (DL_FUNC)_L0glm_nuisance_gaussian_cpp_try);
@@ -867,6 +910,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solver_sparse_workspace_cpp", (DL_FUNC) &_L0glm_solver_sparse_workspace_cpp, 3},
     {"_L0glm_ridge_matrixfree_cpp", (DL_FUNC) &_L0glm_ridge_matrixfree_cpp, 8},
     {"_L0glm_nuisance_poisson_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_cpp, 8},
+    {"_L0glm_nuisance_poisson_checked_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_checked_cpp, 8},
     {"_L0glm_nuisance_poisson_deviance_cpp", (DL_FUNC) &_L0glm_nuisance_poisson_deviance_cpp, 4},
     {"_L0glm_nuisance_quadratic_cpp", (DL_FUNC) &_L0glm_nuisance_quadratic_cpp, 3},
     {"_L0glm_nuisance_gaussian_cpp", (DL_FUNC) &_L0glm_nuisance_gaussian_cpp, 7},
