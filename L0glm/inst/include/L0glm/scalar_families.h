@@ -110,6 +110,19 @@ inline Terms derivatives(double y,double mu,int family,double phi,double theta,d
   return terms(y,mu,family,phi,theta,censor);
 }
 
+// Score/Fisher callers do not need a density normalizer. Keep derivatives()
+// unchanged for callers that also use its loss field.
+inline Terms derivatives_only(double y,double mu,int family,double phi,double theta,double censor) {
+  if(std::isfinite(mu) && mu>0) {
+    if(family==0)return {0,(mu-y)/phi,1/phi};
+    if(family==1 || family==2) {
+      const double scale=family==2?phi:1;
+      return {0,(1-y/mu)/scale,1/(scale*mu)};
+    }
+  }
+  return derivatives(y,mu,family,phi,theta,censor);
+}
+
 inline double change(double y, double old, double next, int f, double phi, double theta, double censor) {
   if (next == old) return 0;
   if (next < 0 || !std::isfinite(next)) return R_PosInf;

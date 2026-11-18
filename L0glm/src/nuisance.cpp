@@ -66,6 +66,22 @@ Rcpp::List nuisance_poisson_cpp(const Eigen::Map<Eigen::MatrixXd>& B,const Eigen
       const double mean=prior.sum()>0 ? prior.dot(y)/prior.sum() : 0;
       a.array()+=std::max(1e-8,mean*.01);mu=signal+B*a;old=sx_b_loss(y,mu,prior);
     }
+    // A fixed conditional model may already satisfy the same KKT tolerance
+    // used after Newton updates. Avoid refactorising an unchanged solution.
+    VectorXd derivative_initial(n);
+    for(int i=0;i<n;++i)
+      derivative_initial[i]=prior[i]*(1-y[i]/std::max(mu[i],std::numeric_limits<double>::epsilon()));
+    const VectorXd gradient_initial=B.transpose()*derivative_initial;
+    double initial_residual=0,output_residual=0,output_scale=1;
+    for(int j=0;j<q;++j) {
+      const double r=a[j]>0 ? std::abs(gradient_initial[j]) : std::max(0.0,-gradient_initial[j]);
+      initial_residual=std::max(initial_residual,r/gradient_scale[j]);
+      output_residual=std::max(output_residual,r);output_scale=std::max(output_scale,gradient_scale[j]);
+    }
+    if(initial_residual<tol) {
+      coefficients.col(channel)=a;background.col(channel)=B*a;
+      kkt[channel]=output_residual/output_scale;continue;
+    }
     for(int iter=0;iter<maxit;++iter) {
       iterations[channel]=iter+1;
       VectorXd w(n),score(n);

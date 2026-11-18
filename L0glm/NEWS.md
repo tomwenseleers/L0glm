@@ -1,4 +1,4 @@
-# L0glm 0.2.0.9002
+# L0glm 0.2.0.9003
 
 ## Sparse generalized linear models
 
@@ -119,6 +119,10 @@
   Optional feasible starting values accelerate repeated quadratic subproblems.
 * Conditional Poisson refits reuse their preceding active sets and cache fixed
   gradient scales; sparse weighted products accelerate local profile designs.
+  An entry KKT check returns an already stationary background without another
+  Newton solve, using the existing convergence tolerance. Shared scalar kernels
+  also provide density-free derivatives while retaining likelihood normalizers
+  for absolute scores and information criteria.
 
 ## High-dimensional and multichannel computation
 

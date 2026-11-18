@@ -49,3 +49,18 @@ test_that("localized Poisson refits support shared weights and collinear profile
    expect_lte(objective(a$coefficients[,j]),reference$value+1e-6)
  }
 })
+
+test_that("stationary conditional Poisson backgrounds need no Newton step", {
+ n<-80L;B<-unname(splines::bs(seq(0,1,length.out=n),df=5L,intercept=TRUE))
+ signal<-matrix(1,n,3L);Y<-cbind(rep(2,n),rep(0,n),rep(4,n))
+ start<-cbind(rep(1,ncol(B)),rep(0,ncol(B)),rep(1,ncol(B)))
+ W<-matrix(seq(.5,1.5,length.out=n),n,1L)
+ fit<-L0glm:::nuisance_poisson_cpp(B,Y,signal,W,start,80L,1e-8,1L)
+ threaded<-L0glm:::nuisance_poisson_cpp(B,Y,signal,W,start,80L,1e-8,4L)
+ expect_identical(fit,threaded)
+ expect_equal(fit$iterations[1:2],c(0,0))
+ expect_identical(fit$coefficients[,1:2],start[,1:2])
+ expect_gt(fit$iterations[3],0)
+ expect_lt(max(fit$kkt),1e-8)
+ expect_equal(fit$background[,3],rep(3,n),tolerance=1e-7)
+})
