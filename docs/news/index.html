@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">L0glm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9002</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0.9004</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,9 +52,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0.9002" id="l0glm-0209002">L0glm 0.2.0.9002<a class="anchor" aria-label="anchor" href="#l0glm-0209002"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0.9004" id="l0glm-0209004">L0glm 0.2.0.9004<a class="anchor" aria-label="anchor" href="#l0glm-0209004"></a></h2>
 <div class="section level3">
-<h3 id="sparse-generalized-linear-models-0-2-0-9002">Sparse generalized linear models<a class="anchor" aria-label="anchor" href="#sparse-generalized-linear-models-0-2-0-9002"></a></h3>
+<h3 id="sparse-generalized-linear-models-0-2-0-9004">Sparse generalized linear models<a class="anchor" aria-label="anchor" href="#sparse-generalized-linear-models-0-2-0-9004"></a></h3>
 <ul><li><p><code>l0glmFit(relaxed=TRUE)</code> is again available as an explicit opt-in post-selection refit. It removes the adaptive L0 penalty on the selected support while preserving constraints, starting-zero exclusions and mandatory terms; grouped multichannel fits may reopen eligible entries within selected rows but cannot add predictor rows. The default remains <code>relaxed=FALSE</code>. Set <code>local.search=FALSE</code> for a strict selection-then-refit sequence. Explicit relaxed requests are retained through SIS/ISIS screening and generated-interaction fits rather than being silently discarded. <code><a href="../reference/l0glmTune.html">l0glmTune()</a></code> continues to score penalized candidates and asks users to apply any relaxed refit after choosing a penalty.</p></li>
 <li><p><code>controlSolverGen(nonnegative.method=...)</code> selects <code>"clamp"</code> or <code>"constrained"</code> working ridge solves across Eigen, OSQP and <code>bigGlm</code>. Defaults are <code>"clamp"</code> for Eigen and <code>"constrained"</code> for OSQP/<code>bigGlm</code>. Bounds, free intercepts, normalization, prior means and numerical guards are preserved. Eigen constrained polishing reuses eligible Gram systems; LSCG also corrects rectangular and wide proposals with an on-demand, memory-checked predictor Gram matrix. Its LLT fallback remains available.</p></li>
 <li><p>Gram and factor workspaces are checked against a configurable memory budget. CG/LSCG can use implicit ridge products with a fresh coefficient-space residual check; oversized incomplete Cholesky switches to diagonal preconditioning. Dispersion pilots support matrix-free solves, and LLT fallbacks are guarded. Fixed-weight multichannel fits share a common immutable Gram matrix. The same allocation checks cover serial special-family solver adapters and adaptive-ridge dispersion pilots. Failed sparse preflight checks count unique Gram overlaps and symbolic Cholesky fill before rejecting a fit, with a bounded probe and allowances for copies and work arrays. The Poisson Woodbury check handles unpenalized background columns separately. Banded convolution designs can therefore use concurrent native channels without an artificial dense-workspace limit.</p></li>
@@ -64,7 +64,7 @@
 <li><p>NB1, common-scale Gamma and censored Gamma signal models; quasi families expose scaled likelihood kernels and quasi-information criteria.</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="model-specification-and-selection-0-2-0-9002">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9002"></a></h3>
+<h3 id="model-specification-and-selection-0-2-0-9004">Model specification and selection<a class="anchor" aria-label="anchor" href="#model-specification-and-selection-0-2-0-9004"></a></h3>
 <ul><li><p>Fixed-noise tuning endpoints use certified nonzero probes to avoid completing unnecessary local searches. Returned grid fits retain full refinement, independent starts and unchanged scoring. Correlated Poisson path examples illustrate the common <code>start="pilot"</code> option.</p></li>
 <li><p>Predictor-variable groups use norm-based block L0 penalties, with group 0 unpenalized, dimension-calibrated IC presets, explicit numeric group costs, group-aware thresholding, guarded support refits and cross-validation. Recognized scalar-family predictor groups use native IRLS with OpenMP channel solves and predictions, preserving initialization, penalties and convergence; custom/special-family and validation adapters retain their structured driver. Dense Gaussian groups reuse bounded weighted cross-products; standard group fits cache current/trial predictions and skip fixed-scale updates. Dense ridge diagonals are updated directly, preserving sparse and Woodbury solver paths.</p></li>
 <li><p>Staged interaction selection generates products among selected main effects: <code>interactions=1L</code> for pairwise and <code>2L</code> for up to three-way terms. Prediction reconstructs products from original columns, and CV repeats candidate generation independently within every training fold.</p></li>
@@ -75,10 +75,10 @@
 <li><p>Constrained updates for nonnegative compulsory terms and relaxed-fit boundary checks use the specified likelihood.</p></li>
 <li><p>Optional final support refinement tests additions, deletions and small exchanges after SIS/ISIS and original-channel refitting. It supports the ordinary and special families, respects starting exclusions and constraints, and is available within information-criterion tuning and CV training fits. The default <code>local.search="auto"</code> applies it to initial supports of at most 50 coefficient dimensions, preserving one-iteration ridge pilots and unpenalized fits. <code>FALSE</code> disables refinement. Screened searches operate directly on the retained candidate pool while preserving original-dimension coefficients and information criteria.</p></li>
 <li><p>The shared native quadratic solver offers checked Cholesky solves with iterative refinement and a rank-revealing fallback for profile-shape updates. Optional feasible starting values accelerate repeated quadratic subproblems.</p></li>
-<li><p>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs.</p></li>
+<li><p>Conditional Poisson refits reuse their preceding active sets and cache fixed gradient scales; sparse weighted products accelerate local profile designs. A checked interface lets coupled clients reuse a stationary background with the existing KKT tolerance. Ordinary conditional refits retain their initialization and Newton-update sequence. Shared scalar kernels also provide density-free derivatives while retaining likelihood normalizers for absolute scores and information criteria.</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="high-dimensional-and-multichannel-computation-0-2-0-9002">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0-9002"></a></h3>
+<h3 id="high-dimensional-and-multichannel-computation-0-2-0-9004">High-dimensional and multichannel computation<a class="anchor" aria-label="anchor" href="#high-dimensional-and-multichannel-computation-0-2-0-9004"></a></h3>
 <ul><li>Dense and sparse designs and tall or wide systems. A native scalar-family driver performs initialization, dispersion updates and grouped/relaxed passes. All Eigen solvers share their kernels with the R interfaces and parallelize channels through OpenMP. OSQP and <code>bigGlm</code> use the native driver with their R-facing solver interfaces on the main R thread. <code>ncores</code> controls native outcome-channel threading, with one thread for serial execution. Custom R family/link callbacks stay serial, and no process workers are created. Serial callbacks and solver bridges use <code>ncores</code> as their default BLAS budget; explicit <code>nthreads</code> overrides it. OpenMP channel fits limit BLAS to one thread per channel, restoring the caller’s settings on return.</li>
 <li>Native fits share one prepared working design across outcome channels. Automatic sparse routing compresses large exact-zero dense designs once, retaining the original input/output storage and explicit dense routing. Selected designs, fixed-weight crossproducts and sparse symbolic Cholesky patterns are reused without changing the fitted objective or support rules. Required sparse external-solver boundaries also reuse the packed design.</li>
 <li>CG defaults to incomplete Cholesky preconditioning for dense and sparse systems. <code>controlSolverGen("eigen", 3L, precond=1L)</code> selects diagonal preconditioning; <code>precond=0L</code> disables it. Dense matrix operators remain dense.</li>
@@ -92,7 +92,7 @@
 <li>Size-adjusted Poisson and scalar-family likelihood clustering with native distances, pooled-likelihood merge costs and IC-scored cuts.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="memory-bounded-data-access-0-2-0-9002">Memory-bounded data access<a class="anchor" aria-label="anchor" href="#memory-bounded-data-access-0-2-0-9002"></a></h3>
+<h3 id="memory-bounded-data-access-0-2-0-9004">Memory-bounded data access<a class="anchor" aria-label="anchor" href="#memory-bounded-data-access-0-2-0-9004"></a></h3>
 <ul><li>Read-only native screening of double-precision bigmemory backing files avoids intermediate R design copies, with deterministic OpenMP reductions and exact agreement with resident screening across ordinary and special families.</li>
 <li>
 <code><a href="../reference/l0glmData.html">l0glmData()</a></code> provides lazy subsets of bigmemory, delayed/HDF5 single-cell assays and PLINK BED/PGEN designs. VCF input supports an explicit PLINK 2 conversion cache, including expected dosages.</li>
@@ -102,7 +102,7 @@
 <li>Native file-backed LASSO through optional biglasso reuses double bigmemory designs across training/CV row views. Gaussian, logistic, grouped Gaussian and Breslow Cox paths use the common likelihood scoring, IC selection and CV.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="simulation-comparison-and-interpretation-0-2-0-9002">Simulation, comparison and interpretation<a class="anchor" aria-label="anchor" href="#simulation-comparison-and-interpretation-0-2-0-9002"></a></h3>
+<h3 id="simulation-comparison-and-interpretation-0-2-0-9004">Simulation, comparison and interpretation<a class="anchor" aria-label="anchor" href="#simulation-comparison-and-interpretation-0-2-0-9004"></a></h3>
 <ul><li>
 <code><a href="../reference/sparseGLM.html">sparseGLM()</a></code> compares supported sparse-regression methods with common likelihood, prediction, coefficient and support-recovery metrics and timings. Shared SIS/ISIS options screen every adapter, with method-specific ISIS offsets, original-dimension coefficients and training-only screening for CV.</li>
 <li>Prediction, fitted-value, summary, likelihood and information-criterion methods, including within-row multichannel sparsity metrics.</li>
