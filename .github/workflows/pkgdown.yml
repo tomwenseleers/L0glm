@@ -39,7 +39,7 @@ jobs:
           needs: website
       - name: Build pkgdown site and evaluate tutorials
         run: Rscript L0glm/pkgdown/build.R
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
   deploy:
@@ -53,7 +53,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Publish site
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
