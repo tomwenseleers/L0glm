@@ -30,7 +30,7 @@ L0glm_bootstrap_inference <- function(object,control) {
   for(b in seq_len(control$nboot)) {
     started <- proc.time()[['elapsed']]
     rows <- sample.int(n,n,replace=TRUE);args <- options
-    for(name in c('weights','offset'))if(!is.null(args[[name]]) && length(args[[name]])>1L)
+    for(name in c('weights','offset','mustart','etastart'))if(!is.null(args[[name]]) && length(args[[name]])>1L)
       args[[name]] <- if(is.null(dim(args[[name]])))args[[name]][rows]else args[[name]][rows,,drop=FALSE]
     if(!is.null(args$family))args$family <- L0glm_copy_family(args$family)
     args$X <- X[rows,,drop=FALSE];args$y <- y[rows,,drop=FALSE]

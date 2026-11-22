@@ -1,8 +1,8 @@
 Package: L0glm
 Type: Package
 Title: Scalable L₀ and Grouped L₀-Penalized Variable Selection for Generalized Linear Models
-Version: 0.2.0.9004
-Date: 2026-11-01
+Version: 0.2.0.9005
+Date: 2026-11-22
 Authors@R: c(person("Tom", "Wenseleers", role = c("aut", "cre"),
     	     email = "tom.wenseleers@kuleuven.be"),
     	     person("Laura", "Lanzas", role = c("aut"),

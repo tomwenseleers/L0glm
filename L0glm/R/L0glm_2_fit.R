@@ -141,6 +141,16 @@
 #'   \code{family$dispersion}. See Details for initialization and updating.
 #'   See \link{dispersion_calibration} for the Pearson update and the
 #'   additional pilots for eligible Gaussian and negative-binomial fits.
+#' @param mustart,etastart Optional initial fitted means or complete linear
+#'   predictors (including the offset) for IRLS. Supply a scalar, one value
+#'   per observation, or an observation-by-channel matrix. A single column
+#'   applies to every channel. \code{etastart} takes precedence over
+#'   \code{mustart}. Both can be used with \code{start}, which initializes the
+#'   adaptive penalties and determines coefficient eligibility. With both
+#'   observation starts omitted the usual family initialization is retained.
+#'   Multinomial means are strictly positive category probabilities with row
+#'   sums of one, and predictors are logits with one column per category.
+#'   Cox means are positive relative risks and predictors are log relative risks.
 #' @param start \code{NULL} (default) requests automatic initialization.
 #'   Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
 #'   negative binomial) with nonnegative designs and a compulsory background or known
@@ -702,7 +712,8 @@
 #' would exceed that budget; direct factorizations and LLT fallbacks are guarded.
 #'
 #' \subsection{Shared numerical safeguards}{
-#' Ordinary GLMs start their working model with \code{family$initialize}. Each ridge solve
+#' Ordinary GLMs start their working model with \code{family$initialize} unless
+#' an initial working mean or predictor is supplied. Each ridge solve
 #' proposes a coefficient update, followed by a shared backtracking check.
 #' Dispersion and adaptive ridge penalties \eqn{d_j} are held fixed during
 #' this check. For ordinary GLMs its target is
@@ -996,7 +1007,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
                       control.precluster = list(),
                       local.search = "auto",
                       control.local = list(), group = NULL, group.multiplier = NULL,
-                      interactions = 0L, control.interactions = list()) {
+                      interactions = 0L, control.interactions = list(),
+                      mustart = NULL, etastart = NULL) {
   if(inherits(X,'L0glm_data') && as.double(nrow(X))*ncol(X)<=X$control$max.cells && tolower(screen)%in%c('auto','none') &&
       (tolower(screen)=='none'||ncol(X)<=10*nrow(X)))X <- L0glm_data_matrix(X)
   interactions <- L0glm_interaction_order(interactions)
@@ -1127,7 +1139,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       if (missing(intercept)) kind == "multinomial" else intercept,
       always.include, nonnegative, normalize, solver, method, serial_threads, maxit,
       grouped, relaxed,
-      prior.mean, thresh, tol, control.solver, control.family, validation, ncores = ncores)
+      prior.mean, thresh, tol, control.solver, control.family, validation, ncores = ncores,
+      mustart = mustart, etastart = etastart)
     fit$dispersionCalibration <- nb_pilot$diagnostic
     return(fit)
   }
@@ -1145,7 +1158,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       !is.null(L0glm_native_family(family))) {
     return(L0glm_internal_pois(
       X = X, y = y, weights = weights, family = family,
-      dispersion = dispersion, start = start, offset = offset,
+      dispersion = dispersion, start = start, offset = offset, mustart = mustart, etastart = etastart,
       lambda = lambda, intercept = intercept, always.include = always.include,
       normalize = normalize, solver = solver, method = method,
       ncores = ncores, nthreads = nthreads,
@@ -1172,6 +1185,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
   n   = nrow(X)
   p   = ncol(X)
   m   = ncol(y)
+  working_start <- L0glm_working_start(mustart, etastart, family, n, m)
   
   # Coerce X to dgCMatrix if sparse -----------------------------------------
   if (issparse(X)) {
@@ -1312,7 +1326,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
           channels <- lapply(seq_len(m), function(col) {
             L0glm.fit.internal(X = X[, vars, drop = FALSE],
               y = y[, col, drop = FALSE], weights = L0glm_observation_column(weights,col),
-              family = family, lambda = lambda,
+              family = family, lambda = lambda, etastart = L0glm_start_column(working_start, col),
               hard_threshold = hard_threshold, normalize = normalize,
               preprocessing = L0glm_subset_preprocessing(preprocessing, vars),
               offset = L0glm_observation_column(offset,col), prior.mean = prior.mean[vars, col],
@@ -1348,6 +1362,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       }
       for (iter in seq_len(group.maxit)) {
         if (iter > 1L) {
+          if (!is.null(working_start)) working_start <- as.matrix(X %*% fit$coefficients) +
+            L0glm_observation_broadcast(offset)
           support <- group_support_start(fit$coefficients)
           vars <- support$vars
           start <- support$start
@@ -1374,6 +1390,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
       if (!is.null(validation)) fit <- validation_track$best$fit
 
       if (relaxed) {
+        if (!is.null(working_start)) working_start <- as.matrix(X %*% fit$coefficients) +
+          L0glm_observation_broadcast(offset)
         disp_list <- as_list(next_dispersion(fit$dispersion))
         support <- group_support_start(fit$coefficients)
         eligible <- if(is.null(allowed))matrix(TRUE,length(support$vars),m)else allowed[support$vars,,drop=FALSE]
@@ -1428,6 +1446,7 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
     # =======================================================================
     fit <- L0glm.fit.internal(X          = X,
                               y          = as.vector(y),
+                              etastart   = L0glm_start_column(working_start, 1L),
                               weights    = weights,
                               family     = family,
                               normalize   = normalize,
@@ -1477,6 +1496,8 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
         if(!is.null(refit_validation)) refit_validation$refit_baseline <- matrix(coefficients[vars],ncol=1L)
         fit     <- L0glm.fit.internal(X          = X[, vars, drop = FALSE],
                                       y          = y,
+                                      etastart   = if (!is.null(working_start))
+                                        as.numeric(X %*% coefficients) + offset,
                                       weights    = weights,
                                       family     = family,
                                       normalize   = normalize,

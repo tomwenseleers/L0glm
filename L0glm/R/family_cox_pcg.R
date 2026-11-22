@@ -91,6 +91,17 @@ L0glm_ext_cox_working <- function(data, B, D, state, args) {
   if (mode == "pcg" && !unrestricted)
     stop('Cox cox="pcg" requires solver="eigen" and unrestricted coefficients.', call. = FALSE)
   stats <- L0glm_ext_cox_stats(data, B)
+  if (!is.null(data$working_start)) {
+    eta <- stats$eta
+    stats <- L0glm_ext_cox_eta(data$working_start[, 1L], data$response,
+      data$weights[, 1L], data$cox.cache)
+    delta <- stats$eta - eta
+    risk <- cumsum(stats$e * delta)[stats$ends]
+    a <- ifelse(stats$S0 > 0, stats$d * risk / stats$S0^2, 0)
+    stats$score <- stats$score + stats$q * delta - stats$e * rev(cumsum(rev(a)))[stats$group]
+    # Direct wide, primal and PCG solves now share the same shifted score.
+    stats$eta <- eta
+  }
   cutoff <- data$control$cox.llt.max
   if (length(cutoff) > 1L) cutoff <- cutoff[if (inherits(data$Z, "sparseMatrix")) "sparse" else "dense"]
   # Avoid the wide eigensystem and large temporary risk-mean arrays in auto mode.

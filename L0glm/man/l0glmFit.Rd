@@ -45,7 +45,9 @@ l0glmFit(
   group = NULL,
   group.multiplier = NULL,
   interactions = 0L,
-  control.interactions = list()
+  control.interactions = list(),
+  mustart = NULL,
+  etastart = NULL
 )
 }
 \arguments{
@@ -115,6 +117,17 @@ values are invalid. Poisson, binomial and negative binomial with known
 \code{family$dispersion}. See Details for initialization and updating.
 See \link{dispersion_calibration} for the Pearson update and the
 additional pilots for eligible Gaussian and negative-binomial fits.}
+
+\item{mustart, etastart}{Optional initial fitted means or complete linear
+predictors (including the offset) for IRLS. Supply a scalar, one value
+per observation, or an observation-by-channel matrix. A single column
+applies to every channel. \code{etastart} takes precedence over
+\code{mustart}. Both can be used with \code{start}, which initializes the
+adaptive penalties and determines coefficient eligibility. With both
+observation starts omitted the usual family initialization is retained.
+Multinomial means are strictly positive category probabilities with row
+sums of one, and predictors are logits with one column per category.
+Cox means are positive relative risks and predictors are log relative risks.}
 
 \item{start}{\code{NULL} (default) requests automatic initialization.
 Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
@@ -892,7 +905,8 @@ the pilot. CG/LSCG also use implicit ridge products when their working Gram
 would exceed that budget; direct factorizations and LLT fallbacks are guarded.
 
 \subsection{Shared numerical safeguards}{
-Ordinary GLMs start their working model with \code{family$initialize}. Each ridge solve
+Ordinary GLMs start their working model with \code{family$initialize} unless
+an initial working mean or predictor is supplied. Each ridge solve
 proposes a coefficient update, followed by a shared backtracking check.
 Dispersion and adaptive ridge penalties \eqn{d_j} are held fixed during
 this check. For ordinary GLMs its target is

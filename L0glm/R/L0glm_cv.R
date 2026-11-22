@@ -70,6 +70,8 @@ L0glm_cross_validate <- function(args, design, lambdas, foldid, family, mu_floor
     train_args$y <- args$y[training, , drop = FALSE]
     train_args$weights <- args$weights[training, , drop = FALSE]
     train_args$offset <- args$offset[training, , drop = FALSE]
+    for (name in c("mustart", "etastart"))
+      train_args[[name]] <- L0glm_start_rows(args[[name]], training)
     initialization <- if (is.null(pilot_bounds)) list(start = args$start, pilot = NULL) else
       L0glm_pilot_start(train_args, pilot_bounds * fractions[k])
     train_args$start <- initialization$start

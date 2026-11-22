@@ -1,3 +1,11 @@
+# L0glm 0.2.0.9005
+
+* `l0glmFit()` accepts `mustart` and `etastart` for the first working
+  regression. For example, a nonnegative identity-link Poisson fit can use
+  `start = B` and `mustart = offset + X %*% B` to initialize both the
+  adaptive weights and the fitted ion counts. A shared observation column
+  can initialize multiple outcome channels.
+
 # L0glm 0.2.0.9004
 
 ## Sparse generalized linear models

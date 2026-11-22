@@ -40,7 +40,7 @@ L0glm.fit.internal = function(X,
                               verbose = FALSE,
                               hard_threshold = TRUE,
                               preprocessing = NULL,
-                              validation = NULL) {
+                              validation = NULL, etastart = NULL) {
 
   ## 1. sanity checks ---------------------------------------------------------
   control.solver <- L0glm_solver_memory(control.solver)
@@ -141,14 +141,13 @@ L0glm.fit.internal = function(X,
   initexpr  <- family$initialize    # initialisation expression to initialise mustart (predictions on response scale u) and n (nr of observations) and m (total nr of trials) for binomial data
   
   ## set mustart (and possibly n & m), requires nobs and nvars to be preset
-  etastart <- NULL
   mustart <- NULL
   eval(initexpr)                          # initialise mustart and n and m (total counts) for binomial
   n_positive <- sum(is.finite(weights) & weights > 0)
   # n <- nobs
   
-  eta <- linkfun(mustart)                 # g(mu)  on link scale
-  mu  <- mustart                          # on response scale
+  eta <- if (is.null(etastart)) linkfun(mustart) else etastart
+  mu  <- if (is.null(etastart)) mustart else linkinv(eta)
   # The compiled driver shares these checked conventions and family expressions.
   # It owns coefficient starts, dispersion preparation and all fitting passes.
   if (isTRUE(control.solver$.native.context)) return(environment())

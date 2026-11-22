@@ -42,7 +42,7 @@ L0glm_ext_nb_mean <- function(data, B) {
 L0glm_ext_nb_working <- function(data, B, D, state, args) {
   native <- L0glm_extended_native(data,B,is.finite(D),state,0,FALSE,0,1L,1e-10,args,D=D)
   if(!is.null(native))return(native)
-  mean <- L0glm_ext_nb_mean(data, B)
+  mean <- L0glm_ext_working_mean(data, B)
   answer <- B
   for (j in seq_len(data$m)) {
     eta <- mean$eta[, j]
@@ -59,6 +59,12 @@ L0glm_ext_nb_working <- function(data, B, D, state, args) {
       D[, j], B[, j], data$lower, data$prior[, j], args)
   }
   answer
+}
+
+L0glm_ext_working_mean <- function(data, B) {
+  eta <- data$working_start
+  if (is.null(eta)) return(L0glm_ext_nb_mean(data, B))
+  list(eta = eta, mu = matrix(data$family$linkinv(eta), data$n, data$m))
 }
 
 # A projected Fisher-diagonal step is a feasible descent direction when the

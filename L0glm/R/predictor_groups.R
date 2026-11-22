@@ -252,7 +252,8 @@ L0glm_group_fit <- function(args, gaussian.pilot=FALSE) {
     return(L0glm_validated_fit(args))
   if(args$intercept)include <- include+1L
   data <- L0glm_ext_prepare(args$X,args$y,family,args$weights,args$offset,args$intercept,
-    include,args$nonnegative,args$normalize,args$start,args$prior.mean,args$control.family,kind=kind)
+    include,args$nonnegative,args$normalize,args$start,args$prior.mean,args$control.family,kind=kind,
+    mustart=args$mustart,etastart=args$etastart)
   data$p_selectable <- L0glm_criterion_size(data$p_selectable,args$control.solver)
   data$fixed.dispersion <- isTRUE(args$control.solver$.dispersion.fixed)
   structural <- which(L0glm_moments(data$Z)$ss==0)

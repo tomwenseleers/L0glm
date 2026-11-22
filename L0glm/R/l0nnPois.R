@@ -29,7 +29,8 @@ l0nnPois <- function(X,
                      control.precluster = list(),
                      local.search = "auto",
                      control.local = list(), group = NULL, group.multiplier = NULL,
-                     interactions = 0L, control.interactions = list()) {
+                     interactions = 0L, control.interactions = list(),
+                     mustart = NULL, etastart = NULL) {
   interactions <- L0glm_interaction_order(interactions)
   if(inherits(X,'L0glm_data'))X <- L0glm_data_matrix(X)
   if(interactions>0L) {
@@ -131,6 +132,7 @@ l0nnPois <- function(X,
   n <- nrow(X)
   p0 <- ncol(X)
   m <- ncol(y)
+  working_start <- L0glm_working_start(mustart, etastart, family, n, m)
   if (!identical(nrow(y), n)) {
     stop("nrow(y) must equal nrow(X).", call. = FALSE)
   }
@@ -227,7 +229,7 @@ l0nnPois <- function(X,
   }
   thread_state <- L0glm_set_thread_count(if(ncores>1L)1L else nthreads)
   if(!is.null(thread_state))on.exit(L0glm_restore_thread_count(thread_state),add=TRUE)
-  if (is.null(start) && maxit > 1L && any(offset != 0))
+  if (is.null(working_start) && is.null(start) && maxit > 1L && any(offset != 0))
     start <- L0glm_signal_start(X,y,offset,weights,always.include,prior.mean,ncores)
   allowed <- if (is.null(start)) NULL else start != 0
   if (!is.null(allowed)) allowed[always.include, ] <- TRUE
@@ -247,14 +249,14 @@ l0nnPois <- function(X,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation,isTRUE(control.solver$.refit.only),
-      identical(control.solver$nonnegative.method, "constrained"))
+      identical(control.solver$nonnegative.method, "constrained"), working_start)
   } else {
     fit <- L0nnpois_dense_cpp(
       working$X, y, weights, offset, prior.mean, start, always.include,
       lambda, normalization_code, preprocessing$scale, grouped, relaxed, as.integer(group.maxit),
       as.integer(maxit), thresh, tol, ncores,
       natural_ordering, validation,isTRUE(control.solver$.refit.only),
-      identical(control.solver$nonnegative.method, "constrained"))
+      identical(control.solver$nonnegative.method, "constrained"), working_start)
   }
 
   coefficients <- fit$coefficients

@@ -304,6 +304,9 @@ L0glm_precluster_fit<-function(X,y,options,fit.fun,supplied=character()) {
     opt$dispersion<-1
   opt$weights<-if(kind=="gaussian") outer(rep_len(w,n),sizes_by_group) else if(!is.null(options$weights)) w
   opt$offset<-if(is.null(options$offset)) NULL else L0glm_precluster_offset(options$offset,n,m,P)
+  # All supported precluster families use the identity link.
+  for (name in c("mustart", "etastart"))
+    if (!is.null(options[[name]])) opt[[name]] <- L0glm_precluster_offset(options[[name]], n, m, P)
   opt$start<-L0glm_precluster_sumcoef(original_start,P);opt$prior.mean<-L0glm_precluster_sumcoef(prior,P)
   opt$validation<-if(refit) NULL else L0glm_precluster_validation(options$validation,group=group,groups=P,
     family=opt$family,dispersion=opt$dispersion)

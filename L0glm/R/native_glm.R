@@ -52,6 +52,7 @@ L0glm_native_context <- function(env,family) {
   context <- mget(fields,env,inherits=FALSE)
   for(name in fields[seq_len(9L)]) context[[name]] <- as.numeric(context[[name]])
   context$auto_beta <- is.null(env$start);context$auto_phi <- is.null(env$dispersion)
+  context$user_predictor <- !is.null(env$etastart)
   context$fixed_scale <- isTRUE(env$control.solver$.dispersion.fixed)
   context$beta <- if(is.null(env$start)) numeric(ncol(env$X)) else as.numeric(env$start)
   context$dispersion <- if(is.null(env$dispersion)) NA_real_ else as.numeric(env$dispersion)
@@ -124,6 +125,7 @@ L0glm_native_model <- function(frame,descriptor,ncores=1L) {
   for(col in seq_len(m)) {
     prior <- as.numeric(take('prior.mean')[,col])
     args <- c(common,list(y=Y[,col],weights=L0glm_observation_column(take('weights'),col),
+      etastart=L0glm_start_column(take('working_start'),col),
       offset=L0glm_observation_column(take('offset'),col),prior.mean=prior,
       dispersion=take('disp_list')[[col]],start=if(is.null(start)||length(start)==1L)start else start[,col,drop=FALSE]))
     env <- do.call(L0glm.fit.internal,args)

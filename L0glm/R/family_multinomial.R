@@ -65,7 +65,9 @@ L0glm_ext_multinomial_working <- function(data, B, D, state, args) {
   X <- data$Z[good, vars, drop = FALSE]; n <- nrow(X); p <- ncol(X)
   C <- data$m; m <- C - 1L; Q <- L0glm_ext_contrasts(C)
   eta <- as.matrix(data$Z %*% B)
-  P <- L0glm_ext_softmax(eta + L0glm_observation_broadcast(data$offset))$p[good, , drop = FALSE]
+  predictor <- eta + L0glm_observation_broadcast(data$offset)
+  if (!is.null(data$working_start)) predictor <- data$working_start
+  P <- L0glm_ext_softmax(predictor)$p[good, , drop = FALSE]
   score <- (data$y[good, , drop = FALSE] - total[good] * P) * w[good]
   weight <- w[good] * total[good]
   d <- D[vars, , drop = FALSE]
@@ -84,6 +86,16 @@ L0glm_ext_multinomial_working <- function(data, B, D, state, args) {
     stop("Multinomial working system exceeds control.family$max.working.", call. = FALSE)
   bound <- data$control$multinomial == "bound"
   M <- P %*% Q
+  if (!is.null(data$working_start)) {
+    linear <- predictor - L0glm_observation_broadcast(data$offset)
+    if (dimension <= n * m) {
+      # Center the quadratic at the supplied logits even when X cannot span them.
+      delta <- (linear - eta)[good, , drop = FALSE]
+      curvature <- if (bound) 0.5 * (delta - rowMeans(delta)) else
+        P * (delta - rowSums(P * delta))
+      score <- score + weight * curvature
+    } else eta <- linear
+  }
   if (dimension <= n * m) {
     L0glm_require_bytes(48*dimension^2,args$control.solver,'Multinomial Hessian')
     if (shared) {

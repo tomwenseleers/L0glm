@@ -146,6 +146,7 @@ inline VectorXd predict_sparse(const Eigen::MappedSparseMatrix<double>& X,
 }
 
 inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
+                                 const VectorXd& mu,
                                  const VectorXd& prior_weights,
                                  const VectorXd& offset,
                                  const VectorXd& prior_mean,
@@ -158,8 +159,7 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
   for (int j = 0; j < q; ++j) numer[j] = penalty[j] * prior_mean[j];
 
   for (int i = 0; i < n; ++i) {
-    const double mu = y[i] + 0.1;
-    const double w = prior_weights[i] / mu;
+    const double w = prior_weights[i] / mu[i];
     if (!finite_pos(w)) continue;
     const double z = y[i] - offset[i];
     for (int j = 0; j < q; ++j) {
@@ -180,6 +180,7 @@ inline VectorXd init_start_dense(const Map<MatrixXd>& X, const VectorXd& y,
 
 inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
                                   const VectorXd& y,
+                                  const VectorXd& mu,
                                   const VectorXd& prior_weights,
                                   const VectorXd& offset,
                                   const VectorXd& prior_mean,
@@ -190,7 +191,7 @@ inline VectorXd init_start_sparse(const Eigen::MappedSparseMatrix<double>& X,
   VectorXd w(n);
   VectorXd z(n);
   for (int i = 0; i < n; ++i) {
-    const double wi = prior_weights[i] / (y[i] + 0.1);
+    const double wi = prior_weights[i] / mu[i];
     w[i] = finite_pos(wi) ? wi : 0.0;
     z[i] = y[i] - offset[i];
   }
@@ -369,7 +370,7 @@ FitResult fit_channel_impl(const Design& X, const MatrixXd& Y,
                            bool natural_ordering,
                            bool hard_threshold,
                            bool polish,
-                           const PoissonValidation* validation);
+                           const PoissonValidation* validation, const double* initial_mu);
 
 template <>
 FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
@@ -390,7 +391,7 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
                                            bool natural_ordering,
                                            bool hard_threshold,
                            bool polish,
-                                           const PoissonValidation* validation) {
+                                           const PoissonValidation* validation, const double* initial_mu) {
   (void) natural_ordering;
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
@@ -423,12 +424,14 @@ FitResult fit_channel_impl<Map<MatrixXd> >(const Map<MatrixXd>& X,
     }
     have_start = !any_bad;
   }
+  VectorXd mu;
+  if (initial_mu) mu = Map<const VectorXd>(initial_mu, n);
+  else mu = y.array() + 0.1;
   if (!have_start) {
-    beta = init_start_dense(X, y, prior_w, offset, prior_mean, vars, initial_penalty);
+    beta = init_start_dense(X, y, mu, prior_w, offset, prior_mean, vars, initial_penalty);
   }
   beta = constrain_vec(beta);
 
-  VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
   VectorXd eta_previous;
   double previous_deviance = R_PosInf;
@@ -537,7 +540,7 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     bool natural_ordering,
     bool hard_threshold,
                            bool polish,
-                                           const PoissonValidation* validation) {
+                                           const PoissonValidation* validation, const double* initial_mu) {
   const int n = X.rows();
   const int q = static_cast<int>(vars.size());
   const double eps = std::numeric_limits<double>::epsilon();
@@ -569,12 +572,14 @@ FitResult fit_channel_impl<Eigen::MappedSparseMatrix<double> >(
     }
     have_start = !any_bad;
   }
+  VectorXd mu;
+  if (initial_mu) mu = Map<const VectorXd>(initial_mu, n);
+  else mu = y.array() + 0.1;
   if (!have_start) {
-    beta = init_start_sparse(X, y, prior_w, offset, prior_mean, vars, initial_penalty);
+    beta = init_start_sparse(X, y, mu, prior_w, offset, prior_mean, vars, initial_penalty);
   }
   beta = constrain_vec(beta);
 
-  VectorXd mu = y.array() + 0.1;
   VectorXd beta_old = beta;
   VectorXd eta_previous;
   double previous_deviance = R_PosInf;
@@ -683,10 +688,20 @@ Rcpp::List fit_all_impl(const Design& X,
                         int nthreads,
                         bool natural_ordering,
                         Rcpp::Nullable<Rcpp::List> validation_r,
-                        bool refit_only,bool polish) {
+                        bool refit_only,bool polish,
+                        Rcpp::Nullable<Rcpp::NumericMatrix> initial_mu) {
   const int n = X.rows();
   const int p = X.cols();
   const int m = Ymap.cols();
+  const double* initial_values = nullptr;
+  Eigen::Index initial_stride = 0;
+  if (initial_mu.isNotNull()) {
+    Rcpp::NumericMatrix initial(initial_mu.get());
+    if (initial.nrow() != n || (initial.ncol() != 1 && initial.ncol() != m))
+      Rcpp::stop("Initial means need n rows and one or m columns.");
+    initial_values = initial.begin();
+    initial_stride = initial.ncol() == 1 ? 0 : n;
+  }
   PoissonValidation validation_data(validation_r);
   const PoissonValidation* validation = validation_data.enabled ? &validation_data : NULL;
   PoissonValidationTrace group_trace;
@@ -779,10 +794,18 @@ Rcpp::List fit_all_impl(const Design& X,
         if(validation)f.validation.update(*validation,validation->loss(f.beta,vars,col),(f.beta.array()!=0).count(),0);
         continue;
       }
+      const double* working_mean = initial_values ? initial_values + initial_stride * col : nullptr;
+      VectorXd fitted_mean;
+      if (working_mean && (pass > 1 || (!hard_threshold && !refit_only))) {
+        fitted_mean = (X * coef.col(col) + Offset.col(Offset.cols()==1 ? 0 : col))
+          .cwiseMax(std::numeric_limits<double>::epsilon());
+        working_mean = fitted_mean.data();
+      }
       fits[col] = fit_channel_impl<Design>(
         X, Y, prior_weights, Offset, prior_mean_full, start_for_fit, col, vars,
         always_include, lambda_fit, normalize, scaling, maxit,
-        thresh, tol, natural_ordering, hard_threshold, polish, validation);
+        thresh, tol, natural_ordering, hard_threshold, polish, validation,
+        working_mean);
     }
 
     coef.setZero();
@@ -944,11 +967,12 @@ Rcpp::List L0nnpois_dense_cpp(const Eigen::Map<Eigen::MatrixXd>& X,
                               int nthreads,
                               bool natural_ordering,
                               Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
-                              bool refit_only = false, bool nonnegative_polish = false) {
+                              bool refit_only = false, bool nonnegative_polish = false,
+                              Rcpp::Nullable<Rcpp::NumericMatrix> initial_mu = R_NilValue) {
   return fit_all_impl<Map<MatrixXd> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish, initial_mu);
 }
 
 // [[Rcpp::export]]
@@ -971,9 +995,10 @@ Rcpp::List L0nnpois_sparse_cpp(const Eigen::MappedSparseMatrix<double>& X,
                                int nthreads,
                                bool natural_ordering,
                                Rcpp::Nullable<Rcpp::List> validation = R_NilValue,
-                               bool refit_only = false, bool nonnegative_polish = false) {
+                               bool refit_only = false, bool nonnegative_polish = false,
+                               Rcpp::Nullable<Rcpp::NumericMatrix> initial_mu = R_NilValue) {
   return fit_all_impl<Eigen::MappedSparseMatrix<double> >(
     X, y, weights, offset, prior_mean, start, always_include,
     lambda, normalize, scaling, grouped, relaxed, group_maxit, maxit,
-    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish);
+    thresh, tol, nthreads, natural_ordering, validation, refit_only, nonnegative_polish, initial_mu);
 }

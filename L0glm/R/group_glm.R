@@ -11,7 +11,8 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda,control=list()) {
     initialize$nobs <- data$n;initialize$nvars <- data$p
     initialize$mustart <- initialize$etastart <- NULL
     eval(data$family$initialize,initialize)
-    mu[,j] <- initialize$mustart
+    mu[,j] <- if (is.null(data$working_start)) initialize$mustart else
+      data$family$linkinv(data$working_start[,j])
     if(!data$explicit) {
       beta <- L0glm_initial_coefficients(data$X,data$y[,j],mu[,j],
         L0glm_observation_column(data$weights,j),L0glm_observation_column(data$offset,j),
@@ -48,7 +49,7 @@ L0glm_group_glm_initialize <- function(data,dispersion,lambda,control=list()) {
 }
 
 L0glm_group_glm_working <- function(data,B,D,state,args) {
-  prediction <- L0glm_ext_nb_mean(data,B)
+  prediction <- L0glm_ext_working_mean(data,B)
   answer <- B; working <- L0glm_working_model(data$family)
   for(j in seq_len(data$m)) {
     mu <- prediction$mu[,j];eta <- prediction$eta[,j]

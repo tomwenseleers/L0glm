@@ -18,6 +18,7 @@ L0glm_extended_native_spec <- function(data,args) {
 
 L0glm_extended_native <- function(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,
                                   refit=FALSE,D=NULL,initialize=FALSE) {
+  if (!is.null(data$working_start)) return(NULL)
   spec <- L0glm_extended_native_spec(data,args)
   if(is.null(spec)||is.null(D)&&!initialize&&!is.null(args$validation))return(NULL)
   control <- L0glm_solver_memory(args$control.solver)

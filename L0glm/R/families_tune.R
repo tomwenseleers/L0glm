@@ -26,6 +26,7 @@ L0glm_ext_cv <- function(args, lambdas, foldid, kind, mu_floor, pilot_bounds,
     train <- foldid != k
     a <- args
     for (name in c("X", "y", "weights", "offset")) a[[name]] <- args[[name]][train, , drop = FALSE]
+    for (name in c("mustart", "etastart")) a[[name]] <- L0glm_start_rows(args[[name]], train)
     initialization <- if (is.null(pilot_bounds)) list(start = args$start, pilot = NULL) else
       L0glm_pilot_start(a, pilot_bounds * fractions[k])
     a$start <- initialization$start

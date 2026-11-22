@@ -47,7 +47,8 @@ L0glm_ext_control <- function(control) {
 
 L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
                               always.include, nonnegative, normalize, start,
-                              prior.mean, control.family, kind = L0glm_ext_kind(family)) {
+                              prior.mean, control.family, kind = L0glm_ext_kind(family),
+                              mustart = NULL, etastart = NULL) {
   if (!is.matrix(X) && !inherits(X, "Matrix")) X <- as.matrix(X)
   if (length(dim(X)) != 2L || !nrow(X) ||
       any(!is.finite(if (inherits(X, "sparseMatrix")) X@x else X)))
@@ -57,6 +58,9 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     cox = L0glm_ext_cox_response(y, n),
     multinomial = L0glm_ext_multinomial_response(y, family, n))
   m <- response$m
+  working_start <- L0glm_working_start(mustart, etastart, family, n, m)
+  if (!is.null(working_start) && ncol(working_start) == 1L && m > 1L)
+    working_start <- matrix(working_start, n, m)
   multinomial <- kind == "multinomial"
   if (multinomial && nonnegative) {
     warning("nonnegative is ignored for multinomial CLR coefficients.", call. = FALSE)
@@ -113,6 +117,7 @@ L0glm_ext_prepare <- function(X, y, family, weights, offset, intercept,
     prior = prior, preprocessing = preprocessing, shift = centered$shift,
     shifted_intercept = centered$intercept, control = L0glm_ext_control(control.family),
     family = family, B = B, allowed = allowed, explicit = explicit, m = m,
+    working_start = working_start,
     added_intercept = intercept,
     p = p, n = n, p_selectable = p - length(included))
   if(kind %in% c('nb','multinomial','cox'))data$native.cache <- new.env(parent=emptyenv())
@@ -176,9 +181,10 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
   if(relaxed && any(!L0glm_relaxed_check(data,B,allowed)))
     return(list(B=B,allowed=allowed,state=state,iterations=0L,converged=FALSE,
       history=data.frame(),relaxation_skipped=rep(TRUE,data$m)))
+  if (relaxed) data$working_start <- NULL
   native <- L0glm_extended_native(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
   if(!is.null(native))return(native)
-  if(data$kind=='glm' && !is.null(data$groups)) {
+  if(data$kind=='glm' && !is.null(data$groups) && is.null(data$working_start)) {
     native <- L0glm_group_native_pass(data,B,allowed,state,lambda,grouped,thresh,maxit,tol,args,relaxed)
     if(!is.null(native))return(native)
   }
@@ -206,6 +212,7 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
       nb = L0glm_ext_nb_working(data, B, D, state, args),
       cox = L0glm_ext_cox_working(data, B, D, state, args),
       multinomial = L0glm_ext_multinomial_working(data, B, D, state, args))
+    data$working_start <- NULL
     solve <- attr(proposal, "cox.solve")
     attr(proposal, "cox.solve") <- NULL
     ridge <- function(candidate) sum(D[is.finite(D)] * (candidate - data$prior)[is.finite(D)]^2)
@@ -289,7 +296,8 @@ L0glm_ext_pass <- function(data, B, allowed, state, lambda, grouped,
 L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lambda,
                            intercept, always.include, nonnegative, normalize, solver,
                            method, nthreads, maxit, grouped, relaxed, prior.mean,
-                           thresh, tol, control.solver, control.family, validation = NULL, ncores = 1L) {
+                           thresh, tol, control.solver, control.family, validation = NULL, ncores = 1L,
+                           mustart = NULL, etastart = NULL) {
   if (!is.numeric(maxit) || length(maxit) != 1L || maxit < 1 || !is.finite(maxit) ||
       !is.numeric(tol) || length(tol) != 1L || tol <= 0 || !is.finite(tol))
     stop("maxit and tol must be finite positive scalars.", call. = FALSE)
@@ -298,7 +306,8 @@ L0glm_ext_fit <- function(X, y, weights, family, dispersion, start, offset, lamb
   thread_state <- L0glm_set_thread_count(nthreads)
   if (!is.null(thread_state)) on.exit(L0glm_restore_thread_count(thread_state), add = TRUE)
   data <- L0glm_ext_prepare(X, y, family, weights, offset, intercept, always.include,
-                            nonnegative, normalize, start, prior.mean, control.family)
+                            nonnegative, normalize, start, prior.mean, control.family,
+                            mustart = mustart, etastart = etastart)
   data$p_selectable <- L0glm_criterion_size(data$p_selectable,control.solver)
   data$fixed.dispersion <- isTRUE(control.solver$.dispersion.fixed)
   lambda <- L0glm_resolve_lambda(lambda, max(1, data$p_selectable), max(2, data$n_ic))

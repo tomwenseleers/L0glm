@@ -111,6 +111,8 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
  const SolverControl& control,SEXP executor=R_NilValue) {
  const int p=X.cols(),m=contexts.size(),n=X.rows();
  const bool grouped=as<bool>(as<List>(contexts[0])["grouped"]);
+ const List first=contexts[0];
+ const bool user_predictor=first.containsElementNamed("user_predictor") && as<bool>(first["user_predictor"]);
  std::vector<State> states=load_states(X,contexts);
   for(auto& s:states)s.workspace=control.workspace;
  std::vector<std::vector<char>> fixed_allowed(m);std::vector<VectorXd> initial_eta(m),initial_mu(m);
@@ -156,7 +158,8 @@ template<class Design> List model(const Design& X,List contexts,const Family& fa
    for(int k=0;k<m;++k) {
    State& s=states[k];
    if(refit&&skip_relaxation[k])continue;
-   s.eta=initial_eta[k];s.mu=initial_mu[k];s.hard=!refit;s.lambda=refit?1e-30:s.selection_lambda;
+   if (!user_predictor) {s.eta=initial_eta[k];s.mu=initial_mu[k];}
+   s.hard=!refit;s.lambda=refit?1e-30:s.selection_lambda;
    s.stable=s.iterations=s.updates=s.restarts=0;
     s.converged=s.failed=s.solver_failed=false;s.frozen=s.fixed_scale||!s.estimate;s.old_prediction.resize(0);
     s.solver_inexact=s.solver_fallbacks=0;
