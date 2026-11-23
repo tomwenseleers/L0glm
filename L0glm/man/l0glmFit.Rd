@@ -118,17 +118,6 @@ values are invalid. Poisson, binomial and negative binomial with known
 See \link{dispersion_calibration} for the Pearson update and the
 additional pilots for eligible Gaussian and negative-binomial fits.}
 
-\item{mustart, etastart}{Optional initial fitted means or complete linear
-predictors (including the offset) for IRLS. Supply a scalar, one value
-per observation, or an observation-by-channel matrix. A single column
-applies to every channel. \code{etastart} takes precedence over
-\code{mustart}. Both can be used with \code{start}, which initializes the
-adaptive penalties and determines coefficient eligibility. With both
-observation starts omitted the usual family initialization is retained.
-Multinomial means are strictly positive category probabilities with row
-sums of one, and predictors are logits with one column per category.
-Cox means are positive relative risks and predictors are log relative risks.}
-
 \item{start}{\code{NULL} (default) requests automatic initialization.
 Positive-mean identity-link models (Poisson, Gamma, inverse Gaussian and
 negative binomial) with nonnegative designs and a compulsory background or known
@@ -611,6 +600,17 @@ relative tolerance for stopping when validation deviance worsens; and
 the final stage. A named \code{lambda} supplies that criterion; otherwise
 GIC is used. With \code{l0glmTune}, the tuning criterion is used, or GIC
 inside each CV training fit. Limits are checked before forming products.}
+
+\item{mustart, etastart}{Optional initial fitted means or complete linear
+predictors (including the offset) for IRLS. Supply a scalar, one value
+per observation, or an observation-by-channel matrix. A single column
+applies to every channel. \code{etastart} takes precedence over
+\code{mustart}. Both can be used with \code{start}, which initializes the
+adaptive penalties and determines coefficient eligibility. With both
+observation starts omitted the usual family initialization is retained.
+Multinomial means are strictly positive category probabilities with row
+sums of one, and predictors are logits with one column per category.
+Cox means are positive relative risks and predictors are log relative risks.}
 }
 \value{
 An object of class \code{L0glm_fit}, with list components below.
