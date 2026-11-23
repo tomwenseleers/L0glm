@@ -1,3 +1,10 @@
+# L0glm 0.2.0.9006
+
+* The Cholesky, QR, CG and LSCG entry points use direct Eigen implementations.
+  Solver options, preconditioning defaults and failure handling are preserved.
+  The dense LSCG interface maps its input matrices without copying them.
+  Rectangular sparse QR uses COLAMD when AMD is requested.
+
 # L0glm 0.2.0.9005
 
 * `l0glmFit()` accepts `mustart` and `etastart` for the first working

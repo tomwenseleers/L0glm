@@ -801,14 +801,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_dense_LSCG
-Rcpp::List solve_dense_LSCG(const Eigen::MatrixXd& A, const Eigen::MatrixXd b, const Eigen::MatrixXd x0, double tol, int maxit, unsigned int precond);
+Rcpp::List solve_dense_LSCG(const Rcpp::NumericMatrix& A, const Rcpp::NumericMatrix& b, const Rcpp::NumericMatrix& x0, double tol, int maxit, unsigned int precond);
 RcppExport SEXP _L0glm_solve_dense_LSCG(SEXP ASEXP, SEXP bSEXP, SEXP x0SEXP, SEXP tolSEXP, SEXP maxitSEXP, SEXP precondSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type A(ASEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type b(bSEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type x0(x0SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type b(bSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericMatrix& >::type x0(x0SEXP);
     Rcpp::traits::input_parameter< double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
     Rcpp::traits::input_parameter< unsigned int >::type precond(precondSEXP);

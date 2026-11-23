@@ -1,3 +1,8 @@
+# L0glm 0.2.0.9006
+
+* Use direct Eigen implementations for Cholesky, QR, CG and LSCG, with
+  zero-copy inputs at the dense LSCG interface.
+
 # L0glm 0.2.0.9004
 
 * Statistical fitting, tuning, screening and generic simulation remain in L0glm.

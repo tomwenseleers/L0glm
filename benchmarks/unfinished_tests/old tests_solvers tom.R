@@ -1,8 +1,6 @@
 # install.packages("Matrix", repos = "https://mran.microsoft.com")
 library(nnls)
 library(microbenchmark)
-# devtools::install_github("nk027/sanic")
-library(sanic)
 library(osqp)
 library(devtools)
 library(glmnet)

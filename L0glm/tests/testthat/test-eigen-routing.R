@@ -1,3 +1,18 @@
+test_that("rectangular sparse QR uses a valid ordering when AMD is requested", {
+  p <- 432L
+  n <- 2L * p
+  set.seed(259)
+  A <- Matrix::bandSparse(n, p, k = -3:3, diagonals = lapply(-3:3, function(j) runif(p)))
+  A <- A + Matrix::sparseMatrix(i = p + seq_len(p), j = seq_len(p), x = 0.75, dims = c(n, p))
+  A <- as(as(A, "generalMatrix"), "CsparseMatrix")
+  expected <- matrix(rnorm(p * 8L), p, 8L)
+  rhs <- as.matrix(A %*% expected)
+  fit <- solve_sparse_QR(A, rhs, ordering = 0L)
+  expect_true(fit$status)
+  expect_equal(fit$coefficients, expected, tolerance = 1e-10)
+  expect_identical(fit, solve_sparse_QR(A, rhs, ordering = 1L))
+})
+
 test_that("all Eigen methods solve tall and wide weighted ridge objectives", {
   set.seed(1601)
   for (shape in list(c(45L, 12L), c(12L, 45L))) {

@@ -69,7 +69,8 @@ are method-specific.}
 
 \item{ordering}{Optional integer sparse ordering code for Eigen sparse QR and Cholesky
 methods. For sparse QR, \code{0L}=AMD, \code{1L}=COLAMD and
-\code{2L}=NaturalOrdering, with \code{1L} the default. For sparse Cholesky,
+\code{2L}=NaturalOrdering, with \code{1L} the default. Rectangular sparse QR
+uses COLAMD when AMD is requested. For sparse Cholesky,
 \code{0L}=AMD and \code{1L}=NaturalOrdering, with \code{0L} the default.}
 
 \item{NaturalOrdering}{Optional logical flag for Eigen sparse Cholesky ordering. If \code{TRUE},
