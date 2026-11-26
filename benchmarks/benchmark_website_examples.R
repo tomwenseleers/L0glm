@@ -5,8 +5,7 @@ website_fit_examples <- function(cases=c("million", "single", "multi", "selectio
   cache="codex_sandbox/website_large_examples", output="benchmarks/plots/website",
   reuse=FALSE) {
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   dir.create(cache, recursive=TRUE, showWarnings=FALSE)
   dir.create(output, recursive=TRUE, showWarnings=FALSE)
   message("Package ", packageVersion("L0glm"), "; BLAS threads: 1")

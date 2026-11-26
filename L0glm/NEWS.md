@@ -1,3 +1,10 @@
+# L0glm 0.2.0.9007
+
+* Fitting scopes use native BLAS and OpenMP thread control, removing the
+  `RhpcBLASctl` dependency. The caller's thread limits are restored on exit.
+  `l0glmThreads()` exposes the same control for callers coordinating parallel
+  operations across fits.
+
 # L0glm 0.2.0.9006
 
 * The Cholesky, QR, CG and LSCG entry points use direct Eigen implementations.

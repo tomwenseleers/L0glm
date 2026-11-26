@@ -110,13 +110,36 @@ test_that('the specialized Poisson backend avoids nested BLAS threading', {
   X <- matrix(runif(60L*6L),60L,6L)
   Y <- matrix(rpois(60L*3L,3),60L,3L)
   original <- L0nnpois_dense_cpp;seen <- NULL
-  before <- RhpcBLASctl::blas_get_num_procs()
+  before <- l0glmThreads()
   local_mocked_bindings(L0nnpois_dense_cpp=function(...) {
-    seen <<- RhpcBLASctl::blas_get_num_procs();original(...)
+    seen <<- l0glmThreads()$blas;original(...)
   })
   fit <- l0glmFit(X,Y,family=poisson(identity),nonnegative=TRUE,
     ncores=2L,nthreads=4L,local.search=FALSE)
-  expect_equal(seen,1L)
-  expect_equal(RhpcBLASctl::blas_get_num_procs(),before)
+  expect_identical(seen, if (is.na(before$blas)) NA_integer_ else 1L)
+  expect_identical(l0glmThreads(),before)
   expect_true(all(is.finite(coef(fit))))
+})
+
+test_that("nested thread limits restore configured counts and the environment", {
+  baseline <- l0glmThreads()
+  on.exit(do.call(l0glmThreads, baseline), add = TRUE)
+  l0glmThreads(blas = 2L, openmp = 2L)
+  outer <- l0glmThreads()
+  environment <- Sys.getenv(L0glm_thread_env_vars(), unset = NA_character_)
+
+  inner <- function() {
+    previous <- L0glm_set_thread_count(1L)
+    on.exit(L0glm_restore_thread_count(previous), add = TRUE)
+    expect_identical(previous$threads, outer)
+    single <- l0glmThreads()
+    expect_identical(single, lapply(outer, function(n) if (is.na(n)) n else 1L))
+    expect_true(all(Sys.getenv(L0glm_thread_env_vars()) == "1"))
+    stop("intentional failure")
+  }
+  expect_error(inner(), "intentional failure")
+  expect_identical(l0glmThreads(), outer)
+  expect_identical(Sys.getenv(L0glm_thread_env_vars(), unset = NA_character_), environment)
+  expect_error(l0glmThreads(blas = 0L), "blas must be a positive integer")
+  expect_error(l0glmThreads(openmp = 1.5), "openmp must be a positive integer")
 })

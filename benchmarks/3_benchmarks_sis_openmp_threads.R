@@ -1,8 +1,7 @@
 # OpenMP SIS and end-to-end ISIS on the million-predictor example.
 # Install the current package first. X alone occupies about 8 GB.
 library(L0glm)
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 
 # Editable settings; no environment-variable configuration.
 n <- 1000L

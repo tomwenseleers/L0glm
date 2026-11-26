@@ -4,8 +4,7 @@
 million_lasso_worker <- function(input,method,tune,n,p,n_nonzero,nlambda,folds,libs) {
   .libPaths(libs)
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   data <- readRDS(input)
   stopifnot(identical(dim(data$X),as.integer(c(n,p))),sum(data$beta!=0)==n_nonzero)
   options <- list(type.gaussian='naive')

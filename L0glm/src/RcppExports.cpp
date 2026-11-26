@@ -865,6 +865,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// l0glm_threads_cpp
+Rcpp::List l0glm_threads_cpp(int blas, int openmp);
+RcppExport SEXP _L0glm_l0glm_threads_cpp(SEXP blasSEXP, SEXP openmpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type blas(blasSEXP);
+    Rcpp::traits::input_parameter< int >::type openmp(openmpSEXP);
+    rcpp_result_gen = Rcpp::wrap(l0glm_threads_cpp(blas, openmp));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 // validate (ensure exported C++ functions exist before calling them)
 static int _L0glm_RcppExport_validate(const char* sig) { 
@@ -935,6 +947,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_L0glm_solve_sparse_CG", (DL_FUNC) &_L0glm_solve_sparse_CG, 6},
     {"_L0glm_solve_dense_CG", (DL_FUNC) &_L0glm_solve_dense_CG, 6},
     {"_L0glm_difference_scale_cpp", (DL_FUNC) &_L0glm_difference_scale_cpp, 7},
+    {"_L0glm_l0glm_threads_cpp", (DL_FUNC) &_L0glm_l0glm_threads_cpp, 2},
     {"_L0glm_RcppExport_registerCCallable", (DL_FUNC) &_L0glm_RcppExport_registerCCallable, 0},
     {NULL, NULL, 0}
 };

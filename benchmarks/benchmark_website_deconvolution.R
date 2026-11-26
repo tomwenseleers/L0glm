@@ -5,8 +5,7 @@ website_deconvolution <- function(case=c("single", "multi"), n=10000L, p=n,
   output="benchmarks/plots/website", reuse=FALSE) {
   case <- match.arg(case)
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   source("benchmarks/cv_glmnet_parallel.R", local=TRUE)
   dir.create(cache, recursive=TRUE, showWarnings=FALSE)
   dir.create(output, recursive=TRUE, showWarnings=FALSE)

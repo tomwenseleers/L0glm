@@ -1587,10 +1587,6 @@ l0glmFit <- function(X, # n x p design matrix (without intercept)
 # ---------------------------------------------------------------------------
 L0glm_detect_physical_cores <- function() {
   physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
-  if ((is.na(physical_cores) || physical_cores < 1L) &&
-      requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-    physical_cores <- suppressWarnings(RhpcBLASctl::get_num_cores())
-  }
   if (is.na(physical_cores) || physical_cores < 1L) {
     NA_integer_
   } else {
@@ -1623,61 +1619,27 @@ L0glm_normalize_thread_count <- function(nthreads) {
   nthreads
 }
 
-L0glm_quiet_try <- function(expr) {
-  try(
-    suppressMessages(suppressWarnings(utils::capture.output(force(expr)))),
-    silent = TRUE
-  )
-  invisible(NULL)
-}
-
 L0glm_set_thread_count <- function(nthreads) {
   if (is.null(nthreads)) return(NULL)
   nthreads <- L0glm_normalize_thread_count(nthreads)
   env_vars <- L0glm_thread_env_vars()
   old_env <- Sys.getenv(env_vars, unset = NA_character_)
-  blas_threads <- omp_threads <- NA_integer_
-  has_blasctl <- requireNamespace("RhpcBLASctl", quietly = TRUE)
-  if (has_blasctl) {
-    blas_threads <- tryCatch(RhpcBLASctl::blas_get_num_procs(),
-                             error = function(e) NA_integer_)
-    omp_threads <- tryCatch(RhpcBLASctl::omp_get_max_threads(),
-                            error = function(e) NA_integer_)
-  }
+  setting <- as.character(nthreads)
   Sys.setenv(
-    OMP_NUM_THREADS = as.character(nthreads),
-    OPENBLAS_NUM_THREADS = as.character(nthreads),
-    MKL_NUM_THREADS = as.character(nthreads),
-    VECLIB_MAXIMUM_THREADS = as.character(nthreads)
+    OMP_NUM_THREADS = setting,
+    OPENBLAS_NUM_THREADS = setting,
+    MKL_NUM_THREADS = setting,
+    VECLIB_MAXIMUM_THREADS = setting
   )
-  if (has_blasctl) {
-    L0glm_quiet_try(RhpcBLASctl::blas_set_num_threads(nthreads))
-    L0glm_quiet_try(RhpcBLASctl::omp_set_num_threads(nthreads))
-  }
-  list(env = old_env,
-       blas_threads = blas_threads,
-       omp_threads = omp_threads,
-       has_blasctl = has_blasctl)
+  list(env = old_env, threads = l0glm_threads_cpp(nthreads, nthreads))
 }
 
 L0glm_restore_thread_count <- function(state) {
   if (is.null(state)) return(invisible(NULL))
-  for (nm in names(state$env)) {
-    if (is.na(state$env[[nm]])) {
-      Sys.unsetenv(nm)
-    } else {
-      do.call(Sys.setenv, structure(list(state$env[[nm]]), names = nm))
-    }
-  }
-  if (isTRUE(state$has_blasctl) &&
-      requireNamespace("RhpcBLASctl", quietly = TRUE)) {
-    if (!is.na(state$blas_threads)) {
-      L0glm_quiet_try(RhpcBLASctl::blas_set_num_threads(state$blas_threads))
-    }
-    if (!is.na(state$omp_threads)) {
-      L0glm_quiet_try(RhpcBLASctl::omp_set_num_threads(state$omp_threads))
-    }
-  }
+  present <- !is.na(state$env)
+  Sys.unsetenv(names(state$env)[!present])
+  do.call(Sys.setenv, as.list(state$env[present]))
+  l0glm_threads_cpp(state$threads$blas, state$threads$openmp)
   invisible(NULL)
 }
 

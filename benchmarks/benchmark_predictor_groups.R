@@ -1,7 +1,6 @@
 library(L0glm)
 library(grpreg)
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 root <- if(file.exists('L0glm/DESCRIPTION')) '.' else '..'
 out <- file.path(root,'benchmarks/plots/predictor-groups')
 dir.create(out,recursive=TRUE,showWarnings=FALSE)

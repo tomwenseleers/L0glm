@@ -1,7 +1,6 @@
 #' @name controlSolverGen
 #' @title Set Options of Constrained Ridge Regularised Weighted Least Squares Regression Solvers
 #' 
-#' @importFrom RhpcBLASctl get_num_cores get_num_procs
 #' @description
 #'
 #' This functions generates a list with all the required parameters for the lmRidge
@@ -227,15 +226,6 @@ controlSolverGen <- function(solver,
     
     
     l <- list(thresh = abstol, maxit = maxit, standardize = standardize)
-    
-  # } else if (solver == "parglm"){ # removed this solver
-  #   if(is.null(tol)) tol <- 1e-8
-  #   if(is.null(block_size)) block_size <- 1000
-  #   l <- list(epsilon = tol, 
-  #             nthreads = RhpcBLASctl::get_num_cores(), # didn't see much improvement if I tried to use more
-  #             block_size = block_size,
-  #             method = "FAST"  # "FAST"=Armadillo Cholesky LLT or "LINPACK" or "LAPACK"
-  #             )
     
   } else if (solver == "eigen"){
     if (is.null(method)){

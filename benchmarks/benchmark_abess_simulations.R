@@ -9,8 +9,7 @@ benchmark_abess_simulations <- function(output = "benchmarks/plots/website",
   rng <- RNGkind()
   on.exit(do.call(RNGkind, as.list(rng)), add = TRUE)
   RNGkind("Mersenne-Twister", "Inversion", "Rejection")
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   auc <- function(y, mu) {
     positive <- y == 1
     m <- sum(positive)

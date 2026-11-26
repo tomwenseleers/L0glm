@@ -49,6 +49,7 @@ export(glmDist)
 export(l0glmData)
 export(l0glmFit)
 export(l0glmMetrics)
+export(l0glmThreads)
 export(l0glmTune)
 export(lmRidge)
 export(nb1)
@@ -63,10 +64,6 @@ export(temporalDispersion)
 import(Matrix)
 importFrom(Matrix,Matrix)
 importFrom(Rcpp,evalCpp)
-importFrom(RhpcBLASctl,
-  get_num_cores,
-  get_num_procs
-)
 importFrom(dynamicTreeCut,cutreeDynamic)
 importFrom(fastcluster,hclust)
 importFrom(grDevices,

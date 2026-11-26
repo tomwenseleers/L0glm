@@ -4,8 +4,7 @@
 benchmark_posterior_coverage <- function(n=1000L,p=n,npeaks=100L,nrep=200L,channels=1L,
   output='benchmarks/6_benchmarks_posterior_coverage_results') {
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   dir.create(output,recursive=TRUE,showWarnings=FALSE)
   sim <- simul(2,n=n,p=p,n_nonzero=npeaks,seed=2)
   X <- sim$X

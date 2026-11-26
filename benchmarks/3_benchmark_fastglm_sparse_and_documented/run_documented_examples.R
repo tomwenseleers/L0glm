@@ -9,8 +9,7 @@ root <- file.path(repo, "benchmarks/3_benchmark_fastglm_sparse_and_documented")
 out <- file.path(root, "documented_examples")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 pkgload::load_all(file.path(repo, "L0glm"), compile = FALSE, quiet = TRUE)
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 source_url <- "https://github.com/jaredhuling/fastglm/blob/master/"
 examples <- list()
 make <- function(X, y, family, beta = NULL, mu = NULL, mandatory = integer(),
@@ -197,8 +196,7 @@ for (id in names(examples)) {
       if (any(d$offset != 0) || any(d$weights != 1)) stop("Weighted/offset case excluded from the abess default-interface comparison")
       free <- setdiff(seq_len(ncol(d$X)), d$mandatory)
       result <- callr::r(function(X, y, family, intercept) {
-        RhpcBLASctl::blas_set_num_threads(1L)
-        RhpcBLASctl::omp_set_num_threads(1L)
+        L0glm::l0glmThreads(blas = 1L, openmp = 1L)
         timed <- microbenchmark::microbenchmark(fit <- abess::abess(X, y,
           family = family, fit.intercept = intercept, num.threads = 1L), times = 1L)
         b <- as.numeric(coef(fit, support.size = fit$best.size))

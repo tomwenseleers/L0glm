@@ -66,14 +66,7 @@ test_that("grouped relaxed fit keeps rows with cancelling channel coefficients",
 })
 
 test_that("serial nthreads setting is restored after fit", {
-  skip_if_not_installed("RhpcBLASctl")
-
-  before_blas <- RhpcBLASctl::blas_get_num_procs()
-  before_omp <- RhpcBLASctl::omp_get_max_threads()
-  on.exit({
-    utils::capture.output(RhpcBLASctl::blas_set_num_threads(before_blas))
-    utils::capture.output(RhpcBLASctl::omp_set_num_threads(before_omp))
-  }, add = TRUE)
+  before <- l0glmThreads()
 
   sim <- simul(method = 4, n = 40L, p = 40L, s = 0.1, seed = 2)
   fit <- l0glmFit(
@@ -87,6 +80,5 @@ test_that("serial nthreads setting is restored after fit", {
     method = 1L)
 
   expect_s4_class(fit$coefficients, "dgCMatrix")
-  expect_identical(RhpcBLASctl::blas_get_num_procs(), before_blas)
-  expect_identical(RhpcBLASctl::omp_get_max_threads(), before_omp)
+  expect_identical(l0glmThreads(), before)
 })

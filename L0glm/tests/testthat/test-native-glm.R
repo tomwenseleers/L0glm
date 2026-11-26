@@ -123,12 +123,10 @@ test_that("native OpenMP restores caller thread settings", {
   set.seed(786)
   X <- matrix(rnorm(100 * 8), 100, 8)
   y <- cbind(X[, 1] + rnorm(100), -X[, 1] + rnorm(100))
-  blas <- RhpcBLASctl::blas_get_num_procs()
-  omp <- RhpcBLASctl::omp_get_max_threads()
+  threads <- l0glmThreads()
   fit <- suppressWarnings(l0glmFit(local.search=FALSE, X, y, ncores = 2L, lambda = "gic"))
   expect_s3_class(fit, "L0glm_fit")
-  expect_equal(RhpcBLASctl::blas_get_num_procs(), blas)
-  expect_equal(RhpcBLASctl::omp_get_max_threads(), omp)
+  expect_identical(l0glmThreads(), threads)
 })
 
 test_that("native Cholesky honors an ordering flag without an integer ordering", {

@@ -7,8 +7,7 @@ benchmark_support_difficulty <- function(output="benchmarks/plots/website",
   dir.create(output,recursive=TRUE,showWarnings=FALSE)
   rng <- RNGkind();on.exit(do.call(RNGkind,as.list(rng)),add=TRUE)
   RNGkind("Mersenne-Twister","Inversion","Rejection")
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   ar_design <- function(n,p,rho=.3) {
     X <- matrix(rnorm(n*p),n,p)
     if(p>1L) for(j in 2:p) X[,j] <- rho*X[,j-1L]+sqrt(1-rho^2)*X[,j]

@@ -8,8 +8,7 @@ dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 pkgload::load_all(file.path(root, "L0glm"), compile = FALSE, quiet = TRUE)
 # Use library(L0glm) instead of load_all() to benchmark the installed package.
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 repetitions <- 3L
 
 molecules <- read.csv(file.path(data_dir, "aquatictox_molecules_withsmiles.csv"))

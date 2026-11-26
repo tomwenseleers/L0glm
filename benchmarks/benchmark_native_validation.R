@@ -1,7 +1,6 @@
 ## Compare native Poisson validation with the general driver and check thread invariance.
 library(L0glm)
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 
 n <- p <- 1000L
 m <- 16L

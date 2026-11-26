@@ -2,7 +2,7 @@
 # L0glm uses a GIC preset; competing methods search BIC-selected native paths.
 # These are per-method fitting/scoring times; shared input preparation is separate.
 library(L0glm)
-RhpcBLASctl::blas_set_num_threads(1)
+L0glm::l0glmThreads(blas = 1)
 root <- if (file.exists("L0glm/DESCRIPTION")) "." else ".."
 output <- file.path(root,"benchmarks/3_benchmarks_sis_vs_SIS_results")
 dir.create(output,recursive=TRUE,showWarnings=FALSE)

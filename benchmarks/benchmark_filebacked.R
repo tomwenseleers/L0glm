@@ -25,9 +25,8 @@ training <- seq_len(cfg$train);test <- setdiff(seq_len(cfg$n),training)
 truth <- Matrix::sparseMatrix(i=ids+1L,j=rep(1L,length(ids)),x=beta,dims=c(cfg$p+1L,1L))
 
 run <- function() {
-  old <- RhpcBLASctl::blas_get_num_procs()
-  on.exit(RhpcBLASctl::blas_set_num_threads(old))
-  RhpcBLASctl::blas_set_num_threads(1L)
+  old <- L0glm::l0glmThreads(blas = 1L)
+  on.exit(do.call(L0glm::l0glmThreads, old))
   results <- list();reference <- NULL
   for(threads in c(1L,2L,4L,8L)) {
     elapsed <- system.time(fit <- l0glmFit(X[training,,drop=FALSE],y[training],

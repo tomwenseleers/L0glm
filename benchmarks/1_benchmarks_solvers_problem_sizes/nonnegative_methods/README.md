@@ -16,7 +16,7 @@ one BLAS thread.
 ## Reproduce
 
 Install the current L0glm package and the benchmark dependencies `callr`,
-`ggplot2`, `tidyr`, `tidyselect`, `microbenchmark`, `RhpcBLASctl`, `scales`,
+`ggplot2`, `tidyr`, `tidyselect`, `microbenchmark`, `scales`,
 `osqp`, and `glmnet`.
 From the repository root:
 

@@ -7,8 +7,7 @@ benchmark_filebacked_normal <- function(n=10000L,p=1000000L,n_nonzero=60L,
   stopifnot(requireNamespace('bigmemory',quietly=TRUE),n>train,train>2L,
     p>=n_nonzero,n_nonzero>0L,block.columns>0L,fit.block.columns>0L)
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   dir.create(cache,recursive=TRUE,showWarnings=FALSE)
   dir.create(output,recursive=TRUE,showWarnings=FALSE)
   cache <- normalizePath(cache,winslash='/',mustWork=TRUE)

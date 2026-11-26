@@ -1,7 +1,7 @@
 # Compare equal endpoints: screening ranks first, complete fitted models next.
 library(L0glm)
 stopifnot(requireNamespace("SIS",quietly=TRUE),requireNamespace("glmnet",quietly=TRUE))
-RhpcBLASctl::blas_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L)
 n <- 1000L
 p <- 1000000L
 nsis <- 100L

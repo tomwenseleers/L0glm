@@ -76,7 +76,7 @@ number sequence matches `matrix(rnorm(as.double(n)*p), n, p)`.
 ```{r million-file, eval=FALSE}
 library(L0glm)
 library(bigmemory)
-RhpcBLASctl::blas_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L)
 n <- 10000L
 p <- 1000000L
 backing <- filebacked.big.matrix(nrow=n,ncol=p,type="double",

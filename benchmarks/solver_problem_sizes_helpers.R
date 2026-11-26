@@ -71,8 +71,7 @@ solverBenchmarkWorker <- function(helper,case,solver,config) {
   suppressPackageStartupMessages(library(L0glm))
   suppressPackageStartupMessages(requireNamespace("osqp",quietly=TRUE))
   suppressPackageStartupMessages(requireNamespace("glmnet",quietly=TRUE))
-  RhpcBLASctl::blas_set_num_threads(config$blas_threads)
-  RhpcBLASctl::omp_set_num_threads(config$ncores)
+  L0glm::l0glmThreads(blas = config$blas_threads, openmp = config$ncores)
   env <- new.env(parent=globalenv());sys.source(helper,envir=env)
   env$solverBenchmarkFit(case,solver,config)
 }

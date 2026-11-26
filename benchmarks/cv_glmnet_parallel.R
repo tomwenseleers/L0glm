@@ -19,9 +19,8 @@ cv_glmnet_parallel <- function(x, y, ..., parallel=TRUE, ncores=NULL) {
   cluster <- parallel::makePSOCKcluster(ncores)
   on.exit({parallel::stopCluster(cluster);foreach::registerDoSEQ()},add=TRUE)
   parallel::clusterCall(cluster,function() {
-    if (requireNamespace("RhpcBLASctl",quietly=TRUE)) {
-      RhpcBLASctl::blas_set_num_threads(1L)
-      RhpcBLASctl::omp_set_num_threads(1L)
+    if (requireNamespace("L0glm",quietly=TRUE)) {
+      L0glm::l0glmThreads(blas = 1L, openmp = 1L)
     }
     NULL
   })

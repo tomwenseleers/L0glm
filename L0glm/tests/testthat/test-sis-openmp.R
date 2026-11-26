@@ -28,13 +28,12 @@ test_that("top-k heap merges preserve ties across workers and interrupt batches"
 test_that("public SIS/ISIS threading preserves results and does not alter BLAS settings", {
   skip_if_not_installed("mgcv");skip_if_not_installed("survival")
   set.seed(2712);X <- matrix(rnorm(100*160),100,160);y <- X[,1]*2+rnorm(100)
-  blas <- RhpcBLASctl::blas_get_num_procs();omp <- RhpcBLASctl::omp_get_max_threads()
+  limits <- l0glmThreads()
   first <- sisGLM(X,y,nthreads=1L)
   for (threads in c(2L,4L,8L)) {
     fit <- sisGLM(X,y,nthreads=threads)
     expect_identical(fit[names(fit)!="nthreads"],first[names(first)!="nthreads"])
-    expect_equal(RhpcBLASctl::blas_get_num_procs(),blas)
-    expect_equal(RhpcBLASctl::omp_get_max_threads(),omp)
+    expect_identical(l0glmThreads(), limits)
   }
   for (f in list(gaussian(),poisson(identity),binomial(),mgcv::nb(),mgcv::multinom(2),mgcv::cox.ph())) {
     kind <- L0glm_ext_kind(f)

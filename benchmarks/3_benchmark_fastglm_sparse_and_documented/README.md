@@ -10,7 +10,7 @@ source("benchmarks/3_benchmark_fastglm_sparse_and_documented/run_documented_exam
 source("benchmarks/3_benchmark_fastglm_sparse_and_documented/plot_results.R")
 ```
 
-From the package subdirectory, prefix those script paths with `../`. Settings, seeds, dimensions and family/link choices are ordinary values in the scripts. No environment-variable configuration is required. The scripts load the checked-out package with `pkgload`; compile it first if its native library is unavailable. Required benchmark packages include `fastglm`, `abess`, `microbenchmark`, `RhpcBLASctl`, `pkgload`, `callr`, `Matrix`, `MASS`, `mgcv` and `statmod`.
+From the package subdirectory, prefix those script paths with `../`. Settings, seeds, dimensions and family/link choices are ordinary values in the scripts. No environment-variable configuration is required. The scripts load the checked-out package with `pkgload`; compile it first if its native library is unavailable. Required benchmark packages include `fastglm`, `abess`, `microbenchmark`, `pkgload`, `callr`, `Matrix`, `MASS`, `mgcv` and `statmod`.
 
 ## Design and interpretation
 

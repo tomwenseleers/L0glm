@@ -7,8 +7,7 @@ benchmark_local_search <- function(output = "benchmarks/plots/website",
   rng <- RNGkind()
   on.exit(do.call(RNGkind, as.list(rng)), add = TRUE)
   RNGkind("Mersenne-Twister", "Inversion", "Rejection")
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   dir.create(output, recursive = TRUE, showWarnings = FALSE)
   auc <- function(y, mu) {
     positive <- y == 1
@@ -51,8 +50,7 @@ benchmark_local_search <- function(output = "benchmarks/plots/website",
 # Confirm that automatic size limits preserve large deconvolution fits.
 benchmark_local_deconvolution <- function(output = "benchmarks/plots/website",
                                           sizes = c(1000L, 10000L)) {
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   dir.create(output, recursive = TRUE, showWarnings = FALSE)
   records <- list()
   for (n in sizes) for (multichannel in c(FALSE, TRUE)) {
@@ -84,8 +82,7 @@ benchmark_local_deconvolution <- function(output = "benchmarks/plots/website",
 benchmark_local_million <- function(output = "benchmarks/plots/website", repetitions = 3L) {
   stopifnot(requireNamespace("testthat", quietly = TRUE))
   dir.create(output, recursive = TRUE, showWarnings = FALSE)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   set.seed(123, kind="Mersenne-Twister", normal.kind="Inversion", sample.kind="Rejection")
   n <- 1000L; p <- 1000000L
   X <- matrix(rnorm(n*p), n, p)

@@ -47,8 +47,8 @@ test_that('native group channel parallelism is deterministic and restores thread
     expect_identical(one$history,four$history)
     expect_identical(one$dispersion,four$dispersion)
   }
-  if(requireNamespace('RhpcBLASctl',quietly=TRUE))
-    expect_equal(RhpcBLASctl::omp_get_max_threads(),1L)
+  threads <- l0glmThreads()$openmp
+  if (!is.na(threads)) expect_identical(threads, 1L)
 })
 
 test_that('group routing preserves callbacks and validation checkpoints', {

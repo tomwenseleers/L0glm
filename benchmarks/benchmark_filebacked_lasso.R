@@ -5,7 +5,7 @@ benchmark_filebacked_lasso <- function(n=10000L,p=1000000L,train=floor(.8*n),
   output='benchmarks/plots/file-backed') {
   stopifnot(requireNamespace('bigmemory',quietly=TRUE),requireNamespace('biglasso',quietly=TRUE))
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L);RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   prefix <- file.path(cache,paste0('normal-',n,'-',p))
   saved <- readRDS(paste0(prefix,'.rds'))
   stopifnot(saved$config$n==n,saved$config$p==p,train>2L,train<n)

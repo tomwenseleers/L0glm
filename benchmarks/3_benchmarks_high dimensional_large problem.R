@@ -18,8 +18,7 @@ nlambda <- 10L
 abess_max_support <- min(p, n - 2L, 150L)
 
 # Use one BLAS/OpenMP thread for comparable elapsed timings across methods.
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 
 # Include positive and negative effects.
 stopifnot(n > 2L, p >= n_nonzero, n_nonzero > 0L)

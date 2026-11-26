@@ -8,8 +8,7 @@ root <- file.path(repo, "benchmarks/3_benchmark_fastglm_sparse_and_documented")
 out <- file.path(root, "sparse_truth")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 pkgload::load_all(file.path(repo, "L0glm"), compile = FALSE, quiet = TRUE)
-RhpcBLASctl::blas_set_num_threads(1L)
-RhpcBLASctl::omp_set_num_threads(1L)
+L0glm::l0glmThreads(blas = 1L, openmp = 1L)
 families <- c("gaussian_identity", "binomial_logit", "binomial_probit", "binomial_cloglog",
               "poisson_log", "Gamma_log", "inverse_gaussian_log", "nb_log")
 shapes <- data.frame(shape = c("tiny_tall", "tall", "large_tall", "broad_tall", "square", "wide", "large_wide"),

@@ -4,8 +4,7 @@ benchmark_filebacked_gwas <- function(n=4000L,p=1000000L,train=floor(.8*n),
   screen.nthreads=8L,cache='codex_sandbox/filebacked_gwas',
   output='benchmarks/plots/file-backed') {
   library(L0glm)
-  RhpcBLASctl::blas_set_num_threads(1L)
-  RhpcBLASctl::omp_set_num_threads(1L)
+  L0glm::l0glmThreads(blas = 1L, openmp = 1L)
   stopifnot(n>train,train>2L,p>=100L)
   dir.create(cache,recursive=TRUE,showWarnings=FALSE)
   dir.create(output,recursive=TRUE,showWarnings=FALSE)
